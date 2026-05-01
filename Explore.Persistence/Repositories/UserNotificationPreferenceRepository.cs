@@ -7,12 +7,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
-public sealed class UserNotificationPreferenceRepository(ExploreDbContext dbContext)
-    : GenericRepository<UserNotificationPreference, Guid>(dbContext), IUserNotificationPreferenceRepository
+public sealed class UserNotificationPreferenceRepository
+    : GenericRepository<UserNotificationPreference, Guid>, IUserNotificationPreferenceRepository
 {
+    private readonly ExploreDbContext _dbContext;
+
+    public UserNotificationPreferenceRepository(ExploreDbContext dbContext)
+        : base(dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
     public async Task<UserNotificationPreference?> GetByUserAndCategory(Guid tenantId, Guid userId, string category)
     {
-        return await dbContext.UserNotificationPreferences
+        return await _dbContext.UserNotificationPreferences
             .FirstOrDefaultAsync(preference =>
                 preference.TenantId == tenantId
                 && preference.UserId == userId
@@ -21,7 +29,7 @@ public sealed class UserNotificationPreferenceRepository(ExploreDbContext dbCont
 
     public async Task<List<UserNotificationPreference>> GetAllForUser(Guid tenantId, Guid userId)
     {
-        return await dbContext.UserNotificationPreferences
+        return await _dbContext.UserNotificationPreferences
             .AsNoTracking()
             .Where(preference => preference.TenantId == tenantId && preference.UserId == userId)
             .OrderBy(preference => preference.Category)

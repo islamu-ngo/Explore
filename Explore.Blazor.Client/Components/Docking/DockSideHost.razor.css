@@ -1,0 +1,32 @@
+/* ABOUTME: Scoped side-host layout for open docked panels.
+   ABOUTME: Uses grid areas and logical dimensions to avoid page-level compensation hacks. */
+
+.dock-side-host {
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+    block-size: 100%;
+    min-block-size: 0;
+    overflow: clip;
+}
+
+.dock-side-host--shell {
+    position: sticky;
+    inset-block-start: var(--mud-appbar-height, 4rem);
+    align-self: start;
+    block-size: calc(100vh - var(--mud-appbar-height, 4rem));
+    max-block-size: calc(100vh - var(--mud-appbar-height, 4rem));
+    z-index: var(--isl-dock-z-shell, 1200);
+}
+
+.dock-side-host--start {
+    grid-area: start;
+}
+
+.dock-side-host--end {
+    grid-area: end;
+}
+
+.dock-side-host--bottom {
+    grid-area: bottom;
+}

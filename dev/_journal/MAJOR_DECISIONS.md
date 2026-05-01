@@ -1,6 +1,22 @@
 # Major Decisions
 
-Last Updated: 2026-04-28 Europe/Brussels
+Last Updated: 2026-04-30 Europe/Brussels
+
+## 2026-04-30 Europe/Brussels - Event-Scoped Operational Roles: Assignment-Only Authorization Boundary
+
+### Event Role Authority Is Persisted as `EventRoleAssignment`, Not Global Roles or Generic Resource Grants
+
+- **Decision:** Event operational authority is represented by `EventRoleAssignment(TenantId, EventId, UserId, RoleId)` with lifecycle state, audit fields, and app-managed numeric `Version` concurrency. `RoleScopeEnum.Event` classifies seeded role templates but does not itself grant authority. Generic `ResourceRoleAssignment(ScopeType, ScopeId, UserId, RoleId)` and Keycloak/JWT per-event roles are explicitly rejected.
+- **Why:** Event roles such as `RegistrationManager` and `CheckInStaff` must apply to exactly one event. Global roles or generic resource grants blur tenant/event boundaries, are hard to prove in Cerbos/local parity tests, and make HAL/UI affordances vulnerable to role-name shortcuts.
+- **Impact:** Foundation files include `Explore.Domain/EventRoleAssignment.cs`, `Explore.Domain/Enums/EventRoleAssignmentStatus.cs`, `Explore.Persistence/Configurations/Entities/EventRoleAssignmentConfiguration.cs`, `Explore.Application/Contracts/Persistence/IEventRoleAssignmentRepository.cs`, `Explore.Application/Contracts/Services/IEventAuthoritySnapshotService.cs`, and migration `Explore.Persistence/Migrations/20260430162948_AddEventRoleAssignments.cs`.
+- **Consequence:** Future assignment commands must enforce owner invariants and authority ceiling against this assignment model. Blazor remains HAL-driven and must not inspect role names/claims. Cerbos payloads must be scoped to the checked event or explicit batch.
+
+### Event-Child Authorization Fails Closed Without Tenant + Event Context
+
+- **Decision:** Event-family fallback authorization requires a valid `tenantId` and `eventId` in resource attributes before inherited tenant/org authority can allow access. Batch fallback must also verify that the resource tenant matches the precomputed batch `AuthorityProfile.TenantId`.
+- **Why:** Missing `eventId` or cross-tenant `tenantId` in event-child resources can turn event-local authority into broader access. Cerbos/local parity depends on both engines receiving the same tenant/event resource contract.
+- **Impact:** `ResourceDescriptors` now emits event context for event, event registration, and session agenda item resources; fallback single and batch paths deny missing event context and tenant mismatch; tests cover missing event ID and cross-tenant batch denial.
+- **Consequence:** Any future event-child resource (payments, content review, check-in, speaker coordination, moderation, contact-share consent where applicable) must either carry tenant/event context or document why it is not event-scoped. Parent lookup must be tenant-safe.
 
 ## 2026-04-28 Europe/Brussels - Organizer Email Consent: Event-Triggered, Organizer-Scoped Sharing
 

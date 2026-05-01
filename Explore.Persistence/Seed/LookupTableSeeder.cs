@@ -51,6 +51,7 @@ public static class LookupTableSeeder
         await SeedTagTypesAsync(context, cancellationToken);
         await SeedVisibilityTypesAsync(context, cancellationToken);
         await SeedPermissionsAsync(context, cancellationToken);
+        await SeedEventRolePermissionsAsync(context, cancellationToken);
         await SeedNotificationTypesAsync(context, cancellationToken);
         await SeedNotificationEntityTypesAsync(context, cancellationToken);
         await SeedDefaultFooterLinkGroupsAsync(context, cancellationToken);
@@ -117,12 +118,18 @@ public static class LookupTableSeeder
 
     private static async Task SeedApprovalStatusesAsync(ExploreDbContext context, CancellationToken ct)
     {
-        if (await context.Set<ApprovalStatus>().AnyAsync(ct)) return;
-
-        context.Set<ApprovalStatus>().AddRange(
+        var existingIds = await context.Set<ApprovalStatus>()
+            .Select(status => status.Id)
+            .ToListAsync(ct);
+        var missingStatuses = new[]
+        {
             new ApprovalStatus { Id = (int)ApprovalStatusEnum.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Status is pending approval of Admin verifying the Existence of Legal Entity" },
             new ApprovalStatus { Id = (int)ApprovalStatusEnum.Approved, MasterCode = "APPROVED", FullName = "Approved", Description = "Status has been approved by Admin after verifying the Existence of Legal Entity" },
-            new ApprovalStatus { Id = (int)ApprovalStatusEnum.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Status has been rejected by Admin after failing to verify the Existence of Legal Entity" });
+            new ApprovalStatus { Id = (int)ApprovalStatusEnum.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Status has been rejected by Admin after failing to verify the Existence of Legal Entity" },
+            new ApprovalStatus { Id = (int)ApprovalStatusEnum.Waitlisted, MasterCode = "WAITLISTED", FullName = "Waitlisted", Description = "Registration is waitlisted because the event session is currently at capacity" }
+        }.Where(status => !existingIds.Contains(status.Id));
+
+        context.Set<ApprovalStatus>().AddRange(missingStatuses);
         await context.SaveChangesAsync(ct);
     }
 
@@ -462,7 +469,13 @@ public static class LookupTableSeeder
             // Organization scope (20-29)
             new Role { Id = (int)RoleEnum.OrgAdmin, MasterCode = "org.admin", FullName = "Admin", Description = "Organization administrator", Scope = RoleScopeEnum.Organization, IsSystem = true },
             new Role { Id = (int)RoleEnum.OrgModerator, MasterCode = "org.moderator", FullName = "Moderator", Description = "Organization moderator", Scope = RoleScopeEnum.Organization, IsSystem = true },
-            new Role { Id = (int)RoleEnum.OrgMember, MasterCode = "org.member", FullName = "Member", Description = "Regular organization member", Scope = RoleScopeEnum.Organization, IsSystem = true }
+            new Role { Id = (int)RoleEnum.OrgMember, MasterCode = "org.member", FullName = "Member", Description = "Regular organization member", Scope = RoleScopeEnum.Organization, IsSystem = true },
+
+            // Event scope (40-49) - first-release operational roles only
+            new Role { Id = (int)RoleEnum.EventOwner, MasterCode = "event.owner", FullName = "Event Owner", Description = "Owns event team authority and ownership transfer", Scope = RoleScopeEnum.Event, IsSystem = true },
+            new Role { Id = (int)RoleEnum.EventManager, MasterCode = "event.manager", FullName = "Event Manager", Description = "Manages day-to-day event operations", Scope = RoleScopeEnum.Event, IsSystem = true },
+            new Role { Id = (int)RoleEnum.RegistrationManager, MasterCode = "event.registration_manager", FullName = "Registration Manager", Description = "Manages registrations for one event", Scope = RoleScopeEnum.Event, IsSystem = true },
+            new Role { Id = (int)RoleEnum.CheckInStaff, MasterCode = "event.check_in_staff", FullName = "Check-in Staff", Description = "Handles attendee check-in for one event", Scope = RoleScopeEnum.Event, IsSystem = true }
         };
 
         var existingIds = await context.Roles
@@ -514,10 +527,12 @@ public static class LookupTableSeeder
         string[] noDelete = ["view", "create", "update"];
 
         // Events group
-        AddPermissions("event", "Events", RoleScopeEnum.Organization, crud);
-        AddPermissions("event_session", "Events", RoleScopeEnum.Organization, crud);
-        AddPermissions("event_session_agenda_item", "Events", RoleScopeEnum.Organization, crud);
-        AddPermissions("event_registration", "Events", RoleScopeEnum.Organization, crud);
+        AddPermissions("event", "Events", RoleScopeEnum.Event, crud);
+        AddPermissions("event_day", "Events", RoleScopeEnum.Event, crud);
+        AddPermissions("event_agenda_item", "Events", RoleScopeEnum.Event, crud);
+        AddPermissions("event_session", "Events", RoleScopeEnum.Event, crud);
+        AddPermissions("event_session_agenda_item", "Events", RoleScopeEnum.Event, crud);
+        AddPermissions("event_registration", "Events", RoleScopeEnum.Event, crud);
 
         // Organizations group
         AddPermissions("organization", "Organizations", RoleScopeEnum.Organization, crud);
@@ -545,6 +560,11 @@ public static class LookupTableSeeder
         AddPermissions("indexed_did", "Federation", RoleScopeEnum.Platform, noDelete);
         AddPermissions("atproto_record", "Federation", RoleScopeEnum.Platform, noDelete);
 
+        // Event operational roles group (event-scoped v1 vocabulary)
+        AddPermissions("event", "Event Operations", RoleScopeEnum.Event, ["manage-team", "manage-owner", "transfer-ownership", "manage-finance"]);
+        AddPermissions("event_registration", "Event Operations", RoleScopeEnum.Event, ["manage"]);
+        AddPermissions("event_check_in", "Event Operations", RoleScopeEnum.Event, ["view", "manage"]);
+
         var existingCodes = await context.Permissions
             .AsNoTracking()
             .Select(x => x.MasterCode)
@@ -555,9 +575,205 @@ public static class LookupTableSeeder
             .Where(x => !existingCodeSet.Contains(x.MasterCode))
             .ToList();
 
-        if (missingPermissions.Count == 0) return;
+        if (missingPermissions.Count > 0)
+        {
+            context.Permissions.AddRange(missingPermissions);
+            await context.SaveChangesAsync(ct);
+        }
 
-        context.Permissions.AddRange(missingPermissions);
+        await EnsureEventPermissionScopesAsync(context, ct);
+    }
+
+    private static async Task EnsureEventPermissionScopesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        var eventPermissionCodes = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "event:view",
+            PermissionCodes.EventCreate,
+            PermissionCodes.EventUpdate,
+            PermissionCodes.EventDelete,
+            PermissionCodes.EventPublish,
+            "event_day:view",
+            PermissionCodes.EventDayCreate,
+            PermissionCodes.EventDayUpdate,
+            PermissionCodes.EventDayDelete,
+            "event_agenda_item:view",
+            PermissionCodes.EventAgendaItemCreate,
+            PermissionCodes.EventAgendaItemUpdate,
+            PermissionCodes.EventAgendaItemDelete,
+            "event_session:view",
+            PermissionCodes.EventSessionCreate,
+            PermissionCodes.EventSessionUpdate,
+            PermissionCodes.EventSessionDelete,
+            "event_session_agenda_item:view",
+            "event_session_agenda_item:create",
+            "event_session_agenda_item:update",
+            "event_session_agenda_item:delete",
+            PermissionCodes.EventRegistrationView,
+            "event_registration:create",
+            "event_registration:update",
+            "event_registration:delete",
+            PermissionCodes.EventManageTeam,
+            PermissionCodes.EventManageOwner,
+            PermissionCodes.EventTransferOwnership,
+            PermissionCodes.EventManageFinance,
+            PermissionCodes.EventRegistrationManage,
+            PermissionCodes.EventCheckInView,
+            PermissionCodes.EventCheckInManage
+        };
+
+        var eventPermissions = await context.Permissions
+            .Where(p => eventPermissionCodes.Contains(p.MasterCode) && p.Scope != RoleScopeEnum.Event)
+            .ToListAsync(ct);
+
+        if (eventPermissions.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var permission in eventPermissions)
+        {
+            permission.Scope = RoleScopeEnum.Event;
+        }
+
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedEventRolePermissionsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        var rolePermissionCodes = new Dictionary<RoleEnum, string[]>
+        {
+            [RoleEnum.EventOwner] =
+            [
+                "event:view",
+                PermissionCodes.EventCreate,
+                PermissionCodes.EventUpdate,
+                PermissionCodes.EventDelete,
+                PermissionCodes.EventPublish,
+                PermissionCodes.EventManageTeam,
+                PermissionCodes.EventManageOwner,
+                PermissionCodes.EventTransferOwnership,
+                PermissionCodes.EventManageFinance,
+                "event_day:view",
+                PermissionCodes.EventDayCreate,
+                PermissionCodes.EventDayUpdate,
+                PermissionCodes.EventDayDelete,
+                "event_agenda_item:view",
+                PermissionCodes.EventAgendaItemCreate,
+                PermissionCodes.EventAgendaItemUpdate,
+                PermissionCodes.EventAgendaItemDelete,
+                "event_session:view",
+                PermissionCodes.EventSessionCreate,
+                PermissionCodes.EventSessionUpdate,
+                PermissionCodes.EventSessionDelete,
+                "event_session_agenda_item:view",
+                "event_session_agenda_item:create",
+                "event_session_agenda_item:update",
+                "event_session_agenda_item:delete",
+                PermissionCodes.EventRegistrationView,
+                "event_registration:create",
+                "event_registration:update",
+                "event_registration:delete",
+                PermissionCodes.EventRegistrationManage,
+                PermissionCodes.EventCheckInView,
+                PermissionCodes.EventCheckInManage
+            ],
+            [RoleEnum.EventManager] =
+            [
+                "event:view",
+                PermissionCodes.EventUpdate,
+                PermissionCodes.EventPublish,
+                PermissionCodes.EventManageTeam,
+                "event_day:view",
+                PermissionCodes.EventDayCreate,
+                PermissionCodes.EventDayUpdate,
+                PermissionCodes.EventDayDelete,
+                "event_agenda_item:view",
+                PermissionCodes.EventAgendaItemCreate,
+                PermissionCodes.EventAgendaItemUpdate,
+                PermissionCodes.EventAgendaItemDelete,
+                "event_session:view",
+                PermissionCodes.EventSessionCreate,
+                PermissionCodes.EventSessionUpdate,
+                PermissionCodes.EventSessionDelete,
+                "event_session_agenda_item:view",
+                "event_session_agenda_item:create",
+                "event_session_agenda_item:update",
+                "event_session_agenda_item:delete",
+                PermissionCodes.EventRegistrationView,
+                PermissionCodes.EventRegistrationManage,
+                PermissionCodes.EventCheckInView,
+                PermissionCodes.EventCheckInManage
+            ],
+            [RoleEnum.RegistrationManager] =
+            [
+                "event:view",
+                PermissionCodes.EventRegistrationView,
+                PermissionCodes.EventRegistrationManage
+            ],
+            [RoleEnum.CheckInStaff] =
+            [
+                "event:view",
+                PermissionCodes.EventRegistrationView,
+                PermissionCodes.EventCheckInView,
+                PermissionCodes.EventCheckInManage
+            ]
+        };
+
+        var requiredPermissionCodes = rolePermissionCodes.Values
+            .SelectMany(codes => codes)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var permissionIdsByCode = await context.Permissions
+            .AsNoTracking()
+            .Where(p => requiredPermissionCodes.Contains(p.MasterCode))
+            .ToDictionaryAsync(p => p.MasterCode, p => p.Id, ct);
+
+        var roleIds = rolePermissionCodes.Keys
+            .Select(role => (int)role)
+            .ToArray();
+
+        var existingPairs = await context.RolePermissions
+            .AsNoTracking()
+            .Where(rp => roleIds.Contains(rp.RoleId))
+            .Select(rp => new { rp.RoleId, rp.PermissionId })
+            .ToListAsync(ct);
+
+        var existingPairSet = existingPairs
+            .Select(pair => (pair.RoleId, pair.PermissionId))
+            .ToHashSet();
+
+        var grantedAt = DateTime.UtcNow;
+        var missingRolePermissions = new List<RolePermission>();
+
+        foreach (var (role, permissionCodes) in rolePermissionCodes)
+        {
+            foreach (var permissionCode in permissionCodes)
+            {
+                if (!permissionIdsByCode.TryGetValue(permissionCode, out var permissionId) ||
+                    existingPairSet.Contains(((int)role, permissionId)))
+                {
+                    continue;
+                }
+
+                missingRolePermissions.Add(new RolePermission
+                {
+                    RoleId = (int)role,
+                    PermissionId = permissionId,
+                    GrantedAt = grantedAt,
+                    Role = null!,
+                    Permission = null!
+                });
+            }
+        }
+
+        if (missingRolePermissions.Count == 0)
+        {
+            return;
+        }
+
+        context.RolePermissions.AddRange(missingRolePermissions);
         await context.SaveChangesAsync(ct);
     }
 

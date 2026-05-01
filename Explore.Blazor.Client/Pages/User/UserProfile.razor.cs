@@ -108,13 +108,17 @@ public partial class UserProfile : ComponentBase
         }
     }
 
+    private ICollection<EventListDto> _posts = new List<EventListDto>();
+    private ICollection<EventRegistrationListDto> _history = new List<EventRegistrationListDto>();
+
     private async Task LoadStatisticsAsync(Guid userId)
     {
-        // Load event registrations and reviews in parallel
+        // Load event registrations, reviews, and posts in parallel
         var registrationsTask = LoadEventRegistrationsAsync(userId);
         var reviewsTask = LoadReviewsAsync(userId);
+        var postsTask = LoadPostsAsync();
 
-        await Task.WhenAll(registrationsTask, reviewsTask);
+        await Task.WhenAll(registrationsTask, reviewsTask, postsTask);
     }
 
     private async Task LoadEventRegistrationsAsync(Guid userId)
@@ -122,13 +126,29 @@ public partial class UserProfile : ComponentBase
         try
         {
             var registrations = await EventService.GetRegistrationsByUserAsync(userId);
-            EventsAttended = registrations?.Count ?? 0;
+            _history = registrations ?? new List<EventRegistrationListDto>();
+            EventsAttended = _history.Count;
             Logger.LogInformation("[UserProfile] Loaded {Count} event registrations", EventsAttended);
         }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "[UserProfile] Error loading registrations");
+            _history = new List<EventRegistrationListDto>();
             EventsAttended = 0;
+        }
+    }
+
+    private async Task LoadPostsAsync()
+    {
+        try
+        {
+            _posts = await EventService.GetMyEventsAsync();
+            Logger.LogInformation("[UserProfile] Loaded {Count} posts", _posts.Count);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "[UserProfile] Error loading posts");
+            _posts = new List<EventListDto>();
         }
     }
 
@@ -146,6 +166,59 @@ public partial class UserProfile : ComponentBase
             MyReviews = new List<OrganizationReviewDto>();
             ReviewsGiven = 0;
         }
+    }
+
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private void NavigateToEvent(Guid? eventId)
+    {
+        if (eventId.HasValue)
+        {
+            Navigation.NavigateTo($"/events/{eventId}");
+        }
+    }
+
+    private static string GetEventImage(EventListDto evt)
+    {
+        var color = EventColorHelper.GetColorByTypeId(evt.EventTypeId);
+        if (color == EventColorHelper.DefaultColor)
+        {
+            color = EventColorHelper.GetColorByHash(evt.Title);
+        }
+
+        return ImageHelper.GetEventImageUrl(evt.FeaturedImageUri, evt.Title, color);
+    }
+
+    private static string FormatEventDate(EventListDto evt)
+    {
+        if (evt.FirstSessionDate == null) return "TBD";
+
+        var start = evt.FirstSessionDate.Value;
+        if (evt.LastSessionDate != null && evt.LastSessionDate.Value.Date != start.Date)
+        {
+            return $"{start:MMM dd} — {evt.LastSessionDate.Value:MMM dd, yyyy}";
+        }
+
+        return start.ToString("MMM dd, yyyy");
+    }
+
+    private static string GetLocationText(EventListDto evt)
+    {
+        if (evt.EventFormatId == 2) return "Online";
+        if (!string.IsNullOrEmpty(evt.EventFormatFullName)) return evt.EventFormatFullName;
+        return "Location TBD";
+    }
+
+    private static string GetHistoryImage(EventRegistrationListDto reg)
+    {
+        var color = EventColorHelper.GetColorByHash(reg.EventTitle ?? "Event");
+        return ImageHelper.GetEventImageUrl(reg.EventFeaturedImageUri, reg.EventTitle, color);
+    }
+
+    private static string FormatHistoryDate(EventRegistrationListDto reg)
+    {
+        if (reg.EventStartTime == null) return "TBD";
+        return reg.EventStartTime.Value.ToString("MMM dd, yyyy");
     }
 
     /// <summary>

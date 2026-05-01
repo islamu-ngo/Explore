@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.API.Services.Calendar;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAspects;
 using Explore.Application.Features.EventAspects.Requests.Commands;
@@ -35,15 +36,21 @@ public class EventController : ExploreControllerBase
     private readonly IMediator _mediator;
     private readonly ILogger<EventController> _logger;
     private readonly IResourceAssembler<EventDto, EventListDto> _resourceAssembler;
+    private readonly IEventCalendarFileBuilder _calendarFileBuilder;
+    private readonly Explore.Application.Contracts.Infrastructure.IPublicUrlBuilder _publicUrlBuilder;
 
     public EventController(
         IMediator mediator,
         ILogger<EventController> logger,
-        IResourceAssembler<EventDto, EventListDto> resourceAssembler)
+        IResourceAssembler<EventDto, EventListDto> resourceAssembler,
+        IEventCalendarFileBuilder calendarFileBuilder,
+        Explore.Application.Contracts.Infrastructure.IPublicUrlBuilder publicUrlBuilder)
     {
         _mediator = mediator;
         _logger = logger;
         _resourceAssembler = resourceAssembler;
+        _calendarFileBuilder = calendarFileBuilder;
+        _publicUrlBuilder = publicUrlBuilder;
     }
 
     /// <summary>
@@ -180,6 +187,36 @@ public class EventController : ExploreControllerBase
     }
 
     /// <summary>
+    /// Download an event as an iCalendar (.ics) file.
+    /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("{id:guid}/calendar", Name = RouteNames.GetEventCalendar)]
+    [EndpointSummary("Download Event Calendar")]
+    [EndpointDescription("Downloads a published public event as an RFC 5545 iCalendar file.")]
+    [Produces("text/calendar")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<IActionResult> GetCalendar(Guid id, CancellationToken cancellationToken = default)
+    {
+        var export = await _mediator.Send(new GetEventCalendarExportRequest(id), cancellationToken);
+        if (export is null)
+        {
+            return NotFound();
+        }
+
+        Uri canonicalUrl = new(_publicUrlBuilder.GetEventUrl(export.EventId));
+        string calendarContent = _calendarFileBuilder.Build(export, canonicalUrl);
+        string fileName = $"{SanitizeCalendarFileName(export.Slug ?? export.Title)}.ics";
+
+        return File(
+            System.Text.Encoding.UTF8.GetBytes(calendarContent),
+            "text/calendar; charset=utf-8",
+            fileName);
+    }
+
+    /// <summary>
     /// Create a new event.
     /// </summary>
     [Authorize]
@@ -289,7 +326,11 @@ public class EventController : ExploreControllerBase
 
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized(new { error = "User ID not found in token" });
+            return Problem(
+                title: "Unauthorized",
+                detail: "Authentication is required to access this resource.",
+                statusCode: StatusCodes.Status401Unauthorized,
+                type: "https://tools.ietf.org/html/rfc9110#section-15.5.2");
         }
 
         var command = new DeleteEventCommand { Id = id, UserId = userId };
@@ -461,6 +502,21 @@ public class EventController : ExploreControllerBase
             "or" => TagFilterMode.Or,
             _ => defaultValue
         };
+
+    private static string SanitizeCalendarFileName(string value)
+    {
+        string sanitized = string.Concat(value
+            .Trim()
+            .Select(character => char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '-'));
+
+        sanitized = string.Join(
+            '-',
+            sanitized.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+        return string.IsNullOrWhiteSpace(sanitized)
+            ? "event"
+            : sanitized.ToLowerInvariant();
+    }
 
     public sealed record UpdateEventRequestDto(UpdateEventDto? EventDto, UpdateEventStatusDto? EventStatusDto);
 }

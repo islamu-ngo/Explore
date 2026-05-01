@@ -1,0 +1,71 @@
+/* ABOUTME: Generic panel chrome for descriptor-driven dock panels.
+   ABOUTME: Uses logical borders and tokenized widths for shell/workspace consistency. */
+
+.dock-panel-host {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    inline-size: var(--dock-panel-width, var(--isl-dock-workspace-end-width, 320px));
+    block-size: 100%;
+    min-inline-size: 0;
+    min-block-size: 0;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    box-shadow: var(--isl-shadow-sm);
+    transition: var(--isl-dock-panel-transition);
+}
+
+.dock-panel-host--start {
+    border-inline-end: 1px solid var(--isl-color-border-subtle);
+}
+
+.dock-panel-host--end,
+.dock-panel-host--bottom {
+    border-inline-start: 1px solid var(--isl-color-border-subtle);
+}
+
+.dock-panel-host--bottom {
+    inline-size: 100%;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--isl-color-border-subtle);
+}
+
+.dock-panel-host--active {
+    border-color: color-mix(in oklch, var(--mud-palette-primary) 38%, var(--isl-color-border-subtle));
+}
+
+.dock-panel-host--mode-overlay,
+.dock-panel-host--mode-temporary,
+.dock-panel-host--mode-inspector {
+    max-inline-size: min(100%, var(--dock-panel-width, var(--isl-dock-workspace-inspector-width, 440px)));
+    block-size: 100%;
+}
+
+.dock-panel-host__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-2);
+    padding-block: var(--isl-space-3);
+    padding-inline: var(--isl-space-4);
+    border-block-end: 1px solid var(--isl-color-border-subtle);
+}
+
+.dock-panel-host__title {
+    font: inherit;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}
+
+.dock-panel-host__body {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    min-block-size: 0;
+    overflow: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dock-panel-host {
+        transition-duration: 1ms;
+    }
+}

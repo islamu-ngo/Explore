@@ -87,7 +87,7 @@ public class OrganizationController : ExploreControllerBase
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized("User ID not found in token");
+            return UnauthorizedProblem();
         }
 
         var result = await _mediator.Send(new GetMyOrganizationsRequest
@@ -143,6 +143,10 @@ public class OrganizationController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateOrganizationDto organization, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
+        if (string.IsNullOrEmpty(userId))
+        {
+            return UnauthorizedProblem();
+        }
 
         var command = new CreateOrganizationCommand
         {
@@ -184,7 +188,7 @@ public class OrganizationController : ExploreControllerBase
         var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
-            return Unauthorized("User ID not found in token");
+            return UnauthorizedProblem();
         }
 
         var command = new UpdateOrganizationDetailsCommand
@@ -245,10 +249,33 @@ public class OrganizationController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        // TODO: Implement delete command
-        // var command = new DeleteOrganizationCommand { Id = id };
-        // await _mediator.Send(command);
+        var userId = CurrentUserId?.ToString();
+        if (string.IsNullOrEmpty(userId))
+        {
+            return UnauthorizedProblem();
+        }
+
+        var result = await _mediator.Send(new DeleteOrganizationCommand
+        {
+            Id = id,
+            UserId = userId
+        }, cancellationToken);
+
+        if (!result.Success)
+        {
+            return NotFound(result);
+        }
+
         return NoContent();
+    }
+
+    private ObjectResult UnauthorizedProblem()
+    {
+        return Problem(
+            title: "Unauthorized",
+            detail: "Authentication is required to access this resource.",
+            statusCode: StatusCodes.Status401Unauthorized,
+            type: "https://tools.ietf.org/html/rfc9110#section-15.5.2");
     }
 
 }

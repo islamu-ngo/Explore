@@ -1,0 +1,177 @@
+@* ABOUTME: Renders non-docked open panels for one dock scope as overlay chrome. *@
+@* ABOUTME: Adds shared backdrop, scroll lock, Escape close, and focus restore for overlay panels. *@
+
+@using Explore.Blazor.Client.Services.Docking
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using MudBlazor
+@implements IDisposable
+@implements IAsyncDisposable
+@inject DockLayoutState DockLayoutState
+@inject IAccessibilityFocusService AccessibilityFocusService
+@inject IScrollManager ScrollManager
+
+@if (OverlayEntries.Count > 0)
+{
+    <div class="@RootClass"
+         data-testid="@DataTestId"
+         data-dock-scope="@ScopeName"
+         aria-live="polite"
+         tabindex="-1"
+         @onkeydown="HandleKeyDownAsync">
+        <button type="button"
+                class="dock-overlay-host__backdrop"
+                data-testid="dock-overlay-backdrop"
+                aria-label="Close dock overlay"
+                @onclick="CloseActiveOverlayAsync"></button>
+        @foreach (var entry in OverlayEntries)
+        {
+            <div class="@GetSlotClass(entry)" data-dock-overlay-side="@entry.Descriptor.Side.ToString().ToLowerInvariant()">
+                <DockPanelHost Entry="@entry" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public DockScope Scope { get; set; }
+    [Parameter] public string DataTestId { get; set; } = "dock-overlay-host";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public bool IsMobile { get; set; }
+
+    private const string BodyElementId = "body";
+    private const string ScrollLockClass = "scroll-locked";
+
+    private bool _overlayWasOpen;
+    private bool _scrollLocked;
+    private bool _focusSaved;
+
+    private IReadOnlyList<DockPanelEntry> OverlayEntries => Enum.GetValues<DockSide>()
+        .SelectMany(side => DockLayoutState.GetPanels(Scope, side))
+        .Where(IsOverlayEntry)
+        .Select(GetEffectiveOverlayEntry)
+        .OrderBy(entry => entry.State.Order)
+        .ThenBy(entry => entry.Descriptor.Title, StringComparer.Ordinal)
+        .ToArray();
+
+    private string ScopeName => Scope.ToString().ToLowerInvariant();
+
+    private string RootClass => string.Join(' ', new[]
+    {
+        "dock-overlay-host",
+        $"dock-overlay-host--{ScopeName}",
+        Class
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    protected override void OnInitialized()
+    {
+        DockLayoutState.Changed += OnDockLayoutChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var overlayOpen = OverlayEntries.Count > 0;
+
+        if (overlayOpen && !_overlayWasOpen)
+        {
+            await ActivateOverlayAsync();
+        }
+        else if (!overlayOpen && _overlayWasOpen)
+        {
+            await DeactivateOverlayAsync();
+        }
+
+        _overlayWasOpen = overlayOpen;
+    }
+
+    public void Dispose()
+    {
+        DockLayoutState.Changed -= OnDockLayoutChanged;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        DockLayoutState.Changed -= OnDockLayoutChanged;
+        await DeactivateOverlayAsync();
+    }
+
+    private static string GetSlotClass(DockPanelEntry entry)
+    {
+        var sideName = entry.Descriptor.Side.ToString().ToLowerInvariant();
+        var modeName = entry.State.Mode.ToString().ToLowerInvariant();
+
+        return $"dock-overlay-host__slot dock-overlay-host__slot--{sideName} dock-overlay-host__slot--mode-{modeName}";
+    }
+
+    private bool IsOverlayEntry(DockPanelEntry entry)
+    {
+        return entry.State.IsOpen
+            && (entry.State.Mode is DockMode.Overlay or DockMode.Temporary or DockMode.Inspector
+                || (IsMobile && entry.State.Mode == DockMode.Docked));
+    }
+
+    private DockPanelEntry GetEffectiveOverlayEntry(DockPanelEntry entry)
+    {
+        return IsMobile && entry.State.Mode == DockMode.Docked
+            ? entry with { State = entry.State with { Mode = DockMode.Temporary } }
+            : entry;
+    }
+
+    private void OnDockLayoutChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ActivateOverlayAsync()
+    {
+        if (!_focusSaved)
+        {
+            await AccessibilityFocusService.SaveFocusAsync();
+            _focusSaved = true;
+        }
+
+        if (!_scrollLocked)
+        {
+            await ScrollManager.LockScrollAsync(BodyElementId, ScrollLockClass);
+            _scrollLocked = true;
+        }
+
+        await AccessibilityFocusService.FocusAsync($"[data-testid='{DataTestId}'][data-dock-scope='{ScopeName}'] [data-testid='dock-panel-host']", preventScroll: true);
+    }
+
+    private async Task DeactivateOverlayAsync()
+    {
+        if (_scrollLocked)
+        {
+            await ScrollManager.UnlockScrollAsync(BodyElementId, ScrollLockClass);
+            _scrollLocked = false;
+        }
+
+        if (_focusSaved)
+        {
+            await AccessibilityFocusService.RestoreFocusAsync("#main-content");
+            _focusSaved = false;
+        }
+    }
+
+    private async Task HandleKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key is "Escape" or "Esc")
+        {
+            await CloseActiveOverlayAsync();
+        }
+    }
+
+    private async Task CloseActiveOverlayAsync()
+    {
+        var entry = OverlayEntries.LastOrDefault(entry => entry.State.IsActive && entry.Descriptor.CanClose)
+            ?? OverlayEntries.LastOrDefault(entry => entry.Descriptor.CanClose);
+
+        if (entry is null)
+        {
+            return;
+        }
+
+        DockLayoutState.Close(entry.Descriptor.Id);
+        await InvokeAsync(StateHasChanged);
+    }
+}

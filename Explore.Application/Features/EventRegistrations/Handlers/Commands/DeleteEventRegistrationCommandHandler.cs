@@ -1,8 +1,5 @@
 // ABOUTME: Handler for cancelling an event registration.
 // ABOUTME: Fetches registration by ID and delegates deletion to the repository.
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using MediatR;
@@ -20,14 +17,6 @@ public class DeleteEventRegistrationCommandHandler : IRequestHandler<DeleteEvent
 
     public async Task<bool> Handle(DeleteEventRegistrationCommand request, CancellationToken cancellationToken)
     {
-        var eventRegistration = await _eventRegistrationRepository.GetById(request.Id);
-
-        if (eventRegistration == null)
-        {
-            return false;
-        }
-
-        await _eventRegistrationRepository.Delete(eventRegistration);
-        return true;
+        return await _eventRegistrationRepository.CancelAndReleaseCapacityAsync(request.Id, cancellationToken);
     }
 }

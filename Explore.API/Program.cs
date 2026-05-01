@@ -5,6 +5,7 @@ using Explore.API.Configuration;
 using Explore.API.Extensions;
 using Explore.API.Middleware;
 using Explore.API.Services;
+using Explore.API.Services.Calendar;
 using Explore.Application;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
@@ -85,6 +86,7 @@ builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.
 builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
 
 builder.Services.AddApiCaching();
+builder.Services.AddSingleton<IEventCalendarFileBuilder, IcalNetEventCalendarFileBuilder>();
 
 builder.Services.AddRouting(options =>
 {
@@ -371,7 +373,6 @@ if (app.Environment.IsDevelopment())
             try
             {
                 logger.LogInformation(" Applying database migrations...");
-                logger.LogInformation(builder.Configuration["ConnectionStrings:DefaultConnection"]);
                 await context.Database.MigrateAsync();
                 logger.LogInformation(" Database migrations applied successfully!");
                 return Results.Ok(new { message = "Migrations applied successfully" });

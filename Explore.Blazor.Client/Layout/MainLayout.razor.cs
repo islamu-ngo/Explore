@@ -1,15 +1,14 @@
 // ABOUTME: Main layout code-behind handling theme initialization, user sync, and accessibility.
 // ABOUTME: Uses the new IAppearanceThemeService with AppearanceState for reactive theme management.
 
-using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
-using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
-using Explore.Blazor.Client.Services.Appearance;
+using Explore.Blazor.Client.Services.Docking;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.Extensions.Logging;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Layout;
@@ -47,6 +46,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     protected AiAssistantState AiAssistantState { get; set; } = null!;
 
     [Inject]
+    protected DockLayoutState DockLayoutState { get; set; } = null!;
+
+    [Inject]
     protected TenantNavLinksState TenantNavLinksState { get; set; } = null!;
 
     [Inject]
@@ -79,11 +81,14 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         base.OnInitialized();
 
+        RegisterShellDockPanels();
+
         NavigationManager.LocationChanged += OnLocationChanged;
-        SidebarState.OnChange += StateHasChanged;
-        AiAssistantState.OnChange += StateHasChanged;
-        TenantNavLinksState.OnChange += StateHasChanged;
+        SidebarState.OnChange += OnLegacySidebarStateChanged;
+        AiAssistantState.OnChange += OnLegacyAiAssistantStateChanged;
+        TenantNavLinksState.OnChange += OnTenantNavLinksChanged;
         UpdateChromeVisibility();
+        SyncShellDockState();
 
         if (InitialTheme.HasValue)
         {
@@ -115,12 +120,16 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
             try
             {
                 var settings = await PublicExperienceService.GetCachedSettingsAsync();
-                _showCommunityGuidelinesLink = settings.AllowUserSubmittedEvents
-                    || settings.AllowOrganizationSubmittedEvents
-                    || settings.AllowGroupSubmittedEvents;
-                _brandDisplayName = settings.BrandDisplayName;
-                AiAssistantState.SetAvailable(settings.IsAiAssistantAvailable);
-                await InvokeAsync(StateHasChanged);
+                if (settings is not null)
+                {
+                    _showCommunityGuidelinesLink = settings.AllowUserSubmittedEvents
+                        || settings.AllowOrganizationSubmittedEvents
+                        || settings.AllowGroupSubmittedEvents;
+                    _brandDisplayName = settings.BrandDisplayName;
+                    AiAssistantState.SetAvailable(settings.IsAiAssistantAvailable);
+                    DockLayoutState.Refresh();
+                    await InvokeAsync(StateHasChanged);
+                }
             }
             catch (Exception ex)
             {
@@ -215,7 +224,71 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         SidebarState.SetHasSidebar(!_hideChrome);
     }
 
-    private void OnDrawerOpenChanged(bool open) => SidebarState.SetOpen(open);
+
+    private void RegisterShellDockPanels()
+    {
+        DockLayoutState.Register(ShellDockPanels.LeftNav, RenderShellLeftNav);
+        DockLayoutState.Register(ShellDockPanels.AiAssistant, RenderShellAiAssistant);
+    }
+
+    private void RenderShellLeftNav(RenderTreeBuilder builder)
+    {
+        builder.OpenComponent<AppSideNav>(0);
+        builder.AddAttribute(1, "AriaLabel", "Sidebar navigation");
+        builder.AddAttribute(2, "BrandDisplayName", _brandDisplayName);
+        builder.AddAttribute(3, "ShowCommunityGuidelinesLink", _showCommunityGuidelinesLink);
+        builder.AddAttribute(4, "TenantLinks", TenantNavLinksState.Links);
+        builder.CloseComponent();
+    }
+
+    private static void RenderShellAiAssistant(RenderTreeBuilder builder)
+    {
+        builder.OpenComponent<AiAssistantRail>(0);
+        builder.AddAttribute(1, "HostedInDock", true);
+        builder.CloseComponent();
+    }
+
+    private void OnLegacySidebarStateChanged()
+    {
+        SyncShellDockState();
+        StateHasChanged();
+    }
+
+    private void OnLegacyAiAssistantStateChanged()
+    {
+        SyncShellDockState();
+        StateHasChanged();
+    }
+
+    private void OnTenantNavLinksChanged()
+    {
+        DockLayoutState.Refresh();
+        StateHasChanged();
+    }
+
+    private void SyncShellDockState()
+    {
+        SyncPanelState(ShellDockPanels.LeftNavId, !_hideChrome && SidebarState.HasSidebar && SidebarState.IsOpen);
+        SyncPanelState(ShellDockPanels.AiAssistantId, !_hideChrome && AiAssistantState.IsAvailable && AiAssistantState.IsOpen);
+    }
+
+    private void SyncPanelState(DockPanelId id, bool shouldBeOpen)
+    {
+        var panel = DockLayoutState.GetPanel(id);
+
+        if (panel is null || panel.State.IsOpen == shouldBeOpen)
+        {
+            return;
+        }
+
+        if (shouldBeOpen)
+        {
+            DockLayoutState.Open(id);
+            return;
+        }
+
+        DockLayoutState.Close(id);
+    }
 
     private void OnAnnouncementVisibilityChanged(bool isVisible)
     {
@@ -236,10 +309,12 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     public void Dispose()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
-        SidebarState.OnChange -= StateHasChanged;
-        AiAssistantState.OnChange -= StateHasChanged;
-        TenantNavLinksState.OnChange -= StateHasChanged;
+        SidebarState.OnChange -= OnLegacySidebarStateChanged;
+        AiAssistantState.OnChange -= OnLegacyAiAssistantStateChanged;
+        TenantNavLinksState.OnChange -= OnTenantNavLinksChanged;
         AppearanceThemeService.Changed -= OnAppearanceChanged;
+        DockLayoutState.Unregister(ShellDockPanels.LeftNavId);
+        DockLayoutState.Unregister(ShellDockPanels.AiAssistantId);
         GC.SuppressFinalize(this);
     }
 }

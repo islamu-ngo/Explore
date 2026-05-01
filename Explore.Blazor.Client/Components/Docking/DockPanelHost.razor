@@ -1,0 +1,77 @@
+@* ABOUTME: Renders a single registered dock panel with descriptor-driven metadata. *@
+@* ABOUTME: Keeps panel chrome generic so shell/workspace content stays extension-ready. *@
+
+@using Explore.Blazor.Client.Services.Docking
+@inject DockLayoutState DockLayoutState
+
+@if (Entry.State is { IsOpen: true, Mode: not DockMode.Collapsed })
+{
+    <aside class="@RootClass"
+           style="@PanelStyle"
+           data-testid="@DataTestId"
+           data-dock-panel-id="@Entry.Descriptor.Id.Value"
+           data-dock-mode="@ModeName"
+           data-dock-side="@SideName"
+           aria-label="@Entry.Descriptor.AriaLabel"
+           aria-labelledby="@PanelTitleId"
+           role="complementary">
+        @if (ShouldRenderResizeHandle)
+        {
+             <DockResizeHandle PanelId="@Entry.Descriptor.Id"
+                               Side="@Entry.Descriptor.Side"
+                               Width="@Entry.State.Width"
+                               MinWidth="@Entry.Descriptor.MinWidth"
+                               MaxWidth="@Entry.Descriptor.MaxWidth"
+                               ControlledElementId="@PanelBodyId"
+                               AriaLabel="@($"Resize {Entry.Descriptor.Title}")"
+                               OnResizeRequested="ResizePanel" />
+        }
+
+        <div class="dock-panel-host__header">
+            <span id="@PanelTitleId" class="dock-panel-host__title">@Entry.Descriptor.Title</span>
+        </div>
+        <div id="@PanelBodyId"
+             class="dock-panel-host__body"
+             role="@BodyRole"
+             aria-labelledby="@BodyLabelledById">
+            @Entry.Content
+        </div>
+    </aside>
+}
+
+@code {
+    [Parameter, EditorRequired] public DockPanelEntry Entry { get; set; } = default!;
+    [Parameter] public string DataTestId { get; set; } = "dock-panel-host";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? BodyRole { get; set; }
+    [Parameter] public string? BodyLabelledById { get; set; }
+
+    private string ModeName => Entry.State.Mode.ToString().ToLowerInvariant();
+    private string SideName => Entry.Descriptor.Side.ToString().ToLowerInvariant();
+
+    private string PanelStyle => $"--dock-panel-width: {Entry.State.Width}px;";
+
+    private string PanelBodyId => DockElementIds.PanelBodyId(Entry.Descriptor.Id);
+
+    private string PanelTitleId => $"{PanelBodyId}-title";
+
+    private bool ShouldRenderResizeHandle => Entry.Descriptor.IsResizable
+        && Entry.State.Mode == DockMode.Docked
+        && Entry.Descriptor.Side is DockSide.Start or DockSide.End;
+
+    private string RootClass => string.Join(' ', new[]
+    {
+        "dock-panel-host",
+        $"dock-panel-host--{SideName}",
+        $"dock-panel-host--mode-{ModeName}",
+        Entry.State.IsActive ? "dock-panel-host--active" : null,
+        Entry.Descriptor.IsResizable ? "dock-panel-host--resizable" : null,
+        Entry.Descriptor.CanClose ? "dock-panel-host--closable" : null,
+        Class
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private void ResizePanel(int width)
+    {
+        DockLayoutState.Resize(Entry.Descriptor.Id, width);
+    }
+}

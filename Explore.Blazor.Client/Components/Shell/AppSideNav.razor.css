@@ -1,0 +1,23 @@
+/* ABOUTME: Scoped shell side navigation styles for the extracted AppSideNav component. */
+/* ABOUTME: Preserves legacy drawer spacing while preparing content for dock-host reuse. */
+
+.app-side-nav {
+    display: block;
+}
+
+.app-side-nav__title {
+    padding-inline: var(--isl-space-4, 1rem);
+    padding-block-start: var(--isl-space-2, 0.5rem);
+    padding-block-end: var(--isl-space-1, 0.25rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.app-side-nav__brand-label,
+.app-side-nav__tenant-links-label {
+    padding-inline: var(--isl-space-4, 1rem);
+    padding-block-end: var(--isl-space-1, 0.25rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--mud-palette-text-secondary);
+}

@@ -116,7 +116,8 @@ public class EventTemplateDiffServiceTests
         var currentEvent = CreateEvent();
         var runtimeDefinition = CreateRuntimeDefinition(propertyType: PropertyType.Option);
         var runtimeOption = CreateRuntimeOption(runtimeDefinition.Id, runtimeDefinition.Namespace, "old_option", sourceTemplateOptionId: Guid.NewGuid(), displayName: "Old Label");
-        SetRuntimeOptions(runtimeDefinition, [runtimeOption]);
+        var retiredRuntimeOption = CreateRuntimeOption(runtimeDefinition.Id, runtimeDefinition.Namespace, "retired_option", sourceTemplateOptionId: Guid.NewGuid(), displayName: "Retired Label");
+        SetRuntimeOptions(runtimeDefinition, [runtimeOption, retiredRuntimeOption]);
 
         var templateDefinition = CreateTemplateDefinition(runtimeDefinition.Namespace, runtimeDefinition.Key, runtimeDefinition.SourceTemplateDefinitionId!.Value, propertyType: PropertyType.Option);
         var modifiedTemplateOption = CreateTemplateOption(templateDefinition.Id, runtimeDefinition.Namespace, "old_option", runtimeOption.SourceTemplateOptionId!.Value, displayName: "New Label");
@@ -132,7 +133,10 @@ public class EventTemplateDiffServiceTests
 
         await Assert.That(result.ModifiedOptions.Count).IsEqualTo(1);
         await Assert.That(result.AddedOptions.Count).IsEqualTo(1);
+        await Assert.That(result.RetiredOptions.Count).IsEqualTo(1);
         await Assert.That(result.ModifiedOptions[0].FieldChanges.Any(x => x.FieldName == "DisplayName")).IsTrue();
+        await Assert.That(result.RetiredOptions[0].Key).IsEqualTo("retired_option");
+        await Assert.That(result.RetiredOptions[0].CurrentConcurrencyStamp).IsEqualTo(retiredRuntimeOption.ConcurrencyStamp);
     }
 
     private Explore.Domain.Event CreateEvent() => new()

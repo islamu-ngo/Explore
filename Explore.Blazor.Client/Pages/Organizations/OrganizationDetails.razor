@@ -4,12 +4,16 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
+@using Explore.Blazor.Client.Helpers
 @using Blazouter.Services
 @using Microsoft.Extensions.Logging
 @attribute [Authorize]
 @rendermode InteractiveServer
 
 <PageTitle>Organization Details</PageTitle>
+<HeadContent>
+    <link rel="canonical" href="@CanonicalUrlHelper.Build(NavigationManager, Id == Guid.Empty ? null : $"/organization/{Id}")" />
+</HeadContent>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-8">
     @if (isLoading)

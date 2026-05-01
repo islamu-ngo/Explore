@@ -1,5 +1,5 @@
 // ABOUTME: Unified role controller replacing OrganizationRoleController and UserRoleController.
-// ABOUTME: Supports scope filtering via query parameter (Platform, Tenant, Organization).
+// ABOUTME: Supports scope filtering via query parameter (Platform, Tenant, Organization, Group, Event).
 
 using Asp.Versioning;
 using Explore.API.Attributes;
@@ -31,7 +31,7 @@ public class RoleController : ControllerBase
     // GET: api/role?scope=Organization
     [HttpGet(Name = RouteNames.GetRoles)]
     [EndpointSummary("Get all Roles")]
-    [EndpointDescription("Retrieve roles, optionally filtered by scope (Platform, Tenant, Organization). Returns all roles when no scope specified.")]
+    [EndpointDescription("Retrieve roles, optionally filtered by scope (Platform, Tenant, Organization, Group, Event). Returns all roles when no scope specified.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(List<RoleListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "LookupData")]

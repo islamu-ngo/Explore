@@ -157,10 +157,99 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
+        if (!TryResolveEventContext("event_registration", resourceId, resourceAttributes, out var tenantId, out var eventId))
+        {
+            LogDecision("deny", "missing_event_context", "event_registration", resourceId, action);
+            return false;
+        }
+
+        if (tenantId != _tenantContext.TenantId)
+        {
+            LogDecision("deny", "tenant_mismatch", "event_registration", resourceId, action);
+            return false;
+        }
+
         if (action is "create" or "view")
             return true;
 
+        if (await EvaluateEventRolePermissionAsync("event_registration", resourceId, action, tenantId, eventId, cancellationToken))
+            return true;
+
         return await EvaluateOrgScopedAccessAsync("event_registration", resourceId, action, resourceAttributes, cancellationToken);
+    }
+
+    private async Task<bool> EvaluateEventScopedAccessAsync(
+        string resourceKind,
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (!TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out var tenantId, out var eventId))
+        {
+            LogDecision("deny", "missing_event_context", resourceKind, resourceId, action);
+            return false;
+        }
+
+        if (tenantId != _tenantContext.TenantId)
+        {
+            LogDecision("deny", "tenant_mismatch", resourceKind, resourceId, action);
+            return false;
+        }
+
+        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
+        {
+            LogDecision("allow", "tenant_admin=true", resourceKind, resourceId, action);
+            return true;
+        }
+
+        var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
+        if (orgId.HasValue && await _adminContext.IsOrganizationAdminAsync(orgId.Value, cancellationToken))
+        {
+            LogDecision("allow", "organization_admin=true", resourceKind, resourceId, action);
+            return true;
+        }
+
+        if (await EvaluateEventRolePermissionAsync(resourceKind, resourceId, action, tenantId, eventId, cancellationToken))
+            return true;
+
+        LogDecision("deny", "no_event_authority", resourceKind, resourceId, action);
+        return false;
+    }
+
+    private async Task<bool> EvaluateEventRolePermissionAsync(
+        string resourceKind,
+        string resourceId,
+        string action,
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        var userId = _adminContext.UserId ?? await _adminContext.ResolveUserIdAsync(cancellationToken);
+        if (!userId.HasValue)
+        {
+            LogDecision("deny", "missing_user_id", resourceKind, resourceId, action);
+            return false;
+        }
+
+        var snapshot = await _eventAuthoritySnapshotService.GetForUserAndEventsAsync(
+            tenantId,
+            userId.Value,
+            [eventId],
+            cancellationToken);
+
+        var permissionCode = PermissionCodeFor(resourceKind, action);
+        var allowed = snapshot.Events.TryGetValue(eventId, out var authority)
+            && authority.PermissionCodes.Contains(permissionCode);
+
+        LogDecision(
+            allowed ? "allow" : "deny",
+            allowed ? "event_role_permission=true" : "event_role_permission_missing",
+            resourceKind,
+            resourceId,
+            action);
+
+        return allowed;
     }
 
     private async Task<bool> EvaluateStorageObjectAccessAsync(

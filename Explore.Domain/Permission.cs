@@ -49,7 +49,7 @@ public class Permission : IAuditableEntity
     public required string GroupName { get; set; }
 
     /// <summary>
-    /// Which scope level can use this permission (Platform, Tenant, Organization).
+    /// Which scope level can use this permission (Platform, Tenant, Organization, Group, or Event).
     /// </summary>
     public RoleScopeEnum Scope { get; set; }
 

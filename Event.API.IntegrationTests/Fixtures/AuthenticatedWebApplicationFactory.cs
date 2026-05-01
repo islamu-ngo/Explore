@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Constants;
 using Explore.Persistence;
 using Explore.Persistence.Seed;
+using System.Threading.Channels;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -110,6 +111,26 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
                 services.AddScoped(_ => AuthorizationProviderOverride);
             }
         });
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await base.DisposeAsync();
+        }
+        catch (ChannelClosedException)
+        {
+            // OpenFeature can race its background event executor shutdown in test hosts.
+        }
+        catch (ObjectDisposedException)
+        {
+            // Some hosted services can observe disposal while WebApplicationFactory is tearing down.
+        }
+        catch (NullReferenceException)
+        {
+            // Test host disposal can race service-provider cleanup after failed startup paths.
+        }
     }
 
     private sealed class SeedingHostedService(IServiceProvider serviceProvider, IHostEnvironment environment) : IHostedService

@@ -71,6 +71,7 @@ public class GetEventListAggregateViewQueryHandlerTests
 
         await _repository.Received(1).GetPagedAsync(
             Arg.Is<AggregateViewFilterDto>(x =>
+                x != null &&
                 x.Title == filter.Title &&
                 x.StartAtFrom == filter.StartAtFrom &&
                 x.StartAtTo == filter.StartAtTo),
@@ -87,8 +88,8 @@ public class GetEventListAggregateViewQueryHandlerTests
         _repository.GetPagedAsync(Arg.Any<AggregateViewFilterDto>(), 1, 20, Arg.Any<CancellationToken>())
             .Returns((
             [
-                CreateView(firstId, "First Event", DateTimeOffset.Parse("2026-04-24T09:00:00+00:00")),
-                CreateView(secondId, "Second Event", DateTimeOffset.Parse("2026-04-25T09:00:00+00:00"))
+                CreateView(firstId, "First Event", new DateTimeOffset(2026, 4, 24, 9, 0, 0, TimeSpan.Zero)),
+                CreateView(secondId, "Second Event", new DateTimeOffset(2026, 4, 25, 9, 0, 0, TimeSpan.Zero))
             ],
             2));
         _repository.GetEventDefinitionsByEventIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -108,6 +109,57 @@ public class GetEventListAggregateViewQueryHandlerTests
         await Assert.That(result.Id.Items.All(x => x.SearchableFacets[0].Key == "public-facet")).IsTrue();
     }
 
+    [Test]
+    public async Task Handle_SearchableFacetsCarryExportAndModerationFlags()
+    {
+        var eventId = Guid.NewGuid();
+        _repository.GetPagedAsync(Arg.Any<AggregateViewFilterDto>(), 1, 20, Arg.Any<CancellationToken>())
+            .Returns((
+            [
+                CreateView(eventId, "Flagged Event", new DateTimeOffset(2026, 4, 24, 9, 0, 0, TimeSpan.Zero))
+            ],
+            1));
+        _repository.GetEventDefinitionsByEventIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                CreateDefinition(eventId, "public-facet", ExposureLevel.Public, isSearchable: true, isExportable: true, isModerationRelevant: true),
+                CreateDefinition(eventId, "internal-facet", ExposureLevel.Internal, isSearchable: true, isExportable: true, isModerationRelevant: true)
+            ]);
+
+        var result = await _handler.Handle(new GetEventListAggregateViewQuery(new AggregateViewFilterDto(), ExposureLevel.Public, 1, 20), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        var facet = result.Id!.Items.Single().SearchableFacets.Single();
+        await Assert.That(facet.Key).IsEqualTo("public-facet");
+        await Assert.That(facet.ExposureLevel).IsEqualTo(ExposureLevel.Public);
+        await Assert.That(facet.IsSearchable).IsTrue();
+        await Assert.That(facet.IsExportable).IsTrue();
+        await Assert.That(facet.IsModerationRelevant).IsTrue();
+    }
+
+    [Test]
+    public async Task Handle_SearchableFacetsExcludeNonSearchableDefinitions()
+    {
+        var eventId = Guid.NewGuid();
+        _repository.GetPagedAsync(Arg.Any<AggregateViewFilterDto>(), 1, 20, Arg.Any<CancellationToken>())
+            .Returns((
+            [
+                CreateView(eventId, "Searchable Event", new DateTimeOffset(2026, 4, 24, 9, 0, 0, TimeSpan.Zero))
+            ],
+            1));
+        _repository.GetEventDefinitionsByEventIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                CreateDefinition(eventId, "public-facet", ExposureLevel.Public, isSearchable: false),
+                CreateDefinition(eventId, "internal-facet", ExposureLevel.Internal, isSearchable: true)
+            ]);
+
+        var result = await _handler.Handle(new GetEventListAggregateViewQuery(new AggregateViewFilterDto(), ExposureLevel.Public, 1, 20), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id!.Items.Single().SearchableFacets).IsEmpty();
+    }
+
     private static EventWithSessionsView CreateView(Guid eventId, string title, DateTimeOffset startAt)
         => new()
         {
@@ -121,8 +173,8 @@ public class GetEventListAggregateViewQueryHandlerTests
             Status = "Published",
             Visibility = "Public",
             IsDeleted = false,
-            CreatedAt = DateTimeOffset.Parse("2026-04-01T00:00:00+00:00"),
-            UpdatedAt = DateTimeOffset.Parse("2026-04-02T00:00:00+00:00"),
+            CreatedAt = new DateTimeOffset(2026, 4, 1, 0, 0, 0, TimeSpan.Zero),
+            UpdatedAt = new DateTimeOffset(2026, 4, 2, 0, 0, 0, TimeSpan.Zero),
             IslamicTheme = null,
             Madhab = null,
             IsRamadan = null,
@@ -140,7 +192,14 @@ public class GetEventListAggregateViewQueryHandlerTests
             EventSessionCustomPropertyFacets = "{}"
         };
 
-    private static EventCustomPropertyDefinition CreateDefinition(Guid eventId, string key, ExposureLevel exposureLevel)
+    private static EventCustomPropertyDefinition CreateDefinition(
+        Guid eventId,
+        string key,
+        ExposureLevel exposureLevel,
+        bool isSearchable = true,
+        bool isFilterable = true,
+        bool isExportable = true,
+        bool isModerationRelevant = false)
         => new()
         {
             Id = Guid.NewGuid(),
@@ -156,10 +215,10 @@ public class GetEventListAggregateViewQueryHandlerTests
             IsActive = true,
             SortOrder = 1,
             ExposureLevel = exposureLevel,
-            IsSearchable = true,
-            IsFilterable = true,
-            IsExportable = true,
-            IsModerationRelevant = false,
+            IsSearchable = isSearchable,
+            IsFilterable = isFilterable,
+            IsExportable = isExportable,
+            IsModerationRelevant = isModerationRelevant,
             IsAnalyticsRelevant = false,
             IsSystemOwned = false,
             InstantiatedAt = DateTimeOffset.UtcNow,

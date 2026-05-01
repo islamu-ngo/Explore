@@ -608,6 +608,11 @@
           "System.Security.Cryptography.Pkcs": "10.0.0"
         }
       },
+      "NodaTime": {
+        "type": "Transitive",
+        "resolved": "3.2.2",
+        "contentHash": "dmju5W0UYC3QP/UJM0juKAZkH0HSDMp0gH91A0+mT9M0kgyM2Jm67hUZPl/WRQLq8Lijjqmdk8kyAViWFWM7dA=="
+      },
       "OpenTelemetry.Api": {
         "type": "Transitive",
         "resolved": "1.15.3",
@@ -939,6 +944,7 @@
           "Explore.Persistence": "[1.0.0, )",
           "Explore.Secrets": "[1.0.0, )",
           "Explore.ServiceDefaults": "[1.0.0, )",
+          "Ical.Net": "[5.2.1, )",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.7, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.7, )",
           "Microsoft.CodeAnalysis.CSharp.Workspaces": "[5.3.0, )",
@@ -1163,6 +1169,15 @@
         "dependencies": {
           "FluentValidation": "12.0.0",
           "Microsoft.Extensions.Dependencyinjection.Abstractions": "2.1.0"
+        }
+      },
+      "Ical.Net": {
+        "type": "CentralTransitive",
+        "requested": "[5.2.1, )",
+        "resolved": "5.2.1",
+        "contentHash": "zHjl8M24IX1kNlB2zX7c2clyTdD5C+PplmyiMHJ0kMlt0ng2TMfNNKO4u7hNV86oITujLiJ6y/+ATcI7bbmjAw==",
+        "dependencies": {
+          "NodaTime": "3.2.2"
         }
       },
       "Infisical.Sdk": {

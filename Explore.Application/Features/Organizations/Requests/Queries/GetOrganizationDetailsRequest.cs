@@ -10,7 +10,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Organizations.Requests.Queries;
 
-public class GetOrganizationDetailsRequest : IRequest<OrganizationDto>
+public class GetOrganizationDetailsRequest : IRequest<OrganizationDto?>
 {
     public Guid Id { get; set; }
 }

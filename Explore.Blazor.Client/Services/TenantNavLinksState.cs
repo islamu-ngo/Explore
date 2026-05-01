@@ -2,7 +2,6 @@
 // ABOUTME: Uses SemaphoreSlim double-check locking (like LookupCacheService) to avoid redundant API calls.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Contracts.Services.Organizations;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -17,6 +16,19 @@ public sealed class TenantNavLinksState : IDisposable
 
     /// <summary>Raised after <see cref="Links"/> changes so subscribers can call StateHasChanged.</summary>
     public event Action? OnChange;
+
+    /// <summary>
+    /// Replaces cached navigation links without calling the API.
+    /// </summary>
+    public void SetLinks(IEnumerable<TenantNavigationLinkDto> links)
+    {
+        ArgumentNullException.ThrowIfNull(links);
+
+        _links = links.OrderBy(link => link.Order).ToList().AsReadOnly();
+        _loaded = true;
+
+        OnChange?.Invoke();
+    }
 
     /// <summary>
     /// Loads links once per session. Subsequent calls are no-ops unless

@@ -31,6 +31,9 @@ public partial class EventCard : ComponentBase
     /// <summary>Invoked when the Delete action menu item is clicked.</summary>
     [Parameter] public EventCallback<EventListDto> OnDeleteRequested { get; set; }
 
+    /// <summary>Invoked when the share action is clicked.</summary>
+    [Parameter] public EventCallback<EventListDto> OnShareRequested { get; set; }
+
     /// <summary>Card field visibility overrides. Key=setting key (e.g. "event_list.card.show_date"), Value=visible.</summary>
     [Parameter] public IReadOnlyDictionary<string, bool>? CardFieldVisibility { get; set; }
 
@@ -82,8 +85,10 @@ public partial class EventCard : ComponentBase
     private string TruncatedDescription => StringHelper.TruncateDescription(Event.Description);
 
     private bool HasManagementMenu => Event.HasManagementLinks();
+    private bool HasCardActions => HasManagementMenu || OnShareRequested.HasDelegate;
     private bool CanEdit => Event.HasHalLink("edit");
     private bool CanDelete => Event.HasHalLink("delete");
+    private string ShareButtonLabel => $"Share event: {Event.Title}";
 
     // ── Icon Mapping Helpers ──
 
@@ -152,6 +157,8 @@ public partial class EventCard : ComponentBase
     private Task HandleEdit() => OnEditRequested.InvokeAsync(Event);
 
     private Task HandleDelete() => OnDeleteRequested.InvokeAsync(Event);
+
+    private Task ShareEventAsync() => OnShareRequested.InvokeAsync(Event);
 
     private void NavigateToActorProfile(Guid? actorId, int? actorTypeId)
     {

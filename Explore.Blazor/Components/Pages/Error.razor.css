@@ -1,2 +1,85 @@
-::deep .component-error{ color: inherit; }
+/* ABOUTME: Scoped styles for the server-hosted branded error page. */
+/* ABOUTME: Keeps exception fallback presentation safe, accessible, and token-aligned. */
 
+.server-error {
+    display: grid;
+    min-height: 70vh;
+    place-items: center;
+    padding: 4rem 1rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.server-error__card {
+    width: min(100%, 42rem);
+    padding: clamp(2rem, 6vw, 4rem);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 1.5rem;
+    background: #ffffff;
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+    text-align: center;
+}
+
+.server-error__eyebrow {
+    margin: 0 0 0.75rem;
+    color: #dc2626;
+    font-size: 0.875rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.server-error__card h1 {
+    margin: 0;
+    color: #0f172a;
+    font-size: clamp(2rem, 5vw, 3rem);
+    line-height: 1.1;
+}
+
+.server-error__description {
+    margin: 1rem auto 0;
+    max-width: 34rem;
+    color: #475569;
+    font-size: 1rem;
+    line-height: 1.7;
+}
+
+.server-error__reference {
+    margin: 1.5rem auto 0;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.server-error__reference code {
+    overflow-wrap: anywhere;
+}
+
+.server-error__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 2rem;
+}
+
+.server-error__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 999px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.server-error__button--primary {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.server-error__button--secondary {
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+}

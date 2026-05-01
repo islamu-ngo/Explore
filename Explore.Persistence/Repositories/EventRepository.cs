@@ -2,6 +2,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Specifications.Events;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
 
@@ -124,6 +125,21 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .ToListAsync();
 
         return (items, totalCount);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<Event>> GetPublishedPublicEventsForSitemap(
+        int maxCount,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Events
+            .AsNoTracking()
+            .Where(e => e.EventStatusId == (int)EventStatusEnum.Published)
+            .Where(e => e.VisibilityTypeId == (int)VisibilityTypeEnum.Public)
+            .OrderByDescending(e => e.UpdatedAt ?? e.CreatedAt)
+            .ThenBy(e => e.Id)
+            .Take(maxCount)
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>

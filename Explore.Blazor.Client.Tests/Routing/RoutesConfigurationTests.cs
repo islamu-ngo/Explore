@@ -14,6 +14,26 @@ public class RoutesConfigurationTests
         await Assert.That(routesContent).Contains("Path = \"/onboarding/auth-provider\"");
     }
 
+    [Test]
+    public async Task Routes_ShouldInclude_ErrorPage_Paths()
+    {
+        var routesFilePath = FindRoutesFilePath();
+        var routesContent = await File.ReadAllTextAsync(routesFilePath);
+
+        await Assert.That(routesContent).Contains("Path = \"/errors/404\"");
+        await Assert.That(routesContent).Contains("Path = \"/errors/403\"");
+        await Assert.That(routesContent).Contains("Path = \"/errors/500\"");
+    }
+
+    [Test]
+    public async Task Routes_ShouldInclude_MyRegistrations_Path()
+    {
+        var routesFilePath = FindRoutesFilePath();
+        var routesContent = await File.ReadAllTextAsync(routesFilePath);
+
+        await Assert.That(routesContent).Contains("Path = \"/my/registrations\"");
+    }
+
     private static string FindRoutesFilePath()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

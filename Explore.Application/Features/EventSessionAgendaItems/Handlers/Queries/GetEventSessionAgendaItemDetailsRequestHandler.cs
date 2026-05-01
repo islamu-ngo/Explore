@@ -25,7 +25,7 @@ public class GetEventSessionAgendaItemDetailsRequestHandler : IRequestHandler<Ge
 
     public async Task<EventSessionAgendaItemDto> Handle(GetEventSessionAgendaItemDetailsRequest request, CancellationToken cancellationToken)
     {
-        var agendaItem = await _agendaItemRepository.GetById(request.Id);
+        var agendaItem = await _agendaItemRepository.GetByIdWithDetails(request.Id);
         return _mapper.Map<EventSessionAgendaItemDto>(agendaItem);
     }
 }

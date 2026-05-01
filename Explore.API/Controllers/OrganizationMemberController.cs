@@ -1,10 +1,6 @@
 // ABOUTME: REST API controller for organization member CRUD operations with role-based access control.
 // ABOUTME: Manages user-role assignments within organizations via CQRS/MediatR.
 
-using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
@@ -23,7 +19,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
-public class OrganizationMemberController : ControllerBase
+public class OrganizationMemberController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -46,7 +42,12 @@ public class OrganizationMemberController : ControllerBase
     [HttpPost(Name = RouteNames.AddOrganizationMember)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] AddOrganizationMemberDto dto, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = CurrentUserId?.ToString();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return UnauthorizedProblem();
+        }
+
         var command = new AddOrganizationMemberCommand { AddOrganizationMemberDto = dto, RequesterUserId = userId };
         var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
@@ -56,7 +57,12 @@ public class OrganizationMemberController : ControllerBase
     [HttpPut("role", Name = RouteNames.UpdateOrganizationMemberRole)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateRole([FromBody] UpdateOrganizationMemberRoleDto dto, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = CurrentUserId?.ToString();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return UnauthorizedProblem();
+        }
+
         var command = new UpdateOrganizationMemberRoleCommand { UpdateOrganizationMemberRoleDto = dto, RequesterUserId = userId };
         var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
@@ -66,15 +72,14 @@ public class OrganizationMemberController : ControllerBase
     [HttpGet("invitations", Name = RouteNames.GetMyOrganizationInvitations)]
     public async Task<ActionResult<List<OrganizationInvitationDto>>> GetMyInvitations(CancellationToken cancellationToken = default)
     {
-        var email = User.FindFirstValue(ClaimTypes.Email);
-        // If email claim is missing (e.g. using NameIdentifier only), we might need to fetch user details.
-        // Assuming Email claim is present.
+        var email = UserContext.Email;
         if (string.IsNullOrEmpty(email))
         {
-            // Fallback: try to get email from user service or similar if needed.
-            // For now, let's assume it's in the claims.
-            // If using IdentityServer/Keycloak, ensure "email" scope is requested and mapped.
-            return BadRequest("Email claim not found.");
+            return Problem(
+                title: "Email claim not found",
+                detail: "The authenticated principal does not include an email claim required to list invitations.",
+                statusCode: StatusCodes.Status401Unauthorized,
+                type: "https://tools.ietf.org/html/rfc9110#section-15.5.2");
         }
 
         var response = await _mediator.Send(new GetMyInvitationsRequest { Email = email }, cancellationToken);
@@ -85,13 +90,13 @@ public class OrganizationMemberController : ControllerBase
     [HttpPost("invitations/{id:guid}/accept", Name = RouteNames.AcceptOrganizationInvitation)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> AcceptInvitation(Guid id, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userId, out Guid userGuid))
+        var userGuid = CurrentUserId;
+        if (!userGuid.HasValue)
         {
-            return BadRequest("Invalid User ID.");
+            return UnauthorizedProblem();
         }
 
-        var command = new AcceptInvitationCommand { InvitationId = id, UserId = userGuid };
+        var command = new AcceptInvitationCommand { InvitationId = id, UserId = userGuid.Value };
         var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
     }
@@ -100,12 +105,12 @@ public class OrganizationMemberController : ControllerBase
     [HttpPost("invitations/{id:guid}/decline", Name = RouteNames.DeclineOrganizationInvitation)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> DeclineInvitation(Guid id, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userId, out Guid userGuid))
+        var userGuid = CurrentUserId;
+        if (!userGuid.HasValue)
         {
-            return BadRequest("Invalid User ID.");
+            return UnauthorizedProblem();
         }
-        var command = new DeclineInvitationCommand { InvitationId = id, UserId = userGuid };
+        var command = new DeclineInvitationCommand { InvitationId = id, UserId = userGuid.Value };
         var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
     }
@@ -114,9 +119,23 @@ public class OrganizationMemberController : ControllerBase
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteOrganizationMember)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = CurrentUserId?.ToString();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return UnauthorizedProblem();
+        }
+
         var command = new DeleteOrganizationMemberCommand { MemberId = id, RequesterUserId = userId };
         var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
+    }
+
+    private ObjectResult UnauthorizedProblem()
+    {
+        return Problem(
+            title: "User ID not found in token",
+            detail: "The authenticated principal does not include a supported user identifier claim.",
+            statusCode: StatusCodes.Status401Unauthorized,
+            type: "https://tools.ietf.org/html/rfc9110#section-15.5.2");
     }
 }

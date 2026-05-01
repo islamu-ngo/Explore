@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -102,7 +103,7 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         await _dbContext.CustomPropertyOptions
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.CustomPropertyDefinitionId == definition.Id)
             .ExecuteDeleteAsync(cancellationToken);
 
@@ -125,7 +126,7 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
     public async Task<bool> DeleteDefinition(Guid id, CancellationToken cancellationToken)
     {
         var affectedRows = await _dbContext.CustomPropertyDefinitions
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.Id == id)
             .ExecuteDeleteAsync(cancellationToken);
 

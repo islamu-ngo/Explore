@@ -5,6 +5,7 @@
 @using Explore.Blazor.Client.Pages
 @using Explore.Blazor.Client.Pages.Auth
 @using Explore.Blazor.Client.Pages.Events
+@using Explore.Blazor.Client.Pages.Errors
 @using Explore.Blazor.Client.Pages.User
 @using Explore.Blazor.Client.Pages.Organizations
 @using Explore.Blazor.Client.Pages.Admin
@@ -27,14 +28,7 @@
         <Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
             <NotFound>
                 <LayoutView Layout="typeof(MainLayout)">
-                    <PageTitle>Page Not Found</PageTitle>
-                    <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
-                        <MudText Typo="Typo.h3" HtmlTag="h1">404 - Page Not Found</MudText>
-                        <MudText Typo="Typo.body1" Class="mt-4">The page you requested could not be found.</MudText>
-                        <AppButton Href="/" Class="mt-4">
-                            Return to Home
-                        </AppButton>
-                    </MudContainer>
+                    <Explore.Blazor.Client.Pages.Errors.NotFound />
                 </LayoutView>
             </NotFound>
         </Blazouter.Components.Router>
@@ -59,6 +53,9 @@
             new RouteConfig { Path = "/events", Component = typeof(EventList), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/welcome", Component = typeof(LandingPageForNonUsers), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/home", Component = typeof(Home), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/errors/404", Component = typeof(NotFound), Transition = RouteTransition.Fade, EnableCache = false },
+            new RouteConfig { Path = "/errors/403", Component = typeof(Unauthorized), Transition = RouteTransition.Fade, EnableCache = false },
+            new RouteConfig { Path = "/errors/500", Component = typeof(ServerError), Transition = RouteTransition.Fade, EnableCache = false },
             new RouteConfig { Path = "/startup", Component = typeof(StartupGate), Layout = typeof(SetupLayout), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/setup", Component = typeof(Setup), Layout = typeof(SetupLayout), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/onboarding/auth-provider", Component = typeof(AuthProviderConfiguration), Layout = typeof(SetupLayout), Transition = RouteTransition.None, EnableCache = false },

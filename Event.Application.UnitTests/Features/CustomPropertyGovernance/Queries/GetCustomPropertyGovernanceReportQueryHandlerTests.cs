@@ -209,13 +209,55 @@ public class GetCustomPropertyGovernanceReportQueryHandlerTests
         await Assert.That(result.Items[0].Recommendation).IsEqualTo(PromotionRecommendation.ConsiderProjectionFirst);
     }
 
+    [Test]
+    public async Task Handle_MapsExposureAndGovernanceFlags()
+    {
+        var tenantId = Guid.NewGuid();
+        var rows = new List<GovernanceDefinitionRow>
+        {
+            CreateRow(
+                isSearchable: true,
+                isFilterable: true,
+                isExportable: true,
+                isModerationRelevant: true,
+                isAnalyticsRelevant: true,
+                exposureLevel: ExposureLevel.TenantAdminOnly,
+                instanceCount: 12)
+        };
+
+        _governanceRepo
+            .GetGovernanceRowsAsync(tenantId, Arg.Any<string?>(), 1, 20, Arg.Any<CancellationToken>())
+            .Returns((rows, 1));
+        _governanceRepo
+            .GetTotalEventCountForTenantAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(100);
+
+        var result = await _handler.Handle(
+            new GetCustomPropertyGovernanceReportQuery
+            {
+                TenantId = tenantId,
+                Filter = new GovernanceReportFilterDto()
+            },
+            CancellationToken.None);
+
+        var item = result.Items.Single();
+        await Assert.That(item.ExposureLevel).IsEqualTo(ExposureLevel.TenantAdminOnly);
+        await Assert.That(item.IsSearchable).IsTrue();
+        await Assert.That(item.IsFilterable).IsTrue();
+        await Assert.That(item.IsExportable).IsTrue();
+        await Assert.That(item.IsModerationRelevant).IsTrue();
+        await Assert.That(item.IsAnalyticsRelevant).IsTrue();
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     private static GovernanceDefinitionRow CreateRow(
         bool isSearchable = false,
         bool isFilterable = false,
+        bool isExportable = false,
         bool isModerationRelevant = false,
         bool isAnalyticsRelevant = false,
+        ExposureLevel exposureLevel = ExposureLevel.Public,
         int instanceCount = 0)
     {
         return new GovernanceDefinitionRow(
@@ -225,10 +267,10 @@ public class GetCustomPropertyGovernanceReportQueryHandlerTests
             DisplayName: "Test Definition",
             EntityScope: "Event",
             PropertyType: PropertyType.Text,
-            ExposureLevel: ExposureLevel.Public,
+            ExposureLevel: exposureLevel,
             IsSearchable: isSearchable,
             IsFilterable: isFilterable,
-            IsExportable: false,
+            IsExportable: isExportable,
             IsModerationRelevant: isModerationRelevant,
             IsAnalyticsRelevant: isAnalyticsRelevant,
             IsSystemOwned: false,

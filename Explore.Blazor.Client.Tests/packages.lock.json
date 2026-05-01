@@ -182,8 +182,8 @@
       },
       "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
         "type": "Transitive",
-        "resolved": "10.0.202",
-        "contentHash": "//aZ/qUD7sc2gcUlraZe4yD0jzxRv7uwUMuuDe7Wdlz404vgLpsdt5xD2l44VHjyUuOgH27ulK3MdJgQVjofzA=="
+        "resolved": "10.0.203",
+        "contentHash": "OFnGv+vIMJdTX9U1gTIwOeE3isTt5MSy+hFpRvXceYZ2TBadvxWunKL1FHMBtY/fRXbJTtBKhByybknDQwhwgw=="
       },
       "Microsoft.Extensions.AmbientMetadata.Application": {
         "type": "Transitive",
@@ -489,7 +489,7 @@
           "FluentValidation": "[11.9.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.7, )",
           "Microsoft.AspNetCore.Components.WebAssembly.Authentication": "[10.0.7, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.202, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.203, )",
           "MudBlazor": "[9.4.0, )"
         }
       },

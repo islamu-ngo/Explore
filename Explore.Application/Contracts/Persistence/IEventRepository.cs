@@ -28,6 +28,14 @@ public interface IEventRepository : IGenericRepository<Event, Guid>
         int pageNumber, int pageSize, EventQuerySpecification specification);
 
     /// <summary>
+    /// Gets public, published events eligible for sitemap generation.
+    /// </summary>
+    /// <param name="maxCount">The maximum number of events to return. Sitemap protocol cap is 50,000.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Published public events for the current tenant.</returns>
+    Task<List<Event>> GetPublishedPublicEventsForSitemap(int maxCount, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets a paginated list of events for the current user.
     /// </summary>
     /// <param name="userId">The user ID.</param>

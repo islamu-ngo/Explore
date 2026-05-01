@@ -120,7 +120,7 @@
                                 <MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Size="Size.Small" />
                                 <span>Add to Google Calendar</span>
                             </a>
-                            <a href="javascript:void(0)" class="event-sidebar-link d-flex align-center gap-2" @onclick="DownloadIcsFileAsync">
+                            <a href="@GetCalendarDownloadUrl()" class="event-sidebar-link d-flex align-center gap-2">
                                 <MudIcon Icon="@Icons.Material.Outlined.Download" Size="Size.Small" />
                                 <span>Download .ics</span>
                             </a>

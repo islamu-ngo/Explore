@@ -1,0 +1,189 @@
+@* ABOUTME: Keyboard-accessible resize affordance for descriptor-driven dock panels. *@
+@* ABOUTME: Keeps resize behavior generic so shell and workspace hosts can share it. *@
+
+@using Explore.Blazor.Client.Services.Docking
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+
+@implements IAsyncDisposable
+
+@inject IJSRuntime JsRuntime
+@inject ILogger<DockResizeHandle> Logger
+
+<div class="@RootClass"
+     @ref="_handleElement"
+     role="separator"
+     tabindex="0"
+     aria-label="@ResolvedAriaLabel"
+     aria-controls="@ControlledElementId"
+     aria-orientation="vertical"
+     aria-valuemin="@MinWidth"
+     aria-valuemax="@MaxWidth"
+     aria-valuenow="@Width"
+     data-testid="@DataTestId"
+     data-dock-resize-panel-id="@PanelId.Value"
+     @onkeydown="HandleKeyDown"
+     @onpointerdown="HandlePointerDown"
+     @onpointermove="HandlePointerMove"
+     @onpointerup="HandlePointerEnd"
+     @onpointercancel="HandlePointerEnd">
+    <span class="dock-resize-handle__label">@ResolvedAriaLabel</span>
+</div>
+
+@code {
+    private const int KeyboardStep = 16;
+    private const int FastKeyboardStep = 64;
+
+    private bool _isDragging;
+    private double _dragStartClientX;
+    private int _dragStartWidth;
+    private long? _capturedPointerId;
+    private ElementReference _handleElement;
+    private IJSObjectReference? _resizeModule;
+
+    [Parameter, EditorRequired] public DockPanelId PanelId { get; set; } = default!;
+    [Parameter] public DockSide Side { get; set; }
+    [Parameter] public int Width { get; set; }
+    [Parameter] public int MinWidth { get; set; }
+    [Parameter] public int MaxWidth { get; set; }
+    [Parameter] public string DataTestId { get; set; } = "dock-resize-handle";
+    [Parameter] public string? ControlledElementId { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public EventCallback<int> OnResizeRequested { get; set; }
+
+    private string ResolvedSide => Side.ToString().ToLowerInvariant();
+
+    private string RootClass => string.Join(' ', new[]
+    {
+        "dock-resize-handle",
+        $"dock-resize-handle--{ResolvedSide}",
+        _isDragging ? "dock-resize-handle--dragging" : null
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private string ResolvedAriaLabel => string.IsNullOrWhiteSpace(AriaLabel)
+        ? "Resize dock panel"
+        : AriaLabel;
+
+    private async Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        var step = args.ShiftKey ? FastKeyboardStep : KeyboardStep;
+        var delta = args.Key switch
+        {
+            "ArrowLeft" => Side == DockSide.End ? step : -step,
+            "ArrowRight" => Side == DockSide.End ? -step : step,
+            "Home" => MinWidth - Width,
+            "End" => MaxWidth - Width,
+            _ => 0
+        };
+
+        if (delta == 0)
+        {
+            return;
+        }
+
+        var nextWidth = Math.Clamp(Width + delta, MinWidth, MaxWidth);
+
+        if (nextWidth != Width)
+        {
+            await OnResizeRequested.InvokeAsync(nextWidth);
+        }
+    }
+
+    private async Task HandlePointerDown(PointerEventArgs args)
+    {
+        if (!args.IsPrimary || args.Button != 0)
+        {
+            return;
+        }
+
+        _isDragging = true;
+        _dragStartClientX = args.ClientX;
+        _dragStartWidth = Width;
+        _capturedPointerId = args.PointerId;
+
+        await TrySetPointerCaptureAsync(args.PointerId);
+    }
+
+    private async Task HandlePointerMove(PointerEventArgs args)
+    {
+        if (!_isDragging || _capturedPointerId != args.PointerId)
+        {
+            return;
+        }
+
+        var delta = args.ClientX - _dragStartClientX;
+        var directionalDelta = Side == DockSide.End ? -delta : delta;
+        var nextWidth = Math.Clamp(_dragStartWidth + (int)Math.Round(directionalDelta), MinWidth, MaxWidth);
+
+        if (nextWidth != Width)
+        {
+            await OnResizeRequested.InvokeAsync(nextWidth);
+        }
+    }
+
+    private async Task HandlePointerEnd(PointerEventArgs args)
+    {
+        if (_capturedPointerId != args.PointerId)
+        {
+            return;
+        }
+
+        await TryReleasePointerCaptureAsync(args.PointerId);
+
+        _isDragging = false;
+        _capturedPointerId = null;
+    }
+
+    private async ValueTask<IJSObjectReference> GetResizeModuleAsync()
+    {
+        _resizeModule ??= await JsRuntime.InvokeAsync<IJSObjectReference>("import", "/js/dock-resize.js");
+        return _resizeModule;
+    }
+
+    private async Task TrySetPointerCaptureAsync(long pointerId)
+    {
+        try
+        {
+            var module = await GetResizeModuleAsync();
+            await module.InvokeVoidAsync("setPointerCapture", _handleElement, pointerId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Pointer capture was unavailable for dock resize handle {PanelId}.", PanelId.Value);
+        }
+    }
+
+    private async Task TryReleasePointerCaptureAsync(long pointerId)
+    {
+        if (_resizeModule is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _resizeModule.InvokeVoidAsync("releasePointerCapture", _handleElement, pointerId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Pointer capture release was unavailable for dock resize handle {PanelId}.", PanelId.Value);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_resizeModule is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _resizeModule.DisposeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Failed to dispose dock resize pointer capture module for {PanelId}.", PanelId.Value);
+        }
+    }
+}

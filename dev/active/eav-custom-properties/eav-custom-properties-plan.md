@@ -3,7 +3,7 @@ ABOUTME: Treats EAV as the Layer 3 extension system only, with governed semantic
 
 # EAV Custom Properties - Implementation Plan
 
-**Last Updated: 2026-04-29 (Phase 9.4A Oracle blocker fixed + verified; Milestones D/E/F plan remains locked)**
+**Last Updated: 2026-04-30 (Phase 9.11 NSwag regen verified; Milestones D/E/F plan remains locked)**
 
 ---
 
@@ -2408,9 +2408,13 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 - Replace with the Custom Properties governance editor from Task 9.2
 
 #### Task 9.11: Regenerate Generated API Client
+- **Status:** ✅ CLOSED 2026-04-30
 - After Milestone D/E/F API contract changes, regenerate the NSwag client
 - Verify generated client exposes new projection admin, template sync, and aggregate view endpoints
 - Run `Explore.Blazor.Client` build + smoke tests to catch any breaking DTO shape changes
+- **Closure evidence:** `dotnet tool restore` restored `nswag.consolecore` 14.6.3; targeted swagger export regenerated `Explore.API/swagger.json`; the existing `Explore.Blazor.Client` NSwag build target regenerated `Explore.Blazor.Client/Clients/EventApiClient.g.cs`; generated diff was 168 insertions / 3 deletions including `/sitemap.xml`, `GetSitemapAsync(...)`, and `FileResponse`.
+- **Verification:** targeted swagger export ✅; `rtk dotnet build "Explore.Blazor.Client/Explore.Blazor.Client.csproj" --configuration Release --verbosity quiet` ✅; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped.
+- **Transparent limitation:** the current OpenAPI snapshot does not expose an obvious aggregate-view endpoint under `Aggregate` / `AggregateView` naming, so NSwag generated no aggregate-specific methods. Full-solution Release build was attempted but failed outside this phase on unrelated existing analyzer/package issues plus a transient locked client PDB.
 
 ---
 
@@ -2418,12 +2422,17 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 **Effort: XXL**
 
 #### Task 10.0: Integrate Layer 2 Sector Fields Directly Into Discovery And Governance Paths
-- **Status:** architecturally already done (Milestones B/C confirm zero coupling between Layer 2 and Layer 3; `EventQuerySpecification` composes `IslamicAspectFilter`, `TechAspectFilter`, `AspectPresenceFilter` directly on Layer 2 aspect fields); this task is a **verification + documentation** pass
+- **Status:** ✅ CLOSED 2026-04-30. Milestones B/C already kept Layer 2 and Layer 3 separate; this verification pass added executable architecture guards plus documentation so the boundary cannot regress silently.
 - **Acceptance Criteria:**
   - no new Layer 3 projection code reaches into Layer 2 columns
   - no Layer 2 field flows through `EventCustomPropertyProjection`
   - architecture test enforces the boundary
   - `docs/ARCHITECTURE.md` reflects the locked separation
+- **Closure Evidence:**
+  - `Event.Architecture.Tests/ProjectionLayerBoundaryTests.cs` now requires explicit `EventQuerySpecification.And(IslamicAspectFilter)`, `And(TechAspectFilter)`, `And(AspectPresenceFilter)`, and `And(EventCustomPropertyProjectionFilter)` overloads.
+  - Event/session Layer 3 projection filters are guarded against sector-specific factory names (`Islamic`, `Madhab`, `Gender`, `Prayer`, `Tech`, `Skill`, `Aspect`) so custom-property projections stay generic.
+  - `docs/ARCHITECTURE.md` now documents direct Layer 2 filter composition, generic Layer 3 projection filters, and promotion of sector-standard custom properties into typed Layer 2 schema.
+  - Verification passed: LSP diagnostics clean, `git diff --check` clean, and both new TUnit guards pass via `--treenode-filter` with `--minimum-expected-tests 1`.
 
 #### Task 10.1: Populate Event Custom-Property Projections On Writes And Sync (**Milestone D baseline**)
 - **Integration points (all inside the same transaction as the runtime write):**
@@ -2504,15 +2513,29 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 - Assert no Specification or Repository returns a DTO
 
 #### Task 11.2: Unit Tests For Namespaced Key Uniqueness And DisplayName Renames
+- **Status:** 🟡 LOCAL COVERAGE ADDED 2026-04-30. Unit-level identity and rename behavior is covered; database uniqueness remains a Docker/Testcontainers proof.
 - Prove `CustomPropertyIdentity.Normalize("Platform", "Foo")` and `CustomPropertyIdentity.Normalize("platform", "FOO")` yield the same machine identity
 - Prove a `DisplayName` rename does not break lookups by namespaced key
 - Prove uniqueness is enforced by EF configuration (via Testcontainers integration test)
+- **Local Evidence:**
+  - `Event.Domain.UnitTests/CustomProperties/CustomPropertyGovernanceTests.cs` proves the actual `NormalizeNamespace` + `NormalizeKey` helpers collapse case/whitespace variants into the same machine identity.
+  - `Event.Application.UnitTests/Features/CustomPropertyDefinitions/Commands/UpdateCustomPropertyDefinitionCommandHandlerTests.cs` proves a `DisplayName` rename keeps duplicate lookup/update identity bound to normalized `Namespace + Key + current Id`.
+  - Verification passed with targeted TUnit `--treenode-filter` runs for both new tests; EF uniqueness remains pending until Docker/Testcontainers PostgreSQL is available.
 
 #### Task 11.3: Unit Tests For Multi-Value Semantics And Ordering
+- **Status:** ✅ LOCAL COVERAGE ADDED 2026-04-30. Event/session runtime handlers now enforce definition scope, single-vs-multi constraints, replacement ordering, and duplicate normalized-value rejection before persistence, including single-value upsert duplicate checks for multi-value definitions.
 - Setting a multi-value property with 3 values yields 3 rows with Ordinals 0/1/2
 - Replacing values preserves ordering semantics
 - Single-value property rejects a second value (via service-level validation, since DB allows 1 row with Ordinal=0)
 - Duplicate normalized values for the same definition and entity scope are rejected
+- **Local Evidence:**
+  - `Explore.Application/Features/CustomProperties/CustomPropertyValueNormalization.cs` centralizes duplicate-value identity for event and session DTO/entity values.
+  - `Explore.Application/Features/EventCustomProperties/Handlers/Commands/SetEventCustomPropertyMultiValuesCommandHandler.cs` and session mirror validate definition scope, `IsMulti`, and duplicate normalized replacement values before calling `SetMultiValues(...)`.
+  - `Explore.Application/Features/EventCustomProperties/Handlers/Commands/SetEventCustomPropertyValueCommandHandler.cs` and session mirror reject non-zero ordinals for single-value definitions and duplicate normalized upserts for multi-value definitions while allowing same-ordinal overwrites.
+  - `Event.Application.UnitTests/Features/EventCustomProperties/Commands/SetEventCustomPropertyMultiValuesCommandHandlerTests.cs` proves 3-value ordinal assignment, input-order preservation on replacement, single-value multi-replacement rejection, and duplicate normalized text rejection.
+  - `Event.Application.UnitTests/Features/EventCustomProperties/Commands/SetEventCustomPropertyValueCommandHandlerTests.cs` proves single-value ordinal-1 rejection, multi-value duplicate upsert rejection, and same-ordinal overwrite allowance.
+  - `Event.Application.UnitTests/Features/EventSessionCustomProperties/Commands/SetEventSessionCustomPropertyMultiValuesCommandHandlerTests.cs` proves session-scope ordinal assignment, input-order preservation, single-value multi-replacement rejection, and duplicate normalized text rejection.
+  - `Event.Application.UnitTests/Features/EventSessionCustomProperties/Commands/SetEventSessionCustomPropertyValueCommandHandlerTests.cs` proves session single-value ordinal-1 rejection and multi-value duplicate upsert rejection.
 
 #### Task 11.4: Unit Tests For Typed Validation Rules
 - Text: MinLength/MaxLength/RegexPattern enforcement
@@ -2522,10 +2545,16 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 - Manually instantiated validators (per project rule) - no DI in validator assertions
 
 #### Task 11.5: Unit Tests For Exposure / Search / Filter / Export Flags
+- **Status:** ✅ LOCAL COVERAGE ADDED 2026-04-30. Application-boundary tests now prove governance flag pass-through and aggregate-view public exposure/search/export/moderation facet behavior. Persistence/API roundtrip proof remains covered by Docker/Testcontainers-gated slices.
 - Projection row populated with correct flags
 - Discovery filter honors `IsFilterable = true` only
 - Export payload composer honors `IsExportable = true` + `ExposureLevel = Public` only
 - Moderation queue honors `IsModerationRelevant = true` only
+- **Local Evidence:**
+  - `Event.Application.UnitTests/Features/CustomPropertyGovernance/Queries/GetCustomPropertyGovernanceReportQueryHandlerTests.cs` proves governance rows preserve `ExposureLevel`, `IsSearchable`, `IsFilterable`, `IsExportable`, `IsModerationRelevant`, and `IsAnalyticsRelevant` in the DTO payload.
+  - `Event.Application.UnitTests/Features/EventAggregateViews/Queries/GetEventListAggregateViewQueryHandlerTests.cs` proves list searchable facets honor `IsSearchable` and carry public `IsExportable`/`IsModerationRelevant` metadata while public exposure excludes internal facets.
+  - `Event.Application.UnitTests/Features/EventAggregateViews/Queries/GetEventWithSessionsAggregateViewQueryHandlerTests.cs` proves event and session detail facets carry export/moderation flags only when visible under the requested public exposure ceiling.
+  - No separate custom-property export composer or moderation queue service exists in the current Application layer; these tests lock the local DTO/mapper boundaries where those flags are currently consumed.
 
 #### Task 11.6: Unit Tests For Template Instantiation, Versioning, And Sync Provenance ✅ (Milestone B)
 
@@ -2573,11 +2602,13 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 
 #### Task 11.9: Integration Tests For API Roundtrips (template → event → sync → projections) (**Milestone D/E**)
 - Full HTTP integration test: create template, create event with template, edit runtime values, trigger projection rebuild, diff + apply sync, verify final state
+- **Status note:** still Docker/Testcontainers-gated locally because the flow touches projections/sync/tenant persistence.
 
 #### Task 11.9A: API Integration Coverage For Shared Custom Property Definition Controller ✅ (Milestone A)
 
 #### Task 11.9B: Integration Tests For API Roundtrips (event template → session blueprint → event session → sync → projections) (**Milestone D/E**)
 - Mirrors Task 11.9 for session scope
+- **Status note:** still Docker/Testcontainers-gated locally because the flow touches projections/sync/tenant persistence.
 
 #### Task 11.10: Update Documentation (**Milestone D/E/F**)
 - `docs/DOMAIN.md` - Layer 1/2/3 model, entity shapes

@@ -1,10 +1,14 @@
 @using Explore.Blazor.Client.Pages.Events
+@using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Pages.Landing
 @inject IStartupRoutingService StartupRoutingService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
 <PageTitle>Home</PageTitle>
+<HeadContent>
+    <link rel="canonical" href="@CanonicalUrlHelper.Build(Navigation, "/")" />
+</HeadContent>
 
 @switch (_state)
 {

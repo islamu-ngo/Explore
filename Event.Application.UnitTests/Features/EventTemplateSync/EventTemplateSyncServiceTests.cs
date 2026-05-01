@@ -10,7 +10,6 @@ using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Settings.Definitions;
-using FluentValidation.Results;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.EventTemplateSync;
@@ -36,7 +35,14 @@ public class EventTemplateSyncServiceTests
             .Returns(10);
         _currentUserService.UserId.Returns(Guid.NewGuid());
         _unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>(), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>()(CancellationToken.None));
+            .Returns(call =>
+            {
+                var transaction = call.Arg<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>();
+                if (transaction is null)
+                    throw new InvalidOperationException("Missing transaction delegate.");
+
+                return transaction(CancellationToken.None);
+            });
     }
 
     [Test]
@@ -108,6 +114,42 @@ public class EventTemplateSyncServiceTests
     }
 
     [Test]
+    public async Task ApplySyncAsync_WhenRetiringOption_PreservesHistoricalValuesAndClearsDefaultOption()
+    {
+        var currentEvent = CreateEvent();
+        var trackedDefinition = CreateRuntimeDefinition(propertyType: PropertyType.Option);
+        var trackedOption = CreateRuntimeOption(trackedDefinition.Id, "tenant.sync", "old_option", sourceTemplateOptionId: Guid.NewGuid(), displayName: "Old Option");
+        trackedDefinition.DefaultOptionId = trackedOption.Id;
+        SetOptions(trackedDefinition, [trackedOption]);
+        SetValues(trackedDefinition,
+        [
+            new EventCustomPropertyValue
+            {
+                Id = Guid.NewGuid(),
+                EventCustomPropertyDefinitionId = trackedDefinition.Id,
+                EventId = _eventId,
+                TenantId = _tenantId,
+                OptionId = trackedOption.Id
+            }
+        ]);
+        var plan = CreatePlan(retiredOptionKeys: ["tenant.sync/old_option"]);
+        var diff = new TemplateDiffDto(2, 1, [], [], [], [], [], [new RetiredOptionDto("tenant.sync", "old_option", trackedOption.ConcurrencyStamp)], []);
+        var templateDefinition = CreateTemplateDefinition(trackedDefinition.Namespace, trackedDefinition.Key, trackedDefinition.SourceTemplateDefinitionId!.Value, "Field", PropertyType.Option);
+
+        _eventRepository.GetById(_eventId).Returns(currentEvent, currentEvent);
+        _diffService.ComputeDiffAsync(_eventId, 2, Arg.Any<CancellationToken>()).Returns(diff);
+        _runtimeRepository.GetTrackedDefinitionsForEvent(_eventId, Arg.Any<CancellationToken>()).Returns([trackedDefinition]);
+        _templateRepository.GetPublishedTemplateVersion(_tenantId, currentEvent.SourceTemplateKey!, 2, Arg.Any<CancellationToken>()).Returns(CreateTemplate(2, templateDefinition));
+
+        var result = await CreateSut().ApplySyncAsync(_eventId, plan, 1, CancellationToken.None);
+
+        await Assert.That(result.Applied.Count).IsEqualTo(1);
+        await Assert.That(trackedOption.IsActive).IsFalse();
+        await Assert.That(trackedDefinition.DefaultOptionId).IsNull();
+        await Assert.That(trackedDefinition.Values.Single().OptionId).IsEqualTo(trackedOption.Id);
+    }
+
+    [Test]
     public async Task ApplySyncAsync_WhenModificationSucceeds_RefreshesProjection()
     {
         var currentEvent = CreateEvent();
@@ -171,14 +213,16 @@ public class EventTemplateSyncServiceTests
     private TemplateSyncPlanDto CreatePlan(
         IReadOnlyList<string>? addedDefinitionKeys = null,
         IReadOnlyList<string>? modifiedDefinitionKeys = null,
-        IReadOnlyList<string>? retiredDefinitionKeys = null)
+        IReadOnlyList<string>? retiredDefinitionKeys = null,
+        IReadOnlyList<string>? retiredOptionKeys = null)
         => new()
         {
             TargetTemplateVersion = 2,
             BaseProvenanceVersion = 1,
             AddedDefinitionKeys = addedDefinitionKeys ?? [],
             ModifiedDefinitionKeys = modifiedDefinitionKeys ?? [],
-            RetiredDefinitionKeys = retiredDefinitionKeys ?? []
+            RetiredDefinitionKeys = retiredDefinitionKeys ?? [],
+            RetiredOptionKeys = retiredOptionKeys ?? []
         };
 
     private static EventTemplate CreateTemplate(int version, params EventTemplateCustomPropertyDefinition[] definitions)
@@ -199,7 +243,7 @@ public class EventTemplateSyncServiceTests
         return template;
     }
 
-    private static EventTemplateCustomPropertyDefinition CreateTemplateDefinition(string ns, string key, Guid id, string displayName)
+    private static EventTemplateCustomPropertyDefinition CreateTemplateDefinition(string ns, string key, Guid id, string displayName, PropertyType propertyType = PropertyType.Text)
         => new()
         {
             Id = id,
@@ -208,12 +252,12 @@ public class EventTemplateSyncServiceTests
             Namespace = ns,
             Key = key,
             DisplayName = displayName,
-            PropertyType = PropertyType.Text,
+            PropertyType = propertyType,
             IsActive = true,
             ExposureLevel = ExposureLevel.Public
         };
 
-    private static EventCustomPropertyDefinition CreateRuntimeDefinition(string ns = "tenant.sync", string key = "field", string displayName = "Field")
+    private static EventCustomPropertyDefinition CreateRuntimeDefinition(string ns = "tenant.sync", string key = "field", string displayName = "Field", PropertyType propertyType = PropertyType.Text)
         => new()
         {
             Id = Guid.NewGuid(),
@@ -222,7 +266,7 @@ public class EventTemplateSyncServiceTests
             Namespace = ns,
             Key = key,
             DisplayName = displayName,
-            PropertyType = PropertyType.Text,
+            PropertyType = propertyType,
             IsActive = true,
             ExposureLevel = ExposureLevel.Public,
             SourceTemplateDefinitionId = Guid.NewGuid(),
@@ -232,6 +276,28 @@ public class EventTemplateSyncServiceTests
             InstantiatedAt = DateTimeOffset.UtcNow,
             ConcurrencyStamp = Guid.NewGuid()
         };
+
+    private static EventCustomPropertyOption CreateRuntimeOption(Guid definitionId, string ns, string key, Guid? sourceTemplateOptionId, string displayName)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            EventCustomPropertyDefinitionId = definitionId,
+            Namespace = ns,
+            Key = key,
+            DisplayName = displayName,
+            Value = key,
+            IsActive = true,
+            SourceTemplateOptionId = sourceTemplateOptionId,
+            SourceTemplateVersion = 1,
+            ConcurrencyStamp = Guid.NewGuid()
+        };
+
+    private static void SetOptions(EventCustomPropertyDefinition definition, IEnumerable<EventCustomPropertyOption> options)
+    {
+        var field = typeof(EventCustomPropertyDefinition).GetField("_options", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        var list = (List<EventCustomPropertyOption>)field.GetValue(definition)!;
+        list.AddRange(options);
+    }
 
     private static void SetValues(EventCustomPropertyDefinition definition, IEnumerable<EventCustomPropertyValue> values)
     {

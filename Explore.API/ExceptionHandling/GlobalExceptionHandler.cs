@@ -42,6 +42,10 @@ internal sealed class GlobalExceptionHandler(
                 StatusCodes.Status404NotFound,
                 "Resource not found",
                 notFoundException.Message),
+            UnauthorizedAccessException => (
+                StatusCodes.Status401Unauthorized,
+                "Unauthorized",
+                "Authentication is required to access this resource."),
             AuthorizationException => (
                 StatusCodes.Status403Forbidden,
                 "Forbidden",

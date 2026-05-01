@@ -1,0 +1,28 @@
+/* ABOUTME: CSS grid host for generic dock panels around shell/workspace content.
+   ABOUTME: Uses logical sizing tokens so future shell migration remains RTL-safe. */
+
+.dock-layout-host {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--dock-layout-start-width, 0px) minmax(0, 1fr) var(--dock-layout-end-width, 0px);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "start content end"
+        "bottom bottom bottom";
+    min-inline-size: 0;
+    min-block-size: 0;
+    isolation: isolate;
+    transition: var(--isl-dock-panel-transition);
+}
+
+.dock-layout-host__content {
+    grid-area: content;
+    min-inline-size: 0;
+    min-block-size: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dock-layout-host {
+        transition-duration: 1ms;
+    }
+}

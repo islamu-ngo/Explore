@@ -54,12 +54,18 @@ public partial class OrganizationProfile
 
         try
         {
-            var orgTask = OrganizationService.GetOrganizationByIdAsync(Id);
-            var reviewsTask = OrganizationReviewService.GetReviewsByOrganizationId(Id);
-            await Task.WhenAll(orgTask, reviewsTask);
+            _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
 
-            _organization = await orgTask;
-            _reviews = (await reviewsTask).ToList();
+            if (_organization is not null)
+            {
+                Id = _organization.Id.GetValueOrDefault(Id);
+                _reviews = (await OrganizationReviewService.GetReviewsByOrganizationId(Id)).ToList();
+            }
+            else
+            {
+                _reviews = new List<OrganizationReviewDto>();
+            }
+
             _appearance = new AppearanceSettings
             {
                 BackgroundColor = _organization?.ActorBackgroundColor ?? string.Empty,

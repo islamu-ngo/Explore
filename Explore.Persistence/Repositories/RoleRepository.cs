@@ -123,6 +123,9 @@ public class RoleRepository : GenericRepository<Role, int>, IRoleRepository
         var hasTenantMembers = await _dbContext.TenantMembers
             .AnyAsync(tm => tm.RoleId == roleId);
 
-        return hasTenantMembers;
+        if (hasTenantMembers) return true;
+
+        return await _dbContext.EventRoleAssignments
+            .AnyAsync(a => a.RoleId == roleId);
     }
 }

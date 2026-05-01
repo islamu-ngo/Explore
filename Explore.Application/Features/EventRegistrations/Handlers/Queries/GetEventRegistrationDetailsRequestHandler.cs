@@ -23,7 +23,7 @@ public class GetEventRegistrationDetailsRequestHandler : IRequestHandler<GetEven
 
     public async Task<EventRegistrationDto> Handle(GetEventRegistrationDetailsRequest request, CancellationToken cancellationToken)
     {
-        var eventRegistration = await _eventRegistrationRepository.GetById(request.Id);
+        var eventRegistration = await _eventRegistrationRepository.GetByIdWithDetails(request.Id);
         return _mapper.Map<EventRegistrationDto>(eventRegistration);
     }
 }

@@ -3,7 +3,7 @@
 
 # Sidebar Dock Layout Refactor - Context v2
 
-Last Updated: 2026-04-29
+Last Updated: 2026-04-30
 
 ## Session Progress
 
@@ -20,30 +20,47 @@ Last Updated: 2026-04-29
 
 ### In Progress
 
-- Planning only. No implementation code has been changed.
-- Next implementation phase is Phase 1: baseline tests and visual freeze.
+- Implementation has started with safe foundation and baseline-test slices: generic dock engine models/state, DI registration, dock host components, dormant tabbed stack rendering, extracted shell side-navigation content, shell descriptor registration, production shell `DockLayoutHost` rendering, EventList workspace customize-view and event-preview `DockLayoutHost` rendering, host-level `DockOverlayHost` backdrop/scroll-lock/Escape/focus hardening, mobile docked-panel routing through overlay chrome, shell bridge lifecycle hardening, NavMenu dock-id toggle mirroring, shell accessibility/navigation contract hardening, dormant keyboard/pointer resize handle foundation with pointer-capture hardening and JSInterop invocation coverage, dock governance architecture guardrails, dock design tokens/docs, stable shell/workspace selectors, low-risk logical CSS hardening, descriptor capability enforcement, RTL-aware inline-end slide animations, snapshot active-state normalization, Phase 8 persistence/reset, and Phase 1 bUnit/E2E scenario coverage.
+- Current implementation phase is Phase 1 baseline coverage plus Phase 2/3/4/5/6/7/8/9/11 foundation setup; production shell rendering now uses the dock host, Phase 5 workspace rendering is complete for both `events.customize-view` and `events.event-preview`, host-level overlay hardening is complete for `DockOverlayHost` overlay/temporary/inspector panels, and mobile docked panels now route through `DockOverlayHost` as temporary overlays at `Xs`/`Sm` breakpoints.
 
 ### Blockers
 
-- Tavily MCP and context7 MCP were requested but are not exposed in this environment. If available later, use them to confirm MudBlazor and Blazor guidance, but do not restart the architecture unless they reveal a concrete conflict.
+- Tavily MCP and context7 MCP were available in the 2026-04-30 session and confirmed the MudBlazor `MudLayout`/`MudDrawer` guidance, drawer variant tradeoffs, and Blazor CSS isolation constraints. No concrete conflict with the v2 architecture was found.
+- Oracle reviewed the next-slice choice on 2026-04-30 and initially recommended implementing Phase 8 persistence/reset as a non-rendering dock subsystem slice. After the user explicitly requested continued implementation without backward compatibility constraints, Oracle recommended a narrow production shell `DockLayoutHost` migration; that shell slice landed and passed focused closeout review. Workspace `DockLayoutHost` slices have now landed for EventList Customize View and Event Preview. Host-level overlay hardening and mobile docked-panel routing have also landed; remaining risk is visual proof, full mobile/RTL manual verification, focus trapping, and cleanup of temporary bridge state.
 
-## Session Handoff (2026-04-29)
+## Session Handoff (2026-04-30)
 
 ### Current Implementation State
 
-- Implementation has not started.
-- The active work is a planning package revision from v1 explicit shell/workspace state to v2 generic internal dock engine.
-- No production Blazor/CSS/C# implementation files were changed in this session.
-- No tests were run because no implementation code changed.
+- Implementation started with a non-rendering foundation slice; the shell host portion is now production-rendered through `DockLayoutHost`.
+- The active code path now includes `Explore.Blazor.Client.Services.Docking` primitives and scoped `DockLayoutState`/`IDockPanelRegistry` registration.
+- `DockLayoutState` now enforces `CanClose`/`IsResizable` across direct mutations and snapshot restore, normalizes restored snapshots so each open scope/side group has exactly one active open panel, and prevents transient multi-active notifications during `Open`.
+- `Explore.Blazor.Client.Components.Docking` now contains host components (`DockLayoutHost`, `DockSideHost`, `DockPanelHost`, `DockOverlayHost`) plus a `DockTabStrip` stack renderer that renders ordered tabs and active panel content for multiple open panels on the same side. These hosts now render the production shell, EventList customize-view workspace panel, and EventList event-preview workspace inspector. `DockLayoutHost` observes MudBlazor browser breakpoints and collapses docked track widths to `0px` on mobile; `DockSideHost` suppresses mobile docked side hosts; `DockOverlayHost` projects mobile docked entries into effective temporary overlay render entries while preserving desktop runtime state. `DockOverlayHost` owns the shared overlay backdrop, body scroll lock, Escape-close, active-panel focus handoff, and focus restore behavior for overlay/temporary/inspector/mobile-docked modes. The stack renderer uses coherent `tablist`/`tab`/`tabpanel` ARIA relationships and moves focus to keyboard-activated tabs through the accessibility focus service.
+- `Explore.Blazor.Client.Components.Docking.DockResizeHandle` now provides a dormant keyboard-accessible and pointer-drag resize affordance for resizable docked inline panels; it uses a small JS pointer-capture helper for drag robustness, filters non-primary and mismatched pointer ids, and `DockPanelHost` wires it to `DockLayoutState.Resize` for start/end docked panels only. bUnit coverage now proves the `/js/dock-resize.js` module import plus `setPointerCapture` and `releasePointerCapture` calls.
+- `Explore.Blazor.Client.Components.Shell.AppSideNav` owns the left navigation content and is now rendered through the `shell.left-nav` dock descriptor.
+- `Explore.Blazor.Client.Components.Shell.ShellDockPanels` owns stable shell descriptor ids for `shell.left-nav` and `shell.ai-assistant`; `MainLayout` registers their content into `DockLayoutState` and renders them through the shell `DockLayoutHost`.
+- `MainLayout` still mirrors `SidebarState` and `AiAssistantState` open/close changes into `DockLayoutState` as a temporary toggle bridge, but the production shell panel hosts are dock-rendered rather than `MudDrawer`/fixed AI margin compensation.
+- `NavMenu` still uses the legacy shell state services as the public toggle bridge, but the visible shell panel rendering flows through `shell.left-nav` and `shell.ai-assistant` dock ids.
+- `MainLayoutTests` now covers hidden-chrome routes closing the mirrored shell dock panels and `MainLayout.Dispose()` unregistering shell descriptors, reducing lifecycle risk before host migration.
+- Phase 8 persistence/reset is implemented as a non-rendering dock subsystem slice: `IDockLayoutPersistence` abstracts snapshot load/save/delete, `LocalStorageDockLayoutPersistence` stores schema-versioned layout snapshots by layout key behind browser-only JS interop, and `DockLayoutState.ResetToDefaults()` restores currently registered panels to descriptor defaults without wiring production shell hydration yet.
+- `LocalStorageDockLayoutPersistence` lives under `Explore.Blazor.Client/Services/Interop/` because `Event.Architecture.Tests` enforces that direct `IJSRuntime` usage stays in approved interop/http boundaries or `*Interop`-suffixed files. The first implementation under `Services/Docking` failed `Rule_1_07_Services_MustNotUse_IJSRuntime_OutsideInterop`; moving the implementation behind the approved interop namespace fixed the architecture boundary without changing the `IDockLayoutPersistence` abstraction.
+- `AiAssistantRail` supports dock-hosted mode (`HostedInDock=true`) so shell AI renders inside `DockPanelHost` without a fixed rail backdrop or page-level margin compensation. `RightSidebar` remains available for legacy consumers, but EventList no longer uses it for Customize View.
+- Workspace rendering now uses `EventDockPanels.CustomizeView` and `EventDockPanels.EventPreview` inside `DockLayoutHost Scope=Workspace`. `_customizationDrawerOpen` and `_detailDrawerOpen` remain only as temporary migration adapters mirrored into `DockLayoutState`; the legacy EventList `RightSidebar` and event-preview `MudDrawer` hosts have been removed from EventList. Legacy `SidebarState`/`AiAssistantState` remain only as temporary shell toggle bridge services.
+- Tests were added for dock state behavior, DI registration, dock host rendering/scope isolation/ordering/overlay filtering, mobile docked-panel routing to temporary overlay chrome, mobile side-host suppression, overlay backdrop/Escape close, overlay focus save/restore/focus handoff, overlay scroll lock/unlock, tabbed side-stack rendering/click activation/keyboard activation/focus movement/tabpanel linkage, resize handle ARIA/keyboard/pointer capture JSInterop invocation/pointer identity/clamping/cancellation/non-resizable behavior, AppSideNav rendering, shell descriptor registration/state mirroring, shell hidden-chrome/disposal lifecycle behavior, NavMenu dock-id toggle mirroring, shell accessibility/navigation contracts (skip link, landmarks, live regions, focus-on-navigate), shell AI availability/toggle behavior, EventList customize/detail mutual exclusion, EventList detail close/reset behavior, snapshot serialization/corrupt-data handling, unknown-panel restore handling, width clamping, and descriptor-default reset behavior.
+- Architecture guardrails now prevent new central dock panel enums and page-scoped CSS shell compensation outside known legacy EventList migration debt.
+- `Explore.Blazor.Client.E2ETests/Flows/SidebarLayoutVisualTests.cs` now lists the required desktop/mobile visual baseline scenarios, but they are skipped until Aspire-backed seed data and screenshot storage are available.
+- Latest verification for the mobile docked-panel routing slice passed: `Explore.Blazor.Client.Tests` 925 total/924 passed with 1 documented pre-existing skip (`ErrorState_RendersRetryButton_WhenOnRetryProvided`), `Event.Architecture.Tests` 133/133, and `rtk dotnet build --configuration Release --verbosity quiet` completed 23 projects with 0 errors and 151 known package/analyzer warnings.
 
-### Files Modified This Session
+### Files Modified Across The Active Dock Refactor Slices
 
-| File | Why it changed |
-|---|---|
-| `dev/active/sidebar-dock-layout-refactor/sidebar-dock-layout-refactor-plan.md` | Rewritten to v2: generic dock engine core, descriptor/state/snapshot model, registry, hosts, resizing, stacking, persistence, and revised phases. |
-| `dev/active/sidebar-dock-layout-refactor/sidebar-dock-layout-refactor-context.md` | Updated handoff context, decisions, files to create, and quick resume instructions. |
-| `dev/active/sidebar-dock-layout-refactor/sidebar-dock-layout-refactor-tasks.md` | Updated task checklist to v2 phases and added planning/handoff status. |
-| `dev/_journal/journal.md` | Added key decision entry for the dock engine architecture pivot. |
+| Area | Files | Why they changed |
+|---|---|---|
+| Dock engine | `Explore.Blazor.Client/Services/Docking/*`, `Explore.Blazor.Client/Services/Interop/LocalStorageDockLayoutPersistence.cs`, `Explore.Blazor.Client/wwwroot/js/dock-layout-persistence.js` | Added descriptor-driven panel ids, descriptors, runtime state, snapshots, registry abstraction, scoped `DockLayoutState` orchestration, descriptor-default reset behavior, and schema-versioned local snapshot persistence behind the approved JS interop boundary. |
+| Dock hosts | `Explore.Blazor.Client/Components/Docking/*` | Added host/grid/side/panel/overlay renderers, viewport-aware mobile docked-panel routing, tabbed side-stack renderer, resize handle, pointer-capture helper integration, stable element id helpers, and shared overlay backdrop/scroll-lock/Escape/focus lifecycle behavior. |
+| Shell bridge/host | `Explore.Blazor.Client/Components/Shell/AppSideNav.*`, `ShellDockPanels.cs`, `AiAssistantRail.*`, `Explore.Blazor.Client/Layout/MainLayout.*`, `NavMenu.*`, `Footer.*` | Extracted shell nav content, registered shell descriptors, migrated production shell panels to `DockLayoutHost`, removed the legacy drawer/AI/footer compensation path, and kept top-nav toggles bridged by `DockPanelId`. |
+| Workspace host | `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs`, `EventList.razor`, `EventList.razor.cs`, `EventList.razor.css` | Added event workspace descriptors, rendered EventList content through a workspace `DockLayoutHost`, hosted Customize View through `events.customize-view`, hosted Event Preview through `events.event-preview`, removed EventList `RightSidebar`/preview `MudDrawer` dependencies, and removed the page negative margin/width expansion hack. |
+| Tests | `Explore.Blazor.Client.Tests/**`, `Explore.Blazor.Client.E2ETests/Flows/SidebarLayoutVisualTests.cs`, `Event.Architecture.Tests/DockLayoutArchitectureTests.cs` | Added dock state/DI/host/resize/stack/shell bridge/accessibility/EventList regression coverage, skipped visual scenario scaffolding, and architecture guardrails. |
+| Docs | `docs/DOCK_LAYOUT.md`, `dev/active/sidebar-dock-layout-refactor/*`, `dev/_journal/journal.md` | Kept the implementation plan, task checklist, handoff context, architecture reference, and durable lessons aligned with completed slices and deferred migration gaps. |
 
 ### Key Decisions Made This Session
 
@@ -51,26 +68,37 @@ Last Updated: 2026-04-29
 - The engine must be descriptor-driven with stable `DockPanelId` values and no central enum that must be edited for each future panel.
 - Runtime `DockPanelState` must be separate from immutable `DockPanelDescriptor` metadata.
 - `DockLayoutSnapshot` is a first-class model for reset, persistence, debugging, tests, and future user preferences.
+- Phase 8 persistence remains opt-in and non-rendering for now: snapshots are serialized locally by layout key, but production shell hydration/autosave is intentionally deferred until the dock hosts own visible rendering.
+- JS interop implementations that touch `IJSRuntime` must live under `Services/Interop`, `Services/Http`, or follow the architecture-approved interop naming pattern; keep persistence abstractions in `Services/Docking` and browser storage implementations behind that boundary.
 - Advanced behaviors are planned as explicit phases: resizing, stacking, persistence, mobile/RTL/a11y/motion hardening.
 - External/plugin-driven panel loading is intentionally out of scope for the first implementation; registration should remain compile-time and component-owned.
-- Event detail preview remains the highest-risk UX preservation target and must stay inspector/overlay style.
+- Event detail preview remains the highest-risk UX preservation target; it now stays inspector/overlay style through `events.event-preview` and needs enabled visual proof before final cleanup.
 
 ### Next Immediate Steps
 
-1. Start Phase 1 by adding visual regression coverage before any layout refactor.
-2. Add E2E scenarios in `Explore.Blazor.Client.E2ETests/Flows/SidebarLayoutVisualTests.cs` for desktop/mobile panel combinations.
-3. Add bUnit regressions for current AI availability/toggle behavior, customize/detail mutual exclusion, event detail close/reset behavior, and shell landmarks.
-4. Only after baseline coverage, start Phase 2 tokens and `docs/DOCK_LAYOUT.md`.
-5. Then implement Phase 3 dock engine core before migrating shell or workspace rendering.
+1. Enable or manually run the scaffolded E2E visual scenarios once Aspire seed data and screenshot storage are available.
+2. Continue mobile overlay hardening beyond viewport-aware docked-panel routing: focus-trap strategy, RTL/manual checks, and enabled visual verification for shell/workspace overlays.
+3. Plan cleanup of temporary bridge services/components (`SidebarState`, `AiAssistantState`, `RightSidebar`) only after confirming no remaining consumers need them.
+4. Preserve the bUnit baseline/accessibility contract tests and architecture guardrails before cleanup.
 
 ### Commands To Run On Restart
 
 ```bash
-dotnet build --configuration Release --verbosity quiet
+dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 ```
 
 ```bash
-dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+```
+
+```bash
+rtk dotnet build --configuration Release --verbosity quiet
+```
+
+If these commands regenerate package-lock churn from the local .NET SDK, restore the generated lockfile diffs unless dependencies intentionally changed:
+
+```bash
+git diff -- .claude/hooks/packages.lock.json Explore.Blazor.Client.Tests/packages.lock.json Explore.Blazor.Client/packages.lock.json Explore.Blazor.IntegrationTests/packages.lock.json Explore.Blazor/packages.lock.json
 ```
 
 When E2E/Aspire environment is available:
@@ -81,8 +109,9 @@ dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETe
 
 ### Uncommitted Changes Requiring Attention
 
-- The four documentation files listed above are expected uncommitted planning/handoff changes.
-- There are no partial implementation files from this session.
+- Sidebar dock implementation files, tests, tokens, and docs are expected uncommitted changes from the foundation slices.
+- Phase 8-specific uncommitted files include `Explore.Blazor.Client/Services/Docking/IDockLayoutPersistence.cs`, `Explore.Blazor.Client/Services/Docking/DockLayoutState.cs`, `Explore.Blazor.Client/Services/Interop/LocalStorageDockLayoutPersistence.cs`, `Explore.Blazor.Client/wwwroot/js/dock-layout-persistence.js`, `Explore.Blazor.Client/Properties/AssemblyInfo.cs`, `Explore.Blazor.Client/Extensions/ServiceCollectionExtensions.cs`, `Explore.Blazor.Client.Tests/Services/Docking/DockLayoutStateTests.cs`, and `Explore.Blazor.Client.Tests/Services/Docking/LocalStorageDockLayoutPersistenceTests.cs`.
+- Unrelated pre-existing edits remain outside this work and should not be attributed to the dock refactor: `Event.API.IntegrationTests/Fixtures/AuthenticatedWebApplicationFactory.cs`, `Explore.Blazor/Extensions/BffAuthEndpoints.cs`, and `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md`.
 
 ## Core Decision
 
@@ -176,18 +205,18 @@ public sealed record DockLayoutSnapshot(
 
 | File | Purpose |
 |---|---|
-| `Explore.Blazor.Client/Layout/MainLayout.razor` | Current shell layout, left `MudDrawer`, `MudMainContent`, footer, AI rail host. |
-| `Explore.Blazor.Client/Layout/MainLayout.razor.cs` | Current shell state subscriptions, chrome visibility, AI availability load. |
-| `Explore.Blazor.Client/Layout/MainLayout.razor.css` | Current shell CSS, including AI `margin-right: 360px` compensation. |
+| `Explore.Blazor.Client/Layout/MainLayout.razor` | Current shell layout with shell `DockLayoutHost`, `MudMainContent`, footer, and live regions. |
+| `Explore.Blazor.Client/Layout/MainLayout.razor.cs` | Current shell descriptor registration, chrome visibility, AI availability load, and temporary shell state bridge. |
+| `Explore.Blazor.Client/Layout/MainLayout.razor.css` | Current shell CSS without AI page-margin compensation. |
 | `Explore.Blazor.Client/Layout/NavMenu.razor` | Current top nav and sidebar/AI toggle buttons. |
 | `Explore.Blazor.Client/Layout/NavMenu.razor.cs` | Current nav state/service dependencies. |
 | `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor` | Current AI assistant content and close behavior. |
 | `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor.css` | Current fixed AI rail layout. |
-| `Explore.Blazor.Client/Components/Common/RightSidebar.razor` | Current generic page-level right sidebar wrapper. |
-| `Explore.Blazor.Client/Components/Common/RightSidebar.razor.css` | Current sticky desktop/fixed mobile page-level sidebar CSS. |
-| `Explore.Blazor.Client/Pages/Events/EventList.razor` | Current EventList page, detail drawer, customize panel host. |
-| `Explore.Blazor.Client/Pages/Events/EventList.razor.cs` | Current EventList page state including `_detailDrawerOpen` and `_customizationDrawerOpen`. |
-| `Explore.Blazor.Client/Pages/Events/EventList.razor.css` | Current page layout CSS with negative right margin and width expansion. |
+| `Explore.Blazor.Client/Components/Common/RightSidebar.razor` | Legacy generic page-level right sidebar wrapper; EventList no longer consumes it. |
+| `Explore.Blazor.Client/Components/Common/RightSidebar.razor.css` | Legacy sticky desktop/fixed mobile page-level sidebar CSS; EventList no longer consumes it. |
+| `Explore.Blazor.Client/Pages/Events/EventList.razor` | Current EventList page, workspace dock host, customize panel content registration, and event preview inspector content. |
+| `Explore.Blazor.Client/Pages/Events/EventList.razor.cs` | Current EventList page state including temporary `_detailDrawerOpen` and `_customizationDrawerOpen` adapters mirrored into `DockLayoutState`. |
+| `Explore.Blazor.Client/Pages/Events/EventList.razor.css` | Current page layout CSS after removing negative right margin/width expansion and retargeting preview styles to dock panel hosts. |
 | `Explore.Blazor.Client/Pages/Events/Components/EventListCustomizationDrawer.razor` | Customize view content component to preserve. |
 | `Explore.Blazor.Client/Services/SidebarState.cs` | Current left sidebar state service to replace. |
 | `Explore.Blazor.Client/Services/AiAssistantState.cs` | Current AI rail state service to replace. |
@@ -197,33 +226,17 @@ public sealed record DockLayoutSnapshot(
 | `Explore.Blazor.Client.Tests/Components/Event/EventListCustomizationDrawerTests.cs` | Existing customization drawer content tests. |
 | `Explore.Blazor.Client.E2ETests/Flows/SmokeTests.cs` | Existing Playwright/E2E test fixture entry point. |
 
-## Files To Create
+## Implementation Inventory And Remaining Files
+
+Most foundation files originally listed here have now been implemented. `DockLayoutState` is the registry implementation; a separate `DockPanelRegistry.cs` was intentionally not created.
 
 | File | Purpose |
 |---|---|
-| `Explore.Blazor.Client/Services/Docking/DockPanelId.cs` | Stable typed panel identifier. |
-| `Explore.Blazor.Client/Services/Docking/DockScope.cs` | Shell/workspace scope enum. |
-| `Explore.Blazor.Client/Services/Docking/DockSide.cs` | Start/end/bottom side enum. |
-| `Explore.Blazor.Client/Services/Docking/DockMode.cs` | Docked/overlay/temporary/inspector/collapsed mode enum. |
-| `Explore.Blazor.Client/Services/Docking/DockPanelDescriptor.cs` | Panel metadata contract. |
-| `Explore.Blazor.Client/Services/Docking/DockPanelState.cs` | Runtime state contract. |
-| `Explore.Blazor.Client/Services/Docking/DockLayoutSnapshot.cs` | Serializable layout snapshot. |
-| `Explore.Blazor.Client/Services/Docking/IDockPanelRegistry.cs` | Registry abstraction. |
-| `Explore.Blazor.Client/Services/Docking/DockPanelRegistry.cs` | Registry implementation. |
-| `Explore.Blazor.Client/Services/Docking/DockLayoutState.cs` | Runtime docking engine. |
-| `Explore.Blazor.Client/Services/Docking/IDockLayoutPersistence.cs` | Snapshot persistence abstraction. |
-| `Explore.Blazor.Client/Services/Docking/LocalStorageDockLayoutPersistence.cs` | Initial local persistence. |
-| `Explore.Blazor.Client/Services/Docking/DockFocusManager.cs` | Focus save/restore policy. |
-| `Explore.Blazor.Client/Components/Docking/DockLayoutHost.razor` and `.razor.css` | Scope host and grid boundary. |
-| `Explore.Blazor.Client/Components/Docking/DockSideHost.razor` and `.razor.css` | Ordered side host. |
-| `Explore.Blazor.Client/Components/Docking/DockPanelHost.razor` and `.razor.css` | Docked panel renderer. |
-| `Explore.Blazor.Client/Components/Docking/DockOverlayHost.razor` and `.razor.css` | Overlay/inspector renderer. |
-| `Explore.Blazor.Client/Components/Docking/DockResizeHandle.razor` and `.razor.css` | Resize affordance. |
-| `Explore.Blazor.Client/Components/Docking/DockTabStrip.razor` and `.razor.css` | Tabbed stack renderer. |
-| `Explore.Blazor.Client/Components/Shell/AppSideNav.razor` and `.razor.css` | Extracted shell left nav content. |
-| `Explore.Blazor.Client/Components/Shell/AppRightRail.razor` and `.razor.css` | Optional shell right rail wrapper. |
-| `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs` | Event module panel descriptors. |
-| `docs/DOCK_LAYOUT.md` | Platform dock layout architecture. |
+| `Explore.Blazor.Client/Services/Docking/IDockLayoutPersistence.cs` | Snapshot persistence abstraction; implemented as Phase 8 non-rendering slice. |
+| `Explore.Blazor.Client/Services/Interop/LocalStorageDockLayoutPersistence.cs` | Initial client-side persistence behind the approved JS interop boundary; implemented as Phase 8 non-rendering slice. |
+| `Explore.Blazor.Client/Services/Docking/DockFocusManager.cs` | Overlay focus save/restore policy; future hardening phase. |
+| `Explore.Blazor.Client/Components/Shell/AppRightRail.razor` and `.razor.css` | Optional shell right rail wrapper if AI rail content needs extraction before production host migration. |
+| `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs` | Event module descriptors for `events.customize-view` and `events.event-preview`; implemented Phase 5 workspace slice. |
 
 ## Implementation Guardrails
 
@@ -238,15 +251,11 @@ public sealed record DockLayoutSnapshot(
 ## Verification Commands
 
 ```bash
-dotnet build --configuration Release --verbosity quiet
+rtk dotnet build --configuration Release --verbosity quiet
 ```
 
 ```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.BlazorClientArchitectureTests
-```
-
-```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.AccessibilityConventionTests
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 ```
 
 ```bash
@@ -262,10 +271,10 @@ dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETe
 ## Quick Resume
 
 1. Read `sidebar-dock-layout-refactor-plan.md`.
-2. Start with Phase 1 visual/bUnit regression tests before layout changes.
-3. Add tokens and `docs/DOCK_LAYOUT.md`.
-4. Implement the generic dock engine core before migrating shell/workspace rendering.
-5. Migrate shell panels first: `shell.left-nav`, `shell.ai-assistant`.
-6. Migrate EventList workspace panels second: `events.customize-view`, `events.event-preview`.
-7. Add resizing, stacking, persistence, and hardening as explicit phases.
+2. Do not duplicate completed foundation work: dock engine core, dormant hosts, resizing, stacking, shell bridge, and Phase 8 persistence/reset are already implemented as non-rendering slices.
+3. Production shell rendering is complete; EventList Customize View workspace rendering is complete; Event Preview workspace rendering is complete.
+4. Resume with the latest incomplete safe slice: focus trapping, visual resized-panel coverage, full RTL/manual mobile checks, enabled visual baselines, or cleanup of temporary bridge state after consumer audit.
+5. Do not recreate shell migration; `shell.left-nav` and `shell.ai-assistant` already render through the dock engine.
+6. Do not recreate EventList preview migration; `events.event-preview` already renders through the workspace dock inspector.
+7. Preserve the EventList detail preview visual behavior with enabled/manual screenshots before cleanup.
 8. Update this context file after each phase.

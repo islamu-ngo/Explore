@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -23,6 +20,7 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
         // Unique constraint: one access row per user per event session (child-level invariant).
         builder.HasIndex(e => new { e.EventSessionId, e.UserId })
             .IsUnique()
+            .HasFilter("is_deleted = false")
             .HasDatabaseName("ix_eventregistrations_session_user");
 
         // Registrations by user (my registrations)

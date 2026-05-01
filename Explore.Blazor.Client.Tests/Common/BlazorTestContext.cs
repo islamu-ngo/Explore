@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Docking;
 using MudBlazor;
 using MudBlazor.Interop;
 using MudBlazor.Services;
@@ -158,6 +159,8 @@ public class BlazorTestContext : BunitContext
     {
         Services.AddScoped<AiAssistantState>();
         Services.AddScoped<TenantNavLinksState>();
+        Services.AddScoped<DockLayoutState>();
+        Services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
         Services.AddSingleton(MockServiceFactory.CreateNotificationService());
         Services.AddSingleton(Substitute.For<IPublicExperienceService>());
     }

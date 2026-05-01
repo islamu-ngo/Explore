@@ -20,13 +20,12 @@
         {
             <AppIconButton Icon="@Icons.Material.Filled.Menu"
                            Color="Color.Inherit"
-                           OnClick="@(() => SidebarState.Toggle())"
+                           OnClick="ToggleSidebarPanel"
                            Title="Toggle sidebar"
                            Class="navbar__sidebar-toggle"
                            Edge="Edge.Start"
                            aria-expanded="@(SidebarState.IsOpen ? "true" : "false")"
-                           aria-label="Toggle sidebar navigation"
-                           aria-controls="sidebar-drawer" />
+                           aria-label="Toggle sidebar navigation" />
         }
 
         <!-- Brand -->
@@ -87,11 +86,13 @@
 
         <!-- Right Actions -->
         <div class="navbar__actions">
-            <LanguagePicker />
-            <ThemeQuickSwitcher />
-
             <AuthorizeView>
                 <Authorized>
+                    <div class="navbar__desktop-preference-actions">
+                        <LanguagePicker />
+                        <ThemeQuickSwitcher />
+                    </div>
+
                     @if (_eventCreationEligibility.CanCreate)
                     {
                         <a href="@_eventCreationEligibility.CreateEventRoute" style="text-decoration: none;">
@@ -112,17 +113,19 @@
                         <AppIconButton Icon="@Icons.Material.Filled.AutoAwesome"
                                        Color="Color.Inherit"
                                        Size="Size.Medium"
-                                       OnClick="@(() => AiAssistantState.Toggle())"
+                                       OnClick="ToggleAiAssistantPanel"
                                        Title="AI Assistant"
                                        Class="@($"navbar__ai-toggle {(AiAssistantState.IsOpen ? "navbar__ai-toggle--active" : "")}")"
+                                       data-testid="shell-ai-toggle"
                                        aria-label="Toggle AI Assistant"
-                                       aria-expanded="@(AiAssistantState.IsOpen ? "true" : "false")" />
+                                       aria-expanded="@(AiAssistantState.IsOpen ? "true" : "false")"
+                                       aria-controls="ai-assistant-rail" />
                     }
 
                     <!-- User Dropdown -->
                     <div class="navbar__user-dropdown">
-                        <div class="navbar__user-btn" @onclick="ToggleDropdown" @onclick:stopPropagation
-                             role="button" tabindex="0" aria-expanded="@_dropdownOpen" aria-haspopup="true" aria-label="User menu">
+                        <button type="button" class="navbar__user-btn" @onclick="ToggleDropdown" @onclick:stopPropagation
+                                aria-expanded="@_dropdownOpen" aria-haspopup="true" aria-label="User menu">
                             @if (!string.IsNullOrEmpty(_currentUser?.ProfileImageUri))
                             {
                                 <MudAvatar Size="Size.Small" Class="navbar__user-avatar">
@@ -136,7 +139,7 @@
                                 </MudAvatar>
                             }
 
-                        </div>
+                        </button>
 
                         @if (_dropdownOpen)
                         {
@@ -164,6 +167,25 @@
                                     <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
                                     Show Profile
                                 </a>
+
+                                <div class="navbar__mobile-preferences">
+                                    <div class="navbar__dropdown-divider"></div>
+                                    <div class="navbar__dropdown-section-label">Preferences</div>
+                                    <div class="navbar__dropdown-control-item">
+                                        <div class="navbar__dropdown-control-label">
+                                            <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" />
+                                            <span>Language</span>
+                                        </div>
+                                        <LanguagePicker />
+                                    </div>
+                                    <div class="navbar__dropdown-control-item">
+                                        <div class="navbar__dropdown-control-label">
+                                            <MudIcon Icon="@Icons.Material.Filled.Palette" Size="Size.Small" />
+                                            <span>Theme</span>
+                                        </div>
+                                        <ThemeQuickSwitcher />
+                                    </div>
+                                </div>
 
                                 @* Organizations expandable submenu *@
                                 <div class="navbar__dropdown-item navbar__dropdown-item--expandable" @onclick="ToggleOrgSubmenu" @onclick:stopPropagation
@@ -299,6 +321,11 @@
                     </div>
                 </Authorized>
                 <NotAuthorized>
+                    <div class="navbar__desktop-preference-actions navbar__desktop-preference-actions--always-visible">
+                        <LanguagePicker />
+                        <ThemeQuickSwitcher />
+                    </div>
+
                     @if (_showAddEventForAnonymous)
                     {
                         <AppButton StartIcon="@Icons.Material.Filled.Add"

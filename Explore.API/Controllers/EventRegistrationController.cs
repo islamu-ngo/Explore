@@ -1,10 +1,6 @@
 // ABOUTME: REST API controller for event registration CRUD operations with approval workflow support.
 // ABOUTME: Manages user registrations, waitlists, approval status, and registration limits per session.
 
-using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
@@ -22,7 +18,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
-public class EventRegistrationController : ControllerBase
+public class EventRegistrationController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<EventRegistrationController> _logger;
@@ -102,8 +98,28 @@ public class EventRegistrationController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventRegistrationDto dto, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventRegistrationDto? dto, CancellationToken cancellationToken = default)
     {
+        if (dto is null)
+        {
+            return Problem(
+                type: "https://www.rfc-editor.org/rfc/rfc9110#name-400-bad-request",
+                title: "Bad request",
+                detail: "A registration payload is required.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        if (CurrentUserId is not { } currentUserId)
+        {
+            return Problem(
+                type: "https://www.rfc-editor.org/rfc/rfc9110#name-401-unauthorized",
+                title: "Unauthorized",
+                detail: "A valid authenticated user is required.",
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        dto.UserId = currentUserId;
+
         var command = new CreateEventRegistrationCommand { EventRegistrationDto = dto };
         var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);

@@ -19,5 +19,7 @@ public class StressApiFixture : PostgreSqlApiFixtureBase
         ["RateLimiting:Write:WindowSeconds"] = "60",
         ["RateLimiting:Authenticated:PermitLimit"] = "5",
         ["RateLimiting:Authenticated:WindowSeconds"] = "60",
+        ["RateLimiting:SetupSecret:PermitLimit"] = "2",
+        ["RateLimiting:SetupSecret:WindowSeconds"] = "60",
     };
 }

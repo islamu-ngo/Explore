@@ -5,6 +5,7 @@ namespace Explore.Application.DTOs.EventSessionAgendaItem;
 public class EventSessionAgendaItemDto
 {
     public Guid Id { get; set; }
+    public Guid EventId { get; set; }
     public Guid EventSessionId { get; set; }
     public string? EventSessionTitle { get; set; }
     public DateTimeOffset StartTime { get; set; }

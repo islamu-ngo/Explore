@@ -522,7 +522,7 @@ public static class BffAuthEndpoints
 
                 providers.Add(new
                 {
-                    name = scheme,
+                    name = MapSchemeToProviderQueryValue(scheme) ?? scheme,
                     displayName = scheme switch
                     {
                         AuthSchemeNames.Keycloak => "Keycloak",

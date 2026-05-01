@@ -8,6 +8,7 @@ namespace Explore.Application.Contracts.Persistence;
 public interface IOrganizationRepository : IGenericRepository<Organization, Guid>
 {
     Task<Organization?> GetOrganizationWithDetails(Guid id);
+    Task<Organization?> GetOrganizationWithDetailsByActorId(Guid actorId);
     Task<List<Organization>> GetOrganizationsWithDetails();
     Task<List<Organization>> GetMyOrganizations(Guid userId);
 

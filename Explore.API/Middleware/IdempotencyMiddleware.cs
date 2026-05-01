@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IO;
 
 namespace Explore.API.Middleware;
@@ -20,6 +21,7 @@ public sealed class IdempotencyMiddleware
     private const string IdempotencyKeyHeader = "Idempotency-Key";
     private const string ReplayHeader = "X-Idempotency-Replay";
     private const int MaxKeyLength = 128;
+    private const int MaxStoredResponseBodyBytes = 1024 * 1024;
     private static readonly TimeSpan DefaultExpiration = TimeSpan.FromHours(24);
 
     private static readonly HashSet<string> WriteMethods = new(StringComparer.OrdinalIgnoreCase)
@@ -32,11 +34,16 @@ public sealed class IdempotencyMiddleware
 
     private readonly RequestDelegate _next;
     private readonly RecyclableMemoryStreamManager _streamManager;
+    private readonly ILogger<IdempotencyMiddleware> _logger;
 
-    public IdempotencyMiddleware(RequestDelegate next, RecyclableMemoryStreamManager streamManager)
+    public IdempotencyMiddleware(
+        RequestDelegate next,
+        RecyclableMemoryStreamManager streamManager,
+        ILogger<IdempotencyMiddleware> logger)
     {
         _next = next;
         _streamManager = streamManager;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -62,9 +69,19 @@ public sealed class IdempotencyMiddleware
         if (key.Length > MaxKeyLength || key.AsSpan().ContainsAny(" \t\r\n"))
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            context.Response.ContentType = "application/problem+json";
-            await context.Response.WriteAsync(
-                """{"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"Bad Request","status":400,"detail":"Idempotency-Key must be at most 128 characters and contain no whitespace."}""");
+            var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
+            await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = context,
+                ProblemDetails = new ProblemDetails
+                {
+                    Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+                    Title = "Bad Request",
+                    Status = StatusCodes.Status400BadRequest,
+                    Detail = "Idempotency-Key must be at most 128 characters and contain no whitespace.",
+                    Instance = context.Request.Path
+                }
+            });
             return;
         }
 
@@ -97,7 +114,17 @@ public sealed class IdempotencyMiddleware
         using var bufferStream = _streamManager.GetStream("idempotency-middleware");
         context.Response.Body = bufferStream;
 
-        await _next(context);
+        try
+        {
+            await _next(context);
+        }
+        catch
+        {
+            context.Response.Body = originalBodyStream;
+            throw;
+        }
+
+        context.Response.Body = originalBodyStream;
 
         // Read captured response
         bufferStream.Position = 0;
@@ -108,36 +135,64 @@ public sealed class IdempotencyMiddleware
             responseBody = await reader.ReadToEndAsync(context.RequestAborted);
         }
 
-        // Persist the idempotency record
-        var now = DateTime.UtcNow;
-        var record = new IdempotencyRecord
+        if (ShouldPersistResponse(context.Response, bufferStream.Length))
         {
-            Id = Guid.CreateVersion7(),
-            Key = key,
-            TenantId = tenantId,
-            UserId = context.User?.FindFirst("sub")?.Value
-                     ?? context.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-                     ?? context.User?.FindFirst("sid")?.Value,
-            StatusCode = context.Response.StatusCode,
-            ResponseBody = responseBody,
-            ContentType = context.Response.ContentType,
-            CreatedAt = now,
-            ExpiresAt = now.Add(DefaultExpiration)
-        };
+            // Persist the idempotency record
+            var now = DateTime.UtcNow;
+            var record = new IdempotencyRecord
+            {
+                Id = Guid.CreateVersion7(),
+                Key = key,
+                TenantId = tenantId,
+                UserId = context.User?.FindFirst("sub")?.Value
+                         ?? context.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+                         ?? context.User?.FindFirst("sid")?.Value,
+                StatusCode = context.Response.StatusCode,
+                ResponseBody = responseBody,
+                ContentType = context.Response.ContentType,
+                CreatedAt = now,
+                ExpiresAt = now.Add(DefaultExpiration)
+            };
 
-        try
-        {
-            await repository.SaveAsync(record, CancellationToken.None);
-        }
-        catch (Exception)
-        {
-            // Duplicate key race condition — another request with the same key was persisted concurrently.
-            // The response has already been written to the buffer, so we proceed normally.
+            try
+            {
+                await repository.SaveAsync(record, context.RequestAborted);
+            }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Duplicate-key races are non-fatal for the original request, but must still be observable.
+                _logger.LogWarning(
+                    ex,
+                    "Unable to persist idempotency record for tenant {TenantId}, key hash {KeyHash}, and path {Path}.",
+                    tenantId,
+                    key.GetHashCode(StringComparison.Ordinal),
+                    context.Request.Path);
+            }
         }
 
         // Write the captured response to the original stream
         bufferStream.Position = 0;
         await bufferStream.CopyToAsync(originalBodyStream, context.RequestAborted);
-        context.Response.Body = originalBodyStream;
+    }
+
+    private static bool ShouldPersistResponse(HttpResponse response, long responseBodyLength)
+    {
+        if (response.StatusCode < StatusCodes.Status200OK || response.StatusCode >= StatusCodes.Status500InternalServerError)
+        {
+            return false;
+        }
+
+        if (responseBodyLength > MaxStoredResponseBodyBytes)
+        {
+            return false;
+        }
+
+        return string.IsNullOrWhiteSpace(response.ContentType)
+            || response.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)
+            || response.ContentType.StartsWith("application/problem+json", StringComparison.OrdinalIgnoreCase);
     }
 }

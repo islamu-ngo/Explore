@@ -1,0 +1,48 @@
+/* ABOUTME: Scoped tab strip styling for stacked dock panels.
+   ABOUTME: Uses logical spacing and tokenized focus states for dormant host rendering. */
+
+.dock-tab-strip {
+    display: flex;
+    align-items: stretch;
+    gap: var(--isl-space-1);
+    min-inline-size: 0;
+    padding-block: var(--isl-space-2);
+    padding-inline: var(--isl-space-2);
+    border-block-end: 1px solid var(--isl-color-border-subtle);
+    background: color-mix(in oklch, var(--mud-palette-surface) 92%, var(--mud-palette-primary) 8%);
+    overflow-x: auto;
+}
+
+.dock-tab-strip__tab {
+    min-block-size: var(--isl-target-min, 1.5rem);
+    max-inline-size: 12rem;
+    padding-block: var(--isl-space-2);
+    padding-inline: var(--isl-space-3);
+    border: 1px solid transparent;
+    border-radius: var(--isl-radius-sm);
+    background: transparent;
+    color: var(--mud-palette-text-secondary);
+    font: inherit;
+    font-weight: 600;
+    text-align: start;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+
+    &:hover {
+        background: color-mix(in oklch, var(--mud-palette-primary) 10%, transparent);
+        color: var(--mud-palette-text-primary);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--mud-palette-primary);
+        outline-offset: 2px;
+    }
+}
+
+.dock-tab-strip__tab--active {
+    border-color: color-mix(in oklch, var(--mud-palette-primary) 42%, var(--isl-color-border-subtle));
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+}

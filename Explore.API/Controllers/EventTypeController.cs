@@ -11,8 +11,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-
 namespace Explore.API.Controllers;
 
 [ApiVersion("0.1")]
@@ -28,9 +26,8 @@ public class EventTypeController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/<EventTypeController>
     [HttpGet(Name = RouteNames.GetEventTypes)]
-    [EndpointSummary("Get all Event TYpes")]
+    [EndpointSummary("Get all Event Types")]
     [EndpointDescription("Get A List of all the Event Type Options")]
     [AllowAnonymous]
     [OutputCache(PolicyName = "LookupData")]
@@ -38,31 +35,5 @@ public class EventTypeController : ControllerBase
     {
         var eventTypes = await _mediator.Send(new GetEventTypeListRequest { FullName = string.Empty }, cancellationToken);
         return Ok(eventTypes);
-    }
-
-    // GET api/<EventTypeController>/5
-    [HttpGet("{id}", Name = RouteNames.GetEventTypeById)]
-    [OutputCache(PolicyName = "DetailData")]
-    public string Get(int id)
-    {
-        return "value";
-    }
-
-    // POST api/<EventTypeController>
-    [HttpPost(Name = RouteNames.CreateEventType)]
-    public void Post([FromBody] string value)
-    {
-    }
-
-    // PUT api/<EventTypeController>/5
-    [HttpPut("{id}", Name = RouteNames.UpdateEventType)]
-    public void Put(int id, [FromBody] string value)
-    {
-    }
-
-    // DELETE api/<EventTypeController>/5
-    [HttpDelete("{id}", Name = RouteNames.DeleteEventType)]
-    public void Delete(int id)
-    {
     }
 }

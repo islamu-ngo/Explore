@@ -7,7 +7,6 @@ using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Services;
@@ -623,8 +622,7 @@ public partial class EventDetail : ComponentBase
 
     private string GetCanonicalUrl()
     {
-        var baseUri = Navigation.BaseUri.TrimEnd('/');
-        return $"{baseUri}/events/{EventId}";
+        return CanonicalUrlHelper.Build(Navigation, $"/events/{EventId}");
     }
 
     private string GetMetaDescription()
@@ -724,6 +722,13 @@ public partial class EventDetail : ComponentBase
         var url = $"https://calendar.google.com/calendar/r/eventedit?text={title}&dates={start}/{end}&details={details}&location={location}";
 
         await JsRuntime.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    private string GetCalendarDownloadUrl()
+    {
+        return EventId == Guid.Empty
+            ? "#"
+            : $"/api/event/{EventId}/calendar";
     }
 
     private async Task DownloadIcsFileAsync()

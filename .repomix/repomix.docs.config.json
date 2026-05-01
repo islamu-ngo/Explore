@@ -1,5 +1,14 @@
 {
-  "include": ["docs/**/*", "README.md", "CLAUDE.md"],
+  "include": [
+    "docs/**/*",
+    "README.md",
+    "CLAUDE.md",
+    "docker-compose.yml",
+    "global.json",
+    "Directory.Build.props",
+    "Directory.Packages.props",
+    "dotnet-tools.json"
+  ],
   "output": {
     "style": "markdown",
     "filePath": ".repomix/repomix-docs.md",
@@ -11,7 +20,13 @@
     "customPatterns": [
       "docs/semantic_versioning/**/*",
       "docs/docs-website/**/*",
-      ".claude/hooks/**/*"
+      ".claude/hooks/**/*",
+      ".repomix/*.md",
+      "**/*.log",
+      ".env*",
+      ".mcp.json",
+      ".copilot/mcp-config.json",
+      ".codex/config.toml"
     ],
     "useGitignore": true,
     "useDefaultPatterns": true

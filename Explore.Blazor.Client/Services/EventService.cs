@@ -3,7 +3,6 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
-using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -370,7 +369,7 @@ public partial class EventService : IEventService
         try { await _apiClient.DeleteEventSessionAsync(sessionId); return true; } catch { return false; }
     }
 
-    public Task<BaseCommandResponseOfGuid> RegisterForEventSessionAsync(CreateEventRegistrationDto registration) => _apiClient.CreateEventRegistrationAsync(registration);
+    public Task<BaseCommandResponseOfGuid> RegisterForEventSessionAsync(CreateEventRegistrationDto registration) => _apiClient.CreateEventRegistrationAsync(body: registration);
 
     public Task<ICollection<EventRegistrationListDto>> GetRegistrationsForSessionAsync(Guid sessionId) => _apiClient.GetRegistrationsBySessionAsync(sessionId);
 

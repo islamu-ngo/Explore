@@ -1,19 +1,19 @@
 /* ABOUTME: Scoped styles for the AI assistant shell rail. */
-/* ABOUTME: Fixed right-edge panel that slides in/out, independent of page content. */
+/* ABOUTME: Supports both legacy overlay mode and dock-hosted shell mode. */
 
 /* ══════════════════════════════════════════════
-   AI Rail — Fixed right-edge panel
+   AI Rail — Fixed inline-end panel
    ══════════════════════════════════════════════ */
 
 .ai-rail {
     position: fixed;
     top: var(--mud-appbar-height, 4rem);
-    right: 0;
+    inset-inline-end: 0;
     bottom: 0;
-    width: 360px;
-    z-index: 1200;
+    width: var(--isl-dock-shell-ai-width, 360px);
+    z-index: var(--isl-dock-z-shell, 1200);
     background: var(--mud-palette-surface);
-    border-left: 1px solid var(--mud-palette-lines-default);
+    border-inline-start: 1px solid var(--mud-palette-lines-default);
     box-shadow: var(--mud-elevation-4);
 
     display: flex;
@@ -21,13 +21,36 @@
 
     transform: translateX(100%);
     visibility: hidden;
-    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1),
-                visibility 300ms ease;
+    transition: var(--isl-dock-panel-transition, transform 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms ease);
 }
 
 .ai-rail--open {
     transform: translateX(0);
     visibility: visible;
+}
+
+.ai-rail:dir(rtl) {
+    transform: translateX(-100%);
+}
+
+.ai-rail--open:dir(rtl) {
+    transform: translateX(0);
+}
+
+.ai-rail--docked {
+    position: relative;
+    inset: auto;
+    inline-size: 100%;
+    block-size: 100%;
+    z-index: auto;
+    box-shadow: none;
+    border-inline-start: 0;
+    transform: none;
+    visibility: visible;
+}
+
+.ai-rail--docked:dir(rtl) {
+    transform: none;
 }
 
 /* ── Header ── */
@@ -92,15 +115,26 @@
 @media (max-width: 959.98px) {
     .ai-rail {
         width: 100%;
-        max-width: 400px;
-        z-index: 1300;
+        max-width: var(--isl-dock-mobile-panel-max-width, 400px);
+        z-index: var(--isl-dock-z-workspace, 1300);
+    }
+
+    .ai-rail--docked {
+        max-inline-size: none;
+        z-index: auto;
     }
 
     .ai-rail__backdrop {
         display: block;
         position: fixed;
         inset: 0;
-        z-index: 1299;
-        background: rgba(0, 0, 0, 0.5);
+        z-index: var(--isl-dock-z-backdrop, 1299);
+        background: var(--isl-dock-scrim, rgba(0, 0, 0, 0.5));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-rail {
+        transition-duration: 1ms;
     }
 }

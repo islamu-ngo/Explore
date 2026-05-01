@@ -1,8 +1,8 @@
 // ABOUTME: Batch evaluation optimization for FallbackAuthorizationService.
 // ABOUTME: Pre-resolves admin authority once per batch to eliminate repeated async overhead.
 
-using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 
 namespace Explore.Infrastructure.Services;
 
@@ -33,6 +33,7 @@ public partial class FallbackAuthorizationService
         }
 
         var profile = await ResolveAuthorityProfileAsync(cancellationToken);
+        var eventAuthority = await ResolveBatchEventAuthorityAsync(profile, checks, cancellationToken);
 
         var results = new bool[checks.Count];
         for (var i = 0; i < checks.Count; i++)
@@ -41,7 +42,7 @@ public partial class FallbackAuthorizationService
             var attributes = check.ResourceAttributes is null
                 ? null
                 : new Dictionary<string, object>(check.ResourceAttributes);
-            results[i] = EvaluateWithProfile(profile, check.ResourceKind, check.ResourceId, check.Action, attributes);
+            results[i] = EvaluateWithProfile(profile, eventAuthority, check.ResourceKind, check.ResourceId, check.Action, attributes);
         }
 
         return results;
@@ -68,6 +69,7 @@ public partial class FallbackAuthorizationService
 
     private bool EvaluateWithProfile(
         AuthorityProfile profile,
+        EventAuthoritySnapshot? eventAuthority,
         string resourceKind,
         string resourceId,
         string action,
@@ -105,8 +107,14 @@ public partial class FallbackAuthorizationService
             "group" => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "group_member" => action is "view" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "event" or "event_session" or "event_session_agenda_item" or "event_day" or "event_agenda_item"
-                => IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "event_registration" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
+                => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
+                    && (IsTenantAdminForResourceTenant(profile, resourceKind, resourceId, resourceAttributes)
+                        || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId)
+                        || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
+            "event_registration" => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
+                && (action is "create" or "view"
+                    || IsAdminForOrgScope(profile, resourceAttributes, resourceId)
+                    || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
             "event_contact_share_consent" => action is "viewsharedcontacts" or "exportsharedcontacts"
                 && IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "storage_object" => action is "create" or "view" || profile.IsTenantAdmin,
@@ -160,5 +168,74 @@ public partial class FallbackAuthorizationService
             return true;
 
         return IsOrgAdminFromProfile(profile, resourceAttributes, resourceId);
+    }
+
+    private static bool HasEventContextForProfile(
+        AuthorityProfile profile,
+        string resourceKind,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        return TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out var tenantId, out _)
+            && tenantId == profile.TenantId;
+    }
+
+    private static bool IsTenantAdminForResourceTenant(
+        AuthorityProfile profile,
+        string resourceKind,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        return profile.IsTenantAdmin
+            && TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out var tenantId, out _)
+            && tenantId == profile.TenantId;
+    }
+
+    private async Task<EventAuthoritySnapshot?> ResolveBatchEventAuthorityAsync(
+        AuthorityProfile profile,
+        IReadOnlyList<AuthorizationCheck> checks,
+        CancellationToken cancellationToken)
+    {
+        if (!profile.UserId.HasValue)
+            return null;
+
+        var eventIds = checks
+            .Where(check => IsEventScopedResourceKind(check.ResourceKind))
+            .Select(check => TryResolveEventContext(
+                check.ResourceKind,
+                check.ResourceId,
+                check.ResourceAttributes is null ? null : new Dictionary<string, object>(check.ResourceAttributes),
+                out var tenantId,
+                out var eventId)
+                && tenantId == profile.TenantId
+                    ? eventId
+                    : Guid.Empty)
+            .Where(eventId => eventId != Guid.Empty)
+            .Distinct()
+            .ToArray();
+
+        if (eventIds.Length == 0)
+            return null;
+
+        return await _eventAuthoritySnapshotService.GetForUserAndEventsAsync(
+            profile.TenantId,
+            profile.UserId.Value,
+            eventIds,
+            cancellationToken);
+    }
+
+    private static bool HasEventRolePermission(
+        EventAuthoritySnapshot? eventAuthority,
+        string resourceKind,
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        if (eventAuthority is null)
+            return false;
+
+        return TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out _, out var eventId)
+            && eventAuthority.Events.TryGetValue(eventId, out var authority)
+            && authority.PermissionCodes.Contains(PermissionCodeFor(resourceKind, action));
     }
 }

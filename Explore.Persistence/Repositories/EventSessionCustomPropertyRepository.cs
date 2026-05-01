@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -126,7 +127,7 @@ public class EventSessionCustomPropertyRepository : GenericRepository<EventSessi
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         await _dbContext.EventSessionCustomPropertyOptions
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.EventSessionCustomPropertyDefinitionId == definition.Id)
             .ExecuteDeleteAsync(cancellationToken);
 
@@ -149,17 +150,17 @@ public class EventSessionCustomPropertyRepository : GenericRepository<EventSessi
     public async Task<bool> DeleteDefinition(Guid id, CancellationToken cancellationToken)
     {
         await _dbContext.EventSessionCustomPropertyValues
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.EventSessionCustomPropertyDefinitionId == id)
             .ExecuteDeleteAsync(cancellationToken);
 
         await _dbContext.EventSessionCustomPropertyOptions
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.EventSessionCustomPropertyDefinitionId == id)
             .ExecuteDeleteAsync(cancellationToken);
 
         var affectedRows = await _dbContext.EventSessionCustomPropertyDefinitions
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.Id == id)
             .ExecuteDeleteAsync(cancellationToken);
 
@@ -232,7 +233,7 @@ public class EventSessionCustomPropertyRepository : GenericRepository<EventSessi
         CancellationToken cancellationToken)
     {
         await _dbContext.EventSessionCustomPropertyValues
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.EventSessionCustomPropertyDefinitionId == definitionId && x.EventSessionId == eventSessionId)
             .ExecuteDeleteAsync(cancellationToken);
 

@@ -13,10 +13,22 @@ public class EventSessionAgendaItemRepository : GenericRepository<EventSessionAg
         _dbContext = dbContext;
     }
 
+    public async Task<EventSessionAgendaItem?> GetByIdWithDetails(Guid id)
+    {
+        return await _dbContext.EventSessionAgendaItems
+            .AsNoTracking()
+            .Include(a => a.EventSession)
+                .ThenInclude(s => s.Event)
+            .Include(a => a.Location)
+                .ThenInclude(l => l!.Pii)
+            .FirstOrDefaultAsync(a => a.Id == id);
+    }
+
     public async Task<List<EventSessionAgendaItem>> GetBySession(Guid eventSessionId)
     {
         return await _dbContext.EventSessionAgendaItems
             .AsNoTracking()
+            .Include(a => a.EventSession)
             .Include(a => a.Location)
                 .ThenInclude(l => l!.Pii)
             .Where(a => a.EventSessionId == eventSessionId)

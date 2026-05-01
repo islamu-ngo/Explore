@@ -30,7 +30,7 @@ public static class CachingExtensions
             options.AddPolicy("ListData", builder => builder
                 .Expire(TimeSpan.FromSeconds(30))
                 .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host", "Authorization")
-                .SetVaryByQuery("pageNumber", "pageSize")
+                .SetVaryByQuery("*")
                 .Tag("list-data"));
 
             // DetailData: varies by Authorization for auth-aware HATEOAS links
@@ -45,6 +45,12 @@ public static class CachingExtensions
                 .Expire(TimeSpan.FromMinutes(5))
                 .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
                 .Tag("tenant-nav"));
+
+            // SitemapData: public SEO sitemap — tenant/host aware, no auth variance.
+            options.AddPolicy("SitemapData", builder => builder
+                .Expire(TimeSpan.FromMinutes(30))
+                .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
+                .Tag("seo-sitemap"));
         });
 
         services.AddHybridCache(options =>

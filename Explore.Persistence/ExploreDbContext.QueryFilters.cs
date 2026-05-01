@@ -39,6 +39,9 @@ public partial class ExploreDbContext
         modelBuilder.Entity<EventSessionAgendaItem>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
+        modelBuilder.Entity<EventRoleAssignment>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
         // ===== Event Scheduling Refactor - Phase 1 additive entities =====
         modelBuilder.Entity<EventDay>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))

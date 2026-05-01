@@ -4,12 +4,14 @@
 
 @if (AiAssistantState.IsAvailable)
 {
-    @if (AiAssistantState.IsOpen)
+    @if (!HostedInDock && AiAssistantState.IsOpen)
     {
         <div class="ai-rail__backdrop" @onclick="AiAssistantState.Close" aria-hidden="true"></div>
     }
 
-    <aside class="ai-rail @(AiAssistantState.IsOpen ? "ai-rail--open" : "")"
+    <aside id="ai-assistant-rail"
+           class="@RootClass"
+           data-testid="shell-ai-rail"
            aria-label="AI Assistant"
            role="complementary">
         <div class="ai-rail__header">
@@ -43,6 +45,16 @@
 {
     [Inject]
     protected AiAssistantState AiAssistantState { get; set; } = null!;
+
+    [Parameter]
+    public bool HostedInDock { get; set; }
+
+    private string RootClass => string.Join(' ', new[]
+    {
+        "ai-rail",
+        AiAssistantState.IsOpen ? "ai-rail--open" : null,
+        HostedInDock ? "ai-rail--docked" : null
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
     protected override void OnInitialized()
     {

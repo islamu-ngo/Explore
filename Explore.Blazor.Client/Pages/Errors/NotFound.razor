@@ -1,0 +1,23 @@
+@* ABOUTME: Branded public 404 page for unknown routes and status-code re-execution. *@
+@* ABOUTME: Provides search and recovery CTAs without exposing implementation details. *@
+
+@page "/errors/404"
+
+<PageTitle>Not Found — ISLAMU Explore</PageTitle>
+<HeadContent>
+    <meta name="robots" content="noindex, nofollow" />
+</HeadContent>
+
+<h1 class="sr-only">Page Not Found</h1>
+
+<ErrorPageShell StatusCode="404"
+                Title="Page Not Found"
+                Description="We could not find the page you were looking for. Search events or return to a safe starting point."
+                Icon="@Icons.Material.Filled.TravelExplore"
+                IconColor="Color.Primary"
+                PrimaryHref="/"
+                PrimaryText="Return Home"
+                SecondaryHref="/events"
+                SecondaryText="Browse Events"
+                SecondaryIcon="@Icons.Material.Filled.Event"
+                ShowSearch="true" />

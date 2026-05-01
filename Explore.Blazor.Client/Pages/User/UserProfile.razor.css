@@ -1,1 +1,231 @@
-/* Custom styles removed to favor MudBlazor components and utilities */
+/* ===== Block: org-profile ===== */
+/* ABOUTME: Luma-inspired organization profile layout with banner, overlapping avatar, and event timeline. */
+
+::deep .org-profile {
+    padding-bottom: var(--isl-space-16);
+}
+
+/* ===== Element: org-profile__banner ===== */
+::deep .org-profile__banner {
+    height: 14rem;
+    width: 100%;
+    background: linear-gradient(135deg, var(--mud-palette-primary-lighten), var(--mud-palette-secondary-lighten));
+    position: relative;
+}
+
+/* ===== Element: org-profile__container ===== */
+::deep .org-profile__container {
+    position: relative;
+}
+
+/* ===== Element: org-profile__header ===== */
+::deep .org-profile__header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-top: -4rem;
+    padding-inline: var(--isl-space-4);
+    position: relative;
+    z-index: 1;
+}
+
+/* ===== Element: org-profile__avatar-wrapper ===== */
+::deep .org-profile__avatar-wrapper {
+    flex-shrink: 0;
+}
+
+/* ===== Element: org-profile__avatar ===== */
+::deep .org-profile__avatar {
+    width: 8rem;
+    height: 8rem;
+    border: 0.25rem solid var(--mud-palette-surface);
+    border-radius: var(--isl-radius-lg);
+    box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.12);
+    background-color: var(--mud-palette-surface);
+    object-fit: cover;
+}
+
+/* ===== Element: org-profile__header-right ===== */
+::deep .org-profile__header-right {
+    padding-bottom: var(--isl-space-2);
+}
+
+/* ===== Element: org-profile__subscribe-btn ===== */
+::deep .org-profile__subscribe-btn {
+    text-transform: none;
+    font-weight: 600;
+    border-radius: var(--isl-radius-md);
+}
+
+/* ===== Element: org-profile__identity ===== */
+::deep .org-profile__identity {
+    padding-inline: var(--isl-space-4);
+    margin-top: var(--isl-space-4);
+}
+
+/* ===== Element: org-profile__section ===== */
+::deep .org-profile__section {
+    padding-inline: var(--isl-space-4);
+}
+
+/* ===== Element: org-profile__event-card ===== */
+::deep .org-profile__event-card {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-lg);
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    background-color: var(--mud-palette-surface);
+}
+
+::deep .org-profile__event-card:hover {
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+/* ===== Element: org-profile__event-card-image ===== */
+::deep .org-profile__event-card-image {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background-color: var(--mud-palette-background-gray);
+}
+
+/* ===== Timeline ===== */
+
+/* ===== Element: org-profile__timeline ===== */
+::deep .org-profile__timeline {
+    position: relative;
+    padding-inline-start: 2rem;
+}
+
+/* Vertical connecting line */
+::deep .org-profile__timeline::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0.4375rem;
+    top: 0.625rem;
+    bottom: 0.625rem;
+    width: 2px;
+    background-color: var(--mud-palette-lines-default);
+}
+
+/* ===== Element: org-profile__timeline-group ===== */
+::deep .org-profile__timeline-group {
+    position: relative;
+    margin-bottom: var(--isl-space-6);
+}
+
+::deep .org-profile__timeline-group:last-child {
+    margin-bottom: 0;
+}
+
+/* ===== Element: org-profile__timeline-date ===== */
+::deep .org-profile__timeline-date {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-3);
+    margin-bottom: var(--isl-space-3);
+    position: relative;
+    inset-inline-start: -2rem;
+}
+
+/* ===== Element: org-profile__timeline-dot ===== */
+::deep .org-profile__timeline-dot {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 50%;
+    background-color: var(--mud-palette-primary);
+    border: 2px solid var(--mud-palette-surface);
+    box-shadow: 0 0 0 2px var(--mud-palette-primary);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+/* ===== Element: org-profile__timeline-date-text ===== */
+::deep .org-profile__timeline-date-text {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== Element: org-profile__timeline-events ===== */
+::deep .org-profile__timeline-events {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-3);
+}
+
+/* ===== Element: org-profile__timeline-card ===== */
+::deep .org-profile__timeline-card {
+    padding: var(--isl-space-3);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-lg);
+    background-color: var(--mud-palette-surface);
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+::deep .org-profile__timeline-card:hover {
+    box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.06);
+    transform: translateX(4px);
+}
+
+/* ===== Element: org-profile__timeline-card-image ===== */
+::deep .org-profile__timeline-card-image {
+    width: 5rem;
+    height: 5rem;
+    flex-shrink: 0;
+    border-radius: var(--isl-radius-md);
+    overflow: hidden;
+    background-color: var(--mud-palette-background-gray);
+}
+
+/* ===== Responsive ===== */
+
+@media (max-width: 60em) {
+    ::deep .org-profile__banner {
+        height: 11rem;
+    }
+
+    ::deep .org-profile__header {
+        margin-top: -3.5rem;
+    }
+
+    ::deep .org-profile__avatar {
+        width: 6.5rem;
+        height: 6.5rem;
+    }
+}
+
+@media (max-width: 37.5em) {
+    ::deep .org-profile__banner {
+        height: 8rem;
+    }
+
+    ::deep .org-profile__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--isl-space-3);
+        margin-top: -3rem;
+    }
+
+    ::deep .org-profile__avatar {
+        width: 5.5rem;
+        height: 5.5rem;
+    }
+
+    ::deep .org-profile__identity {
+        text-align: start;
+    }
+
+    ::deep .org-profile__timeline {
+        padding-inline-start: 1.5rem;
+    }
+
+    ::deep .org-profile__timeline-date {
+        inset-inline-start: -1.5rem;
+    }
+
+    ::deep .org-profile__timeline-card-image {
+        width: 4rem;
+        height: 4rem;
+    }
+}

@@ -15,6 +15,7 @@
     <PackageReference Include="Testcontainers.Keycloak" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="TUnit" />
+    <PackageReference Include="Verify.TUnit" />
   </ItemGroup>
 
   <PropertyGroup>

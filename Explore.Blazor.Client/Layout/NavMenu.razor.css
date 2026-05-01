@@ -185,6 +185,13 @@
     flex-shrink: 0;
 }
 
+/* Element: navbar__desktop-preference-actions */
+.navbar__desktop-preference-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+}
+
 /* Element: navbar__theme-toggle handled by MudBlazor */
 
 /* Element: navbar__create-event-btn */
@@ -240,7 +247,9 @@
     border: 1px solid
         color-mix(in oklch, var(--mud-palette-lines-default) 50%, transparent);
     border-radius: var(--isl-radius-full);
+    color: inherit;
     cursor: pointer;
+    font: inherit;
     transition: all 0.2s ease;
 
     &:hover {
@@ -326,6 +335,31 @@
     color: var(--mud-palette-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+}
+
+/* Element: navbar__mobile-preferences */
+.navbar__mobile-preferences {
+    display: none;
+}
+
+/* Element: navbar__dropdown-control-item */
+.navbar__dropdown-control-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+    padding: 0.5rem var(--isl-space-3);
+    border-radius: var(--isl-radius-sm);
+}
+
+/* Element: navbar__dropdown-control-label */
+.navbar__dropdown-control-label {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-3);
+    color: var(--mud-palette-text-primary);
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 /* Element: navbar__dropdown-item */
@@ -569,6 +603,10 @@
         min-height: 3rem;
     }
 
+    .navbar__brand {
+        display: none;
+    }
+
     .navbar__content {
         gap: var(--isl-space-1);
     }
@@ -580,6 +618,28 @@
 
     .navbar__actions {
         gap: var(--isl-space-1);
+    }
+
+    .navbar__desktop-preference-actions:not(.navbar__desktop-preference-actions--always-visible) {
+        display: none;
+    }
+
+    .navbar__mobile-preferences {
+        display: block;
+    }
+
+    .navbar__dropdown-menu {
+        right: calc(-1 * var(--isl-space-1));
+        min-width: min(18rem, calc(100vw - var(--isl-space-5)));
+    }
+
+    .navbar__dropdown-control-item ::deep .language-picker__button {
+        min-width: 4.25rem;
+        justify-content: center;
+    }
+
+    .navbar__dropdown-control-item ::deep .navbar__theme-toggle {
+        padding: 0.375rem !important;
     }
 
     .navbar__user-name {

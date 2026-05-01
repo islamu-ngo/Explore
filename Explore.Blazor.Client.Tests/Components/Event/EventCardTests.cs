@@ -1,7 +1,6 @@
 // ABOUTME: bUnit tests for EventCard component verifying layout rendering and field visibility.
 // ABOUTME: Tests settings-driven field show/hide across all three layout modes.
 
-using Explore.Blazor.Client.Models;
 using EventCardComponent = Explore.Blazor.Client.Pages.Events.Components.EventCard;
 
 namespace Explore.Blazor.Client.Tests.Components.Event;
@@ -142,5 +141,70 @@ public class EventCardTests : IDisposable
             .Add(x => x.Layout, LayoutMode.CompactGrid));
 
         await Assert.That(cut.Markup).Contains("event-card--CompactGrid");
+    }
+
+    [Test]
+    public async Task EventCard_RendersShareButton_WithAccessibleLabel()
+    {
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, CreateTestEvent())
+            .Add(x => x.Layout, LayoutMode.DetailedList)
+            .Add(x => x.OnShareRequested, EventCallback.Factory.Create<EventListDto>(this, _ => { })));
+
+        var shareButton = cut.Find("button[aria-label='Share event: Test Blazor Conference']");
+
+        await Assert.That(shareButton).IsNotNull();
+    }
+
+    [Test]
+    public async Task EventCard_ShareButton_InvokesShareCallbackWithoutSelectingCard()
+    {
+        var shareCount = 0;
+        var selectCount = 0;
+        EventListDto? sharedEvent = null;
+        var eventDto = CreateTestEvent();
+
+        var cut = _ctx.RenderMudComponent<EventCardComponent>(p => p
+            .Add(x => x.Event, eventDto)
+            .Add(x => x.Layout, LayoutMode.DetailedList)
+            .Add(x => x.OnClick, EventCallback.Factory.Create<EventListDto>(this, _ => selectCount++))
+            .Add(x => x.OnShareRequested, EventCallback.Factory.Create<EventListDto>(this, evt =>
+            {
+                shareCount++;
+                sharedEvent = evt;
+            })));
+
+        cut.Find("button[aria-label='Share event: Test Blazor Conference']").Click();
+
+        await Assert.That(shareCount).IsEqualTo(1);
+        await Assert.That(selectCount).IsEqualTo(0);
+        await Assert.That(sharedEvent).IsSameReferenceAs(eventDto);
+    }
+
+    [Test]
+    public async Task EventDetail_SourceIncludesVisibleShareAction()
+    {
+        var eventDetailPath = FindSourceFilePath("Explore.Blazor.Client", "Pages", "Events", "EventDetail.razor");
+        var source = await File.ReadAllTextAsync(eventDetailPath);
+
+        await Assert.That(source).Contains("Share Event");
+        await Assert.That(source).Contains("ShareEventAsync");
+    }
+
+    private static string FindSourceFilePath(params string[] relativeSegments)
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            var candidate = Path.Combine([current.FullName, .. relativeSegments]);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new FileNotFoundException($"Could not locate source file: {Path.Combine(relativeSegments)}");
     }
 }

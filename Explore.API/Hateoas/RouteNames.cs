@@ -6,6 +6,12 @@ namespace Explore.API.Hateoas;
 /// </summary>
 public static class RouteNames
 {
+    #region SEO Routes
+
+    public const string GetSitemap = "GetSitemap";
+
+    #endregion
+
     #region Organization Routes
 
     public const string GetOrganizations = "GetOrganizations";
@@ -24,6 +30,7 @@ public static class RouteNames
 
     public const string GetEvents = "GetEvents";
     public const string GetEventById = "GetEventById";
+    public const string GetEventCalendar = "GetEventCalendar";
     public const string GetMyEvents = "GetMyEvents";
     public const string CreateEvent = "CreateEvent";
     public const string CreateEventWithSessions = "CreateEventWithSessions";

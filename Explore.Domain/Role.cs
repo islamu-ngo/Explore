@@ -1,4 +1,4 @@
-// ABOUTME: Unified role entity representing all role types across Platform, Tenant, and Organization scopes.
+// ABOUTME: Unified role entity representing all role types across Platform, Tenant, Organization, Group, and Event scopes.
 // ABOUTME: Replaces legacy OrganizationRole and TenantAdministratorRole; PlatformUserRole links users to platform roles.
 
 using System;
@@ -16,7 +16,7 @@ public class Role
     public string? Description { get; set; }
 
     /// <summary>
-    /// The scope at which this role applies: Platform, Tenant, or Organization.
+    /// The scope at which this role applies: Platform, Tenant, Organization, Group, or Event.
     /// </summary>
     public RoleScopeEnum Scope { get; set; }
 

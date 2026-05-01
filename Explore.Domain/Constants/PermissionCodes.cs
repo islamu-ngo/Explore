@@ -14,6 +14,28 @@ public static class PermissionCodes
     public const string EventUpdate = "event:update";
     public const string EventDelete = "event:delete";
     public const string EventPublish = "event:publish";
+    public const string EventManageTeam = "event:manage-team";
+    public const string EventManageOwner = "event:manage-owner";
+    public const string EventTransferOwnership = "event:transfer-ownership";
+    public const string EventManageFinance = "event:manage-finance";
+
+    // ===== Event Day =====
+    public const string EventDayCreate = "event_day:create";
+    public const string EventDayUpdate = "event_day:update";
+    public const string EventDayDelete = "event_day:delete";
+
+    // ===== Event Agenda Item =====
+    public const string EventAgendaItemCreate = "event_agenda_item:create";
+    public const string EventAgendaItemUpdate = "event_agenda_item:update";
+    public const string EventAgendaItemDelete = "event_agenda_item:delete";
+
+    // ===== Event Registration =====
+    public const string EventRegistrationView = "event_registration:view";
+    public const string EventRegistrationManage = "event_registration:manage";
+
+    // ===== Event Check-in =====
+    public const string EventCheckInView = "event_check_in:view";
+    public const string EventCheckInManage = "event_check_in:manage";
 
     // ===== Organization =====
     public const string OrganizationManage = "organization:manage";
