@@ -10,10 +10,16 @@ Configured mode values:
 - `SingleTenant`
 - `MultiTenant`
 
-Sources used at runtime:
+First-run onboarding source:
 
-1. `SystemSetting` key `deployment.mode` (when DB is available),
-2. fallback `DeploymentSettings.Mode` from static configuration.
+- API configuration key `Deployment:Mode`, normally populated from Infisical `/api` secret `DEPLOYMENT_MODE`.
+- Use `DEPLOYMENT_MODE=multi_tenant` to show multi-tenant onboarding.
+- If `DEPLOYMENT_MODE` is absent, onboarding shows single-tenant setup only.
+
+Runtime source after onboarding:
+
+1. persisted bootstrap/system setting selected during onboarding,
+2. later instance-admin changes to `deployment.mode`.
 
 ## Single-Tenant Mode Behavior
 
@@ -59,6 +65,8 @@ Mode behavior affects:
 - endpoint visibility,
 - admin UX paths,
 - effective policy/delegation paths in tenant settings.
+
+Instance administrators can switch from single-tenant to multi-tenant at runtime. They can switch from multi-tenant back to single-tenant only when one or fewer active tenants remain.
 
 ## Related
 

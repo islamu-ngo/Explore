@@ -41,6 +41,7 @@ Refresh behavior binds from `SecretRefresh` and runs via hosted `SecretRefreshSe
 
 `Explore.API.Extensions.ConfigurationExtensions` maps external secret names to canonical keys, including:
 
+- `DEPLOYMENT_MODE` (Infisical `/api`) -> `Deployment:Mode` (`single_tenant`/`multi_tenant` normalized to `SingleTenant`/`MultiTenant`)
 - `KEYCLOAK_ENDPOINT` (Infisical `/keycloak`) -> `Keycloak:Authority` (via base URL + realm)
 - keycloak realm/base URL values -> `Keycloak:Authority`, `Keycloak:MetadataAddress`, `Keycloak:Audience`
 - S3 integration values -> `S3Settings:*`
@@ -170,10 +171,12 @@ Cache behavior:
 
 Static deployment config is bound from `Deployment` section (`DeploymentSettings`):
 
-- `Mode`: `SingleTenant` or `MultiTenant` (default `MultiTenant`)
+- `Mode`: `SingleTenant` or `MultiTenant` (default `SingleTenant`)
 - `DefaultTenantId`
 - `HidePlatformAdminInSingleTenant` (default `true`)
 - `DefaultTenantSubdomain`
+
+First-run onboarding mode is controlled only by API configuration. Set `DEPLOYMENT_MODE=multi_tenant` in the Infisical `/api` folder to show the multi-tenant onboarding flow. If `DEPLOYMENT_MODE` is absent, onboarding is single-tenant only.
 
 ## Reverse Proxy Trust Configuration
 
@@ -191,7 +194,9 @@ Important behavior:
 
 Runtime nuance:
 
-- `TenantContext` can override static mode using DB key `deployment.mode` when available.
+- Before onboarding completes, tenant resolution uses a single-tenant fallback so setup endpoints remain reachable.
+- Onboarding persists the configured API deployment mode into the database.
+- After onboarding, runtime mode comes from the persisted database setting and instance administrators may switch it at runtime, including reverting to single-tenant only when one active tenant remains.
 
 ## Localization / TMS Settings (Governance)
 

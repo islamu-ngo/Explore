@@ -3,7 +3,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 # EAV Custom Properties - Task Checklist
 
-**Last Updated: 2026-04-30 (Session 6 — Phase 9.11 NSwag regen verified)**
+**Last Updated: 2026-05-02 (100/100 hardening checklist added after implementation-reality review)**
 
 ---
 
@@ -20,8 +20,9 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 - Phase 9.6A — Session blueprint preview: ⏳ PENDING
 - Phase 9.10 — Org/Group cleanup: ⏳ PENDING
 - Phase 9.11 — NSwag regen: ✅ CLOSED (swagger snapshot + generated client refreshed; client build/regeneration succeeded; client tests 909 total / 908 passed / 1 known skipped)
+- Phase 8.5.13 — Projection updater Prometheus metrics: ✅ CLOSED (`Explore.Projections` inline update + dirty-scope skip counters, event/session updater wiring, API/application/architecture verification passed)
 
-**Build state**: Phase 9.11 generated-client build ✅ on 2026-04-30. Full-solution Release build currently fails outside this phase on unrelated existing analyzer/package issues plus a transient locked client PDB during static-web-assets fingerprinting.
+**Build state**: Phase 9.11 generated-client build ✅ on 2026-04-30. Phase 8.5.13 API Release build and persistence integration test project Release build ✅ on 2026-05-02. Full-solution Release build currently fails outside these slices on unrelated existing analyzer/package issues plus a transient locked client PDB during static-web-assets fingerprinting.
 
 **Client test state**: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped on 2026-04-30.
 
@@ -29,7 +30,15 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 **Orphan to delete**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs`
 
-**Next recommended implementation slice**: Phase 11 + 10.0 architecture/API roundtrip tests or Phase 9.6/9.6A preview admin overviews. Phase 9.4A is closed for CreateEvent's new-session drawer; EventEdit remains intentionally out of scope until the API exposes the parent event template identity on event read/update DTOs.
+**Next recommended implementation slice**: Phase 12.1 + 12.2. The system is now majorly implemented; the fastest path to 100/100 is shared runtime value validation plus public exposure hardening, then Docker/Testcontainers certification. Phase 9.6/9.6A preview admin overviews remain useful but lower priority.
+
+**100/100 hardening focus (2026-05-02):**
+- runtime value writes must validate against effective definition metadata, not only DTO shape;
+- public/anonymous custom-property reads must enforce exposure ceiling server-side;
+- option updates must preserve semantic identity and retire instead of hard-delete when values exist;
+- projection normalized values and `Exists` filters must be exposure-safe and tracking-independent;
+- concurrency stamps must roundtrip through API/client write flows;
+- a product ADR must decide whether "full data model customization" means custom fields only or a future runtime schema engine.
 
 ---
 
@@ -63,7 +72,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 - Phase 7: Remove stale `MetadataJson` / JSONB coupling refs
 - Phase 9.x (cleanup): Blazor definition governance UI polish
 - Phase 11 + 10.0: Architecture + API roundtrip tests
-- Phase 8.5.13: Prometheus metrics for projection
+- Phase 8.5.13: Prometheus metrics for projection ✅ CLOSED 2026-05-02
 
 ---
 
@@ -521,7 +530,7 @@ OUT of scope:
   - [x] **8.5.10** Authorization via `[Authorize]` on all endpoints + `[AuthorizeResource]` on CQRS commands
   - [x] **8.5.11** Rate limiting via `write` policy for POST; `authenticated` for GET
   - [x] **8.5.12** Request timeout `Complex` (60s) for rebuild/drain; `Lookup` (10s) for status/dirty-scopes/governance-report queries
-  - [ ] **8.5.13** Prometheus metrics — deferred to D2 operability follow-up
+  - [x] **8.5.13** Prometheus metrics — updater-level inline update and dirty-scope skip counters exposed via `Explore.Projections` ✅ 2026-05-02
   - [x] **8.5.14** **Operator runbook in `docs/OPERATIONS.md`** — full section covering inspection, recovery, concurrency, hard limits, governance ✅ 2026-04-12
 - [ ] **8.6** Reconcile `EventController.cs` and related API contracts with template-aware event creation and remove any stale metadata query assumptions (**Milestone B follow-up**)
   - [ ] **8.6.1** Confirm `POST /events` accepts `TemplateId` in request body
@@ -723,6 +732,57 @@ OUT of scope:
   - [ ] **11.10B.1** `docs/API.md` - new projection admin + template sync endpoints
   - [ ] **11.10B.2** `docs/SECURITY.md` - new authorization policies
   - [ ] **11.10B.3** `docs/TROUBLESHOOTING.md` - projection rebuild playbook + sync conflict resolution
+
+---
+
+## Phase 12: 100/100 Hardening And Product-Boundary Closure ⏳ REQUIRED
+
+- [ ] **12.1** Build shared runtime value validator for shared/event/session custom-property values
+  - [ ] **12.1.1** Validate `PropertyType` shape and exactly-one typed value channel
+  - [ ] **12.1.2** Validate text/url min/max/regex/scheme constraints
+  - [ ] **12.1.3** Validate number and datetime ranges
+  - [ ] **12.1.4** Validate option membership, tenant scope, and active option state
+  - [ ] **12.1.5** Validate requiredness at publish/export/sync completeness boundaries
+  - [ ] **12.1.6** Replace handler-local partial checks with the shared validator
+  - [ ] **12.1.7** Add event/session/shared unit tests for all success/failure branches
+- [ ] **12.2** Harden public exposure and anonymous reads
+  - [ ] **12.2.1** Audit all `AllowAnonymous` custom-property endpoints
+  - [ ] **12.2.2** Apply server-side exposure ceiling to definitions/options/values/projections/facets
+  - [ ] **12.2.3** Make public `Exists`/search/filter behavior exposure-safe
+  - [ ] **12.2.4** Add API integration tests proving internal data cannot be observed anonymously
+- [ ] **12.3** Replace destructive option replacement with semantic diff
+  - [ ] **12.3.1** Match options by normalized `Namespace + Key`
+  - [ ] **12.3.2** Preserve option IDs for unchanged machine identity
+  - [ ] **12.3.3** Retire missing options when historical values exist
+  - [ ] **12.3.4** Hard-delete only purge-safe no-history options
+  - [ ] **12.3.5** Add tests for display rename, sort change, retirement, and sync update survival
+- [ ] **12.4** Complete concurrency-stamp roundtrip
+  - [ ] **12.4.1** Add stamps to mutable read DTOs
+  - [ ] **12.4.2** Require stamp or `If-Match` on mutable update endpoints
+  - [ ] **12.4.3** Preserve stamps through generated client and Blazor editors
+  - [ ] **12.4.4** Add missing-stamp/stale-stamp/success tests
+- [ ] **12.5** Projection correctness perfection pass
+  - [ ] **12.5.1** Compute option `NormalizedValue` from explicit DB option lookup/include
+  - [ ] **12.5.2** Decide and enforce projection row relevance rules
+  - [ ] **12.5.3** Make `Exists` filters exposure/governance safe
+  - [ ] **12.5.4** Add event/session Testcontainers parity proofs
+- [ ] **12.6** Soft delete, retirement, and purge policy
+  - [ ] **12.6.1** Normal delete retires/soft-deletes when dependents exist
+  - [ ] **12.6.2** Explicit purge command proves no dependent history
+  - [ ] **12.6.3** Audit retirement and purge with operator/reason/dependent-count summary
+  - [ ] **12.6.4** Integration tests prove historical reads after retirement
+- [ ] **12.7** Quota completion sweep
+  - [ ] **12.7.1** Verify every quota in `Hard Limits And Quotas` has an enforcing handler/service
+  - [ ] **12.7.2** Add `quota - 1`, `quota`, `quota + 1` boundary tests
+  - [ ] **12.7.3** Normalize `quota_exceeded` error shape
+- [ ] **12.8** Docker-gated end-to-end certification
+  - [ ] **12.8.1** Event template → runtime → value → projection → discovery → aggregate roundtrip
+  - [ ] **12.8.2** Session blueprint → runtime → value → projection → discovery → aggregate roundtrip
+  - [ ] **12.8.3** Tenant isolation, exposure ceilings, dirty-scope recovery, sync conflicts, retirement reads
+- [ ] **12.9** Runtime schema engine product-boundary ADR
+  - [ ] **12.9.1** Decide whether scope is "custom fields on existing resources"
+  - [ ] **12.9.2** If yes, mark EAV complete after 12.1-12.8
+  - [ ] **12.9.3** If no, create a separate runtime schema engine plan for user-defined entities, relationships, constraints, formulas, migrations, and authorization
 
 ## Milestone Gates
 

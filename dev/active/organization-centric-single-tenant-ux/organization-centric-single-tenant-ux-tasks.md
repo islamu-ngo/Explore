@@ -3,7 +3,7 @@
 
 # Organization-Centric Single-Tenant UX - Task Checklist
 
-Last Updated: 2026-04-30
+Last Updated: 2026-05-02
 
 ## Phase 0: Planning and Evidence ✅ COMPLETE
 
@@ -33,21 +33,44 @@ Last Updated: 2026-04-30
   - **Acceptance:** Plan reflects supported Blazor component composition, MudBlazor navigation/filter components, and EF query/index guidance.
   - **Skills:** agentic-research, blazor-ui-conventions, dotnet-efcore-guidelines
 
-## Phase 1: Public Experience Vocabulary and Guardrails ⏳ NOT STARTED
 
-- [ ] T1.1 Define public-experience posture values.
+## Phase 0.5: Convention-First Onboarding Compatibility Gate ⏳ NOT STARTED
+
+- [ ] T0.5.1 Treat `convention-first-single-tenant-onboarding` as the governing first-run flow.
   - **Priority:** High
   - **Effort:** S
   - **Dependencies:** Phase 0
-  - **Acceptance:** DiscoveryCentric and OrganizationCentric can be represented without adding a domain scope entity; documentation/comments state `Organization` is an in-tenant actor-backed publisher/organizer, not the tenant.
+  - **Acceptance:** Organization-centric implementation does not require deployment-mode choice, first-host selection, primary organization selection, `/onboarding/tenant`, or tenant language to complete normal SingleTenant launch.
+  - **Skills:** clean-architecture-rules, blazor-ui-conventions, auth-patterns
+- [ ] T0.5.2 Gate organization-centric UI/editor work behind convention-first prerequisites.
+  - **Priority:** High
+  - **Effort:** S
+  - **Dependencies:** convention-first plan Phase 0/1/2
+  - **Acceptance:** Route mismatch is fixed, SingleTenant `/onboarding/tenant` is hidden/redirected, deployment mode is operator-controlled by `DEPLOYMENT_MODE=multi_tenant`, and Site Profile/smart defaults/preflight are defined before organization-centric first-run UI is added.
+  - **Skills:** clean-architecture-rules, blazor-bff-patterns
+- [ ] T0.5.3 Keep DiscoveryCentric as the launch default.
+  - **Priority:** High
+  - **Effort:** S
+  - **Dependencies:** T1.1, T1.2
+  - **Acceptance:** `PrimaryOrganizationId` and OrganizationCentric posture are optional advanced/post-launch configuration; absent primary organization yields safe DiscoveryCentric or `PrimaryOrganizationState.NotConfigured` behavior without blocking launch.
+  - **Skills:** cqrs-mediatr-guidelines
+
+## Phase 1: Public Experience Vocabulary and Guardrails 🚧 IN PROGRESS
+
+- [x] T1.1 Define public-experience posture values.
+  - **Priority:** High
+  - **Effort:** S
+  - **Dependencies:** Phase 0
+  - **Acceptance:** DiscoveryCentric and OrganizationCentric can be represented without adding a domain scope entity; DiscoveryCentric remains safe as the convention-first launch default; OrganizationCentric is optional advanced/post-launch posture; documentation/comments state `Organization` is an in-tenant actor-backed publisher/organizer, not the tenant.
   - **Skills:** clean-architecture-rules
-- [ ] T1.2 Add setting metadata for event catalog label, primary organization, bounded CTAs/home blocks, and typed event-section presets.
+- [x] T1.2 Add setting metadata for event catalog label, primary organization, bounded CTAs/home blocks, and typed event-section presets.
   - **Priority:** High
   - **Effort:** M
   - **Dependencies:** T1.1
   - **Acceptance:** Anonymous public shell settings resolve from Tenant + Instance public settings plus tenant-local referenced content only; user/group-specific setting scopes do not affect anonymous home/nav/catalog/footer output; presets are versioned config records mapped to DTOs, not raw query strings or Blazor-facing DTOs as authoritative config.
+  - **Progress 2026-05-01:** Added PublicExperience setting metadata for mode, event catalog label, optional primary organization id, versioned home blocks, CTAs, and event-section presets. Added Application-owned config records for home blocks, CTAs, and typed event-section preset owner/filter/date/custom-property criteria; verified registry coverage, conservative mode values, instance-to-tenant scoping, versioned empty JSON defaults, and no workspace/subtenant/scope-id metadata drift.
   - **Skills:** clean-architecture-rules, cqrs-mediatr-guidelines
-- [ ] T1.3 Add guardrail documentation/comments explaining segmentation is filter/category/tag based.
+- [x] T1.3 Add guardrail documentation/comments explaining segmentation is filter/category/tag based.
   - **Priority:** Medium
   - **Effort:** S
   - **Dependencies:** T1.1
@@ -58,9 +81,10 @@ Last Updated: 2026-04-30
   - **Effort:** M
   - **Dependencies:** T1.1, T1.2
   - **Acceptance:** Context-aware tests fail on new forbidden Domain entity files, migration tables, `WorkspaceId`/`OrganizerScopeId` on `Event`, `SubTenantId` on tenant-scoped entities, `ScopeId` in event ownership paths, and public-experience code that treats `OrganizationId` as tenant resolver input; tests do not fail on legitimate existing settings, authorization, notification, registration, projection, secret, or governance scope vocabulary; tests/comments catch Domain-layer business defaults for public posture, presets, event visibility posture, and import convenience.
+  - **Progress 2026-05-01:** Added exact-name architecture bans for forbidden organization-centric scope concepts, extended event-list ownership contract guardrails, and added Domain `Event` shape guardrails for workspace/organizer/subtenant ownership drift. Remaining acceptance includes migration-table and tenant-resolver-specific negatives plus broader Domain default drift checks.
   - **Skills:** clean-architecture-rules, dotnet-efcore-guidelines
 
-## Phase 2: Backend Contract and Actor-Backed Filtering ⏳ NOT STARTED
+## Phase 2: Backend Contract and Actor-Backed Filtering 🚧 IN PROGRESS
 
 - [ ] T2.1 Introduce the typed `PublicExperienceShellDto` read model.
   - **Priority:** High
@@ -74,7 +98,7 @@ Last Updated: 2026-04-30
   - **Dependencies:** T1.2
   - **Acceptance:** Versioned preset config records can express actor ownership, organization/group publisher ownership via actor resolution, category/tag/audience/event-type/format/date/custom-property filters; generated query URLs are shareable but not authoritative persistence; public DTOs are generated from validated Application models; no workspace selector or WorkspaceId exists.
   - **Skills:** cqrs-mediatr-guidelines
-- [ ] T2.3 Wire actor-backed ownership filtering into the public event-list request/API flow.
+- [x] T2.3 Wire actor-backed ownership filtering into the public event-list request/API flow.
   - **Priority:** High
   - **Effort:** M
   - **Dependencies:** T1.1
@@ -180,13 +204,13 @@ Last Updated: 2026-04-30
   - **Acceptance:** OrganizationCentric home has one visible h1; skip link/main/header/nav/live regions remain intact; presets have accessible names and keyboard access; active filters are visually clear and announced where appropriate; empty states distinguish no events, no matches, and missing primary organization; focus-visible and RTL/logical CSS are preserved.
   - **Skills:** blazor-ui-conventions
 
-## Phase 5b: Admin/Onboarding Editor After Read-Path Proof ⏳ NOT STARTED
+## Phase 5b: Optional Admin/Post-Launch Editor After Convention-First Baseline ⏳ NOT STARTED
 
-- [ ] T5b.1 Add or extend admin/onboarding write flow for posture, primary organization, and typed presets.
+- [ ] T5b.1 Add or extend optional admin/post-launch write flow for posture, primary organization, and typed presets.
   - **Priority:** High
   - **Effort:** M
-  - **Dependencies:** T2.1, T2.3, T3.2, T5.1-T5.6
-  - **Acceptance:** Implemented only after backend/read-path proof; writes are authorized, resource scoped, and tenant-local; invalid/deleted/hidden/cross-tenant references are rejected or omitted through Application; no browser token exposure; versioned config records are persisted, not display DTOs or raw query strings; editor language does not introduce workspace/scope concepts.
+  - **Dependencies:** convention-first onboarding Phase 0/1/2, T2.1, T2.3, T3.2, T5.1-T5.6
+  - **Acceptance:** Implemented only after convention-first onboarding baseline and backend/read-path proof; writes are authorized, resource scoped, and tenant-local; invalid/deleted/hidden/cross-tenant references are rejected or omitted through Application; no browser token exposure; versioned config records are persisted, not display DTOs or raw query strings; editor language does not introduce workspace/scope concepts; the standard SingleTenant wizard remains completable without this editor.
   - **Skills:** auth-patterns, blazor-ui-conventions, cqrs-mediatr-guidelines
 
 ## Phase 6: Testing and Verification ⏳ NOT STARTED
@@ -232,9 +256,10 @@ Last Updated: 2026-04-30
 
 1. Read `organization-centric-single-tenant-ux-context.md`.
 2. Start implementation at Phase 1.
-3. First code milestone: wire actor-backed `/events` ownership filtering and tests before curated UI/admin editors.
-4. Build the typed, versioned `PublicExperienceShellDto` and versioned preset config pipeline before Blazor UI work.
-5. Anonymous public shell resolution must be tenant/instance public settings + tenant-local referenced content only.
-6. Keep every implementation change aligned to existing Tenant/Organization/Group/Actor/Event/filtering architecture: Organization is a publisher/organizer actor inside a tenant, not the tenant.
-7. Keep defaults and import tolerance in Application/validators or EF persistence configuration where appropriate; do not add Domain business defaults.
-8. Do not introduce a new operational scope model.
+3. Apply the convention-first compatibility gate before organization-centric first-run UI: no deployment-mode picker, no mandatory first-host/primary-organization choice, no SingleTenant tenant-onboarding path, and DiscoveryCentric launch remains valid.
+4. Actor-backed `/events` ownership filtering and tests are already implemented; preserve tenant validation and use it as the ownership foundation for organization-centric catalogs.
+5. Build the typed, versioned `PublicExperienceShellDto` and versioned preset config pipeline before Blazor UI work.
+6. Anonymous public shell resolution must be tenant/instance public settings + tenant-local referenced content only.
+7. Keep every implementation change aligned to existing Tenant/Organization/Group/Actor/Event/filtering architecture: Organization is a publisher/organizer actor inside a tenant, not the tenant.
+8. Keep defaults and import tolerance in Application/validators or EF persistence configuration where appropriate; do not add Domain business defaults.
+9. Do not introduce a new operational scope model.

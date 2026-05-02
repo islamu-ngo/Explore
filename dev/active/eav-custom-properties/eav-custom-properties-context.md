@@ -3,7 +3,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 # EAV Custom Properties - Context
 
-**Last Updated: 2026-04-30 (Phase 11.5 local exposure/export/moderation coverage added)**
+**Last Updated: 2026-05-02 (Phase 8.5.13 projection updater Prometheus metrics completed)**
 
 ---
 
@@ -54,6 +54,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 - Phase 11.2 local identity tests: domain normalization test and shared-definition display-name rename handler test passed with targeted TUnit `--treenode-filter` runs on 2026-04-30.
 - Phase 11.3 local multi-value semantics: event/session runtime value handlers now reject invalid single-value second rows and duplicate normalized replacement/upsert values; `Event.Application.UnitTests` passed 1021/1021 on 2026-04-30 after Oracle gap fixes.
 - Phase 11.5 local flag coverage: governance DTOs and aggregate-view facets now have tests for exposure/search/filter/export/moderation/analytics flag pass-through; C# LSP/diff checks are clean and `Event.Application.UnitTests` passes 1029/1029.
+- Phase 8.5.13 projection updater observability: `ProjectionMetrics` now emits `explore.projections.inline_updates_total` and `explore.projections.dirty_scope_skips_total` through the existing `Explore.Projections` meter; event and event-session projection updaters record value/definition inline updates and rebuild-lock dirty-scope deferrals. Verification on 2026-05-02: API Release build ✅, persistence integration test project Release build ✅, `Event.Application.UnitTests` 1044/1044 ✅, `Event.Architecture.Tests` 135/135 ✅.
 - Client tests: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped on 2026-04-30.
 - Full solution build: attempted via `rtk dotnet build --configuration Release --verbosity quiet`; currently fails outside Phase 9.11 on unrelated existing analyzer/package issues plus a transient locked `Explore.Blazor.Client.pdb` during static-web-assets fingerprinting.
 
@@ -109,13 +110,12 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 ### ⏳ Other Remaining Work
 - Phase 11 local-only tests: retired historical values
 - Phase 11 Docker-gated API roundtrips: `11.9`, `11.9B`
-- Phase 8.5.13: Prometheus metrics for projection updater
 - Gap 3: Integration tests (E Phase 4 + F Phase 3 — needs Docker)
 - Final verification: full build + per-project test sweep once unrelated build/analyzer/package blockers and Docker-dependent integration constraints are addressed
 
 ### Git State
 - 5 prior commits on develop from earlier sessions (eda957fa, 1a7f0607, b20def51, be0e08b3, aee1fd55)
-- **Uncommitted**: Phase 9.2 + 9.3 files (all the Blazor CRUD pages + services + models), Phase 9.4/9.5 UI/runtime work, Phase 9.11 generated OpenAPI/client files, Phase 10.0 architecture/doc updates, Phase 11.2/11.3 unit test and handler updates, and dev-doc updates
+- **Uncommitted**: Phase 9.2 + 9.3 files (all the Blazor CRUD pages + services + models), Phase 9.4/9.5 UI/runtime work, Phase 9.11 generated OpenAPI/client files, Phase 10.0 architecture/doc updates, Phase 11.2/11.3 unit test and handler updates, Phase 8.5.13 metrics wiring/docs (`ProjectionMetrics`, event/session projection updaters, updater integration-test helper), and dev-doc updates
 - **Uncommitted broken**: Messaging infrastructure files (NOT EAV)
 - **Orphan**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs` (untracked, can delete)
 - **Stash@{0}**: still exists, safe to drop
@@ -284,7 +284,7 @@ D2 Operability is functionally complete: CQRS layer, admin API endpoints, HATEOA
 - `Explore.Domain/Settings/Definitions/CustomPropertyQuotaSettingDefinitions.cs` — `projection_discovery_enabled` is already defined
 
 **Remaining D2 follow-ups (lower priority, not blocking D3):**
-- Task 8.5.13: Prometheus metrics (deferred — requires infrastructure wiring)
+- Task 8.5.13: Prometheus metrics ✅ 2026-05-02 — `explore.projections.inline_updates_total` and `explore.projections.dirty_scope_skips_total` added for updater observability via existing `Explore.Projections` meter
 - Task 8.7: Full Cerbos policy files for 4-policy taxonomy (requires Cerbos config coordination)
 - Task 9.7: Blazor governance UI (Phase 9, deferred)
 

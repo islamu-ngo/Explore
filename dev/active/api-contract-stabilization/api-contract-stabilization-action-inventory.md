@@ -5,19 +5,19 @@
 
 # API Contract Action Inventory
 
-**Generated:** 2026-04-30 17:58:18Z (UTC)
+**Generated:** 2026-05-01 18:40:11Z (UTC)
 **Source:** `/openapi/event-api.json`
 **Governed by:** [docs/GOVERNANCE.md#api-contract-rules](../../../docs/GOVERNANCE.md#api-contract-rules)
 
 ## Summary
 
-- Total paths: **253**
-- Total operations: **379**
+- Total paths: **254**
+- Total operations: **380**
 - Operations missing `operationId`: **0**
 - Operation IDs with placeholder fallback pattern (ends in digit or `\dAsync`): **0**
 - URL-segment-versioned paths (`^/api/v\d`, banned by governance): **0**
 - Operations missing `x-endpoint-class` extension: **0**
-- Classification breakdown: `Admin`=6, `Authenticated`=251, `Public`=122
+- Classification breakdown: `Admin`=6, `Authenticated`=251, `Public`=123
 
 ## Operations
 
@@ -341,67 +341,68 @@
 | 316 | `/api/syncstate/{id}` | `GET` | `GetSyncStateById` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
 | 317 | `/api/syncstate/{id}` | `PUT` | `UpdateSyncState` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
 | 318 | `/api/syncstate/{id}` | `DELETE` | `DeleteSyncState` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
-| 319 | `/api/tag` | `GET` | `GetTags` | Get all Tags | Tag | _(Phase 1.4)_ | `Public` | no |
-| 320 | `/api/tag` | `POST` | `CreateTag` | Create Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
-| 321 | `/api/tag/{id}` | `GET` | `GetTagById` | Get Tag Details | Tag | _(Phase 1.4)_ | `Public` | no |
-| 322 | `/api/tag/{id}` | `PUT` | `UpdateTag` | Update Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
-| 323 | `/api/tag/{id}` | `DELETE` | `DeleteTag` | Delete Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
-| 324 | `/api/tagtype` | `GET` | `GetTagTypes` | _(none)_ | TagType | _(Phase 1.4)_ | `Public` | no |
-| 325 | `/api/tagtype/with-tags` | `GET` | `GetTagTypesWithTags` | Get Tag Types with Tags | TagType | _(Phase 1.4)_ | `Public` | no |
-| 326 | `/api/tagtype/{id}` | `GET` | `GetTagTypeById` | _(none)_ | TagType | _(Phase 1.4)_ | `Public` | no |
-| 327 | `/api/tenant` | `GET` | `GetTenants` | Get all Tenants | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 328 | `/api/tenant` | `POST` | `CreateTenant` | Create new Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 329 | `/api/tenant/count` | `GET` | `GetActiveTenantCount` | Get Active Tenant Count | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 330 | `/api/tenant/navigation` | `GET` | `GetTenantNavigationLinks` | Get Tenant Navigation Links | Tenant | _(Phase 1.4)_ | `Public` | no |
-| 331 | `/api/tenant/navigation` | `POST` | `CreateTenantNavigationLink` | Create Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 332 | `/api/tenant/navigation/reorder` | `PUT` | `ReorderTenantNavigationLinks` | Reorder Tenant Navigation Links | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 333 | `/api/tenant/navigation/{id}` | `PUT` | `UpdateTenantNavigationLink` | Update Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 334 | `/api/tenant/navigation/{id}` | `DELETE` | `DeleteTenantNavigationLink` | Delete Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 335 | `/api/tenant/{id}` | `GET` | `GetTenantById` | Get Tenant by ID | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 336 | `/api/tenant/{id}` | `PUT` | `UpdateTenant` | Update Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 337 | `/api/tenant/{id}` | `DELETE` | `DeleteTenant` | Delete Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 338 | `/api/tenantmember` | `GET` | `GetTenantMembers` | Get all Tenant Members | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 339 | `/api/tenantmember` | `POST` | `CreateTenantMember` | Create new Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 340 | `/api/tenantmember/{id}` | `GET` | `GetTenantMemberById` | Get Tenant Member by ID | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 341 | `/api/tenantmember/{id}` | `PUT` | `UpdateTenantMember` | Update Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 342 | `/api/tenantmember/{id}` | `DELETE` | `DeleteTenantMember` | Delete Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 343 | `/api/tenantonboarding/complete` | `POST` | `CompleteTenantOnboarding` | Complete Tenant Onboarding | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
-| 344 | `/api/tenantonboarding/settings` | `GET` | `GetTenantOnboardingPolicySettings` | Get Tenant Policy Settings | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
-| 345 | `/api/tenantonboarding/settings` | `PUT` | `UpdateTenantOnboardingPolicySettings` | Update Tenant Policy Settings | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
-| 346 | `/api/tenantonboarding/status` | `GET` | `GetTenantOnboardingStatus` | Get Tenant Onboarding Status | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
-| 347 | `/api/tenantonboarding/steps` | `PUT` | `SaveTenantOnboardingStepProgress` | Save Tenant Onboarding Step Progress | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
-| 348 | `/api/translation/languages` | `GET` | `GetAvailableTranslationLanguages` | Get Available Languages | Translation | _(Phase 1.4)_ | `Public` | no |
-| 349 | `/api/translation/{languageCode}` | `GET` | `GetTranslationByLanguage` | Get Translations | Translation | _(Phase 1.4)_ | `Public` | no |
-| 350 | `/api/user` | `GET` | `GetCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 351 | `/api/user` | `PUT` | `UpdateCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 352 | `/api/user` | `DELETE` | `DeleteCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 353 | `/api/user/admin-authority` | `GET` | `GetCurrentUserAdminAuthority` | Get current user's admin authority | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 354 | `/api/user/appearance` | `GET` | `GetCurrentUserAppearancePreferences` | Get Resolved Appearance | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 355 | `/api/user/appearance/active-profile` | `PUT` | `setActiveAppearanceProfile` | Set Active Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 356 | `/api/user/appearance/generate-palette` | `GET` | `generateAppearancePalette` | Generate Palette From Colors | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 357 | `/api/user/appearance/mode` | `PUT` | `setAppearanceThemeMode` | Set Theme Mode | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 358 | `/api/user/appearance/presets` | `GET` | `GetAvailableThemes` | Get Available Presets | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 359 | `/api/user/appearance/profiles` | `GET` | `getUserAppearanceProfiles` | Get User Appearance Profiles | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 360 | `/api/user/appearance/profiles` | `POST` | `createCustomAppearanceProfile` | Create Custom Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 361 | `/api/user/appearance/profiles/from-preset/{presetId}` | `POST` | `clonePresetToProfile` | Clone Preset Into User Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 362 | `/api/user/appearance/profiles/{profileId}` | `PUT` | `updateAppearanceProfile` | Update User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 363 | `/api/user/appearance/profiles/{profileId}/archive` | `PUT` | `archiveAppearanceProfile` | Archive User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 364 | `/api/user/appearance/profiles/{profileId}/duplicate` | `POST` | `duplicateAppearanceProfile` | Duplicate User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 365 | `/api/user/sync` | `POST` | `SyncUser` | Sync user from identity provider | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 366 | `/api/user/{userId}/organizations` | `GET` | `GetUserOrganizations` | Get user's organizations | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 367 | `/api/userauthenticationtoken` | `GET` | `GetUserAuthenticationTokens` | Get all User Authentication Tokens | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 368 | `/api/userauthenticationtoken` | `POST` | `CreateUserAuthenticationToken` | Create new User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 369 | `/api/userauthenticationtoken/{id}` | `GET` | `GetUserAuthenticationTokenById` | Get User Authentication Token by ID | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 370 | `/api/userauthenticationtoken/{id}` | `PUT` | `UpdateUserAuthenticationToken` | Update User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 371 | `/api/userauthenticationtoken/{id}` | `DELETE` | `DeleteUserAuthenticationToken` | Delete User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 372 | `/api/userexternallogin` | `GET` | `GetUserExternalLogins` | Get all User External Logins | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 373 | `/api/userexternallogin` | `POST` | `CreateUserExternalLogin` | Create new User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 374 | `/api/userexternallogin/{id}` | `GET` | `GetUserExternalLoginById` | Get User External Login by ID | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 375 | `/api/userexternallogin/{id}` | `PUT` | `UpdateUserExternalLogin` | Update User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 376 | `/api/userexternallogin/{id}` | `DELETE` | `DeleteUserExternalLogin` | Delete User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 377 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | _(Phase 1.4)_ | `Public` | no |
-| 378 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | _(Phase 1.4)_ | `Public` | no |
-| 379 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | _(Phase 1.4)_ | `Public` | no |
+| 319 | `/api/system/onboarding-status` | `GET` | `GetSystemOnboardingStatus` | Get System Onboarding Status | System | _(Phase 1.4)_ | `Public` | no |
+| 320 | `/api/tag` | `GET` | `GetTags` | Get all Tags | Tag | _(Phase 1.4)_ | `Public` | no |
+| 321 | `/api/tag` | `POST` | `CreateTag` | Create Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
+| 322 | `/api/tag/{id}` | `GET` | `GetTagById` | Get Tag Details | Tag | _(Phase 1.4)_ | `Public` | no |
+| 323 | `/api/tag/{id}` | `PUT` | `UpdateTag` | Update Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
+| 324 | `/api/tag/{id}` | `DELETE` | `DeleteTag` | Delete Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
+| 325 | `/api/tagtype` | `GET` | `GetTagTypes` | _(none)_ | TagType | _(Phase 1.4)_ | `Public` | no |
+| 326 | `/api/tagtype/with-tags` | `GET` | `GetTagTypesWithTags` | Get Tag Types with Tags | TagType | _(Phase 1.4)_ | `Public` | no |
+| 327 | `/api/tagtype/{id}` | `GET` | `GetTagTypeById` | _(none)_ | TagType | _(Phase 1.4)_ | `Public` | no |
+| 328 | `/api/tenant` | `GET` | `GetTenants` | Get all Tenants | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 329 | `/api/tenant` | `POST` | `CreateTenant` | Create new Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 330 | `/api/tenant/count` | `GET` | `GetActiveTenantCount` | Get Active Tenant Count | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 331 | `/api/tenant/navigation` | `GET` | `GetTenantNavigationLinks` | Get Tenant Navigation Links | Tenant | _(Phase 1.4)_ | `Public` | no |
+| 332 | `/api/tenant/navigation` | `POST` | `CreateTenantNavigationLink` | Create Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 333 | `/api/tenant/navigation/reorder` | `PUT` | `ReorderTenantNavigationLinks` | Reorder Tenant Navigation Links | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 334 | `/api/tenant/navigation/{id}` | `PUT` | `UpdateTenantNavigationLink` | Update Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 335 | `/api/tenant/navigation/{id}` | `DELETE` | `DeleteTenantNavigationLink` | Delete Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 336 | `/api/tenant/{id}` | `GET` | `GetTenantById` | Get Tenant by ID | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 337 | `/api/tenant/{id}` | `PUT` | `UpdateTenant` | Update Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 338 | `/api/tenant/{id}` | `DELETE` | `DeleteTenant` | Delete Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 339 | `/api/tenantmember` | `GET` | `GetTenantMembers` | Get all Tenant Members | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 340 | `/api/tenantmember` | `POST` | `CreateTenantMember` | Create new Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 341 | `/api/tenantmember/{id}` | `GET` | `GetTenantMemberById` | Get Tenant Member by ID | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 342 | `/api/tenantmember/{id}` | `PUT` | `UpdateTenantMember` | Update Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 343 | `/api/tenantmember/{id}` | `DELETE` | `DeleteTenantMember` | Delete Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 344 | `/api/tenantonboarding/complete` | `POST` | `CompleteTenantOnboarding` | Complete Tenant Onboarding | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
+| 345 | `/api/tenantonboarding/settings` | `GET` | `GetTenantOnboardingPolicySettings` | Get Tenant Policy Settings | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
+| 346 | `/api/tenantonboarding/settings` | `PUT` | `UpdateTenantOnboardingPolicySettings` | Update Tenant Policy Settings | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
+| 347 | `/api/tenantonboarding/status` | `GET` | `GetTenantOnboardingStatus` | Get Tenant Onboarding Status | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
+| 348 | `/api/tenantonboarding/steps` | `PUT` | `SaveTenantOnboardingStepProgress` | Save Tenant Onboarding Step Progress | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
+| 349 | `/api/translation/languages` | `GET` | `GetAvailableTranslationLanguages` | Get Available Languages | Translation | _(Phase 1.4)_ | `Public` | no |
+| 350 | `/api/translation/{languageCode}` | `GET` | `GetTranslationByLanguage` | Get Translations | Translation | _(Phase 1.4)_ | `Public` | no |
+| 351 | `/api/user` | `GET` | `GetCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 352 | `/api/user` | `PUT` | `UpdateCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 353 | `/api/user` | `DELETE` | `DeleteCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 354 | `/api/user/admin-authority` | `GET` | `GetCurrentUserAdminAuthority` | Get current user's admin authority | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 355 | `/api/user/appearance` | `GET` | `GetCurrentUserAppearancePreferences` | Get Resolved Appearance | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 356 | `/api/user/appearance/active-profile` | `PUT` | `setActiveAppearanceProfile` | Set Active Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 357 | `/api/user/appearance/generate-palette` | `GET` | `generateAppearancePalette` | Generate Palette From Colors | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 358 | `/api/user/appearance/mode` | `PUT` | `setAppearanceThemeMode` | Set Theme Mode | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 359 | `/api/user/appearance/presets` | `GET` | `GetAvailableThemes` | Get Available Presets | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 360 | `/api/user/appearance/profiles` | `GET` | `getUserAppearanceProfiles` | Get User Appearance Profiles | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 361 | `/api/user/appearance/profiles` | `POST` | `createCustomAppearanceProfile` | Create Custom Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 362 | `/api/user/appearance/profiles/from-preset/{presetId}` | `POST` | `clonePresetToProfile` | Clone Preset Into User Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 363 | `/api/user/appearance/profiles/{profileId}` | `PUT` | `updateAppearanceProfile` | Update User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 364 | `/api/user/appearance/profiles/{profileId}/archive` | `PUT` | `archiveAppearanceProfile` | Archive User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 365 | `/api/user/appearance/profiles/{profileId}/duplicate` | `POST` | `duplicateAppearanceProfile` | Duplicate User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 366 | `/api/user/sync` | `POST` | `SyncUser` | Sync user from identity provider | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 367 | `/api/user/{userId}/organizations` | `GET` | `GetUserOrganizations` | Get user's organizations | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 368 | `/api/userauthenticationtoken` | `GET` | `GetUserAuthenticationTokens` | Get all User Authentication Tokens | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 369 | `/api/userauthenticationtoken` | `POST` | `CreateUserAuthenticationToken` | Create new User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 370 | `/api/userauthenticationtoken/{id}` | `GET` | `GetUserAuthenticationTokenById` | Get User Authentication Token by ID | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 371 | `/api/userauthenticationtoken/{id}` | `PUT` | `UpdateUserAuthenticationToken` | Update User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 372 | `/api/userauthenticationtoken/{id}` | `DELETE` | `DeleteUserAuthenticationToken` | Delete User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 373 | `/api/userexternallogin` | `GET` | `GetUserExternalLogins` | Get all User External Logins | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 374 | `/api/userexternallogin` | `POST` | `CreateUserExternalLogin` | Create new User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 375 | `/api/userexternallogin/{id}` | `GET` | `GetUserExternalLoginById` | Get User External Login by ID | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 376 | `/api/userexternallogin/{id}` | `PUT` | `UpdateUserExternalLogin` | Update User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 377 | `/api/userexternallogin/{id}` | `DELETE` | `DeleteUserExternalLogin` | Delete User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 378 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | _(Phase 1.4)_ | `Public` | no |
+| 379 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | _(Phase 1.4)_ | `Public` | no |
+| 380 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | _(Phase 1.4)_ | `Public` | no |
 
 ## Columns
 

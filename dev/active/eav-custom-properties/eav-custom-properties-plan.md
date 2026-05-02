@@ -3,7 +3,7 @@ ABOUTME: Treats EAV as the Layer 3 extension system only, with governed semantic
 
 # EAV Custom Properties - Implementation Plan
 
-**Last Updated: 2026-04-30 (Phase 9.11 NSwag regen verified; Milestones D/E/F plan remains locked)**
+**Last Updated: 2026-05-02 (implementation-reality review added; 100/100 completion delta locked)**
 
 ---
 
@@ -76,6 +76,78 @@ A senior-CTO architecture review graded the plan **Approve the direction. Tighte
 - **Repairability is first-class**: for every advanced mechanism an operator must be able to answer "what is broken / stale / rebuildable / source of truth / how do I recover." Every new entity, service, and endpoint in D/E/F must answer these questions in documentation before it exits its gate.
 
 The CTO review also explicitly validated several existing decisions: 3-layer separation, transactional live projection baseline, parent/child aggregate for Event/Session, Jira two-rule sync, state-based over event-sourced sync, normalized Layer 3 over JSONB, keyless-entity aggregate view over materialized view. Those stay exactly as they were.
+
+### Implementation-Reality Review - 100/100 Completion Delta (2026-05-02)
+
+The repo now implements most of this plan. The older milestone sections below remain valuable historical delivery context, but they must not be read as a fresh greenfield backlog. Current code already contains event/session runtime custom-property entities, templates, sync services, projection updaters, dirty scopes, projection status, governance report surfaces, aggregate-view DTO/repository pieces, Blazor CRUD/governance/runtime editors, and projection-consumption filters.
+
+The remaining work to reach a **100/100 implementation** is no longer "build the EAV system." It is to close the correctness, safety, operability, and product-boundary gaps that separate a strong implementation from a perfect runtime customization subsystem.
+
+#### Current scorecard
+
+| Area | Current status | 100/100 requirement |
+|---|---|---|
+| Layer model | Strong. Layer 1/2/3 separation is documented and mostly enforced. | Remove remaining ambiguity, especially legacy overlap such as Layer 1 `Event.MadhabId` vs Layer 2 `EventIslamicAspect.MadhabId`, or document migration/compatibility reason explicitly. |
+| Runtime definitions/options/values | Strong. Event and session scopes exist with typed columns, ordinals, options, templates, and provenance. | Enforce every definition rule on every value write and publish/read workflow, not just definition shape. |
+| Typed validation | Partially implemented. Definition validators are strong; value handlers mostly validate identity, ordinal, and duplicates. | Central runtime value validator must enforce `PropertyType`, exactly-one-value shape, option membership/active state, length/range/regex/url scheme, requiredness, and active-definition rules. |
+| Exposure/privacy | Partially implemented in aggregate/projection paths. Raw definition/value endpoints still need a hard exposure audit. | Anonymous/public reads must never leak internal definitions, values, options, or existence; every read path must apply caller exposure ceiling. |
+| Projection layer | Strong infrastructure exists: live updates, rebuilds, dirty scopes, status, admin endpoints, metrics. | Fix option normalized-value loading, projection relevance rules, exposure-safe `Exists`, and prove all with Docker/Testcontainers API + persistence tests. |
+| Sync/provenance | Strong service shape exists for event and session templates. | Preserve historical values and option semantics under rename/retire/reorder; prove stale business version and technical concurrency conflict paths separately. |
+| Option lifecycle | Risky. Some update paths replace option sets destructively. | Diff options by `Namespace + Key`, preserve IDs where semantic identity is unchanged, retire instead of hard-delete when values exist, and block destructive edits without explicit purge workflow. |
+| Deletion/retirement | Mixed. Entities support soft delete, but repositories still use hard `ExecuteDeleteAsync` in some Layer 3 paths. | Normal workflow retires/soft-deletes; hard delete only for explicit purge with no dependent historical state and audit trail. |
+| Concurrency | Entity tokens exist broadly, but update DTO/handler conflict UX is incomplete. | Expose `ConcurrencyStamp`/ETag-backed checks for every mutable admin/runtime write and map technical conflicts to consistent `409 concurrent_update`. |
+| Quotas | Quota resolver/settings exist in several paths. | Enforce every quota in all create/update/instantiation/sync/multi-value/rebuild/dirty-scope paths with boundary tests. |
+| UI | Strong Blazor surfaces exist. | Gate every mutation affordance through HAL links, expose validation/exposure errors inline, and make projection/sync recovery self-service. |
+| No-code modeling boundary | EAV supports custom fields, not arbitrary entity/relation modeling. | Product decision required: keep scope as "runtime custom fields" or introduce a separate runtime schema engine for user-defined aggregates/relationships. Do not pretend EAV alone is full data modeling. |
+
+#### Critical path to 100/100
+
+1. **Runtime value validation service**
+   - Add a shared application-layer service used by event, session, and shared org/group value writes.
+   - Validate value shape against `PropertyType`: exactly one typed value column or one option for option fields.
+   - Validate `Text`/`Url` length, regex, URL scheme, number range, datetime range, requiredness, active definition, `IsMulti`, duplicate normalized values, option membership, active option state, and tenant scope.
+   - Add unit tests for event, session, and shared-definition values.
+
+2. **Public exposure hardening**
+   - Audit every `AllowAnonymous` custom-property endpoint.
+   - Apply an explicit exposure ceiling before emitting definitions, options, values, projection rows, aggregate facets, search existence matches, export payloads, moderation payloads, and generated-client DTOs.
+   - Treat `IsSearchable`, `IsFilterable`, `IsExportable`, `IsModerationRelevant`, and `IsAnalyticsRelevant` as pipeline permissions inside the exposure ceiling, never as visibility grants.
+
+3. **Projection perfection pass**
+   - Load option value explicitly when computing `NormalizedValue`; do not rely on EF `Local`.
+   - Only keep projection rows for projection-relevant definitions or document why all rows are projected.
+   - Make `Exists` filters honor exposure/search/filter policy or restrict them to authenticated governance surfaces.
+   - Add Testcontainers proof for option projections, internal-only exclusion, dirty-scope atomicity, rebuild crash recovery, and byte-identical rebuilds modulo `UpdatedAt`.
+
+4. **Option and definition lifecycle hardening**
+   - Replace full option-set delete/reinsert with semantic diff by normalized `Namespace + Key`.
+   - Preserve option IDs for unchanged semantic options.
+   - Retire options/definitions that have historical values.
+   - Add explicit purge command only for no-dependent-history cases, protected by admin policy and audit log.
+
+5. **Concurrency and stale-state UX**
+   - Add `ConcurrencyStamp` to read DTOs and update DTOs for shared definitions, event/session templates, runtime definitions/options/values where users can edit them.
+   - Require clients to send last-seen stamp or `If-Match`.
+   - Translate `DbUpdateConcurrencyException` to `409 concurrent_update`.
+   - Keep `stale_sync_base` separate for template provenance conflicts.
+
+6. **Full Docker-gated verification**
+   - Finish pending API and persistence integration tests for event and session roundtrips.
+   - Cover template → runtime → value → projection → discovery → aggregate-view flows.
+   - Cover tenant isolation, soft delete/retirement, exposure ceilings, projection rebuild/drain, and sync conflicts.
+
+7. **Runtime modeling product boundary**
+   - If the product promise is **full data model customization**, add a new architecture decision after this plan for a runtime schema engine:
+     - user-defined entity types,
+     - relationship definitions,
+     - reference fields,
+     - uniqueness constraints,
+     - cross-field rules,
+     - formula/computed fields,
+     - schema versioning/migration,
+     - permission model,
+     - import/export contracts.
+   - If the product promise is **full custom fields for existing event/session/org/group resources**, explicitly state that this EAV implementation is the correct boundary and keep Layer 1/2 semantics out of Layer 3.
 
 ## Execution Reset
 
@@ -346,6 +418,23 @@ Custom properties exist to support Layer 3 only:
 - long-tail optional fields
 - UI-driven flexibility
 - local extension packs
+
+### Product Boundary: Custom Fields vs Full Runtime Schema
+
+This plan delivers **runtime custom fields and governed extension metadata** for existing platform resources. It does not, by itself, deliver a full no-code database/schema builder.
+
+The phrase "full data model customization" must therefore be interpreted precisely:
+
+| Product promise | Covered by this EAV plan? | Required architecture |
+|---|---:|---|
+| Users can add custom fields to events, sessions, organizations, and groups at runtime | Yes | Current Layer 3 custom-property system, after the 100/100 hardening items in this plan |
+| Users can template and sync those fields without code changes | Yes | Event/session template + explicit sync workflow |
+| Users can expose/search/filter/export selected fields safely | Yes | Projection layer + exposure/governance hardening |
+| Users can create new entity types at runtime | No | Separate runtime schema engine |
+| Users can create relationships between arbitrary user-defined entities | No | Separate runtime relationship/reference model |
+| Users can add runtime unique constraints, cross-field rules, formulas, workflows, or policy rules | No | Separate rule/schema engine with explicit governance |
+
+If the product needs the "No" rows, create a new ADR and plan for a **Runtime Schema Engine** after this EAV plan. Do not stretch Layer 3 EAV into a universal domain model; that would violate the Layer 1/2/3 boundary and recreate the ungoverned metadata-blob failure mode in a different shape.
 
 Custom properties do **not** become the sole persistence model for fields that are central to:
 
@@ -1098,6 +1187,26 @@ Layer 3 definitions must be rejected when they attempt to reuse a reserved Layer
 
 Validation is limited to explicitly modeled, typed constraints in this implementation. No opaque rule DSL and no free-form JSON validation blob.
 
+### 100/100 Runtime Value Enforcement
+
+Definition-shape validation is not enough. A perfect implementation validates every write of custom-property values against the effective runtime definition.
+
+Required enforcement in a shared application-layer validator:
+
+1. `PropertyType.Text`: `TextValue` only; enforce min/max length and optional regex.
+2. `PropertyType.Url`: `TextValue` only; enforce min/max length, valid absolute/relative policy, and `AllowedUrlSchemes`.
+3. `PropertyType.Number`: `NumberValue` only; enforce `MinNumber` / `MaxNumber`.
+4. `PropertyType.Boolean`: `BooleanValue` only.
+5. `PropertyType.DateTime`: `DateTimeValue` only; enforce `MinDateTime` / `MaxDateTime`.
+6. `PropertyType.Option`: `OptionId` only; option must belong to the same definition, same tenant scope, and be active unless reading historical values.
+7. Exactly one typed value channel is populated for non-empty writes. Multi-channel payloads are rejected.
+8. `IsRequired` is enforced at the workflow boundary where completeness matters: publish, export, template apply, and any explicit "validate event/session custom properties" command. Empty required values are rejected there even if drafts may save incomplete state.
+9. `IsActive = false` blocks new writes but does not block reads of historical values.
+10. `IsMulti = false` allows only ordinal `0`; `IsMulti = true` enforces contiguous ordinals and duplicate normalized-value rejection.
+11. The validator returns structured error codes (`wrong_value_shape`, `option_not_in_definition`, `inactive_definition`, `required_value_missing`, `value_out_of_range`, `pattern_mismatch`, `url_scheme_not_allowed`) so API, Blazor, imports, and sync flows display consistent errors.
+
+This validator must be used by event, event-session, and shared organization/group value write paths. No handler is allowed to hand-roll only a subset of these checks.
+
 ---
 
 ## Exposure, Publication, And Governance Semantics
@@ -1122,6 +1231,10 @@ Every custom property must declare how it can be surfaced and governed.
 4. Properties marked searchable/filterable must participate in projection updates.
 5. `IsSystemOwned` controls ownership/editability, not visibility.
 6. `ExposureLevel` is the maximum audience ceiling; search/filter/export flags only enable pipelines inside that ceiling.
+7. Anonymous endpoints apply the `Public` exposure ceiling before returning definitions, options, values, projections, aggregate facets, or existence results.
+8. Organizer/admin endpoints apply the caller's maximum allowed exposure ceiling server-side. Blazor visibility checks are not a security boundary.
+9. `Exists` search/filter operators are treated as data disclosure. Public existence checks require both exposure permission and an allowed search/filter flag.
+10. Export/moderation/analytics payload composers must fail closed when exposure is ambiguous; they must not consume raw EAV rows directly.
 
 ---
 
@@ -1244,6 +1357,19 @@ Sync may:
 5. Hard delete is reserved for safe admin cleanup cases with no dependent historical state.
 6. Sync operations must preserve auditability of source version lineage.
 
+### 100/100 Lifecycle Requirements
+
+1. Normal delete commands for definitions/options perform logical retirement (`IsActive = false`, soft-delete fields where appropriate) when any dependent value/projection/history row exists.
+2. Hard delete is only available through an explicit purge workflow that proves there are no dependent values, projections, sync audit rows, template provenance references, export history, moderation references, or analytics payload references.
+3. Option updates preserve semantic identity by normalized `Namespace + Key`. Display label and sort-order changes must not allocate a new option ID when the machine identity is unchanged.
+4. Replacing an option set must be a diff:
+   - unchanged `Namespace + Key` → update mutable fields in place,
+   - new `Namespace + Key` → insert,
+   - missing `Namespace + Key` with historical values → retire,
+   - missing `Namespace + Key` without dependent state → delete only if purge-safe.
+5. Projection rebuilds must preserve historical readability. They may omit retired rows from public discovery, but admin/support reads must remain explainable.
+6. Every retirement/purge writes an audit trail with operator, scope, definition identity, option identity when relevant, dependent-count summary, and reason.
+
 ---
 
 ## Query And Projection Strategy
@@ -1267,6 +1393,23 @@ Sync may:
 7. Projection tables carry explicit `tenant_id` column + named `Tenant` query filter (defense in depth for multi-tenancy).
 8. Projection tables carry a `SoftDelete` named query filter that cascades from the source runtime value row.
 9. Projection DTOs, not projection entities, leave the Application layer (Clean Architecture rule).
+
+### 100/100 Projection Correctness Rules
+
+1. Projection normalization must be independent of EF tracking state. Option-value normalization must query/include the referenced option explicitly; relying on `DbSet.Local` is forbidden.
+2. Projection creation must be deterministic from source rows. Rebuild and live update produce the same row set and same normalized values modulo `UpdatedAt`.
+3. Projection rows are emitted only for definitions that are relevant to at least one projection pipeline (`IsSearchable`, `IsFilterable`, `IsExportable`, `IsModerationRelevant`, or `IsAnalyticsRelevant`) unless the implementation deliberately keeps all rows for a documented admin/support reason. If all rows are kept, public/user query code must still filter by exposure and flag before matching.
+4. `Exists` projection filters must not reveal internal property presence. They require exposure permission and an allowed query flag (`IsFilterable` for facet/exact filters or `IsSearchable` for search contexts).
+5. Projection tables are never the authorization source of truth. They copy exposure/governance flags for query shaping, but caller entitlement is evaluated by application/API authorization before response composition.
+6. Projection rebuild tools must report:
+   - source rows scanned,
+   - projection rows written,
+   - stale rows removed,
+   - dirty scopes drained,
+   - skipped scopes,
+   - failed scopes with reason.
+7. Dirty-scope backlog rows are durable forensic records. Drain marks `DrainedAt`; it does not silently delete the row.
+8. Every projection code path has event and session parity unless a documented product decision says the scope does not apply.
 
 ### Projection Consistency Baseline (locked)
 
@@ -1461,6 +1604,15 @@ Handlers call `SaveChangesAsync` inside transactions and translate `DbUpdateConc
 3. Every sync flow must have a unit test covering the `stale_sync_base` branch distinct from the technical concurrency branch
 4. Projection rebuilds are immune to both concerns because they scan source of truth in stable order and overwrite projection rows; they do not check concurrency tokens on source rows
 5. Advisory-lock-coordinated rebuild (see Projection Rebuild Coordination) is a **third** concern (coordination between rebuild worker and inline writers) and has nothing to do with concurrency tokens
+
+**100/100 client/API requirements:**
+
+1. Read DTOs expose `ConcurrencyStamp` for every mutable custom-property/template/admin resource a user can edit.
+2. Update DTOs require the last-seen `ConcurrencyStamp`, or the endpoint requires `If-Match`; one server-side pattern must be chosen per resource and documented.
+3. Generated clients and Blazor editors preserve the stamp from load to save.
+4. Missing stamp on a concurrency-protected update returns validation failure, not a best-effort overwrite.
+5. Stale stamp returns `409 concurrent_update` with machine-readable fields: resource type, resource id, submitted stamp, current stamp when safe to disclose.
+6. Template sync still uses `baseProvenanceVersion` for business staleness. A request can fail with either `concurrent_update` or `stale_sync_base`; the two error types must remain separate in API tests and UI messages.
 
 ### Hard Limits And Quotas (CTO review 2026-04-11)
 
@@ -2538,11 +2690,18 @@ Actual delivery is milestone-driven. Milestones control implementation order and
   - `Event.Application.UnitTests/Features/EventSessionCustomProperties/Commands/SetEventSessionCustomPropertyValueCommandHandlerTests.cs` proves session single-value ordinal-1 rejection and multi-value duplicate upsert rejection.
 
 #### Task 11.4: Unit Tests For Typed Validation Rules
-- Text: MinLength/MaxLength/RegexPattern enforcement
-- Number: MinNumber/MaxNumber enforcement
-- DateTime: MinDateTime/MaxDateTime enforcement
-- Url: AllowedUrlSchemes enforcement
-- Manually instantiated validators (per project rule) - no DI in validator assertions
+- **Status:** 🔴 REQUIRED FOR 100/100. Definition DTO validation exists, but runtime value writes still need exhaustive definition-aware validation coverage.
+- Text: `MinLength` / `MaxLength` / `RegexPattern` enforcement.
+- Number: `MinNumber` / `MaxNumber` enforcement.
+- DateTime: `MinDateTime` / `MaxDateTime` enforcement.
+- Url: `AllowedUrlSchemes` enforcement plus invalid URL shape tests.
+- Option: `OptionId` belongs to definition, belongs to tenant scope, and is active.
+- Shape: exactly one value channel matches `PropertyType`; wrong-channel and multi-channel payloads are rejected.
+- Requiredness: required definitions fail completeness validation at publish/export/sync-apply validation boundaries.
+- Active state: inactive definitions/options reject new writes but preserve historical reads.
+- Multi-value: contiguous ordinals, max row quota, and duplicate normalized-value rules.
+- Use a shared application-layer validator; handler tests must prove all event/session/shared value handlers call it.
+- Manually instantiated validators (per project rule) - no DI in validator assertions.
 
 #### Task 11.5: Unit Tests For Exposure / Search / Filter / Export Flags
 - **Status:** ✅ LOCAL COVERAGE ADDED 2026-04-30. Application-boundary tests now prove governance flag pass-through and aggregate-view public exposure/search/export/moderation facet behavior. Persistence/API roundtrip proof remains covered by Docker/Testcontainers-gated slices.
@@ -2581,6 +2740,10 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 - Rebuild from scratch yields byte-identical projection state
 - Concurrent inline write + background rebuild do not corrupt either state
 - Advisory lock coordination works as designed
+- Option-valued fields compute `NormalizedValue` from the database option row, not EF tracked-local state
+- Public `Exists`/search/filter queries do not match internal or unauthorized projections
+- Dirty-scope upsert rolls back if the enclosing runtime write rolls back
+- Rebuild crash/retry drains remaining dirty scopes without duplicate projection rows
 
 #### Task 11.8C: Integration Tests For Template Sync Workflow (**Milestone E**)
 - Diff empty → no changes
@@ -2629,6 +2792,64 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 
 ---
 
+### Phase 12: 100/100 Hardening And Product-Boundary Closure
+**Effort: XL**
+
+This phase supersedes the old "remaining milestones" mental model after the 2026-05-02 implementation-reality review. It is the quality bar for calling the EAV/custom-properties implementation complete.
+
+#### Task 12.1: Build Shared Runtime Value Validator
+- Implement one application-layer validator/service for event, event-session, and shared org/group values.
+- Enforce the full `100/100 Runtime Value Enforcement` section.
+- Replace hand-rolled partial checks in individual handlers.
+- Add unit coverage for every `PropertyType`, wrong shape, inactive definition/option, requiredness boundary, and quota boundary.
+
+#### Task 12.2: Harden Public Exposure And Anonymous Reads
+- Audit all custom-property `AllowAnonymous` endpoints and aggregate-view endpoints.
+- Apply explicit caller exposure ceilings to definitions, options, values, projections, facets, and existence/search results.
+- Add API integration tests proving internal/organizer/admin-only fields do not leak to anonymous callers.
+
+#### Task 12.3: Replace Destructive Option Replacement With Semantic Diff
+- Diff options by normalized `Namespace + Key`.
+- Preserve option IDs for unchanged identities.
+- Retire options with historical values.
+- Hard-delete only no-history options through explicit purge-safe path.
+- Add tests proving existing values survive display-name changes, sort changes, option retirement, and sync updates.
+
+#### Task 12.4: Complete Concurrency Stamp Roundtrip
+- Expose `ConcurrencyStamp` on mutable read DTOs.
+- Require stamp or `If-Match` on mutable update DTOs/endpoints.
+- Preserve stamp through generated client and Blazor editors.
+- Add unit/API tests for missing stamp, stale stamp, and successful fresh-stamp updates.
+
+#### Task 12.5: Projection Correctness Perfection Pass
+- Fix option normalized-value computation to avoid EF `Local` reliance.
+- Decide and document whether non-projection-relevant values create projection rows; enforce the decision.
+- Make `Exists` filters exposure-safe.
+- Add Testcontainers proofs for event and session parity.
+
+#### Task 12.6: Soft Delete, Retirement, And Purge Policy
+- Replace normal-workflow hard deletes in Layer 3 repositories with retirement/soft-delete behavior when dependents exist.
+- Add explicit purge command for safe no-dependent-history cleanup.
+- Add audit rows for retirement and purge.
+- Add integration tests for historical reads after retirement.
+
+#### Task 12.7: Quota Completion Sweep
+- Verify every setting in `Hard Limits And Quotas` is enforced in all create/update/instantiation/sync/rebuild paths.
+- Add boundary tests: `quota - 1`, `quota`, `quota + 1`.
+- Ensure errors use a consistent `quota_exceeded` code.
+
+#### Task 12.8: Docker-Gated End-To-End Certification
+- Finish API roundtrips for event and session flows.
+- Certify template → runtime → values → projection → discovery → aggregate view.
+- Certify tenant isolation, exposure ceilings, dirty-scope recovery, sync conflicts, and retirement/historical reads.
+
+#### Task 12.9: Runtime Schema Engine Decision
+- Write an ADR deciding whether product scope is "custom fields for existing resources" or "full no-code runtime data model."
+- If custom fields: explicitly mark EAV as complete after Phase 12.1-12.8.
+- If full no-code runtime data model: create a separate plan for user-defined entity types, relationships, constraints, formulas, schema migrations, and authorization. Do not fold that into EAV.
+
+---
+
 ## Risk Assessment
 
 | Risk | Likelihood | Impact | Mitigation |
@@ -2644,6 +2865,11 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 | Governance rules are too weak for public/searchable fields | Medium | High | exposure flags + authorization categories in Phase 8.7 + exposure ceiling enforcement in Phase 10.3A |
 | Projection becomes stale under heavy write load | Medium | High | transactional live projection baseline (Rule 13) + advisory-lock-coordinated rebuild tooling + no eventual consistency unless justified |
 | Template sync conflicts silently overwrite operator-local edits | Medium | High | Three-way merge rules (template / last-sync / current runtime) + `HasLocalChanges` warning in diff + operator-confirmed apply only |
+| Product promise overstates EAV as "full runtime data modeling" | High | High | Product-boundary ADR in Phase 12.9; either declare scope as custom fields on existing resources or plan a separate runtime schema engine |
+| Anonymous custom-property endpoints leak internal definitions or values | Medium | Critical | Exposure hardening in Phase 12.2; every public read path applies server-side exposure ceiling and API integration tests prove no leak |
+| Value writes bypass typed metadata constraints | High | High | Shared runtime value validator in Phase 12.1; handler tests prove every write path calls it |
+| Option replacement breaks historical values | Medium | High | Semantic option diff in Phase 12.3; retire rather than delete when dependent values exist |
+| Hard deletes bypass soft-delete/audit expectations | Medium | High | Phase 12.6 purge policy; normal delete retires/soft-deletes, explicit purge is audited and dependency-checked |
 | Sync workflow concurrency races produce inconsistent runtime state | Medium | High | `baseProvenanceVersion` optimistic concurrency check on apply + structured 409 Conflict response + Phase 11.8C integration tests |
 | Projection rebuild corrupts state under concurrent inline writes | Medium | High | PostgreSQL advisory lock coordination + status tracking table + replay-safe rebuild contract + Phase 11.8B integration test |
 | Aggregate view query becomes a performance hotspot | Medium | Medium | Keyless entity + parameterized query + B-tree projection indexes + pagination + query plan review in Phase 11.8D |
@@ -2664,6 +2890,20 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 ---
 
 ## Success Metrics
+
+### 100/100 Hardening Exit
+
+1. Every runtime value write path calls the shared definition-aware validator.
+2. Wrong value shape, inactive definition, inactive option, option-not-in-definition, range, regex, URL-scheme, requiredness, and quota failures produce structured errors.
+3. Anonymous custom-property reads expose only public data; internal/organizer/admin-only definitions, options, values, projections, and existence matches are not observable.
+4. Option updates preserve semantic IDs by `Namespace + Key`; historical values survive display-name, sort-order, option-retirement, and template-sync changes.
+5. Normal delete paths retire/soft-delete when dependents exist; hard purge is explicit, audited, and dependency-checked.
+6. Mutable custom-property/template/admin writes use `ConcurrencyStamp` or `If-Match` roundtrip and return `409 concurrent_update` for stale technical tokens.
+7. Template sync stale business provenance returns `409 stale_sync_base`, separately tested from technical concurrency.
+8. Projection normalized values are deterministic and do not depend on EF local tracking state.
+9. Projection `Exists`, search, filter, export, moderation, and analytics consumers apply both governance flags and exposure ceiling.
+10. Docker/Testcontainers roundtrips prove event and session parity from template creation through runtime values, projection rebuild/drain, discovery, aggregate view, and sync.
+11. An ADR explicitly decides whether "full data model customization" means custom fields on existing resources or a future runtime schema engine.
 
 ### Architectural (locked)
 
@@ -2786,6 +3026,22 @@ Additional tightenings incorporated (all locked in this plan):
 - **Ruthless milestone sequencing** → Rule 17 locked: D1 → D2 → D3 → E → F
 - **Repairability first-class** → every new entity/service/endpoint must answer "what is broken / stale / rebuildable / how do I recover" in `docs/OPERATIONS.md` before exiting its gate
 
-**Verdict**: With all three required items and all additional tightenings locked above, the plan is approved to proceed to Milestone D1 (projection correctness) implementation.
+**Historical verdict**: With all three required items and all additional tightenings locked above, the plan was approved to proceed to Milestone D1 (projection correctness) implementation.
 
-That is the enterprise-grade, self-hostable, multi-tenant direction this plan implements now. Milestones A, B, C are done. Milestones D, E, F are planned with concrete research-backed acceptance criteria, clean-architecture-compliant placement, PostgreSQL-specific tuning, CQRS + MediatR + EF Core 10 pattern alignment, MudBlazor v9 UI + WCAG 2.2 AA accessibility, and Testcontainers-backed integration tests for every non-trivial surface.
+### 2026-05-02 Updated Verdict
+
+The implementation has moved beyond the original D1 greenlight point. The architecture direction remains correct and the system is already majorly implemented. The new completion target is **Phase 12: 100/100 Hardening And Product-Boundary Closure**.
+
+Do not spend the next implementation slice rebuilding what exists. Spend it on:
+
+1. shared runtime value validation,
+2. public exposure hardening,
+3. semantic option lifecycle and retirement,
+4. concurrency-stamp roundtrip,
+5. projection correctness fixes,
+6. soft-delete/purge discipline,
+7. quota completion,
+8. Docker/Testcontainers end-to-end certification,
+9. and the runtime-schema-engine product decision.
+
+That is the enterprise-grade, self-hostable, multi-tenant direction this plan implements now. The 3-layer model is right. The remaining path to perfection is hardening and proving it, not expanding EAV into a universal schema system.

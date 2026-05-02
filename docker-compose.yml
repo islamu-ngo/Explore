@@ -116,6 +116,7 @@ services:
       <<: [*keycloak-env, *s3-env, *secrets-env, *postgres-bootstrap-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
+      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-}
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
       Keycloak__Authority: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}
       ConnectionStrings__cache: ${REDIS_CONNECTION_STRING:-redis:6379}

@@ -148,8 +148,8 @@ See [SECRETS.md](SECRETS.md) for full provider configuration and [CONFIGURATION.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `Tenancy__Mode` | `SingleTenant` or `MultiTenant` | `SingleTenant` |
-| `Tenancy__DefaultTenantId` | Default tenant UUID | `018e4e5c-7f00-7000-8000-000000000001` |
+| `DEPLOYMENT_MODE` | Set to `multi_tenant` in the API environment/Infisical `/api` folder to start onboarding in multi-tenant mode. Omit for single-tenant onboarding. | *(unset = single tenant)* |
+| `Deployment__DefaultTenantId` | Default tenant UUID | `018e4e5c-7f00-7000-8000-000000000001` |
 
 ## Keycloak Realm Setup
 

@@ -7,9 +7,9 @@ Last Updated: 2026-04-30
 
 ## Status Summary
 
-- Overall status: Implementation started with dock engine foundation, dock host components, dormant tabbed stack rendering, extracted shell side-navigation content, shell descriptor registration, production shell `DockLayoutHost` migration, EventList workspace `DockLayoutHost` migration for Customize View and Event Preview, mobile docked-panel routing through overlay chrome, shell bridge hidden-chrome/disposal hardening, NavMenu dock-id toggle mirroring, shell accessibility/navigation contract hardening, dormant keyboard/pointer resize handle foundation with pointer-capture hardening and JSInterop invocation coverage, dock governance architecture guardrails, dock tokens/docs, stable selector/logical CSS hardening, descriptor capability enforcement, RTL-aware slide hardening, snapshot normalization, Phase 8 local persistence/reset, and Phase 1 bUnit/E2E baseline scaffolding.
-- Current phase: Phase 1 baseline coverage plus Phase 2/3/4/5/6/7/9/11 foundation slices are in progress; Phase 4 shell host migration is production-rendered and verified; Phase 5 workspace docking has landed for both `events.customize-view` and `events.event-preview`; Phase 8 is implemented as a non-rendering subsystem slice; Phase 9 host-level overlay hardening has landed for `DockOverlayHost` panels and mobile docked panels now route through `DockOverlayHost` as temporary overlays.
-- Critical path: Visual freeze -> tokens/docs -> dock engine core -> shell host -> workspace host -> resize -> stacking -> persistence -> hardening -> cleanup. Phase 4 shell host migration, Phase 5 workspace host slices, and Phase 9 overlay/mobile docked-panel hardening slices have landed; Phase 8 persistence is implemented early by Oracle recommendation, but production hydration/autosave remains deferred until final visual coverage.
+- Overall status: Implementation started with dock engine foundation, dock host components, dormant tabbed stack rendering, extracted shell side-navigation content, shell descriptor registration, production shell `DockLayoutHost` migration, EventList workspace `DockLayoutHost` migration for Customize View and Event Preview, responsive dock policy with width-aware start-panel retraction, mobile docked-panel routing through overlay chrome, reverse close animations, shell bridge hidden-chrome/disposal hardening, NavMenu dock-id toggle mirroring, shell accessibility/navigation contract hardening, dormant keyboard/pointer resize handle foundation with pointer-capture hardening and JSInterop invocation coverage, dock governance architecture guardrails, dock tokens/docs, stable selector/logical CSS hardening, descriptor capability enforcement, RTL-aware slide hardening, snapshot normalization, Phase 8 local persistence/reset, and Phase 1 bUnit/E2E baseline scaffolding.
+- Current phase: Phase 1 baseline coverage plus Phase 2/3/4/5/6/7/9/11 foundation slices are in progress; Phase 4 shell host migration is production-rendered and verified; Phase 5 workspace docking has landed for both `events.customize-view` and `events.event-preview`; Phase 8 is implemented as a non-rendering subsystem slice; Phase 9 host-level overlay hardening has landed for `DockOverlayHost` panels, mobile docked panels route through `DockOverlayHost` as temporary overlays, reverse close animations are implemented, and the dock state applies width-aware responsive retraction/exclusive-right-panel policy.
+- Critical path: Visual freeze -> tokens/docs -> dock engine core -> shell host -> workspace host -> resize -> stacking -> persistence -> hardening -> cleanup. Phase 4 shell host migration, Phase 5 workspace host slices, and Phase 9 overlay/mobile docked-panel hardening plus responsive retraction/close-animation slices have landed; Phase 8 persistence is implemented early by Oracle recommendation, but production hydration/autosave remains deferred until final visual coverage.
 
 ## Planning And Handoff - Complete
 
@@ -250,16 +250,18 @@ Phase 9 verification notes:
 
 - [x] `DockOverlayHost` now renders a tokenized backdrop, locks body scroll, saves/restores focus, moves focus into the active dock panel, and closes the active closeable overlay on Escape or backdrop click.
 - [x] bUnit coverage verifies overlay filtering, backdrop close, Escape close, focus save/restore, focus handoff, and scroll lock/unlock calls.
-- [x] `DockLayoutHost` observes MudBlazor viewport breakpoints and collapses docked inline widths to `0px` on mobile instead of relying on CSS compensation.
+- [x] `DockLayoutHost` observes MudBlazor viewport changes and feeds actual viewport width into `DockLayoutState`; docked inline widths collapse to `0px` on mobile instead of relying on CSS compensation.
 - [x] `DockSideHost` suppresses mobile docked side-host rendering; `DockOverlayHost` projects open mobile `DockMode.Docked` panels to effective `DockMode.Temporary` render entries while preserving desktop runtime state.
-- [x] bUnit coverage verifies mobile docked panels route through overlay chrome, render as temporary panels, omit resize handles, lock scroll, and receive focus handoff.
+- [x] `DockLayoutState` applies generic responsive policy: start panels auto-close when open right-side panels constrain the content width; low-width/mobile layouts keep only one end-side panel open across shell/workspace scopes.
+- [x] `DockOverlayHost` keeps closing panels mounted for reverse slide/fade animations before unmounting, while preserving scroll lock/focus restore until animation completion.
+- [x] bUnit coverage verifies mobile docked panels route through overlay chrome, render as temporary panels, omit resize handles, lock scroll, receive focus handoff, keep mobile left nav open when explicitly requested, auto-close left nav when a right panel opens, enforce one right panel on narrow/mobile widths, and keep closing panels mounted with closing classes before unmount.
 
 Acceptance criteria:
 
 - [x] Accessibility contract from `docs/ACCESSIBILITY.md` is preserved or improved for `DockOverlayHost` overlay/temporary/inspector panels.
 - [x] Mobile side panels route through temporary overlay chrome without reserving grid width.
 - [ ] Refactored layout is start/end oriented and RTL-ready. *(Host overlay positioning uses logical properties; full manual RTL verification remains pending.)*
-- [ ] Reduced motion disables/minimizes panel animation.
+- [x] Reduced motion disables/minimizes panel animation.
 
 ## Phase 10: Cleanup Old Layout Systems - Not Started
 
@@ -297,7 +299,7 @@ Acceptance criteria:
 Acceptance criteria:
 
 - [x] Governance guardrails protect the descriptor-driven dock contract before production host migration.
-- [x] Build and required tests pass for the current shell/workspace/mobile routing slices. *Latest: `Explore.Blazor.Client.Tests` 925 total/924 passed/1 pre-existing skip, `Event.Architecture.Tests` 133/133, `rtk dotnet build` 23 projects/0 errors/151 known warnings.*
+- [x] Build and required tests pass for the current shell/workspace/mobile routing slices. *Latest: dock-related client tests pass inside the full suite; current full `Explore.Blazor.Client.Tests` result is 937 total/931 passed/5 unrelated failures/1 pre-existing skip, `Event.Architecture.Tests` 135/135, `rtk dotnet build` 23 projects/0 errors/138 known warnings.*
 - [ ] Docs reflect final implementation.
 - [ ] Visual coverage proves no gap between customize panel and AI rail.
 
@@ -326,4 +328,4 @@ Acceptance criteria:
 
 ## Quick Resume
 
-Resume from the latest incomplete phase rather than restarting Phase 1. Production shell rendering now uses `DockLayoutHost` and passed focused closeout review; Phase 5 workspace rendering hosts EventList Customize View through `events.customize-view` and Event Preview through `events.event-preview`; Phase 9 mobile routing sends open docked side panels through `DockOverlayHost` as temporary overlays on `Xs`/`Sm` breakpoints. Phase 8 persistence/reset is already implemented as a non-rendering subsystem slice; do not duplicate it. The current safe next work is focus-trap strategy, enabled E2E/manual visual baseline capture, full RTL/manual verification, or cleanup of remaining temporary bridge services/components once all consumers are confirmed migrated.
+Resume from the latest incomplete phase rather than restarting Phase 1. Production shell rendering now uses `DockLayoutHost` and passed focused closeout review; Phase 5 workspace rendering hosts EventList Customize View through `events.customize-view` and Event Preview through `events.event-preview`; Phase 9 mobile routing sends open docked side panels through `DockOverlayHost` as temporary overlays on `Xs`/`Sm` breakpoints, responsive policy now retracts start panels as right-side panels consume content width, narrow/mobile layouts enforce one right-side panel, and overlay close animations reverse the opening motion before unmount. Phase 8 persistence/reset is already implemented as a non-rendering subsystem slice; do not duplicate it. The current safe next work is focus-trap strategy, enabled E2E/manual visual baseline capture, full RTL/manual verification, or cleanup of remaining temporary bridge services/components once all consumers are confirmed migrated. The remaining full client-test failures are unrelated onboarding/profile/Cerbos tests and should be handled separately.

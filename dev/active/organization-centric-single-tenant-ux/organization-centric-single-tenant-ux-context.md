@@ -3,12 +3,13 @@
 
 # Organization-Centric Single-Tenant UX - Context
 
-Last Updated: 2026-04-30
+Last Updated: 2026-05-02
 
-## SESSION PROGRESS (2026-04-30)
+## SESSION PROGRESS (2026-05-02)
 
 ### ✅ COMPLETED
 
+- Updated this dev-docs set for compatibility with `dev/active/convention-first-single-tenant-onboarding/`: OrganizationCentric is now optional advanced/post-launch public-experience posture, not a required first-run decision; DiscoveryCentric remains the frictionless launch default; normal SingleTenant onboarding must not ask for deployment mode, first host, primary organization, or tenant concepts.
 - Confirmed user direction: do **not** add OrganizerScope, BusinessScope, Workspace, SubTenant, or equivalent domain model.
 - Confirmed desired approach: use existing model plus correct filtering, navigation, categories, tags, groups, actors, organization pages, settings, and custom-property projections.
 - Read `.claude/commands/dev-docs.md` requirements and created this three-file dev-docs set.
@@ -96,12 +97,18 @@ The shell may include `FooterConfigDto` as a read-only projection for anonymous 
 
 ### Decision 15 - Backend proof precedes admin editing
 
-The first code milestone is actor-backed `/events` filtering: `EventFilterRequest`/`GetEventListRequest` carry `ActorId`, `OrganizationId`, and `GroupId`; Application resolves organization/group to `Actor`; `EventFilter.Actor(Guid)` applies ownership filtering; private/unauthorized/cross-tenant events remain hidden; URL round trips work; no workspace/scope model appears. Admin/onboarding editors come only after backend contract, filtering, shell read path, and preset rendering are proven.
+The first code milestone is actor-backed `/events` filtering: `EventFilterRequest`/`GetEventListRequest` carry `ActorId`, `OrganizationId`, and `GroupId`; Application resolves organization/group to `Actor`; `EventFilter.Actor(Guid)` applies ownership filtering; private/unauthorized/cross-tenant events remain hidden; URL round trips work; no workspace/scope model appears. Admin/onboarding editors come only after backend contract, filtering, shell read path, preset rendering, and the convention-first onboarding baseline are proven.
+
+### Decision 16 - Convention-first onboarding owns the first-run path
+
+The standard SingleTenant launch path is owned by `dev/active/convention-first-single-tenant-onboarding/`: Setup Secret -> Admin Auth -> Site Profile -> Smart Defaults -> Preflight -> Launch/Handoff. OrganizationCentric UX must not be required to complete that flow. It is an optional advanced/post-launch public-experience posture that can emphasize a configured primary organization after the site is already launchable. DiscoveryCentric remains the safe default when no primary organization is configured.
 
 ## Verified Repository References
 
 ### Canonical documentation
 
+- `dev/active/convention-first-single-tenant-onboarding/convention-first-single-tenant-onboarding-plan.md` - governing first-run onboarding plan: SingleTenant by default, MultiTenant only by `DEPLOYMENT_MODE=multi_tenant`, Site Profile + smart defaults + preflight + launch handoff.
+- `dev/active/convention-first-single-tenant-onboarding/convention-first-single-tenant-onboarding-tasks.md` - prerequisite tasks for route mismatch, tenant onboarding hiding/redirecting, deployment-mode env gate, Site Profile, preflight, and convention-first wizard.
 - `CLAUDE.md` - agent/codebase contract, build command, HAL, repository, validation, and file-header rules.
 - `docs/ARCHITECTURE.md` - Clean Architecture, CQRS, BFF, multi-tenancy, settings hierarchy, specs, auth/HAL, caching, outbox.
 - `docs/DOMAIN.md` - Tenant, Organization, Group, Actor, Event, classification, settings, modules, custom properties.
@@ -215,6 +222,8 @@ The first code milestone is actor-backed `/events` filtering: `EventFilterReques
 
 ## Implementation Constraints
 
+- This plan is subordinate to the convention-first onboarding plan for first-run UX. Do not make `OrganizationCentric`, `PrimaryOrganizationId`, first-host selection, or `/onboarding/tenant` required for normal SingleTenant setup.
+- `DiscoveryCentric` is the default public-experience posture for fastest launch; OrganizationCentric is optional advanced/post-launch configuration.
 - No new domain operational scope entity.
 - Do not treat `Organization` as `Tenant`; avoid tenant-substitute wording for organizations.
 - Do not add `OrganizerScope`, `BusinessScope`, `Workspace`, `SubTenant`, `OrganizationScope`, `TenantWorkspace`, or `ScopeId` to event ownership paths.
@@ -259,12 +268,13 @@ Mapping examples:
 
 ## Quick Resume
 
-1. Re-read `organization-centric-single-tenant-ux-plan.md` and `organization-centric-single-tenant-ux-tasks.md` for the tightened CTO-reviewed contract.
-2. Start with Phase 1 vocabulary/guardrails and Phase 2 backend contract: anonymous shell resolves from Tenant + Instance public settings only, includes `SchemaVersion`/`Revision`, has explicit primary organization state, and separates persisted config records from display DTOs.
-3. Implement T2.3 first: wire actor-backed ownership filtering into `/events` (`ActorId`, `OrganizationId`, `GroupId`) before shell polish, presets, or admin UI.
-4. Build the shell-driven Blazor read path and preset-generated URLs after backend filtering and default/read-only shell behavior are proven.
-5. Add admin/onboarding editors only after backend contract, actor-backed filtering, shell read path, and preset rendering are working; editors persist versioned config records, not DTOs/raw query strings.
-6. Keep the non-goal search active during implementation: no OrganizerScope, Workspace, BusinessScope, SubTenant, OrganizationScope, TenantWorkspace, or ScopeId-based ownership additions. Guardrails must be path-aware and must not ban legitimate existing scope concepts globally.
-7. Preserve Domain purity: no business defaults for public posture, presets, visibility posture, organization posture, or import convenience.
-8. Build Blazor from the typed shell, generated preset URLs, bounded blocks, footer read projection, HAL/server-authorized affordances, and accessibility acceptance criteria.
-9. Run architecture, Application, Persistence, API, Blazor, accessibility/product tests, cache/revision tests, and full build before marking implementation complete.
+1. Re-read `convention-first-single-tenant-onboarding-plan.md` first, then this plan and tasks file.
+2. Treat convention-first onboarding Phase 0/1/2 as prerequisites for any organization-centric first-run UI work: route mismatch fixed, `/onboarding/tenant` hidden/redirected in SingleTenant, deployment mode operator-controlled, Site Profile/smart defaults/preflight defined.
+3. Continue organization-centric work as optional advanced/post-launch public-experience posture: anonymous shell resolves from Tenant + Instance public settings only, includes `SchemaVersion`/`Revision`, has explicit primary organization state, and separates persisted config records from display DTOs.
+4. T2.3 actor-backed `/events` filtering is already implemented/verified in prior work; keep it as the backend ownership foundation and do not regress tenant validation.
+5. Build the shell-driven Blazor read path and preset-generated URLs after backend filtering and default/read-only shell behavior are proven.
+6. Add admin/post-launch editors only after convention-first onboarding baseline, backend contract, actor-backed filtering, shell read path, and preset rendering are working; editors persist versioned config records, not DTOs/raw query strings and must not be required for initial launch.
+7. Keep the non-goal search active during implementation: no OrganizerScope, Workspace, BusinessScope, SubTenant, OrganizationScope, TenantWorkspace, or ScopeId-based ownership additions. Guardrails must be path-aware and must not ban legitimate existing scope concepts globally.
+8. Preserve Domain purity: no business defaults for public posture, presets, visibility posture, organization posture, or import convenience.
+9. Build Blazor from the typed shell, generated preset URLs, bounded blocks, footer read projection, HAL/server-authorized affordances, and accessibility acceptance criteria.
+10. Run architecture, Application, Persistence, API, Blazor, accessibility/product tests, cache/revision tests, and full build before marking implementation complete.

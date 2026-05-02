@@ -3,7 +3,7 @@
 
 # Organization-Centric Single-Tenant UX - Implementation Plan
 
-Last Updated: 2026-04-30
+Last Updated: 2026-05-02
 
 ## Executive Summary
 
@@ -12,6 +12,8 @@ ISLAMU Event should support self-hosted deployments where one organization uses 
 This plan explicitly rejects adding `OrganizerScope`, `BusinessScope`, `Workspace`, `SubTenant`, or equivalent domain entities. Youth, Sisters, Education, Community Services, and similar use cases should be represented through filters, categories, tags, groups, actors, typed event-section presets, navigation links, and optional custom properties because that keeps the user model learnable and avoids a certificate-level setup experience.
 
 The CTO review approved the strategic direction with a stricter implementation contract. This revision therefore treats organization-centric mode as a bounded, typed, Application-owned public experience shell, not as a settings blob, mini-CMS, tenant proxy, or hidden scope layer.
+
+Compatibility update (2026-05-02): this plan is subordinate to and compatible with `dev/active/convention-first-single-tenant-onboarding/`. Normal self-hosted launch must remain convention-first: `SingleTenant` by default, `MultiTenant` only when `DEPLOYMENT_MODE=multi_tenant` is explicitly configured, no user-facing deployment-mode choice, no required first-host/primary-organization decision before launch, and no tenant language in the standard SingleTenant onboarding UI. OrganizationCentric UX becomes an optional advanced/post-launch public-experience posture over the launched site; it must not block the fast Setup Secret -> Admin Auth -> Site Profile -> Smart Defaults -> Preflight -> Launch/Handoff flow.
 
 ## CTO Feedback Incorporation Summary
 
@@ -57,7 +59,7 @@ All file paths below were verified before inclusion.
 - `Explore.Blazor.Client/Pages/Organizations/OrganizationDetails.razor` provides authenticated organization operations.
 - `Explore.Blazor.Client/Pages/Organizations/MyOrganizations.razor` provides authenticated organization listing and management entry points.
 - `Explore.Blazor.Client/Routes.razor` maps organization and event routes, including `/events` and organization profile/details routes.
-- `Explore.Blazor.Client/Pages/Onboarding/InstanceOnboarding.razor` and `Explore.Blazor.Client/Pages/Onboarding/TenantOnboarding.razor` already collect deployment and public-experience preferences.
+- `Explore.Blazor.Client/Pages/Onboarding/InstanceOnboarding.razor` and `Explore.Blazor.Client/Pages/Onboarding/TenantOnboarding.razor` currently collect deployment and public-experience preferences, but convention-first onboarding will remove normal deployment-mode choice and hide/redirect tenant onboarding in SingleTenant. Organization-centric configuration must therefore move to optional advanced/post-launch public-experience setup, not the required first-run path.
 
 ### Existing event ownership, defaults, and import-relevant contracts
 
@@ -114,6 +116,17 @@ Anonymous `PublicExperienceShellDto` resolution for public SEO surfaces uses ten
 
 Persisted public-experience configuration should use explicit versioned config records, not Blazor-facing DTOs. The intended pipeline is: `ConfigV1` stored in settings -> validated Application model -> public DTO/read model -> generated URLs/rendering. Display DTOs can evolve for Blazor needs without becoming the storage contract.
 
+### Convention-first onboarding compatibility
+
+Organization-centric UX is a public-experience posture, not the default first-run obligation. It must fit behind the convention-first onboarding flow defined in `dev/active/convention-first-single-tenant-onboarding/`:
+
+1. Normal SingleTenant launch uses `Setup Secret -> Admin Auth -> Site Profile -> Smart Defaults Applied -> Preflight -> Launch/Handoff`.
+2. `DiscoveryCentric` remains the frictionless default for the minimum launch because it requires no primary organization selection.
+3. `OrganizationCentric` is available as an optional advanced/post-launch posture when the admin intentionally chooses to emphasize a primary organization.
+4. No organization-centric task may reintroduce a deployment-mode picker, a mandatory first-host choice, or tenant onboarding language into the standard SingleTenant wizard.
+5. `PrimaryOrganizationId` may be configured later; when absent, the public shell returns `PrimaryOrganizationState.NotConfigured` and safe neutral/discovery-oriented rendering data.
+6. MultiTenant-specific tenant onboarding remains an operator-only path exposed only when `DEPLOYMENT_MODE=multi_tenant` is explicitly configured.
+
 ### Import versus interactive create
 
 Interactive create endpoints may require rich fields through DTO validation so user-created events are high quality. Import flows must be able to accept the common denominator from other event platforms: name/title, description where available, start date/time, optional end date/time, optional location, optional source reference, and optional organizer mapping. Missing non-essential taxonomy, module fields, categories, tags, audiences, custom properties, or visibility enhancements should not block import success.
@@ -145,8 +158,8 @@ Interactive create endpoints may require rich fields through DTO validation so u
 
 Add a configurable public-experience posture with two initial modes:
 
-1. **DiscoveryCentric**: current marketplace/directory posture for public multi-organizer or ISLAMU-hosted all-events deployments. `/events` remains primary.
-2. **OrganizationCentric**: default posture for self-hosted organization-owned deployments. The public home emphasizes the configured primary organization, featured/upcoming events, configured sections, and simple calls to action. `/events` remains available but is framed as the organization's calendar/catalog, not a marketplace.
+1. **DiscoveryCentric**: convention-first default posture for normal SingleTenant onboarding, public multi-organizer deployments, and ISLAMU-hosted all-events deployments. `/events` remains primary and the site can launch without selecting a primary organization.
+2. **OrganizationCentric**: optional advanced/post-launch posture for deployments that intentionally want one configured primary organization emphasized. The public home emphasizes the configured primary organization, featured/upcoming events, configured sections, and simple calls to action. `/events` remains available but is framed as the organization's calendar/catalog, not a marketplace.
 
 This can be implemented as an Application/configuration concept such as `PublicExperienceMode`, not a domain aggregate. The exact enum/string location should align with existing public-experience DTO and settings patterns.
 
@@ -267,7 +280,7 @@ public sealed record PrimaryOrganizationDto(
 
 ### Bounded home/navigation blocks
 
-Organization-centric public customization is CMS-lite and bounded. Supported blocks should remain small and explicit:
+Organization-centric public customization is CMS-lite and bounded. It is configured after the convention-first launch path or from an explicit advanced setup path. Supported blocks should remain small and explicit:
 
 - Hero / organization intro
 - Upcoming events
@@ -295,13 +308,13 @@ Use current concepts:
 
 ### User experience principles
 
-- Single-organization deployments should feel like the organization's website with an events module.
+- After the convention-first launch, an admin can opt into a single-organization public posture that feels like the organization's website with an events module.
 - OrganizationCentric home must look intentionally owned: identity, mission/intro, upcoming activities, featured sections, CTAs, contact/location, and a clear event catalog path.
 - Keep top-level navigation shallow: Home, Events/Calendar, Programs, About, Contact, Donate/Volunteer if configured.
 - Avoid mandatory selectors like tenant/workspace/program switchers.
 - Prefer curated filter chips and saved links over new hierarchy.
 - Do not remove `/events`; demote and relabel it based on settings.
-- Keep admin customization bounded: posture, labels, home route, primary organization, typed event-section presets, configured CTAs, and nav/footer links.
+- Keep admin customization bounded: posture, labels, home route, primary organization, typed event-section presets, configured CTAs, and nav/footer links; none of these should be required to complete the standard first-run launch.
 
 ### Accessibility acceptance criteria
 
@@ -333,7 +346,7 @@ Organization-centric UX must meet the existing WCAG 2.2 AA posture documented in
 
 **Goal:** Establish vocabulary and settings without adding new operational scope entities.
 
-- Add or extend public-experience setting definitions for organization-centric posture, public home emphasis, event catalog label, typed event-section presets, configured CTAs, and primary organization.
+- Add or extend public-experience setting definitions for optional organization-centric posture, public home emphasis, event catalog label, typed event-section presets, configured CTAs, and primary organization.
 - Define a public-shell resolution policy: anonymous public shell output resolves from tenant + instance public settings and tenant-local referenced entities only; user/group-specific setting scopes are excluded from anonymous SEO/public surfaces.
 - Define versioned config records for persisted public-experience configuration, including event-section preset config, and map them to public DTOs instead of storing display DTOs directly.
 - Keep changes in settings/lookup/configuration patterns, not new aggregates.
@@ -346,7 +359,7 @@ Organization-centric UX must meet the existing WCAG 2.2 AA posture documented in
 - `Explore.Application/Features/PublicExperience/Handlers/Queries/GetPublicExperienceSettingsQueryHandler.cs`
 
 **Acceptance criteria:**
-- Public experience settings can represent discovery-centric and organization-centric posture.
+- Public experience settings can represent discovery-centric and organization-centric posture, with DiscoveryCentric safe as the convention-first launch default and OrganizationCentric optional after launch/advanced selection.
 - No new Domain entity named Scope, Workspace, BusinessScope, OrganizerScope, or SubTenant exists.
 - Existing tenant and soft-delete query filter behavior is unchanged.
 - Setting metadata and docs explain that Organization is an in-tenant event organizer/actor, not a tenant substitute.
@@ -392,7 +405,7 @@ Organization-centric UX must meet the existing WCAG 2.2 AA posture documented in
 **Goal:** Expose the backend contract through API and seed/default configuration before Blazor polish or admin editors.
 
 - Extend `Explore.API/Controllers/PublicExperienceController.cs` response shape through Application DTOs.
-- Seed or derive a default OrganizationCentric shell for a configured primary organization so the read path can be proven without full admin UI.
+- Seed or derive a safe default shell that launches DiscoveryCentric without a primary organization and can return OrganizationCentric only when a valid primary organization is configured, so the read path can be proven without full admin UI.
 - Keep anonymous public reads bounded to the typed public shell; privileged posture/preset writes remain authorized and tenant-scoped when added later.
 - Update Cerbos/local authorization policies if any new write/admin action is introduced during this phase.
 - Ensure HAL materialization continues to be the source of truth for UI action affordances.
@@ -468,20 +481,19 @@ Organization-centric UX must meet the existing WCAG 2.2 AA posture documented in
 - Render-mode rules are respected; no `HttpContext` dependency is introduced in interactive client paths.
 - Accessibility criteria are met for heading hierarchy, keyboard-reachable presets, active-filter labels, empty states, landmarks, focus, and RTL/logical CSS.
 
-### Phase 5b - Admin/onboarding editor after read-path proof (M)
+### Phase 5b - Optional admin/post-launch editor after read-path proof (M)
 
-**Goal:** Add editing flows only after the shell contract, defaults, actor-backed filtering, and Blazor read path are proven.
+**Goal:** Add editing flows only after the convention-first onboarding baseline, shell contract, defaults, actor-backed filtering, and Blazor read path are proven.
 
-- Let admins choose public-experience mode, primary organization, event catalog label, bounded CTA/home blocks, and typed event-section preset config.
-- Reuse existing onboarding/admin/settings surfaces where possible.
+- Let admins choose public-experience mode, primary organization, event catalog label, bounded CTA/home blocks, and typed event-section preset config from post-launch settings or an explicit advanced setup path.
+- Reuse existing admin/settings surfaces where possible; do not reintroduce mandatory first-run first-host decisions.
 - Validate tenant-local references in Application and reject or omit invalid/deleted/hidden/cross-tenant references before persistence.
 - Keep form complexity subordinate to the already-proven backend contract; do not design a new scope model to satisfy editor convenience.
 
 **Expected files:**
 - `Explore.API/Controllers/InstanceOnboardingController.cs`
-- `Explore.API/Controllers/TenantOnboardingController.cs`
-- `Explore.Blazor.Client/Pages/Onboarding/InstanceOnboarding.razor`
-- `Explore.Blazor.Client/Pages/Onboarding/TenantOnboarding.razor`
+- `Explore.Blazor.Client/Pages/Onboarding/InstanceOnboarding.razor` only for optional advanced handoff links after convention-first launch
+- Existing admin/settings components discovered during implementation
 - Existing settings/admin components discovered during implementation
 
 **Acceptance criteria:**
@@ -505,14 +517,11 @@ Organization-centric UX must meet the existing WCAG 2.2 AA posture documented in
 **Required verification commands:**
 
 ```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.CleanArchitectureTests
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.CqrsPatternTests
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.BlazorClientArchitectureTests
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.AuthorizationParityTests
-dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal
+dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal
+dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal
+dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal
 dotnet build --configuration Release --verbosity quiet
 ```
 
@@ -550,13 +559,13 @@ dotnet build --configuration Release --verbosity quiet
 - **Relevant skills:** clean-architecture-rules, cqrs-mediatr-guidelines, dotnet-efcore-guidelines
 - **Acceptance criteria:** Application defines `PrimaryOrganizationState` cases for `Available`, `NotConfigured`, `Missing`, `Deleted`, `HiddenOrInactive`, `CrossTenantInvalid`, and `ActorUnavailable`; shell rendering data includes safe neutral/onboarding behavior for non-available states; Application tests prove minimal event-create/import-shaped inputs can omit non-essential taxonomy/audience/custom-property/organization-centric fields; no Domain entity gains business defaults for public posture, event visibility posture, presets, or import convenience.
 
-### T3 - Add admin/onboarding configuration UI
+### T3 - Add optional admin/post-launch configuration UI
 
 - **Priority:** High
 - **Effort:** M
 - **Dependencies:** T2, T2a, T4, T5, T6
 - **Relevant skills:** blazor-ui-conventions, auth-patterns
-- **Acceptance criteria:** Implemented after backend/read-path proof. Instance/tenant onboarding lets admins choose organization-centric posture, labels, primary organization, bounded CTAs/home blocks, and typed curated preset config; writes are authorized and tenant-scoped; UI uses project components and MudBlazor v9 APIs; invalid cross-tenant/deleted/hidden references are rejected or omitted by Application; the editor persists versioned config records, not Blazor display DTOs or raw query strings.
+- **Acceptance criteria:** Implemented after convention-first onboarding and backend/read-path proof. Post-launch settings or an explicit advanced path lets admins choose organization-centric posture, labels, primary organization, bounded CTAs/home blocks, and typed curated preset config; the standard SingleTenant first-run wizard does not require these choices; writes are authorized and tenant-scoped; UI uses project components and MudBlazor v9 APIs; invalid cross-tenant/deleted/hidden references are rejected or omitted by Application; the editor persists versioned config records, not Blazor display DTOs or raw query strings.
 
 ### T4 - Implement organization-centric home
 
@@ -564,7 +573,7 @@ dotnet build --configuration Release --verbosity quiet
 - **Effort:** L
 - **Dependencies:** T2
 - **Relevant skills:** blazor-ui-conventions
-- **Acceptance criteria:** Single-organization-emphasis deployments render from `PublicExperienceShellDto` through a typed shell client method with a primary-organization-first home, upcoming events, featured event/sections, CTAs, contact/location, donation/volunteer, and clear route behavior; non-available primary organization states use safe neutral/onboarding UI; `/events` remains reachable.
+- **Acceptance criteria:** Optional single-organization-emphasis deployments render from `PublicExperienceShellDto` through a typed shell client method with a primary-organization-first home, upcoming events, featured event/sections, CTAs, contact/location, donation/volunteer, and clear route behavior; absent/non-available primary organization states use safe neutral/discovery or post-launch remediation UI without blocking initial launch; `/events` remains reachable.
 
 ### T5 - Refactor navigation posture
 
@@ -612,7 +621,7 @@ dotnet build --configuration Release --verbosity quiet
 - **Effort:** S
 - **Dependencies:** T1-T9
 - **Relevant skills:** agentic-research
-- **Acceptance criteria:** Docs explain single-tenant does not mean marketplace UX, `Organization` is an actor-backed in-tenant publisher/organizer rather than the tenant, segmentation uses ownership filters plus categories/tags/audience/custom properties/groups, imports tolerate minimal common-denominator event fields, defaults belong in Application/validators or EF persistence configuration as appropriate, and non-goals explicitly reject OrganizerScope/Workspace/SubTenant concepts.
+- **Acceptance criteria:** Docs explain single-tenant does not force marketplace UX but the convention-first launch remains DiscoveryCentric/minimal by default; OrganizationCentric is optional advanced/post-launch posture; `Organization` is an actor-backed in-tenant publisher/organizer rather than the tenant; segmentation uses ownership filters plus categories/tags/audience/custom properties/groups; imports tolerate minimal common-denominator event fields; defaults belong in Application/validators or EF persistence configuration as appropriate; and non-goals explicitly reject OrganizerScope/Workspace/SubTenant concepts.
 
 ## Risk Assessment and Mitigations
 

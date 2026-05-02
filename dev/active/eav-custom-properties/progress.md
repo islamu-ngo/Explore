@@ -3,7 +3,7 @@
 
 # EAV Custom Properties — Execution Progress
 
-**Last updated:** 2026-04-30 (Session 6 — Phase 11.5 local exposure/export/moderation coverage added)
+**Last updated:** 2026-05-02 (Phase 8.5.13 projection updater Prometheus metrics completed)
 **Scope:** Cleanup Phase 9.x — Blazor admin UI for definitions, templates, runtime editors.
 **Mode:** Development (no backward compatibility required).
 
@@ -40,7 +40,7 @@
 | Cleanup | Phase 9.10 Org/Group cleanup | ⏳ PENDING | — |
 | Cleanup | Phase 9.11 NSwag regen | ✅ 2026-04-30 | Swagger snapshot + NSwag client regenerated; client build/regeneration succeeded; client tests pass; full solution build blocked by unrelated existing analyzer/package issues + transient locked client PDB |
 | Cleanup | Phase 11+10.0 Architecture tests | 🟡 PARTIAL 2026-04-30 | Phase 10.0 boundary guard + Phase 11.2 local identity tests + Phase 11.3 runtime semantics + Phase 11.5 local flag coverage verified; API roundtrips and EF uniqueness proof remain Docker/Testcontainers-gated |
-| Cleanup | Phase 8.5.13 Prometheus metrics | ⏳ PENDING | — |
+| Cleanup | Phase 8.5.13 Prometheus metrics | ✅ 2026-05-02 | Added updater-level inline update + dirty-scope skip counters to `Explore.Projections`; API build, persistence integration test build, application unit tests, and architecture tests pass |
 
 ---
 
@@ -95,17 +95,25 @@ Closed cleanup items are no longer listed here; see the milestone snapshot and p
 
 1. **Retry E/F integration tests delegation** — highest value remaining, covers Gap 3 (sync + aggregate-view correctness; Docker required).
 2. **Phase 11 local test slice** — Continue non-Docker unit/architecture tests for custom-property/template flows; 11.3 and 11.5 local slices are covered; API roundtrips remain Docker/Testcontainers-gated.
-3. **Phase 8.5.13** — Add Prometheus metrics for projection updater observability.
-4. **Phase 9.6** — Template preview admin overview for event templates.
-5. **Phase 9.6A** — Session blueprint preview admin overview.
-6. **Phase 9.10** — Organization/Group page cleanup.
+3. **Phase 9.6** — Template preview admin overview for event templates.
+4. **Phase 9.6A** — Session blueprint preview admin overview.
+5. **Phase 9.10** — Organization/Group page cleanup.
 
 ### Recommended Next Execution Slice
 
 **Next implementation target:** Phase 11 local-only tests (11.7) or Phase 9.6/9.6A preview admin overviews.
 
 - Phase 9.4A is closed for CreateEvent's new-session drawer. EventEdit session blueprint selection remains deferred because current event read/update DTOs do not expose the parent event template identity.
-- Current verification baseline: Phase 9.11 swagger export + generated client build succeeded; Phase 10.0 boundary guard LSP/diff checks clean and both new TUnit architecture guards pass; Phase 11.2 local domain/application unit tests pass; Phase 11.3 local runtime multi-value handler tests pass; Phase 11.5 local flag tests pass in `Event.Application.UnitTests` 1029/1029; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped. Full solution build currently fails outside these slices on unrelated existing analyzer/package issues plus one transient locked `Explore.Blazor.Client.pdb` during static-web-assets fingerprinting.
+- Current verification baseline: Phase 9.11 swagger export + generated client build succeeded; Phase 10.0 boundary guard LSP/diff checks clean and both new TUnit architecture guards pass; Phase 11.2 local domain/application unit tests pass; Phase 11.3 local runtime multi-value handler tests pass; Phase 11.5 local flag tests pass; Phase 8.5.13 metrics wiring verified with `Event.Application.UnitTests` 1044/1044, `Event.Architecture.Tests` 135/135, `Explore.API` Release build, and `Event.Persistence.IntegrationTests` Release build. `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` remains ✅ 909 total / 908 passed / 1 known skipped from 2026-04-30. Full solution build currently fails outside these slices on unrelated existing analyzer/package issues plus one transient locked `Explore.Blazor.Client.pdb` during static-web-assets fingerprinting.
+
+### Phase 8.5.13 Projection Updater Prometheus Metrics — ✅ CLOSED 2026-05-02
+
+- Extended the existing `Explore.Projections` meter rather than introducing a parallel EAV-specific meter family, preserving the repo's current OpenTelemetry/Prometheus registration path.
+- Added `explore.projections.inline_updates_total` for inline updater operations that complete without dirty-scope deferral.
+- Added `explore.projections.dirty_scope_skips_total` for inline operations deferred into the dirty-scope backlog, currently labelled with the bounded reason `rebuild_in_progress`.
+- Kept metric tags low-cardinality: `tenant_id`, `projection_type`, `operation`, and `reason`; no definition IDs, event IDs, session IDs, namespace values, or custom-property keys are emitted.
+- Wired counters into both event and event-session projection updaters for value and definition update paths.
+- Verification: `dotnet build Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet` ✅; `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --verbosity quiet` ✅ 1044/1044; `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet` ✅; `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` ✅ 135/135.
 
 ### Phase 11.3 Multi-Value Semantics — ✅ LOCAL COVERAGE ADDED 2026-04-30
 

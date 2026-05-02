@@ -5,10 +5,13 @@ ABOUTME: Prioritizes runtime rules from TenantContext, query filters, and govern
 
 ## Deployment Modes
 
-Runtime mode can come from two places:
+First-run onboarding mode:
 
-1. `SystemSetting` key `deployment.mode` (preferred when DB is available),
-2. static `DeploymentSettings.Mode` fallback.
+- API configuration key `Deployment:Mode`, normally mapped from Infisical `/api` secret `DEPLOYMENT_MODE`.
+- `DEPLOYMENT_MODE=multi_tenant` shows the multi-tenant onboarding flow.
+- absent `DEPLOYMENT_MODE` shows the single-tenant onboarding flow only.
+
+After onboarding, runtime mode comes from persisted database settings and can be changed by instance administrators.
 
 Modes:
 
