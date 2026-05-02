@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -161,20 +161,6 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_configuration_change_logs", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "data_protection_keys",
-                columns: table => new
-                {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    friendly_name = table.Column<string>(type: "text", nullable: true),
-                    xml = table.Column<string>(type: "text", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_data_protection_keys", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -926,6 +912,70 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "user_appearance_profiles",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    theme_mode = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    light_snapshot_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_primary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_secondary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_background = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_surface = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_appbar_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    light_snapshot_appbar_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_drawer_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    light_snapshot_drawer_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_drawer_icon = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_text_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_text_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_info = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_success = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_warning = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_error = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_lines_default = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_snapshot_divider = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    dark_snapshot_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_primary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_secondary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_background = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_surface = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_appbar_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    dark_snapshot_appbar_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_drawer_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    dark_snapshot_drawer_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_drawer_icon = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_text_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_text_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_info = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_success = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_warning = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_error = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_lines_default = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_snapshot_divider = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    source_preset_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    source_preset_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_preset_seed_version = table.Column<int>(type: "integer", nullable: true),
+                    is_user_editable = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    is_archived = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    cloned_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_appearance_profiles", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "visibility_types",
                 columns: table => new
                 {
@@ -986,6 +1036,29 @@ namespace Explore.Persistence.Migrations
                         name: "fk_tenants_tenant_statuses_tenant_status_id",
                         column: x => x.tenant_status_id,
                         principalTable: "tenant_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_appearance_preferences",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    active_profile_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    theme_mode = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false, defaultValue: "System"),
+                    direction = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false, defaultValue: "auto"),
+                    language = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false, defaultValue: "en")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_appearance_preferences", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_user_appearance_preferences_user_appearance_profiles_active",
+                        column: x => x.active_profile_id,
+                        principalTable: "user_appearance_profiles",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -1425,7 +1498,7 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ui_themes",
+                name: "ui_theme_presets",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
@@ -1433,11 +1506,10 @@ namespace Explore.Persistence.Migrations
                     theme_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    is_default = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    sort_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     light_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_primary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
                     light_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_secondary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
                     light_background = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
                     light_surface = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
                     light_appbar_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
@@ -1454,7 +1526,83 @@ namespace Explore.Persistence.Migrations
                     light_lines_default = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
                     light_divider = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     dark_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_primary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
                     dark_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_secondary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_background = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_surface = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_appbar_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    dark_appbar_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_drawer_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    dark_drawer_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_drawer_icon = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_text_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_text_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_info = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_success = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_warning = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_error = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_lines_default = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_divider = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    is_system = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    is_editable = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    seed_version = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    deprecated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ui_theme_presets", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ui_theme_presets_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ui_themes",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    theme_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    light_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_primary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_secondary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_background = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_surface = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_appbar_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    light_appbar_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_drawer_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    light_drawer_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_drawer_icon = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_text_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_text_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_info = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_success = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_warning = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_error = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_lines_default = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_divider = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    dark_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_primary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_secondary_contrast_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
                     dark_background = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
                     dark_surface = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
                     dark_appbar_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
@@ -2401,6 +2549,37 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "user_notification_preferences",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    category = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    is_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, defaultValueSql: "NOW()"),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_notification_preferences", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_user_notification_preferences_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_user_notification_preferences_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "user_pii",
                 columns: table => new
                 {
@@ -2449,6 +2628,11 @@ namespace Explore.Persistence.Migrations
                     first_session_date = table.Column<DateOnly>(type: "date", nullable: true),
                     last_session_date = table.Column<DateOnly>(type: "date", nullable: true),
                     timezone = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    source_template_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_key = table.Column<string>(type: "text", nullable: true),
+                    source_template_version = table.Column<int>(type: "integer", nullable: true),
+                    instantiated_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    last_synced_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     first_session_start_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     last_session_start_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     event_time_zone_id = table.Column<string>(type: "text", nullable: true),
@@ -2715,7 +2899,7 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "event_contact_share_export",
+                name: "event_contact_share_exports",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
@@ -2729,27 +2913,27 @@ namespace Explore.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_event_contact_share_export", x => x.id);
+                    table.PrimaryKey("pk_event_contact_share_exports", x => x.id);
                     table.ForeignKey(
-                        name: "fk_event_contact_share_export_actors_recipient_actor_id",
+                        name: "fk_event_contact_share_exports_actors_recipient_actor_id",
                         column: x => x.recipient_actor_id,
                         principalTable: "actors",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_event_contact_share_export_events_event_id",
+                        name: "fk_event_contact_share_exports_events_event_id",
                         column: x => x.event_id,
                         principalTable: "events",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_event_contact_share_export_tenants_tenant_id",
+                        name: "fk_event_contact_share_exports_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_event_contact_share_export_users_exported_by_user_id",
+                        name: "fk_event_contact_share_exports_users_exported_by_user_id",
                         column: x => x.exported_by_user_id,
                         principalTable: "users",
                         principalColumn: "id",
@@ -2836,6 +3020,56 @@ namespace Explore.Persistence.Migrations
                         principalTable: "madhabs",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_role_assignments",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    role_id = table.Column<int>(type: "integer", nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    starts_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    expires_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    revoked_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    revoked_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    version = table.Column<long>(type: "bigint", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_role_assignments", x => x.id);
+                    table.CheckConstraint("ck_event_role_assignments_validity_window", "expires_at_utc IS NULL OR expires_at_utc > starts_at_utc");
+                    table.ForeignKey(
+                        name: "fk_event_role_assignments_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_role_assignments_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_role_assignments_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_role_assignments_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -3114,9 +3348,15 @@ namespace Explore.Persistence.Migrations
                     max_audience_attendees = table.Column<int>(type: "integer", nullable: true),
                     current_audience_attendees = table.Column<int>(type: "integer", nullable: true),
                     registration_mode_id = table.Column<int>(type: "integer", nullable: true),
+                    featured_image_id = table.Column<Guid>(type: "uuid", nullable: true),
                     price = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
                     currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: true),
                     description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    source_template_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_key = table.Column<string>(type: "text", nullable: true),
+                    source_template_version = table.Column<int>(type: "integer", nullable: true),
+                    instantiated_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    last_synced_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -3161,9 +3401,72 @@ namespace Explore.Persistence.Migrations
                         principalTable: "registration_modes",
                         principalColumn: "id");
                     table.ForeignKey(
+                        name: "fk_event_sessions_storage_objects_featured_image_id",
+                        column: x => x.featured_image_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id");
+                    table.ForeignKey(
                         name: "fk_event_sessions_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_contact_share_consents",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_event_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    recipient_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_event_registration_intent_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    purpose_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    email_snapshot = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
+                    email_normalized_snapshot = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
+                    consent_text_snapshot = table.Column<string>(type: "text", nullable: false),
+                    consent_ui_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    granted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    withdrawn_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_contact_share_consents", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_consents_actors_recipient_actor_id",
+                        column: x => x.recipient_actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_consents_event_registration_intents_sou",
+                        column: x => x.source_event_registration_intent_id,
+                        principalTable: "event_registration_intents",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_consents_events_source_event_id",
+                        column: x => x.source_event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_consents_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_contact_share_consents_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -3423,65 +3726,7 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "event_contact_share_consents",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    source_event_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    recipient_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    source_event_registration_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    purpose_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    email_snapshot = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
-                    email_normalized_snapshot = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
-                    consent_text_snapshot = table.Column<string>(type: "text", nullable: false),
-                    consent_ui_version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    granted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    withdrawn_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_contact_share_consents", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_consents_actors_recipient_actor_id",
-                        column: x => x.recipient_actor_id,
-                        principalTable: "actors",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_consents_event_registrations_source_eve",
-                        column: x => x.source_event_registration_id,
-                        principalTable: "event_registrations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_consents_events_source_event_id",
-                        column: x => x.source_event_id,
-                        principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_consents_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_event_contact_share_consents_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_contact_share_export_item",
+                name: "event_contact_share_export_items",
                 columns: table => new
                 {
                     export_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -3490,17 +3735,17 @@ namespace Explore.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_event_contact_share_export_item", x => new { x.export_id, x.consent_id });
+                    table.PrimaryKey("pk_event_contact_share_export_items", x => new { x.export_id, x.consent_id });
                     table.ForeignKey(
-                        name: "fk_event_contact_share_export_item_event_contact_share_consent",
+                        name: "fk_event_contact_share_export_items_event_contact_share_consen",
                         column: x => x.consent_id,
                         principalTable: "event_contact_share_consents",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_event_contact_share_export_item_event_contact_share_export_",
+                        name: "fk_event_contact_share_export_items_event_contact_share_export",
                         column: x => x.export_id,
-                        principalTable: "event_contact_share_export",
+                        principalTable: "event_contact_share_exports",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -4613,9 +4858,9 @@ namespace Explore.Persistence.Migrations
                 column: "source_event_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_contact_share_consents_source_event_registration_id",
+                name: "ix_event_contact_share_consents_source_event_registration_inte",
                 table: "event_contact_share_consents",
-                column: "source_event_registration_id");
+                column: "source_event_registration_intent_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_contact_share_consents_user_id",
@@ -4639,29 +4884,29 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "user_id", "status" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_contact_share_export_event_id",
-                table: "event_contact_share_export",
+                name: "ix_event_contact_share_export_items_consent_id",
+                table: "event_contact_share_export_items",
+                column: "consent_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_contact_share_exports_event_id",
+                table: "event_contact_share_exports",
                 column: "event_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_contact_share_export_exported_by_user_id",
-                table: "event_contact_share_export",
+                name: "ix_event_contact_share_exports_exported_by_user_id",
+                table: "event_contact_share_exports",
                 column: "exported_by_user_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_contact_share_export_recipient_actor_id",
-                table: "event_contact_share_export",
+                name: "ix_event_contact_share_exports_recipient_actor_id",
+                table: "event_contact_share_exports",
                 column: "recipient_actor_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_eventcontactshareexports_recipient_date",
-                table: "event_contact_share_export",
+                table: "event_contact_share_exports",
                 columns: new[] { "tenant_id", "recipient_actor_id", "created_at" });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_event_contact_share_export_item_consent_id",
-                table: "event_contact_share_export_item",
-                column: "consent_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_ecpd_event_namespace_key",
@@ -4882,11 +5127,49 @@ namespace Explore.Persistence.Migrations
                 name: "ix_eventregistrations_session_user",
                 table: "event_registrations",
                 columns: new[] { "event_session_id", "user_id" },
-                unique: true);
+                unique: true,
+                filter: "is_deleted = false");
 
             migrationBuilder.CreateIndex(
                 name: "ix_eventregistrations_user",
                 table: "event_registrations",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_role_assignments_event_id",
+                table: "event_role_assignments",
+                column: "event_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_role_assignments_role_id",
+                table: "event_role_assignments",
+                column: "role_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_role_assignments_tenant_event_role_status",
+                table: "event_role_assignments",
+                columns: new[] { "tenant_id", "event_id", "role_id", "status" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_role_assignments_tenant_event_user_status",
+                table: "event_role_assignments",
+                columns: new[] { "tenant_id", "event_id", "user_id", "status" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_role_assignments_tenant_user_event_status",
+                table: "event_role_assignments",
+                columns: new[] { "tenant_id", "user_id", "event_id", "status" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_role_assignments_unique_pending_active",
+                table: "event_role_assignments",
+                columns: new[] { "tenant_id", "event_id", "user_id", "role_id" },
+                unique: true,
+                filter: "status IN (1, 2)");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_role_assignments_user_id",
+                table: "event_role_assignments",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
@@ -5145,6 +5428,11 @@ namespace Explore.Persistence.Migrations
                 name: "ix_event_sessions_event_id",
                 table: "event_sessions",
                 column: "event_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_sessions_featured_image_id",
+                table: "event_sessions",
+                column: "featured_image_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_sessions_location_id",
@@ -5947,6 +6235,25 @@ namespace Explore.Persistence.Migrations
                 column: "tenant_status_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_ui_theme_presets_tenant_id_is_active",
+                table: "ui_theme_presets",
+                columns: new[] { "tenant_id", "is_active" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ui_theme_presets_tenant_id_theme_key",
+                table: "ui_theme_presets",
+                columns: new[] { "tenant_id", "theme_key" },
+                unique: true,
+                filter: "tenant_id IS NOT NULL AND is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ui_theme_presets_theme_key",
+                table: "ui_theme_presets",
+                column: "theme_key",
+                unique: true,
+                filter: "tenant_id IS NULL AND is_deleted = false");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_ui_themes_is_default",
                 table: "ui_themes",
                 column: "is_default",
@@ -5975,6 +6282,39 @@ namespace Explore.Persistence.Migrations
                 filter: "tenant_id IS NULL");
 
             migrationBuilder.CreateIndex(
+                name: "ix_user_appearance_preferences_active_profile_id",
+                table: "user_appearance_preferences",
+                column: "active_profile_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_appearance_preferences_user_id_tenant_id",
+                table: "user_appearance_preferences",
+                columns: new[] { "user_id", "tenant_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_appearance_profiles_user_id_source_preset_id",
+                table: "user_appearance_profiles",
+                columns: new[] { "user_id", "source_preset_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_appearance_profiles_user_id_tenant_id_is_archived",
+                table: "user_appearance_profiles",
+                columns: new[] { "user_id", "tenant_id", "is_archived" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_appearance_profiles_user_id_tenant_id_is_default",
+                table: "user_appearance_profiles",
+                columns: new[] { "user_id", "tenant_id", "is_default" },
+                unique: true,
+                filter: "is_default = true");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_appearance_profiles_user_id_tenant_id_name",
+                table: "user_appearance_profiles",
+                columns: new[] { "user_id", "tenant_id", "name" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_user_authentication_tokens_tenant_id",
                 table: "user_authentication_tokens",
                 column: "tenant_id");
@@ -5992,6 +6332,17 @@ namespace Explore.Persistence.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_user_external_logins_user_id",
                 table: "user_external_logins",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_notification_preferences_tenant_id_user_id_category",
+                table: "user_notification_preferences",
+                columns: new[] { "tenant_id", "user_id", "category" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_notification_preferences_user_id",
+                table: "user_notification_preferences",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
@@ -6212,6 +6563,10 @@ namespace Explore.Persistence.Migrations
                 table: "event_series");
 
             migrationBuilder.DropForeignKey(
+                name: "fk_event_sessions_storage_objects_featured_image_id",
+                table: "event_sessions");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_events_storage_objects_background_image_id",
                 table: "events");
 
@@ -6306,22 +6661,25 @@ namespace Explore.Persistence.Migrations
                 name: "custom_property_values");
 
             migrationBuilder.DropTable(
-                name: "data_protection_keys");
-
-            migrationBuilder.DropTable(
                 name: "event_agenda_items");
 
             migrationBuilder.DropTable(
                 name: "event_categories");
 
             migrationBuilder.DropTable(
-                name: "event_contact_share_export_item");
+                name: "event_contact_share_export_items");
 
             migrationBuilder.DropTable(
                 name: "event_custom_property_projections");
 
             migrationBuilder.DropTable(
                 name: "event_islamic_aspects");
+
+            migrationBuilder.DropTable(
+                name: "event_registrations");
+
+            migrationBuilder.DropTable(
+                name: "event_role_assignments");
 
             migrationBuilder.DropTable(
                 name: "event_session_agenda_items");
@@ -6453,13 +6811,22 @@ namespace Explore.Persistence.Migrations
                 name: "tenant_settings");
 
             migrationBuilder.DropTable(
+                name: "ui_theme_presets");
+
+            migrationBuilder.DropTable(
                 name: "ui_themes");
+
+            migrationBuilder.DropTable(
+                name: "user_appearance_preferences");
 
             migrationBuilder.DropTable(
                 name: "user_authentication_tokens");
 
             migrationBuilder.DropTable(
                 name: "user_external_logins");
+
+            migrationBuilder.DropTable(
+                name: "user_notification_preferences");
 
             migrationBuilder.DropTable(
                 name: "user_pii");
@@ -6477,7 +6844,7 @@ namespace Explore.Persistence.Migrations
                 name: "event_contact_share_consents");
 
             migrationBuilder.DropTable(
-                name: "event_contact_share_export");
+                name: "event_contact_share_exports");
 
             migrationBuilder.DropTable(
                 name: "event_custom_property_values");
@@ -6528,16 +6895,16 @@ namespace Explore.Persistence.Migrations
                 name: "roles");
 
             migrationBuilder.DropTable(
-                name: "event_registrations");
+                name: "user_appearance_profiles");
+
+            migrationBuilder.DropTable(
+                name: "event_registration_intents");
 
             migrationBuilder.DropTable(
                 name: "external_api_key_credit_periods");
 
             migrationBuilder.DropTable(
                 name: "external_api_key_statuses");
-
-            migrationBuilder.DropTable(
-                name: "event_registration_intents");
 
             migrationBuilder.DropTable(
                 name: "registration_scopes");

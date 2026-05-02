@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
@@ -166,7 +167,8 @@ public class EventSessionCustomPropertyProjectionUpdaterTests
             context,
             dirtyScopeRepo,
             statusRepo,
-            quotaResolver);
+            quotaResolver,
+            new ProjectionMetrics(new TestMeterFactory()));
     }
 
     private static async Task<SessionProjectionTestScope> SeedSessionWithDefinitionAsync(

@@ -11,8 +11,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations.DataProtection
 {
     [DbContext(typeof(DataProtectionKeyContext))]
-    [Migration("20260429090834_CreateDataProtectionKeys")]
-    partial class CreateDataProtectionKeys
+    [Migration("20260501103551_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

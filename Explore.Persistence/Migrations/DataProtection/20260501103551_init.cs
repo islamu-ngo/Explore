@@ -3,20 +3,13 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Explore.Persistence.Migrations
+namespace Explore.Persistence.Migrations.DataProtection
 {
     /// <inheritdoc />
-    public partial class MoveDataProtectionKeysToDedicatedContext : Migration
+    public partial class init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropTable(
-                name: "data_protection_keys");
-        }
-
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
                 name: "data_protection_keys",
@@ -31,6 +24,13 @@ namespace Explore.Persistence.Migrations
                 {
                     table.PrimaryKey("pk_data_protection_keys", x => x.id);
                 });
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "data_protection_keys");
         }
     }
 }

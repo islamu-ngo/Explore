@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -21,17 +22,20 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
     private readonly ICustomPropertyProjectionDirtyScopeRepository _dirtyScopeRepository;
     private readonly ICustomPropertyProjectionStatusRepository _statusRepository;
     private readonly ICustomPropertyQuotaResolver _quotaResolver;
+    private readonly ProjectionMetrics _metrics;
 
     public EventCustomPropertyProjectionUpdater(
         ExploreDbContext dbContext,
         ICustomPropertyProjectionDirtyScopeRepository dirtyScopeRepository,
         ICustomPropertyProjectionStatusRepository statusRepository,
-        ICustomPropertyQuotaResolver quotaResolver)
+        ICustomPropertyQuotaResolver quotaResolver,
+        ProjectionMetrics metrics)
     {
         _dbContext = dbContext;
         _dirtyScopeRepository = dirtyScopeRepository;
         _statusRepository = statusRepository;
         _quotaResolver = quotaResolver;
+        _metrics = metrics;
     }
 
     public async Task UpdateForValueAsync(Guid valueId, CancellationToken cancellationToken)
@@ -54,10 +58,12 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
                 value.EventCustomPropertyDefinitionId,
                 "rebuild_in_progress",
                 cancellationToken);
+            _metrics.RecordDirtyScopeSkip(value.TenantId.ToString(), ProjectionName, "value", "rebuild_in_progress");
             return;
         }
 
         await UpsertProjectionRowAsync(value, value.Definition, cancellationToken);
+        _metrics.RecordInlineUpdate(value.TenantId.ToString(), ProjectionName, "value");
     }
 
     public async Task UpdateForDefinitionAsync(Guid definitionId, CancellationToken cancellationToken)
@@ -79,6 +85,7 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
                 definition.Id,
                 "rebuild_in_progress",
                 cancellationToken);
+            _metrics.RecordDirtyScopeSkip(definition.TenantId.ToString(), ProjectionName, "definition", "rebuild_in_progress");
             return;
         }
 
@@ -90,6 +97,8 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
         {
             await UpsertProjectionRowAsync(value, definition, cancellationToken);
         }
+
+        _metrics.RecordInlineUpdate(definition.TenantId.ToString(), ProjectionName, "definition", values.Count);
     }
 
     public async Task RemoveForDefinitionAsync(Guid definitionId, CancellationToken cancellationToken)
