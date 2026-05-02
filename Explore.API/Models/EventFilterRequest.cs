@@ -11,6 +11,9 @@ public sealed class EventFilterRequest
     public int PageSize { get; set; } = 20;
 
     public string? SearchTerm { get; set; }
+    public Guid? ActorId { get; set; }
+    public Guid? OrganizationId { get; set; }
+    public Guid? GroupId { get; set; }
     public Guid? CategoryId { get; set; }
     public List<Guid>? IncludedCategoryIds { get; set; }
     public List<Guid>? ExcludedCategoryIds { get; set; }

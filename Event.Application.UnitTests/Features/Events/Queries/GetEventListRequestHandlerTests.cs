@@ -1,3 +1,5 @@
+// ABOUTME: Unit tests for public event list query filtering and ownership scoping.
+// ABOUTME: Verifies actor-backed organization/group filters without coupling tests to persistence.
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -9,14 +11,13 @@ using Explore.Application.Specifications.Events;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using TUnit.Assertions;
-using TUnit.Core;
 
 namespace Event.Application.UnitTests.Features.Events.Queries;
 
 public class GetEventListRequestHandlerTests
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IActorRepository _actorRepository;
     private readonly IMapper _mapper;
     private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetEventListRequestHandler> _logger;
@@ -25,10 +26,12 @@ public class GetEventListRequestHandlerTests
     private readonly ITenantContext _tenantContext;
     private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly GetEventListRequestHandler _handler;
+    private readonly Guid _tenantId = Guid.NewGuid();
 
     public GetEventListRequestHandlerTests()
     {
         _eventRepository = Substitute.For<IEventRepository>();
+        _actorRepository = Substitute.For<IActorRepository>();
         _mapper = Substitute.For<IMapper>();
         _objectStorageService = Substitute.For<IObjectStorageService>();
         _logger = Substitute.For<ILogger<GetEventListRequestHandler>>();
@@ -36,12 +39,132 @@ public class GetEventListRequestHandlerTests
         _moduleService = Substitute.For<IModuleService>();
         _tenantContext = Substitute.For<ITenantContext>();
         _quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
+        _tenantContext.TenantId.Returns(_tenantId);
         _handler = new GetEventListRequestHandler(
-            _eventRepository, _mapper, _objectStorageService, _logger, _cache, _moduleService, _tenantContext, _quotaResolver);
+            _eventRepository, _actorRepository, _mapper, _objectStorageService, _logger, _cache, _moduleService, _tenantContext, _quotaResolver);
 
         // Default mock for mapper to avoid nulls in PaginatedResult
         _mapper.Map<List<EventListDto>>(Arg.Any<List<Explore.Domain.Event>>()).Returns(new List<EventListDto>());
     }
+
+    [Test]
+    public async Task Handle_WithActorId_AddsActorFilterWithoutResolvingOrganizationOrGroup()
+    {
+        var actorId = Guid.NewGuid();
+        _actorRepository.GetById(actorId).Returns(new Explore.Domain.Actor
+        {
+            Id = actorId,
+            TenantId = _tenantId,
+            ActorType = null!,
+            Tenant = null!,
+            Pii = null!
+        });
+        _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
+            .Returns((new List<Explore.Domain.Event>(), 0));
+
+        await _handler.Handle(new GetEventListRequest { ActorId = actorId }, CancellationToken.None);
+
+        await _actorRepository.DidNotReceiveWithAnyArgs().GetActorByOrganizationId(default);
+        await _actorRepository.DidNotReceiveWithAnyArgs().GetActorByGroupId(default);
+        await _eventRepository.Received(1).GetEventsWithDetailsPaged(
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Is<EventQuerySpecification>(s => s != null && HasActorFilter(s, actorId)));
+    }
+
+    [Test]
+    public async Task Handle_WithCrossTenantActorId_ReturnsEmptyPageWithoutQueryingEvents()
+    {
+        var actorId = Guid.NewGuid();
+        _actorRepository.GetById(actorId).Returns(new Explore.Domain.Actor
+        {
+            Id = actorId,
+            TenantId = Guid.NewGuid(),
+            ActorType = null!,
+            Tenant = null!,
+            Pii = null!
+        });
+
+        var result = await _handler.Handle(new GetEventListRequest { ActorId = actorId, PageNumber = 4, PageSize = 13 }, CancellationToken.None);
+
+        await Assert.That(result.Items).IsEmpty();
+        await Assert.That(result.TotalCount).IsEqualTo(0);
+        await Assert.That(result.PageNumber).IsEqualTo(4);
+        await Assert.That(result.PageSize).IsEqualTo(13);
+        await _eventRepository.DidNotReceiveWithAnyArgs().GetEventsWithDetailsPaged(default, default, default!);
+    }
+
+    [Test]
+    public async Task Handle_WithOrganizationId_ResolvesActorAndAddsActorFilter()
+    {
+        var organizationId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        _actorRepository.GetActorByOrganizationId(organizationId).Returns(new Explore.Domain.Actor
+        {
+            Id = actorId,
+            TenantId = _tenantId,
+            ActorType = null!,
+            Tenant = null!,
+            Pii = null!
+        });
+        _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
+            .Returns((new List<Explore.Domain.Event>(), 0));
+
+        await _handler.Handle(new GetEventListRequest { OrganizationId = organizationId }, CancellationToken.None);
+
+        await _eventRepository.Received(1).GetEventsWithDetailsPaged(
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Is<EventQuerySpecification>(s => s != null && HasActorFilter(s, actorId)));
+    }
+
+    [Test]
+    public async Task Handle_WithMissingOrganizationActor_ReturnsEmptyPageWithoutQueryingEvents()
+    {
+        var organizationId = Guid.NewGuid();
+        _actorRepository.GetActorByOrganizationId(organizationId).Returns((Explore.Domain.Actor?)null);
+
+        var result = await _handler.Handle(new GetEventListRequest { OrganizationId = organizationId, PageNumber = 3, PageSize = 11 }, CancellationToken.None);
+
+        await Assert.That(result.Items).IsEmpty();
+        await Assert.That(result.TotalCount).IsEqualTo(0);
+        await Assert.That(result.PageNumber).IsEqualTo(3);
+        await Assert.That(result.PageSize).IsEqualTo(11);
+        await _eventRepository.DidNotReceiveWithAnyArgs().GetEventsWithDetailsPaged(default, default, default!);
+    }
+
+    [Test]
+    public async Task Handle_WithMissingGroupActor_ReturnsEmptyPageWithoutQueryingEvents()
+    {
+        var groupId = Guid.NewGuid();
+        _actorRepository.GetActorByGroupId(groupId).Returns((Explore.Domain.Actor?)null);
+
+        var result = await _handler.Handle(new GetEventListRequest { GroupId = groupId, PageNumber = 2, PageSize = 7 }, CancellationToken.None);
+
+        await Assert.That(result.Items).IsEmpty();
+        await Assert.That(result.TotalCount).IsEqualTo(0);
+        await Assert.That(result.PageNumber).IsEqualTo(2);
+        await Assert.That(result.PageSize).IsEqualTo(7);
+        await _eventRepository.DidNotReceiveWithAnyArgs().GetEventsWithDetailsPaged(default, default, default!);
+    }
+
+    private static bool HasActorFilter(EventQuerySpecification specification, Guid actorId)
+    {
+        var probe = CreateEventProbe(actorId);
+        var other = CreateEventProbe(Guid.NewGuid());
+        return specification.Filters.Any(filter => filter.Predicate.Compile()(probe) && !filter.Predicate.Compile()(other));
+    }
+
+    private static Explore.Domain.Event CreateEventProbe(Guid actorId) => new()
+    {
+        Title = "probe",
+        Actor = null!,
+        ActorId = actorId,
+        Tenant = null!,
+        VisibilityType = null!,
+        EventStatus = null!,
+        EventFormat = null!
+    };
 
     private sealed class TestHybridCache : HybridCache
     {
@@ -76,7 +199,7 @@ public class GetEventListRequestHandlerTests
         await _eventRepository.Received(1).GetEventsWithDetailsPaged(
             Arg.Any<int>(),
             Arg.Any<int>(),
-            Arg.Is<EventQuerySpecification>(s => s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsIncludedAll && f.Value == tagIds)));
+            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsIncludedAll && f.Value == tagIds)));
     }
 
     [Test]
@@ -100,7 +223,7 @@ public class GetEventListRequestHandlerTests
         await _eventRepository.Received(1).GetEventsWithDetailsPaged(
             Arg.Any<int>(),
             Arg.Any<int>(),
-            Arg.Is<EventQuerySpecification>(s => s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsIncludedAny && f.Value == tagIds)));
+            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsIncludedAny && f.Value == tagIds)));
     }
 
     [Test]
@@ -124,7 +247,7 @@ public class GetEventListRequestHandlerTests
         await _eventRepository.Received(1).GetEventsWithDetailsPaged(
             Arg.Any<int>(),
             Arg.Any<int>(),
-            Arg.Is<EventQuerySpecification>(s => s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsExcludedAny && f.Value == tagIds)));
+            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsExcludedAny && f.Value == tagIds)));
     }
 
     [Test]
@@ -148,6 +271,6 @@ public class GetEventListRequestHandlerTests
         await _eventRepository.Received(1).GetEventsWithDetailsPaged(
             Arg.Any<int>(),
             Arg.Any<int>(),
-            Arg.Is<EventQuerySpecification>(s => s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsExcludedAll && f.Value == tagIds)));
+            Arg.Is<EventQuerySpecification>(s => s != null && s.SubqueryFilters.Any(f => f.FilterType == EventSubqueryFilterType.TagsExcludedAll && f.Value == tagIds)));
     }
 }

@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorKeyStore;
@@ -48,6 +46,7 @@ using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.DTOs.UserExternalLogin;
 using Explore.Application.DTOs.VisibilityType;
 using Explore.Application.Hateoas;
+using Explore.Application.Models.PublicExperience;
 using Explore.Application.Responses;
 
 namespace Explore.Application.Serialization;
@@ -134,6 +133,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(CompleteInstanceOnboardingRequest))]
 [JsonSerializable(typeof(Explore.Application.DTOs.Instance.DeploymentModeDto))]
 [JsonSerializable(typeof(InstanceOnboardingStatusDto))]
+[JsonSerializable(typeof(SystemOnboardingStatusDto))]
 [JsonSerializable(typeof(LanguageDto))]
 [JsonSerializable(typeof(LanguageListDto))]
 [JsonSerializable(typeof(LocationDto))]
@@ -148,6 +148,22 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(OrganizationPositionListDto))]
 [JsonSerializable(typeof(OrganizationReviewDto))]
 [JsonSerializable(typeof(PresignedDownloadUrlResponseDto))]
+[JsonSerializable(typeof(Explore.Application.Models.PublicExperienceMode))]
+[JsonSerializable(typeof(PublicExperienceHomeBlocksConfig))]
+[JsonSerializable(typeof(PublicExperienceHomeBlockConfig))]
+[JsonSerializable(typeof(PublicExperienceHomeBlockKind))]
+[JsonSerializable(typeof(PublicExperienceCtasConfig))]
+[JsonSerializable(typeof(PublicExperienceCtaConfig))]
+[JsonSerializable(typeof(PublicExperienceCtaPlacement))]
+[JsonSerializable(typeof(PublicExperienceCtaStyle))]
+[JsonSerializable(typeof(PublicEventSectionPresetsConfig))]
+[JsonSerializable(typeof(PublicEventSectionPresetConfig))]
+[JsonSerializable(typeof(PublicEventSectionOwnerFilter))]
+[JsonSerializable(typeof(PublicEventSectionEventFilter))]
+[JsonSerializable(typeof(PublicEventSectionDateFilter))]
+[JsonSerializable(typeof(PublicEventSectionDateWindow))]
+[JsonSerializable(typeof(PublicEventSectionCustomPropertyFilter))]
+[JsonSerializable(typeof(PublicEventSectionCustomPropertyOperator))]
 [JsonSerializable(typeof(PublicExperienceSettingsDto))]
 [JsonSerializable(typeof(RegistrationModeDto))]
 [JsonSerializable(typeof(RegistrationModeListDto))]

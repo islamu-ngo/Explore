@@ -19,6 +19,7 @@ namespace Explore.Application.Features.Events.Handlers.Queries;
 public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, PaginatedResult<EventListDto>>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IActorRepository _actorRepository;
     private readonly IMapper _mapper;
     private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetEventListRequestHandler> _logger;
@@ -29,6 +30,7 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
 
     public GetEventListRequestHandler(
         IEventRepository eventRepository,
+        IActorRepository actorRepository,
         IMapper mapper,
         IObjectStorageService objectStorageService,
         ILogger<GetEventListRequestHandler> logger,
@@ -38,6 +40,7 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         ICustomPropertyQuotaResolver quotaResolver)
     {
         _eventRepository = eventRepository;
+        _actorRepository = actorRepository;
         _mapper = mapper;
         _objectStorageService = objectStorageService;
         _logger = logger;
@@ -49,9 +52,16 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
 
     public async Task<PaginatedResult<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
     {
-        var specification = await BuildSpecificationAsync(request, cancellationToken);
+        var ownershipActorId = await ResolveOwnershipActorIdAsync(request);
+        if (ownershipActorId == MissingOwnershipActorId)
+        {
+            return PaginatedResult<EventListDto>.Create([], 0, request.PageNumber, request.PageSize);
+        }
+
+        var specification = await BuildSpecificationAsync(request, ownershipActorId, cancellationToken);
+        var ownershipCacheKey = ownershipActorId?.ToString("N") ?? "none";
         var cacheKeySuffix = specification.ToCacheKeySuffix();
-        var cacheKey = $"events:list:{request.PageNumber}:{request.PageSize}:{cacheKeySuffix}";
+        var cacheKey = $"events:list:{request.PageNumber}:{request.PageSize}:owner:{ownershipCacheKey}:{cacheKeySuffix}";
 
         var cachedResult = await _cache.GetOrCreateAsync(
             cacheKey,
@@ -84,7 +94,7 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
     /// Aspect-specific filters are only applied when the corresponding module is enabled for the current tenant.
     /// </summary>
     private async Task<EventQuerySpecification> BuildSpecificationAsync(
-        GetEventListRequest request, CancellationToken cancellationToken)
+        GetEventListRequest request, Guid? ownershipActorId, CancellationToken cancellationToken)
     {
         var spec = new EventQuerySpecification();
 
@@ -97,6 +107,9 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         }
 
         // ===== Core Event filters (always available) =====
+
+        if (ownershipActorId.HasValue)
+            spec = spec.And(EventFilter.Actor(ownershipActorId.Value));
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
             spec = spec.And(EventFilter.SearchTerm(request.SearchTerm.Trim()));
@@ -265,6 +278,33 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         }
 
         return spec;
+    }
+
+    private static readonly Guid MissingOwnershipActorId = Guid.Empty;
+
+    private async Task<Guid?> ResolveOwnershipActorIdAsync(GetEventListRequest request)
+    {
+        var tenantId = _tenantContext.TenantId;
+
+        if (request.ActorId.HasValue)
+        {
+            var actor = await _actorRepository.GetById(request.ActorId.Value);
+            return actor?.TenantId == tenantId ? actor.Id : MissingOwnershipActorId;
+        }
+
+        if (request.OrganizationId.HasValue)
+        {
+            var actor = await _actorRepository.GetActorByOrganizationId(request.OrganizationId.Value);
+            return actor?.TenantId == tenantId ? actor.Id : MissingOwnershipActorId;
+        }
+
+        if (request.GroupId.HasValue)
+        {
+            var actor = await _actorRepository.GetActorByGroupId(request.GroupId.Value);
+            return actor?.TenantId == tenantId ? actor.Id : MissingOwnershipActorId;
+        }
+
+        return null;
     }
 
     /// <summary>

@@ -8,7 +8,6 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Footer;
-using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
 using Explore.Application.Settings;
@@ -120,6 +119,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         return new PublicExperienceSettingsDto
         {
             TenantId = tenantId,
+            Mode = Explore.Application.Models.PublicExperienceMode.DiscoveryCentric,
             DeploymentMode = deploymentMode,
             PreferredHomePage = effectiveTenantSettings.PreferredHomePage,
             BrandDisplayName = effectiveTenantSettings.BrandDisplayName,

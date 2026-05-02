@@ -20,28 +20,29 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ISetupSecretProvider _setupSecretProvider;
+    private readonly IDeploymentModeProvider _deploymentModeProvider;
 
     public GetInstanceOnboardingStatusQueryHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         IAdminContext adminContext,
         ISystemSettingRepository systemSettingRepository,
         ICurrentUserService currentUserService,
-        ISetupSecretProvider setupSecretProvider)
+        ISetupSecretProvider setupSecretProvider,
+        IDeploymentModeProvider deploymentModeProvider)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _adminContext = adminContext;
         _systemSettingRepository = systemSettingRepository;
         _currentUserService = currentUserService;
         _setupSecretProvider = setupSecretProvider;
+        _deploymentModeProvider = deploymentModeProvider;
     }
 
     public async Task<InstanceOnboardingStatusDto> Handle(GetInstanceOnboardingStatusQuery request, CancellationToken cancellationToken)
     {
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
         var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
-        var selectedDeploymentMode = !string.IsNullOrWhiteSpace(bootstrap?.SelectedDeploymentMode)
-            ? bootstrap!.SelectedDeploymentMode
-            : DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
+        var selectedDeploymentMode = await ResolveDeploymentModeAsync(bootstrap?.SelectedDeploymentMode, bootstrap?.IsCompleted == true, deploymentModeSetting?.Value, cancellationToken);
 
         var response = new InstanceOnboardingStatusDto
         {
@@ -80,5 +81,25 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
         {
             return rawValue.Trim('"');
         }
+    }
+
+    private async Task<string> ResolveDeploymentModeAsync(
+        string? bootstrapMode,
+        bool isCompleted,
+        string? deploymentModeSettingValue,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(bootstrapMode))
+        {
+            return bootstrapMode;
+        }
+
+        if (!isCompleted)
+        {
+            return (await _deploymentModeProvider.GetConfiguredOnboardingModeAsync(cancellationToken)).ToString();
+        }
+
+        var currentMode = (await _deploymentModeProvider.GetCurrentModeAsync(cancellationToken)).ToString();
+        return DeserializeString(deploymentModeSettingValue, currentMode);
     }
 }

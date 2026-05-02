@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:36287/"
+      "url": "https://localhost:33789/"
     }
   ],
   "paths": {
@@ -4992,6 +4992,30 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "ActorId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OrganizationId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "GroupId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -25806,6 +25830,55 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/system/onboarding-status": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Get System Onboarding Status",
+        "description": "Returns non-sensitive startup state: whether onboarding is required and the effective deployment mode.",
+        "operationId": "GetSystemOnboardingStatus",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemOnboardingStatusDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemOnboardingStatusDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemOnboardingStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
     "/api/tag": {
       "get": {
         "tags": [
@@ -44049,12 +44122,18 @@
       "PropertyType": {
         "type": "integer"
       },
+      "PublicExperienceMode": {
+        "type": "integer"
+      },
       "PublicExperienceSettingsDto": {
         "type": "object",
         "properties": {
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/PublicExperienceMode"
           },
           "deploymentMode": {
             "type": "string"
@@ -45240,6 +45319,17 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "SystemOnboardingStatusDto": {
+        "type": "object",
+        "properties": {
+          "requiresOnboarding": {
+            "type": "boolean"
+          },
+          "deploymentMode": {
+            "type": "string"
           }
         }
       },
@@ -49290,6 +49380,9 @@
     },
     {
       "name": "SyncState"
+    },
+    {
+      "name": "System"
     },
     {
       "name": "Tag"

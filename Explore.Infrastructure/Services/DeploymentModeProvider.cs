@@ -39,26 +39,12 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
 
     public async Task<DeploymentMode> GetCurrentModeAsync(CancellationToken ct = default)
     {
-        // Layer 1: explicit static config (env var / appsettings) — highest priority.
-        // When the operator/deployment has explicitly set Deployment:Mode, honor it
-        // regardless of DB bootstrap state. This lets tests and controlled deployments
-        // force a mode without depending on InstanceBootstrapState.
-        var explicitMode = _configuration["Deployment:Mode"];
-        if (!string.IsNullOrWhiteSpace(explicitMode)
-            && Enum.TryParse<DeploymentMode>(explicitMode, ignoreCase: true, out var configuredMode))
-        {
-            return configuredMode;
-        }
-
-        if (_settings.CurrentValue.IsSingleTenant)
-            return DeploymentMode.SingleTenant;
-
-        // Layer 2: distributed cache
+        // Layer 1: distributed cache
         var cached = await TryGetCachedModeAsync(ct);
         if (cached is not null)
             return cached.Value;
 
-        // Layer 3: database (scoped repo accessed via factory)
+        // Layer 2: database (scoped repo accessed via factory)
         using var scope = _scopeFactory.CreateScope();
         var repo = scope.ServiceProvider
             .GetRequiredService<IInstanceBootstrapStateRepository>();
@@ -66,9 +52,8 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
 
         // Pre-onboarding (fresh install): InstanceBootstrapState is null or incomplete.
         // Return SingleTenant so ApiTenantResolutionMiddleware falls back to the default tenant
-        // rather than 404'ing every request (including onboarding page's background calls to
-        // /api/translation, /api/user/sync, etc.). The operator's chosen mode replaces this
-        // once onboarding completes and invalidates the cache.
+        // rather than 404'ing every request. The configured onboarding mode is exposed separately
+        // and persisted when onboarding completes.
         if (bootstrap is null || !bootstrap.IsCompleted)
         {
             await TrySetCachedModeAsync(DeploymentMode.SingleTenant, ct);
@@ -87,6 +72,9 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
         _logger.LogDebug("Deployment mode resolved from DB: {Mode}", mode);
         return mode;
     }
+
+    public Task<DeploymentMode> GetConfiguredOnboardingModeAsync(CancellationToken ct = default)
+        => Task.FromResult(ResolveConfiguredMode());
 
     public async Task<bool> IsSingleTenantAsync(CancellationToken ct = default)
         => await GetCurrentModeAsync(ct) == DeploymentMode.SingleTenant;
@@ -139,5 +127,32 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
         {
             _logger.LogWarning(ex, "Distributed cache unavailable while invalidating deployment mode cache.");
         }
+    }
+
+    private DeploymentMode ResolveConfiguredMode()
+    {
+        var configuredMode = _configuration["Deployment:Mode"];
+        if (TryParseDeploymentMode(configuredMode, out var parsedMode))
+        {
+            return parsedMode;
+        }
+
+        return _settings.CurrentValue.Mode;
+    }
+
+    private static bool TryParseDeploymentMode(string? rawValue, out DeploymentMode mode)
+    {
+        mode = DeploymentMode.SingleTenant;
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return false;
+        }
+
+        var normalized = rawValue.Trim()
+            .Replace("_", string.Empty, StringComparison.Ordinal)
+            .Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+        return Enum.TryParse(normalized, ignoreCase: true, out mode);
     }
 }

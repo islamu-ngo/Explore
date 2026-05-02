@@ -16,6 +16,8 @@ public sealed class ProjectionMetrics
     private readonly Counter<long> _drainFailuresTotal;
     private readonly Histogram<double> _drainDuration;
     private readonly Counter<long> _drainedScopesTotal;
+    private readonly Counter<long> _inlineUpdatesTotal;
+    private readonly Counter<long> _dirtyScopeSkipsTotal;
 
     public ProjectionMetrics(IMeterFactory meterFactory)
     {
@@ -55,6 +57,16 @@ public sealed class ProjectionMetrics
             "explore.projections.drained_scopes_total",
             unit: "{scope}",
             description: "Total individual dirty scopes drained across all drain operations");
+
+        _inlineUpdatesTotal = meter.CreateCounter<long>(
+            "explore.projections.inline_updates_total",
+            unit: "{update}",
+            description: "Total inline projection updater operations completed without dirty-scope deferral");
+
+        _dirtyScopeSkipsTotal = meter.CreateCounter<long>(
+            "explore.projections.dirty_scope_skips_total",
+            unit: "{skip}",
+            description: "Total projection updater operations deferred into the dirty-scope backlog");
     }
 
     public void RecordRebuild(string tenantId, string projectionType, long rowsProcessed, long rowsFailed, double durationSeconds, bool lockAcquired)
@@ -93,5 +105,25 @@ public sealed class ProjectionMetrics
         _drainFailuresTotal.Add(1,
             new KeyValuePair<string, object?>("tenant_id", tenantId),
             new KeyValuePair<string, object?>("projection_type", projectionType));
+    }
+
+    public void RecordInlineUpdate(string tenantId, string projectionType, string operation, long count = 1)
+    {
+        if (count <= 0)
+            return;
+
+        _inlineUpdatesTotal.Add(count,
+            new KeyValuePair<string, object?>("tenant_id", tenantId),
+            new KeyValuePair<string, object?>("projection_type", projectionType),
+            new KeyValuePair<string, object?>("operation", operation));
+    }
+
+    public void RecordDirtyScopeSkip(string tenantId, string projectionType, string operation, string reason)
+    {
+        _dirtyScopeSkipsTotal.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId),
+            new KeyValuePair<string, object?>("projection_type", projectionType),
+            new KeyValuePair<string, object?>("operation", operation),
+            new KeyValuePair<string, object?>("reason", reason));
     }
 }

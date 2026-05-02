@@ -79,6 +79,9 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             return response;
         }
 
+        var configuredDeploymentMode = await _deploymentModeProvider.GetConfiguredOnboardingModeAsync(cancellationToken);
+        request.Settings.DeploymentMode = configuredDeploymentMode;
+
         var validator = new CompleteInstanceOnboardingRequestValidator();
         var validation = await validator.ValidateAsync(request.Settings, cancellationToken);
         if (!validation.IsValid)
@@ -99,7 +102,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             return response;
         }
 
-        var deploymentMode = request.Settings.DeploymentMode;
+        var deploymentMode = configuredDeploymentMode;
         var isSingleTenant = deploymentMode == DeploymentMode.SingleTenant;
         Guid? defaultTenantId = null;
 

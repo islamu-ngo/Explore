@@ -144,7 +144,8 @@ public sealed class ApiTenantResolutionMiddleware
 
     private static bool IsTenantExemptPath(PathString path)
     {
-        return path.StartsWithSegments("/api/InstanceOnboarding", StringComparison.OrdinalIgnoreCase);
+        return path.StartsWithSegments("/api/InstanceOnboarding", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/System", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? NormalizeHost(string? host)

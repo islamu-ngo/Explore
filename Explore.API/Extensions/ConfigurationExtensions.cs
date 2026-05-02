@@ -30,6 +30,7 @@ public static class ConfigurationExtensions
     /// </summary>
     /// <remarks>
     /// Canonical Infisical keys:
+    ///   /api:      DEPLOYMENT_MODE (single_tenant or multi_tenant)
     ///   /keycloak: KEYCLOAK_ENDPOINT, KEYCLOAK_REALM
     ///   /cerbos:   CERBOS_GRPC_ENDPOINT
     ///   S3 keys:   ISLAMU_EVENT_S3_ENDPOINT, ISLAMU_EVENT_REGION, etc.
@@ -60,6 +61,7 @@ public static class ConfigurationExtensions
         // Preserve the operator's raw input (bare host:port or full URL). Normalization happens only
         // at gRPC channel creation time so we don't surface a misleading scheme back to the UI/storage.
         var cerbosGrpcEndpoint = config["CERBOS_GRPC_ENDPOINT"]?.Trim();
+        var deploymentMode = NormalizeDeploymentMode(config["DEPLOYMENT_MODE"]);
 
         var mappedConfig = new Dictionary<string, string?>();
 
@@ -92,9 +94,31 @@ public static class ConfigurationExtensions
             mappedConfig["Cerbos:GrpcEndpoint"] = cerbosGrpcEndpoint;
         }
 
+        // Deployment
+        TrySet(mappedConfig, config, "Deployment:Mode", deploymentMode);
+
         configBuilder.AddInMemoryCollection(
             mappedConfig.Where(kv => !string.IsNullOrEmpty(kv.Value))
                         .ToDictionary(kv => kv.Key, kv => kv.Value)!
         );
+    }
+
+    private static string? NormalizeDeploymentMode(string? rawValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return null;
+        }
+
+        var normalized = rawValue.Trim()
+            .Replace("_", string.Empty, StringComparison.Ordinal)
+            .Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+        return normalized.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase)
+            ? "MultiTenant"
+            : normalized.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase)
+                ? "SingleTenant"
+                : null;
     }
 }

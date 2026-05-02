@@ -647,6 +647,12 @@ public static class RouteNames
 
     #endregion
 
+    #region System Routes
+
+    public const string GetSystemOnboardingStatus = "GetSystemOnboardingStatus";
+
+    #endregion
+
     #region Instance Onboarding Routes
 
     public const string GetInstanceOnboardingStatus = "GetInstanceOnboardingStatus";

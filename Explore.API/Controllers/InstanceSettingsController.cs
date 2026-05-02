@@ -33,15 +33,18 @@ public class InstanceSettingsController : ExploreControllerBase
     private readonly IMediator _mediator;
     private readonly IAdminContext _adminContext;
     private readonly ISetupSecretProvider _setupSecretProvider;
+    private readonly IDeploymentModeProvider _deploymentModeProvider;
 
     public InstanceSettingsController(
         IMediator mediator,
         IAdminContext adminContext,
-        ISetupSecretProvider setupSecretProvider)
+        ISetupSecretProvider setupSecretProvider,
+        IDeploymentModeProvider deploymentModeProvider)
     {
         _mediator = mediator;
         _adminContext = adminContext;
         _setupSecretProvider = setupSecretProvider;
+        _deploymentModeProvider = deploymentModeProvider;
     }
 
     // ── Governance Sub-Resource Endpoints ──────────────────────────────
@@ -250,8 +253,8 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<DeploymentModeDto>> GetDeploymentMode(CancellationToken cancellationToken = default)
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
-        var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
-        return Ok(settings.DeploymentMode);
+        var mode = await _deploymentModeProvider.GetCurrentModeAsync(cancellationToken);
+        return Ok(new DeploymentModeDto { Mode = mode });
     }
 
     [HttpPost("deployment-mode", Name = RouteNames.UpdateInstanceDeploymentMode)]

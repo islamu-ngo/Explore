@@ -1,0 +1,40 @@
+// ABOUTME: Handles public system onboarding status reads for API/BFF startup decisions.
+// ABOUTME: Uses configured onboarding mode before setup and persisted runtime mode after setup.
+
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
+using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
+using MediatR;
+
+namespace Explore.Application.Features.InstanceOnboarding.Handlers.Queries;
+
+public sealed class GetSystemOnboardingStatusQueryHandler
+    : IRequestHandler<GetSystemOnboardingStatusQuery, SystemOnboardingStatusDto>
+{
+    private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
+    private readonly IDeploymentModeProvider _deploymentModeProvider;
+
+    public GetSystemOnboardingStatusQueryHandler(
+        IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
+        IDeploymentModeProvider deploymentModeProvider)
+    {
+        _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
+        _deploymentModeProvider = deploymentModeProvider;
+    }
+
+    public async Task<SystemOnboardingStatusDto> Handle(GetSystemOnboardingStatusQuery request, CancellationToken cancellationToken)
+    {
+        var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
+        var requiresOnboarding = bootstrap?.IsCompleted != true;
+        var deploymentMode = requiresOnboarding
+            ? await _deploymentModeProvider.GetConfiguredOnboardingModeAsync(cancellationToken)
+            : await _deploymentModeProvider.GetCurrentModeAsync(cancellationToken);
+
+        return new SystemOnboardingStatusDto
+        {
+            RequiresOnboarding = requiresOnboarding,
+            DeploymentMode = deploymentMode.ToString()
+        };
+    }
+}

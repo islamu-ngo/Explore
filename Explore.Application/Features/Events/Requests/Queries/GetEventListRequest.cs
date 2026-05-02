@@ -30,6 +30,21 @@ public class GetEventListRequest : IRequest<PaginatedResult<EventListDto>>
     public string? SearchTerm { get; set; }
 
     /// <summary>
+    /// Filter by actor ownership directly.
+    /// </summary>
+    public Guid? ActorId { get; set; }
+
+    /// <summary>
+    /// Filter by organization ownership after resolving the organization actor.
+    /// </summary>
+    public Guid? OrganizationId { get; set; }
+
+    /// <summary>
+    /// Filter by group ownership after resolving the group actor.
+    /// </summary>
+    public Guid? GroupId { get; set; }
+
+    /// <summary>
     /// Filter by category (via EventCategories junction table).
     /// When IncludedCategoryIds is also provided, this is ignored.
     /// </summary>

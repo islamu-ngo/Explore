@@ -116,6 +116,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result.TenantId).IsEqualTo(tenantId);
+        await Assert.That(result.Mode).IsEqualTo(PublicExperienceMode.DiscoveryCentric);
         await Assert.That(result.DeploymentMode).IsEqualTo("MultiTenant");
         await Assert.That(result.IsIslamicModuleEnabled).IsTrue();
         await Assert.That(result.IsTechModuleEnabled).IsTrue();

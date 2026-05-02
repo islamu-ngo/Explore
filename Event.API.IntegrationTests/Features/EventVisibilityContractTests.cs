@@ -68,6 +68,124 @@ public class EventVisibilityContractTests(ContractApiFixture fixture)
     }
 
     [Test]
+    public async Task GetAllWithActorIdFiltersByActorAndKeepsPublicDiscoverability()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        var matchingTitle = $"Actor Matching Published {marker}";
+        var otherActorTitle = $"Actor Other Published {marker}";
+        var hiddenTitle = $"Actor Matching Draft {marker}";
+        var privateTitle = $"Actor Matching Private {marker}";
+        var membersOnlyTitle = $"Actor Matching Members Only {marker}";
+        var crossTenantTitle = $"Actor Cross Tenant Published {marker}";
+        Guid actorId;
+        Guid crossTenantActorId;
+
+        await using (var scope = _fixture.Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            var seed = await EnsureDefaultTenantActorAsync(context);
+
+            var user = new UserBuilder().Build();
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var actor = new ActorBuilder()
+                .WithTenantId(seed.TenantId)
+                .WithUserId(user.Id)
+                .WithDisplayName("Actor Filter Owner")
+                .Build();
+            context.Actors.Add(actor);
+            await context.SaveChangesAsync();
+            actorId = actor.Id;
+
+            var crossTenant = new TenantBuilder()
+                .WithFullName($"Cross Tenant {marker}")
+                .WithSlug($"cross-tenant-{marker}")
+                .Build();
+            var crossTenantUser = new UserBuilder().Build();
+            context.Tenants.Add(crossTenant);
+            context.Users.Add(crossTenantUser);
+            await context.SaveChangesAsync();
+
+            var crossTenantActor = new ActorBuilder()
+                .WithTenantId(crossTenant.Id)
+                .WithUserId(crossTenantUser.Id)
+                .WithDisplayName("Cross Tenant Actor Filter Owner")
+                .Build();
+            context.Actors.Add(crossTenantActor);
+            await context.SaveChangesAsync();
+            crossTenantActorId = crossTenantActor.Id;
+
+            context.Events.Add(new EventBuilder()
+                .WithTitle(matchingTitle)
+                .WithActorId(actorId)
+                .WithTenantId(seed.TenantId)
+                .WithStatus(EventStatusEnum.Published)
+                .WithVisibility(VisibilityTypeEnum.Public)
+                .Build());
+
+            context.Events.Add(new EventBuilder()
+                .WithTitle(hiddenTitle)
+                .WithActorId(actorId)
+                .WithTenantId(seed.TenantId)
+                .WithStatus(EventStatusEnum.Draft)
+                .WithVisibility(VisibilityTypeEnum.Public)
+                .Build());
+
+            context.Events.Add(new EventBuilder()
+                .WithTitle(privateTitle)
+                .WithActorId(actorId)
+                .WithTenantId(seed.TenantId)
+                .WithStatus(EventStatusEnum.Published)
+                .WithVisibility(VisibilityTypeEnum.Private)
+                .Build());
+
+            context.Events.Add(new EventBuilder()
+                .WithTitle(membersOnlyTitle)
+                .WithActorId(actorId)
+                .WithTenantId(seed.TenantId)
+                .WithStatus(EventStatusEnum.Published)
+                .WithVisibility(VisibilityTypeEnum.MembersOnly)
+                .Build());
+
+            context.Events.Add(new EventBuilder()
+                .WithTitle(otherActorTitle)
+                .WithActorId(seed.ActorId)
+                .WithTenantId(seed.TenantId)
+                .WithStatus(EventStatusEnum.Published)
+                .WithVisibility(VisibilityTypeEnum.Public)
+                .Build());
+
+            context.Events.Add(new EventBuilder()
+                .WithTitle(crossTenantTitle)
+                .WithActorId(crossTenantActorId)
+                .WithTenantId(crossTenant.Id)
+                .WithStatus(EventStatusEnum.Published)
+                .WithVisibility(VisibilityTypeEnum.Public)
+                .Build());
+
+            await context.SaveChangesAsync();
+        }
+
+        var response = await _fixture.Client.GetAsync($"/api/event?pageNumber=1&pageSize=50&actorId={actorId}");
+        var content = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(content).Contains(matchingTitle);
+        await Assert.That(content).DoesNotContain(otherActorTitle);
+        await Assert.That(content).DoesNotContain(hiddenTitle);
+        await Assert.That(content).DoesNotContain(privateTitle);
+        await Assert.That(content).DoesNotContain(membersOnlyTitle);
+        await Assert.That(content).DoesNotContain(crossTenantTitle);
+
+        var crossTenantResponse = await _fixture.Client.GetAsync($"/api/event?pageNumber=1&pageSize=50&actorId={crossTenantActorId}");
+        var crossTenantContent = await crossTenantResponse.Content.ReadAsStringAsync();
+
+        await Assert.That(crossTenantResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(crossTenantContent).DoesNotContain(crossTenantTitle);
+    }
+
+    [Test]
     public async Task GetByIdForDraftEventReturnsNotFoundForAnonymousUser()
     {
         var eventId = await SeedHiddenEventAsync(EventStatusEnum.Draft);

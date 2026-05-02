@@ -14,9 +14,16 @@ public interface IDeploymentModeProvider
 {
     /// <summary>
     /// Returns the current effective deployment mode.
-    /// Resolution order: static config → distributed cache → database.
+    /// Before onboarding completes this deliberately returns SingleTenant so setup endpoints
+    /// can run without tenant host resolution; after onboarding it returns persisted runtime mode.
     /// </summary>
     Task<DeploymentMode> GetCurrentModeAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the deployment mode configured for first-run onboarding.
+    /// Source: DEPLOYMENT_MODE / Deployment:Mode static config; default SingleTenant.
+    /// </summary>
+    Task<DeploymentMode> GetConfiguredOnboardingModeAsync(CancellationToken ct = default);
 
     /// <summary>Returns true when the current mode is SingleTenant.</summary>
     Task<bool> IsSingleTenantAsync(CancellationToken ct = default);

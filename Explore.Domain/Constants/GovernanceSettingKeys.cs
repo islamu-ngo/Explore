@@ -267,6 +267,16 @@ public static class GovernanceSettingKeys
         }
     }
 
+    public static class PublicExperience
+    {
+        public const string Mode = "public_experience.mode";
+        public const string EventCatalogLabel = "public_experience.event_catalog_label";
+        public const string PrimaryOrganizationId = "public_experience.primary_organization_id";
+        public const string HomeBlocks = "public_experience.home_blocks";
+        public const string Ctas = "public_experience.ctas";
+        public const string EventSectionPresets = "public_experience.event_section_presets";
+    }
+
     public static class Footer
     {
         public const string Enabled = "footer.enabled";

@@ -3,6 +3,7 @@
 
 namespace Event.Domain.UnitTests.Settings;
 
+using System.Text.Json;
 using Explore.Domain.Constants;
 using Explore.Domain.Settings;
 using Explore.Domain.Settings.Definitions;
@@ -172,6 +173,12 @@ public class SettingRegistryTests
             GovernanceSettingKeys.Analytics.ApiKey,
             GovernanceSettingKeys.Analytics.EndpointUrl,
             GovernanceSettingKeys.Analytics.PersonalApiKey,
+            GovernanceSettingKeys.PublicExperience.Mode,
+            GovernanceSettingKeys.PublicExperience.EventCatalogLabel,
+            GovernanceSettingKeys.PublicExperience.PrimaryOrganizationId,
+            GovernanceSettingKeys.PublicExperience.HomeBlocks,
+            GovernanceSettingKeys.PublicExperience.Ctas,
+            GovernanceSettingKeys.PublicExperience.EventSectionPresets,
         };
 
         var missingKeys = governanceKeys
@@ -250,6 +257,121 @@ public class SettingRegistryTests
 
         await Assert.That(definition).IsNotNull();
         await Assert.That(definition!.MaxScope).IsEqualTo(SettingScope.User);
+    }
+
+    [Test]
+    public async Task Registry_PublicExperienceKeysAreRegistered()
+    {
+        var keys = PublicExperienceSettingDefinitions.All.Select(d => d.Key).ToArray();
+
+        await Assert.That(keys).IsEquivalentTo(new[]
+        {
+            GovernanceSettingKeys.PublicExperience.Mode,
+            GovernanceSettingKeys.PublicExperience.EventCatalogLabel,
+            GovernanceSettingKeys.PublicExperience.PrimaryOrganizationId,
+            GovernanceSettingKeys.PublicExperience.HomeBlocks,
+            GovernanceSettingKeys.PublicExperience.Ctas,
+            GovernanceSettingKeys.PublicExperience.EventSectionPresets,
+        });
+
+        foreach (var key in keys)
+        {
+            await Assert.That(SettingRegistry.Contains(key)).IsTrue();
+        }
+    }
+
+    [Test]
+    public async Task Registry_PublicExperienceSettingsAreInstanceToTenantScopedOnly()
+    {
+        foreach (var definition in PublicExperienceSettingDefinitions.All)
+        {
+            await Assert.That(definition.MinScope).IsEqualTo(SettingScope.Instance);
+            await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.Tenant);
+        }
+    }
+
+    [Test]
+    public async Task Registry_PublicExperienceModeAllowedValuesAreConservativeModes()
+    {
+        var definition = SettingRegistry.Get(GovernanceSettingKeys.PublicExperience.Mode);
+
+        await Assert.That(definition).IsNotNull();
+        await Assert.That(definition!.ValueType).IsEqualTo(SettingValueType.String);
+        await Assert.That(definition.DefaultValue).IsEqualTo("\"DiscoveryCentric\"");
+        await Assert.That(definition.AllowedValues).IsEquivalentTo(new[]
+        {
+            "DiscoveryCentric",
+            "OrganizationCentric",
+        });
+    }
+
+    [Test]
+    public async Task Registry_PublicExperienceJsonDefaultsAreVersionedEmptyConfigs()
+    {
+        var expectedArrayPropertiesByKey = new Dictionary<string, string>
+        {
+            [GovernanceSettingKeys.PublicExperience.HomeBlocks] = "blocks",
+            [GovernanceSettingKeys.PublicExperience.Ctas] = "ctas",
+            [GovernanceSettingKeys.PublicExperience.EventSectionPresets] = "presets",
+        };
+
+        foreach (var (key, arrayPropertyName) in expectedArrayPropertiesByKey)
+        {
+            var definition = SettingRegistry.Get(key);
+            await Assert.That(definition).IsNotNull();
+            await Assert.That(definition!.ValueType).IsEqualTo(SettingValueType.Json);
+
+            using var document = JsonDocument.Parse(definition.DefaultValue);
+            var root = document.RootElement;
+
+            await Assert.That(root.GetProperty("schemaVersion").GetInt32()).IsEqualTo(1);
+            await Assert.That(root.GetProperty(arrayPropertyName).ValueKind).IsEqualTo(JsonValueKind.Array);
+            await Assert.That(root.GetProperty(arrayPropertyName).GetArrayLength()).IsEqualTo(0);
+        }
+    }
+
+    [Test]
+    public async Task Registry_PublicExperienceStringDefaultsAreMetadataOnly()
+    {
+        var eventCatalogLabel = SettingRegistry.Get(GovernanceSettingKeys.PublicExperience.EventCatalogLabel);
+        var primaryOrganizationId = SettingRegistry.Get(GovernanceSettingKeys.PublicExperience.PrimaryOrganizationId);
+
+        await Assert.That(eventCatalogLabel).IsNotNull();
+        await Assert.That(eventCatalogLabel!.ValueType).IsEqualTo(SettingValueType.String);
+        await Assert.That(eventCatalogLabel.DefaultValue).IsEqualTo("\"Events\"");
+
+        await Assert.That(primaryOrganizationId).IsNotNull();
+        await Assert.That(primaryOrganizationId!.ValueType).IsEqualTo(SettingValueType.String);
+        await Assert.That(primaryOrganizationId.DefaultValue is "\"\"" or "null").IsTrue();
+    }
+
+    [Test]
+    public async Task Registry_PublicExperienceSettingsDoNotIntroduceWorkspaceOwnershipModel()
+    {
+        var prohibitedFragments = new[]
+        {
+            "workspace",
+            "tenant_workspace",
+            "subtenant",
+            "scope_id",
+            "organization_scope_id",
+        };
+
+        var publicExperienceMetadata = PublicExperienceSettingDefinitions.All
+            .SelectMany(definition => new[]
+            {
+                definition.Key,
+                definition.Category,
+                definition.Description,
+                definition.DefaultValue,
+            })
+            .Select(value => value.ToLowerInvariant())
+            .ToArray();
+
+        foreach (var fragment in prohibitedFragments)
+        {
+            await Assert.That(publicExperienceMetadata.Any(value => value.Contains(fragment, StringComparison.Ordinal))).IsFalse();
+        }
     }
 
     [Test]

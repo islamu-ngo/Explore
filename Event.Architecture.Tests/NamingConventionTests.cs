@@ -199,6 +199,40 @@ public class NamingConventionTests
     }
 
     /// <summary>
+    /// Organization-centric public UX is a typed Application posture over tenant-local data.
+    /// It must not reintroduce workspace/sub-tenant/scope domain models.
+    /// </summary>
+    [Test]
+    [DisplayName("No types should introduce organization-centric workspace or sub-tenant scope models")]
+    public async Task NoTypesNamed_AfterForbiddenOrganizationCentricScopeConcepts()
+    {
+        var allAssemblies = new[] { DomainAssembly, ApplicationAssembly, PersistenceAssembly, InfrastructureAssembly };
+
+        string[] forbiddenTypeNames =
+        [
+            "OrganizerScope",
+            "BusinessScope",
+            "Workspace",
+            "TenantWorkspace",
+            "SubTenant",
+        ];
+
+        foreach (var assembly in allAssemblies)
+        {
+            foreach (var forbiddenName in forbiddenTypeNames)
+            {
+                var matchingTypes = Types.InAssembly(assembly)
+                    .That()
+                    .HaveNameMatching($"^{forbiddenName}$")
+                    .GetTypes();
+
+                await Assert.That(matchingTypes).IsEmpty()
+                    .Because($"Organization-centric UX must stay a typed Application posture; type '{forbiddenName}' would imply a forbidden workspace/sub-tenant scope model in {assembly.GetName().Name}");
+            }
+        }
+    }
+
+    /// <summary>
     /// Ensures no interfaces reference the old ICerbosAuthorizationService name.
     /// It was renamed to IAuthorizationProvider during the refactor.
     /// </summary>

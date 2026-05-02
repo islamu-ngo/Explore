@@ -43,6 +43,7 @@ public static class SettingRegistry
         all.AddRange(CustomPropertyQuotaSettingDefinitions.All);
         all.AddRange(LocalizationSettingDefinitions.All);
         all.AddRange(MessagingSettingDefinitions.All);
+        all.AddRange(PublicExperienceSettingDefinitions.All);
 
         DefinitionsByKey = all.ToFrozenDictionary(d => d.Key);
         ByCategory = all

@@ -82,6 +82,9 @@ public class EventController : ExploreControllerBase
             PageNumber = filter.PageNumber,
             PageSize = filter.PageSize,
             SearchTerm = filter.SearchTerm,
+            ActorId = filter.ActorId,
+            OrganizationId = filter.OrganizationId,
+            GroupId = filter.GroupId,
             CategoryId = filter.CategoryId,
             IncludedCategoryIds = filter.IncludedCategoryIds,
             ExcludedCategoryIds = filter.ExcludedCategoryIds,
@@ -122,7 +125,12 @@ public class EventController : ExploreControllerBase
         var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetEvents,
-            additionalRouteValues: null,
+            additionalRouteValues: new
+            {
+                filter.ActorId,
+                filter.OrganizationId,
+                filter.GroupId
+            },
             HttpContext);
 
         return Ok(halResource);

@@ -155,6 +155,16 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
             var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
             dbContext.Database.EnsureCreated();
 
+            dbContext.InstanceBootstrapStates.Add(new InstanceBootstrapState
+            {
+                Id = Guid.NewGuid(),
+                IsCompleted = true,
+                CreatedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow,
+                SelectedDeploymentMode = DeploymentMode.ToString()
+            });
+            dbContext.SaveChanges();
+
             if (PersistedApiKeys.Count > 0)
             {
                 dbContext.ExternalApiKeys.AddRange(PersistedApiKeys.Select(seed => new ExternalApiKey

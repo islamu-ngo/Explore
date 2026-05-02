@@ -5,6 +5,8 @@ namespace Event.Architecture.Tests;
 
 using System.Linq;
 using System.Reflection;
+using Explore.API.Models;
+using Explore.Application.Features.Events.Requests.Queries;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using NetArchTest.Rules;
@@ -164,6 +166,40 @@ public class ApiContractArchitectureTests
 
         await Assert.That(duplicates).IsEmpty()
             .Because("every action must be uniquely identifiable by controller.action; overloaded actions break OpenAPI generation");
+    }
+
+    [Test]
+    [DisplayName("Public event-list ownership filters must stay actor-backed and nullable")]
+    public async Task EventListOwnershipFilters_MustBe_NullableActorBackedContractOnly()
+    {
+        var requiredFilterNames = new[] { "ActorId", "OrganizationId", "GroupId" };
+        var forbiddenContractNames = new[] { "WorkspaceId", "OrganizerScopeId", "OrganizationScopeId", "OrganizationScope", "TenantWorkspace", "ScopeId" };
+
+        var apiProperties = typeof(EventFilterRequest).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        var requestProperties = typeof(GetEventListRequest).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+        var violations = new List<string>();
+
+        foreach (var propertyName in requiredFilterNames)
+        {
+            if (apiProperties.SingleOrDefault(p => p.Name == propertyName)?.PropertyType != typeof(Guid?))
+                violations.Add($"EventFilterRequest.{propertyName} must be Guid? for optional query binding");
+
+            if (requestProperties.SingleOrDefault(p => p.Name == propertyName)?.PropertyType != typeof(Guid?))
+                violations.Add($"GetEventListRequest.{propertyName} must be Guid? for optional application filtering");
+        }
+
+        foreach (var forbiddenName in forbiddenContractNames)
+        {
+            if (apiProperties.Any(p => p.Name == forbiddenName))
+                violations.Add($"EventFilterRequest must not expose {forbiddenName}; use ActorId/OrganizationId/GroupId only");
+
+            if (requestProperties.Any(p => p.Name == forbiddenName))
+                violations.Add($"GetEventListRequest must not expose {forbiddenName}; use ActorId/OrganizationId/GroupId only");
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("the public /events list ownership contract must remain precise and actor-backed without introducing workspace/scope concepts");
     }
 
     private static bool IsHttpAction(MethodInfo method)

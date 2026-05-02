@@ -18,9 +18,9 @@ public class DeploymentSettings
 
     /// <summary>
     /// Deployment mode: SingleTenant or MultiTenant.
-    /// Default: MultiTenant.
+    /// Default: SingleTenant.
     /// </summary>
-    public DeploymentMode Mode { get; set; } = DeploymentMode.MultiTenant;
+    public DeploymentMode Mode { get; set; } = DeploymentMode.SingleTenant;
 
     /// <summary>
     /// Default tenant ID used in SingleTenant mode.
@@ -50,4 +50,3 @@ public class DeploymentSettings
     /// </summary>
     public bool IsMultiTenant => Mode == DeploymentMode.MultiTenant;
 }
-

@@ -46,6 +46,12 @@ public static class CachingExtensions
                 .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
                 .Tag("tenant-nav"));
 
+            // SystemConfig: public first-run/runtime mode state for BFF startup.
+            options.AddPolicy("SystemConfig", builder => builder
+                .Expire(TimeSpan.FromSeconds(10))
+                .SetVaryByHeader("Host")
+                .Tag("system-config"));
+
             // SitemapData: public SEO sitemap — tenant/host aware, no auth variance.
             options.AddPolicy("SitemapData", builder => builder
                 .Expire(TimeSpan.FromMinutes(30))

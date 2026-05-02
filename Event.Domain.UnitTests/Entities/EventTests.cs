@@ -135,6 +135,17 @@ public class EventTests
     }
 
     [Test]
+    public async Task Event_DoesNotExposeWorkspaceOrOrganizerScopeOwnership_ExpectedBehavior()
+    {
+        var eventType = typeof(global::Explore.Domain.Event);
+
+        await Assert.That(eventType.GetProperty("WorkspaceId")).IsNull();
+        await Assert.That(eventType.GetProperty("OrganizerScopeId")).IsNull();
+        await Assert.That(eventType.GetProperty("OrganizationScopeId")).IsNull();
+        await Assert.That(eventType.GetProperty("SubTenantId")).IsNull();
+    }
+
+    [Test]
     public async Task Event_WhenCreated_HasRequiredComposedObjects()
     {
         var entity = CreateEvent();

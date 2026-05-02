@@ -2,12 +2,13 @@
 // ABOUTME: Ensures ForwardedHeaders is respected, tenant exemptions work, and exception handler catches errors.
 
 using System.Net;
-using System.Net.Http.Json;
+using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Exceptions;
+using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,6 +62,9 @@ public class MiddlewareOrderTests
 
             builder.ConfigureServices(services =>
             {
+                services.RemoveAll<IDeploymentModeProvider>();
+                services.AddSingleton<IDeploymentModeProvider>(new TestDeploymentModeProvider(DeploymentMode.MultiTenant));
+
                 services.RemoveAll<ITenantSlugCache>();
                 services.AddSingleton<ITenantSlugCache>(new TestTenantSlugCache(tenantId));
             });
@@ -74,9 +78,9 @@ public class MiddlewareOrderTests
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var payload = await response.Content.ReadFromJsonAsync<PublicExperienceSettingsDto>();
-        await Assert.That(payload).IsNotNull();
-        await Assert.That(payload!.TenantId).IsEqualTo(tenantId);
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var responseTenantId = payload.RootElement.GetProperty("tenantId").GetGuid();
+        await Assert.That(responseTenantId).IsEqualTo(tenantId);
     }
 
     [Test]
@@ -170,5 +174,18 @@ public class MiddlewareOrderTests
 
         public ValueTask<Guid?> GetTenantIdByDomainAsync(string domain, CancellationToken cancellationToken = default)
             => ValueTask.FromResult<Guid?>(null);
+    }
+
+    private sealed class TestDeploymentModeProvider(DeploymentMode mode) : IDeploymentModeProvider
+    {
+        public Task<DeploymentMode> GetCurrentModeAsync(CancellationToken ct = default) => Task.FromResult(mode);
+
+        public Task<DeploymentMode> GetConfiguredOnboardingModeAsync(CancellationToken ct = default) => Task.FromResult(mode);
+
+        public Task<bool> IsSingleTenantAsync(CancellationToken ct = default) => Task.FromResult(mode == DeploymentMode.SingleTenant);
+
+        public Task<bool> IsMultiTenantAsync(CancellationToken ct = default) => Task.FromResult(mode == DeploymentMode.MultiTenant);
+
+        public Task InvalidateCacheAsync() => Task.CompletedTask;
     }
 }

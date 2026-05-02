@@ -8,7 +8,7 @@ using Explore.Domain.Constants;
 
 public class DeploymentSettingGroup : ISettingGroup
 {
-    public string Mode { get; private set; } = "MultiTenant";
+    public string Mode { get; private set; } = "SingleTenant";
 
     public static IEnumerable<string> SettingKeys =>
     [
@@ -18,6 +18,6 @@ public class DeploymentSettingGroup : ISettingGroup
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
     {
         if (settings.TryGetValue(GovernanceSettingKeys.Deployment.Mode, out var mode))
-            Mode = SettingValueSerializer.Deserialize(mode.Value, "MultiTenant");
+            Mode = SettingValueSerializer.Deserialize(mode.Value, "SingleTenant");
     }
 }

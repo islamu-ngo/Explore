@@ -8,6 +8,7 @@ namespace Explore.Application.DTOs.Onboarding;
 public class PublicExperienceSettingsDto
 {
     public Guid TenantId { get; set; }
+    public Explore.Application.Models.PublicExperienceMode Mode { get; set; } = Explore.Application.Models.PublicExperienceMode.DiscoveryCentric;
     public string DeploymentMode { get; set; } = "SingleTenant";
     public string PreferredHomePage { get; set; } = "EventList";
     public string BrandDisplayName { get; set; } = string.Empty;

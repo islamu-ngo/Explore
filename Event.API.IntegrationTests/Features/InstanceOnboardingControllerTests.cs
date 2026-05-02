@@ -15,8 +15,10 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -37,6 +39,25 @@ public class InstanceOnboardingControllerTests
         var response = await client.GetAsync($"{BaseUrl}/status");
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task GetSystemOnboardingStatus_WithConfiguredMultiTenant_ShouldReturnPublicMode()
+    {
+        using var factory = CreateFactoryWithSetupSecret(new Dictionary<string, string?>
+        {
+            ["Deployment:Mode"] = "MultiTenant"
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/system/onboarding-status");
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var status = await response.Content.ReadFromJsonAsync<SystemOnboardingStatusDto>();
+        await Assert.That(status).IsNotNull();
+        await Assert.That(status!.RequiresOnboarding).IsTrue();
+        await Assert.That(status.DeploymentMode).IsEqualTo("MultiTenant");
     }
 
     [Test]
@@ -150,7 +171,7 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
-    public async Task Complete_WithInvalidDeploymentMode_ShouldReturnBadRequest()
+    public async Task Complete_IgnoresClientDeploymentMode_WhenNoDeploymentModeSecret_ShouldPersistSingleTenant()
     {
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
@@ -158,20 +179,48 @@ public class InstanceOnboardingControllerTests
         var userId = Guid.NewGuid();
         await EnsureUserExistsAsync(factory, userId);
 
-        var invalidPayload = new CompleteInstanceOnboardingRequest
+        var clientPayload = new CompleteInstanceOnboardingRequest
         {
-            DeploymentMode = (DeploymentMode)999
+            DeploymentMode = DeploymentMode.MultiTenant
         };
 
-        using var completeRequest = CreateInstanceAdminRequest(HttpMethod.Post, $"{BaseUrl}/complete", userId, invalidPayload, includeSetupSecret: true);
+        using var completeRequest = CreateInstanceAdminRequest(HttpMethod.Post, $"{BaseUrl}/complete", userId, clientPayload, includeSetupSecret: true);
         var completeResponse = await client.SendAsync(completeRequest);
 
-        await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var responseBody = await completeResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-        await Assert.That(responseBody).IsNotNull();
-        await Assert.That(responseBody!.Success).IsFalse();
-        await Assert.That(responseBody.Message).IsEqualTo("Invalid onboarding request.");
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var bootstrap = await dbContext.InstanceBootstrapStates.SingleAsync();
+        await Assert.That(bootstrap.SelectedDeploymentMode).IsEqualTo("SingleTenant");
+    }
+
+    [Test]
+    public async Task Complete_UsesConfiguredMultiTenantMode_WhenClientPayloadSaysSingleTenant()
+    {
+        using var factory = CreateFactoryWithSetupSecret(new Dictionary<string, string?>
+        {
+            ["Deployment:Mode"] = "MultiTenant"
+        });
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+
+        var clientPayload = new CompleteInstanceOnboardingRequest
+        {
+            DeploymentMode = DeploymentMode.SingleTenant
+        };
+
+        using var completeRequest = CreateInstanceAdminRequest(HttpMethod.Post, $"{BaseUrl}/complete", userId, clientPayload, includeSetupSecret: true);
+        var completeResponse = await client.SendAsync(completeRequest);
+
+        await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var bootstrap = await dbContext.InstanceBootstrapStates.SingleAsync();
+        await Assert.That(bootstrap.SelectedDeploymentMode).IsEqualTo("MultiTenant");
     }
 
     [Test]
@@ -625,16 +674,38 @@ public class InstanceOnboardingControllerTests
         await dbContext.SaveChangesAsync();
     }
 
-    private static AuthenticatedWebApplicationFactory CreateFactoryWithSetupSecret()
+    private static AuthenticatedWebApplicationFactory CreateFactoryWithSetupSecret(
+        IReadOnlyDictionary<string, string?>? configurationOverrides = null)
     {
         Environment.SetEnvironmentVariable("SETUP_SECRET", SetupSecret);
-        return new AuthenticatedWebApplicationFactory();
+        return configurationOverrides is null
+            ? new AuthenticatedWebApplicationFactory()
+            : new ConfigurableAuthenticatedWebApplicationFactory(configurationOverrides);
     }
 
     private static AuthenticatedWebApplicationFactory CreateFactoryWithSetupSecretWithoutClaimsTransformation()
     {
         Environment.SetEnvironmentVariable("SETUP_SECRET", SetupSecret);
         return new PassthroughClaimsTransformationFactory();
+    }
+
+    private sealed class ConfigurableAuthenticatedWebApplicationFactory : AuthenticatedWebApplicationFactory
+    {
+        private readonly IReadOnlyDictionary<string, string?> _configurationOverrides;
+
+        public ConfigurableAuthenticatedWebApplicationFactory(IReadOnlyDictionary<string, string?> configurationOverrides)
+        {
+            _configurationOverrides = configurationOverrides;
+        }
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(_configurationOverrides);
+            });
+        }
     }
 
     private static HttpRequestMessage CreateInstanceAdminRequest(HttpMethod method, string url, Guid userId, object? body, bool includeSetupSecret)
