@@ -2,7 +2,6 @@
 // Verifies HTTP exception fallback to null and deterministic route resolution for home page modes.
 
 using System.Net;
-using System.Net.Http;
 using System.Net.Http.Json;
 
 namespace Explore.Blazor.Client.Tests.Services;
@@ -41,6 +40,7 @@ public class PublicExperienceServiceRoutingTests
         var settings = new PublicExperienceSettingsModel
         {
             TenantId = Guid.NewGuid(),
+            Mode = "DiscoveryCentric",
             PreferredHomePage = "LandingPage",
             BrandDisplayName = "Explore"
         };
@@ -58,6 +58,7 @@ public class PublicExperienceServiceRoutingTests
 
         // Assert
         await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Mode).IsEqualTo("DiscoveryCentric");
         await Assert.That(result!.PreferredHomePage).IsEqualTo("LandingPage");
     }
 

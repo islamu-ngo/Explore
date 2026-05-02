@@ -34,6 +34,27 @@ public class RoutesConfigurationTests
         await Assert.That(routesContent).Contains("Path = \"/my/registrations\"");
     }
 
+    [Test]
+    public async Task Routes_ShouldInclude_OrganizationCreate_Path_AndNoStaleSingularCreatePath()
+    {
+        var routesFilePath = FindRoutesFilePath();
+        var routesContent = await File.ReadAllTextAsync(routesFilePath);
+
+        await Assert.That(routesContent).Contains("Path = \"/organizations/create\"");
+        await Assert.That(routesContent).DoesNotContain("Path = \"/organization/create\"");
+    }
+
+    [Test]
+    public async Task TenantOnboardingRoute_ShouldUse_MultiTenantOnboardingGuard()
+    {
+        var routesFilePath = FindRoutesFilePath();
+        var routesContent = await File.ReadAllTextAsync(routesFilePath);
+
+        await Assert.That(routesContent).Contains("Path = \"/onboarding/tenant\"");
+        await Assert.That(routesContent).Contains("RequireMultiTenantOnboarding()");
+        await Assert.That(routesContent).Contains("typeof(MultiTenantOnboardingRouteGuard)");
+    }
+
     private static string FindRoutesFilePath()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

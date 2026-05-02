@@ -2,7 +2,6 @@
 // Verifies HTTP fallback behavior and route selection rules for preferred home page configuration.
 
 using System.Net;
-using System.Net.Http;
 using System.Net.Http.Json;
 
 namespace Explore.Blazor.Client.Tests.Services;
@@ -34,6 +33,7 @@ public class PublicExperienceServiceTests
         var expected = new PublicExperienceSettingsModel
         {
             TenantId = Guid.NewGuid(),
+            Mode = "OrganizationCentric",
             PreferredHomePage = "LandingPage"
         };
 
@@ -55,6 +55,7 @@ public class PublicExperienceServiceTests
 
         // Assert
         await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Mode).IsEqualTo("OrganizationCentric");
         await Assert.That(result!.PreferredHomePage).IsEqualTo("LandingPage");
     }
 

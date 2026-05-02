@@ -261,6 +261,33 @@ public sealed class DockHostTests : IDisposable
     }
 
     [Test]
+    public async Task DockOverlayHost_MobileToDesktop_RemovesProjectedDockedOverlayAfterCloseAnimation()
+    {
+        var dockedPanelId = new DockPanelId("workspace.mobile-to-desktop");
+        _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Mobile projected panel"));
+        _dockLayoutState.Open(dockedPanelId);
+        var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.IsMobile, true));
+
+        cut.Render(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.IsMobile, false));
+
+        await Assert.That(_dockLayoutState.GetPanel(dockedPanelId)?.State.IsOpen).IsTrue();
+        await Assert.That(cut.Find("[data-dock-panel-id='workspace.mobile-to-desktop']").GetAttribute("data-dock-mode")).IsEqualTo("temporary");
+        await Assert.That(cut.Find(".dock-overlay-host__slot--closing")).IsNotNull();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll("[data-dock-panel-id='workspace.mobile-to-desktop']").Count != 0)
+            {
+                throw new InvalidOperationException("Mobile-projected docked panel stayed mounted after desktop viewport transition.");
+            }
+        }, timeout: TimeSpan.FromSeconds(2));
+    }
+
+    [Test]
     public async Task DockOverlayHost_OpeningOverlay_SavesFocusLocksScrollAndMovesFocusToPanel()
     {
         var inspectorPanelId = new DockPanelId("workspace.inspector-focus");
@@ -297,11 +324,45 @@ public sealed class DockHostTests : IDisposable
             .Add(component => component.Scope, DockScope.Workspace));
         var host = cut.Find("[data-testid='dock-overlay-host']");
 
+        cut.WaitForAssertion(() =>
+        {
+            scrollManager.Received(1).LockScrollAsync("body", "scroll-locked");
+            focusService.Received(1).SaveFocusAsync();
+        }, timeout: TimeSpan.FromSeconds(2));
+
         await host.TriggerEventAsync("onkeydown", new KeyboardEventArgs { Key = "Escape" });
 
         await Assert.That(_dockLayoutState.GetPanel(inspectorPanelId)?.State.IsOpen).IsFalse();
-        await scrollManager.Received(1).UnlockScrollAsync("body", "scroll-locked");
-        await focusService.Received(1).RestoreFocusAsync("#main-content");
+        cut.WaitForAssertion(() =>
+        {
+            scrollManager.Received(1).UnlockScrollAsync("body", "scroll-locked");
+            focusService.Received(1).RestoreFocusAsync("#main-content");
+        }, timeout: TimeSpan.FromSeconds(2));
+    }
+
+    [Test]
+    public async Task DockOverlayHost_BackdropClick_KeepsPanelMountedWithClosingClassBeforeUnmount()
+    {
+        var inspectorPanelId = new DockPanelId("workspace.inspector-closing-animation");
+        _dockLayoutState.Register(CreateDescriptor(inspectorPanelId, DockScope.Workspace, DockSide.End, DockMode.Inspector, order: 10), CreateContent("Inspector closing panel"));
+        _dockLayoutState.Open(inspectorPanelId);
+        var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace));
+
+        await cut.Find("[data-testid='dock-overlay-backdrop']").ClickAsync(new MouseEventArgs());
+
+        await Assert.That(_dockLayoutState.GetPanel(inspectorPanelId)?.State.IsOpen).IsFalse();
+        await Assert.That(cut.Find("[data-dock-panel-id='workspace.inspector-closing-animation']").TextContent).Contains("Inspector closing panel");
+        await Assert.That(cut.Find(".dock-overlay-host__slot--closing")).IsNotNull();
+        await Assert.That(cut.Find(".dock-overlay-host__backdrop--closing")).IsNotNull();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll("[data-dock-panel-id='workspace.inspector-closing-animation']").Count != 0)
+            {
+                throw new InvalidOperationException("Closing overlay panel was not unmounted after its reverse animation window.");
+            }
+        }, timeout: TimeSpan.FromSeconds(2));
     }
 
     [Test]
@@ -593,6 +654,11 @@ public sealed class DockHostTests : IDisposable
             .Returns(callInfo =>
             {
                 var observer = callInfo.Arg<IBrowserViewportObserver>();
+                if (observer is null)
+                {
+                    return Task.CompletedTask;
+                }
+
                 return observer.NotifyBrowserViewportChangeAsync(new BrowserViewportEventArgs(
                     Guid.NewGuid(),
                     new BrowserWindowSize { Width = breakpoint is Breakpoint.Xs or Breakpoint.Sm ? 390 : 1280, Height = 844 },

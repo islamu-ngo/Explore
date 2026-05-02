@@ -9,6 +9,7 @@ using Explore.Blazor.Client.Contracts.Interop;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Extensions;
+using Explore.Blazor.Client.Routing.Guards;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Services;
 using Explore.Infrastructure.Services;
@@ -34,6 +35,12 @@ public static class ServiceRegistrationExtensions
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddSharedApplicationServices();
+        services.AddScoped<AuthenticatedRouteGuard>();
+        services.AddScoped<MultiTenantOnboardingRouteGuard>();
+        services.AddScoped<AdminRouteGuard>();
+        services.AddScoped<TenantAdminRouteGuard>();
+        services.AddScoped<OrgAdminRouteGuard>();
+        services.AddScoped<GroupAdminRouteGuard>();
 
         return services;
     }

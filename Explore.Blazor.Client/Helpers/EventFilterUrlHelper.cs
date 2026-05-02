@@ -15,6 +15,9 @@ namespace Explore.Blazor.Client.Helpers;
 public sealed class EventFilterUrlState
 {
     public string? SearchTerm { get; init; }
+    public Guid? ActorId { get; init; }
+    public Guid? OrganizationId { get; init; }
+    public Guid? GroupId { get; init; }
     public string? SortBy { get; init; }
     public bool? SortDescending { get; init; }
     public TemporalView? View { get; init; }
@@ -38,6 +41,9 @@ public sealed class EventFilterUrlState
 
     public bool HasAnyFilter =>
         !string.IsNullOrEmpty(SearchTerm) ||
+        ActorId is not null ||
+        OrganizationId is not null ||
+        GroupId is not null ||
         SortBy is not null ||
         SortDescending is not null ||
         View is not null ||
@@ -62,6 +68,25 @@ public sealed class EventFilterUrlState
 
 public static class EventFilterUrlHelper
 {
+    public static string BuildUrl(NavigationManager navigation, EventFilterUrlState state)
+    {
+        var dict = new Dictionary<string, object?>();
+
+        if (!string.IsNullOrWhiteSpace(state.SearchTerm))
+            dict["q"] = state.SearchTerm;
+
+        if (state.ActorId.HasValue)
+            dict["actorId"] = state.ActorId.Value;
+
+        if (state.OrganizationId.HasValue)
+            dict["organizationId"] = state.OrganizationId.Value;
+
+        if (state.GroupId.HasValue)
+            dict["groupId"] = state.GroupId.Value;
+
+        return navigation.GetUriWithQueryParameters("/events", dict);
+    }
+
     /// <summary>
     /// Builds a URL from the current filter bar state using
     /// <see cref="NavigationManagerExtensions.GetUriWithQueryParameters"/>.

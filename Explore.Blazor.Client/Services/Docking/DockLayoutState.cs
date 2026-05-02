@@ -7,7 +7,12 @@ namespace Explore.Blazor.Client.Services.Docking;
 
 public sealed class DockLayoutState : IDockPanelRegistry
 {
+    private const int ComfortableContentWidth = 960;
+    private const int MinimumSinglePanelContentWidth = 960;
+
     private readonly Dictionary<DockPanelId, DockPanelEntry> _entries = [];
+    private int _viewportWidth;
+    private bool _isMobileViewport;
 
     public event Action? Changed;
 
@@ -92,7 +97,25 @@ public sealed class DockLayoutState : IDockPanelRegistry
             changed = true;
         }
 
+        changed |= ApplyResponsivePolicy(preferredPanelId: id);
+
         if (changed)
+        {
+            NotifyChanged();
+        }
+    }
+
+    public void UpdateViewport(int viewportWidth, bool isMobile)
+    {
+        var normalizedWidth = Math.Max(0, viewportWidth);
+        var viewportChanged = _viewportWidth != normalizedWidth || _isMobileViewport != isMobile;
+
+        _viewportWidth = normalizedWidth;
+        _isMobileViewport = isMobile;
+
+        var stateChanged = ApplyResponsivePolicy(preferredPanelId: null);
+
+        if (viewportChanged || stateChanged)
         {
             NotifyChanged();
         }
@@ -306,6 +329,97 @@ public sealed class DockLayoutState : IDockPanelRegistry
                 nextStates[entry.Descriptor.Id] = state with { IsActive = false };
             }
         }
+    }
+
+    private bool ApplyResponsivePolicy(DockPanelId? preferredPanelId)
+    {
+        if (_viewportWidth <= 0)
+        {
+            return false;
+        }
+
+        var changed = false;
+
+        changed |= CloseStartPanelsWhenContentIsConstrained(preferredPanelId);
+        changed |= EnforceSingleEndPanelWhenConstrained(preferredPanelId);
+
+        return changed;
+    }
+
+    private bool CloseStartPanelsWhenContentIsConstrained(DockPanelId? preferredPanelId)
+    {
+        if (_isMobileViewport)
+        {
+            return CloseOpenPanels(entry => entry.Descriptor.Side == DockSide.Start
+                && entry.Descriptor.Id != preferredPanelId
+                && entry.Descriptor.CanClose);
+        }
+
+        var dockedInlineWidth = _entries.Values
+            .Where(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked })
+            .Sum(entry => entry.State.Width);
+        var availableContentWidth = _viewportWidth - dockedInlineWidth;
+
+        if (availableContentWidth >= ComfortableContentWidth)
+        {
+            return false;
+        }
+
+        return CloseOpenPanels(entry => entry.Descriptor.Side == DockSide.Start
+            && entry.State.Mode == DockMode.Docked
+            && entry.Descriptor.CanClose);
+    }
+
+    private bool EnforceSingleEndPanelWhenConstrained(DockPanelId? preferredPanelId)
+    {
+        var openEndPanels = _entries.Values
+            .Where(entry => entry.State.IsOpen && entry.Descriptor.Side == DockSide.End)
+            .OrderBy(entry => entry.State.Order)
+            .ThenBy(entry => entry.Descriptor.Title, StringComparer.Ordinal)
+            .ToArray();
+
+        if (openEndPanels.Length <= 1)
+        {
+            return false;
+        }
+
+        var endPanelWidth = openEndPanels
+            .Where(entry => entry.State.Mode == DockMode.Docked)
+            .Sum(entry => entry.State.Width);
+        var remainingContentWidth = _viewportWidth - endPanelWidth;
+
+        if (!_isMobileViewport && remainingContentWidth >= MinimumSinglePanelContentWidth)
+        {
+            return false;
+        }
+
+        var panelToKeep = preferredPanelId is not null
+            ? openEndPanels.FirstOrDefault(entry => entry.Descriptor.Id == preferredPanelId)
+            : null;
+        panelToKeep ??= openEndPanels.LastOrDefault(entry => entry.State.IsActive);
+        panelToKeep ??= openEndPanels.Last();
+
+        return CloseOpenPanels(entry => entry.Descriptor.Side == DockSide.End
+            && entry.Descriptor.Id != panelToKeep.Descriptor.Id
+            && entry.Descriptor.CanClose);
+    }
+
+    private bool CloseOpenPanels(Func<DockPanelEntry, bool> shouldClose)
+    {
+        var changed = false;
+
+        foreach (var entry in _entries.Values.ToArray())
+        {
+            if (!entry.State.IsOpen || !shouldClose(entry))
+            {
+                continue;
+            }
+
+            SetEntryState(entry.Descriptor.Id, entry.State with { IsOpen = false, IsActive = false });
+            changed = true;
+        }
+
+        return changed;
     }
 
     private DockPanelEntry RequireEntry(DockPanelId id)

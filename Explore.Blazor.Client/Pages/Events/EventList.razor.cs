@@ -11,9 +11,7 @@ using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web.Virtualization;
-using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using MudBlazor;
 using Timer = System.Threading.Timer;
@@ -148,6 +146,15 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     [SupplyParameterFromQuery(Name = "q")]
     public string? SearchQuery { get; set; }
 
+    [SupplyParameterFromQuery(Name = "actorId")]
+    public Guid? ActorIdQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "organizationId")]
+    public Guid? OrganizationIdQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "groupId")]
+    public Guid? GroupIdQuery { get; set; }
+
     [SupplyParameterFromQuery(Name = "page")]
     public int? PageParam { get; set; }
 
@@ -158,6 +165,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         Logger.LogDebug("OnInitializedAsync starting");
         RegisterEventDockPanels();
+        DockLayoutState.Changed += OnDockLayoutChanged;
 
         // URL params trigger pagination mode
         if (PageParam is > 0)
@@ -322,8 +330,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private void BuildLookupMaps()
     {
-        eventTypeMap = eventTypes.Where(et => et.Id.HasValue).ToDictionary(et => et.Id.Value, et => et.FullName);
-        eventFormatMap = eventFormats.Where(pt => pt.Id.HasValue).ToDictionary(pt => pt.Id.Value, pt => pt.FullName);
+        eventTypeMap = eventTypes.Where(et => et.Id.HasValue).ToDictionary(et => et.Id.GetValueOrDefault(), et => et.FullName);
+        eventFormatMap = eventFormats.Where(pt => pt.Id.HasValue).ToDictionary(pt => pt.Id.GetValueOrDefault(), pt => pt.FullName);
     }
 
     private async Task LoadDataAsync()
@@ -408,10 +416,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
         try
         {
-            _initialBatch = await EventService.GetEventsPagedAsync(
-                pageNumber: 1,
-                pageSize: 20,
-                cancellationToken: CancellationToken.None);
+            _initialBatch = await FetchEventsPagedAsync(1, 20, CancellationToken.None);
 
             _totalCount = _initialBatch.TotalCount;
             _useInitialBatch = true;
@@ -533,6 +538,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             requiresLaptop: null,
             techStackTag: techStack,
             hasTechAspect: null,
+            actorId: ActorIdQuery,
+            organizationId: OrganizationIdQuery,
+            groupId: GroupIdQuery,
             cancellationToken: cancellationToken);
     }
 
@@ -697,7 +705,10 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         {
             ["page"] = _currentPage > 1 ? _currentPage : null,
             ["pageSize"] = _pageSize != 20 ? _pageSize : null,
-            ["q"] = !string.IsNullOrEmpty(SearchQuery) ? SearchQuery : null
+            ["q"] = !string.IsNullOrEmpty(SearchQuery) ? SearchQuery : null,
+            ["actorId"] = ActorIdQuery,
+            ["organizationId"] = OrganizationIdQuery,
+            ["groupId"] = GroupIdQuery
         };
 
         var uri = Navigation.GetUriWithQueryParameters(queryParams);
@@ -745,10 +756,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private void CloseDetailDrawer()
     {
         _detailDrawerOpen = false;
-        _selectedEventDetail = null;
-        _selectedEventSessions = null;
-        _showInlineRegistration = false;
-        _showTagCatPopup = false;
+        ClearDetailPreviewTransientState();
         CloseDockPanelIfRegistered(EventDockPanels.EventPreviewId);
     }
 
@@ -767,12 +775,17 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
         if (!open)
         {
-            _selectedEventDetail = null;
-            _selectedEventSessions = null;
-            _showInlineRegistration = false;
-            _showTagCatPopup = false;
+            ClearDetailPreviewTransientState();
             CloseDockPanelIfRegistered(EventDockPanels.EventPreviewId);
         }
+    }
+
+    private void ClearDetailPreviewTransientState()
+    {
+        _selectedEventDetail = null;
+        _selectedEventSessions = null;
+        _showInlineRegistration = false;
+        _showTagCatPopup = false;
     }
 
     private void HandleOutsideDrawerClick()
@@ -880,6 +893,31 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
         DockLayoutState.Register(EventDockPanels.CustomizeView, RenderCustomizeViewPanel);
         DockLayoutState.Register(EventDockPanels.EventPreview, RenderEventPreviewPanel);
+    }
+
+    private void OnDockLayoutChanged()
+    {
+        var shouldRender = false;
+        var customizeOpen = DockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen == true;
+        var previewOpen = DockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen == true;
+
+        if (_customizationDrawerOpen && !customizeOpen)
+        {
+            _customizationDrawerOpen = false;
+            shouldRender = true;
+        }
+
+        if (_detailDrawerOpen && !previewOpen)
+        {
+            _detailDrawerOpen = false;
+            ClearDetailPreviewTransientState();
+            shouldRender = true;
+        }
+
+        if (shouldRender)
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
     }
 
     private RenderFragment RenderCustomizeViewPanel => builder =>
@@ -1098,6 +1136,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private bool HasActiveFilters()
     {
         if (!string.IsNullOrEmpty(SearchQuery)) return true;
+        if (ActorIdQuery.HasValue || OrganizationIdQuery.HasValue || GroupIdQuery.HasValue) return true;
         if (_filterBar == null) return false;
         return _filterBar.GetActiveFilterCount() > 0;
     }
@@ -1612,6 +1651,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        DockLayoutState.Changed -= OnDockLayoutChanged;
         DockLayoutState.Unregister(EventDockPanels.CustomizeViewId);
         DockLayoutState.Unregister(EventDockPanels.EventPreviewId);
 

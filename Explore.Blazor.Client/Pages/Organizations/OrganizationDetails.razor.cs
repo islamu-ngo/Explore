@@ -6,7 +6,6 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.Logging;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Organizations;
@@ -108,7 +107,7 @@ public partial class OrganizationDetails
             {
                 Logger.LogDebug("Loaded organization: {OrganizationName}", organization.FullName);
                 CheckEditPermissions();
-                _orgEvents = await EventService.GetPublicEventsByActorAsync(Id);
+                _orgEvents = await EventService.GetPublicEventsByOrganizationAsync(Id);
                 InitializeEditModel();
             }
             else

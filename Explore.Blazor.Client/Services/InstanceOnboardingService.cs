@@ -12,6 +12,7 @@ namespace Explore.Blazor.Client.Services;
 public interface IInstanceOnboardingService
 {
     // Onboarding
+    Task<SystemOnboardingStatusModel?> GetSystemOnboardingStatusAsync();
     Task<InstanceOnboardingStatusModel?> GetStatusAsync();
     Task<SetupSecretValidationResult> ValidateSecretAsync(string secret);
     Task<InstanceCommandResponseModel> CompleteAsync(OnboardingCompletionModel completion);
@@ -91,6 +92,9 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     }
 
     // ── Onboarding ───────────────────────────────────────────────────────
+
+    public async Task<SystemOnboardingStatusModel?> GetSystemOnboardingStatusAsync() =>
+        await GetAsync<SystemOnboardingStatusModel>("api/system/onboarding-status");
 
     public async Task<InstanceOnboardingStatusModel?> GetStatusAsync() =>
         await GetAsync<InstanceOnboardingStatusModel>("api/InstanceOnboarding/status");
@@ -537,6 +541,12 @@ public class InstanceOnboardingStatusModel
     public bool SetupSecretFromEnvironment { get; set; }
     public bool SetupTimedOut { get; set; }
     public DateTime? InstanceStartedAt { get; set; }
+}
+
+public class SystemOnboardingStatusModel
+{
+    public bool RequiresOnboarding { get; set; }
+    public string DeploymentMode { get; set; } = "SingleTenant";
 }
 
 public class OnboardingCompletionModel

@@ -80,6 +80,7 @@ public class PublicExperienceService : IPublicExperienceService
 public class PublicExperienceSettingsModel
 {
     public Guid TenantId { get; set; }
+    public string Mode { get; set; } = "DiscoveryCentric";
     public string DeploymentMode { get; set; } = "SingleTenant";
     public string PreferredHomePage { get; set; } = "EventList";
     public string BrandDisplayName { get; set; } = string.Empty;

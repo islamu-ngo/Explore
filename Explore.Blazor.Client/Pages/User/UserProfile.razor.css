@@ -229,3 +229,13 @@
         height: 4rem;
     }
 }
+
+/* Force mobile-friendly horizontal scrolling on the tabs toolbar */
+::deep .mud-tabs-toolbar-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none; /* Firefox */
+}
+::deep .mud-tabs-toolbar-wrapper::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+}

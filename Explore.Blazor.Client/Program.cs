@@ -24,6 +24,7 @@ builder.Services.AddMudServices(config =>
 });
 builder.Services.AddBlazouter();
 builder.Services.AddScoped<AuthenticatedRouteGuard>();
+builder.Services.AddScoped<MultiTenantOnboardingRouteGuard>();
 builder.Services.AddScoped<AdminRouteGuard>();
 builder.Services.AddScoped<TenantAdminRouteGuard>();
 builder.Services.AddScoped<OrgAdminRouteGuard>();

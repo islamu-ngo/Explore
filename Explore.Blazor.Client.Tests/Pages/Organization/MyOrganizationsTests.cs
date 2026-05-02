@@ -62,6 +62,8 @@ public class MyOrganizationsTests : IDisposable
         // Assert
         await Assert.That(cut.Markup).Contains("No organizations yet");
         await Assert.That(cut.Markup).Contains("Create your first organization");
+        await Assert.That(cut.Markup).Contains("href=\"/organizations/create\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/organization/create\"");
     }
 
     [Test]

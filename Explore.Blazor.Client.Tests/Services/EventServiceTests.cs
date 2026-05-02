@@ -375,7 +375,7 @@ public class EventServiceTests
         // Assert: command wraps the DTO correctly
         await _apiClient.Received(1).UpdateEventAsync(
             eventId,
-            Arg.Is<UpdateEventRequestDto>(c => c.EventDto == updateDto),
+            Arg.Is<UpdateEventRequestDto>(c => c != null && c.EventDto == updateDto),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -567,6 +567,27 @@ public class EventServiceTests
 
         // Assert
         await _apiClient.Received(1).GetEventsAsync(2, 15);
+    }
+
+    [Test]
+    public async Task GetPublicEventsByActorAsync_ForwardsActorIdToServerFilter()
+    {
+        // Arrange
+        var actorId = Guid.NewGuid();
+        var otherActorId = Guid.NewGuid();
+        var events = new List<EventListDto>
+        {
+            new() { Id = Guid.NewGuid(), ActorId = actorId, Title = "Actor event" },
+            new() { Id = Guid.NewGuid(), ActorId = otherActorId, Title = "Server decides visibility" }
+        };
+        _apiClient.GetEventsAsync().ReturnsForAnyArgs(CreateHalCollectionResponse(events));
+
+        // Act
+        var result = await _service.GetPublicEventsByActorAsync(actorId);
+
+        // Assert
+        await Assert.That(result.Count).IsEqualTo(2);
+        await _apiClient.Received(1).GetEventsAsync(pageNumber: 1, pageSize: 100, actorId: actorId);
     }
 
     #endregion

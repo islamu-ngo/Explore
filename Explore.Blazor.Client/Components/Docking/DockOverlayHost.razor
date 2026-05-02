@@ -10,7 +10,7 @@
 @inject IAccessibilityFocusService AccessibilityFocusService
 @inject IScrollManager ScrollManager
 
-@if (OverlayEntries.Count > 0)
+@if (RenderedEntries.Count > 0)
 {
     <div class="@RootClass"
          data-testid="@DataTestId"
@@ -19,11 +19,11 @@
          tabindex="-1"
          @onkeydown="HandleKeyDownAsync">
         <button type="button"
-                class="dock-overlay-host__backdrop"
+                class="@BackdropClass"
                 data-testid="dock-overlay-backdrop"
                 aria-label="Close dock overlay"
                 @onclick="CloseActiveOverlayAsync"></button>
-        @foreach (var entry in OverlayEntries)
+        @foreach (var entry in RenderedEntries)
         {
             <div class="@GetSlotClass(entry)" data-dock-overlay-side="@entry.Descriptor.Side.ToString().ToLowerInvariant()">
                 <DockPanelHost Entry="@entry" />
@@ -40,12 +40,17 @@
 
     private const string BodyElementId = "body";
     private const string ScrollLockClass = "scroll-locked";
+    private const int CloseAnimationDelayMilliseconds = 300;
 
-    private bool _overlayWasOpen;
+    private readonly HashSet<DockPanelId> _closingPanelIds = [];
+    private readonly HashSet<DockPanelId> _scheduledClosePanelIds = [];
+    private IReadOnlyList<DockPanelEntry> _renderedEntries = [];
+    private bool _overlayLifecycleActive;
+    private bool _backdropClosing;
     private bool _scrollLocked;
     private bool _focusSaved;
 
-    private IReadOnlyList<DockPanelEntry> OverlayEntries => Enum.GetValues<DockSide>()
+    private IReadOnlyList<DockPanelEntry> ActiveOverlayEntries => Enum.GetValues<DockSide>()
         .SelectMany(side => DockLayoutState.GetPanels(Scope, side))
         .Where(IsOverlayEntry)
         .Select(GetEffectiveOverlayEntry)
@@ -53,34 +58,50 @@
         .ThenBy(entry => entry.Descriptor.Title, StringComparer.Ordinal)
         .ToArray();
 
+    private IReadOnlyList<DockPanelEntry> RenderedEntries => _renderedEntries;
+
     private string ScopeName => Scope.ToString().ToLowerInvariant();
 
     private string RootClass => string.Join(' ', new[]
     {
         "dock-overlay-host",
         $"dock-overlay-host--{ScopeName}",
+        _backdropClosing ? "dock-overlay-host--closing" : null,
         Class
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private string BackdropClass => string.Join(' ', new[]
+    {
+        "dock-overlay-host__backdrop",
+        _backdropClosing ? "dock-overlay-host__backdrop--closing" : null
     }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
     protected override void OnInitialized()
     {
         DockLayoutState.Changed += OnDockLayoutChanged;
+        SyncRenderedEntries(scheduleClosingAnimation: false);
+    }
+
+    protected override void OnParametersSet()
+    {
+        SyncRenderedEntries(scheduleClosingAnimation: true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var overlayOpen = OverlayEntries.Count > 0;
+        var activeOverlayOpen = ActiveOverlayEntries.Count > 0;
+        var renderedOverlayOpen = RenderedEntries.Count > 0;
 
-        if (overlayOpen && !_overlayWasOpen)
+        if (activeOverlayOpen && !_overlayLifecycleActive)
         {
             await ActivateOverlayAsync();
+            _overlayLifecycleActive = true;
         }
-        else if (!overlayOpen && _overlayWasOpen)
+        else if (!renderedOverlayOpen && _overlayLifecycleActive)
         {
             await DeactivateOverlayAsync();
+            _overlayLifecycleActive = false;
         }
-
-        _overlayWasOpen = overlayOpen;
     }
 
     public void Dispose()
@@ -94,12 +115,15 @@
         await DeactivateOverlayAsync();
     }
 
-    private static string GetSlotClass(DockPanelEntry entry)
+    private string GetSlotClass(DockPanelEntry entry)
     {
         var sideName = entry.Descriptor.Side.ToString().ToLowerInvariant();
         var modeName = entry.State.Mode.ToString().ToLowerInvariant();
+        var closingClass = _closingPanelIds.Contains(entry.Descriptor.Id)
+            ? " dock-overlay-host__slot--closing"
+            : string.Empty;
 
-        return $"dock-overlay-host__slot dock-overlay-host__slot--{sideName} dock-overlay-host__slot--mode-{modeName}";
+        return $"dock-overlay-host__slot dock-overlay-host__slot--{sideName} dock-overlay-host__slot--mode-{modeName}{closingClass}";
     }
 
     private bool IsOverlayEntry(DockPanelEntry entry)
@@ -118,7 +142,73 @@
 
     private void OnDockLayoutChanged()
     {
+        SyncRenderedEntries(scheduleClosingAnimation: true);
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void SyncRenderedEntries(bool scheduleClosingAnimation)
+    {
+        var activeEntries = ActiveOverlayEntries;
+        var activeIds = activeEntries.Select(entry => entry.Descriptor.Id).ToHashSet();
+
+        foreach (var activeId in activeIds)
+        {
+            _closingPanelIds.Remove(activeId);
+            _scheduledClosePanelIds.Remove(activeId);
+        }
+
+        var closingEntries = _renderedEntries
+            .Where(entry => !activeIds.Contains(entry.Descriptor.Id))
+            .ToArray();
+
+        foreach (var closingEntry in closingEntries)
+        {
+            _closingPanelIds.Add(closingEntry.Descriptor.Id);
+
+            if (scheduleClosingAnimation && _scheduledClosePanelIds.Add(closingEntry.Descriptor.Id))
+            {
+                _ = RemoveClosedPanelAfterAnimationAsync(closingEntry.Descriptor.Id);
+            }
+        }
+
+        _renderedEntries = activeEntries
+            .Concat(closingEntries)
+            .OrderBy(entry => entry.State.Order)
+            .ThenBy(entry => entry.Descriptor.Title, StringComparer.Ordinal)
+            .ToArray();
+        _backdropClosing = activeEntries.Count == 0 && closingEntries.Length > 0;
+    }
+
+    private async Task RemoveClosedPanelAfterAnimationAsync(DockPanelId panelId)
+    {
+        await Task.Delay(CloseAnimationDelayMilliseconds);
+
+        if (ActiveOverlayEntries.Any(entry => entry.Descriptor.Id == panelId))
+        {
+            _closingPanelIds.Remove(panelId);
+            _scheduledClosePanelIds.Remove(panelId);
+            return;
+        }
+
+        _renderedEntries = _renderedEntries
+            .Where(entry => entry.Descriptor.Id != panelId)
+            .ToArray();
+        _closingPanelIds.Remove(panelId);
+        _scheduledClosePanelIds.Remove(panelId);
+        _backdropClosing = ActiveOverlayEntries.Count == 0 && _renderedEntries.Count > 0;
+
+        if (_renderedEntries.Count == 0)
+        {
+            _backdropClosing = false;
+
+            if (_overlayLifecycleActive)
+            {
+                await DeactivateOverlayAsync();
+                _overlayLifecycleActive = false;
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task ActivateOverlayAsync()
@@ -163,8 +253,9 @@
 
     private async Task CloseActiveOverlayAsync()
     {
-        var entry = OverlayEntries.LastOrDefault(entry => entry.State.IsActive && entry.Descriptor.CanClose)
-            ?? OverlayEntries.LastOrDefault(entry => entry.Descriptor.CanClose);
+        var activeEntries = ActiveOverlayEntries;
+        var entry = activeEntries.LastOrDefault(entry => entry.State.IsActive && entry.Descriptor.CanClose)
+            ?? activeEntries.LastOrDefault(entry => entry.Descriptor.CanClose);
 
         if (entry is null)
         {

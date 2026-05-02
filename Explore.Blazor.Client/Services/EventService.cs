@@ -50,6 +50,9 @@ public interface IEventService
         bool? requiresLaptop = null,
         string? techStackTag = null,
         bool? hasTechAspect = null,
+        Guid? actorId = null,
+        Guid? organizationId = null,
+        Guid? groupId = null,
         CancellationToken cancellationToken = default);
     Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(int pageNumber, int pageSize);
     Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
@@ -72,6 +75,8 @@ public interface IEventService
     Task<EventSessionDto?> GetSessionByIdAsync(Guid sessionId);
     Task<bool> UpdateEventStatusAsync(Guid eventId, int eventStatusId);
     Task<ICollection<EventListDto>> GetPublicEventsByActorAsync(Guid actorId);
+    Task<ICollection<EventListDto>> GetPublicEventsByOrganizationAsync(Guid organizationId);
+    Task<ICollection<EventListDto>> GetPublicEventsByGroupAsync(Guid groupId);
 }
 
 public partial class EventService : IEventService
@@ -168,6 +173,9 @@ public partial class EventService : IEventService
         bool? requiresLaptop = null,
         string? techStackTag = null,
         bool? hasTechAspect = null,
+        Guid? actorId = null,
+        Guid? organizationId = null,
+        Guid? groupId = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -200,6 +208,9 @@ public partial class EventService : IEventService
                 pageNumber: pageNumber,
                 pageSize: pageSize,
                 searchTerm: searchTerm,
+                actorId: actorId,
+                organizationId: organizationId,
+                groupId: groupId,
                 categoryId: categoryId,
                 includedCategoryIds: safeIncludedCatIds,
                 excludedCategoryIds: safeExcludedCatIds,
@@ -400,17 +411,49 @@ public partial class EventService : IEventService
     {
         try
         {
-            // Public statuses: Published=2, Cancelled=3, Completed=4
             var result = await _apiClient.GetEventsAsync(
                 pageNumber: 1,
                 pageSize: 100,
-                eventStatusIds: [2, 3, 4]);
-            var items = result?.GetItems() ?? new List<EventListDto>();
-            return items.Where(e => e.ActorId == actorId).ToList();
+                actorId: actorId);
+            return result?.GetItems() ?? new List<EventListDto>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching public events for actor {ActorId}", actorId);
+            return new List<EventListDto>();
+        }
+    }
+
+    public async Task<ICollection<EventListDto>> GetPublicEventsByOrganizationAsync(Guid organizationId)
+    {
+        try
+        {
+            var result = await _apiClient.GetEventsAsync(
+                pageNumber: 1,
+                pageSize: 100,
+                organizationId: organizationId);
+            return result?.GetItems() ?? new List<EventListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching public events for organization {OrganizationId}", organizationId);
+            return new List<EventListDto>();
+        }
+    }
+
+    public async Task<ICollection<EventListDto>> GetPublicEventsByGroupAsync(Guid groupId)
+    {
+        try
+        {
+            var result = await _apiClient.GetEventsAsync(
+                pageNumber: 1,
+                pageSize: 100,
+                groupId: groupId);
+            return result?.GetItems() ?? new List<EventListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching public events for group {GroupId}", groupId);
             return new List<EventListDto>();
         }
     }

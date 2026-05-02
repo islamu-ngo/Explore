@@ -20,38 +20,6 @@
             <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">
                 @(IsSingleTenantMode ? "Administration" : "Instance Administration")
             </MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
-                @(IsSingleTenantMode
-                    ? "Manage platform settings, organizations, modules, storage, and SMTP"
-                    : "Manage platform governance, tenants, domain, branding, modules, storage, and SMTP settings")
-            </MudText>
-            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-4">
-                <MudChip T="string"
-                         Color="@(IsSingleTenantMode ? Color.Warning : Color.Info)"
-                         Variant="Variant.Outlined"
-                         Icon="@Icons.Material.Filled.Apartment">
-                    @(IsSingleTenantMode ? "Single Tenant" : "Multi-Tenant")
-                </MudChip>
-
-                @if (IsSingleTenantMode)
-                {
-                    <AppButton Variant="Variant.Text"
-                               Color="Color.Warning"
-                               StartIcon="@Icons.Material.Filled.RocketLaunch"
-                               OnClick="@(() => SelectSection("multi-tenancy"))">
-                        Enable SaaS Mode
-                    </AppButton>
-                }
-                else
-                {
-                    <AppButton Variant="Variant.Text"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.DomainAdd"
-                               OnClick="@(() => SelectSection("tenants"))">
-                        Manage Platform
-                    </AppButton>
-                }
-            </MudStack>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
@@ -115,7 +83,7 @@
                         </div>
                         @if (_currentSection == "governance")
                         {
-                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="@(IsSingleTenantMode ? "general" : "full")" />
+                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="general" />
                             @if (IsSingleTenantMode)
                             {
                                 <MudDivider Class="my-6" />
@@ -137,10 +105,6 @@
                         else if (_currentSection == "auth-providers")
                         {
                             <InstanceAuthProviderSection Model="_authProviderModel" IsSingleTenant="IsSingleTenantMode" />
-                        }
-                        else if (_currentSection == "appearance" && IsSingleTenantMode)
-                        {
-                            <InstanceAppearanceSection Model="_renderPolicy" Delegation="_delegation" EventPolicy="_eventPolicy" />
                         }
                         else if (_currentSection == "modules")
                         {
@@ -167,9 +131,13 @@
                                                            LockForTenants="_delegation.LockTenantAnalytics"
                                                            LockForTenantsChanged="@(v => _delegation.LockTenantAnalytics = v)" />
                         }
-                        else if (_currentSection == "footer-governance")
+                        else if (_currentSection == "footer-governance" && !IsSingleTenantMode)
                         {
                             <InstanceFooterGovernanceSection Model="_footerGovernance" IsSingleTenant="IsSingleTenantMode" />
+                        }
+                        else if (_currentSection == "footer" && IsSingleTenantMode)
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantFooterSection />
                         }
                         else if (_currentSection == "localization")
                         {
@@ -181,7 +149,7 @@
                         }
                         else if (_currentSection == "policies" && IsSingleTenantMode)
                         {
-                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPoliciesSection Model="_tenantModel" />
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPoliciesSection Model="_tenantModel" IsSingleTenant="true" />
                         }
                         else if (_currentSection == "organizations" && IsSingleTenantMode)
                         {
@@ -191,13 +159,9 @@
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantLookupTablesSection />
                         }
-                        else if (_currentSection == "render-policies")
+                        else if (_currentSection == "advanced")
                         {
-                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="render-policies" />
-                        }
-                        else if (_currentSection == "multi-tenancy" && IsSingleTenantMode)
-                        {
-                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="multi-tenancy" />
+                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="advanced" />
                         }
                         else if (_currentSection == "access-tokens")
                         {
@@ -283,8 +247,8 @@
                                        || string.IsNullOrWhiteSpace(_deploymentMode);
 
     private static bool IsSettingsSection(string section) =>
-        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "render-policies" or "multi-tenancy" or "appearance" or "analytics-privacy" or "footer-governance"
-            // Localization manages its own Save button via ILocalizationAdminService; not listed here.
+        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "advanced" or "analytics-privacy" or "footer-governance"
+            // Localization and Footer manage their own Save button
             ;
 
     protected override async Task OnInitializedAsync()
@@ -360,7 +324,7 @@
     private static string NormalizeSection(string section, bool isSingleTenant)
     {
         // Sections only valid in single-tenant mode
-        var singleTenantOnly = new HashSet<string> { "members", "organizations", "lookups", "policies", "appearance", "webhooks", "multi-tenancy" };
+        var singleTenantOnly = new HashSet<string> { "members", "organizations", "lookups", "policies", "footer", "webhooks" };
         // Sections only valid in multi-tenant mode
         var multiTenantOnly = new HashSet<string> { "tenants" };
 
@@ -426,6 +390,16 @@
                 tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
                 break;
             case "policies" when IsSingleTenantMode:
+                _eventPolicy.AllowUserSubmittedEvents = _tenantModel.AllowUserSubmittedEvents;
+                _eventPolicy.AllowOrganizationSubmittedEvents = _tenantModel.AllowOrganizationSubmittedEvents;
+                _eventPolicy.AllowGroupSubmittedEvents = _tenantModel.AllowGroupSubmittedEvents;
+                _eventPolicy.EventCardClickOpensDetailPage = _tenantModel.EventCardClickOpensDetailPage;
+                _orgPolicy.AllowOrganizationSelfRegistration = _tenantModel.AllowOrganizationSelfRegistration;
+                _orgPolicy.AllowGroupSelfRegistration = _tenantModel.AllowGroupSelfRegistration;
+
+                tasks.Add(InstanceOnboardingService.UpdateEventPolicyAsync(_eventPolicy));
+                tasks.Add(InstanceOnboardingService.UpdateOrganizationPolicyAsync(_orgPolicy));
+
                 var tenantResponse = await TenantOnboardingService.UpdateSettingsAsync(_tenantModel);
                 if (!tenantResponse.Success)
                 {
@@ -436,18 +410,8 @@
                     return;
                 }
                 break;
-            case "appearance":
+            case "advanced":
                 tasks.Add(InstanceOnboardingService.UpdateRenderPolicyAsync(_renderPolicy));
-                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
-                tasks.Add(InstanceOnboardingService.UpdateEventPolicyAsync(_eventPolicy));
-                break;
-            case "render-policies":
-                tasks.Add(InstanceOnboardingService.UpdateRenderPolicyAsync(_renderPolicy));
-                break;
-            case "footer-governance":
-                tasks.Add(InstanceOnboardingService.UpdateFooterGovernanceSettingsAsync(_footerGovernance));
-                break;
-            case "multi-tenancy":
                 tasks.Add(InstanceOnboardingService.UpdateDeploymentModeAsync(_deploymentMode));
                 break;
         }
@@ -495,7 +459,6 @@
                 new("organizations",    Icons.Material.Filled.Business,        "Organizations"),
                 new("lookups",          Icons.Material.Filled.TableChart,      "Lookup Tables"),
                 new("policies",         Icons.Material.Filled.Policy,          "Policies"),
-                new("appearance",       Icons.Material.Filled.Visibility,      "Appearance"),
                 new("themes",           Icons.Material.Filled.ColorLens,       "Themes"),
                 new("auth-providers",   Icons.Material.Filled.Key,             "Auth Providers"),
                 new("modules",          Icons.Material.Filled.Extension,       "Modules"),
@@ -503,10 +466,9 @@
                 new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),
                 new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),
                 new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
-                new("footer-governance",Icons.Material.Filled.ViewAgenda,      "Footer"),
+                new("footer",           Icons.Material.Filled.ViewAgenda,      "Footer"),
                 new("localization",     Icons.Material.Filled.Translate,       "Localization"),
-                new("render-policies",  Icons.Material.Filled.DisplaySettings, "Render Policies",  Group: "Advanced"),
-                new("multi-tenancy",    Icons.Material.Filled.SwapHoriz,       "Multi-Tenancy",    IconColor: Color.Warning, Group: "Advanced"),
+                new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
                 new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
                 new("webhooks",         Icons.Material.Filled.Webhook,         "Webhooks",         Group: "Developer"),
             ];
@@ -525,7 +487,7 @@
             new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
             new("footer-governance",Icons.Material.Filled.ViewAgenda,      "Footer"),
             new("localization",     Icons.Material.Filled.Translate,       "Localization"),
-            new("render-policies",  Icons.Material.Filled.DisplaySettings, "Render Policies", Group: "Advanced"),
+            new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
             new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
         ];
     }

@@ -39,116 +39,141 @@
                 <MudAlert Severity="Severity.Success" Class="mb-4">@_successMessage</MudAlert>
             }
 
-            <MudPaper Outlined="true"
-                      Class="pa-4 mb-4"
-                      Style="@GetCardStyle(LocalProvider)"
-                      @onclick="@(() => SelectProvider(LocalProvider))">
-                <MudStack Spacing="2">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                        <MudRadio T="string" Value="@LocalProvider" Selected="@IsSelected(LocalProvider)" />
-                        <MudText Typo="Typo.h6">Local (Built-in RBAC)</MudText>
+            @if (_model.CerbosDetectedFromEnvironment && !_showAdvancedConfig)
+            {
+                <MudPaper Class="pa-8 mb-4 d-flex flex-column align-center text-center" Outlined="true">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Primary" Style="font-size: 4rem;" Class="mb-4" />
+                    <MudText Typo="Typo.h5" Class="mb-2">Cerbos Detected</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-6">We've automatically configured Cerbos from your environment variables.</MudText>
+                    <AppButton Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" Disabled="@(!CanSave)" OnClick="SaveAndContinueAsync" Class="mb-4 px-8">
+                        @if (_isSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            @:Continuing...
+                        }
+                        else
+                        {
+                            @:Continue with Cerbos
+                        }
+                    </AppButton>
+                    <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => _showAdvancedConfig = true)">
+                        Configure Authorization Provider
+                    </AppButton>
+                </MudPaper>
+            }
+            else
+            {
+                <MudPaper Outlined="true"
+                          Class="pa-4 mb-4"
+                          Style="@GetCardStyle(LocalProvider)"
+                          @onclick="@(() => SelectProvider(LocalProvider))">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudRadio T="string" Value="@LocalProvider" Selected="@IsSelected(LocalProvider)" />
+                            <MudText Typo="Typo.h6">Local (Built-in RBAC)</MudText>
+                            <MudTooltip Text="Use the built-in authorization implementation with no external Cerbos dependency.">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                            </MudTooltip>
+                        </MudStack>
                     </MudStack>
-                    <MudText Typo="Typo.body2">
-                        Use the built-in authorization implementation with no external Cerbos dependency.
-                    </MudText>
-                </MudStack>
-            </MudPaper>
+                </MudPaper>
 
-            <MudPaper Outlined="true"
-                      Class="pa-4 mb-4"
-                      Style="@GetCardStyle(CerbosProvider)"
-                      @onclick="@(() => SelectProvider(CerbosProvider))">
-                <MudStack Spacing="2">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                        <MudRadio T="string" Value="@CerbosProvider" Selected="@IsSelected(CerbosProvider)" />
-                        <MudText Typo="Typo.h6">Cerbos (External PDP)</MudText>
-                        @if (_model.CerbosDetectedFromEnvironment)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
-                                Auto-detected from environment
-                            </MudChip>
-                        }
-                        @if (_model.CerbosEndpointVerified)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
-                                Verified
-                            </MudChip>
-                        }
-                    </MudStack>
-                    <MudText Typo="Typo.body2">
-                        Route all protected authorization checks to Cerbos. When selected, authorized requests are denied if Cerbos is unavailable.
-                    </MudText>
-
-                    @if (_model.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase))
-                    {
-                        @if (_model.CerbosDetectedFromEnvironment && _model.CerbosEndpointVerified)
-                        {
-                            <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
-                                Cerbos was detected from environment and verified successfully. The endpoint is locked for this setup flow.
-                            </MudAlert>
-                        }
-                        else if (_model.CerbosDetectedFromEnvironment)
-                        {
-                            <MudAlert Severity="Severity.Warning" Dense="true">
-                                A Cerbos endpoint was detected from environment, but it could not be verified. Review it or enter a different endpoint below.
-                            </MudAlert>
-                        }
-
-                        <AppTextField T="string"
-                                      Label="Cerbos gRPC Endpoint"
-                                      Value="_model.CerbosGrpcEndpoint"
-                                      ValueChanged="OnCerbosEndpointChanged"
-                                      Placeholder="https://cerbosgrpc.example.com:443 or cerbosgrpc.example.com:443"
-                                      Disabled="@IsEndpointLocked"
-                                      HelperText="Accepts a full URL or bare host:port. Bare remote endpoints default to HTTPS; localhost defaults to HTTP." />
-
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <AppButton Variant="Variant.Outlined"
-                                       Disabled="@(!CanVerify)"
-                                       OnClick="VerifyCerbosEndpointAsync">
-                                @if (_isVerifying)
-                                {
-                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                    @:Verifying...
-                                }
-                                else
-                                {
-                                    @:Verify Endpoint
-                                }
-                            </AppButton>
-
+                <MudPaper Outlined="true"
+                          Class="pa-4 mb-4"
+                          Style="@GetCardStyle(CerbosProvider)"
+                          @onclick="@(() => SelectProvider(CerbosProvider))">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudRadio T="string" Value="@CerbosProvider" Selected="@IsSelected(CerbosProvider)" />
+                            <MudText Typo="Typo.h6">Cerbos (External PDP)</MudText>
+                            <MudTooltip Text="Route all protected authorization checks to Cerbos. When selected, authorized requests are denied if Cerbos is unavailable.">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                            </MudTooltip>
+                            @if (_model.CerbosDetectedFromEnvironment)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                                    Auto-detected
+                                </MudChip>
+                            }
                             @if (_model.CerbosEndpointVerified)
                             {
-                                <MudText Typo="Typo.caption" Color="Color.Success">
-                                    Endpoint verified and ready to use.
-                                </MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                                    Verified
+                                </MudChip>
                             }
                         </MudStack>
-                    }
+
+                        @if (_model.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase))
+                        {
+                            @if (_model.CerbosDetectedFromEnvironment && _model.CerbosEndpointVerified)
+                            {
+                                <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
+                                    Cerbos was detected from environment and verified successfully. The endpoint is locked for this setup flow.
+                                </MudAlert>
+                            }
+                            else if (_model.CerbosDetectedFromEnvironment)
+                            {
+                                <MudAlert Severity="Severity.Warning" Dense="true">
+                                    A Cerbos endpoint was detected from environment, but it could not be verified. Review it or enter a different endpoint below.
+                                </MudAlert>
+                            }
+
+                            <AppTextField T="string"
+                                          Label="Cerbos gRPC Endpoint"
+                                          Value="_model.CerbosGrpcEndpoint"
+                                          ValueChanged="OnCerbosEndpointChanged"
+                                          Placeholder="https://cerbosgrpc.example.com:443 or cerbosgrpc.example.com:443"
+                                          Disabled="@IsEndpointLocked"
+                                          HelperText="Accepts a full URL or bare host:port. Bare remote endpoints default to HTTPS; localhost defaults to HTTP." />
+
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <AppButton Variant="Variant.Outlined"
+                                           Disabled="@(!CanVerify)"
+                                           OnClick="VerifyCerbosEndpointAsync">
+                                    @if (_isVerifying)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                        @:Verifying...
+                                    }
+                                    else
+                                    {
+                                        @:Verify Endpoint
+                                    }
+                                </AppButton>
+
+                                @if (_model.CerbosEndpointVerified)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Success">
+                                        Endpoint verified and ready to use.
+                                    </MudText>
+                                }
+                            </MudStack>
+                        }
+                    </MudStack>
+                </MudPaper>
+
+                @if (_model.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase) && !_model.CerbosEndpointVerified)
+                {
+                    <MudAlert Severity="Severity.Warning" Class="mb-4">
+                        Verify the Cerbos endpoint before saving this authorization provider.
+                    </MudAlert>
+                }
+
+                <MudStack Row="true" Spacing="2" Class="mt-2">
+                    <AppButton Disabled="@(!CanSave)"
+                               OnClick="SaveAndContinueAsync">
+                        @if (_isSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            @:Saving...
+                        }
+                        else
+                        {
+                            @:Save & Continue
+                        }
+                    </AppButton>
                 </MudStack>
-            </MudPaper>
-
-            @if (_model.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase) && !_model.CerbosEndpointVerified)
-            {
-                <MudAlert Severity="Severity.Warning" Class="mb-4">
-                    Verify the Cerbos endpoint before saving this authorization provider.
-                </MudAlert>
             }
-
-            <MudStack Row="true" Spacing="2" Class="mt-2">
-                <AppButton Disabled="@(!CanSave)"
-                           OnClick="SaveAndContinueAsync">
-                    @if (_isSaving)
-                    {
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                        @:Saving...
-                    }
-                    else
-                    {
-                        @:Save & Continue
-                    }
-                </AppButton>
-            </MudStack>
         }
     </MudPaper>
 </MudContainer>
@@ -165,6 +190,7 @@
     private string? _successMessage;
     private bool _shouldLoadConfiguration = true;
     private IJSObjectReference? _bffModule;
+    private bool _showAdvancedConfig = false;
 
     private bool IsEndpointLocked =>
         _model.CerbosDetectedFromEnvironment && _model.CerbosEndpointVerified;

@@ -11,8 +11,8 @@
         "bottom bottom bottom";
     min-inline-size: 0;
     min-block-size: 0;
-    isolation: isolate;
-    transition: var(--isl-dock-panel-transition);
+    transition: grid-template-columns var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1)),
+        grid-template-rows var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .dock-layout-host__content {

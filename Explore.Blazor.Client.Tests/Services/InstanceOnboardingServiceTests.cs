@@ -31,6 +31,26 @@ public class InstanceOnboardingServiceTests
     #region GetStatusAsync
 
     [Test]
+    public async Task GetSystemOnboardingStatusAsync_ReturnsStatus_WhenApiSucceeds()
+    {
+        // Arrange
+        var expected = new SystemOnboardingStatusModel
+        {
+            RequiresOnboarding = true,
+            DeploymentMode = "MultiTenant"
+        };
+        SetupBffClient(CreateJsonResponse(expected));
+
+        // Act
+        var result = await _service.GetSystemOnboardingStatusAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.RequiresOnboarding).IsTrue();
+        await Assert.That(result.DeploymentMode).IsEqualTo("MultiTenant");
+    }
+
+    [Test]
     public async Task GetStatusAsync_ReturnsStatus_WhenApiSucceeds()
     {
         // Arrange

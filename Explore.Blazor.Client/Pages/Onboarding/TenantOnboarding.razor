@@ -41,107 +41,111 @@
             <MudStack Spacing="3">
                 <MudText Typo="Typo.caption" Class="mb-1">Fields marked "(Required)" must be provided before completing onboarding.</MudText>
 
-                <MudText Typo="Typo.h6">Content Governance</MudText>
-                <MudSwitch T="bool" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
-                    Allow users to submit events
-                </MudSwitch>
-
-                <MudSwitch T="bool" @bind-Value="_model.RequireEventApproval" Color="Color.Primary">
-                    Require approval before user-submitted events are published
-                </MudSwitch>
-
-                <MudSwitch T="bool"
-                           @bind-Value="_model.RequireOrganizationVerification"
-                           Disabled="@(!_model.CanTenantOmitVerification)"
-                           Color="Color.Primary">
-                    Require organization verification
-                </MudSwitch>
-
-                @if (!_model.CanTenantOmitVerification)
-                {
-                    <MudText Typo="Typo.caption">
-                        Organization verification is locked by instance policy and cannot be omitted.
-                    </MudText>
+                @{
+                    bool hasLocks = !_model.CanTenantOmitVerification || 
+                                    !_model.CanOverrideHomePagePreference ||
+                                    !_model.CanOverrideEventCardClickBehavior ||
+                                    !_model.CanOverrideSubdomain ||
+                                    !_model.CanOverrideCustomDomain ||
+                                    !_model.CanOverrideBrandDisplayName;
                 }
 
-                <MudDivider />
-                <MudText Typo="Typo.h6">Tenant Experience</MudText>
-                <MudSelect T="string"
-                           Label="Preferred Home Page (Required)"
-                           @bind-Value="_model.PreferredHomePage"
-                           Disabled="@(!_model.CanOverrideHomePagePreference)"
-                           Variant="Variant.Outlined"
-                           Required="true"
-                           RequiredError="Preferred home page is required.">
-                    <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
-                    <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
-                </MudSelect>
-                @if (!_model.CanOverrideHomePagePreference)
+                @if (hasLocks)
                 {
-                    <MudText Typo="Typo.caption">Home page is locked by instance policy.</MudText>
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Class="mr-2" />
+                        Some settings are locked by your instance administrator and cannot be changed here.
+                    </MudAlert>
                 }
 
-                <MudSwitch T="bool"
-                           @bind-Value="_model.EventCardClickOpensDetailPage"
-                           Label="Event card click opens detail page"
-                           Color="Color.Primary"
-                           Disabled="@(!_model.CanOverrideEventCardClickBehavior)" />
-                @if (!_model.CanOverrideEventCardClickBehavior)
-                {
-                    <MudText Typo="Typo.caption">Event card click behavior is locked by instance policy.</MudText>
-                }
+                <MudExpansionPanels MultiExpansion="true" Class="mb-4">
+                    <MudExpansionPanel Text="Content Governance" IsExpanded="true">
+                        <MudStack Spacing="3">
+                            <MudSwitch T="bool" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
+                                Allow users to submit events
+                            </MudSwitch>
+                            <MudSwitch T="bool" @bind-Value="_model.RequireEventApproval" Color="Color.Primary">
+                                Require approval before user-submitted events are published
+                            </MudSwitch>
+                            <MudSwitch T="bool"
+                                       @bind-Value="_model.RequireOrganizationVerification"
+                                       Disabled="@(!_model.CanTenantOmitVerification)"
+                                       Color="Color.Primary">
+                                Require organization verification @(!_model.CanTenantOmitVerification ? "🔒" : "")
+                            </MudSwitch>
+                        </MudStack>
+                    </MudExpansionPanel>
 
-                <AppTextField T="string" Label="Subdomain (Optional)"
-                              Variant="Variant.Outlined"
-                              Placeholder="tenant-slug"
-                              @bind-Value="_model.Subdomain"
-                              Disabled="@(!_model.CanOverrideSubdomain)"
-                              HelperText="@($"Base domain: {(_model.InstanceBaseDomain == string.Empty ? "(not configured)" : _model.InstanceBaseDomain)}")" />
-                @if (!_model.CanOverrideSubdomain)
-                {
-                    <MudText Typo="Typo.caption">Subdomain is locked by instance policy.</MudText>
-                }
+                    <MudExpansionPanel Text="Tenant Experience">
+                        <MudStack Spacing="3">
+                            <MudSelect T="string"
+                                       Label="@("Preferred Home Page" + (!_model.CanOverrideHomePagePreference ? " 🔒" : " (Required)"))"
+                                       @bind-Value="_model.PreferredHomePage"
+                                       Disabled="@(!_model.CanOverrideHomePagePreference)"
+                                       Variant="Variant.Outlined"
+                                       Required="true"
+                                       RequiredError="Preferred home page is required.">
+                                <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
+                                <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
+                            </MudSelect>
 
-                <AppTextField T="string" Label="Custom Domain (Optional)"
-                              Variant="Variant.Outlined"
-                              Placeholder="events.example.org"
-                              @bind-Value="_model.CustomDomain"
-                              Disabled="@(!_model.CanOverrideCustomDomain)" />
-                @if (!_model.CanOverrideCustomDomain)
-                {
-                    <MudText Typo="Typo.caption">Custom domains are disabled or locked by instance policy.</MudText>
-                }
+                            <MudSwitch T="bool"
+                                       @bind-Value="_model.EventCardClickOpensDetailPage"
+                                       Color="Color.Primary"
+                                       Disabled="@(!_model.CanOverrideEventCardClickBehavior)">
+                                Event card click opens detail page @(!_model.CanOverrideEventCardClickBehavior ? "🔒" : "")
+                            </MudSwitch>
 
-                <MudDivider />
-                <MudText Typo="Typo.h6">Platform Identity</MudText>
-                <AppTextField T="string" Label="Brand Display Name (Required)"
-                              Variant="Variant.Outlined"
-                              Required="true"
-                              RequiredError="Brand display name is required."
-                              @bind-Value="_model.BrandDisplayName"
-                              Disabled="@(!_model.CanOverrideBrandDisplayName)" />
-                @if (!_model.CanOverrideBrandDisplayName)
-                {
-                    <MudText Typo="Typo.caption">Brand display name is locked by instance policy.</MudText>
-                }
-                @if (_model.IsTenantWhiteLabelingEnabled)
-                {
-                    <AppTextField T="string" Label="Brand Logo URL (Optional)"
-                                  Variant="Variant.Outlined"
-                                  @bind-Value="_model.BrandLogoUrl"
-                                  Disabled="@(!_model.CanOverrideBrandLogoUrl)" />
-                    <AppTextField T="string" Label="Brand Favicon URL (Optional)"
-                                  Variant="Variant.Outlined"
-                                  @bind-Value="_model.BrandFaviconUrl"
-                                  Disabled="@(!_model.CanOverrideBrandFaviconUrl)" />
-                    <AppTextField T="string" Label="Advanced: Custom CSS URL (Optional)"
-                                  Variant="Variant.Outlined"
-                                  @bind-Value="_model.BrandCustomCssUrl"
-                                  Disabled="@(!_model.CanOverrideBrandCustomCssUrl)" />
-                }
+                            <AppTextField T="string" Label="@("Subdomain (Optional)" + (!_model.CanOverrideSubdomain ? " 🔒" : ""))"
+                                          Variant="Variant.Outlined"
+                                          Placeholder="tenant-slug"
+                                          @bind-Value="_model.Subdomain"
+                                          Disabled="@(!_model.CanOverrideSubdomain)"
+                                          HelperText="@($"Base domain: {(_model.InstanceBaseDomain == string.Empty ? "(not configured)" : _model.InstanceBaseDomain)}")" />
+
+                            <AppTextField T="string" Label="@("Custom Domain (Optional)" + (!_model.CanOverrideCustomDomain ? " 🔒" : ""))"
+                                          Variant="Variant.Outlined"
+                                          Placeholder="events.example.org"
+                                          @bind-Value="_model.CustomDomain"
+                                          Disabled="@(!_model.CanOverrideCustomDomain)" />
+                        </MudStack>
+                    </MudExpansionPanel>
+
+                    <MudExpansionPanel Text="Platform Identity">
+                        <MudStack Spacing="3">
+                            <AppTextField T="string" Label="@("Brand Display Name" + (!_model.CanOverrideBrandDisplayName ? " 🔒" : " (Required)"))"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Brand display name is required."
+                                          @bind-Value="_model.BrandDisplayName"
+                                          Disabled="@(!_model.CanOverrideBrandDisplayName)" />
+
+                            @if (_model.IsTenantWhiteLabelingEnabled)
+                            {
+                                <AppTextField T="string" Label="@("Brand Logo URL (Optional)" + (!_model.CanOverrideBrandLogoUrl ? " 🔒" : ""))"
+                                              Variant="Variant.Outlined"
+                                              @bind-Value="_model.BrandLogoUrl"
+                                              Disabled="@(!_model.CanOverrideBrandLogoUrl)" />
+                                <AppTextField T="string" Label="@("Brand Favicon URL (Optional)" + (!_model.CanOverrideBrandFaviconUrl ? " 🔒" : ""))"
+                                              Variant="Variant.Outlined"
+                                              @bind-Value="_model.BrandFaviconUrl"
+                                              Disabled="@(!_model.CanOverrideBrandFaviconUrl)" />
+                                <MudExpansionPanel Text="Advanced Branding" DisableGutters="true" Class="elevation-0">
+                                    <AppTextField T="string" Label="@("Custom CSS URL (Optional)" + (!_model.CanOverrideBrandCustomCssUrl ? " 🔒" : ""))"
+                                                  Variant="Variant.Outlined"
+                                                  @bind-Value="_model.BrandCustomCssUrl"
+                                                  Disabled="@(!_model.CanOverrideBrandCustomCssUrl)" />
+                                </MudExpansionPanel>
+                            }
+                        </MudStack>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
 
                 <AppButton OnClick="CompleteOnboardingAsync"
-                           Disabled="_isSaving">
+                           Disabled="_isSaving"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           Size="Size.Large">
                     Complete Tenant Onboarding
                 </AppButton>
             </MudStack>

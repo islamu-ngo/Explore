@@ -132,6 +132,9 @@ public class EventListTests : IDisposable
             Arg.Any<bool?>(),                  // requiresLaptop
             Arg.Any<string?>(),                // techStackTag
             Arg.Any<bool?>(),                  // hasTechAspect
+            Arg.Any<Guid?>(),                  // actorId
+            Arg.Any<Guid?>(),                  // organizationId
+            Arg.Any<Guid?>(),                  // groupId
             Arg.Any<CancellationToken>())
             .Returns(resultTask);
     }
@@ -169,6 +172,22 @@ public class EventListTests : IDisposable
                 ?? throw new InvalidOperationException($"{methodName} did not return a Task.");
 
             await task;
+        });
+    }
+
+    private static async Task<PaginatedResult<EventListDto>> InvokeFetchEventsPagedAsync(
+        IRenderedComponent<EventList> cut,
+        int pageNumber,
+        int pageSize)
+    {
+        var method = typeof(EventList)
+            .GetMethod("FetchEventsPagedAsync", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("FetchEventsPagedAsync not found — EventList filter forwarding contract may have changed.");
+
+        return await cut.InvokeAsync(async () =>
+        {
+            var task = (Task<PaginatedResult<EventListDto>>)method.Invoke(cut.Instance, [pageNumber, pageSize, CancellationToken.None])!;
+            return await task;
         });
     }
 
@@ -227,6 +246,63 @@ public class EventListTests : IDisposable
         });
 
         _eventService.GetSessionsByEventAsync(eventId).Returns(new List<EventSessionListDto>());
+    }
+
+    [Test]
+    public async Task FetchEventsPagedAsync_ForwardsOwnershipQueryStateToService()
+    {
+        var actorId = Guid.NewGuid();
+        var organizationId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/events?actorId={actorId}&organizationId={organizationId}&groupId={groupId}");
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await InvokeFetchEventsPagedAsync(cut, 1, 20);
+
+        await _eventService.Received().GetEventsPagedAsync(
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<string?>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<List<Guid>?>(),
+            Arg.Any<List<Guid>?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<List<Guid>?>(),
+            Arg.Any<List<Guid>?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<List<Guid>?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<DateTimeOffset?>(),
+            Arg.Any<DateTimeOffset?>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<List<int>?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<int?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<bool?>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool?>(),
+            actorId,
+            organizationId,
+            groupId,
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -408,6 +484,31 @@ public class EventListTests : IDisposable
         await Assert.That(GetPrivateField<ICollection<EventSessionListDto>?>(cut.Instance, "_selectedEventSessions")).IsNull();
         await Assert.That(GetPrivateField<bool>(cut.Instance, "_showInlineRegistration")).IsFalse();
         await Assert.That(GetPrivateField<bool>(cut.Instance, "_showTagCatPopup")).IsFalse();
+    }
+
+    [Test]
+    public async Task BackdropClosingEventPreview_SynchronizesDetailPreviewState()
+    {
+        var eventId = Guid.NewGuid();
+        SetupEventDetailResponses(eventId);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Dock Backdrop Event"
+        });
+
+        SetPrivateField(cut.Instance, "_showInlineRegistration", true);
+        await cut.Find("[data-testid='dock-overlay-backdrop']").ClickAsync(new MouseEventArgs());
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsFalse();
+            Assert.That(GetPrivateField<bool>(cut.Instance, "_showInlineRegistration")).IsFalse();
+            Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsFalse();
+        });
     }
 
     [Test]

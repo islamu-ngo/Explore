@@ -19,35 +19,18 @@
 */
 
 /* ========================================
-   EventList Page — Drawer Container & Detail Drawer
-   JUSTIFICATION: MudDrawerContainer renders <div> and <aside> elements
-   outside the Blazor component scope boundary. CSS isolation cannot
-   reach these elements — ::deep in EventList.razor.css would not work
-   because the DOM nodes are not descendants of the scoped component root.
+   Event Editor Session Drawers
+   JUSTIFICATION: MudDrawerContainer renders <aside> elements outside
+   Blazor component scope boundaries. CSS isolation cannot reach these
+   drawers because the DOM nodes are not descendants of the scoped
+   component root.
    ======================================== */
 
-/* MudDrawerContainer wraps event cards + right detail drawer.
-   min-height ensures the content area fills at least the viewport. */
-.event-list__drawer-container {
-    position: relative;
-    min-height: calc(100vh - var(--mud-appbar-height, 4rem));
-}
-
-/* When the event-list drawer container is present, remove the
-   content-wrapper's bottom padding so the content touches the footer.
-   The right detail drawer is position:fixed, so it sits at the
-   viewport edge regardless of container padding — no need to zero
-   padding-right. !important overrides the Blazor-scoped rule. */
-.main-layout__content-wrapper:has(.event-list__drawer-container) {
-    padding-bottom: 0 !important;
-}
-
-/* ── Right detail drawer (Temporary/overlay mode) ──
+/* ── Session drawer (Temporary/overlay mode) ──
    MudBlazor renders a Temporary drawer inside MudDrawerContainer
    as position:absolute. We override to position:fixed so it covers
    the full viewport height and sits above every other layer
    (navbar z-index 1300, left drawer 1100). */
-.event-list__detail-drawer,
 .create-event__session-drawer,
 .edit-event__session-drawer {
     position: fixed !important;
@@ -59,7 +42,6 @@
     transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms;
 }
 
-.event-list__detail-drawer:not(.mud-drawer--open),
 .create-event__session-drawer:not(.mud-drawer--open),
 .edit-event__session-drawer:not(.mud-drawer--open) {
     visibility: hidden !important;
@@ -67,50 +49,12 @@
     transform: translateX(105%) !important; /* Slide out slightly more than 100% to ensure shadow is hidden */
 }
 
-/* On small screens, allow the drawer to shrink to 90vw */
-@media (max-width: 767px) {
-    .event-list__detail-drawer {
-        max-width: 90vw;
-        width: 90vw !important;
-    }
-}
-
-.event-list__detail-drawer.mud-drawer--open,
 .create-event__session-drawer.mud-drawer--open,
 .edit-event__session-drawer.mud-drawer--open {
     top: var(--isl-space-2) !important;
     right: var(--isl-space-2) !important;
     height: calc(100vh - var(--isl-space-4)) !important;
     border-radius: var(--isl-radius-md);
-}
-
-/* ── Standalone overlay for right drawer (LockScroll enabled) ──
-   JUSTIFICATION: MudOverlay renders outside MudDrawerContainer so
-   MudBlazor's LockScroll works. Sits above navbar (1300) but below
-   the drawer (1400). */
-.event-list__overlay {
-    z-index: 1399 !important;
-}
-
-/* Stronger dimming effect to draw focus to the drawer */
-.event-list__overlay .mud-overlay-scrim {
-    background-color: var(--isl-overlay-scrim) !important;
-}
-
-/* Content fills the aside via flex; header stays pinned, body scrolls. */
-.event-list__detail-drawer .mud-drawer-content {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-/* Pin the drawer header (close/action buttons) at the top of the sidebar */
-.event-list__detail-drawer .mud-drawer-header {
-    flex-shrink: 0;
-    background: var(--mud-palette-surface);
-    border-bottom: 1px solid var(--mud-palette-lines-default);
-    z-index: 1;
 }
 
 /* Scrollable body below the pinned header */

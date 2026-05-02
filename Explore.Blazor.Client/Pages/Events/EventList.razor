@@ -35,14 +35,6 @@
 
 
 
-@* ── Detail preview backdrop: content renders through workspace DockOverlayHost ── *@
-<MudOverlay Visible="_detailDrawerOpen"
-            DarkBackground="true"
-            LockScroll="true"
-            OnClick="@HandleOutsideDrawerClick"
-            Class="event-list__overlay"
-            ZIndex="1399" />
-
 <div class="event-list__dock-container">
 
         @* ── Main Content Area (workspace dock host owns customization panel track) ── *@
@@ -145,24 +137,7 @@
                     @for (int i = 0; i < (_currentLayout == LayoutMode.SingleRow ? 3 : 8); i++)
                     {
                         <MudItem xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg" xl="@bp.Xl">
-                            @if (_currentLayout == LayoutMode.CompactGrid)
-                            {
-                                <MudCard Class="event-card event-card--CompactGrid rounded-lg" Elevation="0">
-                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="100%" Class="event-card__skeleton-fill" />
-                                </MudCard>
-                            }
-                            else
-                            {
-                                <MudCard Class="event-card event-card--skeleton rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
-                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="@(_currentLayout == LayoutMode.SingleRow ? "180px" : "200px")" />
-                                    <MudCardContent>
-                                        <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
-                                        <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
-                                        <MudSkeleton Width="100%" Height="20px" />
-                                        <MudSkeleton Width="100%" Height="20px" />
-                                    </MudCardContent>
-                                </MudCard>
-                            }
+                            <EventCardSkeleton Layout="@_currentLayout" />
                         </MudItem>
                     }
                 }
@@ -199,15 +174,7 @@
                         </ItemContent>
                         <Placeholder>
                             <MudItem xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg" xl="@bp.Xl">
-                                <MudCard Class="event-card event-card--skeleton rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
-                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
-                                    <MudCardContent>
-                                        <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
-                                        <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
-                                        <MudSkeleton Width="100%" Height="20px" />
-                                        <MudSkeleton Width="100%" Height="20px" />
-                                    </MudCardContent>
-                                </MudCard>
+                                <EventCardSkeleton Layout="@_currentLayout" />
                             </MudItem>
                         </Placeholder>
                     </Virtualize>

@@ -45,7 +45,7 @@
     ResizeOptions IBrowserViewportObserver.ResizeOptions { get; } = new()
     {
         ReportRate = 250,
-        NotifyOnBreakpointOnly = true
+        NotifyOnBreakpointOnly = false
     };
 
     private string RootClass => string.Join(' ', new[]
@@ -124,6 +124,7 @@
     Task IBrowserViewportObserver.NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs args)
     {
         var isMobile = args.Breakpoint is Breakpoint.Xs or Breakpoint.Sm;
+        DockLayoutState.UpdateViewport(args.BrowserWindowSize.Width, isMobile);
 
         if (_isMobile == isMobile)
         {

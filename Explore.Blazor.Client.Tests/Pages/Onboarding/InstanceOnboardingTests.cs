@@ -71,17 +71,20 @@ public class InstanceOnboardingTests : IDisposable
     }
 
     [Test]
-    public async Task DeploymentStep_SingleTenant_DoesNotShowMultiTenantGovernance()
+    public async Task DeploymentModeChoice_IsNotRendered()
     {
         // Arrange
         var cut = RenderForDeploymentMode("SingleTenant");
 
-        // Assert — multi-tenant-only governance fields should not appear on the tenant mode step
+        // Assert — deployment mode is fixed by API system config, not chosen by the user.
         cut.WaitForAssertion(() =>
         {
-            if (cut.Markup.Contains("Allow tenant self-service registration", StringComparison.OrdinalIgnoreCase))
+            if (cut.Markup.Contains("Choose Your Tenant Mode", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Help me choose", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Recommended", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Advanced", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Tenant self-service option should not be visible in single-tenant mode.");
+                throw new InvalidOperationException("Tenant mode chooser should not be visible during onboarding.");
             }
         });
 
@@ -127,9 +130,9 @@ public class InstanceOnboardingTests : IDisposable
         // Assert
         cut.WaitForAssertion(() =>
         {
-            if (!UriEndsWith("/organization/create"))
+            if (!UriEndsWith("/organizations/create"))
             {
-                throw new InvalidOperationException($"Expected redirect to /organization/create, got '{_nav.Uri}'.");
+                throw new InvalidOperationException($"Expected redirect to /organizations/create, got '{_nav.Uri}'.");
             }
         });
 
@@ -170,7 +173,6 @@ public class InstanceOnboardingTests : IDisposable
 
         // Act
         ClickButton(cut, "Next");
-        ClickButton(cut, "Next");
         ClickButton(cut, "Complete Instance Onboarding");
 
         // Assert
@@ -186,13 +188,27 @@ public class InstanceOnboardingTests : IDisposable
     }
 
     [Test]
-    public async Task CompleteOnboarding_RefreshesAuthSession_BeforeRedirect()
+    public async Task CompleteOnboarding_MultiTenant_SendsConfiguredDeploymentMode()
     {
         // Arrange
         var cut = RenderForDeploymentMode("MultiTenant");
 
         // Act
         ClickButton(cut, "Next");
+        ClickButton(cut, "Complete Instance Onboarding");
+
+        // Assert
+        await _instanceOnboardingService.Received(1).CompleteAsync(
+            Arg.Is<OnboardingCompletionModel>(model => model.DeploymentMode == "MultiTenant"));
+    }
+
+    [Test]
+    public async Task CompleteOnboarding_RefreshesAuthSession_BeforeRedirect()
+    {
+        // Arrange
+        var cut = RenderForDeploymentMode("MultiTenant");
+
+        // Act
         ClickButton(cut, "Next");
         ClickButton(cut, "Complete Instance Onboarding");
 
@@ -221,9 +237,10 @@ public class InstanceOnboardingTests : IDisposable
 
     private IRenderedComponent<InstanceOnboarding> RenderForDeploymentMode(string deploymentMode)
     {
-        _instanceOnboardingService.GetDeploymentModeAsync().Returns(new DeploymentModeModel
+        _instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusModel
         {
-            Mode = deploymentMode
+            RequiresOnboarding = true,
+            DeploymentMode = deploymentMode
         });
 
         _instanceOnboardingService.GetBrandingSettingsAsync().Returns(new BrandingSettingsModel
@@ -234,7 +251,7 @@ public class InstanceOnboardingTests : IDisposable
         var cut = _ctx.RenderMudComponent<InstanceOnboarding>();
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Choose Your Tenant Mode", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Name Your Instance", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Onboarding form did not finish loading.");
             }
@@ -245,7 +262,6 @@ public class InstanceOnboardingTests : IDisposable
 
     private static void GoToSingleTenantHostStep(IRenderedComponent<InstanceOnboarding> cut)
     {
-        ClickButton(cut, "Next");
         ClickButton(cut, "Next");
         cut.WaitForAssertion(() =>
         {

@@ -54,86 +54,11 @@
         }
         else
         {
-            <MudStepper @key="_stepperKey"
-                        @bind-ActiveIndex="_activeStep"
+            <MudStepper @bind-ActiveIndex="_activeStep"
                         NonLinear="false"
                         ShowResetButton="false"
                         OnPreviewInteraction="OnPreviewStepInteraction">
                 <ChildContent>
-                    <MudStep Title="Tenant Mode">
-                    <MudStack Spacing="3">
-                        <MudText Typo="Typo.h6">Choose Your Tenant Mode</MudText>
-                        <MudText Typo="Typo.body2">
-                            This determines how your instance is organized. Most self-hosters should choose Single Tenant.
-                        </MudText>
-
-                        <MudGrid Spacing="3">
-                            <MudItem xs="12" sm="6">
-                                <MudPaper Class="@GetTenantModeCardClass("SingleTenant")" Elevation="@(IsSingleTenantMode ? 4 : 1)" Style="cursor:pointer; height:100%"
-                                          @onclick="@(() => OnDeploymentModeChanged("SingleTenant"))">
-                                    <MudStack Spacing="1" Class="pa-4">
-                                        <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="2">
-                                            <MudIcon Icon="@Icons.Material.Filled.Person" Color="@(IsSingleTenantMode ? Color.Primary : Color.Default)" Size="Size.Large" />
-                                            <MudText Typo="Typo.h6">Single Tenant</MudText>
-                                        </MudStack>
-                                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Recommended</MudChip>
-                                        <MudText Typo="Typo.body2">
-                                            One tenant, one admin panel. Instance and tenant administration are merged.
-                                            Everything is allowed by default — no governance overhead.
-                                        </MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            Best for: personal instances, small communities, single organizations.
-                                        </MudText>
-                                    </MudStack>
-                                </MudPaper>
-                            </MudItem>
-                            <MudItem xs="12" sm="6">
-                                <MudPaper Class="@GetTenantModeCardClass("MultiTenant")" Elevation="@(IsMultiTenantMode ? 4 : 1)" Style="cursor:pointer; height:100%"
-                                          @onclick="@(() => OnDeploymentModeChanged("MultiTenant"))">
-                                    <MudStack Spacing="1" Class="pa-4">
-                                        <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="2">
-                                            <MudIcon Icon="@Icons.Material.Filled.Business" Color="@(IsMultiTenantMode ? Color.Primary : Color.Default)" Size="Size.Large" />
-                                            <MudText Typo="Typo.h6">Multi Tenant</MudText>
-                                        </MudStack>
-                                        <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Outlined">Advanced</MudChip>
-                                        <MudText Typo="Typo.body2">
-                                            Multiple independent tenants, each with their own branding, policies, and admin.
-                                            Instance admin governs tenant-level overrides and onboarding.
-                                        </MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            Best for: SaaS platforms, hosting providers, multi-organization deployments.
-                                        </MudText>
-                                    </MudStack>
-                                </MudPaper>
-                            </MudItem>
-                        </MudGrid>
-
-                        <MudExpansionPanels Elevation="0">
-                            <MudExpansionPanel Text="Help me choose — what's the difference?">
-                                <MudStack Spacing="2">
-                                    <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
-                                        <strong>Single Tenant</strong> creates one tenant automatically with all features unlocked.
-                                        You manage everything from one admin panel. There is no concept of tenant-level governance
-                                        or overrides — you are both the instance admin and the tenant admin. You can transition
-                                        to multi-tenant later from instance settings if your needs change.
-                                    </MudAlert>
-                                    <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
-                                        <strong>Multi Tenant</strong> separates instance administration from tenant administration.
-                                        You control which features tenants can override (branding, home page, policies), whether
-                                        tenants can self-register, and domain governance (subdomains, custom domains). Each tenant
-                                        gets its own onboarding flow and admin panel. Choose this if you're hosting for multiple
-                                        communities or organizations.
-                                    </MudAlert>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                        Not sure? Start with Single Tenant. You can always transition to Multi Tenant later
-                                        without losing data — you'll just need to configure tenant governance settings at that point.
-                                    </MudText>
-                                </MudStack>
-                            </MudExpansionPanel>
-                        </MudExpansionPanels>
-                    </MudStack>
-                    </MudStep>
-
                     <MudStep Title="Instance Identity">
                     <MudStack Spacing="3">
                         <MudText Typo="Typo.h6">Name Your Instance</MudText>
@@ -141,6 +66,10 @@
                             This name appears in the platform header, emails, and public-facing pages.
                             You can change it anytime in instance settings.
                         </MudText>
+
+                        <MudAlert Severity="@(IsMultiTenantMode ? Severity.Info : Severity.Success)" Dense="true" Variant="Variant.Outlined">
+                            @GetDeploymentModeNotice()
+                        </MudAlert>
 
                         <AppTextField T="string" Label="Instance Name (Required)"
                                       Variant="Variant.Outlined"
@@ -165,57 +94,45 @@
                                 Choose how you want to publish events first. This avoids friction later when selecting publisher context during event creation.
                             </MudText>
 
-                            <MudPaper Class="pa-3">
-                                <MudStack Spacing="1">
-                                    <AppButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.Personal)"
-                                               Color="@GetFirstHostButtonColor(FirstHostSetupChoice.Personal)"
-                                               StartIcon="@Icons.Material.Filled.Person"
-                                               OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.Personal))"
-                                               FullWidth="true">
-                                        Publish Under My Account
-                                    </AppButton>
-                                    <MudText Typo="Typo.caption">Quickest start. You can still add group/organization later.</MudText>
-                                </MudStack>
-                            </MudPaper>
+                            <MudGrid>
+                                <MudItem xs="12" sm="6">
+                                    <MudPaper Class="pa-4 h-100" Outlined="true" Style="@GetFirstHostCardStyle(FirstHostSetupChoice.Personal)" @onclick="@(() => SelectFirstHost(FirstHostSetupChoice.Personal))">
+                                        <MudStack Spacing="2" AlignItems="AlignItems.Center" Class="text-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Person" Color="@GetFirstHostIconColor(FirstHostSetupChoice.Personal)" Size="Size.Large" />
+                                            <MudText Typo="Typo.h6">Personal Account</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Publish directly under your own name. Quickest start.</MudText>
+                                        </MudStack>
+                                    </MudPaper>
+                                </MudItem>
 
-                            <MudPaper Class="pa-3">
-                                <MudStack Spacing="1">
-                                    <AppButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.GroupQuickSetup)"
-                                               Color="@GetFirstHostButtonColor(FirstHostSetupChoice.GroupQuickSetup)"
-                                               StartIcon="@Icons.Material.Filled.Groups"
-                                               OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.GroupQuickSetup))"
-                                               FullWidth="true">
-                                        Group (Informal Quick Setup)
-                                    </AppButton>
-                                    <MudText Typo="Typo.caption">We create a starter group for you automatically.</MudText>
-                                </MudStack>
-                            </MudPaper>
+                                <MudItem xs="12" sm="6">
+                                    <MudPaper Class="pa-4 h-100" Outlined="true" Style="@GetFirstHostCardStyle(FirstHostSetupChoice.GroupQuickSetup)" @onclick="@(() => SelectFirstHost(FirstHostSetupChoice.GroupQuickSetup))">
+                                        <MudStack Spacing="2" AlignItems="AlignItems.Center" Class="text-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Groups" Color="@GetFirstHostIconColor(FirstHostSetupChoice.GroupQuickSetup)" Size="Size.Large" />
+                                            <MudText Typo="Typo.h6">Quick Group</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">We'll automatically create a starter group for you.</MudText>
+                                        </MudStack>
+                                    </MudPaper>
+                                </MudItem>
 
-                            <MudPaper Class="pa-3">
-                                <MudStack Spacing="1">
-                                    <AppButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.Organization)"
-                                               Color="@GetFirstHostButtonColor(FirstHostSetupChoice.Organization)"
-                                               StartIcon="@Icons.Material.Filled.Business"
-                                               OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.Organization))"
-                                               FullWidth="true">
-                                        Organization (Formal Setup)
-                                    </AppButton>
-                                    <MudText Typo="Typo.caption">For legal entity publishing. We redirect you to complete organization details.</MudText>
-                                </MudStack>
-                            </MudPaper>
+                                <MudItem xs="12" sm="12">
+                                    <MudPaper Class="pa-4" Outlined="true" Style="@GetFirstHostCardStyle(FirstHostSetupChoice.Organization)" @onclick="@(() => SelectFirstHost(FirstHostSetupChoice.Organization))">
+                                        <MudStack Spacing="2" AlignItems="AlignItems.Center" Class="text-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Business" Color="@GetFirstHostIconColor(FirstHostSetupChoice.Organization)" Size="Size.Large" />
+                                            <MudText Typo="Typo.h6">Formal Organization</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">For legal entities. Redirects to complete organization details.</MudText>
+                                        </MudStack>
+                                    </MudPaper>
+                                </MudItem>
+                            </MudGrid>
 
-                            <MudPaper Class="pa-3">
-                                <MudStack Spacing="1">
-                                    <AppButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.DoLater)"
-                                               Color="@GetFirstHostButtonColor(FirstHostSetupChoice.DoLater)"
-                                               StartIcon="@Icons.Material.Filled.Schedule"
-                                               OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.DoLater))"
-                                               FullWidth="true">
-                                        I Will Do This Later
-                                    </AppButton>
-                                    <MudText Typo="Typo.caption">Continue now and configure hosting entities later.</MudText>
-                                </MudStack>
-                            </MudPaper>
+                            <div class="d-flex justify-center mt-4">
+                                <AppButton Variant="@(_firstHostSetupChoice == FirstHostSetupChoice.DoLater ? Variant.Filled : Variant.Text)"
+                                           Color="@(_firstHostSetupChoice == FirstHostSetupChoice.DoLater ? Color.Primary : Color.Default)"
+                                           OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.DoLater))">
+                                    I Will Do This Later
+                                </AppButton>
+                            </div>
                         </MudStack>
                         </MudStep>
                     }
@@ -276,7 +193,7 @@
         DoLater = 4
     }
 
-    private const int FirstHostStepIndex = 2;
+    private const int FirstHostStepIndex = 1;
     private string _deploymentMode = "SingleTenant";
     private string _instanceName = string.Empty;
     private bool _isLoading = true;
@@ -288,12 +205,11 @@
     private UserDto? _currentUser;
     private FirstHostSetupChoice _firstHostSetupChoice = FirstHostSetupChoice.None;
     private string _completeButtonLabel = "Complete Instance Onboarding";
-    private string _stepperKey = "single";
 
     private bool IsSingleTenantMode => _deploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
     private bool IsMultiTenantMode => _deploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
-    // Steps: 0=TenantMode, 1=InstanceIdentity, 2=FirstHost(single)/Review(multi), 3=Review(single)
-    private int LastStepIndex => IsSingleTenantMode ? 3 : 2;
+    // Steps: 0=InstanceIdentity, 1=FirstHost(single)/Review(multi), 2=Review(single)
+    private int LastStepIndex => IsSingleTenantMode ? 2 : 1;
     private bool IsFirstHostSelectionMissing => IsSingleTenantMode && _firstHostSetupChoice == FirstHostSetupChoice.None;
     private bool IsCompleteDisabled => IsFirstHostSelectionMissing;
 
@@ -319,8 +235,8 @@
         // Pre-populate from existing settings if available (e.g. restart after partial setup)
         try
         {
-            var deploymentModeResult = await InstanceOnboardingService.GetDeploymentModeAsync();
-            _deploymentMode = deploymentModeResult.Mode;
+            var systemStatus = await InstanceOnboardingService.GetSystemOnboardingStatusAsync();
+            _deploymentMode = NormalizeDeploymentMode(systemStatus?.DeploymentMode);
 
             var brandingResult = await InstanceOnboardingService.GetBrandingSettingsAsync();
             if (!string.IsNullOrWhiteSpace(brandingResult.DefaultBrandDisplayName))
@@ -333,7 +249,6 @@
             Logger.LogWarning(ex, "Could not load existing settings during instance onboarding. Using defaults.");
         }
 
-        _stepperKey = IsSingleTenantMode ? "single" : "multi";
         _isLoading = false;
     }
 
@@ -377,30 +292,12 @@
         StateHasChanged();
     }
 
-    private void OnDeploymentModeChanged(string deploymentMode)
-    {
-        var wasSingleTenantMode = IsSingleTenantMode;
-        _deploymentMode = string.IsNullOrWhiteSpace(deploymentMode) ? "SingleTenant" : deploymentMode.Trim();
-
-        if (wasSingleTenantMode != IsSingleTenantMode)
-        {
-            _stepperKey = IsSingleTenantMode ? "single" : "multi";
-        }
-
-        if (_activeStep > LastStepIndex)
-        {
-            _activeStep = LastStepIndex;
-        }
-
-        _errorMessage = null;
-    }
-
     private Task OnPreviewStepInteraction(StepperInteractionEventArgs args)
     {
         if (args.Action != StepAction.Complete)
             return Task.CompletedTask;
 
-        // Validate "First Host Setup" step (index 2 in single-tenant mode)
+        // Validate "First Host Setup" step (index 1 in single-tenant mode)
         if (IsSingleTenantMode && args.StepIndex == FirstHostStepIndex && IsFirstHostSelectionMissing)
         {
             args.Cancel = true;
@@ -418,10 +315,12 @@
         _errorMessage = null;
     }
 
-    private Variant GetFirstHostButtonVariant(FirstHostSetupChoice choice) =>
-        _firstHostSetupChoice == choice ? Variant.Filled : Variant.Outlined;
+    private string GetFirstHostCardStyle(FirstHostSetupChoice choice) =>
+        _firstHostSetupChoice == choice
+            ? "cursor:pointer; border: 2px solid var(--mud-palette-primary); background-color: var(--mud-palette-primary-hover);"
+            : "cursor:pointer; transition: all 0.2s ease-in-out;";
 
-    private Color GetFirstHostButtonColor(FirstHostSetupChoice choice) =>
+    private Color GetFirstHostIconColor(FirstHostSetupChoice choice) =>
         _firstHostSetupChoice == choice ? Color.Primary : Color.Default;
 
     private string GetFirstHostChoiceLabel()
@@ -449,6 +348,16 @@
             _ => "After completion, you will be redirected to the event list."
         };
     }
+
+    private string GetDeploymentModeNotice() =>
+        IsMultiTenantMode
+            ? "Multi-tenant mode is active from deployment configuration. Complete onboarding to configure tenant governance and create tenants."
+            : "Single-tenant mode is active. To start as multi-tenant, set DEPLOYMENT_MODE=multi_tenant for the API before completing onboarding.";
+
+    private static string NormalizeDeploymentMode(string? deploymentMode) =>
+        string.Equals(deploymentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase)
+            ? "MultiTenant"
+            : "SingleTenant";
 
     private async Task CompleteOnboardingAsync()
     {
@@ -546,7 +455,7 @@
         {
             case FirstHostSetupChoice.Organization:
                 Snackbar.Add("Complete your organization profile now to publish events as an organization.", Severity.Info);
-                Navigation.NavigateTo("/organization/create", forceLoad: true);
+                Navigation.NavigateTo("/organizations/create", forceLoad: true);
                 return;
 
             case FirstHostSetupChoice.GroupQuickSetup:
@@ -618,9 +527,4 @@
         return _bffModule;
     }
 
-    private string GetTenantModeCardClass(string mode)
-    {
-        var isSelected = _deploymentMode.Equals(mode, StringComparison.OrdinalIgnoreCase);
-        return isSelected ? "border-solid border-2 mud-border-primary" : "";
-    }
 }

@@ -43,140 +43,182 @@
                 <MudAlert Severity="Severity.Success" Class="mb-4">@_successMessage</MudAlert>
             }
 
-            @* ── Keycloak ── *@
-            <MudPaper Outlined="true" Class="pa-4 mb-4">
-                <MudStack Spacing="2">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                        <MudSwitch T="bool"
-                                   Value="_model.KeycloakEnabled"
-                                   ValueChanged="OnKeycloakToggled"
-                                   Color="Color.Primary"
-                                   Disabled="_model.KeycloakDetectedFromEnvironment">
-                            Keycloak (OIDC)
-                        </MudSwitch>
-                        <MudTooltip Text="Self-hosted identity provider. Full control over user accounts, passwords, and SSO. Requires running a separate Keycloak server.">
-                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
-                        </MudTooltip>
-                        @if (_model.KeycloakDetectedFromEnvironment)
+            @if (_model.KeycloakDetectedFromEnvironment && !_showAdvancedConfig)
+            {
+                <MudPaper Class="pa-8 mb-4 d-flex flex-column align-center text-center" Outlined="true">
+                    <MudIcon Icon="@Icons.Material.Filled.Key" Color="Color.Primary" Style="font-size: 4rem;" Class="mb-4" />
+                    <MudText Typo="Typo.h5" Class="mb-2">Keycloak Detected</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-6">We've automatically configured Keycloak from your environment variables.</MudText>
+                    <AppButton Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" Disabled="@(!CanSave)" OnClick="SaveAndContinueAsync" Class="mb-4 px-8">
+                        @if (_isSaving)
                         {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
-                                Auto-detected from environment
-                            </MudChip>
-                        }
-                    </MudStack>
-
-                    @if (_model.KeycloakEnabled)
-                    {
-                        @if (_model.KeycloakDetectedFromEnvironment)
-                        {
-                            <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
-                                <MudText Typo="Typo.caption">
-                                    Keycloak credentials were detected from environment variables and cannot be modified here.
-                                </MudText>
-                            </MudAlert>
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            @:Continuing...
                         }
                         else
                         {
-                            <AppTextField T="string"
-                                          Label="Authority URL (Required)"
-                                          @bind-Value="_model.KeycloakAuthority"
-                                          Placeholder="https://keycloak.example.com/realms/myrealm"
-                                          HelperText="The Keycloak realm URL used for OIDC discovery." />
-                            <AppTextField T="string"
-                                          Label="Client ID (Required)"
-                                          @bind-Value="_model.KeycloakClientId"
-                                          Placeholder="my-client" />
-                            <AppTextField T="string"
-                                          Label="Client Secret"
-                                          InputType="InputType.Password"
-                                          @bind-Value="_model.KeycloakClientSecret"
-                                          HelperText="Optional for public clients. Required for confidential clients." />
+                            @:Continue with Keycloak
                         }
-                    }
-                </MudStack>
-            </MudPaper>
-
-            @* ── ATProto Login ── *@
-            <MudPaper Outlined="true" Class="pa-4 mb-4">
-                <MudStack Spacing="2">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                        <MudSwitch T="bool" @bind-Value="_model.AtprotoLoginEnabled" Color="Color.Primary">
-                            AT Protocol Login
-                        </MudSwitch>
-                        <MudTooltip Text="Users authenticate with their AT Protocol identity (e.g., Bluesky account). No external server needed — users bring their own identity.">
-                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
-                        </MudTooltip>
-                    </MudStack>
-
-                    @if (_model.AtprotoLoginEnabled)
-                    {
-                        <AppTextField T="string"
-                                      Label="Public URL (Required)"
-                                      @bind-Value="_model.AtprotoPublicUrl"
-                                      Placeholder="https://event.example.com"
-                                      HelperText="Must be publicly accessible. AT Protocol OAuth requires a reachable client metadata URL." />
-
-                        @if (IsPrivateUrl(_model.AtprotoPublicUrl))
-                        {
-                            <MudAlert Severity="Severity.Warning" Dense="true">
-                                This URL appears to be a local or private address. AT Protocol OAuth requires a publicly
-                                accessible URL. If you're using a tunneling tool (e.g., ngrok, Cloudflare Tunnel),
-                                this may still work.
-                            </MudAlert>
-                        }
-                    }
-                </MudStack>
-            </MudPaper>
-
-            @* ── Google SSO ── *@
-            <MudPaper Outlined="true" Class="pa-4 mb-4">
-                <MudStack Spacing="2">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                        <MudSwitch T="bool" @bind-Value="_model.GoogleSsoEnabled" Color="Color.Primary">
-                            Google SSO
-                        </MudSwitch>
-                        <MudTooltip Text="Users authenticate with their Google account. Requires a Google Cloud project with OAuth credentials configured.">
-                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
-                        </MudTooltip>
-                    </MudStack>
-
-                    @if (_model.GoogleSsoEnabled)
-                    {
-                        <AppTextField T="string"
-                                      Label="Google Client ID (Required)"
-                                      @bind-Value="_model.GoogleClientId"
-                                      Placeholder="123456789.apps.googleusercontent.com" />
-                        <AppTextField T="string"
-                                      Label="Google Client Secret (Required)"
-                                      InputType="InputType.Password"
-                                      @bind-Value="_model.GoogleClientSecret" />
-                    }
-                </MudStack>
-            </MudPaper>
-
-            @* ── Validation message ── *@
-            @if (!HasAnyProviderEnabled)
-            {
-                <MudAlert Severity="Severity.Warning" Class="mb-4">
-                    At least one authentication provider must be enabled.
-                </MudAlert>
+                    </AppButton>
+                    <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => _showAdvancedConfig = true)">
+                        Configure Authentication Providers
+                    </AppButton>
+                </MudPaper>
             }
+            else
+            {
+                <MudExpansionPanels MultiExpansion="true" Class="mb-4">
+                    @* ── Keycloak ── *@
+                    <MudExpansionPanel Text="Keycloak (OIDC)" IsExpanded="true">
+                        <TitleContent>
+                            <div class="d-flex align-center">
+                                <MudText Typo="Typo.h6" Class="mr-2">Keycloak (OIDC)</MudText>
+                                @if (_model.KeycloakDetectedFromEnvironment)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                                        Auto-detected
+                                    </MudChip>
+                                }
+                                <MudTooltip Text="Self-hosted identity provider. Full control over user accounts, passwords, and SSO. Requires running a separate Keycloak server.">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                                </MudTooltip>
+                            </div>
+                        </TitleContent>
+                        <ChildContent>
+                            <MudStack Spacing="2">
+                                <MudSwitch T="bool"
+                                           Value="_model.KeycloakEnabled"
+                                           ValueChanged="OnKeycloakToggled"
+                                           Color="Color.Primary"
+                                           Disabled="_model.KeycloakDetectedFromEnvironment">
+                                    Enable Keycloak
+                                </MudSwitch>
 
-            @* ── Actions ── *@
-            <MudStack Row="true" Spacing="2" Class="mt-2">
-                <AppButton Disabled="@(!CanSave)"
-                           OnClick="SaveAndContinueAsync">
-                    @if (_isSaving)
-                    {
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                        @:Saving...
-                    }
-                    else
-                    {
-                        @:Save & Continue to Login
-                    }
-                </AppButton>
-            </MudStack>
+                                @if (_model.KeycloakEnabled)
+                                {
+                                    @if (_model.KeycloakDetectedFromEnvironment)
+                                    {
+                                        <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
+                                            <MudText Typo="Typo.caption">
+                                                Keycloak credentials were detected from environment variables and cannot be modified here.
+                                            </MudText>
+                                        </MudAlert>
+                                    }
+                                    else
+                                    {
+                                        <AppTextField T="string"
+                                                      Label="Authority URL (Required)"
+                                                      @bind-Value="_model.KeycloakAuthority"
+                                                      Placeholder="https://keycloak.example.com/realms/myrealm"
+                                                      HelperText="The Keycloak realm URL used for OIDC discovery." />
+                                        <AppTextField T="string"
+                                                      Label="Client ID (Required)"
+                                                      @bind-Value="_model.KeycloakClientId"
+                                                      Placeholder="my-client" />
+                                        <AppTextField T="string"
+                                                      Label="Client Secret"
+                                                      InputType="InputType.Password"
+                                                      @bind-Value="_model.KeycloakClientSecret"
+                                                      HelperText="Optional for public clients. Required for confidential clients." />
+                                    }
+                                }
+                            </MudStack>
+                        </ChildContent>
+                    </MudExpansionPanel>
+
+                    @* ── ATProto Login ── *@
+                    <MudExpansionPanel Text="AT Protocol Login">
+                        <TitleContent>
+                            <div class="d-flex align-center">
+                                <MudText Typo="Typo.h6" Class="mr-2">AT Protocol Login</MudText>
+                                <MudTooltip Text="Users authenticate with their AT Protocol identity (e.g., Bluesky account). No external server needed — users bring their own identity.">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                                </MudTooltip>
+                            </div>
+                        </TitleContent>
+                        <ChildContent>
+                            <MudStack Spacing="2">
+                                <MudSwitch T="bool" @bind-Value="_model.AtprotoLoginEnabled" Color="Color.Primary">
+                                    Enable AT Protocol Login
+                                </MudSwitch>
+
+                                @if (_model.AtprotoLoginEnabled)
+                                {
+                                    <AppTextField T="string"
+                                                  Label="Public URL (Required)"
+                                                  @bind-Value="_model.AtprotoPublicUrl"
+                                                  Placeholder="https://event.example.com"
+                                                  HelperText="Must be publicly accessible. AT Protocol OAuth requires a reachable client metadata URL." />
+
+                                    @if (IsPrivateUrl(_model.AtprotoPublicUrl))
+                                    {
+                                        <MudAlert Severity="Severity.Warning" Dense="true">
+                                            This URL appears to be a local or private address. AT Protocol OAuth requires a publicly
+                                            accessible URL. If you're using a tunneling tool (e.g., ngrok, Cloudflare Tunnel),
+                                            this may still work.
+                                        </MudAlert>
+                                    }
+                                }
+                            </MudStack>
+                        </ChildContent>
+                    </MudExpansionPanel>
+
+                    @* ── Google SSO ── *@
+                    <MudExpansionPanel Text="Google SSO">
+                        <TitleContent>
+                            <div class="d-flex align-center">
+                                <MudText Typo="Typo.h6" Class="mr-2">Google SSO</MudText>
+                                <MudTooltip Text="Users authenticate with their Google account. Requires a Google Cloud project with OAuth credentials configured.">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                                </MudTooltip>
+                            </div>
+                        </TitleContent>
+                        <ChildContent>
+                            <MudStack Spacing="2">
+                                <MudSwitch T="bool" @bind-Value="_model.GoogleSsoEnabled" Color="Color.Primary">
+                                    Enable Google SSO
+                                </MudSwitch>
+
+                                @if (_model.GoogleSsoEnabled)
+                                {
+                                    <AppTextField T="string"
+                                                  Label="Google Client ID (Required)"
+                                                  @bind-Value="_model.GoogleClientId"
+                                                  Placeholder="123456789.apps.googleusercontent.com" />
+                                    <AppTextField T="string"
+                                                  Label="Google Client Secret (Required)"
+                                                  InputType="InputType.Password"
+                                                  @bind-Value="_model.GoogleClientSecret" />
+                                }
+                            </MudStack>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+
+                @* ── Validation message ── *@
+                @if (!HasAnyProviderEnabled)
+                {
+                    <MudAlert Severity="Severity.Warning" Class="mb-4">
+                        At least one authentication provider must be enabled.
+                    </MudAlert>
+                }
+
+                @* ── Actions ── *@
+                <MudStack Row="true" Spacing="2" Class="mt-2">
+                    <AppButton Disabled="@(!CanSave)"
+                               OnClick="SaveAndContinueAsync">
+                        @if (_isSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            @:Saving...
+                        }
+                        else
+                        {
+                            @:Save & Continue to Login
+                        }
+                    </AppButton>
+                </MudStack>
+            }
         }
     </MudPaper>
 </MudContainer>
@@ -187,6 +229,7 @@
     private bool _isSaving;
     private string? _errorMessage;
     private string? _successMessage;
+    private bool _showAdvancedConfig = false;
 
     private bool HasAnyProviderEnabled =>
         _model.KeycloakEnabled || _model.AtprotoLoginEnabled || _model.GoogleSsoEnabled;

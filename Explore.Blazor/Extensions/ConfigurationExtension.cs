@@ -37,7 +37,7 @@ public static class ConfigurationExtensions
         configBuilder.AddInfisical(bootstrapConfig, source =>
         {
             source.Paths.Clear();
-            source.Paths.AddRange(["/keycloak", "/blazor", "/api", "/postgresql"]);
+            source.Paths.AddRange(["/keycloak", "/blazor", "/postgresql"]);
             source.ThrowOnFirstLoadFailure = false;
         });
 

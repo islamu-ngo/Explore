@@ -1,0 +1,78 @@
+@using Explore.Blazor.Client.Models
+@using MudBlazor
+
+<div class="event-card-root">
+    @if (Layout == LayoutMode.CompactGrid)
+    {
+        <MudCard Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden;">
+            <div class="event-card__image-wrapper">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="100%" Class="event-card__skeleton-fill" />
+            </div>
+        </MudCard>
+    }
+    else if (Layout == LayoutMode.DetailedList)
+    {
+        <MudCard Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden;">
+            <div class="event-card__horizontal">
+                <div class="event-card__horizontal-image">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="100%" />
+                </div>
+                <div class="event-card__horizontal-content d-flex flex-column" style="gap: 8px;">
+                    <div class="event-card__dl-header d-flex justify-space-between w-100">
+                        <MudSkeleton Width="60%" Height="24px" />
+                        <div class="d-flex align-center gap-1 flex-shrink-0">
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="24px" Height="24px" />
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="24px" Height="24px" />
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="24px" Height="24px" />
+                        </div>
+                    </div>
+                    <div class="event-card__dl-chips d-flex gap-2">
+                        <MudSkeleton Width="80px" Height="24px" Class="rounded-pill" />
+                        <MudSkeleton Width="60px" Height="24px" Class="rounded-pill" />
+                    </div>
+                    <MudSkeleton Width="100%" Height="16px" />
+                    <MudSkeleton Width="80%" Height="16px" />
+                    <div class="event-card__dl-meta mt-auto d-flex gap-4">
+                        <MudSkeleton Width="100px" Height="16px" />
+                        <MudSkeleton Width="120px" Height="16px" />
+                    </div>
+                </div>
+            </div>
+        </MudCard>
+    }
+    else
+    {
+        <MudCard Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden;">
+            <div class="event-card__full-row">
+                <div class="event-card__full-row-image">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="100%" />
+                </div>
+                <div class="event-card__full-row-content d-flex flex-column" style="gap: 12px;">
+                    <div class="event-card__sr-header d-flex justify-space-between w-100">
+                        <div class="event-card__sr-title-block w-100">
+                            <MudSkeleton Width="40%" Height="28px" />
+                            <MudSkeleton Width="20%" Height="16px" Class="mt-1" />
+                        </div>
+                    </div>
+                    <div class="event-card__sr-chips d-flex gap-2">
+                        <MudSkeleton Width="80px" Height="24px" Class="rounded-pill" />
+                        <MudSkeleton Width="60px" Height="24px" Class="rounded-pill" />
+                        <div class="event-card__icon-badges event-card__icon-badges--inline d-flex gap-1">
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="24px" Height="24px" />
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="24px" Height="24px" />
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="24px" Height="24px" />
+                        </div>
+                    </div>
+                    <MudSkeleton Width="100%" Height="16px" />
+                    <MudSkeleton Width="90%" Height="16px" />
+                    <MudSkeleton Width="70%" Height="16px" />
+                    <div class="event-card__sr-meta mt-auto d-flex gap-4">
+                        <MudSkeleton Width="120px" Height="16px" />
+                        <MudSkeleton Width="140px" Height="16px" />
+                        <MudSkeleton Width="100px" Height="16px" />
+                    </div>
+                </div>
+            </div>
+        </MudCard>
+    }
+</div>

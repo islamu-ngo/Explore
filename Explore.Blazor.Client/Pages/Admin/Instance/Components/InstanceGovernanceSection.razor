@@ -13,40 +13,29 @@
     </div>
     <MudStack Spacing="3">
 
-        @if (DisplayMode == "multi-tenancy")
-        {
-            @if (IsSingleTenant)
-            {
-                <MudAlert Severity="Severity.Warning" Icon="@Icons.Material.Filled.Warning" Class="mb-2">
-                    <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Enabling Multi-Tenancy is a structural change</MudText>
-                    <MudList T="string" Dense="true" DisablePadding="true" Class="mt-2">
-                        <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">Settings will split into global defaults and per-tenant overrides</MudListItem>
-                        <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">Lock controls will appear to enforce consistency across tenants</MudListItem>
-                        <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">Your current configuration becomes the default tenant's settings</MudListItem>
-                        <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">To revert, you must reduce to one or fewer active tenants</MudListItem>
-                    </MudList>
-                </MudAlert>
-            }
-            else
-            {
-                <MudAlert Severity="Severity.Info" Class="mb-2">
-                    <MudText Typo="Typo.body2">
-                        To revert to Single-Tenant mode, archive or delete all tenants except one. Lock controls will disappear and the remaining tenant's settings will become the instance defaults.
-                    </MudText>
-                </MudAlert>
-            }
-        }
 
         @if (ShowDeploymentMode)
         {
         @* ── Deployment Mode ──────────────────────────────────────────── *@
+        <MudDivider Class="my-4" />
         <MudPaper Class="pa-4" Elevation="0" Style="@_deploymentModeCardStyle">
             <MudStack Spacing="2">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Color="@(DisplayMode == "multi-tenancy" ? Color.Error : Color.Default)" Size="Size.Small" />
+                    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Color="Color.Default" Size="Size.Small" />
                     <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Deployment Mode</MudText>
-                    <MudTooltip Text="Single-Tenant runs one organization per instance. Multi-Tenant enables multiple isolated tenants.">
-                        <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                    <MudTooltip Arrow="true" Placement="Placement.Right">
+                        <TooltipContent>
+                            <MudStack Spacing="1" Style="max-width: 320px; text-align: left;">
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">What does Multi-Tenancy do?</MudText>
+                                <MudText Typo="Typo.body2">• Settings split into global defaults and per-tenant overrides</MudText>
+                                <MudText Typo="Typo.body2">• Lock controls appear to enforce consistency across tenants</MudText>
+                                <MudText Typo="Typo.body2">• Your current configuration becomes the default tenant's settings</MudText>
+                                <MudText Typo="Typo.body2">• To revert, reduce to one or fewer active tenants</MudText>
+                            </MudStack>
+                        </TooltipContent>
+                        <ChildContent>
+                            <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                        </ChildContent>
                     </MudTooltip>
                 </MudStack>
 
@@ -56,10 +45,6 @@
 
                 @if (IsSingleTenant)
                 {
-                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-1">
-                        Enabling Multi-Tenancy allows creating multiple isolated tenants.
-                        You can revert to Single-Tenant mode as long as only one tenant exists.
-                    </MudAlert>
                     <AppButton Variant="Variant.Outlined"
                                Color="Color.Warning"
                                StartIcon="@Icons.Material.Filled.SwapHoriz"
@@ -71,22 +56,18 @@
                 {
                     @if (_tenantCount > 1)
                     {
-                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-1">
-                            You currently have <strong>@_tenantCount</strong> tenants.
-                            Please delete @(_tenantCount - 1) tenant(s) before reverting to Single-Tenant mode.
-                        </MudAlert>
+                        <MudText Typo="Typo.body2" Color="Color.Warning">
+                            You have <strong>@_tenantCount</strong> tenants — delete @(_tenantCount - 1) before reverting.
+                        </MudText>
                         <AppButton Variant="Variant.Outlined"
                                    Color="Color.Default"
                                    StartIcon="@Icons.Material.Filled.SwapHoriz"
                                    Disabled="true">
-                            Revert to Single-Tenant (delete extra tenants first)
+                            Revert to Single-Tenant
                         </AppButton>
                     }
                     else
                     {
-                        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-1">
-                            Only @_tenantCount tenant exists. You can safely revert to Single-Tenant mode.
-                        </MudAlert>
                         <AppButton Variant="Variant.Outlined"
                                    Color="Color.Warning"
                                    StartIcon="@Icons.Material.Filled.SwapHoriz"
@@ -125,7 +106,7 @@
                     You can revert to Single-Tenant mode later, as long as no more than one tenant exists.
                 </MudAlert>
                 <AppTextField T="string" @bind-Value="_multiTenantConfirmText"
-                              Label="Type ENABLE MULTI-TENANCY to confirm"
+                              Label="Type 'i confirm' to proceed"
                               Variant="Variant.Outlined"
                               Immediate="true"
                               HelperText="This action changes how your platform is administered." />
@@ -172,33 +153,36 @@
             </MudSwitch>
         }
 
-        <MudDivider Class="my-2" />
-        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Event Submission Policies</MudText>
-        <MudSwitch T="bool" @bind-Value="EventPolicy.AllowUserSubmittedEvents" Color="Color.Primary">
-            Allow user-submitted events
-        </MudSwitch>
-        <MudSwitch T="bool" @bind-Value="EventPolicy.AllowOrganizationSubmittedEvents" Color="Color.Primary">
-            Allow organization-submitted events
-        </MudSwitch>
-        <MudSwitch T="bool" @bind-Value="EventPolicy.AllowGroupSubmittedEvents" Color="Color.Primary">
-            Allow group-submitted events
-        </MudSwitch>
-
-        @if (!EventPolicy.AllowUserSubmittedEvents && !EventPolicy.AllowOrganizationSubmittedEvents && !EventPolicy.AllowGroupSubmittedEvents)
+        @if (!IsSingleTenant)
         {
-            <MudAlert Severity="Severity.Info" Dense="true">
-                No entity types are allowed to submit events. Only administrators will be able to create events through entities they manage.
-            </MudAlert>
-        }
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Event Submission Policies</MudText>
+            <MudSwitch T="bool" @bind-Value="EventPolicy.AllowUserSubmittedEvents" Color="Color.Primary">
+                Allow user-submitted events
+            </MudSwitch>
+            <MudSwitch T="bool" @bind-Value="EventPolicy.AllowOrganizationSubmittedEvents" Color="Color.Primary">
+                Allow organization-submitted events
+            </MudSwitch>
+            <MudSwitch T="bool" @bind-Value="EventPolicy.AllowGroupSubmittedEvents" Color="Color.Primary">
+                Allow group-submitted events
+            </MudSwitch>
 
-        <MudDivider Class="my-2" />
-        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Self-Registration Controls</MudText>
-        <MudSwitch T="bool" @bind-Value="OrganizationPolicy.AllowOrganizationSelfRegistration" Color="Color.Primary">
-            Allow organization self-registration
-        </MudSwitch>
-        <MudSwitch T="bool" @bind-Value="OrganizationPolicy.AllowGroupSelfRegistration" Color="Color.Primary">
-            Allow group self-registration
-        </MudSwitch>
+            @if (!EventPolicy.AllowUserSubmittedEvents && !EventPolicy.AllowOrganizationSubmittedEvents && !EventPolicy.AllowGroupSubmittedEvents)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    No entity types are allowed to submit events. Only administrators will be able to create events through entities they manage.
+                </MudAlert>
+            }
+
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Self-Registration Controls</MudText>
+            <MudSwitch T="bool" @bind-Value="OrganizationPolicy.AllowOrganizationSelfRegistration" Color="Color.Primary">
+                Allow organization self-registration
+            </MudSwitch>
+            <MudSwitch T="bool" @bind-Value="OrganizationPolicy.AllowGroupSelfRegistration" Color="Color.Primary">
+                Allow group self-registration
+            </MudSwitch>
+        }
 
         @if (ShowHomePage)
         {
@@ -210,9 +194,12 @@
                 <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
             </MudSelect>
 
-            <MudSwitch T="bool" @bind-Value="Delegation.LockTenantHomePagePreference" Color="Color.Primary">
-                Lock tenant home page preference
-            </MudSwitch>
+            @if (!IsSingleTenant)
+            {
+                <MudSwitch T="bool" @bind-Value="Delegation.LockTenantHomePagePreference" Color="Color.Primary">
+                    Lock tenant home page preference
+                </MudSwitch>
+            }
 
             @if (!IsSingleTenant)
             {
@@ -445,21 +432,20 @@
     public EventCallback<string> DeploymentModeChanged { get; set; }
 
     /// <summary>
-    /// Controls which subsections are visible: "full" (default), "general", "render-policies", or "multi-tenancy".
+    /// Controls which subsections are visible: "full" (default), "general", or "advanced".
     /// </summary>
     [Parameter]
     public string DisplayMode { get; set; } = "full";
 
-    private bool ShowDeploymentMode => DisplayMode is "full" or "multi-tenancy";
+    private bool ShowDeploymentMode => DisplayMode is "full" or "advanced";
     private bool ShowGeneralGovernance => DisplayMode is "full" or "general";
-    private bool ShowRenderPolicies => DisplayMode is "full" or "render-policies";
-    private bool ShowHomePage => DisplayMode is "full";
+    private bool ShowRenderPolicies => DisplayMode is "full" or "advanced";
+    private bool ShowHomePage => DisplayMode is "full" or "general";
 
     private string SectionTitle => DisplayMode switch
     {
         "general" => "General",
-        "render-policies" => "Render Policies",
-        "multi-tenancy" => "Multi-Tenancy",
+        "advanced" => "Advanced Settings",
         _ => "Platform Governance"
     };
 
@@ -468,8 +454,7 @@
         "general" => IsSingleTenant
             ? "Configure event submission policies, self-registration, and general platform behavior."
             : "Configure tenant registration and general platform behavior.",
-        "render-policies" => "Choose a preset strategy for route rendering or configure per-route-group overrides.",
-        "multi-tenancy" => "⚠️ Changing the deployment mode restructures how settings and tenants are managed.",
+        "advanced" => "Manage runtime render policies and platform deployment mode.",
         _ => "Control deployment mode, tenant registration, and default home page behavior."
     };
 
@@ -477,13 +462,11 @@
     private bool _showMultiTenantDialog;
     private bool _showSingleTenantDialog;
     private string _multiTenantConfirmText = string.Empty;
-    private bool IsMultiTenantConfirmValid => string.Equals(_multiTenantConfirmText?.Trim(), "ENABLE MULTI-TENANCY", StringComparison.OrdinalIgnoreCase);
+    private bool IsMultiTenantConfirmValid => string.Equals(_multiTenantConfirmText?.Trim(), "i confirm", StringComparison.OrdinalIgnoreCase);
     private bool IsSingleTenant => string.Equals(DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
                                    || string.IsNullOrWhiteSpace(DeploymentMode);
 
-    private string _deploymentModeCardStyle => DisplayMode == "multi-tenancy"
-        ? "border: 2px solid var(--mud-palette-error); border-radius: var(--mud-default-borderradius);"
-        : "border: 1px solid var(--mud-palette-lines-default);";
+    private string _deploymentModeCardStyle => "border: 1px solid var(--mud-palette-lines-default);";
 
     protected override void OnParametersSet()
     {

@@ -56,7 +56,7 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
             await page.Locator("[data-testid='shell-ai-toggle']").ClickAsync();
             await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Customize view" }).ClickAsync();
 
-            await Assert.That(await page.Locator("[data-testid='workspace-right-sidebar'].right-sidebar--open").CountAsync()).IsEqualTo(1);
+            await Assert.That(await page.Locator("[data-testid='dock-panel-host'][data-dock-panel-id='events.customize-view']").CountAsync()).IsEqualTo(1);
             await Assert.That(await page.Locator("[data-testid='shell-ai-rail'].ai-rail--open").CountAsync()).IsEqualTo(1);
         }
         finally
@@ -75,7 +75,7 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
             await NavigateToEventsAsync(page);
             await page.Locator(".event-card").First.ClickAsync();
 
-            await Assert.That(await page.Locator(".event-list__detail-drawer").CountAsync()).IsGreaterThanOrEqualTo(1);
+            await Assert.That(await page.Locator("[data-testid='dock-panel-host'][data-dock-panel-id='events.event-preview']").CountAsync()).IsGreaterThanOrEqualTo(1);
         }
         finally
         {
@@ -111,7 +111,7 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
             await NavigateToEventsAsync(page);
             await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Customize view" }).ClickAsync();
 
-            await Assert.That(await page.Locator("[data-testid='workspace-right-sidebar'].right-sidebar--open").CountAsync()).IsEqualTo(1);
+            await Assert.That(await page.Locator("[data-testid='dock-panel-host'][data-dock-panel-id='events.customize-view']").CountAsync()).IsEqualTo(1);
         }
         finally
         {
@@ -129,7 +129,7 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
             await NavigateToEventsAsync(page);
             await page.Locator(".event-card").First.ClickAsync();
 
-            await Assert.That(await page.Locator(".event-list__detail-drawer").CountAsync()).IsGreaterThanOrEqualTo(1);
+            await Assert.That(await page.Locator("[data-testid='dock-panel-host'][data-dock-panel-id='events.event-preview']").CountAsync()).IsGreaterThanOrEqualTo(1);
         }
         finally
         {

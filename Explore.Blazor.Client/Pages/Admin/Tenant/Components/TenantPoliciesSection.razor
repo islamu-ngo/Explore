@@ -50,11 +50,11 @@
         <MudSwitch T="bool"
                    @bind-Value="Model.RequireOrganizationVerification"
                    Color="Color.Primary"
-                   Disabled="@(!Model.CanTenantOmitVerification)">
+                   Disabled="@(!IsSingleTenant && !Model.CanTenantOmitVerification)">
             Require organization verification
         </MudSwitch>
 
-        @if (!Model.CanTenantOmitVerification)
+        @if (!IsSingleTenant && !Model.CanTenantOmitVerification)
         {
             <MudText Typo="Typo.caption" Color="Color.Warning">
                 Verification requirement is locked by instance policy.
@@ -66,11 +66,11 @@
         <MudSwitch T="bool"
                    @bind-Value="Model.EventCardClickOpensDetailPage"
                    Color="Color.Primary"
-                   Disabled="@(!Model.CanOverrideEventCardClickBehavior)">
+                   Disabled="@(!IsSingleTenant && !Model.CanOverrideEventCardClickBehavior)">
             Event card click opens detail page
         </MudSwitch>
 
-        @if (!Model.CanOverrideEventCardClickBehavior)
+        @if (!IsSingleTenant && !Model.CanOverrideEventCardClickBehavior)
         {
             <MudText Typo="Typo.caption" Color="Color.Warning">
                 Event card click behavior is locked by instance policy.
@@ -84,11 +84,11 @@
         <MudSwitch T="bool"
                    @bind-Value="Model.AiAssistantEnabled"
                    Color="Color.Primary"
-                   Disabled="@(!Model.CanOverrideAiAssistant)">
+                   Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)">
             Enable AI Assistant capabilities
         </MudSwitch>
 
-        @if (!Model.CanOverrideAiAssistant)
+        @if (!IsSingleTenant && !Model.CanOverrideAiAssistant)
         {
             <MudText Typo="Typo.caption" Color="Color.Warning">
                 AI Assistant configuration is locked by instance policy.
@@ -101,7 +101,7 @@
                           @bind-Value="Model.AiAssistantEndpointUrl"
                           Label="API Endpoint URL"
                           Variant="Variant.Outlined"
-                          Disabled="@(!Model.CanOverrideAiAssistant)"
+                          Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
                           HelperText="Full URL to the AI model endpoint (e.g., OpenAI or compatible)" />
                           
             <MudTextField T="string"
@@ -109,7 +109,7 @@
                           Label="API Key"
                           InputType="InputType.Password"
                           Variant="Variant.Outlined"
-                          Disabled="@(!Model.CanOverrideAiAssistant)"
+                          Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
                           HelperText="Required to enable AI Assistant features" />
         }
     </MudStack>
@@ -118,4 +118,7 @@
 @code {
     [Parameter, EditorRequired]
     public TenantPolicySettingsModel Model { get; set; } = null!;
+
+    [Parameter]
+    public bool IsSingleTenant { get; set; }
 }
