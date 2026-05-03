@@ -11,6 +11,7 @@ using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -20,6 +21,7 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
 {
     private readonly ICustomPropertyDefinitionRepository _customPropertyDefinitionRepository;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -29,6 +31,7 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
     public CreateCustomPropertyDefinitionCommandHandler(
         ICustomPropertyDefinitionRepository customPropertyDefinitionRepository,
         ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
+        ICustomPropertyQuotaResolver quotaResolver,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IMapper mapper,
@@ -37,6 +40,7 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
     {
         _customPropertyDefinitionRepository = customPropertyDefinitionRepository;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
+        _quotaResolver = quotaResolver;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -76,6 +80,34 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
             response.Success = false;
             response.Message = "Custom-property definition creation failed.";
             response.Errors = ["A custom-property definition with the same Namespace + Key already exists in this scope."];
+            return response;
+        }
+
+        var maxDefinitions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTenantPerEntityScope.Key,
+            _tenantContext.TenantId,
+            cancellationToken);
+        var currentDefinitionCount = await _customPropertyDefinitionRepository.CountDefinitionsForScope(
+            _tenantContext.TenantId,
+            request.DefinitionDto.EntityTypeName,
+            cancellationToken);
+        if (currentDefinitionCount >= maxDefinitions)
+        {
+            response.Success = false;
+            response.Message = "Custom-property definition creation failed.";
+            response.Errors = [$"quota_exceeded: Custom-property definition limit of {maxDefinitions} has been reached for this scope."];
+            return response;
+        }
+
+        var maxOptions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+            _tenantContext.TenantId,
+            cancellationToken);
+        if (request.DefinitionDto.Options.Count > maxOptions)
+        {
+            response.Success = false;
+            response.Message = "Custom-property definition creation failed.";
+            response.Errors = [$"quota_exceeded: Custom-property option limit of {maxOptions} has been exceeded for this definition."];
             return response;
         }
 

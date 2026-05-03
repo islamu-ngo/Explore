@@ -10,6 +10,7 @@ using Explore.Application.Features.EventSessionCustomProperties.Requests.Command
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -19,6 +20,7 @@ public class CreateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
 {
     private readonly IEventSessionCustomPropertyRepository _sessionCustomPropertyRepository;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -28,6 +30,7 @@ public class CreateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
     public CreateEventSessionCustomPropertyDefinitionCommandHandler(
         IEventSessionCustomPropertyRepository sessionCustomPropertyRepository,
         ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
+        ICustomPropertyQuotaResolver quotaResolver,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IMapper mapper,
@@ -36,6 +39,7 @@ public class CreateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
     {
         _sessionCustomPropertyRepository = sessionCustomPropertyRepository;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
+        _quotaResolver = quotaResolver;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -74,6 +78,33 @@ public class CreateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             response.Success = false;
             response.Message = "Event session custom property definition creation failed.";
             response.Errors = ["A custom property definition with the same Namespace + Key already exists for this session."];
+            return response;
+        }
+
+        var maxDefinitions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEventSession.Key,
+            _tenantContext.TenantId,
+            cancellationToken);
+        var currentDefinitionCount = await _sessionCustomPropertyRepository.CountDefinitionsForSession(
+            request.DefinitionDto.EventSessionId,
+            cancellationToken);
+        if (currentDefinitionCount >= maxDefinitions)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property definition creation failed.";
+            response.Errors = [$"quota_exceeded: Event session custom-property definition limit of {maxDefinitions} has been reached."];
+            return response;
+        }
+
+        var maxOptions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+            _tenantContext.TenantId,
+            cancellationToken);
+        if (request.DefinitionDto.Options.Count > maxOptions)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property definition creation failed.";
+            response.Errors = [$"quota_exceeded: Custom-property option limit of {maxOptions} has been exceeded for this definition."];
             return response;
         }
 
