@@ -722,7 +722,8 @@ public static class BffAuthEndpoints
             var environment = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
             if (environment.IsDevelopment())
             {
-                handler.SslOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+                handler.SslOptions.RemoteCertificateValidationCallback = (sender, cert, chain, errors) =>
+                    IsAllowedDevelopmentCertificate(sender, errors);
             }
 
             using var httpClient = new HttpClient(handler, disposeHandler: false);
@@ -801,6 +802,62 @@ public static class BffAuthEndpoints
 
         value = raw;
         return true;
+    }
+
+    private static bool IsAllowedDevelopmentCertificate(object? sender, System.Net.Security.SslPolicyErrors errors)
+    {
+        if (errors == System.Net.Security.SslPolicyErrors.None)
+        {
+            return true;
+        }
+
+        return sender is System.Net.Security.SslStream { TargetHostName: { } host }
+               && IsDevelopmentTrustedHost(host);
+    }
+
+    private static bool IsDevelopmentTrustedHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("::1", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("100.64.0.2", StringComparison.OrdinalIgnoreCase)
+            || IsTailscaleAddress(host))
+        {
+            return true;
+        }
+
+        var additionalHosts = System.Environment.GetEnvironmentVariable("BFF_DEV_TRUSTED_HOSTS");
+        if (string.IsNullOrWhiteSpace(additionalHosts))
+        {
+            return false;
+        }
+
+        return additionalHosts
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(h => host.Equals(h, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsTailscaleAddress(string host)
+    {
+        if (!System.Net.IPAddress.TryParse(host, out var address))
+        {
+            return false;
+        }
+
+        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = address.GetAddressBytes();
+        // Tailscale/CGNAT range: 100.64.0.0/10
+        return bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127;
     }
 
     /// <summary>

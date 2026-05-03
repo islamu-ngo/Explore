@@ -5,7 +5,7 @@
 @implements IDisposable
 @inject DockLayoutState DockLayoutState
 
-@if (DockedEntries.Count > 0)
+@if (RenderedEntries.Count > 0)
 {
     <div class="@RootClass"
          data-testid="@DataTestId"
@@ -19,12 +19,13 @@
                           ActivePanelId="@ActiveEntry.Descriptor.Id"
                           AriaLabel="@($"{Scope} {Side} dock panel tabs")" />
             <DockPanelHost Entry="@ActiveEntry"
+                           Class="@GetPanelClass(ActiveEntry)"
                            BodyRole="tabpanel"
                            BodyLabelledById="@DockElementIds.TabId(ActiveEntry.Descriptor.Id)" />
         }
         else
         {
-            <DockPanelHost Entry="@ActiveEntry" />
+            <DockPanelHost Entry="@ActiveEntry" Class="@GetPanelClass(ActiveEntry)" />
         }
     </div>
 }
@@ -37,9 +38,19 @@
     [Parameter] public string? Class { get; set; }
     [Parameter] public bool IsMobile { get; set; }
 
+    private const int CloseAnimationDelayMilliseconds = 300;
+
+    private readonly HashSet<DockPanelId> _closingPanelIds = [];
+    private readonly HashSet<DockPanelId> _scheduledClosePanelIds = [];
+    private IReadOnlyList<DockPanelEntry> _renderedEntries = [];
+
     private IReadOnlyList<DockPanelEntry> DockedEntries => DockLayoutState.GetPanels(Scope, Side)
-        .Where(entry => !IsMobile && entry.State is { IsOpen: true, Mode: DockMode.Docked })
+        .Where(entry => !IsMobile
+            && entry.State is { IsOpen: true, Mode: DockMode.Docked }
+            && !DockLayoutState.ShouldRenderDockedPanelAsOverlay(entry))
         .ToArray();
+
+    private IReadOnlyList<DockPanelEntry> RenderedEntries => _renderedEntries;
 
     private string ScopeName => Scope.ToString().ToLowerInvariant();
     private string SideName => Side.ToString().ToLowerInvariant();
@@ -47,19 +58,27 @@
     private bool ShouldRenderStack => DockedEntries.Count > 1;
 
     private DockPanelEntry ActiveEntry => DockedEntries.FirstOrDefault(entry => entry.State.IsActive)
-        ?? DockedEntries[0];
+        ?? DockedEntries.FirstOrDefault()
+        ?? RenderedEntries[0];
 
     private string RootClass => string.Join(' ', new[]
     {
         "dock-side-host",
         $"dock-side-host--{ScopeName}",
         $"dock-side-host--{SideName}",
+        _closingPanelIds.Count > 0 ? "dock-side-host--closing" : null,
         Class
     }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
     protected override void OnInitialized()
     {
         DockLayoutState.Changed += OnDockLayoutChanged;
+        SyncRenderedEntries(scheduleClosingAnimation: false);
+    }
+
+    protected override void OnParametersSet()
+    {
+        SyncRenderedEntries(scheduleClosingAnimation: true);
     }
 
     public void Dispose()
@@ -69,6 +88,66 @@
 
     private void OnDockLayoutChanged()
     {
+        SyncRenderedEntries(scheduleClosingAnimation: true);
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string? GetPanelClass(DockPanelEntry entry)
+    {
+        return _closingPanelIds.Contains(entry.Descriptor.Id)
+            ? "dock-panel-host--closing"
+            : null;
+    }
+
+    private void SyncRenderedEntries(bool scheduleClosingAnimation)
+    {
+        var activeEntries = DockedEntries;
+        var activeIds = activeEntries.Select(entry => entry.Descriptor.Id).ToHashSet();
+
+        foreach (var activeId in activeIds)
+        {
+            _closingPanelIds.Remove(activeId);
+            _scheduledClosePanelIds.Remove(activeId);
+        }
+
+        var closingEntries = _renderedEntries
+            .Where(entry => !activeIds.Contains(entry.Descriptor.Id))
+            .ToArray();
+
+        foreach (var closingEntry in closingEntries)
+        {
+            _closingPanelIds.Add(closingEntry.Descriptor.Id);
+
+            if (scheduleClosingAnimation && _scheduledClosePanelIds.Add(closingEntry.Descriptor.Id))
+            {
+                _ = RemoveClosedPanelAfterAnimationAsync(closingEntry.Descriptor.Id);
+            }
+        }
+
+        _renderedEntries = activeEntries
+            .Concat(closingEntries)
+            .OrderBy(entry => entry.State.Order)
+            .ThenBy(entry => entry.Descriptor.Title, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private async Task RemoveClosedPanelAfterAnimationAsync(DockPanelId panelId)
+    {
+        await Task.Delay(CloseAnimationDelayMilliseconds);
+
+        if (DockedEntries.Any(entry => entry.Descriptor.Id == panelId))
+        {
+            _closingPanelIds.Remove(panelId);
+            _scheduledClosePanelIds.Remove(panelId);
+            return;
+        }
+
+        _renderedEntries = _renderedEntries
+            .Where(entry => entry.Descriptor.Id != panelId)
+            .ToArray();
+        _closingPanelIds.Remove(panelId);
+        _scheduledClosePanelIds.Remove(panelId);
+
+        await InvokeAsync(StateHasChanged);
     }
 }

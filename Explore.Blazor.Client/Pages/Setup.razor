@@ -80,7 +80,7 @@
             {
                 <div class="setup-form-width">
                     <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
-                        Setup window expired. Please restart the application.
+                        @_setupSecretGuidance
                     </MudAlert>
                     @if (_instanceStartedAt.HasValue)
                     {
@@ -102,6 +102,13 @@
                                     Setup window: @_remainingTime remaining
                                 </MudText>
                             </MudStack>
+                        </MudAlert>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(_setupSecretGuidance))
+                    {
+                        <MudAlert Severity="@GetSetupSecretGuidanceSeverity()" Dense="true" Class="mb-4">
+                            @_setupSecretGuidance
                         </MudAlert>
                     }
 
@@ -166,7 +173,7 @@
                                       Class="mb-1" />
 
                         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4 d-block">
-                            Check the <code>SETUP_SECRET</code> environment variable or API server logs.
+                            @GetSetupSecretHint()
                         </MudText>
 
                         <AppButton FullWidth="true"
@@ -198,9 +205,12 @@
     private string? _errorMessage;
     private DateTime? _instanceStartedAt;
     private string _remainingTime = string.Empty;
+    private string _setupSecretState = "Unavailable";
+    private string _setupSecretGuidance = string.Empty;
     private Timer? _countdownTimer;
     private bool _isSyncingSecret;
     private bool _isSecretSyncedForAuthenticatedSession;
+    private bool _hasAttemptedAuthenticatedSecretSync;
     private bool _isDetectingProviders;
     private List<AuthProviderQuickAction> _detectedProviders = [];
 
@@ -241,6 +251,8 @@
         _isAuthenticated = status.IsAuthenticated;
         _setupTimedOut = status.SetupTimedOut;
         _instanceStartedAt = status.InstanceStartedAt;
+        _setupSecretState = string.IsNullOrWhiteSpace(status.SetupSecretState) ? "Unavailable" : status.SetupSecretState;
+        _setupSecretGuidance = status.SetupSecretGuidance ?? string.Empty;
         UpdateRemainingTime();
         StartCountdownTimer();
         _isLoading = false;
@@ -277,6 +289,7 @@
         _validationSucceeded = true;
         _secret = string.Empty;
         _isSecretSyncedForAuthenticatedSession = false;
+        _hasAttemptedAuthenticatedSecretSync = false;
         await LoadDetectedProvidersAsync();
     }
 
@@ -334,6 +347,7 @@
         _secret = string.Empty;
         _validationSucceeded = true;
         _isSecretSyncedForAuthenticatedSession = false;
+        _hasAttemptedAuthenticatedSecretSync = false;
         _errorMessage = null;
         await LoadDetectedProvidersAsync();
         StateHasChanged();
@@ -347,6 +361,7 @@
         _validationSucceeded = false;
         _secret = string.Empty;
         _isSecretSyncedForAuthenticatedSession = false;
+        _hasAttemptedAuthenticatedSecretSync = false;
         _detectedProviders = [];
     }
 
@@ -395,11 +410,13 @@
         if (_hasStoredSecret)
         {
             var bffModule = await GetBffModuleAsync();
-            var syncResult = await bffModule.InvokeAsync<BffMutationResult>("syncSetupSecret", _secret.Trim());
+            var syncResult = await bffModule.InvokeAsync<BffMutationResult>("syncSetupSecret", (string?)null);
             if (syncResult is { Ok: true })
             {
                 _isSecretSyncedForAuthenticatedSession = true;
             }
+
+            _hasAttemptedAuthenticatedSecretSync = true;
         }
 
         var authorizationProviderConfigured = await InstanceOnboardingService.IsAuthorizationProviderConfiguredAsync();
@@ -408,16 +425,21 @@
 
     private async Task EnsureSecretSyncedForAuthenticatedSessionAsync()
     {
-        if (_isSyncingSecret || _isSecretSyncedForAuthenticatedSession || !_isAuthenticated || !_hasStoredSecret)
+        if (_isSyncingSecret
+            || _isSecretSyncedForAuthenticatedSession
+            || _hasAttemptedAuthenticatedSecretSync
+            || !_isAuthenticated
+            || !_hasStoredSecret)
         {
             return;
         }
 
         _isSyncingSecret = true;
+        _hasAttemptedAuthenticatedSecretSync = true;
         try
         {
             var bffModule = await GetBffModuleAsync();
-            var result = await bffModule.InvokeAsync<BffMutationResult>("syncSetupSecret", _secret.Trim());
+            var result = await bffModule.InvokeAsync<BffMutationResult>("syncSetupSecret", (string?)null);
             if (result is { Ok: true })
             {
                 _isSecretSyncedForAuthenticatedSession = true;
@@ -465,6 +487,20 @@
             InvokeAsync(StateHasChanged);
         }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
+
+    private Severity GetSetupSecretGuidanceSeverity() => _setupSecretState switch
+    {
+        "Environment" => Severity.Info,
+        "Generated" => Severity.Warning,
+        _ => Severity.Info
+    };
+
+    private string GetSetupSecretHint() => _setupSecretState switch
+    {
+        "Environment" => "Check the SETUP_SECRET environment variable configured for this deployment.",
+        "Generated" => "Check the API server startup logs for the generated setup secret.",
+        _ => "Check the SETUP_SECRET environment variable or API server logs."
+    };
 
     public void Dispose()
     {

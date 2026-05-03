@@ -91,12 +91,24 @@ public class InstanceGovernanceSectionTests : IDisposable
         await Assert.That(cut.Markup).Contains("Allow tenant self-service registration", StringComparison.OrdinalIgnoreCase);
     }
 
+    [Test]
+    public async Task GovernanceSection_DeploymentMode_IsOperatorControlledStatusOnly()
+    {
+        var cut = RenderGovernanceSection(displayMode: "advanced");
+
+        await Assert.That(cut.Markup).Contains("Deployment mode is locked after onboarding", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("DEPLOYMENT_MODE=multi_tenant", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("Enable Multi-Tenant Mode", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("Revert to Single-Tenant", StringComparison.OrdinalIgnoreCase);
+    }
+
     private IRenderedComponent<DynamicComponent> RenderGovernanceSection(
         TenantDelegationModel? delegation = null,
         EventPolicyModel? eventPolicy = null,
         OrganizationPolicyModel? orgPolicy = null,
         RenderPolicyModel? renderPolicy = null,
-        string deploymentMode = "SingleTenant")
+        string deploymentMode = "SingleTenant",
+        string displayMode = "full")
     {
         var componentType = typeof(IInstanceOnboardingService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Instance.Components.InstanceGovernanceSection")
                             ?? throw new InvalidOperationException("InstanceGovernanceSection component type not found");
@@ -107,9 +119,10 @@ public class InstanceGovernanceSectionTests : IDisposable
              {
                  ["Delegation"] = delegation ?? new TenantDelegationModel(),
                  ["EventPolicy"] = eventPolicy ?? new EventPolicyModel(),
-                 ["OrganizationPolicy"] = orgPolicy ?? new OrganizationPolicyModel(),
-                 ["RenderPolicy"] = renderPolicy ?? new RenderPolicyModel(),
-                 ["DeploymentMode"] = deploymentMode
-             }));
+                  ["OrganizationPolicy"] = orgPolicy ?? new OrganizationPolicyModel(),
+                  ["RenderPolicy"] = renderPolicy ?? new RenderPolicyModel(),
+                  ["DeploymentMode"] = deploymentMode,
+                  ["DisplayMode"] = displayMode
+              }));
     }
 }

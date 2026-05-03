@@ -97,6 +97,13 @@
 
         @if (Model.AiAssistantEnabled)
         {
+            <MudSwitch T="bool"
+                       @bind-Value="Model.AiAssistantAllowAnonymousAccess"
+                       Color="Color.Primary"
+                       Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)">
+                Allow unauthenticated visitors to open AI Assistant
+            </MudSwitch>
+
             <MudTextField T="string"
                           @bind-Value="Model.AiAssistantEndpointUrl"
                           Label="API Endpoint URL"

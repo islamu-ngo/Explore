@@ -1,5 +1,5 @@
 @* ABOUTME: Renders non-docked open panels for one dock scope as overlay chrome. *@
-@* ABOUTME: Adds shared backdrop, scroll lock, Escape close, and focus restore for overlay panels. *@
+@* ABOUTME: Adds shared backdrop, scroll lock, focus trap, Escape close, and focus restore for overlay panels. *@
 
 @using Explore.Blazor.Client.Services.Docking
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
@@ -23,12 +23,14 @@
                 data-testid="dock-overlay-backdrop"
                 aria-label="Close dock overlay"
                 @onclick="CloseActiveOverlayAsync"></button>
-        @foreach (var entry in RenderedEntries)
-        {
-            <div class="@GetSlotClass(entry)" data-dock-overlay-side="@entry.Descriptor.Side.ToString().ToLowerInvariant()">
-                <DockPanelHost Entry="@entry" />
-            </div>
-        }
+        <MudFocusTrap Disabled="@(ActiveOverlayEntries.Count == 0)" DefaultFocus="DefaultFocus.FirstChild">
+            @foreach (var entry in RenderedEntries)
+            {
+                <div @key="entry.Descriptor.Id" class="@GetSlotClass(entry)" data-dock-overlay-side="@entry.Descriptor.Side.ToString().ToLowerInvariant()">
+                    <DockPanelHost Entry="@entry" />
+                </div>
+            }
+        </MudFocusTrap>
     </div>
 }
 
@@ -130,12 +132,12 @@
     {
         return entry.State.IsOpen
             && (entry.State.Mode is DockMode.Overlay or DockMode.Temporary or DockMode.Inspector
-                || (IsMobile && entry.State.Mode == DockMode.Docked));
+                || DockLayoutState.ShouldRenderDockedPanelAsOverlay(entry));
     }
 
     private DockPanelEntry GetEffectiveOverlayEntry(DockPanelEntry entry)
     {
-        return IsMobile && entry.State.Mode == DockMode.Docked
+        return DockLayoutState.ShouldRenderDockedPanelAsOverlay(entry)
             ? entry with { State = entry.State with { Mode = DockMode.Temporary } }
             : entry;
     }

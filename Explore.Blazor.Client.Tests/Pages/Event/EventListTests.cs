@@ -59,6 +59,7 @@ public class EventListTests : IDisposable
             IsIslamicModuleEnabled = true,
             IsTechModuleEnabled = true
         });
+        _publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellModel?>(null));
     }
 
     public void Dispose()
@@ -325,6 +326,56 @@ public class EventListTests : IDisposable
     }
 
     [Test]
+    public async Task Render_WithShellEventSections_ShowsCuratedFilterLinks()
+    {
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        _publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellModel?>(new PublicExperienceShellModel
+        {
+            EventCatalog = new PublicExperienceEventCatalogModel { Label = "Programs", Url = "/events" },
+            EventSections =
+            [
+                new PublicExperienceEventSectionModel
+                {
+                    Key = "youth",
+                    Label = "Youth Programs",
+                    Url = "/events?AudienceAgeIds=2",
+                    Icon = "youth",
+                    SortOrder = 20
+                },
+                new PublicExperienceEventSectionModel
+                {
+                    Key = "education",
+                    Label = "Education",
+                    Url = "/events?IncludedCategoryIds=11111111-1111-1111-1111-111111111111",
+                    Icon = "education",
+                    SortOrder = 10
+                },
+                new PublicExperienceEventSectionModel
+                {
+                    Key = "hidden",
+                    Label = "",
+                    Url = "/events?hidden=true",
+                    SortOrder = 0
+                }
+            ]
+        }));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.That(cut.Markup).Contains("Featured Programs");
+            Assert.That(cut.Markup).Contains("Education");
+            Assert.That(cut.Markup).Contains("Youth Programs");
+            Assert.That(cut.Markup).Contains("Show Education");
+            Assert.That(cut.Markup).DoesNotContain("hidden=true");
+        });
+
+        await Assert.That(cut.Markup.IndexOf("Education", StringComparison.Ordinal))
+            .IsLessThan(cut.Markup.IndexOf("Youth Programs", StringComparison.Ordinal));
+    }
+
+    [Test]
     public async Task OpeningCustomizationDrawer_RendersCustomizeViewThroughWorkspaceDock()
     {
         SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
@@ -383,6 +434,21 @@ public class EventListTests : IDisposable
 
         // Assert — empty state now visible
         await Assert.That(cut.Markup).Contains("No events found");
+    }
+
+    [Test]
+    public async Task ShowsNoMatchesState_WhenFilteredResultIsEmpty()
+    {
+        var actorId = Guid.NewGuid();
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/events?actorId={actorId}");
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+        await InvokeLoadEventsAsync(cut);
+
+        await Assert.That(cut.Markup).Contains("No matching events found");
+        await Assert.That(cut.Markup).Contains("Try adjusting your filters or search query.");
     }
 
     [Test]

@@ -1,0 +1,128 @@
+@* ABOUTME: User-facing AI assistant preferences for account-scoped navbar visibility. *@
+@* ABOUTME: Persists through user settings API and updates shell state immediately. *@
+
+@using System.Text.Json
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Services
+@using MudBlazor
+
+@inject IUserSettingsService UserSettingsService
+@inject AiAssistantState AiAssistantState
+@inject ISnackbar Snackbar
+@inject ILogger<SettingsAiAssistant> Logger
+
+<div class="settings-section settings-ai-assistant">
+    <div class="settings-section-header mb-6">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">AI Assistant</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage how AI Assistant appears for your account</MudText>
+    </div>
+
+    @if (!_initialized)
+    {
+        <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-inline">Loading preferences...</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="0" Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
+            <MudStack Spacing="3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Spacing="3">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Navbar button</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Show the AI Assistant button in the top navigation bar for this account.
+                        </MudText>
+                    </div>
+
+                    <MudSwitch T="bool"
+                               Value="_showNavbarButton"
+                               ValueChanged="OnShowNavbarButtonChanged"
+                               Color="Color.Primary"
+                               Disabled="_saving"
+                               Label="Show" />
+                </MudStack>
+
+                @if (!_showNavbarButton)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        AI Assistant is hidden for your account. Tenant policy still controls whether the assistant is available at all.
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+</div>
+
+@code {
+    private const string Category = "AiAssistantPreferences";
+    private const string ShowNavbarButtonKey = "ai_assistant_preferences.show_navbar_button";
+
+    private bool _initialized;
+    private bool _saving;
+    private bool _showNavbarButton = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await UserSettingsService.GetSettingsAsync(Category);
+            var setting = response?.Settings?.FirstOrDefault(s => s.Key == ShowNavbarButtonKey);
+            _showNavbarButton = ParseBooleanSetting(setting?.Value, defaultValue: true);
+            AiAssistantState.SetUserNavbarPreference(_showNavbarButton);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load AI assistant preferences");
+        }
+        finally
+        {
+            _initialized = true;
+        }
+    }
+
+    private async Task OnShowNavbarButtonChanged(bool value)
+    {
+        var previous = _showNavbarButton;
+        _showNavbarButton = value;
+        _saving = true;
+
+        try
+        {
+            var saved = await UserSettingsService.UpdateSettingAsync(ShowNavbarButtonKey, JsonSerializer.Serialize(value));
+            if (!saved)
+            {
+                throw new InvalidOperationException("Preference update was not applied.");
+            }
+
+            AiAssistantState.SetUserNavbarPreference(value);
+            Snackbar.Add("AI Assistant preference updated.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to update AI assistant preference");
+            _showNavbarButton = previous;
+            Snackbar.Add("Could not update AI Assistant preference.", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static bool ParseBooleanSetting(string? value, bool defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<bool>(value);
+        }
+        catch (JsonException)
+        {
+            return bool.TryParse(value, out var parsed) ? parsed : defaultValue;
+        }
+    }
+}

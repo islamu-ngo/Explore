@@ -11,7 +11,6 @@
 @inject IPublicExperienceService PublicExperienceService
 @inject AiAssistantState AiAssistantState
 @inject ISnackbar Snackbar
-@inject NavigationManager Navigation
 
 <div class="settings-layout">
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
@@ -83,7 +82,7 @@
                         </div>
                         @if (_currentSection == "governance")
                         {
-                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="general" />
+                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" DisplayMode="general" />
                             @if (IsSingleTenantMode)
                             {
                                 <MudDivider Class="my-6" />
@@ -151,6 +150,10 @@
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPoliciesSection Model="_tenantModel" IsSingleTenant="true" />
                         }
+                        else if (_currentSection == "announcement-bar" && IsSingleTenantMode)
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantAnnouncementBarSection Model="_tenantModel" />
+                        }
                         else if (_currentSection == "organizations" && IsSingleTenantMode)
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantOrganizationsSection />
@@ -161,7 +164,7 @@
                         }
                         else if (_currentSection == "advanced")
                         {
-                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="advanced" />
+                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" DisplayMode="advanced" />
                         }
                         else if (_currentSection == "access-tokens")
                         {
@@ -199,13 +202,32 @@
                         {
                             <MudDivider Class="my-4" />
 
-                            <MudStack Row="true" Justify="Justify.FlexEnd">
-                                <AppButton OnClick="SaveAsync"
-                                           Disabled="_isSaving"
-                                           StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                                    @(_isSaving ? "Saving..." : "Save Settings")
-                                </AppButton>
-                            </MudStack>
+                            @if (_currentSection == "announcement-bar" && IsSingleTenantMode)
+                            {
+                                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                                    <AppButton Variant="Variant.Outlined"
+                                               OnClick="@(() => SaveAsync(false))"
+                                               Disabled="_isSaving"
+                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                        @(_isSaving ? "Saving..." : "Save Text Update")
+                                    </AppButton>
+                                    <AppButton OnClick="@(() => SaveAsync(true))"
+                                               Disabled="_isSaving"
+                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Campaign)">
+                                        @(_isSaving ? "Saving..." : "Save and Show to Everyone")
+                                    </AppButton>
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <MudStack Row="true" Justify="Justify.FlexEnd">
+                                    <AppButton OnClick="SaveAsync"
+                                               Disabled="_isSaving"
+                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                        @(_isSaving ? "Saving..." : "Save Settings")
+                                    </AppButton>
+                                </MudStack>
+                            }
                         }
                     </MudPaper>
                 </MudItem>
@@ -219,7 +241,6 @@
 
     // Sub-resource models
     private string _deploymentMode = "SingleTenant";
-    private string _loadedDeploymentMode = "SingleTenant";
     private ModuleSettingsModel _modules = new();
     private EventPolicyModel _eventPolicy = new();
     private OrganizationPolicyModel _orgPolicy = new();
@@ -247,7 +268,7 @@
                                        || string.IsNullOrWhiteSpace(_deploymentMode);
 
     private static bool IsSettingsSection(string section) =>
-        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "advanced" or "analytics-privacy" or "footer-governance"
+        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "announcement-bar" or "advanced" or "analytics-privacy" or "footer-governance"
             // Localization and Footer manage their own Save button
             ;
 
@@ -283,7 +304,6 @@
             analyticsTask, footerGovTask, tenantCountTask);
 
         _deploymentMode = deploymentTask.Result.Mode;
-        _loadedDeploymentMode = _deploymentMode;
         _modules = modulesTask.Result;
         _eventPolicy = eventTask.Result;
         _orgPolicy = orgTask.Result;
@@ -306,44 +326,15 @@
         _isLoading = false;
     }
 
-    private async Task OnDeploymentModeChanged(string newMode)
-    {
-        _deploymentMode = newMode;
-        var isSingleTenant = string.Equals(newMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
-
-        if (isSingleTenant)
-        {
-            _tenantModel = await TenantOnboardingService.GetSettingsAsync();
-        }
-
-        _currentSection = NormalizeSection(_currentSection, isSingleTenant);
-
-        StateHasChanged();
-    }
-
-    private static string NormalizeSection(string section, bool isSingleTenant)
-    {
-        // Sections only valid in single-tenant mode
-        var singleTenantOnly = new HashSet<string> { "members", "organizations", "lookups", "policies", "footer", "webhooks" };
-        // Sections only valid in multi-tenant mode
-        var multiTenantOnly = new HashSet<string> { "tenants" };
-
-        if (!isSingleTenant && singleTenantOnly.Contains(section))
-            return "governance";
-
-        if (isSingleTenant && multiTenantOnly.Contains(section))
-            return "governance";
-
-        return section;
-    }
-
     private void OnTenantCountChanged(int newCount)
     {
         _tenantCount = newCount;
         StateHasChanged();
     }
 
-    private async Task SaveAsync()
+    private Task SaveAsync() => SaveAsync(false);
+
+    private async Task SaveAsync(bool forceAnnouncementBarRedisplay)
     {
         _isSaving = true;
         _errorMessage = null;
@@ -354,7 +345,6 @@
         switch (_currentSection)
         {
             case "governance":
-                tasks.Add(InstanceOnboardingService.UpdateDeploymentModeAsync(_deploymentMode));
                 tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
                 tasks.Add(InstanceOnboardingService.UpdateEventPolicyAsync(_eventPolicy));
                 tasks.Add(InstanceOnboardingService.UpdateOrganizationPolicyAsync(_orgPolicy));
@@ -410,9 +400,23 @@
                     return;
                 }
                 break;
+            case "announcement-bar" when IsSingleTenantMode:
+                _tenantModel.ForceAnnouncementBarRedisplay = forceAnnouncementBarRedisplay;
+
+                var announcementResponse = await TenantOnboardingService.UpdateSettingsAsync(_tenantModel);
+                _tenantModel.ForceAnnouncementBarRedisplay = false;
+
+                if (!announcementResponse.Success)
+                {
+                    _isSaving = false;
+                    _errorMessage = string.IsNullOrWhiteSpace(announcementResponse.Message)
+                        ? "Announcement bar settings failed."
+                        : announcementResponse.Message;
+                    return;
+                }
+                break;
             case "advanced":
                 tasks.Add(InstanceOnboardingService.UpdateRenderPolicyAsync(_renderPolicy));
-                tasks.Add(InstanceOnboardingService.UpdateDeploymentModeAsync(_deploymentMode));
                 break;
         }
 
@@ -436,17 +440,11 @@
         _isSaving = false;
         await RefreshShellExperienceAsync();
 
-        var modeChanged = !string.Equals(_deploymentMode, _loadedDeploymentMode, StringComparison.OrdinalIgnoreCase);
-        if (modeChanged)
-        {
-            Snackbar.Add("Mode changed. Reloading...", Severity.Info);
-            await Task.Delay(800);
-            Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
-        }
-        else
-        {
-            Snackbar.Add("Settings saved.", Severity.Success);
-        }
+        var successMessage = _currentSection == "announcement-bar" && forceAnnouncementBarRedisplay
+            ? "Announcement bar saved. Users who dismissed it will see it again."
+            : "Settings saved.";
+
+        Snackbar.Add(successMessage, Severity.Success);
     }
 
     private IReadOnlyList<NavItem> BuildNavItems(bool isSingleTenant)
@@ -459,6 +457,7 @@
                 new("organizations",    Icons.Material.Filled.Business,        "Organizations"),
                 new("lookups",          Icons.Material.Filled.TableChart,      "Lookup Tables"),
                 new("policies",         Icons.Material.Filled.Policy,          "Policies"),
+                new("announcement-bar", Icons.Material.Filled.Announcement,    "Announcement Bar"),
                 new("themes",           Icons.Material.Filled.ColorLens,       "Themes"),
                 new("auth-providers",   Icons.Material.Filled.Key,             "Auth Providers"),
                 new("modules",          Icons.Material.Filled.Extension,       "Modules"),
@@ -510,7 +509,10 @@
         var settings = await PublicExperienceService.GetSettingsAsync();
         if (settings is not null)
         {
-            AiAssistantState.SetAvailable(settings.IsAiAssistantAvailable);
+            AiAssistantState.SetPolicy(
+                settings.IsAiAssistantAvailable,
+                settings.AiAssistantAllowAnonymousAccess,
+                isAuthenticated: true);
         }
     }
 

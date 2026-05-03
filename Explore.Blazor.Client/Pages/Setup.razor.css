@@ -118,8 +118,11 @@
     .setup-right-panel {
         width: 100%;
         margin-left: 0;
-        margin-top: -2rem;
+        margin-top: -3.5rem;
         padding: 2rem;
+        padding-top: 1.5rem;
+        min-height: auto;
+        background: transparent;
     }
 }
 
@@ -147,5 +150,7 @@
 
     .setup-right-panel {
         padding: 1.5rem;
+        padding-top: 1rem;
+        margin-top: -2.5rem;
     }
 }

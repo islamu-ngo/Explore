@@ -10,6 +10,10 @@
     overflow: clip;
 }
 
+.dock-side-host--closing {
+    overflow: visible;
+}
+
 .dock-side-host--shell {
     position: sticky;
     inset-block-start: var(--mud-appbar-height, 4rem);
@@ -29,4 +33,66 @@
 
 .dock-side-host--bottom {
     grid-area: bottom;
+}
+
+.dock-side-host--start ::deep .dock-panel-host--closing {
+    animation: dock-side-slide-out-to-start var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1)) both;
+}
+
+.dock-side-host--end ::deep .dock-panel-host--closing {
+    animation: dock-side-slide-out-to-end var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1)) both;
+}
+
+.dock-side-host--bottom ::deep .dock-panel-host--closing {
+    animation: dock-side-slide-out-to-bottom var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1)) both;
+}
+
+:dir(rtl) .dock-side-host--start ::deep .dock-panel-host--closing {
+    animation-name: dock-side-slide-out-to-end;
+}
+
+:dir(rtl) .dock-side-host--end ::deep .dock-panel-host--closing {
+    animation-name: dock-side-slide-out-to-start;
+}
+
+@keyframes dock-side-slide-out-to-start {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+}
+
+@keyframes dock-side-slide-out-to-end {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+@keyframes dock-side-slide-out-to-bottom {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dock-side-host ::deep .dock-panel-host--closing {
+        animation-duration: 1ms;
+    }
 }

@@ -57,9 +57,10 @@ public interface IEventService
     Task<PaginatedResult<EventListDto>> GetMyEventsPagedAsync(int pageNumber, int pageSize);
     Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
     Task<EventDto?> GetEventByIdAsync(Guid eventId);
+    Task<EventCreationContextDto?> GetEventCreationContextAsync(CancellationToken cancellationToken = default);
     Task<bool> DeleteEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto);
-    Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDto createDto);
+    Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventRequest request);
     Task<ICollection<EventTypeListDto>> GetEventTypesAsync();
     Task<ICollection<EventFormatListDto>> GetEventFormatsAsync();
     Task<ICollection<EventSessionListDto>> GetAllSessionsAsync();
@@ -296,6 +297,19 @@ public partial class EventService : IEventService
         }
     }
 
+    public async Task<EventCreationContextDto?> GetEventCreationContextAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _apiClient.GetEventCreationContextAsync(cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching event creation context");
+            return null;
+        }
+    }
+
     public async Task<bool> DeleteEventAsync(Guid eventId)
     {
         try
@@ -342,11 +356,11 @@ public partial class EventService : IEventService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDto createDto)
+    public async Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventRequest request)
     {
         try
         {
-            return await _apiClient.CreateEventAsync(createDto);
+            return await _apiClient.CreateEventAsync(request);
         }
         catch (Exception ex)
         {

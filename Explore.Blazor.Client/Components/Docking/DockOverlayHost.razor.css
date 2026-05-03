@@ -53,49 +53,49 @@
     inset-block-end: 0;
 }
 
-.dock-overlay-host__slot > .dock-panel-host {
+.dock-overlay-host__slot ::deep .dock-panel-host {
     block-size: 100vh;
     max-block-size: 100vh;
     box-shadow: var(--isl-shadow-lg);
 }
 
-.dock-overlay-host__slot--start > .dock-panel-host {
+.dock-overlay-host__slot--start ::deep .dock-panel-host {
     animation: dock-slide-in-from-start var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1)) both;
 }
 
-.dock-overlay-host__slot--end > .dock-panel-host {
+.dock-overlay-host__slot--end ::deep .dock-panel-host {
     animation: dock-slide-in-from-end var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1)) both;
 }
 
-.dock-overlay-host__slot--bottom > .dock-panel-host {
+.dock-overlay-host__slot--bottom ::deep .dock-panel-host {
     animation: dock-slide-in-from-bottom var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1)) both;
 }
 
-.dock-overlay-host__slot--start.dock-overlay-host__slot--closing > .dock-panel-host {
+.dock-overlay-host__slot--start.dock-overlay-host__slot--closing ::deep .dock-panel-host {
     animation-name: dock-slide-out-to-start;
 }
 
-.dock-overlay-host__slot--end.dock-overlay-host__slot--closing > .dock-panel-host {
+.dock-overlay-host__slot--end.dock-overlay-host__slot--closing ::deep .dock-panel-host {
     animation-name: dock-slide-out-to-end;
 }
 
-.dock-overlay-host__slot--bottom.dock-overlay-host__slot--closing > .dock-panel-host {
+.dock-overlay-host__slot--bottom.dock-overlay-host__slot--closing ::deep .dock-panel-host {
     animation-name: dock-slide-out-to-bottom;
 }
 
-:dir(rtl) .dock-overlay-host__slot--start > .dock-panel-host {
+:dir(rtl) .dock-overlay-host__slot--start ::deep .dock-panel-host {
     animation-name: dock-slide-in-from-end;
 }
 
-:dir(rtl) .dock-overlay-host__slot--end > .dock-panel-host {
+:dir(rtl) .dock-overlay-host__slot--end ::deep .dock-panel-host {
     animation-name: dock-slide-in-from-start;
 }
 
-:dir(rtl) .dock-overlay-host__slot--start.dock-overlay-host__slot--closing > .dock-panel-host {
+:dir(rtl) .dock-overlay-host__slot--start.dock-overlay-host__slot--closing ::deep .dock-panel-host {
     animation-name: dock-slide-out-to-end;
 }
 
-:dir(rtl) .dock-overlay-host__slot--end.dock-overlay-host__slot--closing > .dock-panel-host {
+:dir(rtl) .dock-overlay-host__slot--end.dock-overlay-host__slot--closing ::deep .dock-panel-host {
     animation-name: dock-slide-out-to-start;
 }
 
@@ -111,7 +111,26 @@
     .dock-overlay-host__slot--start,
     .dock-overlay-host__slot--end {
         inset-block: 0;
-        inline-size: min(100%, 88vw);
+    }
+
+    .dock-overlay-host__slot--start {
+        inline-size: min(88vw, var(--dock-panel-width, 360px));
+    }
+
+    .dock-overlay-host__slot--start ::deep .dock-panel-host {
+        inline-size: 100%;
+        max-inline-size: 100%;
+    }
+
+    .dock-overlay-host__slot--end {
+        inline-size: 100vw;
+    }
+
+    .dock-overlay-host__slot--end.dock-overlay-host__slot--mode-temporary ::deep .dock-panel-host,
+    .dock-overlay-host__slot--end.dock-overlay-host__slot--mode-inspector ::deep .dock-panel-host,
+    .dock-overlay-host__slot--end.dock-overlay-host__slot--mode-overlay ::deep .dock-panel-host {
+        inline-size: 100vw;
+        max-inline-size: 100vw;
     }
 
     .dock-overlay-host__slot--bottom {

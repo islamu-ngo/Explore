@@ -22,15 +22,27 @@
     color: inherit;
 }
 
-/* Let MudLayout grow to fill available space, pushing footer to the bottom.
-   MudBlazor already applies its own internal flex layout — we only need
-   flex-grow here so the outer wrapper pushes the footer down.
+/* Let MudLayout and the shell dock host grow to fill the viewport, pushing the
+   footer to the bottom on short pages.
    overflow-y: clip suppresses extra scroll-height that the sticky header
    contributes (without creating a new scroll context like overflow:hidden).
    -------------------------------------------------------------------------- */
 ::deep .mud-layout {
+    display: flex;
+    flex-direction: column;
     flex: 1 0 auto;
+    min-height: 100vh;
+    height: auto;
     overflow-y: clip;
+}
+
+::deep .dock-layout-host--shell {
+    flex: 1 0 auto;
+}
+
+::deep .dock-layout-host--shell > .dock-layout-host__content {
+    display: flex;
+    flex-direction: column;
 }
 
 /* Element: main-layout__header

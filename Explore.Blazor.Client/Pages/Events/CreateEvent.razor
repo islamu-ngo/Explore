@@ -99,38 +99,50 @@
 
                 @* ===== RIGHT COLUMN: Form ===== *@
                 <MudItem xs="12" sm="7" Class="create-event__col-right">
-                    @* --- Publish Under --- *@
-                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Publish Under</MudText>
-                    <div class="create-event__publisher-row">
-                        <AppButton Variant="@(_publisherMode == "personal" ? Variant.Filled : Variant.Outlined)"
-                                   Color="@(_publisherMode == "personal" ? Color.Primary : Color.Default)"
-                                   Size="Size.Small"
-                                   OnClick="@(() => SetPublisherMode("personal"))"
-                                   Class="create-event__publisher-btn">
-                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
-                            User
-                        </AppButton>
+                    @* --- Publication Context --- *@
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Publication context</MudText>
+                    <MudSelect T="string"
+                               Value="SelectedPublisherKey"
+                               ValueChanged="OnPublisherSelectionChanged"
+                               Label="Publishing as"
+                               Variant="Variant.Outlined"
+                               FullWidth="true"
+                               Margin="Margin.Dense"
+                               AnchorOrigin="Origin.BottomCenter"
+                               Disabled="@(_creationContext is not null && _creationContext.CanCreate != true)"
+                               Class="mb-3 create-event__publisher-selector">
+                        @foreach (var option in GetPublisherChoices())
+                        {
+                            <MudSelectItem T="string" Value="@option.Key" Disabled="@(!option.CanPublish)">
+                                <div class="create-event__publisher-option">
+                                    <MudIcon Icon="@GetPublisherIcon(option.Mode)" Size="Size.Small" />
+                                    <div class="create-event__publisher-option-text">
+                                        <MudText Typo="Typo.body2">@option.DisplayName</MudText>
+                                        <MudText Typo="Typo.caption" Color="@(option.CanPublish ? Color.Secondary : Color.Error)">@option.Description</MudText>
+                                    </div>
+                                </div>
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
 
-                        <AppButton Variant="@(_publisherMode == "organization" ? Variant.Filled : Variant.Outlined)"
-                                   Color="@(_publisherMode == "organization" ? Color.Primary : Color.Default)"
-                                   Size="Size.Small"
-                                   OnClick="@(() => SetPublisherMode("organization"))"
-                                   Class="create-event__publisher-btn">
-                            <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Class="mr-1" />
-                            Organization
-                        </AppButton>
+                    @if (!string.IsNullOrWhiteSpace(_creationContextError))
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">@_creationContextError</MudAlert>
+                    }
+                    @if (_creationContext is not null && _creationContext.CanCreate != true)
+                    {
+                        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">
+                            @(_creationContext.UnavailableReason ?? "You do not have access to create events.")
+                        </MudAlert>
+                    }
+                    @if (_creationContext is not null && _creationContext.CanCreate == true && _creationContext.RequiresApproval == true)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                            Events from this publisher require approval before they go live.
+                        </MudAlert>
+                    }
 
-                        <AppButton Variant="@(_publisherMode == "group" ? Variant.Filled : Variant.Outlined)"
-                                   Color="@(_publisherMode == "group" ? Color.Primary : Color.Default)"
-                                   Size="Size.Small"
-                                   OnClick="@(() => SetPublisherMode("group"))"
-                                   Class="create-event__publisher-btn">
-                            <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" Class="mr-1" />
-                            Group
-                        </AppButton>
-                    </div>
-
-                    @if (_publisherMode == "organization")
+                    @if (_creationContext is null && _publisherMode == "organization")
                     {
                         <MudSelect T="Guid?"
                                    Value="_selectedOrganizationId"
@@ -145,7 +157,7 @@
                             {
                                 @foreach (var org in _myOrganizations.Where(o => o.Id.HasValue))
                                 {
-                                    <MudSelectItem T="Guid?" Value="@org.Id">@org.FullName</MudSelectItem>
+                                    <MudSelectItem T="Guid?" Value="@org.Id" Disabled="@(!CanPublishAsOrganization(org.Id))">@org.FullName</MudSelectItem>
                                 }
                             }
                             <MudSelectItem T="Guid?" Value="@CreateOrgSentinel">
@@ -157,7 +169,7 @@
                         </MudSelect>
                     }
 
-                    @if (_publisherMode == "group")
+                    @if (_creationContext is null && _publisherMode == "group")
                     {
                         <MudSelect T="Guid?"
                                    Value="_selectedGroupId"
@@ -172,7 +184,7 @@
                             {
                                 @foreach (var group in _myGroups)
                                 {
-                                    <MudSelectItem T="Guid?" Value="@group.Id">@group.FullName</MudSelectItem>
+                                    <MudSelectItem T="Guid?" Value="@group.Id" Disabled="@(!CanPublishAsGroup(group.Id))">@group.FullName</MudSelectItem>
                                 }
                             }
                             <MudSelectItem T="Guid?" Value="@CreateGroupSentinel">
@@ -195,10 +207,12 @@
 
                     @* --- Event Title (large, Luma-style) --- *@
                     <AppTextField T="string" @bind-Value="createDto.Title"
+                                  Label="Event name"
                                   Placeholder="Event Name"
                                   Variant="Variant.Text"
                                   FullWidth="true"
                                   Immediate="true"
+                                  Required="true"
                                   Class="create-event__title-input mb-1" />
 
                     @* --- Event Timezone (event-level, shared by all sessions) --- *@
@@ -410,43 +424,112 @@
                         }
                     </AppButton>
 
-                    @* --- Additional Sessions (2+) --- *@
-                    @if (sessions.Count > 1)
-                    {
-                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-4 mb-2">Additional Sessions</MudText>
-                        <div class="create-event__sessions-list mb-3">
-                            @for (int i = 1; i < sessions.Count; i++)
-                            {
-                                var idx = i;
-                                var session = sessions[idx];
-                                var locationName = locations?.FirstOrDefault(l => l.Id == session.LocationId)?.FullName;
-                                var imageUrl = session.UseEventImage ? imagePreviewUrl : session.FeaturedImagePreviewUrl;
+                    @* --- Schedule: default stays single-session, advanced details are explicit. --- *@
+                    <section class="create-event__schedule mb-4" aria-labelledby="schedule-title">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-4 mb-1" id="schedule-title">
+                            Schedule
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                            @ScheduleSummary
+                        </MudText>
+                        <div class="sr-only" aria-live="polite" aria-atomic="true">@_schedulingAnnouncement</div>
 
-                                <SessionSummaryCard Session="session"
-                                                    Index="idx"
-                                                    LocationName="@locationName"
-                                                    ImageUrl="@imageUrl"
-                                                    OnEdit="@(() => _sessionWorkflow.OpenForEdit(sessions, idx))"
-                                                    OnDuplicate="@(() => _sessionWorkflow.DuplicateSession(sessions, idx))"
-                                                    OnDelete="@(() => RemoveSession(idx))" />
-                            }
+                        <MudExpansionPanels Elevation="0" Class="create-event__disclosure-panels">
+                            <MudExpansionPanel Text="Add sessions, day labels, rooms, or agenda" @bind-IsExpanded="_isScheduleExpanded"
+                                               Class="create-event__disclosure-panel">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+                            Most events only need the date, time, and location above. Turn on only what this event needs.
+                        </MudText>
+
+                        <div class="d-flex flex-column gap-2 mb-3" id="schedule-detail-controls">
+                            <AppButton StartIcon="@Icons.Material.Filled.EventRepeat"
+                                       Variant="@(IsMultiSessionActive ? Variant.Filled : Variant.Outlined)"
+                                       Color="@(IsMultiSessionActive ? Color.Primary : Color.Default)"
+                                       FullWidth="true"
+                                       OnClick="ToggleMultiSession"
+                                       aria-expanded="@IsMultiSessionActive.ToString().ToLowerInvariant()"
+                                       aria-controls="schedule-sessions">
+                                This event has multiple sessions
+                            </AppButton>
+
+                            <AppButton StartIcon="@Icons.Material.Filled.DateRange"
+                                       Variant="@(_isMultiDayEnabled ? Variant.Filled : Variant.Outlined)"
+                                       Color="@(_isMultiDayEnabled ? Color.Primary : Color.Default)"
+                                       FullWidth="true"
+                                       OnClick="ToggleMultiDay"
+                                       aria-expanded="@_isMultiDayEnabled.ToString().ToLowerInvariant()"
+                                       aria-controls="schedule-days">
+                                Add day labels or multi-day details
+                            </AppButton>
+
+                            <AppButton StartIcon="@Icons.Material.Filled.MeetingRoom"
+                                       Variant="@(_isRoomsEnabled ? Variant.Filled : Variant.Outlined)"
+                                       Color="@(_isRoomsEnabled ? Color.Primary : Color.Default)"
+                                       FullWidth="true"
+                                       Disabled="@(!CanUseRoomSetup)"
+                                       OnClick="ToggleRooms"
+                                       aria-expanded="@_isRoomsEnabled.ToString().ToLowerInvariant()"
+                                       aria-controls="schedule-rooms">
+                                Use rooms at this location
+                            </AppButton>
+
+                            <AppButton StartIcon="@Icons.Material.Filled.ViewTimeline"
+                                       Variant="@(_isAgendaEnabled ? Variant.Filled : Variant.Outlined)"
+                                       Color="@(_isAgendaEnabled ? Color.Primary : Color.Default)"
+                                       FullWidth="true"
+                                       OnClick="ToggleAgenda"
+                                       aria-expanded="@_isAgendaEnabled.ToString().ToLowerInvariant()"
+                                       aria-controls="schedule-agenda">
+                                Add an agenda
+                            </AppButton>
                         </div>
-                    }
 
-                    <AppButton StartIcon="@Icons.Material.Filled.Add"
-                               Variant="Variant.Outlined"
-                               FullWidth="true"
-                               OnClick="@(() => _sessionWorkflow.OpenForCreate(sessions, imagePreviewUrl))"
-                               Class="mt-2 mb-4 rounded-lg">
-                        Add Session
-                    </AppButton>
+                        @if (!CanUseRoomSetup)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                                Room setup becomes available after choosing an in-person or hybrid format and selecting a location.
+                            </MudAlert>
+                        }
 
-                    @* --- Scheduling: Days, Rooms & Agenda (local state, sent with create request) --- *@
-                    <MudExpansionPanels Class="mb-4" Elevation="0">
-                        <MudExpansionPanel Text="Scheduling (Days, Rooms & Agenda)" MaxHeight="2000"
-                                           Class="rounded-lg border-solid border-1 mud-border-lines-default">
-                            @* Days *@
-                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Event Days</MudText>
+                        @if (IsMultiSessionActive)
+                        {
+                            <div id="schedule-sessions">
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Sessions</MudText>
+                            @if (sessions.Count > 1)
+                            {
+                                <div class="create-event__sessions-list mb-3">
+                                    @for (int i = 1; i < sessions.Count; i++)
+                                    {
+                                        var idx = i;
+                                        var session = sessions[idx];
+                                        var locationName = locations?.FirstOrDefault(l => l.Id == session.LocationId)?.FullName;
+                                        var imageUrl = session.UseEventImage ? imagePreviewUrl : session.FeaturedImagePreviewUrl;
+
+                                        <SessionSummaryCard Session="session"
+                                                            Index="idx"
+                                                            LocationName="@locationName"
+                                                            ImageUrl="@imageUrl"
+                                                            OnEdit="@(() => _sessionWorkflow.OpenForEdit(sessions, idx))"
+                                                            OnDuplicate="@(() => _sessionWorkflow.DuplicateSession(sessions, idx))"
+                                                            OnDelete="@(() => RemoveSession(idx))" />
+                                    }
+                                </div>
+                            }
+
+                            <AppButton StartIcon="@Icons.Material.Filled.Add"
+                                       Variant="Variant.Outlined"
+                                       FullWidth="true"
+                                       OnClick="AddSession"
+                                       Class="mt-2 mb-4 rounded-lg">
+                                Add another session
+                            </AppButton>
+                            </div>
+                        }
+
+                        @if (_isMultiDayEnabled)
+                        {
+                            <div id="schedule-days">
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Day details</MudText>
                             @if (_inlineDays.Any())
                             {
                                 <div class="d-flex flex-column gap-2 mb-2">
@@ -461,98 +544,108 @@
                                                 }
                                             </div>
                                             <AppIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                                           OnClick="@(() => _inlineDays.Remove(day))" />
+                                                           aria-label="Remove day detail"
+                                                           OnClick="@(() => RemoveInlineDay(day))" />
                                         </MudPaper>
                                     }
                                 </div>
                             }
-                            <div class="d-flex gap-2 mb-3">
+                            <div class="create-event__inline-add-row d-flex gap-2 mb-3">
                                 <MudDatePicker @bind-Date="_newDayDate" Label="Day date" Margin="Margin.Dense" Variant="Variant.Outlined" Class="flex-grow-1" />
                                 <AppTextField T="string" @bind-Value="_newDayLabel" Label="Label (optional)" Margin="Margin.Dense" Variant="Variant.Outlined" />
                                 <AppButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddInlineDay"
-                                           Disabled="@(!_newDayDate.HasValue)">Add Day</AppButton>
+                                           Disabled="@(!_newDayDate.HasValue)">Add day</AppButton>
                             </div>
+                            </div>
+                        }
 
-                            @* Rooms (only when a location is selected) *@
-                            @if (sessions.Count > 0 && sessions[0].LocationId.HasValue)
+                        @if (_isRoomsEnabled && CanUseRoomSetup)
+                        {
+                            <div id="schedule-rooms">
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Room setup</MudText>
+                            @if (_inlineRooms.Any())
                             {
-                                <MudDivider Class="my-3" />
-                                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Rooms</MudText>
+                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                    @foreach (var room in _inlineRooms)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                                 OnClose="@(() => RemoveInlineRoom(room))">
+                                            @room.Name @(room.Capacity.HasValue ? $"({room.Capacity})" : "")
+                                        </MudChip>
+                                    }
+                                </div>
+                            }
+                            <div class="create-event__inline-add-row d-flex gap-2 mb-3">
+                                <AppTextField T="string" @bind-Value="_newRoomName" Label="Room name" Margin="Margin.Dense" Variant="Variant.Outlined" Class="flex-grow-1" />
+                                <MudNumericField T="int?" @bind-Value="_newRoomCapacity" Label="Capacity" Margin="Margin.Dense" Variant="Variant.Outlined" Min="0" Style="max-width: 100px;" />
+                                <AppButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddInlineRoom"
+                                           Disabled="@(string.IsNullOrWhiteSpace(_newRoomName))">Add room</AppButton>
+                            </div>
+                            </div>
+                        }
+
+                        @if (_isAgendaEnabled)
+                        {
+                            <div id="schedule-agenda">
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Agenda</MudText>
+                            @if (_inlineAgendaItems.Any())
+                            {
+                                <div class="d-flex flex-column gap-2 mb-2">
+                                    @foreach (var item in _inlineAgendaItems)
+                                    {
+                                        <MudPaper Class="pa-2 d-flex align-center justify-space-between" Elevation="0" Outlined="true">
+                                            <div>
+                                                <MudText Typo="Typo.body2">@item.Title</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    @item.StartTime.ToString("HH:mm") - @item.EndTime.ToString("HH:mm")
+                                                </MudText>
+                                            </div>
+                                            <AppIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                           aria-label="Remove agenda row"
+                                                           OnClick="@(() => RemoveInlineAgendaItem(item))" />
+                                        </MudPaper>
+                                    }
+                                </div>
+                            }
+                            <div class="d-flex flex-column gap-2 mb-3">
+                                <AppTextField T="string" @bind-Value="_newAgendaTitle" Label="Agenda title" Margin="Margin.Dense" Variant="Variant.Outlined" FullWidth="true" />
+                                <div class="create-event__inline-add-row d-flex gap-2">
+                                    <MudSelect T="DateOnly?" @bind-Value="_newAgendaDayDate" Label="Day" Margin="Margin.Dense" Variant="Variant.Outlined" Class="flex-grow-1">
+                                        @foreach (var day in _inlineDays)
+                                        {
+                                            <MudSelectItem T="DateOnly?" Value="@((DateOnly?)day.LocalDate)">@day.LocalDate.ToString("ddd, MMM d")</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudTimePicker @bind-Time="_newAgendaStartTime" Label="Start" Margin="Margin.Dense" Variant="Variant.Outlined" />
+                                    <MudTimePicker @bind-Time="_newAgendaEndTime" Label="End" Margin="Margin.Dense" Variant="Variant.Outlined" />
+                                </div>
                                 @if (_inlineRooms.Any())
                                 {
-                                    <div class="d-flex flex-wrap gap-2 mb-2">
-                                        @foreach (var room in _inlineRooms)
+                                    <MudSelect T="int?" @bind-Value="_newAgendaRoomIndex" Label="Room (optional)" Margin="Margin.Dense" Variant="Variant.Outlined" Clearable="true">
+                                        @for (int ri = 0; ri < _inlineRooms.Count; ri++)
                                         {
-                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
-                                                     OnClose="@(() => _inlineRooms.Remove(room))">
-                                                @room.Name @(room.Capacity.HasValue ? $"({room.Capacity})" : "")
-                                            </MudChip>
+                                            <MudSelectItem T="int?" Value="@((int?)ri)">@_inlineRooms[ri].Name</MudSelectItem>
                                         }
-                                    </div>
+                                    </MudSelect>
                                 }
-                                <div class="d-flex gap-2 mb-3">
-                                    <AppTextField T="string" @bind-Value="_newRoomName" Label="Room name" Margin="Margin.Dense" Variant="Variant.Outlined" Class="flex-grow-1" />
-                                    <MudNumericField T="int?" @bind-Value="_newRoomCapacity" Label="Capacity" Margin="Margin.Dense" Variant="Variant.Outlined" Min="0" Style="max-width: 100px;" />
-                                    <AppButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddInlineRoom"
-                                               Disabled="@(string.IsNullOrWhiteSpace(_newRoomName))">Add Room</AppButton>
-                                </div>
-                            }
+                                <AppButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddInlineAgendaItem"
+                                           Disabled="@(string.IsNullOrWhiteSpace(_newAgendaTitle) || !_newAgendaDayDate.HasValue || !_newAgendaStartTime.HasValue || !_newAgendaEndTime.HasValue)">
+                                    Add agenda row
+                                </AppButton>
+                            </div>
+                            </div>
+                        }
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    </section>
 
-                            @* Agenda Items *@
-                            @if (_inlineDays.Any())
-                            {
-                                <MudDivider Class="my-3" />
-                                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Agenda Items</MudText>
-                                @if (_inlineAgendaItems.Any())
-                                {
-                                    <div class="d-flex flex-column gap-2 mb-2">
-                                        @foreach (var item in _inlineAgendaItems)
-                                        {
-                                            <MudPaper Class="pa-2 d-flex align-center justify-space-between" Elevation="0" Outlined="true">
-                                                <div>
-                                                    <MudText Typo="Typo.body2">@item.Title</MudText>
-                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                        @item.StartTime.ToString("HH:mm") - @item.EndTime.ToString("HH:mm")
-                                                    </MudText>
-                                                </div>
-                                                <AppIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                                               OnClick="@(() => _inlineAgendaItems.Remove(item))" />
-                                            </MudPaper>
-                                        }
-                                    </div>
-                                }
-                                <div class="d-flex flex-column gap-2 mb-3">
-                                    <AppTextField T="string" @bind-Value="_newAgendaTitle" Label="Title" Margin="Margin.Dense" Variant="Variant.Outlined" FullWidth="true" />
-                                    <div class="d-flex gap-2">
-                                        <MudSelect T="DateOnly?" @bind-Value="_newAgendaDayDate" Label="Day" Margin="Margin.Dense" Variant="Variant.Outlined" Class="flex-grow-1">
-                                            @foreach (var day in _inlineDays)
-                                            {
-                                                <MudSelectItem T="DateOnly?" Value="@((DateOnly?)day.LocalDate)">@day.LocalDate.ToString("ddd, MMM d")</MudSelectItem>
-                                            }
-                                        </MudSelect>
-                                        <MudTimePicker @bind-Time="_newAgendaStartTime" Label="Start" Margin="Margin.Dense" Variant="Variant.Outlined" />
-                                        <MudTimePicker @bind-Time="_newAgendaEndTime" Label="End" Margin="Margin.Dense" Variant="Variant.Outlined" />
-                                    </div>
-                                    @if (_inlineRooms.Any())
-                                    {
-                                        <MudSelect T="int?" @bind-Value="_newAgendaRoomIndex" Label="Room (optional)" Margin="Margin.Dense" Variant="Variant.Outlined" Clearable="true">
-                                            @for (int ri = 0; ri < _inlineRooms.Count; ri++)
-                                            {
-                                                <MudSelectItem T="int?" Value="@((int?)ri)">@_inlineRooms[ri].Name</MudSelectItem>
-                                            }
-                                        </MudSelect>
-                                    }
-                                    <AppButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddInlineAgendaItem"
-                                               Disabled="@(string.IsNullOrWhiteSpace(_newAgendaTitle) || !_newAgendaDayDate.HasValue || !_newAgendaStartTime.HasValue || !_newAgendaEndTime.HasValue)">
-                                        Add Agenda Item
-                                    </AppButton>
-                                </div>
-                            }
-                        </MudExpansionPanel>
-                    </MudExpansionPanels>
-
-                    @* --- Event Options (Luma-style rows) --- *@
-                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Event Options</MudText>
+                    @* --- More Options (secondary fields stay out of the first-open path) --- *@
+                    <section class="create-event__more-options" aria-labelledby="more-options-title">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-1" id="more-options-title">More options</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">@MoreOptionsSummary</MudText>
+                    <MudExpansionPanels Elevation="0" Class="create-event__disclosure-panels">
+                        <MudExpansionPanel Text="Event type, audience, registration, categories, and tags" @bind-IsExpanded="_isMoreOptionsExpanded"
+                                           Class="create-event__disclosure-panel">
                     <div class="create-event__options">
                         @* Event Type *@
                         <div class="create-event__option-row">
@@ -811,11 +904,14 @@
                             </div>
                         </div>
                     </div>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                    </section>
 
                 </MudItem>
             </MudGrid>
 
-            @* ===== Create Event Button with Draft Option ===== *@
+            @* ===== Review And Publish Button with Draft Option ===== *@
             <div class="d-flex gap-0 mt-6" style="width: 100%;">
                 <AppButton ButtonType="ButtonType.Submit"
                            Disabled="@IsSubmitDisabled"
@@ -825,7 +921,7 @@
                     @if (isProcessing)
                     {
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                        <span>Creating...</span>
+                        <span>Reviewing...</span>
                     }
                     else if (_isUploadingImage)
                     {
@@ -839,7 +935,7 @@
                     }
                     else
                     {
-                        <span>Create Event</span>
+                        <span>Review and publish</span>
                     }
                 </AppButton>
                 <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown"
@@ -853,7 +949,7 @@
                          Style="border-top-left-radius: 0; border-bottom-left-radius: 0; min-width: 0;">
                     <MudMenuItem OnClick="@SaveAsDraftAsync"
                                  Icon="@Icons.Material.Outlined.Save">
-                        Save as Draft
+                        Save draft
                     </MudMenuItem>
                 </MudMenu>
             </div>
@@ -873,18 +969,22 @@
                     <div class="d-flex align-center gap-1">
                         <AppIconButton Icon="@Icons.Material.Filled.NavigateBefore"
                                        Size="Size.Small"
+                                       aria-label="Edit previous session"
                                        Disabled="@(!_sessionWorkflow.CanNavigatePrevious(sessions))"
                                        OnClick="@(() => _sessionWorkflow.NavigatePrevious(sessions, imagePreviewUrl))" />
                         <AppIconButton Icon="@Icons.Material.Filled.NavigateNext"
                                        Size="Size.Small"
+                                       aria-label="Edit next session"
                                        Disabled="@(!_sessionWorkflow.CanNavigateNext(sessions))"
                                        OnClick="@(() => _sessionWorkflow.NavigateNext(sessions, imagePreviewUrl))" />
                         <AppIconButton Icon="@Icons.Material.Filled.Add"
                                        Size="Size.Small"
                                        Color="Color.Primary"
+                                       aria-label="Add another session"
                                        OnClick="@(() => _sessionWorkflow.AddFromDrawer(sessions, imagePreviewUrl))" />
                         <AppIconButton Icon="@Icons.Material.Filled.Close"
                                        Size="Size.Small"
+                                       aria-label="Close session editor"
                                        OnClick="@(() => _sessionWorkflow.Close())" />
                     </div>
                 </div>

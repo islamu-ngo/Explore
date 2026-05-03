@@ -46,7 +46,7 @@ public static class YarpProxyExtensions
                 },
                 HttpClient = new HttpClientConfig
                 {
-                    DangerousAcceptAnyServerCertificate = environment.IsDevelopment()
+                    DangerousAcceptAnyServerCertificate = IsDevelopmentTrustedHost(apiBaseUrl, environment)
                 },
                 HttpRequest = new ForwarderRequestConfig
                 {
@@ -68,6 +68,67 @@ public static class YarpProxyExtensions
             });
 
         return services;
+    }
+
+    private static bool IsDevelopmentTrustedHost(string baseAddress, IWebHostEnvironment environment)
+    {
+        if (!environment.IsDevelopment())
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate(baseAddress, UriKind.Absolute, out var destinationUri)
+            || string.IsNullOrWhiteSpace(destinationUri.Host))
+        {
+            return false;
+        }
+
+        return IsDevelopmentTrustedHost(destinationUri.Host);
+    }
+
+    private static bool IsDevelopmentTrustedHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("::1", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("100.64.0.2", StringComparison.OrdinalIgnoreCase)
+            || IsTailscaleAddress(host))
+        {
+            return true;
+        }
+
+        var additionalHosts = Environment.GetEnvironmentVariable("BFF_DEV_TRUSTED_HOSTS");
+        if (string.IsNullOrWhiteSpace(additionalHosts))
+        {
+            return false;
+        }
+
+        return additionalHosts
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(h => host.Equals(h, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsTailscaleAddress(string host)
+    {
+        if (!System.Net.IPAddress.TryParse(host, out var address))
+        {
+            return false;
+        }
+
+        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = address.GetAddressBytes();
+        // Tailscale/CGNAT range: 100.64.0.0/10
+        return bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127;
     }
 
     private static string ResolveApiBaseUrl(IConfiguration configuration)

@@ -7,8 +7,7 @@ namespace Explore.Blazor.Client.Services.Docking;
 
 public sealed class DockLayoutState : IDockPanelRegistry
 {
-    private const int ComfortableContentWidth = 960;
-    private const int MinimumSinglePanelContentWidth = 960;
+    private const int MinimumMobileContentWidth = 375;
 
     private readonly Dictionary<DockPanelId, DockPanelEntry> _entries = [];
     private int _viewportWidth;
@@ -60,6 +59,34 @@ public sealed class DockLayoutState : IDockPanelRegistry
     public DockPanelEntry? GetPanel(DockPanelId id)
     {
         return _entries.GetValueOrDefault(id);
+    }
+
+    public bool ShouldRenderDockedPanelAsOverlay(DockPanelEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        if (entry.State is not { IsOpen: true, Mode: DockMode.Docked })
+        {
+            return false;
+        }
+
+        if (_isMobileViewport)
+        {
+            return true;
+        }
+
+        if (_viewportWidth <= 0 || entry.Descriptor.Side != DockSide.Start)
+        {
+            return false;
+        }
+
+        var dockedEndWidth = _entries.Values
+            .Where(candidate => candidate.State is { IsOpen: true, Mode: DockMode.Docked }
+                && candidate.Descriptor.Side == DockSide.End)
+            .Sum(candidate => candidate.State.Width);
+        var availableContentWidth = _viewportWidth - dockedEndWidth - entry.State.Width;
+
+        return availableContentWidth < MinimumMobileContentWidth;
     }
 
     public void Refresh()
@@ -360,13 +387,14 @@ public sealed class DockLayoutState : IDockPanelRegistry
             .Sum(entry => entry.State.Width);
         var availableContentWidth = _viewportWidth - dockedInlineWidth;
 
-        if (availableContentWidth >= ComfortableContentWidth)
+        if (availableContentWidth >= MinimumMobileContentWidth)
         {
             return false;
         }
 
         return CloseOpenPanels(entry => entry.Descriptor.Side == DockSide.Start
             && entry.State.Mode == DockMode.Docked
+            && entry.Descriptor.Id != preferredPanelId
             && entry.Descriptor.CanClose);
     }
 
@@ -388,7 +416,7 @@ public sealed class DockLayoutState : IDockPanelRegistry
             .Sum(entry => entry.State.Width);
         var remainingContentWidth = _viewportWidth - endPanelWidth;
 
-        if (!_isMobileViewport && remainingContentWidth >= MinimumSinglePanelContentWidth)
+        if (!_isMobileViewport && remainingContentWidth >= MinimumMobileContentWidth)
         {
             return false;
         }

@@ -96,6 +96,78 @@ public class PublicExperienceServiceTests
 
     #endregion
 
+    // ========== GetShellAsync ==========
+
+    #region GetShellAsync Tests
+
+    [Test]
+    public async Task GetShellAsync_ReturnsShell_WhenHttpSucceeds()
+    {
+        // Arrange
+        var expected = new PublicExperienceShellModel
+        {
+            Mode = "OrganizationCentric",
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            {
+                State = "Available",
+                DisplayName = "Community Center"
+            },
+            EventCatalog = new PublicExperienceEventCatalogModel
+            {
+                Label = "Programs",
+                Url = "/events?ActorId=11111111-1111-1111-1111-111111111111"
+            }
+        };
+
+        string? requestedPath = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            requestedPath = request.RequestUri?.PathAndQuery;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(expected)
+            };
+        });
+
+        var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://example.test/")
+        };
+
+        _httpClientFactory.CreateClient("BffClient").Returns(client);
+
+        // Act
+        var result = await _service.GetShellAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Mode).IsEqualTo("OrganizationCentric");
+        await Assert.That(result.PrimaryOrganization.State).IsEqualTo("Available");
+        await Assert.That(result.EventCatalog.Label).IsEqualTo("Programs");
+        await Assert.That(requestedPath).IsEqualTo("/api/PublicExperience/shell");
+    }
+
+    [Test]
+    public async Task GetShellAsync_ReturnsNull_WhenHttpFails()
+    {
+        // Arrange
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://example.test/")
+        };
+
+        _httpClientFactory.CreateClient("BffClient").Returns(client);
+
+        // Act
+        var result = await _service.GetShellAsync();
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    #endregion
+
     // ========== ResolveHomeRoute ==========
 
     #region ResolveHomeRoute Tests
@@ -136,7 +208,57 @@ public class PublicExperienceServiceTests
     public async Task ResolveHomeRoute_ReturnsEvents_WhenSettingsAreNull()
     {
         // Act
-        var route = _service.ResolveHomeRoute(null);
+        var route = _service.ResolveHomeRoute((PublicExperienceSettingsModel?)null);
+
+        // Assert
+        await Assert.That(route).IsEqualTo("/events");
+    }
+
+    [Test]
+    public async Task ResolveHomeRoute_ReturnsHome_WhenOrganizationCentricPrimaryOrganizationIsAvailable()
+    {
+        // Arrange
+        var shell = new PublicExperienceShellModel
+        {
+            Mode = "OrganizationCentric",
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            {
+                State = "Available"
+            }
+        };
+
+        // Act
+        var route = _service.ResolveHomeRoute(shell);
+
+        // Assert
+        await Assert.That(route).IsEqualTo("/home");
+    }
+
+    [Test]
+    public async Task ResolveHomeRoute_ReturnsEvents_WhenOrganizationCentricPrimaryOrganizationIsUnavailable()
+    {
+        // Arrange
+        var shell = new PublicExperienceShellModel
+        {
+            Mode = "OrganizationCentric",
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            {
+                State = "Missing"
+            }
+        };
+
+        // Act
+        var route = _service.ResolveHomeRoute(shell);
+
+        // Assert
+        await Assert.That(route).IsEqualTo("/events");
+    }
+
+    [Test]
+    public async Task ResolveHomeRoute_ReturnsEvents_WhenShellIsNull()
+    {
+        // Act
+        var route = _service.ResolveHomeRoute((PublicExperienceShellModel?)null);
 
         // Assert
         await Assert.That(route).IsEqualTo("/events");

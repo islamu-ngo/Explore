@@ -9,7 +9,6 @@ using Explore.Blazor.Client.Services;
 using Explore.Blazor.Services;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
-using Polly.Retry;
 using Polly.Timeout;
 
 namespace Explore.Blazor.Extensions;
@@ -281,9 +280,9 @@ public static class HttpClientExtensions
 
                 // SocketsHttpHandler does not surface the HttpRequestMessage in the SSL
                 // callback, but the sender is the SslStream whose TargetHost is the request
-                // authority. Trust only localhost in dev.
+                // authority. In dev, trust only a small explicit allowlist.
                 if (sender is System.Net.Security.SslStream { TargetHostName: { } host }
-                    && host.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+                    && IsDevelopmentTrustedHost(host))
                 {
                     return true;
                 }
@@ -293,6 +292,53 @@ public static class HttpClientExtensions
         }
 
         return handler;
+    }
+
+    private static bool IsDevelopmentTrustedHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("::1", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("100.64.0.2", StringComparison.OrdinalIgnoreCase)
+            || IsTailscaleAddress(host))
+        {
+            return true;
+        }
+
+        // Optional override: explicit, comma-separated hosts/IPs can be configured
+        // for additional trusted dev targets (still environment- and dev-only).
+        var additionalHosts = System.Environment.GetEnvironmentVariable("BFF_DEV_TRUSTED_HOSTS");
+        if (!string.IsNullOrWhiteSpace(additionalHosts))
+        {
+            return additionalHosts
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(h => host.Equals(h, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return false;
+    }
+
+    private static bool IsTailscaleAddress(string host)
+    {
+        if (!System.Net.IPAddress.TryParse(host, out var address))
+        {
+            return false;
+        }
+
+        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = address.GetAddressBytes();
+        // Tailscale/CGNAT range: 100.64.0.0/10
+        return bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127;
     }
 
     private static string ResolveApiBaseUrl(IConfiguration configuration)

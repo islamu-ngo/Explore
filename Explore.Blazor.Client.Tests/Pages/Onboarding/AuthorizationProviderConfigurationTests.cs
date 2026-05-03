@@ -55,8 +55,9 @@ public class AuthorizationProviderConfigurationTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Auto-detected from environment", StringComparison.OrdinalIgnoreCase) ||
-                !cut.Markup.Contains("Endpoint verified and ready to use.", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Cerbos Detected", StringComparison.OrdinalIgnoreCase) ||
+                !cut.Markup.Contains("We've automatically configured Cerbos", StringComparison.OrdinalIgnoreCase) ||
+                !cut.Markup.Contains("Continue with Cerbos", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Expected Cerbos environment auto-detection state was not rendered.");
             }

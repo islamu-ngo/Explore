@@ -76,6 +76,38 @@
 
 
 
+            @if (CuratedEventSections.Count > 0)
+            {
+                <section class="event-list__presets" aria-labelledby="event-list-presets-heading">
+                    <div class="event-list__presets-header">
+                        <MudText Typo="Typo.h6" HtmlTag="h2" Id="event-list-presets-heading">
+                            Featured @EventCatalogLabel
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Choose a curated section to update the event filters.
+                        </MudText>
+                    </div>
+
+                    <div class="event-list__preset-list" role="list" aria-label="Curated event filters">
+                        @foreach (var curatedSection in CuratedEventSections)
+                        {
+                            <MudButton Href="@curatedSection.Url"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       StartIcon="@ResolvePresetIcon(curatedSection.Icon)"
+                                       Class="@GetPresetChipClass(curatedSection)"
+                                       aria-current="@(IsCurrentPreset(curatedSection) ? "page" : null)"
+                                       aria-label="@GetPresetAriaLabel(curatedSection)">
+                                @curatedSection.Label
+                            </MudButton>
+                        }
+                    </div>
+                </section>
+            }
+
+
+
             <EventFilterBar @ref="_filterBar"
 
                             IsIslamicModuleEnabled="@_isIslamicModuleEnabled"
@@ -202,11 +234,11 @@
 
                     <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
 
-                    <MudText Typo="Typo.h5" Color="Color.Secondary" Align="Align.Center">No events found</MudText>
+                    <MudText Typo="Typo.h5" Color="Color.Secondary" Align="Align.Center">@EmptyStateTitle</MudText>
 
                     <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mt-2">
 
-                        Try adjusting your filters or search query
+                        @EmptyStateMessage
 
                     </MudText>
 

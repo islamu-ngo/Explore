@@ -338,6 +338,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         return new UpdateCustomPropertyDefinitionDto
         {
             Id = detail.Id,
+            ExpectedConcurrencyStamp = detail.ConcurrencyStamp,
             EntityTypeName = (int)detail.EntityTypeName,
             Namespace = detail.Namespace,
             Key = detail.Key,

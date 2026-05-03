@@ -2,6 +2,7 @@
 // ABOUTME: Powers first-run wizard, instance admin settings, and infrastructure config from Blazor pages.
 
 using System.Net.Http.Json;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Explore.Blazor.Client.Services.Http;
 using Microsoft.AspNetCore.Components;
@@ -13,6 +14,7 @@ public interface IInstanceOnboardingService
 {
     // Onboarding
     Task<SystemOnboardingStatusModel?> GetSystemOnboardingStatusAsync();
+    Task<OnboardingPreflightModel?> GetOnboardingPreflightAsync();
     Task<InstanceOnboardingStatusModel?> GetStatusAsync();
     Task<SetupSecretValidationResult> ValidateSecretAsync(string secret);
     Task<InstanceCommandResponseModel> CompleteAsync(OnboardingCompletionModel completion);
@@ -95,6 +97,9 @@ public class InstanceOnboardingService : IInstanceOnboardingService
 
     public async Task<SystemOnboardingStatusModel?> GetSystemOnboardingStatusAsync() =>
         await GetAsync<SystemOnboardingStatusModel>("api/system/onboarding-status");
+
+    public async Task<OnboardingPreflightModel?> GetOnboardingPreflightAsync() =>
+        await GetAsync<OnboardingPreflightModel>("api/system/onboarding-preflight");
 
     public async Task<InstanceOnboardingStatusModel?> GetStatusAsync() =>
         await GetAsync<InstanceOnboardingStatusModel>("api/InstanceOnboarding/status");
@@ -541,6 +546,8 @@ public class InstanceOnboardingStatusModel
     public bool SetupSecretFromEnvironment { get; set; }
     public bool SetupTimedOut { get; set; }
     public DateTime? InstanceStartedAt { get; set; }
+    public string SetupSecretState { get; set; } = "Unavailable";
+    public string SetupSecretGuidance { get; set; } = "Setup access is not currently available.";
 }
 
 public class SystemOnboardingStatusModel
@@ -552,7 +559,50 @@ public class SystemOnboardingStatusModel
 public class OnboardingCompletionModel
 {
     public string DeploymentMode { get; set; } = "SingleTenant";
+    public SelfHostOnboardingProfileModel SiteProfile { get; set; } = new();
     public string? InstanceName { get; set; }
+}
+
+public class SelfHostOnboardingProfileModel
+{
+    [Required(ErrorMessage = "Site name is required.")]
+    [StringLength(200, ErrorMessage = "Site name must be 200 characters or fewer.")]
+    public string SiteName { get; set; } = string.Empty;
+
+    [EmailAddress(ErrorMessage = "Support email must be a valid email address.")]
+    public string? SupportEmail { get; set; }
+
+    [Url(ErrorMessage = "Canonical URL must be a valid URL.")]
+    public string? CanonicalUrl { get; set; }
+
+    [Required]
+    [StringLength(20)]
+    public string Locale { get; set; } = "en";
+
+    [Required]
+    [StringLength(100)]
+    public string TimeZone { get; set; } = "UTC";
+
+    [StringLength(500, ErrorMessage = "Purpose must be 500 characters or fewer.")]
+    public string? Purpose { get; set; }
+}
+
+public class OnboardingPreflightModel
+{
+    public string DeploymentMode { get; set; } = "SingleTenant";
+    public bool IsReadyToLaunch { get; set; }
+    public List<OnboardingPreflightCheckModel> BlockingChecks { get; set; } = [];
+    public List<OnboardingPreflightCheckModel> WarningChecks { get; set; } = [];
+}
+
+public class OnboardingPreflightCheckModel
+{
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Severity { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string? Detail { get; set; }
 }
 
 // ── Governance Sub-Resource Models ───────────────────────────────────────

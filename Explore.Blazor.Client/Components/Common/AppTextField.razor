@@ -1,6 +1,7 @@
 @* ABOUTME: Thin wrapper around MudTextField<T> providing project default styling (Outlined variant). *@
 @* ABOUTME: Composition wrapper — does NOT inherit MudFormComponent. All params pass through via @attributes. *@
 @typeparam T
+@using System.Linq.Expressions
 
 <div class="app-text-field">
     <MudTextField T="T"
@@ -22,6 +23,7 @@
                   MaxLength="@MaxLength"
                   Placeholder="@Placeholder"
                   DebounceInterval="@DebounceInterval"
+                  For="@For"
                   Class="@Class"
                   @attributes="FilteredAttributes" />
 </div>
@@ -46,6 +48,7 @@
     [Parameter] public int MaxLength { get; set; } = 524288;
     [Parameter] public string? Placeholder { get; set; }
     [Parameter] public double DebounceInterval { get; set; }
+    [Parameter] public Expression<Func<T>>? For { get; set; }
     [Parameter] public string? Class { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]

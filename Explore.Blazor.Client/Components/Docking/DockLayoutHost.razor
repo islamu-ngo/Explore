@@ -101,7 +101,8 @@
         }
 
         return DockLayoutState.GetPanels(Scope, side)
-            .Any(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked });
+            .Any(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked }
+                && !DockLayoutState.ShouldRenderDockedPanelAsOverlay(entry));
     }
 
     private int GetDockedInlineSize(DockSide side)
@@ -112,7 +113,8 @@
         }
 
         return DockLayoutState.GetPanels(Scope, side)
-            .Where(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked })
+            .Where(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked }
+                && !DockLayoutState.ShouldRenderDockedPanelAsOverlay(entry))
             .Sum(entry => entry.State.Width);
     }
 
@@ -123,7 +125,7 @@
 
     Task IBrowserViewportObserver.NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs args)
     {
-        var isMobile = args.Breakpoint is Breakpoint.Xs or Breakpoint.Sm;
+        var isMobile = args.Breakpoint is Breakpoint.Xs;
         DockLayoutState.UpdateViewport(args.BrowserWindowSize.Width, isMobile);
 
         if (_isMobile == isMobile)

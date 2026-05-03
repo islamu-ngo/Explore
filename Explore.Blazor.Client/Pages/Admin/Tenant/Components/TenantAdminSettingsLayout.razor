@@ -81,11 +81,15 @@
                                          Class="@GetNavItemClass("domain")"
                                          OnClick="@(() => SelectSection("domain"))" />
                             <MudListItem Icon="@Icons.Material.Filled.Palette"
-                                         Text="Branding"
-                                         Class="@GetNavItemClass("branding")"
-                                         OnClick="@(() => SelectSection("branding"))" />
+                                          Text="Branding"
+                                          Class="@GetNavItemClass("branding")"
+                                          OnClick="@(() => SelectSection("branding"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Announcement"
+                                          Text="Announcement Bar"
+                                          Class="@GetNavItemClass("announcement-bar")"
+                                          OnClick="@(() => SelectSection("announcement-bar"))" />
                             <MudListItem Icon="@Icons.Material.Filled.ColorLens"
-                                         Text="Themes"
+                                          Text="Themes"
                                          Class="@GetNavItemClass("themes")"
                                          OnClick="@(() => SelectSection("themes"))" />
                             <MudListItem Icon="@Icons.Material.Filled.Business"
@@ -163,6 +167,10 @@
                         else if (_currentSection == "branding")
                         {
                             <TenantBrandingSection Model="_model" />
+                        }
+                        else if (_currentSection == "announcement-bar")
+                        {
+                            <TenantAnnouncementBarSection Model="_model" />
                         }
                         else if (_currentSection == "themes")
                         {
@@ -286,14 +294,33 @@
                         {
                             <MudDivider Class="my-4" />
 
-                            <MudStack Row="true" Justify="Justify.FlexEnd">
-                                <AppButton OnClick="SaveAsync"
-                                           Disabled="_isSaving"
-                                           StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                                    @(_isSaving ? "Saving..." : "Save Tenant Settings")
-                                </AppButton>
-                            </MudStack>
-                        }
+                            @if (_currentSection == "announcement-bar")
+                            {
+                                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                                    <AppButton Variant="Variant.Outlined"
+                                               OnClick="@(() => SaveAsync(false))"
+                                               Disabled="_isSaving"
+                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                        @(_isSaving ? "Saving..." : "Save Text Update")
+                                    </AppButton>
+                                    <AppButton OnClick="@(() => SaveAsync(true))"
+                                               Disabled="_isSaving"
+                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Campaign)">
+                                        @(_isSaving ? "Saving..." : "Save and Show to Everyone")
+                                    </AppButton>
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <MudStack Row="true" Justify="Justify.FlexEnd">
+                                    <AppButton OnClick="SaveAsync"
+                                               Disabled="_isSaving"
+                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                        @(_isSaving ? "Saving..." : "Save Tenant Settings")
+                                    </AppButton>
+                                </MudStack>
+                            }
+                         }
                     </MudPaper>
                 </MudItem>
             </MudGrid>
@@ -333,18 +360,26 @@
         _isLoading = false;
     }
 
-    private async Task SaveAsync()
+    private Task SaveAsync() => SaveAsync(false);
+
+    private async Task SaveAsync(bool forceAnnouncementBarRedisplay)
     {
         _isSaving = true;
         _errorMessage = null;
+        _model.ForceAnnouncementBarRedisplay = _currentSection == "announcement-bar" && forceAnnouncementBarRedisplay;
 
         var response = await TenantOnboardingService.UpdateSettingsAsync(_model);
         _isSaving = false;
+        _model.ForceAnnouncementBarRedisplay = false;
 
         if (response.Success)
         {
             await RefreshShellExperienceAsync();
-            Snackbar.Add("Tenant settings saved.", Severity.Success);
+            Snackbar.Add(
+                forceAnnouncementBarRedisplay
+                    ? "Announcement bar saved. Users who dismissed it will see it again."
+                    : "Tenant settings saved.",
+                Severity.Success);
             return;
         }
 
@@ -371,7 +406,10 @@
         var settings = await PublicExperienceService.GetSettingsAsync();
         if (settings is not null)
         {
-            AiAssistantState.SetAvailable(settings.IsAiAssistantAvailable);
+            AiAssistantState.SetPolicy(
+                settings.IsAiAssistantAvailable,
+                settings.AiAssistantAllowAnonymousAccess,
+                isAuthenticated: true);
         }
     }
 

@@ -50,24 +50,32 @@
     border-radius: var(--isl-radius-lg);
 }
 
-/* --- Publisher Row --- */
-::deep .create-event__publisher-row {
+/* --- Publisher Selector --- */
+::deep .create-event__publisher-dropdown {
+    margin-bottom: var(--isl-space-3);
+}
+
+::deep .create-event__publisher-selector {
+    margin-bottom: var(--isl-space-3);
+}
+
+::deep .create-event__publisher-option {
     display: flex;
     align-items: center;
     gap: var(--isl-space-2);
-    margin-bottom: var(--isl-space-3);
-    flex-wrap: nowrap;
+    min-width: 0;
 }
 
-::deep .create-event__publisher-btn {
-    text-transform: none !important;
+::deep .create-event__publisher-option-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+::deep .create-event__publisher-option-text .mud-typography {
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
-    flex: 1 1 0;
-    border-radius: var(--isl-radius-sm) !important;
-}
-
-::deep .create-event__publisher-dropdown {
-    margin-bottom: var(--isl-space-3);
 }
 
 /* --- Title Input (large heading like Luma) --- */
@@ -181,10 +189,25 @@
 }
 
 /* --- Event Options (Luma-style rows) --- */
+::deep .create-event__disclosure-panels {
+    margin-bottom: var(--isl-space-3);
+}
+
+::deep .create-event__disclosure-panel {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md) !important;
+    overflow: hidden;
+}
+
 ::deep .create-event__options {
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: var(--isl-radius-md);
     overflow: hidden;
+}
+
+::deep .create-event__disclosure-panel .create-event__options {
+    border: 0;
+    border-radius: 0;
 }
 
 ::deep .create-event__option-row {
@@ -294,6 +317,10 @@
 
     ::deep .create-event__datetime-picker {
         max-width: 8.125rem;
+    }
+
+    ::deep .create-event__inline-add-row {
+        flex-direction: column;
     }
 
     ::deep .create-event__option-row {

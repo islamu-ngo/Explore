@@ -17,10 +17,6 @@ public sealed class SidebarState
         {
             IsOpen = false;
         }
-        else if (changed)
-        {
-            IsOpen = true;
-        }
         OnChange?.Invoke();
     }
 

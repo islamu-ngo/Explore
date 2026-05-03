@@ -112,7 +112,7 @@ public class PublicExperienceServiceRoutingTests
     public async Task ResolveHomeRoute_ReturnsEvents_WhenSettingsAreNull()
     {
         // Act
-        var route = _service.ResolveHomeRoute(null);
+        var route = _service.ResolveHomeRoute((PublicExperienceSettingsModel?)null);
 
         // Assert
         await Assert.That(route).IsEqualTo("/events");

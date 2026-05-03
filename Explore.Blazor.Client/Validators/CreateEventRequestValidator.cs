@@ -1,4 +1,4 @@
-// ABOUTME: FluentValidation validator for CreateEventDto used in the Create Event form.
+// ABOUTME: FluentValidation validator for CreateEventRequest used in the Create Event form.
 // ABOUTME: Validates required fields and selection constraints for event creation.
 
 using Explore.Blazor.Client.Clients;
@@ -6,9 +6,9 @@ using FluentValidation;
 
 namespace Explore.Blazor.Client.Validators;
 
-public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
+public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
 {
-    public CreateEventDtoValidator()
+    public CreateEventRequestValidator()
     {
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Event title is required.")

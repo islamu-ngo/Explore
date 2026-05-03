@@ -117,4 +117,49 @@ public sealed class AppSideNavTests : IDisposable
         await Assert.That(cut.Markup).Contains("target=\"_blank\"");
         await Assert.That(cut.Markup).Contains("rel=\"noopener noreferrer\"");
     }
+
+    [Test]
+    public async Task Render_WithOrganizationCentricShell_UsesCatalogLabelAndHidesDiscoveryShortcuts()
+    {
+        _publicExperienceService.GetCachedShellAsync().Returns(new PublicExperienceShellModel
+        {
+            Mode = "OrganizationCentric",
+            EventCatalog = new PublicExperienceEventCatalogModel
+            {
+                Label = "Programs",
+                Url = "/events?ActorId=11111111-1111-1111-1111-111111111111"
+            },
+            PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
+            {
+                State = "Available"
+            }
+        });
+
+        var cut = _ctx.RenderMudComponent<AppSideNav>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Programs", StringComparison.Ordinal))
+                throw new InvalidOperationException("Expected catalog label");
+            if (cut.Markup.Contains("Advanced Search", StringComparison.Ordinal)
+                || cut.Markup.Contains("Recently Added", StringComparison.Ordinal)
+                || cut.Markup.Contains("Random", StringComparison.Ordinal))
+                throw new InvalidOperationException("Expected discovery shortcuts to be hidden");
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Render_WithCloseCallback_ShowsAccessibleCloseButtonAndInvokesCallback()
+    {
+        var closed = false;
+        var cut = _ctx.RenderMudComponent<AppSideNav>(parameters => parameters
+            .Add(component => component.OnCloseRequested, EventCallback.Factory.Create(this, () => closed = true)));
+
+        var closeButton = cut.Find("[aria-label='Close sidebar navigation']");
+        await closeButton.ClickAsync(new MouseEventArgs());
+
+        await Assert.That(closed).IsTrue();
+    }
 }

@@ -21,11 +21,11 @@
             <AppIconButton Icon="@Icons.Material.Filled.Menu"
                            Color="Color.Inherit"
                            OnClick="ToggleSidebarPanel"
-                           Title="Toggle sidebar"
-                           Class="navbar__sidebar-toggle"
-                           Edge="Edge.Start"
-                           aria-expanded="@(SidebarState.IsOpen ? "true" : "false")"
-                           aria-label="Toggle sidebar navigation" />
+                            Title="Toggle sidebar"
+                            Class="navbar__sidebar-toggle"
+                            Edge="Edge.Start"
+                            aria-expanded="@(IsSidebarDockOpen ? "true" : "false")"
+                            aria-label="Toggle sidebar navigation" />
         }
 
         <!-- Brand -->
@@ -45,7 +45,7 @@
         <div class="navbar__search">
             <MudTextField @ref="_searchField"
                           T="string"
-                          Placeholder="Search events…  ⌘K"
+                          Placeholder="@($"Search {_eventCatalogLabel}…  ⌘K")"
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Search"
                           IconSize="Size.Medium"
@@ -106,21 +106,6 @@
 
                     <!-- Notification Bell -->
                     <NotificationBell />
-
-                    @* AI Assistant toggle — only when tenant has AI configured and enabled *@
-                    @if (AiAssistantState.IsAvailable)
-                    {
-                        <AppIconButton Icon="@Icons.Material.Filled.AutoAwesome"
-                                       Color="Color.Inherit"
-                                       Size="Size.Medium"
-                                       OnClick="ToggleAiAssistantPanel"
-                                       Title="AI Assistant"
-                                       Class="@($"navbar__ai-toggle {(AiAssistantState.IsOpen ? "navbar__ai-toggle--active" : "")}")"
-                                       data-testid="shell-ai-toggle"
-                                       aria-label="Toggle AI Assistant"
-                                       aria-expanded="@(AiAssistantState.IsOpen ? "true" : "false")"
-                                       aria-controls="ai-assistant-rail" />
-                    }
 
                     <!-- User Dropdown -->
                     <div class="navbar__user-dropdown">
@@ -342,6 +327,21 @@
                     </AppButton>
                 </NotAuthorized>
             </AuthorizeView>
+
+            @* AI Assistant toggle follows tenant audience policy and the current user's preference. *@
+            @if (AiAssistantState.IsAvailable)
+            {
+                <AppIconButton Icon="@Icons.Material.Filled.AutoAwesome"
+                               Color="Color.Inherit"
+                               Size="Size.Medium"
+                               OnClick="ToggleAiAssistantPanel"
+                               Title="AI Assistant"
+                               Class="@($"navbar__ai-toggle {(AiAssistantState.IsOpen ? "navbar__ai-toggle--active" : "")}")"
+                               data-testid="shell-ai-toggle"
+                               aria-label="Toggle AI Assistant"
+                               aria-expanded="@(AiAssistantState.IsOpen ? "true" : "false")"
+                               aria-controls="ai-assistant-rail" />
+            }
         </div>
     </div>
 </div>

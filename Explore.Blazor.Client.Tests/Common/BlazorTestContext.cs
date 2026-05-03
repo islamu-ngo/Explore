@@ -3,14 +3,11 @@
 
 using Explore.Application.Authentication;
 using Explore.Application.Contracts.Identity;
-using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
-using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
 using MudBlazor;
 using MudBlazor.Interop;
 using MudBlazor.Services;
-using NSubstitute;
 
 namespace Explore.Blazor.Client.Tests.Common;
 
@@ -75,6 +72,7 @@ public class BlazorTestContext : BunitContext
         AddAccessibilityMocks();
         AddAuthorizationSubstrateMocks();
         AddAppearanceThemeMock();
+        AddPublicExperienceMock();
         Services.AddScoped(_ => Substitute.For<ILanguagePreferenceService>());
     }
 
@@ -115,6 +113,17 @@ public class BlazorTestContext : BunitContext
     {
         Services.AddScoped(_ => Substitute.For<IAccessibilityFocusService>());
         Services.AddScoped(_ => Substitute.For<IAccessibilityAnnouncerService>());
+    }
+
+    /// <summary>
+    /// Add public experience defaults used by Home and shared shell components.
+    /// Tests can register a later substitute to override the default shell response.
+    /// </summary>
+    public void AddPublicExperienceMock()
+    {
+        var publicExperienceService = Substitute.For<Explore.Blazor.Client.Services.IPublicExperienceService>();
+        publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult<PublicExperienceShellModel?>(null));
+        Services.AddSingleton(publicExperienceService);
     }
 
     /// <summary>
@@ -267,6 +276,14 @@ public class BlazorTestContext : BunitContext
         JSInterop.SetupVoid("mudPointerEventsNone.addListener", _ => true).SetVoidResult();
         JSInterop.SetupVoid("mudPointerEventsNone.cancelListener", _ => true).SetVoidResult();
         JSInterop.SetupVoid("mudPointerEventsNone.dispose", _ => true).SetVoidResult();
+
+        // MudFocusTrap saves and restores focus directly through IJSRuntime.
+        // Keep this in the shared harness so overlay/dialog tests stay strict without
+        // every test needing to know MudBlazor's internal focus helper identifiers.
+        JSInterop.SetupVoid("mudElementRef.saveFocus", _ => true).SetVoidResult();
+        JSInterop.SetupVoid("mudElementRef.restoreFocus", _ => true).SetVoidResult();
+        JSInterop.SetupVoid("mudElementRef.focusFirst", _ => true).SetVoidResult();
+        JSInterop.SetupVoid("mudElementRef.focusLast", _ => true).SetVoidResult();
 
         // Browser storage APIs used by ProtectedBrowserStorage or component dependencies.
         // Returns empty string by default — individual tests can override with specific setups.

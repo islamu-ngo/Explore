@@ -120,6 +120,11 @@ public class UserProfileTests : IDisposable
         await Assert.That(cut.Markup).Contains("Amina Rahman");
         await Assert.That(cut.Markup).Contains("amina@example.com");
         await Assert.That(cut.Markup).Contains("Email Verified");
+
+        cut.FindAll("[role='tab']")
+            .First(tab => tab.TextContent.Contains("Reviews", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
         await Assert.That(cut.Markup).Contains("Community Center");
     }
 }

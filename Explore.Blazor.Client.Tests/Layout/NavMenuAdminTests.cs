@@ -226,6 +226,25 @@ public class NavMenuAdminTests : IDisposable
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
     }
 
+    [Test]
+    public async Task NavMenu_SingleTenantInstanceAdminFallback_ShowsAdministration_WhenClaimsAreStale()
+    {
+        // Arrange
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Setup Admin");
+        SetupNavMenuServices(
+            deploymentMode: "SingleTenant",
+            isCurrentUserInstanceAdmin: true);
+
+        // Act
+        var cut = RenderNavMenu();
+        OpenDropdown(cut);
+
+        // Assert -- onboarding grants are visible even before the serialized auth claims rehydrate.
+        await Assert.That(cut.Markup).Contains("Administration");
+        await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
+    }
+
     private IRenderedComponent<DynamicComponent> RenderNavMenu()
     {
         var componentType = typeof(IUserService).Assembly.GetType("Explore.Blazor.Client.Layout.NavMenu")
@@ -240,8 +259,15 @@ public class NavMenuAdminTests : IDisposable
         dropdownButton.Click();
     }
 
-    private void SetupNavMenuServices(string deploymentMode = "MultiTenant")
+    private void SetupNavMenuServices(
+        string deploymentMode = "MultiTenant",
+        bool isCurrentUserInstanceAdmin = false,
+        bool isCurrentUserTenantAdmin = false)
     {
-        NavMenuTestServices.Register(_ctx, deploymentMode: deploymentMode);
+        NavMenuTestServices.Register(
+            _ctx,
+            deploymentMode: deploymentMode,
+            isCurrentUserInstanceAdmin: isCurrentUserInstanceAdmin,
+            isCurrentUserTenantAdmin: isCurrentUserTenantAdmin);
     }
 }

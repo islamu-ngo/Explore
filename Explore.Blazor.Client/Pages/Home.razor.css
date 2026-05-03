@@ -1,1 +1,55 @@
-/* No scoped styles needed — loading state uses MudSkeleton components */
+/* ABOUTME: Scoped organization-centric public home styles for shell-driven home composition. */
+/* ABOUTME: Keeps the read-only shell projection visually distinct while preserving existing landing fallback pages. */
+
+.organization-home__hero,
+.organization-home__block,
+.organization-home__sections,
+.organization-home__events,
+.organization-home__event-card,
+.organization-home__remediation {
+    border: 1px solid var(--mud-palette-lines-default);
+    background: var(--mud-palette-surface);
+}
+
+.organization-home__hero {
+    background:
+        radial-gradient(circle at top right, color-mix(in srgb, var(--mud-palette-primary) 16%, transparent), transparent 34rem),
+        var(--mud-palette-surface);
+}
+
+.organization-home__eyebrow {
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.organization-home__title {
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.organization-home__summary {
+    max-width: 48rem;
+}
+
+.organization-home__avatar {
+    inline-size: 12rem;
+    block-size: 12rem;
+    border: 4px solid var(--mud-palette-surface);
+    box-shadow: 0 1rem 3rem color-mix(in srgb, var(--mud-palette-primary) 20%, transparent);
+}
+
+.organization-home__event-card {
+    transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.organization-home__event-card:focus-within,
+.organization-home__event-card:hover {
+    border-color: color-mix(in srgb, var(--mud-palette-primary) 48%, var(--mud-palette-lines-default));
+    transform: translateY(-0.125rem);
+}
+
+.organization-home__remediation {
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--mud-palette-info) 10%, transparent), transparent),
+        var(--mud-palette-surface);
+}

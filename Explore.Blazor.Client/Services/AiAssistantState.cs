@@ -1,25 +1,35 @@
-// ABOUTME: Observable state service for shell-level AI assistant rail open/close and availability.
-// ABOUTME: Scoped per circuit — availability is loaded once from public experience settings.
+// ABOUTME: Observable state service for shell-level AI assistant rail open/close and effective availability.
+// ABOUTME: Combines tenant policy, viewer authentication state, and user navbar preference.
 
 namespace Explore.Blazor.Client.Services;
 
 public sealed class AiAssistantState
 {
+    private bool _tenantAvailable;
+    private bool _allowAnonymousAccess;
+    private bool _isAuthenticated;
+    private bool _showNavbarButton = true;
+
     public bool IsOpen { get; private set; }
     public bool IsAvailable { get; private set; }
     public event Action? OnChange;
 
     /// <summary>
-    /// Sets whether AI assistant is available for the current tenant.
-    /// Called once from MainLayout after loading public experience settings.
-    /// When availability is revoked, the rail auto-closes.
+    /// Applies tenant policy and current viewer context. The effective availability remains
+    /// constrained by the user's personal navbar preference.
     /// </summary>
-    public void SetAvailable(bool value)
+    public void SetPolicy(bool tenantAvailable, bool allowAnonymousAccess, bool isAuthenticated)
     {
-        if (IsAvailable == value) return;
-        IsAvailable = value;
-        if (!value) IsOpen = false;
-        OnChange?.Invoke();
+        _tenantAvailable = tenantAvailable;
+        _allowAnonymousAccess = allowAnonymousAccess;
+        _isAuthenticated = isAuthenticated;
+        RecomputeAvailability();
+    }
+
+    public void SetUserNavbarPreference(bool showNavbarButton)
+    {
+        _showNavbarButton = showNavbarButton;
+        RecomputeAvailability();
     }
 
     public void Toggle()
@@ -40,6 +50,26 @@ public sealed class AiAssistantState
     {
         if (!IsOpen) return;
         IsOpen = false;
+        OnChange?.Invoke();
+    }
+
+    private void RecomputeAvailability()
+    {
+        var value = _tenantAvailable
+            && (_isAuthenticated || _allowAnonymousAccess)
+            && _showNavbarButton;
+
+        if (IsAvailable == value)
+        {
+            return;
+        }
+
+        IsAvailable = value;
+        if (!value)
+        {
+            IsOpen = false;
+        }
+
         OnChange?.Invoke();
     }
 }

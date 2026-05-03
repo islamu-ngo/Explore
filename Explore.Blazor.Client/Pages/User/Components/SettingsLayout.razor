@@ -36,12 +36,16 @@
                                      Text="Connected Apps" 
                                      Class="@GetNavItemClass("connected-apps")"
                                      OnClick="@(() => SelectSection("connected-apps"))" />
-                        <MudListItem Icon="@Icons.Material.Filled.Palette" 
-                                     Text="Appearance" 
-                                     Class="@GetNavItemClass("appearance")"
-                                     OnClick="@(() => SelectSection("appearance"))" />
-                        <MudListItem Icon="@Icons.Material.Filled.Key" 
-                                     Text="API Keys" 
+                         <MudListItem Icon="@Icons.Material.Filled.Palette" 
+                                      Text="Appearance" 
+                                      Class="@GetNavItemClass("appearance")"
+                                      OnClick="@(() => SelectSection("appearance"))" />
+                         <MudListItem Icon="@Icons.Material.Filled.AutoAwesome"
+                                      Text="AI Assistant"
+                                      Class="@GetNavItemClass("ai-assistant")"
+                                      OnClick="@(() => SelectSection("ai-assistant"))" />
+                         <MudListItem Icon="@Icons.Material.Filled.Key" 
+                                      Text="API Keys" 
                                      Class="@GetNavItemClass("api-keys")"
                                      OnClick="@(() => SelectSection("api-keys"))" />
                     </MudList>
@@ -76,11 +80,15 @@
                     {
                         <SettingsConnectedApps />
                     }
-                    else if (CurrentSection == "appearance")
-                    {
-                        <SettingsAppearance />
-                    }
-                    else if (CurrentSection == "api-keys")
+                     else if (CurrentSection == "appearance")
+                     {
+                         <SettingsAppearance />
+                     }
+                     else if (CurrentSection == "ai-assistant")
+                     {
+                         <SettingsAiAssistant />
+                     }
+                     else if (CurrentSection == "api-keys")
                     {
                         <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="1" Title="API Keys" Description="Create and manage personal API keys for programmatic access to your account." />
                     }
@@ -94,7 +102,7 @@
     private static readonly string[] AllowedSections =
     {
         "personal", "security", "privacy", "notifications",
-        "connected-apps", "appearance", "api-keys"
+        "connected-apps", "appearance", "ai-assistant", "api-keys"
     };
 
     private string CurrentSection { get; set; } = "personal";

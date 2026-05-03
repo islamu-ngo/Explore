@@ -65,8 +65,7 @@ public sealed class DockHostTests : IDisposable
     {
         var dockedPanelId = new DockPanelId("workspace.mobile-docked");
         var scrollManager = Substitute.For<IScrollManager>();
-        scrollManager.LockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(ValueTask.CompletedTask);
-        scrollManager.UnlockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(ValueTask.CompletedTask);
+        ConfigureScrollManager(scrollManager);
         _ctx.Services.AddSingleton(scrollManager);
         ConfigureViewport(Breakpoint.Xs);
         _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Mobile docked panel"));
@@ -155,6 +154,78 @@ public sealed class DockHostTests : IDisposable
 
         await Assert.That(cut.FindAll("[data-testid='dock-panel-host']").Count).IsEqualTo(0);
         await Assert.That(cut.Markup).DoesNotContain("Mobile side panel");
+    }
+
+    [Test]
+    public async Task DockSideHost_ConstrainedStartPanel_DoesNotRenderDockedPanel()
+    {
+        var leftPanelId = new DockPanelId("shell.left-constrained");
+        var rightPanelId = new DockPanelId("workspace.right-docked");
+        _dockLayoutState.Register(CreateDescriptor(leftPanelId, DockScope.Shell, DockSide.Start, DockMode.Docked, order: 10), CreateContent("Constrained left panel"));
+        _dockLayoutState.Register(CreateDescriptor(rightPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Docked right panel"));
+        _dockLayoutState.UpdateViewport(970, isMobile: false);
+        _dockLayoutState.Open(rightPanelId);
+        _dockLayoutState.Open(leftPanelId);
+
+        var cut = _ctx.Render<DockSideHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Shell)
+            .Add(component => component.Side, DockSide.Start));
+
+        await Assert.That(cut.FindAll("[data-testid='dock-panel-host']").Count).IsEqualTo(0);
+        await Assert.That(cut.Markup).DoesNotContain("Constrained left panel");
+    }
+
+    [Test]
+    public async Task DockOverlayHost_ConstrainedStartPanel_RendersAsTemporaryOverlayWhileRightPanelStaysDocked()
+    {
+        var leftPanelId = new DockPanelId("shell.left-overlay");
+        var rightPanelId = new DockPanelId("workspace.right-stays-docked");
+        _dockLayoutState.Register(CreateDescriptor(leftPanelId, DockScope.Shell, DockSide.Start, DockMode.Docked, order: 10), CreateContent("Constrained left overlay"));
+        _dockLayoutState.Register(CreateDescriptor(rightPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Right panel remains docked"));
+        _dockLayoutState.UpdateViewport(970, isMobile: false);
+        _dockLayoutState.Open(rightPanelId);
+        _dockLayoutState.Open(leftPanelId);
+
+        var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Shell));
+
+        await Assert.That(_dockLayoutState.GetPanel(rightPanelId)?.State.IsOpen).IsTrue();
+        await Assert.That(cut.Markup).Contains("Constrained left overlay");
+        await Assert.That(cut.Find("[data-dock-panel-id='shell.left-overlay']").GetAttribute("data-dock-mode")).IsEqualTo("temporary");
+        await Assert.That(cut.FindAll("[data-testid='dock-overlay-backdrop']").Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task DockSideHost_ClosingDockedPanel_RemainsMountedWithClosingClassThenUnmounts()
+    {
+        var panelId = new DockPanelId("workspace.close-animated");
+        _dockLayoutState.Register(CreateDescriptor(panelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Closing docked panel"));
+        _dockLayoutState.Open(panelId);
+
+        var cut = _ctx.Render<DockSideHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.Side, DockSide.End));
+
+        _dockLayoutState.Close(panelId);
+
+        cut.WaitForAssertion(() =>
+        {
+            var panel = cut.Find("[data-testid='dock-panel-host'][data-dock-panel-id='workspace.close-animated']");
+            if (!panel.ClassList.Contains("dock-panel-host--closing"))
+            {
+                throw new InvalidOperationException("Docked panel did not remain mounted with the closing class.");
+            }
+        });
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll("[data-testid='dock-panel-host'][data-dock-panel-id='workspace.close-animated']").Count != 0)
+            {
+                throw new InvalidOperationException("Docked panel did not unmount after the close animation delay.");
+            }
+        }, timeout: TimeSpan.FromSeconds(2));
+
+        await Task.CompletedTask;
     }
 
     [Test]
@@ -249,6 +320,7 @@ public sealed class DockHostTests : IDisposable
     {
         var dockedPanelId = new DockPanelId("workspace.mobile-overlay");
         _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Mobile overlay panel"));
+        _dockLayoutState.UpdateViewport(390, isMobile: true);
         _dockLayoutState.Open(dockedPanelId);
 
         var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
@@ -265,11 +337,13 @@ public sealed class DockHostTests : IDisposable
     {
         var dockedPanelId = new DockPanelId("workspace.mobile-to-desktop");
         _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Mobile projected panel"));
+        _dockLayoutState.UpdateViewport(390, isMobile: true);
         _dockLayoutState.Open(dockedPanelId);
         var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
             .Add(component => component.Scope, DockScope.Workspace)
             .Add(component => component.IsMobile, true));
 
+        _dockLayoutState.UpdateViewport(1280, isMobile: false);
         cut.Render(parameters => parameters
             .Add(component => component.Scope, DockScope.Workspace)
             .Add(component => component.IsMobile, false));
@@ -292,8 +366,7 @@ public sealed class DockHostTests : IDisposable
     {
         var inspectorPanelId = new DockPanelId("workspace.inspector-focus");
         var scrollManager = Substitute.For<IScrollManager>();
-        scrollManager.LockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(ValueTask.CompletedTask);
-        scrollManager.UnlockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(ValueTask.CompletedTask);
+        ConfigureScrollManager(scrollManager);
         _ctx.Services.AddSingleton(scrollManager);
         _dockLayoutState.Register(CreateDescriptor(inspectorPanelId, DockScope.Workspace, DockSide.End, DockMode.Inspector, order: 10), CreateContent("Inspector focus panel"));
         _dockLayoutState.Open(inspectorPanelId);
@@ -310,12 +383,41 @@ public sealed class DockHostTests : IDisposable
     }
 
     [Test]
+    public async Task DockOverlayHost_OpeningOverlay_EnablesFocusTrapForTemporaryChromeOnly()
+    {
+        var inspectorPanelId = new DockPanelId("workspace.inspector-focus-trap");
+        _dockLayoutState.Register(CreateDescriptor(inspectorPanelId, DockScope.Workspace, DockSide.End, DockMode.Inspector, order: 10), CreateContent("Inspector focus trap panel"));
+        _dockLayoutState.Open(inspectorPanelId);
+
+        var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace));
+        var focusTrap = cut.FindComponent<MudFocusTrap>();
+
+        await Assert.That(focusTrap.Instance.Disabled).IsFalse();
+        await Assert.That(focusTrap.Instance.DefaultFocus).IsEqualTo(DefaultFocus.FirstChild);
+    }
+
+    [Test]
+    public async Task DockSideHost_DockedPanel_DoesNotRenderFocusTrap()
+    {
+        var dockedPanelId = new DockPanelId("workspace.docked-no-focus-trap");
+        _dockLayoutState.Register(CreateDescriptor(dockedPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Docked panel without focus trap"));
+        _dockLayoutState.Open(dockedPanelId);
+
+        var cut = _ctx.Render<DockSideHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.Side, DockSide.End));
+
+        await Assert.That(cut.FindComponents<MudFocusTrap>().Count).IsEqualTo(0);
+        await Assert.That(cut.Markup).Contains("Docked panel without focus trap");
+    }
+
+    [Test]
     public async Task DockOverlayHost_EscapeClosesActiveOverlayAndRestoresFocus()
     {
         var inspectorPanelId = new DockPanelId("workspace.inspector-escape");
         var scrollManager = Substitute.For<IScrollManager>();
-        scrollManager.LockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(ValueTask.CompletedTask);
-        scrollManager.UnlockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(ValueTask.CompletedTask);
+        ConfigureScrollManager(scrollManager);
         _ctx.Services.AddSingleton(scrollManager);
         _dockLayoutState.Register(CreateDescriptor(inspectorPanelId, DockScope.Workspace, DockSide.End, DockMode.Inspector, order: 10), CreateContent("Inspector escape panel"));
         _dockLayoutState.Open(inspectorPanelId);
@@ -326,8 +428,8 @@ public sealed class DockHostTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            scrollManager.Received(1).LockScrollAsync("body", "scroll-locked");
-            focusService.Received(1).SaveFocusAsync();
+            scrollManager.Received(1).LockScrollAsync("body", "scroll-locked").GetAwaiter().GetResult();
+            focusService.Received(1).SaveFocusAsync().GetAwaiter().GetResult();
         }, timeout: TimeSpan.FromSeconds(2));
 
         await host.TriggerEventAsync("onkeydown", new KeyboardEventArgs { Key = "Escape" });
@@ -335,8 +437,8 @@ public sealed class DockHostTests : IDisposable
         await Assert.That(_dockLayoutState.GetPanel(inspectorPanelId)?.State.IsOpen).IsFalse();
         cut.WaitForAssertion(() =>
         {
-            scrollManager.Received(1).UnlockScrollAsync("body", "scroll-locked");
-            focusService.Received(1).RestoreFocusAsync("#main-content");
+            scrollManager.Received(1).UnlockScrollAsync("body", "scroll-locked").GetAwaiter().GetResult();
+            focusService.Received(1).RestoreFocusAsync("#main-content").GetAwaiter().GetResult();
         }, timeout: TimeSpan.FromSeconds(2));
     }
 
@@ -377,6 +479,22 @@ public sealed class DockHostTests : IDisposable
         await cut.Find("[data-testid='dock-overlay-backdrop']").ClickAsync(new MouseEventArgs());
 
         await Assert.That(_dockLayoutState.GetPanel(inspectorPanelId)?.State.IsOpen).IsFalse();
+    }
+
+    [Test]
+    public async Task DockOverlayHost_ClosingOverlay_DisablesFocusTrapDuringExitAnimation()
+    {
+        var inspectorPanelId = new DockPanelId("workspace.inspector-closing-focus-trap");
+        _dockLayoutState.Register(CreateDescriptor(inspectorPanelId, DockScope.Workspace, DockSide.End, DockMode.Inspector, order: 10), CreateContent("Inspector closing focus trap panel"));
+        _dockLayoutState.Open(inspectorPanelId);
+        var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace));
+
+        await cut.Find("[data-testid='dock-overlay-backdrop']").ClickAsync(new MouseEventArgs());
+
+        await Assert.That(_dockLayoutState.GetPanel(inspectorPanelId)?.State.IsOpen).IsFalse();
+        await Assert.That(cut.FindComponent<MudFocusTrap>().Instance.Disabled).IsTrue();
+        await Assert.That(cut.Find(".dock-overlay-host__slot--closing")).IsNotNull();
     }
 
     [Test]
@@ -618,6 +736,21 @@ public sealed class DockHostTests : IDisposable
         await Assert.That(cut.FindAll("[data-testid='dock-resize-handle']").Count).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task DockPanelHost_DoesNotRenderGenericHeaderChrome()
+    {
+        var panelId = new DockPanelId("workspace.content-owned-chrome");
+        _dockLayoutState.Register(CreateDescriptor(panelId, DockScope.Workspace, DockSide.End, order: 10), CreateContent("Content owned chrome"));
+        _dockLayoutState.Open(panelId);
+
+        var cut = _ctx.Render<DockSideHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.Side, DockSide.End));
+
+        await Assert.That(cut.FindAll(".dock-panel-host__header").Count).IsEqualTo(0);
+        await Assert.That(cut.Find("[data-testid='dock-panel-host']").HasAttribute("aria-labelledby")).IsFalse();
+    }
+
     private static DockPanelDescriptor CreateDescriptor(
         DockPanelId id,
         DockScope scope,
@@ -645,6 +778,14 @@ public sealed class DockHostTests : IDisposable
     private static RenderFragment CreateContent(string text)
     {
         return builder => builder.AddContent(0, text);
+    }
+
+    private static void ConfigureScrollManager(IScrollManager scrollManager)
+    {
+#pragma warning disable CA2012 // NSubstitute setup captures ValueTask-returning calls without awaiting them.
+        scrollManager.LockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(ValueTask.CompletedTask);
+        scrollManager.UnlockScrollAsync(Arg.Any<string>(), Arg.Any<string>()).Returns(ValueTask.CompletedTask);
+#pragma warning restore CA2012
     }
 
     private void ConfigureViewport(Breakpoint breakpoint)

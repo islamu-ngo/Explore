@@ -266,17 +266,87 @@ public class EventServiceTests
 
     #endregion
 
+    #region GetEventCreationContextAsync Tests
+
+    [Test]
+    public async Task GetEventCreationContextAsync_ReturnsContext_WhenApiSucceeds()
+    {
+        // Arrange
+        var context = new EventCreationContextDto
+        {
+            CanCreate = true,
+            DefaultPublisherMode = "personal",
+            PublisherOptions =
+            [
+                new EventCreationPublisherOptionDto
+                {
+                    PublisherMode = "personal",
+                    DisplayName = "Personal profile",
+                    CanPublish = true
+                }
+            ]
+        };
+
+        _apiClient.GetEventCreationContextAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(context);
+
+        // Act
+        var result = await _service.GetEventCreationContextAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.CanCreate).IsTrue();
+        await Assert.That(result.DefaultPublisherMode).IsEqualTo("personal");
+        await Assert.That(result.PublisherOptions?.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task GetEventCreationContextAsync_ReturnsNull_WhenApiThrowsException()
+    {
+        // Arrange
+        _apiClient.GetEventCreationContextAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Unauthorized", 401));
+
+        // Act
+        var result = await _service.GetEventCreationContextAsync();
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetEventCreationContextAsync_PassesCancellationToken()
+    {
+        // Arrange
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var context = new EventCreationContextDto { CanCreate = false };
+
+        _apiClient.GetEventCreationContextAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(context);
+
+        // Act
+        await _service.GetEventCreationContextAsync(cancellationTokenSource.Token);
+
+        // Assert
+        await _apiClient.Received(1).GetEventCreationContextAsync(
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            cancellationTokenSource.Token);
+    }
+
+    #endregion
+
     #region CreateEventAsync Tests
 
     [Test]
     public async Task CreateEventAsync_ReturnsSuccess_WhenValid()
     {
         // Arrange
-        var createDto = ComponentDataBuilder.CreateEventDto.Generate();
+        var createDto = ComponentDataBuilder.CreateEventRequest.Generate();
         var expectedId = Guid.NewGuid();
         var expectedResponse = ComponentDataBuilder.SuccessResponse(expectedId);
 
-        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -292,8 +362,8 @@ public class EventServiceTests
     public async Task CreateEventAsync_ReturnsNull_WhenApiThrowsException()
     {
         // Arrange
-        var createDto = ComponentDataBuilder.CreateEventDto.Generate();
-        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        var createDto = ComponentDataBuilder.CreateEventRequest.Generate();
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400, "Validation failed"));
 
         // Act
@@ -307,9 +377,9 @@ public class EventServiceTests
     public async Task CreateEventAsync_CallsApiWithCorrectDto()
     {
         // Arrange
-        var createDto = ComponentDataBuilder.CreateEventDto.Generate();
+        var createDto = ComponentDataBuilder.CreateEventRequest.Generate();
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
-        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventRequest>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act

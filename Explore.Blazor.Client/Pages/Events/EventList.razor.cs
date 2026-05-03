@@ -67,6 +67,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private bool _virtualizeRefreshed = false;
     private bool _useInitialBatch = false;
     private PaginatedResult<EventListDto>? _initialBatch;
+    private PublicExperienceShellModel? _publicExperienceShell;
 
     // Pagination / Browse mode state
     private BrowseMode _browseMode = BrowseMode.InfiniteScroll;
@@ -109,6 +110,86 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> eventFormatMap = new();
+
+    private IReadOnlyList<PublicExperienceEventSectionModel> CuratedEventSections => _publicExperienceShell?.EventSections
+        .Where(section => !string.IsNullOrWhiteSpace(section.Label) && !string.IsNullOrWhiteSpace(section.Url))
+        .OrderBy(section => section.SortOrder)
+        .ThenBy(section => section.Label, StringComparer.OrdinalIgnoreCase)
+        .ToList() ?? [];
+
+    private string EventCatalogLabel => string.IsNullOrWhiteSpace(_publicExperienceShell?.EventCatalog.Label)
+        ? "Events"
+        : _publicExperienceShell.EventCatalog.Label.Trim();
+
+    private string EmptyStateTitle => HasActiveFilters()
+        ? "No matching events found"
+        : "No events found";
+
+    private string EmptyStateMessage => HasActiveFilters()
+        ? "Try adjusting your filters or search query."
+        : $"No {EventCatalogLabel.ToLowerInvariant()} are published yet. Check back soon.";
+
+    private string ListResultAnnouncement => _totalCount switch
+    {
+        > 0 when HasActiveFilters() => $"{_totalCount} matching {EventCatalogLabel.ToLowerInvariant()} found",
+        > 0 => $"{_totalCount} {EventCatalogLabel.ToLowerInvariant()} found",
+        _ => EmptyStateTitle
+    };
+
+    private static string ResolvePresetIcon(string? icon)
+    {
+        return icon?.Trim().ToLowerInvariant() switch
+        {
+            "group" or "community" => Icons.Material.Filled.Groups,
+            "school" or "education" => Icons.Material.Filled.School,
+            "volunteer" or "service" => Icons.Material.Filled.VolunteerActivism,
+            "women" or "sisters" => Icons.Material.Filled.Female,
+            "youth" => Icons.Material.Filled.Face,
+            _ => Icons.Material.Filled.Event
+        };
+    }
+
+    private string GetPresetChipClass(PublicExperienceEventSectionModel section)
+    {
+        return IsCurrentPreset(section)
+            ? "event-list__preset-chip event-list__preset-chip--active"
+            : "event-list__preset-chip";
+    }
+
+    private string GetPresetAriaLabel(PublicExperienceEventSectionModel section)
+    {
+        return IsCurrentPreset(section)
+            ? $"Showing {section.Label}"
+            : $"Show {section.Label}";
+    }
+
+    private bool IsCurrentPreset(PublicExperienceEventSectionModel section)
+    {
+        if (string.IsNullOrWhiteSpace(section.Url))
+        {
+            return false;
+        }
+
+        var current = NormalizeRelativeUrl(Navigation.ToBaseRelativePath(Navigation.Uri));
+        var target = NormalizeRelativeUrl(section.Url);
+        return string.Equals(current, target, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeRelativeUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return string.Empty;
+        }
+
+        var relative = url.Trim();
+        if (Uri.TryCreate(relative, UriKind.Absolute, out var absoluteUri))
+        {
+            relative = absoluteUri.PathAndQuery;
+        }
+
+        return relative.TrimStart('/');
+    }
 
     [Inject] private IUserService UserService { get; set; } = null!;
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = null!;
@@ -190,6 +271,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             _isInitialized = true;
             return;
         }
+
+        var shellTask = PublicExperienceService.GetCachedShellAsync();
+        _publicExperienceShell = shellTask is null ? null : await shellTask;
 
         var settings = await PublicExperienceService.GetSettingsAsync();
         if (settings != null)
@@ -427,10 +511,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             _eventsLoaded = true;
             isLoading = false;
 
-            if (_totalCount > 0)
-                await AnnouncerService.AnnouncePoliteAsync($"{_totalCount} events found");
-            else
-                await AnnouncerService.AnnouncePoliteAsync("No events found");
+            await AnnouncerService.AnnouncePoliteAsync(ListResultAnnouncement);
         }
         catch (Exception ex)
         {

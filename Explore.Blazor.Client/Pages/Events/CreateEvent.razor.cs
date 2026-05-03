@@ -48,13 +48,15 @@ public partial class CreateEvent
     private Guid? _selectedGroupId;
     private ICollection<GroupPublisherListDto>? _myGroups;
     private string _groupRoleError = string.Empty;
+    private EventCreationContextDto? _creationContext;
+    private string _creationContextError = string.Empty;
 
     private const int GroupCreatorRoleId = 30;
     private const int GroupAdminRoleId = 31;
 
     // Form state
     private Guid? _currentUserId;
-    private CreateEventDto createDto = new();
+    private CreateEventRequest createDto = new();
     private ICollection<EventTypeListDto>? eventTypes;
     private ICollection<AudienceGenderListDto>? audienceGenders;
     private ICollection<AudienceAgeListDto>? audienceAges;
@@ -78,6 +80,7 @@ public partial class CreateEvent
         isProcessing
         || _isUploadingImage
         || _isLoadingTemplatePreview
+        || (_creationContext is not null && _creationContext.CanCreate != true)
         || !string.IsNullOrEmpty(_organizationRoleError)
         || !string.IsNullOrEmpty(_groupRoleError);
     private bool isLoading = true;
@@ -130,6 +133,19 @@ public partial class CreateEvent
     // UI toggles
     private bool _showFirstSessionLocation = false;
     private bool _showTimezoneSelector = false;
+    private bool _isMultiSessionEnabled;
+    private bool _isMultiDayEnabled;
+    private bool _isRoomsEnabled;
+    private bool _isAgendaEnabled;
+    private bool _isScheduleExpanded;
+    private bool _isMoreOptionsExpanded;
+    private string _schedulingAnnouncement = string.Empty;
+    private bool IsMultiSessionActive => _isMultiSessionEnabled || sessions.Count > 1;
+    private bool CanUseRoomSetup => sessions.Count > 0
+        && sessions[0].LocationId.HasValue
+        && (createDto.EventFormatId is 1 or 3);
+    private string ScheduleSummary => BuildScheduleSummary();
+    private string MoreOptionsSummary => BuildMoreOptionsSummary();
 
     // Timezone
     private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Local;
@@ -137,6 +153,57 @@ public partial class CreateEvent
     private static readonly IReadOnlyList<TimeZoneInfo> _allTimezones = TimeZoneInfo.GetSystemTimeZones();
     private bool isProcessing = false;
     private Guid createdEventId = Guid.Empty;
+
+    private string BuildScheduleSummary()
+    {
+        if (sessions.Count == 0)
+        {
+            return "Use the main date and time above; add detailed scheduling only if needed.";
+        }
+
+        var first = sessions[0];
+        var summary = $"{first.StartTime:ddd, MMM d} from {first.StartTime:h:mm tt} to {first.EndTime:h:mm tt}";
+        if (sessions.Count > 1)
+        {
+            summary += $" - {sessions.Count} sessions";
+        }
+
+        var detailCount = _inlineDays.Count + _inlineRooms.Count + _inlineAgendaItems.Count;
+        if (detailCount > 0)
+        {
+            summary += $" - {detailCount} schedule detail{(detailCount == 1 ? string.Empty : "s")}";
+        }
+
+        return summary;
+    }
+
+    private string BuildMoreOptionsSummary()
+    {
+        var selectedCount = 0;
+        if (createDto.EventTypeId.HasValue)
+        {
+            selectedCount++;
+        }
+
+        if (createDto.TemplateId.HasValue)
+        {
+            selectedCount++;
+        }
+
+        if (selectedCategoryIds.Any())
+        {
+            selectedCount++;
+        }
+
+        if (selectedTagIds.Any())
+        {
+            selectedCount++;
+        }
+
+        return selectedCount == 0
+            ? "Defaults are ready. Open this section for audience, template, registration, categories, and tags."
+            : $"{selectedCount} optional setting{(selectedCount == 1 ? string.Empty : "s")} selected.";
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -165,8 +232,110 @@ public partial class CreateEvent
 
     // ========== Publisher Methods ==========
 
+    private string SelectedPublisherKey => BuildPublisherKey(_publisherMode, _publisherMode switch
+    {
+        "organization" => _selectedOrganizationId,
+        "group" => _selectedGroupId,
+        _ => null
+    });
+
+    private IReadOnlyList<PublisherChoice> GetPublisherChoices()
+    {
+        if (_creationContext?.PublisherOptions?.Any() == true)
+        {
+            return _creationContext.PublisherOptions
+                .Select(option => new PublisherChoice(
+                    BuildPublisherKey(option.PublisherMode, option.PublisherId),
+                    option.PublisherMode,
+                    option.PublisherId,
+                    option.CanPublish == true,
+                    option.DisplayName ?? GetPublisherModeLabel(option.PublisherMode),
+                    option.CanPublish == true
+                        ? GetPublisherModeLabel(option.PublisherMode)
+                        : option.Reason ?? "This publisher cannot create events."))
+                .ToList();
+        }
+
+        return new[]
+        {
+            new PublisherChoice(BuildPublisherKey("personal", null), "personal", null, CanSelectPublisherMode("personal"), "Personal profile", "Personal profile"),
+            new PublisherChoice(BuildPublisherKey("organization", null), "organization", null, CanSelectPublisherMode("organization"), "Organization", "Choose an organization below"),
+            new PublisherChoice(BuildPublisherKey("group", null), "group", null, CanSelectPublisherMode("group"), "Group", "Choose a group below")
+        };
+    }
+
+    private void OnPublisherSelectionChanged(string? key)
+    {
+        if (!TryParsePublisherKey(key, out var mode, out var publisherId))
+        {
+            return;
+        }
+
+        if (_creationContext is not null)
+        {
+            var option = GetPublisherOption(mode, publisherId);
+            if (option?.CanPublish != true)
+            {
+                return;
+            }
+
+            _publisherMode = mode;
+            _selectedOrganizationId = mode == "organization" ? publisherId : null;
+            _selectedGroupId = mode == "group" ? publisherId : null;
+            _organizationRoleError = string.Empty;
+            _groupRoleError = string.Empty;
+            return;
+        }
+
+        SetPublisherMode(mode);
+    }
+
+    private static string BuildPublisherKey(string? mode, Guid? publisherId) =>
+        $"{mode ?? string.Empty}:{publisherId?.ToString("D") ?? string.Empty}";
+
+    private static bool TryParsePublisherKey(string? key, out string mode, out Guid? publisherId)
+    {
+        mode = string.Empty;
+        publisherId = null;
+
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return false;
+        }
+
+        var separatorIndex = key.IndexOf(':', StringComparison.Ordinal);
+        mode = separatorIndex < 0 ? key : key[..separatorIndex];
+        var rawId = separatorIndex < 0 ? string.Empty : key[(separatorIndex + 1)..];
+        if (!string.IsNullOrWhiteSpace(rawId) && Guid.TryParse(rawId, out var parsedId))
+        {
+            publisherId = parsedId;
+        }
+
+        return !string.IsNullOrWhiteSpace(mode);
+    }
+
+    private static string GetPublisherModeLabel(string? mode) => mode switch
+    {
+        "personal" => "Personal profile",
+        "organization" => "Organization",
+        "group" => "Group",
+        _ => "Publisher"
+    };
+
+    private static string GetPublisherIcon(string? mode) => mode switch
+    {
+        "organization" => Icons.Material.Filled.Business,
+        "group" => Icons.Material.Filled.Group,
+        _ => Icons.Material.Filled.Person
+    };
+
     private void SetPublisherMode(string mode)
     {
+        if (!CanSelectPublisherMode(mode))
+        {
+            return;
+        }
+
         _publisherMode = mode;
         if (mode == "personal")
         {
@@ -201,8 +370,15 @@ public partial class CreateEvent
 
         if (value.HasValue)
         {
+            var contextOption = GetPublisherOption("organization", value.Value);
+            if (_creationContext is not null && contextOption?.CanPublish != true)
+            {
+                _organizationRoleError = contextOption?.Reason ?? "You cannot publish events for this organization.";
+                return;
+            }
+
             var org = _myOrganizations?.FirstOrDefault(o => o.Id == value.Value);
-            if (org?.CurrentUserRole != null && !RoleHelper.CanManage(org.CurrentUserRole))
+            if (_creationContext is null && org?.CurrentUserRole != null && !RoleHelper.CanManage(org.CurrentUserRole))
             {
                 _organizationRoleError = "You don't have the authority to publish events for this organization. Only Creator, Co-Owner, or Admin roles can publish.";
             }
@@ -223,13 +399,28 @@ public partial class CreateEvent
 
         if (value.HasValue)
         {
+            var contextOption = GetPublisherOption("group", value.Value);
+            if (_creationContext is not null && contextOption?.CanPublish != true)
+            {
+                _groupRoleError = contextOption?.Reason ?? "You cannot publish events for this group.";
+                return;
+            }
+
             var group = _myGroups?.FirstOrDefault(g => g.Id == value.Value);
-            if (group?.CurrentUserRole != null && !CanPublishAsGroup(group.CurrentUserRole))
+            if (_creationContext is null && group?.CurrentUserRole != null && !CanPublishAsGroup(group.CurrentUserRole))
             {
                 _groupRoleError = "You don't have the authority to publish events for this group. Only Creator or Admin roles can publish.";
             }
         }
     }
+
+    private sealed record PublisherChoice(
+        string Key,
+        string Mode,
+        Guid? PublisherId,
+        bool CanPublish,
+        string DisplayName,
+        string Description);
 
     private async Task OnEventTypeChanged(int? eventTypeId)
     {
@@ -443,7 +634,62 @@ public partial class CreateEvent
 
     private void AddSession()
     {
+        _isMultiSessionEnabled = true;
+        AnnounceSchedulingChange("Multiple sessions enabled. Add the next session details in the drawer.");
         _sessionWorkflow.OpenForCreate(sessions, imagePreviewUrl);
+    }
+
+    private void ToggleMultiSession()
+    {
+        _isMultiSessionEnabled = !_isMultiSessionEnabled;
+        AnnounceSchedulingChange(_isMultiSessionEnabled
+            ? "Multiple sessions enabled."
+            : "Multiple sessions hidden. Existing session details are preserved.");
+    }
+
+    private void ToggleMultiDay()
+    {
+        _isMultiDayEnabled = !_isMultiDayEnabled;
+        if (_isMultiDayEnabled)
+        {
+            EnsureInlineDaysFromSessions();
+        }
+
+        AnnounceSchedulingChange(_isMultiDayEnabled
+            ? "Day details enabled. Days were prepared from the current sessions."
+            : "Day details hidden. Existing day details are preserved.");
+    }
+
+    private void ToggleRooms()
+    {
+        if (!CanUseRoomSetup)
+        {
+            AnnounceSchedulingChange("Select an in-person or hybrid location before adding rooms.");
+            return;
+        }
+
+        _isRoomsEnabled = !_isRoomsEnabled;
+        AnnounceSchedulingChange(_isRoomsEnabled
+            ? "Room setup enabled."
+            : "Room setup hidden. Existing rooms are preserved.");
+    }
+
+    private void ToggleAgenda()
+    {
+        _isAgendaEnabled = !_isAgendaEnabled;
+        if (_isAgendaEnabled)
+        {
+            EnsureInlineDaysFromSessions();
+        }
+
+        AnnounceSchedulingChange(_isAgendaEnabled
+            ? "Agenda enabled. Agenda rows can be linked to day details and rooms."
+            : "Agenda hidden. Existing agenda rows are preserved.");
+    }
+
+    private void AnnounceSchedulingChange(string message)
+    {
+        _schedulingAnnouncement = message;
     }
 
     private async void RemoveSession(int index)
@@ -527,6 +773,8 @@ public partial class CreateEvent
                     Logger.LogError(ex, "Error getting current user");
                 }
             }
+
+            await LoadCreationContextAsync();
 
             try
             {
@@ -616,9 +864,9 @@ public partial class CreateEvent
             Logger.LogError(ex, "Failed to load event templates for event type {EventTypeId}", eventTypeId);
             if (IsCurrentTemplateListRequest(requestVersion, eventTypeId))
             {
-                eventTemplates = Array.Empty<EventTemplateListModel>();
-                _templateLoadError = "Event templates could not be loaded. You can still create a vanilla event.";
-            }
+            eventTemplates = Array.Empty<EventTemplateListModel>();
+            _templateLoadError = "Event templates could not be loaded. You can still create a vanilla event.";
+        }
         }
         finally
         {
@@ -659,6 +907,18 @@ public partial class CreateEvent
     {
         errorMessage = string.Empty;
 
+        if (_creationContext is not null && _creationContext.CanCreate != true)
+        {
+            errorMessage = _creationContext.UnavailableReason ?? "You do not have access to create events.";
+            return false;
+        }
+
+        if (!CanSelectPublisherMode(_publisherMode))
+        {
+            errorMessage = "Select an available publisher before creating the event.";
+            return false;
+        }
+
         if (_publisherMode == "organization")
         {
             if (!_selectedOrganizationId.HasValue)
@@ -669,6 +929,11 @@ public partial class CreateEvent
             if (!string.IsNullOrEmpty(_organizationRoleError))
             {
                 errorMessage = _organizationRoleError;
+                return false;
+            }
+            if (_creationContext is not null && GetPublisherOption("organization", _selectedOrganizationId.Value)?.CanPublish != true)
+            {
+                errorMessage = "You cannot publish events for the selected organization.";
                 return false;
             }
         }
@@ -685,6 +950,11 @@ public partial class CreateEvent
                 errorMessage = _groupRoleError;
                 return false;
             }
+            if (_creationContext is not null && GetPublisherOption("group", _selectedGroupId.Value)?.CanPublish != true)
+            {
+                errorMessage = "You cannot publish events for the selected group.";
+                return false;
+            }
         }
 
         if (sessions == null || !sessions.Any())
@@ -694,6 +964,121 @@ public partial class CreateEvent
         }
 
         return true;
+    }
+
+    private async Task LoadCreationContextAsync()
+    {
+        _creationContextError = string.Empty;
+
+        try
+        {
+            _creationContext = await EventService.GetEventCreationContextAsync();
+            ApplyCreationContextDefaults();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading event creation context");
+            _creationContext = null;
+            _creationContextError = "Creation permissions could not be loaded. You can continue filling the form, but publishing may fail.";
+        }
+    }
+
+    private void ApplyCreationContextDefaults()
+    {
+        if (_creationContext is null)
+        {
+            return;
+        }
+
+        if (_creationContext.CanCreate != true)
+        {
+            _publisherMode = "personal";
+            _selectedOrganizationId = null;
+            _selectedGroupId = null;
+            return;
+        }
+
+        var defaultMode = _creationContext.DefaultPublisherMode;
+        if (string.IsNullOrWhiteSpace(defaultMode) || !CanSelectPublisherMode(defaultMode))
+        {
+            defaultMode = GetFirstPublishableOption()?.PublisherMode;
+        }
+
+        if (string.IsNullOrWhiteSpace(defaultMode))
+        {
+            return;
+        }
+
+        _publisherMode = defaultMode;
+        _selectedOrganizationId = null;
+        _selectedGroupId = null;
+        _organizationRoleError = string.Empty;
+        _groupRoleError = string.Empty;
+
+        if (_publisherMode == "organization")
+        {
+            _selectedOrganizationId = GetFirstPublishableOption("organization")?.PublisherId;
+        }
+        else if (_publisherMode == "group")
+        {
+            _selectedGroupId = GetFirstPublishableOption("group")?.PublisherId;
+        }
+    }
+
+    private EventCreationPublisherOptionDto? GetFirstPublishableOption(string? mode = null) =>
+        _creationContext?.PublisherOptions?
+            .FirstOrDefault(option => option.CanPublish == true && (mode is null || option.PublisherMode == mode));
+
+    private EventCreationPublisherOptionDto? GetPublisherOption(string mode, Guid? publisherId) =>
+        _creationContext?.PublisherOptions?
+            .FirstOrDefault(option => option.PublisherMode == mode && option.PublisherId == publisherId);
+
+    private bool CanSelectPublisherMode(string mode)
+    {
+        if (_creationContext is null)
+        {
+            return true;
+        }
+
+        return mode switch
+        {
+            "personal" => GetPublisherOption("personal", null)?.CanPublish == true,
+            "organization" => _creationContext.AllowOrganizationPublishing == true && GetFirstPublishableOption("organization") is not null,
+            "group" => _creationContext.AllowGroupPublishing == true && GetFirstPublishableOption("group") is not null,
+            _ => false
+        };
+    }
+
+    private bool CanPublishAsOrganization(Guid? organizationId)
+    {
+        if (organizationId == CreateOrgSentinel)
+        {
+            return CanSelectPublisherMode("organization");
+        }
+
+        if (_creationContext is null)
+        {
+            var org = _myOrganizations?.FirstOrDefault(o => o.Id == organizationId);
+            return org?.CurrentUserRole is null || RoleHelper.CanManage(org.CurrentUserRole);
+        }
+
+        return GetPublisherOption("organization", organizationId)?.CanPublish == true;
+    }
+
+    private bool CanPublishAsGroup(Guid? groupId)
+    {
+        if (groupId == CreateGroupSentinel)
+        {
+            return CanSelectPublisherMode("group");
+        }
+
+        if (_creationContext is null)
+        {
+            var group = _myGroups?.FirstOrDefault(g => g.Id == groupId);
+            return group?.CurrentUserRole is null || CanPublishAsGroup(group.CurrentUserRole);
+        }
+
+        return GetPublisherOption("group", groupId)?.CanPublish == true;
     }
 
     private async Task HandleSubmit()
@@ -740,15 +1125,7 @@ public partial class CreateEvent
             createDto.BackgroundColor = string.IsNullOrWhiteSpace(_bgColor) ? null : _bgColor;
             createDto.BackgroundEffect = string.IsNullOrWhiteSpace(_bgEffect) || _bgEffect == "None" ? null : _bgEffect;
 
-            PopulateInlineSchedulingOnDto();
-
-            var earliestStart = sessions.Min(s => DateTimeHelper.ConvertLocalToUtc(s.StartTime));
-            var latestEnd = sessions.Max(s => DateTimeHelper.ConvertLocalToUtc(s.EndTime));
-
-            createDto.FirstSessionDate = earliestStart;
-            createDto.LastSessionDate = latestEnd;
-            createDto.FirstSessionStartUtc = earliestStart;
-            createDto.LastSessionStartUtc = latestEnd;
+            PopulateSchedulingOnRequest();
 
             Logger.LogInformation(
                 "Creating event (publisherMode={Mode}, organizationId={OrgId}, groupId={GroupId})",
@@ -761,33 +1138,6 @@ public partial class CreateEvent
             {
                 createdEventId = response.Id.Value;
                 Logger.LogInformation("Event created with ID: {EventId}", createdEventId);
-
-                if (selectedCategoryIds.Any() || selectedTagIds.Any())
-                {
-                    Logger.LogWarning(
-                        "Selected categories/tags are currently not persisted because the Event API does not expose event-category/event-tag assignment endpoints.");
-                }
-
-                var tenantId = Constants.TenantConstants.DefaultTenantId;
-
-                var existingSessions = await EventService.GetSessionsByEventAsync(createdEventId);
-                var defaultSession = existingSessions?.FirstOrDefault();
-
-                if (defaultSession != null && sessions.Count > 0)
-                {
-                    var firstSessionModel = sessions[0];
-                    firstSessionModel.Id = defaultSession.Id;
-
-                    var updateDto = firstSessionModel.ToUpdateDto(createdEventId);
-                    await EventService.UpdateSessionAsync(updateDto);
-                }
-
-                for (int i = 1; i < sessions.Count; i++)
-                {
-                    var sessionModel = sessions[i];
-                    var createSessionDto = sessionModel.ToCreateDto(createdEventId, tenantId);
-                    await EventService.CreateSessionAsync(createSessionDto);
-                }
 
                 var destination = createDto.EventStatusId == 1
                     ? $"/events/{createdEventId}/edit"
@@ -917,6 +1267,13 @@ public partial class CreateEvent
 
         _newDayDate = null;
         _newDayLabel = null;
+        AnnounceSchedulingChange("Day detail added.");
+    }
+
+    private void RemoveInlineDay(InlineDayModel day)
+    {
+        _inlineDays.Remove(day);
+        AnnounceSchedulingChange("Day detail removed.");
     }
 
     private void AddInlineRoom()
@@ -932,6 +1289,13 @@ public partial class CreateEvent
 
         _newRoomName = null;
         _newRoomCapacity = null;
+        AnnounceSchedulingChange("Room added.");
+    }
+
+    private void RemoveInlineRoom(InlineRoomModel room)
+    {
+        _inlineRooms.Remove(room);
+        AnnounceSchedulingChange("Room removed.");
     }
 
     private void AddInlineAgendaItem()
@@ -960,46 +1324,113 @@ public partial class CreateEvent
         _newAgendaStartTime = null;
         _newAgendaEndTime = null;
         _newAgendaRoomIndex = null;
+        AnnounceSchedulingChange("Agenda row added.");
     }
 
-    private void PopulateInlineSchedulingOnDto()
+    private void RemoveInlineAgendaItem(InlineAgendaItemModel item)
     {
+        _inlineAgendaItems.Remove(item);
+        AnnounceSchedulingChange("Agenda row removed.");
+    }
+
+    private void EnsureInlineDaysFromSessions()
+    {
+        foreach (var localDate in sessions
+            .Select(session => DateOnly.FromDateTime(session.StartTime))
+            .Distinct()
+            .OrderBy(date => date))
+        {
+            if (_inlineDays.Any(day => day.LocalDate == localDate))
+            {
+                continue;
+            }
+
+            _inlineDays.Add(new InlineDayModel
+            {
+                LocalDate = localDate,
+                SortOrder = _inlineDays.Count
+            });
+        }
+
+        _newAgendaDayDate ??= _inlineDays.FirstOrDefault()?.LocalDate;
+    }
+
+    private void PopulateSchedulingOnRequest()
+    {
+        createDto.CategoryIds = selectedCategoryIds.ToList();
+        createDto.TagIds = selectedTagIds.ToList();
+
+        createDto.Sessions = sessions.Select((session, index) => new CreateEventSessionRequest
+        {
+            TempKey = $"session-{index}",
+            StartTime = DateTimeHelper.ConvertLocalToUtc(session.StartTime),
+            EndTime = DateTimeHelper.ConvertLocalToUtc(session.EndTime),
+            LocationId = session.LocationId,
+            FeaturedImageId = session.UseEventImage ? null : session.FeaturedImageId,
+            SortOrder = index,
+            Title = string.IsNullOrWhiteSpace(session.Title) ? createDto.Title : session.Title,
+            Description = session.Description,
+            MaxAudienceAttendees = session.MaxAudienceAttendees,
+            RegistrationModeId = session.RegistrationModeId,
+            SessionTemplateId = session.SessionTemplateId,
+            LanguageIds = session.LanguageIds.ToList()
+        }).ToList();
+
         if (_inlineDays.Count > 0)
         {
-            createDto.Days = _inlineDays.Select(d => new InlineEventDayDto
+            createDto.Days = _inlineDays.Select(d => new CreateEventDayRequest
             {
-                LocalDate = d.LocalDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                TempKey = GetDayTempKey(d.LocalDate),
+                LocalDate = new DateTimeOffset(d.LocalDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
                 Label = d.Label,
                 IsPublished = true,
                 SortOrder = d.SortOrder,
                 AllowsDayScopeRegistration = true
             }).ToList();
         }
+        else
+        {
+            createDto.Days = new List<CreateEventDayRequest>();
+        }
 
         if (_inlineRooms.Count > 0 && sessions.Count > 0 && sessions[0].LocationId.HasValue)
         {
-            createDto.Rooms = _inlineRooms.Select(r => new InlineLocationRoomDto
+            createDto.Rooms = _inlineRooms.Select((r, index) => new CreateEventRoomRequest
             {
+                TempKey = GetRoomTempKey(index),
                 LocationId = sessions[0].LocationId!.Value,
                 Name = r.Name,
                 Capacity = r.Capacity,
                 SortOrder = r.SortOrder
             }).ToList();
         }
+        else
+        {
+            createDto.Rooms = new List<CreateEventRoomRequest>();
+        }
 
         if (_inlineAgendaItems.Count > 0)
         {
-            createDto.AgendaItems = _inlineAgendaItems.Select(a => new InlineEventAgendaItemDto
+            createDto.AgendaItems = _inlineAgendaItems.Select(a => new CreateEventAgendaItemRequest
             {
                 Title = a.Title,
                 StartTime = a.StartTime,
                 EndTime = a.EndTime,
-                RoomId = null,
+                DayTempKey = GetDayTempKey(DateOnly.FromDateTime(a.StartTime.LocalDateTime)),
+                RoomTempKey = a.RoomIndex.HasValue ? GetRoomTempKey(a.RoomIndex.Value) : null,
                 KindId = null,
                 SortOrder = a.SortOrder
             }).ToList();
         }
+        else
+        {
+            createDto.AgendaItems = new List<CreateEventAgendaItemRequest>();
+        }
     }
+
+    private static string GetDayTempKey(DateOnly localDate) => $"day-{localDate:yyyyMMdd}";
+
+    private static string GetRoomTempKey(int index) => $"room-{index}";
 
     private sealed class InlineDayModel
     {

@@ -1,7 +1,6 @@
 // ABOUTME: Component tests for InstanceOnboarding wizard completion flow and redirect outcomes.
-// ABOUTME: Verifies single-tenant host choice behavior and multi-tenant admin redirect behavior.
+// ABOUTME: Verifies convention-first single-tenant completion and multi-tenant admin redirect behavior.
 
-using Bunit.TestDoubles;
 using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Pages.Onboarding;
 
@@ -12,7 +11,6 @@ public class InstanceOnboardingTests : IDisposable
     private readonly BlazorTestContext _ctx;
     private readonly IInstanceOnboardingService _instanceOnboardingService;
     private readonly IUserService _userService;
-    private readonly IGroupService _groupService;
     private readonly BunitNavigationManager _nav;
 
     public InstanceOnboardingTests()
@@ -22,11 +20,9 @@ public class InstanceOnboardingTests : IDisposable
 
         _instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
         _userService = Substitute.For<IUserService>();
-        _groupService = Substitute.For<IGroupService>();
 
         _ctx.Services.AddSingleton(_instanceOnboardingService);
         _ctx.Services.AddSingleton(_userService);
-        _ctx.Services.AddSingleton(_groupService);
         _ctx.Services.AddSingleton(Substitute.For<ILogger<InstanceOnboarding>>());
 
         var httpClientFactory = Substitute.For<IHttpClientFactory>();
@@ -60,8 +56,6 @@ public class InstanceOnboardingTests : IDisposable
             });
         _instanceOnboardingService.RefreshAuthSessionAsync().Returns(true);
 
-        _groupService.CreateGroupAsync(Arg.Any<string>(), Arg.Any<string?>()).Returns(true);
-
         SetupBffJsModule();
     }
 
@@ -81,8 +75,8 @@ public class InstanceOnboardingTests : IDisposable
         {
             if (cut.Markup.Contains("Choose Your Tenant Mode", StringComparison.OrdinalIgnoreCase)
                 || cut.Markup.Contains("Help me choose", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("Recommended", StringComparison.OrdinalIgnoreCase)
-                || cut.Markup.Contains("Advanced", StringComparison.OrdinalIgnoreCase))
+                || cut.Markup.Contains("Single Tenant (Recommended)", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Multi Tenant (Advanced)", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Tenant mode chooser should not be visible during onboarding.");
             }
@@ -92,23 +86,21 @@ public class InstanceOnboardingTests : IDisposable
     }
 
     [Test]
-    public async Task CompleteOnboarding_SingleTenantPersonal_RedirectsToEvents()
+    public async Task SingleTenantHostChoice_IsNotRendered()
     {
         // Arrange
         var cut = RenderForDeploymentMode("SingleTenant");
 
-        // Act
-        GoToSingleTenantHostStep(cut);
-        ClickButton(cut, "Publish Under My Account");
-        ClickButton(cut, "Next");
-        ClickButton(cut, "Complete Instance Onboarding");
-
-        // Assert
+        // Assert — single-tenant onboarding is convention-first and does not ask for first publisher scope.
         cut.WaitForAssertion(() =>
         {
-            if (!UriEndsWith("/events"))
+            if (cut.Markup.Contains("Set Up Your First Host", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Personal Account", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Quick Group", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Formal Organization", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("I Will Do This Later", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"Expected redirect to /events, got '{_nav.Uri}'.");
+                throw new InvalidOperationException("Single-tenant first host choice UI should not be visible during onboarding.");
             }
         });
 
@@ -116,71 +108,51 @@ public class InstanceOnboardingTests : IDisposable
     }
 
     [Test]
-    public async Task CompleteOnboarding_SingleTenantOrganization_RedirectsToOrganizationCreate()
+    public async Task CompleteOnboarding_SingleTenant_ShowsLaunchHandoff()
     {
         // Arrange
         var cut = RenderForDeploymentMode("SingleTenant");
 
         // Act
-        GoToSingleTenantHostStep(cut);
-        ClickButton(cut, "Organization (Formal Setup)");
-        ClickButton(cut, "Next");
+        GoToPreflight(cut);
         ClickButton(cut, "Complete Instance Onboarding");
 
         // Assert
         cut.WaitForAssertion(() =>
         {
-            if (!UriEndsWith("/organizations/create"))
+            if (!cut.Markup.Contains("Your Site Is Ready", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Browse Events", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Open Instance Settings", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"Expected redirect to /organizations/create, got '{_nav.Uri}'.");
+                throw new InvalidOperationException("Expected launch handoff after completing SingleTenant onboarding.");
             }
         });
 
-        await Task.CompletedTask;
+        await _instanceOnboardingService.Received(1).CompleteAsync(
+            Arg.Is<OnboardingCompletionModel>(model => model != null
+                && model.DeploymentMode == "SingleTenant"
+                && model.SiteProfile.SiteName == "ISLAMU Explore"
+                && model.SiteProfile.Locale == "en"
+                && model.SiteProfile.TimeZone == "UTC"));
     }
 
     [Test]
-    public async Task CompleteOnboarding_SingleTenantGroup_CreatesStarterGroup_AndRedirectsToEvents()
-    {
-        // Arrange
-        var cut = RenderForDeploymentMode("SingleTenant");
-
-        // Act
-        GoToSingleTenantHostStep(cut);
-        ClickButton(cut, "Group (Informal Quick Setup)");
-        ClickButton(cut, "Next");
-        ClickButton(cut, "Complete Instance Onboarding");
-
-        // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!UriEndsWith("/events"))
-            {
-                throw new InvalidOperationException($"Expected redirect to /events, got '{_nav.Uri}'.");
-            }
-        });
-
-        await _groupService.Received(1).CreateGroupAsync(
-            Arg.Is<string>(name => !string.IsNullOrWhiteSpace(name)),
-            Arg.Any<string?>());
-    }
-
-    [Test]
-    public async Task CompleteOnboarding_MultiTenant_RedirectsToInstanceAdminSettings()
+    public async Task CompleteOnboarding_MultiTenant_ShowsLaunchHandoff()
     {
         // Arrange
         var cut = RenderForDeploymentMode("MultiTenant");
 
         // Act
-        ClickButton(cut, "Next");
+        GoToPreflight(cut);
         ClickButton(cut, "Complete Instance Onboarding");
 
         // Assert
         cut.WaitForAssertion(() =>
         {
-            if (!UriEndsWith("/admin/instance/settings"))
+            if (!cut.Markup.Contains("Your Site Is Ready", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Open Instance Settings", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"Expected redirect to /admin/instance/settings, got '{_nav.Uri}'.");
+                throw new InvalidOperationException("Expected launch handoff after completing MultiTenant onboarding.");
             }
         });
 
@@ -194,12 +166,14 @@ public class InstanceOnboardingTests : IDisposable
         var cut = RenderForDeploymentMode("MultiTenant");
 
         // Act
-        ClickButton(cut, "Next");
+        GoToPreflight(cut);
         ClickButton(cut, "Complete Instance Onboarding");
 
         // Assert
         await _instanceOnboardingService.Received(1).CompleteAsync(
-            Arg.Is<OnboardingCompletionModel>(model => model.DeploymentMode == "MultiTenant"));
+            Arg.Is<OnboardingCompletionModel>(model => model != null
+                && model.DeploymentMode == "MultiTenant"
+                && model.SiteProfile.SiteName == "ISLAMU Explore"));
     }
 
     [Test]
@@ -209,7 +183,7 @@ public class InstanceOnboardingTests : IDisposable
         var cut = RenderForDeploymentMode("MultiTenant");
 
         // Act
-        ClickButton(cut, "Next");
+        GoToPreflight(cut);
         ClickButton(cut, "Complete Instance Onboarding");
 
         // Assert
@@ -248,10 +222,38 @@ public class InstanceOnboardingTests : IDisposable
             DefaultBrandDisplayName = "ISLAMU Explore"
         });
 
+        _instanceOnboardingService.GetOnboardingPreflightAsync().Returns(new OnboardingPreflightModel
+        {
+            DeploymentMode = deploymentMode,
+            IsReadyToLaunch = true,
+            BlockingChecks =
+            [
+                new OnboardingPreflightCheckModel
+                {
+                    Code = "setup_secret",
+                    Name = "Setup Secret",
+                    Severity = "Blocking",
+                    Status = "Pass",
+                    Message = "Setup secret is active."
+                }
+            ],
+            WarningChecks =
+            [
+                new OnboardingPreflightCheckModel
+                {
+                    Code = "smtp",
+                    Name = "SMTP",
+                    Severity = "Warning",
+                    Status = "Warning",
+                    Message = "SMTP can be configured after launch."
+                }
+            ]
+        });
+
         var cut = _ctx.RenderMudComponent<InstanceOnboarding>();
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Name Your Instance", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Name Your Site", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Onboarding form did not finish loading.");
             }
@@ -260,14 +262,14 @@ public class InstanceOnboardingTests : IDisposable
         return cut;
     }
 
-    private static void GoToSingleTenantHostStep(IRenderedComponent<InstanceOnboarding> cut)
+    private static void GoToPreflight(IRenderedComponent<InstanceOnboarding> cut)
     {
         ClickButton(cut, "Next");
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Set Up Your First Host", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Launch Readiness", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Expected first host setup step for single tenant mode.");
+                throw new InvalidOperationException("Preflight step did not render.");
             }
         });
     }
@@ -283,11 +285,6 @@ public class InstanceOnboardingTests : IDisposable
         }
 
         button.Click();
-    }
-
-    private bool UriEndsWith(string suffix)
-    {
-        return _nav.Uri.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed class OkHttpHandler : HttpMessageHandler

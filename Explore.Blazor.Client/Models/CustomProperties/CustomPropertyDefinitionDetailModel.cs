@@ -11,6 +11,7 @@ namespace Explore.Blazor.Client.Models.CustomProperties;
 public sealed class CustomPropertyDefinitionDetailModel
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public EntityTypeName EntityTypeName { get; set; }
     public Guid TenantId { get; set; }
     public string Namespace { get; set; } = string.Empty;

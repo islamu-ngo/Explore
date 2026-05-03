@@ -20,12 +20,13 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private bool _isDarkMode = false;
     private bool _isInitialized = false;
-    private bool _announcementVisible = true;
+    private bool _announcementVisible;
     private MudTheme? _theme;
     private MudThemeProvider _mudThemeProvider = null!;
     private bool _hideChrome;
     private bool _showCommunityGuidelinesLink = true;
     private string _brandDisplayName = string.Empty;
+    private bool _syncingShellLegacyState;
 
     [Inject]
     protected IUserService UserService { get; set; } = null!;
@@ -87,6 +88,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         SidebarState.OnChange += OnLegacySidebarStateChanged;
         AiAssistantState.OnChange += OnLegacyAiAssistantStateChanged;
         TenantNavLinksState.OnChange += OnTenantNavLinksChanged;
+        DockLayoutState.Changed += OnDockLayoutChanged;
         UpdateChromeVisibility();
         SyncShellDockState();
 
@@ -104,10 +106,13 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         if (firstRender)
         {
+            var isAuthenticated = false;
+
             try
             {
                 var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-                if (authState.User.Identity?.IsAuthenticated == true)
+                isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+                if (isAuthenticated)
                 {
                     await UserService.SyncUserAsync();
                 }
@@ -126,7 +131,10 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                         || settings.AllowOrganizationSubmittedEvents
                         || settings.AllowGroupSubmittedEvents;
                     _brandDisplayName = settings.BrandDisplayName;
-                    AiAssistantState.SetAvailable(settings.IsAiAssistantAvailable);
+                    AiAssistantState.SetPolicy(
+                        settings.IsAiAssistantAvailable,
+                        settings.AiAssistantAllowAnonymousAccess,
+                        isAuthenticated);
                     DockLayoutState.Refresh();
                     await InvokeAsync(StateHasChanged);
                 }
@@ -238,6 +246,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         builder.AddAttribute(2, "BrandDisplayName", _brandDisplayName);
         builder.AddAttribute(3, "ShowCommunityGuidelinesLink", _showCommunityGuidelinesLink);
         builder.AddAttribute(4, "TenantLinks", TenantNavLinksState.Links);
+        builder.AddAttribute(5, "OnCloseRequested", EventCallback.Factory.Create(this, CloseShellLeftNav));
         builder.CloseComponent();
     }
 
@@ -250,14 +259,56 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private void OnLegacySidebarStateChanged()
     {
+        if (_syncingShellLegacyState)
+        {
+            return;
+        }
+
         SyncShellDockState();
         StateHasChanged();
     }
 
     private void OnLegacyAiAssistantStateChanged()
     {
+        if (_syncingShellLegacyState)
+        {
+            return;
+        }
+
         SyncShellDockState();
         StateHasChanged();
+    }
+
+    private void OnDockLayoutChanged()
+    {
+        var leftNavOpen = DockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen == true;
+        var aiOpen = DockLayoutState.GetPanel(ShellDockPanels.AiAssistantId)?.State.IsOpen == true;
+
+        _syncingShellLegacyState = true;
+        try
+        {
+            SidebarState.SetOpen(leftNavOpen);
+
+            if (aiOpen && !AiAssistantState.IsOpen)
+            {
+                AiAssistantState.Open();
+            }
+            else if (!aiOpen && AiAssistantState.IsOpen)
+            {
+                AiAssistantState.Close();
+            }
+        }
+        finally
+        {
+            _syncingShellLegacyState = false;
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void CloseShellLeftNav()
+    {
+        SyncPanelState(ShellDockPanels.LeftNavId, shouldBeOpen: false);
     }
 
     private void OnTenantNavLinksChanged()
@@ -312,6 +363,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         SidebarState.OnChange -= OnLegacySidebarStateChanged;
         AiAssistantState.OnChange -= OnLegacyAiAssistantStateChanged;
         TenantNavLinksState.OnChange -= OnTenantNavLinksChanged;
+        DockLayoutState.Changed -= OnDockLayoutChanged;
         AppearanceThemeService.Changed -= OnAppearanceChanged;
         DockLayoutState.Unregister(ShellDockPanels.LeftNavId);
         DockLayoutState.Unregister(ShellDockPanels.AiAssistantId);

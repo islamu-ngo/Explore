@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Shell;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
@@ -30,7 +32,13 @@ public partial class NavMenu : IDisposable
     protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
 
     [Inject]
+    protected IUserSettingsService UserSettingsService { get; set; } = null!;
+
+    [Inject]
     protected IInstanceOnboardingService InstanceOnboardingService { get; set; } = null!;
+
+    [Inject]
+    protected ITenantOnboardingService TenantOnboardingService { get; set; } = null!;
 
     [Inject]
     protected ITenantNavigationService TenantNavigationService { get; set; } = null!;
@@ -67,22 +75,28 @@ public partial class NavMenu : IDisposable
     private bool _userLoaded = false;
     private string _brandDisplayName = string.Empty;
     private string _brandLogoUrl = string.Empty;
+    private string _eventCatalogLabel = "events";
     public string SearchQuery { get; set; } = "";
     private MudTextField<string> _searchField = null!;
     private IReadOnlyList<TenantNavigationLinkDto> _navigationLinks = [];
     private EventCreationEligibility _eventCreationEligibility = EventCreationEligibility.NotEligible;
     private bool _isSingleTenantMode = true;
+    private bool _isCurrentUserInstanceAdmin;
+    private bool _isCurrentUserTenantAdmin;
     private bool _showAddEventForAnonymous;
     private ICollection<OrganizationListDto> _userOrganizations = new List<OrganizationListDto>();
     private ICollection<GroupPublisherListDto> _userGroups = new List<GroupPublisherListDto>();
     private bool _orgSubmenuOpen;
     private bool _groupSubmenuOpen;
+    private const string AiAssistantPreferencesCategory = "AiAssistantPreferences";
+    private const string ShowAiAssistantNavbarButtonKey = "ai_assistant_preferences.show_navbar_button";
 
     protected override async Task OnInitializedAsync()
     {
         SidebarState.OnChange += StateHasChanged;
         AiAssistantState.OnChange += StateHasChanged;
         TenantNavLinksState.OnChange += StateHasChanged;
+        DockLayoutState.Changed += OnDockLayoutChanged;
         await LoadPublicExperienceAsync();
         await LoadCurrentUserAsync();
         await LoadNavigationLinksAsync();
@@ -109,25 +123,84 @@ public partial class NavMenu : IDisposable
 
     private async Task LoadPublicExperienceAsync()
     {
-        var settings = await PublicExperienceService.GetSettingsAsync();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+        var shellTask = PublicExperienceService.GetCachedShellAsync();
+        var shell = shellTask is null ? null : await shellTask;
+        if (shell is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(shell.Home.BrandDisplayName))
+            {
+                _brandDisplayName = shell.Home.BrandDisplayName;
+            }
+
+            _brandLogoUrl = shell.Home.BrandLogoUrl ?? string.Empty;
+            _eventCatalogLabel = string.IsNullOrWhiteSpace(shell.EventCatalog.Label)
+                ? _eventCatalogLabel
+                : shell.EventCatalog.Label.ToLowerInvariant();
+        }
+
+        var settingsTask = PublicExperienceService.GetSettingsAsync();
+        var settings = settingsTask is null ? null : await settingsTask;
         if (settings == null)
         {
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(settings.BrandDisplayName))
+        if (string.IsNullOrWhiteSpace(_brandDisplayName) && !string.IsNullOrWhiteSpace(settings.BrandDisplayName))
         {
             _brandDisplayName = settings.BrandDisplayName;
         }
 
-        _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
-        AiAssistantState.SetAvailable(settings.IsAiAssistantAvailable);
+        _brandLogoUrl = string.IsNullOrWhiteSpace(_brandLogoUrl)
+            ? settings.BrandLogoUrl ?? string.Empty
+            : _brandLogoUrl;
+        AiAssistantState.SetPolicy(
+            settings.IsAiAssistantAvailable,
+            settings.AiAssistantAllowAnonymousAccess,
+            isAuthenticated);
+
+        if (isAuthenticated)
+        {
+            await LoadAiAssistantPreferenceAsync();
+        }
 
         // Show "Add Event" button to anonymous visitors when at least one
         // submission type is enabled, prompting them to log in on click.
         _showAddEventForAnonymous = settings.AllowUserSubmittedEvents
             || settings.AllowOrganizationSubmittedEvents
             || settings.AllowGroupSubmittedEvents;
+    }
+
+    private async Task LoadAiAssistantPreferenceAsync()
+    {
+        try
+        {
+            var response = await UserSettingsService.GetSettingsAsync(AiAssistantPreferencesCategory);
+            var setting = response?.Settings?.FirstOrDefault(s => s.Key == ShowAiAssistantNavbarButtonKey);
+            AiAssistantState.SetUserNavbarPreference(ParseBooleanSetting(setting?.Value, defaultValue: true));
+        }
+        catch
+        {
+            AiAssistantState.SetUserNavbarPreference(true);
+        }
+    }
+
+    private static bool ParseBooleanSetting(string? value, bool defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<bool>(value);
+        }
+        catch (JsonException)
+        {
+            return bool.TryParse(value, out var parsed) ? parsed : defaultValue;
+        }
     }
 
     private async Task LoadCurrentUserAsync()
@@ -161,8 +234,7 @@ public partial class NavMenu : IDisposable
 
     private void ToggleSidebarPanel()
     {
-        SidebarState.Toggle();
-        MirrorShellDockPanel(ShellDockPanels.LeftNavId, SidebarState.HasSidebar && SidebarState.IsOpen);
+        DockLayoutState.Toggle(ShellDockPanels.LeftNavId);
     }
 
     private void ToggleAiAssistantPanel()
@@ -195,6 +267,13 @@ public partial class NavMenu : IDisposable
         _groupSubmenuOpen = false;
     }
 
+    private bool IsSidebarDockOpen => DockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen == true;
+
+    private void OnDockLayoutChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     private void ToggleOrgSubmenu()
     {
         _orgSubmenuOpen = !_orgSubmenuOpen;
@@ -216,26 +295,28 @@ public partial class NavMenu : IDisposable
     // and serialized to WASM via AddAuthenticationStateSerialization.
     // Claim types match Explore.Application.Authorization.AdminClaimTypes constants.
 
-    private static bool HasAnyAdminAuthority(ClaimsPrincipal user)
+    private bool HasAnyAdminAuthority(ClaimsPrincipal user)
     {
         if (user.Identity?.IsAuthenticated != true)
             return false;
 
-        return user.HasClaim(c => c.Type == "explore:admin:instance")
+        return _isCurrentUserInstanceAdmin
+               || _isCurrentUserTenantAdmin
+               || user.HasClaim(c => c.Type == "explore:admin:instance")
                || user.HasClaim(c => c.Type == "explore:admin:tenant")
                || user.HasClaim(c => c.Type == "explore:admin:organization");
     }
 
-    private static bool IsInstanceAdmin(ClaimsPrincipal user)
+    private bool IsInstanceAdmin(ClaimsPrincipal user)
     {
         return user.Identity?.IsAuthenticated == true
-               && user.HasClaim(c => c.Type == "explore:admin:instance");
+               && (_isCurrentUserInstanceAdmin || user.HasClaim(c => c.Type == "explore:admin:instance"));
     }
 
-    private static bool IsTenantAdmin(ClaimsPrincipal user)
+    private bool IsTenantAdmin(ClaimsPrincipal user)
     {
         return user.Identity?.IsAuthenticated == true
-               && user.HasClaim(c => c.Type == "explore:admin:tenant");
+               && (_isCurrentUserTenantAdmin || user.HasClaim(c => c.Type == "explore:admin:tenant"));
     }
 
     private static IEnumerable<string> GetAdminOrganizationIds(ClaimsPrincipal user)
@@ -250,6 +331,26 @@ public partial class NavMenu : IDisposable
 
     private async Task LoadNavigationLinksAsync()
     {
+        var shellTask = PublicExperienceService.GetCachedShellAsync();
+        var shell = shellTask is null ? null : await shellTask;
+        if (shell?.Navigation.Links.Count > 0)
+        {
+            _navigationLinks = shell.Navigation.Links
+                .Where(link => !string.IsNullOrWhiteSpace(link.Label) && !string.IsNullOrWhiteSpace(link.Url))
+                .OrderBy(link => link.SortOrder)
+                .ThenBy(link => link.Label, StringComparer.OrdinalIgnoreCase)
+                .Select(link => new TenantNavigationLinkDto
+                {
+                    Id = Guid.NewGuid(),
+                    Label = link.Label,
+                    Url = link.Url,
+                    Order = link.SortOrder,
+                    OpenInNewTab = false
+                })
+                .ToList();
+            return;
+        }
+
         await TenantNavLinksState.EnsureLoadedAsync(TenantNavigationService);
         _navigationLinks = TenantNavLinksState.Links;
     }
@@ -280,10 +381,21 @@ public partial class NavMenu : IDisposable
             _isSingleTenantMode = status == null
                 || string.IsNullOrWhiteSpace(status.SelectedDeploymentMode)
                 || string.Equals(status.SelectedDeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
+            _isCurrentUserInstanceAdmin = status?.IsAuthenticated == true && status.IsCurrentUserInstanceAdmin;
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                var tenantStatus = await TenantOnboardingService.GetStatusAsync();
+                _isCurrentUserTenantAdmin = tenantStatus?.IsAuthenticated == true
+                    && tenantStatus.IsCurrentUserTenantAdministrator;
+            }
         }
         catch
         {
             _isSingleTenantMode = true;
+            _isCurrentUserInstanceAdmin = false;
+            _isCurrentUserTenantAdmin = false;
         }
     }
 
@@ -333,6 +445,7 @@ public partial class NavMenu : IDisposable
         SidebarState.OnChange -= StateHasChanged;
         AiAssistantState.OnChange -= StateHasChanged;
         TenantNavLinksState.OnChange -= StateHasChanged;
+        DockLayoutState.Changed -= OnDockLayoutChanged;
         GC.SuppressFinalize(this);
     }
 }

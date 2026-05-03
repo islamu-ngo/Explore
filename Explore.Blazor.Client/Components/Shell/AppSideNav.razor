@@ -3,22 +3,44 @@
 
 <nav class="app-side-nav" aria-label="@AriaLabel" data-testid="@DataTestId">
     <MudNavMenu Dense="true" Class="px-2 pt-2">
-        <MudText Typo="Typo.h6" Class="app-side-nav__title">
-            Events
-        </MudText>
-        <MudNavLink Href="/events"
-                    Icon="@Icons.Material.Filled.ManageSearch"
-                    Match="NavLinkMatch.All">
-            Advanced Search
-        </MudNavLink>
-        <MudNavLink Href="/events?sort=recent"
-                    Icon="@Icons.Material.Filled.NewReleases">
-            Recently Added
-        </MudNavLink>
-        <MudNavLink Href="/events?sort=random"
-                    Icon="@Icons.Material.Filled.Shuffle">
-            Random
-        </MudNavLink>
+        <div class="app-side-nav__header">
+            <MudText Typo="Typo.h6" Class="app-side-nav__title">
+                @ResolvedEventCatalogLabel
+            </MudText>
+            @if (HasCloseAction)
+            {
+                <AppIconButton Icon="@Icons.Material.Filled.Close"
+                               Color="Color.Inherit"
+                               Size="Size.Small"
+                               OnClick="OnCloseRequested"
+                               Title="Close sidebar navigation"
+                               aria-label="Close sidebar navigation" />
+            }
+        </div>
+        @if (IsOrganizationCentric)
+        {
+            <MudNavLink Href="@ResolvedEventCatalogUrl"
+                        Icon="@Icons.Material.Filled.Event"
+                        Match="NavLinkMatch.Prefix">
+                @ResolvedEventCatalogLabel
+            </MudNavLink>
+        }
+        else
+        {
+            <MudNavLink Href="/events"
+                        Icon="@Icons.Material.Filled.ManageSearch"
+                        Match="NavLinkMatch.All">
+                Advanced Search
+            </MudNavLink>
+            <MudNavLink Href="/events?sort=recent"
+                        Icon="@Icons.Material.Filled.NewReleases">
+                Recently Added
+            </MudNavLink>
+            <MudNavLink Href="/events?sort=random"
+                        Icon="@Icons.Material.Filled.Shuffle">
+                Random
+            </MudNavLink>
+        }
 
         <MudDivider Class="my-2" />
 

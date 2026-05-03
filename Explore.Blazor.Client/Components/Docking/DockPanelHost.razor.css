@@ -1,5 +1,5 @@
-/* ABOUTME: Generic panel chrome for descriptor-driven dock panels.
-   ABOUTME: Uses logical borders and tokenized widths for shell/workspace consistency. */
+/* ABOUTME: Generic dock panel surface for descriptor-driven dock content.
+   ABOUTME: Uses logical borders and tokenized widths while content owns panel chrome. */
 
 .dock-panel-host {
     position: relative;
@@ -39,22 +39,6 @@
 .dock-panel-host--mode-inspector {
     max-inline-size: min(100%, var(--dock-panel-width, var(--isl-dock-workspace-inspector-width, 440px)));
     block-size: 100%;
-}
-
-.dock-panel-host__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--isl-space-2);
-    padding-block: var(--isl-space-3);
-    padding-inline: var(--isl-space-4);
-    border-block-end: 1px solid var(--isl-color-border-subtle);
-}
-
-.dock-panel-host__title {
-    font: inherit;
-    font-weight: 600;
-    color: var(--mud-palette-text-primary);
 }
 
 .dock-panel-host__body {

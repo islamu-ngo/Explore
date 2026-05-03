@@ -163,22 +163,56 @@ public sealed class DockLayoutStateTests
     }
 
     [Test]
-    public async Task UpdateViewport_ClosesStartPanelsWhenRightPanelsConstrainContent()
+    public async Task UpdateViewport_ClosesStartPanelsOnlyWhenRightPanelsConstrainContentBelowMobileWidth()
     {
         var state = new DockLayoutState();
         var workspaceCustomizeId = new DockPanelId("events.customize-view");
         state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
-        state.Register(CreateDescriptor(ShellAiId, DockScope.Shell, DockSide.End, defaultWidth: 360), _ => { });
         state.Register(CreateDescriptor(workspaceCustomizeId, DockScope.Workspace, DockSide.End, defaultWidth: 320), _ => { });
-        state.UpdateViewport(1750, isMobile: false);
+        state.UpdateViewport(970, isMobile: false);
         state.Open(ShellNavId);
-        state.Open(ShellAiId);
 
         state.Open(workspaceCustomizeId);
 
         await Assert.That(state.GetPanel(ShellNavId)?.State.IsOpen).IsFalse();
-        await Assert.That(state.GetPanel(ShellAiId)?.State.IsOpen).IsTrue();
         await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
+    }
+
+    [Test]
+    public async Task UpdateViewport_AllowsStartAndEndPanelsUntilContentShrinksBelowMobileWidth()
+    {
+        var state = new DockLayoutState();
+        var workspaceCustomizeId = new DockPanelId("events.customize-view");
+        state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
+        state.Register(CreateDescriptor(workspaceCustomizeId, DockScope.Workspace, DockSide.End, defaultWidth: 320), _ => { });
+        state.UpdateViewport(1000, isMobile: false);
+
+        state.Open(ShellNavId);
+        state.Open(workspaceCustomizeId);
+
+        var nav = state.GetPanel(ShellNavId)!;
+        await Assert.That(nav.State.IsOpen).IsTrue();
+        await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(nav)).IsFalse();
+    }
+
+    [Test]
+    public async Task Open_StartPanelProjectsToOverlayWhenDockedRightPanelLeavesLessThanMobileContentWidth()
+    {
+        var state = new DockLayoutState();
+        var workspaceCustomizeId = new DockPanelId("events.customize-view");
+        state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
+        state.Register(CreateDescriptor(workspaceCustomizeId, DockScope.Workspace, DockSide.End, defaultWidth: 320), _ => { });
+        state.UpdateViewport(970, isMobile: false);
+        state.Open(workspaceCustomizeId);
+
+        state.Open(ShellNavId);
+
+        var nav = state.GetPanel(ShellNavId)!;
+        await Assert.That(nav.State.IsOpen).IsTrue();
+        await Assert.That(nav.State.Mode).IsEqualTo(DockMode.Docked);
+        await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(nav)).IsTrue();
     }
 
     [Test]
@@ -228,7 +262,7 @@ public sealed class DockLayoutStateTests
         state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
         state.Register(CreateDescriptor(ShellAiId, DockScope.Shell, DockSide.End, defaultWidth: 360), _ => { });
         state.Register(CreateDescriptor(workspaceCustomizeId, DockScope.Workspace, DockSide.End, defaultWidth: 320), _ => { });
-        state.UpdateViewport(1200, isMobile: false);
+        state.UpdateViewport(970, isMobile: false);
         state.Open(ShellNavId);
         state.Open(ShellAiId);
 

@@ -1,0 +1,468 @@
+/* ABOUTME: Scoped styles for the multi-layout event card component.
+   ABOUTME: Supports CompactGrid, DetailedList, and SingleRow modes with icon badges, progressive disclosure, and organizer hover. */
+
+.event-card-root {
+    width: 100%;
+}
+
+/* ── Card Base ── */
+
+::deep .event-card {
+    width: 100% !important;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    background-color: var(--mud-palette-surface);
+
+    &:hover {
+        border-color: var(--mud-palette-primary) !important;
+        box-shadow: 0 0 0 2px var(--mud-palette-primary);
+    }
+
+    &.event-card--selected {
+        border-color: var(--mud-palette-primary) !important;
+        box-shadow: 0 0 0 2px var(--mud-palette-primary);
+    }
+}
+
+/* ── Shared Image Styles ── */
+
+::deep .event-card__image-blur {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: blur(20px);
+    transform: scale(1.1);
+    z-index: 0;
+}
+
+::deep .event-card__image-foreground {
+    position: relative;
+    z-index: 1;
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+::deep .event-card__image-foreground > img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    display: block;
+}
+
+/* ── Shared: Icon Badges ── */
+
+::deep .event-card__icon-badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+::deep .event-card__icon-badges--compact {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 3;
+    background: oklch(0 0 0 / 0.5);
+    border-radius: 6px;
+    padding: 2px 4px;
+    gap: 4px;
+}
+
+::deep .event-card__icon-badges--compact .mud-icon-root {
+    color: oklch(1 0 0 / 0.85) !important;
+    font-size: 1rem;
+}
+
+::deep .event-card__icon-badges--inline {
+    gap: 4px;
+    margin-left: 4px;
+}
+
+::deep .event-card__icon-badges--inline .mud-icon-root {
+    opacity: 0.6;
+    font-size: 1.1rem;
+}
+
+/* ── Shared: Organizer Hover ── */
+
+::deep .event-card__organizer {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8125rem;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+    border-radius: 4px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+::deep .event-card__organizer--clickable {
+    cursor: pointer;
+}
+
+::deep .event-card__organizer--clickable:hover {
+    background-color: var(--mud-palette-primary-hover);
+    color: var(--mud-palette-primary);
+}
+
+::deep .event-card__organizer--clickable:hover .event-card__organizer-name {
+    text-decoration: underline;
+    color: var(--mud-palette-primary);
+}
+
+::deep .event-card__organizer-name {
+    transition: color 0.15s ease;
+}
+
+/* ══════════════════════════════════════════════
+   Mode 1: Compact Grid — image-dominant with overlay
+   ══════════════════════════════════════════════ */
+
+::deep .event-card--CompactGrid {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column;
+    position: relative;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+}
+
+::deep .event-card__image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    overflow: hidden;
+}
+
+::deep .event-card__action-menu--overlay {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 999px;
+    background: oklch(1 0 0 / 0.85);
+    backdrop-filter: blur(8px);
+    padding: 2px;
+}
+
+::deep .event-card__action-menu--overlay .app-icon-button {
+    display: inline-flex;
+}
+
+::deep .event-card__image {
+    position: relative;
+    z-index: 1;
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+::deep .event-card__image > img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    display: block;
+}
+
+::deep .event-card__overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+    background: linear-gradient(to top, oklch(0 0 0 / 0.85) 0%, oklch(0 0 0 / 0.4) 60%, transparent 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 2;
+}
+
+::deep .event-card__overlay-chip {
+    align-self: flex-start;
+}
+
+::deep .event-card__overlay-title {
+    color: #fff !important;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+::deep .event-card__overlay-meta {
+    color: oklch(1 0 0 / 0.7);
+}
+
+::deep .event-card__overlay-meta .mud-typography {
+    color: oklch(1 0 0 / 0.7) !important;
+}
+
+/* ── CompactGrid: +N more badge ── */
+
+::deep .event-card__more-badge {
+    margin-top: 2px;
+}
+
+::deep .event-card__more-chip {
+    font-size: 0.65rem !important;
+    height: 20px !important;
+    opacity: 0.85;
+}
+
+/* ── CompactGrid: Hover reveal panel ── */
+
+::deep .event-card__hover-reveal {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    background: oklch(0 0 0 / 0.85);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 40px 12px 12px;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+::deep .event-card--CompactGrid:hover .event-card__hover-reveal {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+::deep .event-card__hover-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: oklch(1 0 0 / 0.85);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+::deep .event-card__hover-item .mud-icon-root {
+    color: oklch(1 0 0 / 0.6) !important;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+::deep .event-card__hover-item--description {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.4;
+    font-size: 0.75rem;
+    color: oklch(1 0 0 / 0.65);
+}
+
+/* ── CompactGrid: Hide +N badge on hover (reveal replaces it) ── */
+
+::deep .event-card--CompactGrid:hover .event-card__more-badge {
+    opacity: 0;
+}
+
+/* ══════════════════════════════════════════════
+   Mode 2: Detailed List — horizontal card
+   ══════════════════════════════════════════════ */
+
+::deep .event-card--DetailedList {
+    height: 280px !important;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+::deep .event-card__horizontal {
+    display: flex;
+    flex-direction: row;
+    height: 280px;
+}
+
+::deep .event-card__horizontal-image {
+    flex: 0 0 200px;
+    height: 280px;
+    overflow: hidden;
+    position: relative;
+}
+
+::deep .event-card__horizontal-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px;
+    overflow: hidden;
+    gap: 6px;
+}
+
+::deep .event-card__dl-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+::deep .event-card__dl-title {
+    font-weight: 700;
+    line-height: 1.3;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    flex: 1;
+    min-width: 0;
+}
+
+::deep .event-card__dl-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    max-height: 2rem;
+}
+
+::deep .event-card__dl-chips .mud-chip {
+    margin: 0 !important;
+}
+
+::deep .event-card__dl-description {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    line-height: 1.5;
+    flex: 1;
+    min-height: 0;
+}
+
+::deep .event-card__dl-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    align-items: center;
+    margin-top: auto;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+::deep .event-card__dl-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8125rem;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════
+   Mode 3: Single Row — full-width rich card
+   ══════════════════════════════════════════════ */
+
+::deep .event-card--SingleRow {
+    height: 280px !important;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+::deep .event-card__full-row {
+    display: flex;
+    flex-direction: row;
+    height: 280px;
+}
+
+::deep .event-card__full-row-image {
+    flex: 0 0 210px;
+    height: 280px;
+    overflow: hidden;
+    position: relative;
+}
+
+::deep .event-card__full-row-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px;
+    overflow: hidden;
+    gap: 6px;
+}
+
+::deep .event-card__sr-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+::deep .event-card__sr-title-block {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+::deep .event-card__sr-status-chips {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+::deep .event-card__sr-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    max-height: 2rem;
+}
+
+::deep .event-card__sr-chips .mud-chip {
+    margin: 0 !important;
+}
+
+::deep .event-card__sr-description {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+::deep .event-card__sr-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    align-items: center;
+    margin-top: auto;
+    overflow: hidden;
+}
+
+::deep .event-card__sr-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8125rem;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}

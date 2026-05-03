@@ -30,20 +30,26 @@ public sealed class StartupRoutingService : IStartupRoutingService
             return StartupRouteDecision.Setup;
         }
 
-        if (string.IsNullOrWhiteSpace(instanceStatus.SelectedDeploymentMode)
-            || instanceStatus.SelectedDeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase))
-        {
-            return StartupRouteDecision.PublicHome;
-        }
-
         if (instanceStatus.IsAuthenticated &&
             instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
         {
             return StartupRouteDecision.InstanceAdmin;
         }
 
-        var settings = await _publicExperienceService.GetCachedSettingsAsync();
-        var homeRoute = _publicExperienceService.ResolveHomeRoute(settings);
+        var shellTask = _publicExperienceService.GetCachedShellAsync();
+        var shell = shellTask is null ? null : await shellTask;
+        string homeRoute;
+        if (shell is not null)
+        {
+            homeRoute = _publicExperienceService.ResolveHomeRoute(shell);
+        }
+        else
+        {
+            var settingsTask = _publicExperienceService.GetCachedSettingsAsync();
+            var settings = settingsTask is null ? null : await settingsTask;
+            homeRoute = _publicExperienceService.ResolveHomeRoute(settings);
+        }
+
         return homeRoute.Equals("/home", StringComparison.OrdinalIgnoreCase)
             ? StartupRouteDecision.PublicLanding
             : StartupRouteDecision.PublicHome;

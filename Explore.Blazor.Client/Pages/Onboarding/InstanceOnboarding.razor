@@ -1,13 +1,12 @@
 @page "/onboarding/instance"
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
-@using Explore.Blazor.Client.Clients
+@using Microsoft.AspNetCore.Components.Forms
 @using Explore.Blazor.Client.Models.Responses
 @layout SetupLayout
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject IInstanceOnboardingService InstanceOnboardingService
-@inject IGroupService GroupService
 @inject IUserService UserService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -19,9 +18,9 @@
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
     <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Instance Onboarding</MudText>
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Launch Your Site</MudText>
         <MudText Typo="Typo.body1" Class="mb-4">
-            Set up your platform instance. You can update these settings anytime in instance settings.
+            Add the minimum public profile, review launch readiness, and hand off to the first useful destination.
         </MudText>
 
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
@@ -56,100 +55,126 @@
         {
             <MudStepper @bind-ActiveIndex="_activeStep"
                         NonLinear="false"
-                        ShowResetButton="false"
-                        OnPreviewInteraction="OnPreviewStepInteraction">
+                        ShowResetButton="false">
                 <ChildContent>
-                    <MudStep Title="Instance Identity">
+                    <MudStep Title="Site Profile">
+                    <EditForm EditContext="_profileEditContext" OnValidSubmit="ContinueToPreflightAsync">
+                        <DataAnnotationsValidator />
+                        <MudStack Spacing="3">
+                            <MudText Typo="Typo.h6">Name Your Site</MudText>
+                            <MudText Typo="Typo.body2">
+                                This is the public identity visitors see first. Everything else can be refined after launch.
+                            </MudText>
+
+                            <MudAlert Severity="@(IsMultiTenantMode ? Severity.Info : Severity.Success)" Dense="true" Variant="Variant.Outlined">
+                                @GetDeploymentModeNotice()
+                            </MudAlert>
+
+                            <ValidationSummary />
+
+                            <AppTextField T="string" Label="Site Name (Required)"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Site name is required."
+                                          For="@(() => _siteProfile.SiteName)"
+                                          @bind-Value="_siteProfile.SiteName"
+                                          Placeholder="e.g. ISLAMU Explore, My Community Events" />
+                            <ValidationMessage For="@(() => _siteProfile.SiteName)" />
+
+                            <AppTextField T="string" Label="Support Email (Optional)"
+                                          Variant="Variant.Outlined"
+                                          For="@(() => _siteProfile.SupportEmail)"
+                                          @bind-Value="_siteProfile.SupportEmail"
+                                          Placeholder="support@example.org" />
+                            <ValidationMessage For="@(() => _siteProfile.SupportEmail)" />
+
+                            <AppTextField T="string" Label="Canonical URL (Optional)"
+                                          Variant="Variant.Outlined"
+                                          For="@(() => _siteProfile.CanonicalUrl)"
+                                          @bind-Value="_siteProfile.CanonicalUrl"
+                                          Placeholder="https://events.example.org" />
+                            <ValidationMessage For="@(() => _siteProfile.CanonicalUrl)" />
+
+                            <AppTextField T="string" Label="Purpose (Optional)"
+                                          Variant="Variant.Outlined"
+                                          Lines="3"
+                                          For="@(() => _siteProfile.Purpose)"
+                                          @bind-Value="_siteProfile.Purpose"
+                                          Placeholder="A short note for future admins about what this site is for." />
+                            <ValidationMessage For="@(() => _siteProfile.Purpose)" />
+
+                            <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                                Onboarding will apply safe launch defaults for the public event catalog. Advanced modules,
+                                policies, domains, federation, and branding remain available in instance settings.
+                            </MudAlert>
+                        </MudStack>
+                    </EditForm>
+                    </MudStep>
+
+                    <MudStep Title="Preflight">
                     <MudStack Spacing="3">
-                        <MudText Typo="Typo.h6">Name Your Instance</MudText>
+                        <MudText Typo="Typo.h6">Launch Readiness</MudText>
                         <MudText Typo="Typo.body2">
-                            This name appears in the platform header, emails, and public-facing pages.
-                            You can change it anytime in instance settings.
+                            Critical checks must pass before launch. Operational warnings can be handled after the site is online.
                         </MudText>
 
-                        <MudAlert Severity="@(IsMultiTenantMode ? Severity.Info : Severity.Success)" Dense="true" Variant="Variant.Outlined">
-                            @GetDeploymentModeNotice()
-                        </MudAlert>
+                        @if (_isPreflightLoading)
+                        {
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                        }
+                        else if (_preflight is null)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                                Preflight data is not available. Go back and try again.
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="@(_preflight.IsReadyToLaunch ? Severity.Success : Severity.Error)" Variant="Variant.Outlined">
+                                @(_preflight.IsReadyToLaunch ? "Ready to launch with convention defaults." : "Resolve blocking checks before completing onboarding.")
+                            </MudAlert>
 
-                        <AppTextField T="string" Label="Instance Name (Required)"
-                                      Variant="Variant.Outlined"
-                                      Required="true"
-                                      RequiredError="Instance name is required."
-                                      @bind-Value="_instanceName"
-                                      Placeholder="e.g. ISLAMU Explore, My Community Events" />
+                            <MudText Typo="Typo.subtitle2">Blocking Checks</MudText>
+                            @foreach (var check in _preflight.BlockingChecks)
+                            {
+                                <MudAlert Severity="@GetCheckSeverity(check)" Dense="true" Variant="Variant.Text">
+                                    <strong>@check.Name:</strong> @check.Message
+                                </MudAlert>
+                            }
 
-                        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
-                            All other settings (modules, policies, branding, domains, federation) can be configured
-                            after onboarding from the administration panel.
-                        </MudAlert>
+                            @if (_preflight.WarningChecks.Count > 0)
+                            {
+                                <MudText Typo="Typo.subtitle2">Operational Warnings</MudText>
+                                @foreach (var check in _preflight.WarningChecks)
+                                {
+                                    <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Text">
+                                        <strong>@check.Name:</strong> @check.Message
+                                    </MudAlert>
+                                }
+                            }
+                        }
                     </MudStack>
                     </MudStep>
 
-                    @if (IsSingleTenantMode)
-                    {
-                        <MudStep Title="First Host Setup">
-                        <MudStack Spacing="3">
-                            <MudText Typo="Typo.h6">Set Up Your First Host</MudText>
-                            <MudText Typo="Typo.body2">
-                                Choose how you want to publish events first. This avoids friction later when selecting publisher context during event creation.
-                            </MudText>
-
-                            <MudGrid>
-                                <MudItem xs="12" sm="6">
-                                    <MudPaper Class="pa-4 h-100" Outlined="true" Style="@GetFirstHostCardStyle(FirstHostSetupChoice.Personal)" @onclick="@(() => SelectFirstHost(FirstHostSetupChoice.Personal))">
-                                        <MudStack Spacing="2" AlignItems="AlignItems.Center" Class="text-center">
-                                            <MudIcon Icon="@Icons.Material.Filled.Person" Color="@GetFirstHostIconColor(FirstHostSetupChoice.Personal)" Size="Size.Large" />
-                                            <MudText Typo="Typo.h6">Personal Account</MudText>
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Publish directly under your own name. Quickest start.</MudText>
-                                        </MudStack>
-                                    </MudPaper>
-                                </MudItem>
-
-                                <MudItem xs="12" sm="6">
-                                    <MudPaper Class="pa-4 h-100" Outlined="true" Style="@GetFirstHostCardStyle(FirstHostSetupChoice.GroupQuickSetup)" @onclick="@(() => SelectFirstHost(FirstHostSetupChoice.GroupQuickSetup))">
-                                        <MudStack Spacing="2" AlignItems="AlignItems.Center" Class="text-center">
-                                            <MudIcon Icon="@Icons.Material.Filled.Groups" Color="@GetFirstHostIconColor(FirstHostSetupChoice.GroupQuickSetup)" Size="Size.Large" />
-                                            <MudText Typo="Typo.h6">Quick Group</MudText>
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary">We'll automatically create a starter group for you.</MudText>
-                                        </MudStack>
-                                    </MudPaper>
-                                </MudItem>
-
-                                <MudItem xs="12" sm="12">
-                                    <MudPaper Class="pa-4" Outlined="true" Style="@GetFirstHostCardStyle(FirstHostSetupChoice.Organization)" @onclick="@(() => SelectFirstHost(FirstHostSetupChoice.Organization))">
-                                        <MudStack Spacing="2" AlignItems="AlignItems.Center" Class="text-center">
-                                            <MudIcon Icon="@Icons.Material.Filled.Business" Color="@GetFirstHostIconColor(FirstHostSetupChoice.Organization)" Size="Size.Large" />
-                                            <MudText Typo="Typo.h6">Formal Organization</MudText>
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary">For legal entities. Redirects to complete organization details.</MudText>
-                                        </MudStack>
-                                    </MudPaper>
-                                </MudItem>
-                            </MudGrid>
-
-                            <div class="d-flex justify-center mt-4">
-                                <AppButton Variant="@(_firstHostSetupChoice == FirstHostSetupChoice.DoLater ? Variant.Filled : Variant.Text)"
-                                           Color="@(_firstHostSetupChoice == FirstHostSetupChoice.DoLater ? Color.Primary : Color.Default)"
-                                           OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.DoLater))">
-                                    I Will Do This Later
-                                </AppButton>
-                            </div>
-                        </MudStack>
-                        </MudStep>
-                    }
-
-                    <MudStep Title="Review & Complete">
-                    <MudStack Spacing="2">
-                        <MudText Typo="Typo.h6">Review</MudText>
-                        <MudText Typo="Typo.body2"><strong>Tenant Mode:</strong> @(IsSingleTenantMode ? "Single Tenant" : "Multi Tenant")</MudText>
-                        <MudText Typo="Typo.body2"><strong>Instance Name:</strong> @(string.IsNullOrWhiteSpace(_instanceName) ? "(not set)" : _instanceName)</MudText>
-                        @if (IsSingleTenantMode)
-                        {
-                            <MudText Typo="Typo.body2"><strong>First Host Choice:</strong> @GetFirstHostChoiceLabel()</MudText>
-                        }
-
-                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
-                            @GetCompletionRedirectHint()
+                    <MudStep Title="Launch">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6">Your Site Is Ready</MudText>
+                        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">
+                            Onboarding is complete. Start with the public event catalog, then tune advanced settings when you are ready.
                         </MudAlert>
+                        <MudText Typo="Typo.body2"><strong>Site:</strong> @_siteProfile.SiteName</MudText>
+                        <MudText Typo="Typo.body2"><strong>Mode:</strong> @(IsSingleTenantMode ? "Single Tenant" : "Multi Tenant")</MudText>
+                        <MudStack Direction="Direction.Row" Spacing="2">
+                            <AppButton Href="/events" StartIcon="@Icons.Material.Filled.Event">
+                                Browse Events
+                            </AppButton>
+                            <AppButton Href="/admin/instance/settings"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Secondary"
+                                       StartIcon="@Icons.Material.Filled.Settings">
+                                Open Instance Settings
+                            </AppButton>
+                        </MudStack>
                     </MudStack>
                     </MudStep>
                 </ChildContent>
@@ -163,18 +188,24 @@
                     </AppButton>
                     <MudSpacer />
 
-                    @if (_activeStep < LastStepIndex)
+                    @if (_activeStep == SiteProfileStepIndex)
                     {
-                        <AppButton OnClick="@(() => stepper.NextStepAsync())"
-                                   Disabled="@(_isSaving)">
+                        <AppButton OnClick="ContinueToPreflightAsync"
+                                   Disabled="@(_isSaving || _isPreflightLoading)">
                             Next
+                        </AppButton>
+                    }
+                    else if (_activeStep == PreflightStepIndex)
+                    {
+                        <AppButton OnClick="CompleteOnboardingAsync"
+                                   Disabled="@(_isSaving || _isPreflightLoading || _preflight?.IsReadyToLaunch != true)">
+                            @_completeButtonLabel
                         </AppButton>
                     }
                     else
                     {
-                        <AppButton OnClick="CompleteOnboardingAsync"
-                                   Disabled="@(_isSaving || IsCompleteDisabled)">
-                            @_completeButtonLabel
+                        <AppButton Href="/events">
+                            Go to Events
                         </AppButton>
                     }
                 </ActionContent>
@@ -184,41 +215,33 @@
 </MudContainer>
 
 @code {
-    private enum FirstHostSetupChoice
-    {
-        None = 0,
-        Personal = 1,
-        GroupQuickSetup = 2,
-        Organization = 3,
-        DoLater = 4
-    }
-
-    private const int FirstHostStepIndex = 1;
+    private const int SiteProfileStepIndex = 0;
+    private const int PreflightStepIndex = 1;
+    private const int LaunchStepIndex = 2;
     private string _deploymentMode = "SingleTenant";
-    private string _instanceName = string.Empty;
+    private readonly SelfHostOnboardingProfileModel _siteProfile = new();
+    private EditContext _profileEditContext = default!;
+    private OnboardingPreflightModel? _preflight;
     private bool _isLoading = true;
+    private bool _isPreflightLoading;
     private bool _isSaving;
     private string? _errorMessage;
     private bool _setupSecretSynced;
     private string? _syncWarning;
     private int _activeStep;
-    private UserDto? _currentUser;
-    private FirstHostSetupChoice _firstHostSetupChoice = FirstHostSetupChoice.None;
     private string _completeButtonLabel = "Complete Instance Onboarding";
 
     private bool IsSingleTenantMode => _deploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
     private bool IsMultiTenantMode => _deploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
-    // Steps: 0=InstanceIdentity, 1=FirstHost(single)/Review(multi), 2=Review(single)
-    private int LastStepIndex => IsSingleTenantMode ? 2 : 1;
-    private bool IsFirstHostSelectionMissing => IsSingleTenantMode && _firstHostSetupChoice == FirstHostSetupChoice.None;
-    private bool IsCompleteDisabled => IsFirstHostSelectionMissing;
 
     protected override async Task OnInitializedAsync()
     {
+        _profileEditContext = new EditContext(_siteProfile);
+
         try
         {
             await UserService.SyncUserAsync();
-            _currentUser = await UserService.GetCurrentUserAsync();
+            await UserService.GetCurrentUserAsync();
         }
         catch (Exception ex)
         {
@@ -241,7 +264,7 @@
             var brandingResult = await InstanceOnboardingService.GetBrandingSettingsAsync();
             if (!string.IsNullOrWhiteSpace(brandingResult.DefaultBrandDisplayName))
             {
-                _instanceName = brandingResult.DefaultBrandDisplayName;
+                _siteProfile.SiteName = brandingResult.DefaultBrandDisplayName;
             }
         }
         catch (Exception ex)
@@ -283,70 +306,12 @@
                 await bffClient.DeleteAsync("/bff/setup-secret");
                 _errorMessage = "Setup secret expired or is invalid. Please enter the current setup secret again.";
                 StateHasChanged();
-                Navigation.NavigateTo("/setup", forceLoad: true);
                 return;
             }
         }
 
         _syncWarning = "Setup secret sync pending — you can proceed, but saving may require re-entering your setup secret.";
         StateHasChanged();
-    }
-
-    private Task OnPreviewStepInteraction(StepperInteractionEventArgs args)
-    {
-        if (args.Action != StepAction.Complete)
-            return Task.CompletedTask;
-
-        // Validate "First Host Setup" step (index 1 in single-tenant mode)
-        if (IsSingleTenantMode && args.StepIndex == FirstHostStepIndex && IsFirstHostSelectionMissing)
-        {
-            args.Cancel = true;
-            _errorMessage = "Please choose how you want to set up your first host before continuing.";
-            return Task.CompletedTask;
-        }
-
-        _errorMessage = null;
-        return Task.CompletedTask;
-    }
-
-    private void SelectFirstHost(FirstHostSetupChoice choice)
-    {
-        _firstHostSetupChoice = choice;
-        _errorMessage = null;
-    }
-
-    private string GetFirstHostCardStyle(FirstHostSetupChoice choice) =>
-        _firstHostSetupChoice == choice
-            ? "cursor:pointer; border: 2px solid var(--mud-palette-primary); background-color: var(--mud-palette-primary-hover);"
-            : "cursor:pointer; transition: all 0.2s ease-in-out;";
-
-    private Color GetFirstHostIconColor(FirstHostSetupChoice choice) =>
-        _firstHostSetupChoice == choice ? Color.Primary : Color.Default;
-
-    private string GetFirstHostChoiceLabel()
-    {
-        return _firstHostSetupChoice switch
-        {
-            FirstHostSetupChoice.Personal => "Publish under my account",
-            FirstHostSetupChoice.GroupQuickSetup => "Group (informal quick setup)",
-            FirstHostSetupChoice.Organization => "Organization (formal setup)",
-            FirstHostSetupChoice.DoLater => "I will do this later",
-            _ => "Not selected"
-        };
-    }
-
-    private string GetCompletionRedirectHint()
-    {
-        if (IsMultiTenantMode)
-        {
-            return "After completion, you will be redirected to instance administration pages.";
-        }
-
-        return _firstHostSetupChoice switch
-        {
-            FirstHostSetupChoice.Organization => "After completion, you will be redirected to create your organization profile first.",
-            _ => "After completion, you will be redirected to the event list."
-        };
     }
 
     private string GetDeploymentModeNotice() =>
@@ -359,11 +324,48 @@
             ? "MultiTenant"
             : "SingleTenant";
 
+    private async Task ContinueToPreflightAsync()
+    {
+        _errorMessage = null;
+
+        if (!_profileEditContext.Validate())
+        {
+            return;
+        }
+
+        await LoadPreflightAsync();
+        _activeStep = PreflightStepIndex;
+    }
+
+    private async Task LoadPreflightAsync()
+    {
+        _isPreflightLoading = true;
+        try
+        {
+            _preflight = await InstanceOnboardingService.GetOnboardingPreflightAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not load onboarding preflight status.");
+            _preflight = null;
+        }
+        finally
+        {
+            _isPreflightLoading = false;
+        }
+    }
+
     private async Task CompleteOnboardingAsync()
     {
-        if (IsCompleteDisabled)
+        if (!_profileEditContext.Validate())
         {
-            _errorMessage = "Please choose how you want to set up your first host before completing onboarding.";
+            _activeStep = SiteProfileStepIndex;
+            return;
+        }
+
+        if (_preflight?.IsReadyToLaunch != true)
+        {
+            _errorMessage = "Resolve blocking preflight checks before completing setup.";
             return;
         }
 
@@ -374,7 +376,16 @@
         var completion = new OnboardingCompletionModel
         {
             DeploymentMode = _deploymentMode,
-            InstanceName = string.IsNullOrWhiteSpace(_instanceName) ? null : _instanceName.Trim()
+            SiteProfile = new SelfHostOnboardingProfileModel
+            {
+                SiteName = _siteProfile.SiteName.Trim(),
+                SupportEmail = NormalizeOptional(_siteProfile.SupportEmail),
+                CanonicalUrl = NormalizeOptional(_siteProfile.CanonicalUrl),
+                Locale = string.IsNullOrWhiteSpace(_siteProfile.Locale) ? "en" : _siteProfile.Locale.Trim(),
+                TimeZone = string.IsNullOrWhiteSpace(_siteProfile.TimeZone) ? "UTC" : _siteProfile.TimeZone.Trim(),
+                Purpose = NormalizeOptional(_siteProfile.Purpose)
+            },
+            InstanceName = _siteProfile.SiteName.Trim()
         };
 
         // Proactively refresh the BFF auth session so the access token forwarded to the API is fresh.
@@ -432,7 +443,7 @@
             }
 
             Snackbar.Add("Instance onboarding completed.", Severity.Success);
-            await NavigatePostCompletionAsync();
+            _activeStep = LaunchStepIndex;
             return;
         }
 
@@ -441,76 +452,13 @@
             : response.Message;
     }
 
-    private async Task NavigatePostCompletionAsync()
-    {
-        // forceLoad: true ensures the first destination request uses the freshly renewed cookie
-        // after the BFF refresh-session endpoint re-issued admin claims.
-        if (IsMultiTenantMode)
-        {
-            Navigation.NavigateTo("/admin/instance/settings", forceLoad: true);
-            return;
-        }
+    private static Severity GetCheckSeverity(OnboardingPreflightCheckModel check) =>
+        check.Status.Equals("Pass", StringComparison.OrdinalIgnoreCase)
+            ? Severity.Success
+            : Severity.Error;
 
-        switch (_firstHostSetupChoice)
-        {
-            case FirstHostSetupChoice.Organization:
-                Snackbar.Add("Complete your organization profile now to publish events as an organization.", Severity.Info);
-                Navigation.NavigateTo("/organizations/create", forceLoad: true);
-                return;
-
-            case FirstHostSetupChoice.GroupQuickSetup:
-            {
-                var created = await TryCreateQuickGroupAsync();
-                if (created)
-                {
-                    Snackbar.Add("Starter group created. You can now publish events under your group.", Severity.Success);
-                }
-                else
-                {
-                    Snackbar.Add("Could not create the starter group automatically. You can set up a group later.", Severity.Warning);
-                }
-
-                Navigation.NavigateTo("/events", forceLoad: true);
-                return;
-            }
-
-            case FirstHostSetupChoice.Personal:
-                Snackbar.Add("You can publish events under your account immediately.", Severity.Info);
-                Navigation.NavigateTo("/events", forceLoad: true);
-                return;
-
-            case FirstHostSetupChoice.DoLater:
-            default:
-                Snackbar.Add("You can set up a group or organization later from your account area.", Severity.Info);
-                Navigation.NavigateTo("/events", forceLoad: true);
-                return;
-        }
-    }
-
-    private async Task<bool> TryCreateQuickGroupAsync()
-    {
-        var groupName = BuildDefaultGroupName();
-        return await GroupService.CreateGroupAsync(groupName, "Starter group created during instance onboarding.");
-    }
-
-    private string BuildDefaultGroupName()
-    {
-        var fullName = string.Join(" ", new[] { _currentUser?.FirstName, _currentUser?.LastName }
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .Select(s => s!.Trim()));
-
-        if (!string.IsNullOrWhiteSpace(fullName))
-        {
-            return $"{fullName}'s Group";
-        }
-
-        if (!string.IsNullOrWhiteSpace(_currentUser?.Username))
-        {
-            return $"{_currentUser.Username!.Trim()}'s Group";
-        }
-
-        return "My Group";
-    }
+    private static string? NormalizeOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private HttpClient CreateBffSelfClient()
     {

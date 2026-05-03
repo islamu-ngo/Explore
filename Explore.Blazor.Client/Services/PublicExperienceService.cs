@@ -9,8 +9,11 @@ namespace Explore.Blazor.Client.Services;
 public interface IPublicExperienceService
 {
     Task<PublicExperienceSettingsModel?> GetSettingsAsync();
+    Task<PublicExperienceShellModel?> GetShellAsync();
     string ResolveHomeRoute(PublicExperienceSettingsModel? settings);
+    string ResolveHomeRoute(PublicExperienceShellModel? shell);
     Task<PublicExperienceSettingsModel?> GetCachedSettingsAsync();
+    Task<PublicExperienceShellModel?> GetCachedShellAsync();
     void ResetCache();
 }
 
@@ -19,7 +22,9 @@ public class PublicExperienceService : IPublicExperienceService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<PublicExperienceService> _logger;
     private PublicExperienceSettingsModel? _cachedSettings;
-    private DateTimeOffset _cacheExpiresAt;
+    private DateTimeOffset _settingsCacheExpiresAt;
+    private PublicExperienceShellModel? _cachedShell;
+    private DateTimeOffset _shellCacheExpiresAt;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
     public PublicExperienceService(
@@ -36,7 +41,7 @@ public class PublicExperienceService : IPublicExperienceService
         {
             var client = _httpClientFactory.CreateClient("BffClient");
             var settings = await client.GetFromJsonAsync<PublicExperienceSettingsModel>("api/PublicExperience/settings");
-            Cache(settings);
+            CacheSettings(settings);
             return settings;
         }
         catch (Exception ex)
@@ -46,9 +51,25 @@ public class PublicExperienceService : IPublicExperienceService
         }
     }
 
+    public async Task<PublicExperienceShellModel?> GetShellAsync()
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("BffClient");
+            var shell = await client.GetFromJsonAsync<PublicExperienceShellModel>("api/PublicExperience/shell");
+            CacheShell(shell);
+            return shell;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load public experience shell, falling back to event list.");
+            return null;
+        }
+    }
+
     public async Task<PublicExperienceSettingsModel?> GetCachedSettingsAsync()
     {
-        if (_cachedSettings != null && DateTimeOffset.UtcNow <= _cacheExpiresAt)
+        if (_cachedSettings != null && DateTimeOffset.UtcNow <= _settingsCacheExpiresAt)
         {
             return _cachedSettings;
         }
@@ -57,10 +78,23 @@ public class PublicExperienceService : IPublicExperienceService
         return settings ?? _cachedSettings;
     }
 
+    public async Task<PublicExperienceShellModel?> GetCachedShellAsync()
+    {
+        if (_cachedShell != null && DateTimeOffset.UtcNow <= _shellCacheExpiresAt)
+        {
+            return _cachedShell;
+        }
+
+        var shell = await GetShellAsync();
+        return shell ?? _cachedShell;
+    }
+
     public void ResetCache()
     {
         _cachedSettings = null;
-        _cacheExpiresAt = default;
+        _settingsCacheExpiresAt = default;
+        _cachedShell = null;
+        _shellCacheExpiresAt = default;
     }
 
     public string ResolveHomeRoute(PublicExperienceSettingsModel? settings)
@@ -70,11 +104,112 @@ public class PublicExperienceService : IPublicExperienceService
             : "/events";
     }
 
-    private void Cache(PublicExperienceSettingsModel? settings)
+    public string ResolveHomeRoute(PublicExperienceShellModel? shell)
+    {
+        if (shell?.Mode?.Equals("OrganizationCentric", StringComparison.OrdinalIgnoreCase) == true
+            && shell.PrimaryOrganization.State.Equals("Available", StringComparison.OrdinalIgnoreCase))
+        {
+            return "/home";
+        }
+
+        return "/events";
+    }
+
+    private void CacheSettings(PublicExperienceSettingsModel? settings)
     {
         _cachedSettings = settings;
-        _cacheExpiresAt = DateTimeOffset.UtcNow.Add(CacheDuration);
+        _settingsCacheExpiresAt = DateTimeOffset.UtcNow.Add(CacheDuration);
     }
+
+    private void CacheShell(PublicExperienceShellModel? shell)
+    {
+        _cachedShell = shell;
+        _shellCacheExpiresAt = DateTimeOffset.UtcNow.Add(CacheDuration);
+    }
+}
+
+public class PublicExperienceShellModel
+{
+    public int SchemaVersion { get; set; } = 1;
+    public string Revision { get; set; } = string.Empty;
+    public string Mode { get; set; } = "DiscoveryCentric";
+    public PublicExperienceHomeModel Home { get; set; } = new();
+    public PublicExperienceNavigationModel Navigation { get; set; } = new();
+    public PublicExperienceEventCatalogModel EventCatalog { get; set; } = new();
+    public PublicExperiencePrimaryOrganizationModel PrimaryOrganization { get; set; } = new();
+    public List<PublicExperienceEventSectionModel> EventSections { get; set; } = [];
+    public List<PublicExperienceCtaModel> Ctas { get; set; } = [];
+    public FooterConfigModel Footer { get; set; } = new();
+}
+
+public class PublicExperienceHomeModel
+{
+    public string PreferredHomePage { get; set; } = "EventList";
+    public string BrandDisplayName { get; set; } = string.Empty;
+    public string BrandLogoUrl { get; set; } = string.Empty;
+    public string BrandFaviconUrl { get; set; } = string.Empty;
+    public List<PublicExperienceHomeBlockModel> Blocks { get; set; } = [];
+}
+
+public class PublicExperienceHomeBlockModel
+{
+    public string Key { get; set; } = string.Empty;
+    public string Kind { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Subtitle { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty;
+    public string LinkText { get; set; } = string.Empty;
+    public string LinkUrl { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
+}
+
+public class PublicExperienceNavigationModel
+{
+    public List<PublicExperienceNavigationLinkModel> Links { get; set; } = [];
+}
+
+public class PublicExperienceNavigationLinkModel
+{
+    public string Label { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
+}
+
+public class PublicExperienceEventCatalogModel
+{
+    public string Label { get; set; } = "Events";
+    public string Url { get; set; } = "/events";
+}
+
+public class PublicExperiencePrimaryOrganizationModel
+{
+    public string State { get; set; } = "NotConfigured";
+    public Guid? OrganizationId { get; set; }
+    public Guid? ActorId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string Handle { get; set; } = string.Empty;
+    public string WebsiteUrl { get; set; } = string.Empty;
+    public string ProfilePictureUri { get; set; } = string.Empty;
+}
+
+public class PublicExperienceEventSectionModel
+{
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
+}
+
+public class PublicExperienceCtaModel
+{
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
+    public string Placement { get; set; } = "Hero";
+    public string Style { get; set; } = "Primary";
 }
 
 public class PublicExperienceSettingsModel
@@ -98,6 +233,11 @@ public class PublicExperienceSettingsModel
     public bool AllowOrganizationSelfRegistration { get; set; } = true;
     public bool AllowGroupSelfRegistration { get; set; } = true;
     public bool EventCardClickOpensDetailPage { get; set; }
+    public bool AnnouncementBarEnabled { get; set; }
+    public string AnnouncementBarMessage { get; set; } = string.Empty;
+    public string AnnouncementBarLinkText { get; set; } = string.Empty;
+    public string AnnouncementBarLinkUrl { get; set; } = string.Empty;
+    public int AnnouncementBarRevision { get; set; }
     public string CommunityGuidelinesContent { get; set; } = string.Empty;
     public List<string> EnabledModules { get; set; } = new();
     public string AnalyticsProvider { get; set; } = "none";
@@ -123,6 +263,7 @@ public class PublicExperienceSettingsModel
     public bool OnboardingPrerenderEnabled { get; set; }
     public bool DisallowInteractiveServerOnOnboarding { get; set; } = false;
     public bool IsAiAssistantAvailable { get; set; }
+    public bool AiAssistantAllowAnonymousAccess { get; set; }
     public FooterConfigModel FooterConfig { get; set; } = new();
 }
 

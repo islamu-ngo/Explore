@@ -21,16 +21,15 @@
         <MudPaper Class="pa-4" Elevation="0" Style="@_deploymentModeCardStyle">
             <MudStack Spacing="2">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Color="Color.Default" Size="Size.Small" />
+                    <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Default" Size="Size.Small" />
                     <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Deployment Mode</MudText>
                     <MudTooltip Arrow="true" Placement="Placement.Right">
                         <TooltipContent>
                             <MudStack Spacing="1" Style="max-width: 320px; text-align: left;">
-                                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">What does Multi-Tenancy do?</MudText>
-                                <MudText Typo="Typo.body2">• Settings split into global defaults and per-tenant overrides</MudText>
-                                <MudText Typo="Typo.body2">• Lock controls appear to enforce consistency across tenants</MudText>
-                                <MudText Typo="Typo.body2">• Your current configuration becomes the default tenant's settings</MudText>
-                                <MudText Typo="Typo.body2">• To revert, reduce to one or fewer active tenants</MudText>
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Operator-controlled setting</MudText>
+                                <MudText Typo="Typo.body2">Deployment mode is selected from server configuration before onboarding.</MudText>
+                                <MudText Typo="Typo.body2">Use DEPLOYMENT_MODE=multi_tenant to opt into Multi-Tenant setup.</MudText>
+                                <MudText Typo="Typo.body2">Leave DEPLOYMENT_MODE unset for convention-first Single-Tenant setup.</MudText>
                             </MudStack>
                         </TooltipContent>
                         <ChildContent>
@@ -42,106 +41,11 @@
                 <MudText Typo="Typo.body2" Color="Color.Secondary">
                     Current mode: <strong>@(IsSingleTenant ? "Single-Tenant" : "Multi-Tenant")</strong>
                 </MudText>
-
-                @if (IsSingleTenant)
-                {
-                    <AppButton Variant="Variant.Outlined"
-                               Color="Color.Warning"
-                               StartIcon="@Icons.Material.Filled.SwapHoriz"
-                               OnClick="OnEnableMultiTenantClicked">
-                        Enable Multi-Tenant Mode
-                    </AppButton>
-                }
-                else
-                {
-                    @if (_tenantCount > 1)
-                    {
-                        <MudText Typo="Typo.body2" Color="Color.Warning">
-                            You have <strong>@_tenantCount</strong> tenants — delete @(_tenantCount - 1) before reverting.
-                        </MudText>
-                        <AppButton Variant="Variant.Outlined"
-                                   Color="Color.Default"
-                                   StartIcon="@Icons.Material.Filled.SwapHoriz"
-                                   Disabled="true">
-                            Revert to Single-Tenant
-                        </AppButton>
-                    }
-                    else
-                    {
-                        <AppButton Variant="Variant.Outlined"
-                                   Color="Color.Warning"
-                                   StartIcon="@Icons.Material.Filled.SwapHoriz"
-                                   OnClick="OnRevertToSingleTenantClicked">
-                            Revert to Single-Tenant Mode
-                        </AppButton>
-                    }
-                }
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    Deployment mode is locked after onboarding. To use Multi-Tenant mode, set <code>DEPLOYMENT_MODE=multi_tenant</code> before first launch.
+                </MudAlert>
             </MudStack>
         </MudPaper>
-
-        @* ── Confirm Multi-Tenant Dialog ─────────────────────────────── *@
-        <MudDialog @bind-Visible="_showMultiTenantDialog">
-            <TitleContent>
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" />
-                    <MudText Typo="Typo.h6">Enable Multi-Tenant Mode?</MudText>
-                </MudStack>
-            </TitleContent>
-            <DialogContent>
-                <MudText Typo="Typo.body1" Class="mb-3">
-                    Switching to Multi-Tenant mode will restructure your platform:
-                </MudText>
-                <MudList T="string" Dense="true" DisablePadding="true" Class="mb-3">
-                    <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">
-                        Settings will split into global defaults and per-tenant overrides
-                    </MudListItem>
-                    <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">
-                        Lock controls will appear to enforce consistency across tenants
-                    </MudListItem>
-                    <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">
-                        Your current configuration becomes the default tenant's settings
-                    </MudListItem>
-                </MudList>
-                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">
-                    You can revert to Single-Tenant mode later, as long as no more than one tenant exists.
-                </MudAlert>
-                <AppTextField T="string" @bind-Value="_multiTenantConfirmText"
-                              Label="Type 'i confirm' to proceed"
-                              Variant="Variant.Outlined"
-                              Immediate="true"
-                              HelperText="This action changes how your platform is administered." />
-            </DialogContent>
-            <DialogActions>
-                <AppButton OnClick="CancelMultiTenantDialog">Cancel</AppButton>
-                <AppButton Color="Color.Warning"
-                           Disabled="@(!IsMultiTenantConfirmValid)"
-                           OnClick="ConfirmMultiTenant">
-                    Confirm — Enable Multi-Tenant
-                </AppButton>
-            </DialogActions>
-        </MudDialog>
-
-        @* ── Confirm Single-Tenant Revert Dialog ─────────────────────── *@
-        <MudDialog @bind-Visible="_showSingleTenantDialog">
-            <TitleContent>
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                    <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info" />
-                    <MudText Typo="Typo.h6">Revert to Single-Tenant Mode?</MudText>
-                </MudStack>
-            </TitleContent>
-            <DialogContent>
-                <MudText Typo="Typo.body1">
-                    This will switch the platform back to Single-Tenant mode. Instance and tenant
-                    settings will be merged into a single administration page.
-                </MudText>
-            </DialogContent>
-            <DialogActions>
-                <AppButton OnClick="@(() => _showSingleTenantDialog = false)">Cancel</AppButton>
-                <AppButton OnClick="ConfirmSingleTenant">
-                    Confirm — Revert to Single-Tenant
-                </AppButton>
-            </DialogActions>
-        </MudDialog>
         }
 
         @if (ShowGeneralGovernance)
@@ -425,12 +329,6 @@
     [Parameter]
     public string DeploymentMode { get; set; } = "SingleTenant";
 
-    [Parameter]
-    public int TenantCount { get; set; }
-
-    [Parameter]
-    public EventCallback<string> DeploymentModeChanged { get; set; }
-
     /// <summary>
     /// Controls which subsections are visible: "full" (default), "general", or "advanced".
     /// </summary>
@@ -458,11 +356,6 @@
         _ => "Control deployment mode, tenant registration, and default home page behavior."
     };
 
-    private int _tenantCount;
-    private bool _showMultiTenantDialog;
-    private bool _showSingleTenantDialog;
-    private string _multiTenantConfirmText = string.Empty;
-    private bool IsMultiTenantConfirmValid => string.Equals(_multiTenantConfirmText?.Trim(), "i confirm", StringComparison.OrdinalIgnoreCase);
     private bool IsSingleTenant => string.Equals(DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
                                    || string.IsNullOrWhiteSpace(DeploymentMode);
 
@@ -470,39 +363,7 @@
 
     protected override void OnParametersSet()
     {
-        _tenantCount = TenantCount;
         EnsurePresetDefaults();
-    }
-
-    private void OnEnableMultiTenantClicked()
-    {
-        _showMultiTenantDialog = true;
-    }
-
-    private void CancelMultiTenantDialog()
-    {
-        _showMultiTenantDialog = false;
-        _multiTenantConfirmText = string.Empty;
-    }
-
-    private async Task ConfirmMultiTenant()
-    {
-        _showMultiTenantDialog = false;
-        _multiTenantConfirmText = string.Empty;
-        DeploymentMode = "MultiTenant";
-        await DeploymentModeChanged.InvokeAsync("MultiTenant");
-    }
-
-    private void OnRevertToSingleTenantClicked()
-    {
-        _showSingleTenantDialog = true;
-    }
-
-    private async Task ConfirmSingleTenant()
-    {
-        _showSingleTenantDialog = false;
-        DeploymentMode = "SingleTenant";
-        await DeploymentModeChanged.InvokeAsync("SingleTenant");
     }
 
     private void EnsurePresetDefaults()

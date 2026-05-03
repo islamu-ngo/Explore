@@ -221,7 +221,9 @@ public class SetupTests : IDisposable
             IsCompleted = false,
             IsAuthenticated = false,
             SetupTimedOut = true,
-            InstanceStartedAt = DateTime.UtcNow.AddMinutes(-70)
+            InstanceStartedAt = DateTime.UtcNow.AddMinutes(-70),
+            SetupSecretState = "Expired",
+            SetupSecretGuidance = "The generated setup secret has expired. Restart the application and use the newly logged setup secret."
         });
         SetupBffJsModule();
 
@@ -232,9 +234,66 @@ public class SetupTests : IDisposable
         // Assert
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Setup window expired", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("generated setup secret has expired", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Expected setup timeout message was not rendered.");
+            }
+        });
+    }
+
+    [Test]
+    public async Task Setup_WhenEnvironmentSecretActive_ShowsEnvironmentGuidance()
+    {
+        // Arrange
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsCompleted = false,
+            IsAuthenticated = false,
+            IsSetupModeActive = true,
+            SetupSecretFromEnvironment = true,
+            SetupSecretState = "Environment",
+            SetupSecretGuidance = "Use the SETUP_SECRET environment variable configured for this deployment."
+        });
+        SetupBffJsModule();
+
+        // Act
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Use the SETUP_SECRET environment variable", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected environment setup-secret guidance was not rendered.");
+            }
+        });
+    }
+
+    [Test]
+    public async Task Setup_WhenGeneratedSecretActive_ShowsStartupLogGuidance()
+    {
+        // Arrange
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsCompleted = false,
+            IsAuthenticated = false,
+            IsSetupModeActive = true,
+            SetupSecretState = "Generated",
+            SetupSecretGuidance = "Use the generated setup secret from the API startup logs. Generated secrets expire 60 minutes after startup."
+        });
+        SetupBffJsModule();
+
+        // Act
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("generated setup secret from the API startup logs", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected generated setup-secret guidance was not rendered.");
             }
         });
     }

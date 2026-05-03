@@ -20,6 +20,44 @@
     container-type: inline-size;
 }
 
+.event-list__presets {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-3, 0.75rem);
+    margin-block-end: var(--isl-space-4, 1rem);
+    padding: var(--isl-space-4, 1rem);
+    border: 1px solid var(--isl-color-border-subtle, var(--mud-palette-lines-default));
+    border-radius: var(--isl-radius-lg, 1rem);
+    background: color-mix(in srgb, var(--mud-palette-primary) 5%, var(--mud-palette-surface));
+}
+
+.event-list__presets-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-1, 0.25rem);
+}
+
+.event-list__preset-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2, 0.5rem);
+}
+
+::deep .event-list__preset-chip {
+    border-radius: 999px;
+}
+
+::deep .event-list__preset-chip--active {
+    background: color-mix(in srgb, var(--mud-palette-primary) 14%, var(--mud-palette-surface));
+    border-color: var(--mud-palette-primary);
+    box-shadow: inset 0 0 0 1px var(--mud-palette-primary);
+}
+
+::deep .event-list__preset-chip:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--mud-palette-primary) 60%, transparent);
+    outline-offset: 2px;
+}
+
 /* Workspace side-panel layout is delegated to Components/Docking. */
 
 /* ══════════════════════════════════════════════

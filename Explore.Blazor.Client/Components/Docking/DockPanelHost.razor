@@ -13,7 +13,6 @@
            data-dock-mode="@ModeName"
            data-dock-side="@SideName"
            aria-label="@Entry.Descriptor.AriaLabel"
-           aria-labelledby="@PanelTitleId"
            role="complementary">
         @if (ShouldRenderResizeHandle)
         {
@@ -27,9 +26,6 @@
                                OnResizeRequested="ResizePanel" />
         }
 
-        <div class="dock-panel-host__header">
-            <span id="@PanelTitleId" class="dock-panel-host__title">@Entry.Descriptor.Title</span>
-        </div>
         <div id="@PanelBodyId"
              class="dock-panel-host__body"
              role="@BodyRole"
@@ -52,8 +48,6 @@
     private string PanelStyle => $"--dock-panel-width: {Entry.State.Width}px;";
 
     private string PanelBodyId => DockElementIds.PanelBodyId(Entry.Descriptor.Id);
-
-    private string PanelTitleId => $"{PanelBodyId}-title";
 
     private bool ShouldRenderResizeHandle => Entry.Descriptor.IsResizable
         && Entry.State.Mode == DockMode.Docked

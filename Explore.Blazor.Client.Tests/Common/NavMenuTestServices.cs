@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
 using NSubstitute;
@@ -14,7 +15,7 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// Eliminates duplication across test files that render NavMenu or full-page layouts.
 /// </summary>
 /// <remarks>
-/// NavMenu injects: IUserService, IPublicExperienceService, IInstanceOnboardingService,
+    /// NavMenu injects: IUserService, IUserSettingsService, IPublicExperienceService, IInstanceOnboardingService,
 /// ITenantNavigationService, IEventCreationEligibilityService, IOrganizationService,
 /// IGroupService, SidebarState, NotificationService, ITranslationService, IHttpClientFactory.
 /// </remarks>
@@ -40,11 +41,18 @@ public static class NavMenuTestServices
         BlazorTestContext ctx,
         PublicExperienceSettingsModel? publicExperienceSettings = null,
         string deploymentMode = "MultiTenant",
-        bool onboardingCompleted = true)
+        bool onboardingCompleted = true,
+        bool isCurrentUserInstanceAdmin = false,
+        bool isCurrentUserTenantAdmin = false)
     {
         var userService = Substitute.For<IUserService>();
         userService.GetCurrentUserAsync().Returns((UserDto?)null);
         ctx.Services.AddSingleton(userService);
+
+        var userSettingsService = Substitute.For<IUserSettingsService>();
+        userSettingsService.GetSettingsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SettingGroupResponseDto?>(null));
+        ctx.Services.AddSingleton(userSettingsService);
 
         var publicExperienceService = Substitute.For<IPublicExperienceService>();
         publicExperienceService.GetSettingsAsync()
@@ -63,9 +71,20 @@ public static class NavMenuTestServices
         instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
         {
             IsCompleted = onboardingCompleted,
+            IsAuthenticated = isCurrentUserInstanceAdmin,
+            IsCurrentUserInstanceAdmin = isCurrentUserInstanceAdmin,
             SelectedDeploymentMode = deploymentMode
         });
         ctx.Services.AddSingleton(instanceOnboardingService);
+
+        var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
+        tenantOnboardingService.GetStatusAsync().Returns(new TenantOnboardingStatusModel
+        {
+            IsCompleted = true,
+            IsAuthenticated = isCurrentUserTenantAdmin,
+            IsCurrentUserTenantAdministrator = isCurrentUserTenantAdmin
+        });
+        ctx.Services.AddSingleton(tenantOnboardingService);
 
         var tenantNavigationService = Substitute.For<ITenantNavigationService>();
         tenantNavigationService.GetNavigationLinksAsync().Returns(new List<TenantNavigationLinkDto>());

@@ -1,5 +1,5 @@
-// ABOUTME: Route guard that keeps tenant onboarding reachable only for configured multi-tenant deployments.
-// ABOUTME: Prevents single-tenant first-run flows from exposing tenant mechanics in the client router.
+// ABOUTME: Route guard for first-run instance onboarding and multi-tenant-only onboarding routes.
+// ABOUTME: Keeps completed single-tenant deployments out while allowing launch onboarding to finish.
 
 using Blazouter.Interfaces;
 using Blazouter.Models;
@@ -12,7 +12,8 @@ public sealed class MultiTenantOnboardingRouteGuard(IInstanceOnboardingService i
     public async Task<bool> CanActivateAsync(RouteMatch match)
     {
         var status = await instanceOnboardingService.GetSystemOnboardingStatusAsync().ConfigureAwait(false);
-        return string.Equals(status?.DeploymentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase);
+        return status?.RequiresOnboarding == true
+            || string.Equals(status?.DeploymentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase);
     }
 
     public Task<string?> GetRedirectPathAsync(RouteMatch match) => Task.FromResult<string?>("/startup");

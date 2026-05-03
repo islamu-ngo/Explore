@@ -137,10 +137,35 @@ public class CreateEventTests : IDisposable
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
 
         // Event service defaults
-        _eventService.CreateEventAsync(Arg.Any<CreateEventDto>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = Guid.NewGuid()
+        });
+        _eventService.GetEventCreationContextAsync(Arg.Any<CancellationToken>()).Returns(new EventCreationContextDto
+        {
+            CanCreate = true,
+            AllowPersonalPublishing = true,
+            AllowOrganizationPublishing = true,
+            AllowGroupPublishing = true,
+            DefaultPublisherMode = "personal",
+            PublisherOptions = new List<EventCreationPublisherOptionDto>
+            {
+                new()
+                {
+                    PublisherMode = "personal",
+                    DisplayName = "Personal profile",
+                    CanPublish = true
+                },
+                new()
+                {
+                    PublisherMode = "organization",
+                    PublisherId = orgId,
+                    DisplayName = "Test Organization",
+                    RoleId = 1,
+                    CanPublish = true
+                }
+            }
         });
         _eventService.GetSessionsByEventAsync(Arg.Any<Guid>()).Returns(new List<EventSessionListDto>());
 
@@ -259,7 +284,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "OnEventTypeChanged", 2);
 
         // Assert
-        var dto = GetPrivateField<CreateEventDto>(cut.Instance, "createDto");
+        var dto = GetPrivateField<CreateEventRequest>(cut.Instance, "createDto");
         var templates = GetPrivateField<IReadOnlyList<EventTemplateListModel>>(cut.Instance, "eventTemplates");
         var selectedDetail = GetPrivateField<EventTemplateDetailModel?>(cut.Instance, "_selectedEventTemplate");
 
@@ -289,7 +314,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "OnEventTemplateChanged", missingTemplateId);
 
         // Assert
-        var dto = GetPrivateField<CreateEventDto>(cut.Instance, "createDto");
+        var dto = GetPrivateField<CreateEventRequest>(cut.Instance, "createDto");
         var error = GetPrivateField<string?>(cut.Instance, "_templateLoadError");
 
         await Assert.That(dto.TemplateId).IsNull();
@@ -323,7 +348,7 @@ public class CreateEventTests : IDisposable
         await slowRequest;
 
         // Assert
-        var dto = GetPrivateField<CreateEventDto>(cut.Instance, "createDto");
+        var dto = GetPrivateField<CreateEventRequest>(cut.Instance, "createDto");
         var selectedDetail = GetPrivateField<EventTemplateDetailModel?>(cut.Instance, "_selectedEventTemplate");
 
         await Assert.That(dto.TemplateId).IsEqualTo(fastTemplateId);
@@ -356,7 +381,7 @@ public class CreateEventTests : IDisposable
         await slowRequest;
 
         // Assert
-        var dto = GetPrivateField<CreateEventDto>(cut.Instance, "createDto");
+        var dto = GetPrivateField<CreateEventRequest>(cut.Instance, "createDto");
         var templates = GetPrivateField<IReadOnlyList<EventTemplateListModel>>(cut.Instance, "eventTemplates");
 
         await Assert.That(dto.EventTypeId).IsEqualTo(2);
@@ -386,7 +411,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         // Assert
-        await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventDto>());
+        await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventRequest>());
         var error = GetPrivateField<string>(cut.Instance, "errorMessage");
         await Assert.That(error).Contains("template preview");
 
@@ -415,7 +440,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         // Assert
-        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventDto>(dto => dto != null && dto.TemplateId == templateId));
+        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(dto => dto != null && dto.TemplateId == templateId));
     }
 
     [Test]
@@ -434,7 +459,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         // Assert
-        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventDto>(dto => dto != null && dto.TemplateId == null));
+        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(dto => dto != null && dto.TemplateId == null));
     }
 
     [Test]
@@ -474,8 +499,8 @@ public class CreateEventTests : IDisposable
 
         // Assert
         await Assert.That(sessions.All(session => session.SessionTemplateId is null)).IsTrue();
-        await _eventService.Received(1).CreateSessionAsync(
-            Arg.Is<CreateEventSessionDto>(dto => dto != null && dto.SessionTemplateId == null));
+        await _eventService.Received(1).CreateEventAsync(
+            Arg.Is<CreateEventRequest>(request => request.Sessions != null && request.Sessions.All(session => session.SessionTemplateId == null)));
     }
 
     [Test]
@@ -492,6 +517,7 @@ public class CreateEventTests : IDisposable
 
         // Assert - component behavior loads principal context dependencies
         await _userService.Received(1).GetCurrentUserAsync();
+        await _eventService.Received(1).GetEventCreationContextAsync(Arg.Any<CancellationToken>());
         await _organizationService.Received().GetMyOrganizationsAsync();
         await _categoryService.Received().GetAllCategoriesAsync();
         await _tagService.Received().GetAllTagsAsync();
@@ -499,10 +525,72 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
-    public async Task CreateEvent_ShowsCreateButton()
+    public async Task CreateEvent_WhenCreationContextBlocksCreate_ShowsUnavailableReasonAndDoesNotSubmit()
+    {
+        // Arrange
+        _eventService.GetEventCreationContextAsync(Arg.Any<CancellationToken>()).Returns(new EventCreationContextDto
+        {
+            CanCreate = false,
+            AllowPersonalPublishing = false,
+            AllowOrganizationPublishing = false,
+            AllowGroupPublishing = false,
+            UnavailableReason = "No available publisher can create events for the current user.",
+            PublisherOptions = new List<EventCreationPublisherOptionDto>()
+        });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("No available publisher can create events", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Creation context unavailable reason was not rendered.");
+            }
+        }, TimeSpan.FromSeconds(3));
+
+        PrepareValidSubmitState(cut.Instance);
+
+        // Act
+        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+
+        // Assert
+        await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventRequest>());
+        var error = GetPrivateField<string>(cut.Instance, "errorMessage");
+        await Assert.That(error).Contains("No available publisher");
+    }
+
+    [Test]
+    public async Task CreateEvent_RendersPublicationContextSelector()
+    {
+        // Arrange
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        // Act
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Publishing as", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Publication context selector was not rendered.");
+            }
+
+            if (cut.Markup.Contains("create-event__publisher-btn", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Legacy publisher mode buttons were rendered.");
+            }
+        }, TimeSpan.FromSeconds(3));
+
+        await _eventService.Received(1).GetEventCreationContextAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CreateEvent_ShowsReviewAction()
     {
         // The form is now a single-page layout (no multi-step wizard).
-        // The "Create Event" submit button should be visible immediately.
+        // The primary publish-intent action should be visible immediately.
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
 
         var cut = _ctx.RenderMudComponent<CreateEvent>();
@@ -510,10 +598,28 @@ public class CreateEventTests : IDisposable
         cut.WaitForAssertion(() =>
         {
             var buttons = cut.FindAll("button");
-            var hasCreateButton = buttons.Any(b => b.TextContent.Contains("Create Event", StringComparison.OrdinalIgnoreCase));
-            if (!hasCreateButton)
+            var hasReviewButton = buttons.Any(b => b.TextContent.Contains("Review and publish", StringComparison.OrdinalIgnoreCase));
+            if (!hasReviewButton)
             {
-                throw new InvalidOperationException("Create Event button was not rendered.");
+                throw new InvalidOperationException("Review action was not rendered.");
+            }
+        }, TimeSpan.FromSeconds(3));
+    }
+
+    [Test]
+    public async Task CreateEvent_RendersProgressiveDisclosureSections()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Schedule", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Add sessions, day labels, rooms, or agenda", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("More options", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Progressive disclosure sections were not rendered.");
             }
         }, TimeSpan.FromSeconds(3));
     }
@@ -593,7 +699,7 @@ public class CreateEventTests : IDisposable
 
     private static void PrepareValidSubmitState(CreateEvent component)
     {
-        var dto = GetPrivateField<CreateEventDto>(component, "createDto");
+        var dto = GetPrivateField<CreateEventRequest>(component, "createDto");
         dto.Title = "Template Event";
         dto.EventTypeId = 1;
         dto.EventFormatId = 1;

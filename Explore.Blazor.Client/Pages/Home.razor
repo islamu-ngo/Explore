@@ -1,10 +1,14 @@
 @using Microsoft.AspNetCore.Components.Authorization
+@using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Pages.Landing
+@using Explore.Blazor.Client.Services
 @using Microsoft.Extensions.Logging
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILogger<Home> Logger
 @inject NavigationManager Navigation
+@inject IPublicExperienceService PublicExperienceService
+@inject IEventService EventService
 
 <PageTitle>ISLAMU Explore</PageTitle>
 <HeadContent>
@@ -44,6 +48,187 @@
         </MudContainer>
     </div>
 }
+else if (IsOrganizationCentricMode && !IsOrganizationHomeAvailable)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="organization-home py-8">
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="organization-home__remediation rounded-xl pa-6">
+            <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Organization home is not available yet</MudText>
+            <MudText Typo="Typo.body1" Class="mb-4">
+                This site is using organization-first public experience, but the primary organization is @PrimaryOrganizationStateLabel.
+                You can still browse the public @EventCatalogLabel.ToLowerInvariant() catalog.
+            </MudText>
+            <AppButton Href="@EventCatalogUrl" Variant="Variant.Filled" Color="Color.Primary">
+                Browse @EventCatalogLabel
+            </AppButton>
+        </MudAlert>
+    </MudContainer>
+}
+else if (IsOrganizationHomeAvailable)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="organization-home py-8">
+        <MudPaper Elevation="0" Class="organization-home__hero rounded-xl pa-8 pa-md-12 mb-8">
+            <MudGrid AlignItems="AlignItems.Center" Spacing="6">
+                <MudItem xs="12" md="8">
+                    <MudText Typo="Typo.overline" Color="Color.Primary" Class="organization-home__eyebrow">
+                        @EventCatalogLabel
+                    </MudText>
+                    <MudText Typo="Typo.h2" HtmlTag="h1" Class="organization-home__title mb-4">
+                        @HeroTitle
+                    </MudText>
+                    @if (!string.IsNullOrWhiteSpace(HeroBody))
+                    {
+                        <MudText Typo="Typo.h6" Color="Color.Secondary" Class="organization-home__summary mb-6">
+                            @HeroBody
+                        </MudText>
+                    }
+                    <MudStack Row="true" Spacing="2" Class="organization-home__actions flex-wrap">
+                        @foreach (var cta in HeroCtas)
+                        {
+                            <AppButton @key="cta.Key" Href="@cta.Url" Variant="@MapButtonVariant(cta.Style)" Color="Color.Primary" Class="rounded-pill">
+                                @cta.Label
+                            </AppButton>
+                        }
+                        <AppButton Href="@EventCatalogUrl" Variant="Variant.Outlined" Color="Color.Primary" Class="rounded-pill">
+                            View @EventCatalogLabel
+                        </AppButton>
+                    </MudStack>
+                </MudItem>
+                @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.ProfilePictureUri))
+                {
+                    <MudItem xs="12" md="4" Class="d-flex justify-center">
+                        <MudAvatar Image="@_shell.PrimaryOrganization.ProfilePictureUri" Size="Size.Large" Class="organization-home__avatar" />
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+
+        @if (ContentBlocks.Count > 0)
+        {
+            <MudGrid Spacing="4" Class="mb-8">
+                @foreach (var block in ContentBlocks)
+                {
+                    <MudItem @key="block.Key" xs="12" md="6">
+                        <MudPaper Elevation="0" Class="organization-home__block pa-6 rounded-xl h-100">
+                            <MudText Typo="Typo.overline" Color="Color.Primary">@block.Kind</MudText>
+                            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-2">@block.Title</MudText>
+                            @if (!string.IsNullOrWhiteSpace(block.Subtitle))
+                            {
+                                <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-2">@block.Subtitle</MudText>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(block.Body))
+                            {
+                                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">@block.Body</MudText>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(block.LinkUrl) && !string.IsNullOrWhiteSpace(block.LinkText))
+                            {
+                                <AppButton Href="@block.LinkUrl" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward">
+                                    @block.LinkText
+                                </AppButton>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+
+        @if (EventSections.Count > 0)
+        {
+            <MudPaper Elevation="0" Class="organization-home__sections pa-6 rounded-xl mb-8">
+                <MudText Typo="Typo.h4" HtmlTag="h2" Class="mb-4">Featured @EventCatalogLabel</MudText>
+                <MudGrid Spacing="3">
+                    @foreach (var eventSection in EventSections)
+                    {
+                        <MudItem @key="eventSection.Key" xs="12" sm="6" md="4">
+                            <AppButton Href="@(eventSection.Url)" Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" StartIcon="@ResolveSectionIcon(eventSection.Icon)">
+                                @(eventSection.Label)
+                            </AppButton>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+        }
+
+        @if (_featuredEvents.Count > 0)
+        {
+            <MudPaper Elevation="0" Class="organization-home__events pa-6 rounded-xl mb-8">
+                <MudText Typo="Typo.h4" HtmlTag="h2" Class="mb-2">Upcoming @EventCatalogLabel</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    The next public @EventCatalogLabel.ToLowerInvariant() from @OrganizationName.
+                </MudText>
+                <MudGrid Spacing="3">
+                    @foreach (var evt in _featuredEvents)
+                    {
+                        <MudItem @key="evt.Id" xs="12" md="4">
+                            <MudPaper Elevation="0" Class="organization-home__event-card pa-4 rounded-lg h-100">
+                                <MudText Typo="Typo.overline" Color="Color.Primary">@FormatEventDate(evt)</MudText>
+                                <MudText Typo="Typo.h6" HtmlTag="h3" Class="mb-2">@evt.Title</MudText>
+                                @if (!string.IsNullOrWhiteSpace(evt.Subtitle))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@evt.Subtitle</MudText>
+                                }
+                                <AppButton Href="@GetEventUrl(evt)" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward">
+                                    View details
+                                </AppButton>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+        }
+
+        @if (HasContactOrFooterProjection)
+        {
+            <MudGrid Spacing="4" Class="mb-8">
+                <MudItem xs="12" md="5">
+                    <MudPaper Elevation="0" Class="organization-home__block pa-6 rounded-xl h-100">
+                        <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-2">Connect with @OrganizationName</MudText>
+                        @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.Handle))
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">@_shell.PrimaryOrganization.Handle</MudText>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.WebsiteUrl))
+                        {
+                            <AppButton Href="@_shell.PrimaryOrganization.WebsiteUrl" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.OpenInNew">
+                                Visit website
+                            </AppButton>
+                        }
+                    </MudPaper>
+                </MudItem>
+                @if (FooterLinkGroups.Count > 0)
+                {
+                    <MudItem xs="12" md="7">
+                        <MudPaper Elevation="0" Class="organization-home__block pa-6 rounded-xl h-100">
+                            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-3">Helpful links</MudText>
+                            <MudGrid Spacing="3">
+                                @foreach (var group in FooterLinkGroups)
+                                {
+                                    <MudItem @key="group.Id" xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2" Class="mb-2">@group.Title</MudText>
+                                        <MudStack Spacing="1">
+                                            @foreach (var link in group.Links.OrderBy(link => link.Order).ThenBy(link => link.Label, StringComparer.OrdinalIgnoreCase))
+                                            {
+                                                <MudLink @key="link.Id" Href="@link.Url" Target="@(link.OpenInNewTab ? "_blank" : null)">
+                                                    @link.Label
+                                                </MudLink>
+                                            }
+                                        </MudStack>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+
+        @if (!HasShellContent)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="organization-home__empty">
+                This organization home is ready. Add public sections or calls to action to highlight upcoming @EventCatalogLabel.ToLowerInvariant().
+            </MudAlert>
+        }
+    </MudContainer>
+}
 else if (isAuthenticated)
 {
     <LandingPageForUsers />
@@ -56,23 +241,110 @@ else
 @code {
     private bool isLoading = true;
     private bool isAuthenticated = false;
+    private PublicExperienceShellModel? _shell;
+    private IReadOnlyList<EventListDto> _featuredEvents = [];
+
+    private bool IsOrganizationCentricMode => _shell?.Mode.Equals("OrganizationCentric", StringComparison.OrdinalIgnoreCase) == true;
+
+    private bool IsOrganizationHomeAvailable => IsOrganizationCentricMode
+        && _shell.PrimaryOrganization.State.Equals("Available", StringComparison.OrdinalIgnoreCase);
+
+    private string PrimaryOrganizationStateLabel => string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.State)
+        ? "not configured"
+        : _shell.PrimaryOrganization.State switch
+        {
+            "NotConfigured" => "not configured",
+            "HiddenOrInactive" => "hidden or inactive",
+            "CrossTenantInvalid" => "not available for this tenant",
+            "ActorUnavailable" => "missing its public profile",
+            _ => _shell.PrimaryOrganization.State.ToLowerInvariant()
+        };
+
+    private string OrganizationName => string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.DisplayName)
+        ? _shell?.Home.BrandDisplayName ?? "This organization"
+        : _shell.PrimaryOrganization.DisplayName;
+
+    private string EventCatalogLabel => string.IsNullOrWhiteSpace(_shell?.EventCatalog.Label)
+        ? "Events"
+        : _shell.EventCatalog.Label;
+
+    private string EventCatalogUrl => string.IsNullOrWhiteSpace(_shell?.EventCatalog.Url)
+        ? "/events"
+        : _shell.EventCatalog.Url;
+
+    private PublicExperienceHomeBlockModel? HeroBlock => _shell?.Home.Blocks
+        .Where(block => block.Kind.Equals("Hero", StringComparison.OrdinalIgnoreCase)
+            || block.Kind.Equals("OrganizationSummary", StringComparison.OrdinalIgnoreCase))
+        .OrderBy(block => block.SortOrder)
+        .FirstOrDefault();
+
+    private string HeroTitle => string.IsNullOrWhiteSpace(HeroBlock?.Title)
+        ? OrganizationName
+        : HeroBlock.Title;
+
+    private string HeroBody => string.IsNullOrWhiteSpace(HeroBlock?.Body)
+        ? $"Explore public {EventCatalogLabel.ToLowerInvariant()} and community updates from {OrganizationName}."
+        : HeroBlock.Body;
+
+    private IReadOnlyList<PublicExperienceHomeBlockModel> ContentBlocks => _shell?.Home.Blocks
+        .Where(block => block != HeroBlock)
+        .OrderBy(block => block.SortOrder)
+        .ThenBy(block => block.Title, StringComparer.OrdinalIgnoreCase)
+        .ToList() ?? [];
+
+    private IReadOnlyList<PublicExperienceEventSectionModel> EventSections => _shell?.EventSections
+        .Where(section => !string.IsNullOrWhiteSpace(section.Label) && !string.IsNullOrWhiteSpace(section.Url))
+        .OrderBy(section => section.SortOrder)
+        .ThenBy(section => section.Label, StringComparer.OrdinalIgnoreCase)
+        .ToList() ?? [];
+
+    private IReadOnlyList<PublicExperienceCtaModel> HeroCtas => _shell?.Ctas
+        .Where(cta => !string.IsNullOrWhiteSpace(cta.Label) && !string.IsNullOrWhiteSpace(cta.Url))
+        .OrderBy(cta => cta.SortOrder)
+        .ThenBy(cta => cta.Label, StringComparer.OrdinalIgnoreCase)
+        .Take(2)
+        .ToList() ?? [];
+
+    private bool HasShellContent => ContentBlocks.Count > 0 || EventSections.Count > 0 || HeroCtas.Count > 0;
+
+    private IReadOnlyList<FooterLinkGroupModel> FooterLinkGroups => _shell?.Footer.LinkGroups
+        .Where(group => !string.IsNullOrWhiteSpace(group.Title)
+            && group.Links.Any(link => !string.IsNullOrWhiteSpace(link.Label) && !string.IsNullOrWhiteSpace(link.Url)))
+        .OrderBy(group => group.Order)
+        .ThenBy(group => group.Title, StringComparer.OrdinalIgnoreCase)
+        .ToList() ?? [];
+
+    private bool HasContactOrFooterProjection => !string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.WebsiteUrl)
+        || !string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.Handle)
+        || FooterLinkGroups.Count > 0;
 
     [PersistentState]
     public HomeState? PersistedState { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        if (PersistedState != null)
-        {
-            isAuthenticated = PersistedState.IsAuthenticated;
-            isLoading = false;
-            return;
-        }
-
         try
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+            var shellTask = PublicExperienceService.GetCachedShellAsync();
+            Task<AuthenticationState>? authStateTask = PersistedState is null
+                ? AuthenticationStateProvider.GetAuthenticationStateAsync()
+                : null;
+
+            _shell = shellTask is null ? null : await shellTask;
+            if (authStateTask is null)
+            {
+                isAuthenticated = PersistedState?.IsAuthenticated ?? false;
+            }
+            else
+            {
+                var authState = await authStateTask;
+                isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+            }
+
+            if (IsOrganizationHomeAvailable)
+            {
+                await LoadFeaturedEventsAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -89,5 +361,63 @@ else
     public sealed class HomeState
     {
         public bool IsAuthenticated { get; init; }
+    }
+
+    private static Variant MapButtonVariant(string? style)
+    {
+        return style?.Equals("Secondary", StringComparison.OrdinalIgnoreCase) == true
+            || style?.Equals("Text", StringComparison.OrdinalIgnoreCase) == true
+                ? Variant.Outlined
+                : Variant.Filled;
+    }
+
+    private static string ResolveSectionIcon(string? icon)
+    {
+        return icon?.Equals("calendar", StringComparison.OrdinalIgnoreCase) == true
+            ? Icons.Material.Filled.Event
+            : Icons.Material.Filled.ArrowForward;
+    }
+
+    private async Task LoadFeaturedEventsAsync()
+    {
+        if (_shell?.PrimaryOrganization.ActorId is not { } actorId)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await EventService.GetEventsPagedAsync(
+                1,
+                3,
+                sortBy: "date",
+                sortDescending: false,
+                actorId: actorId);
+
+            _featuredEvents = result.Items
+                .Where(evt => evt.Id.HasValue)
+                .Take(3)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Unable to load organization home events");
+            _featuredEvents = [];
+        }
+    }
+
+    private static string FormatEventDate(EventListDto evt)
+    {
+        return evt.FirstSessionDate?.ToString("MMM d, yyyy") ?? "Date to be announced";
+    }
+
+    private static string GetEventUrl(EventListDto evt)
+    {
+        if (!string.IsNullOrWhiteSpace(evt.EventUrl))
+        {
+            return evt.EventUrl;
+        }
+
+        return evt.Id.HasValue ? $"/events/{evt.Id}" : "/events";
     }
 }

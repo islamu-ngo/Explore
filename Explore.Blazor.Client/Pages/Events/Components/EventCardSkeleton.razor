@@ -4,15 +4,15 @@
 <div class="event-card-root">
     @if (Layout == LayoutMode.CompactGrid)
     {
-        <MudCard Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden;">
+        <AppCard Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden;">
             <div class="event-card__image-wrapper">
                 <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="100%" Class="event-card__skeleton-fill" />
             </div>
-        </MudCard>
+        </AppCard>
     }
     else if (Layout == LayoutMode.DetailedList)
     {
-        <MudCard Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden;">
+        <AppCard Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden;">
             <div class="event-card__horizontal">
                 <div class="event-card__horizontal-image">
                     <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="100%" />
@@ -38,11 +38,11 @@
                     </div>
                 </div>
             </div>
-        </MudCard>
+        </AppCard>
     }
     else
     {
-        <MudCard Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden;">
+        <AppCard Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden;">
             <div class="event-card__full-row">
                 <div class="event-card__full-row-image">
                     <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="100%" />
@@ -73,6 +73,6 @@
                     </div>
                 </div>
             </div>
-        </MudCard>
+        </AppCard>
     }
 </div>
