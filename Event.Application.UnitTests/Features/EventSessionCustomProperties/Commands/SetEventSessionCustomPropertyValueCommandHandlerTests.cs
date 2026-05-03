@@ -65,6 +65,39 @@ public class SetEventSessionCustomPropertyValueCommandHandlerTests
         await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
     }
 
+    [Test]
+    public async Task Handle_WhenOptionDefinitionReceivesInactiveOption_ReturnsFailure()
+    {
+        var definitionId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var optionId = Guid.NewGuid();
+        var repository = Substitute.For<IEventSessionCustomPropertyRepository>();
+        var definition = CreateDefinition(definitionId, sessionId, isMulti: false, propertyType: PropertyType.Option);
+        SetOptions(definition,
+        [
+            new EventSessionCustomPropertyOption
+            {
+                Id = optionId,
+                EventSessionCustomPropertyDefinitionId = definitionId,
+                Namespace = "tenant.session",
+                Key = "arabic",
+                DisplayName = "Arabic",
+                Value = "arabic",
+                IsActive = false
+            }
+        ]);
+        repository.GetDefinitionWithDetails(definitionId).Returns(definition);
+        var handler = CreateSut(repository);
+
+        var result = await handler.Handle(
+            CreateOptionCommand(definitionId, sessionId, optionId),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That((result.Errors ?? []).Any(error => error.Contains("active option", StringComparison.Ordinal))).IsTrue();
+        await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
+    }
+
     private static SetEventSessionCustomPropertyValueCommandHandler CreateSut(IEventSessionCustomPropertyRepository repository)
     {
         return new SetEventSessionCustomPropertyValueCommandHandler(
@@ -90,7 +123,24 @@ public class SetEventSessionCustomPropertyValueCommandHandlerTests
         };
     }
 
-    private static EventSessionCustomPropertyDefinition CreateDefinition(Guid definitionId, Guid sessionId, bool isMulti)
+    private static SetEventSessionCustomPropertyValueCommand CreateOptionCommand(Guid definitionId, Guid sessionId, Guid optionId)
+    {
+        return new SetEventSessionCustomPropertyValueCommand
+        {
+            ValueDto = new SetEventSessionCustomPropertyValueDto
+            {
+                EventSessionCustomPropertyDefinitionId = definitionId,
+                EventSessionId = sessionId,
+                OptionId = optionId
+            }
+        };
+    }
+
+    private static EventSessionCustomPropertyDefinition CreateDefinition(
+        Guid definitionId,
+        Guid sessionId,
+        bool isMulti,
+        PropertyType propertyType = PropertyType.Text)
     {
         return new EventSessionCustomPropertyDefinition
         {
@@ -100,7 +150,7 @@ public class SetEventSessionCustomPropertyValueCommandHandlerTests
             Namespace = "tenant.session",
             Key = "primary_language",
             DisplayName = "Primary Language",
-            PropertyType = PropertyType.Text,
+            PropertyType = propertyType,
             ExposureLevel = ExposureLevel.OrganizerOnly,
             IsActive = true,
             IsMulti = isMulti
@@ -112,5 +162,12 @@ public class SetEventSessionCustomPropertyValueCommandHandlerTests
         var field = typeof(EventSessionCustomPropertyDefinition).GetField("_values", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
         var list = (List<EventSessionCustomPropertyValue>)field.GetValue(definition)!;
         list.AddRange(values);
+    }
+
+    private static void SetOptions(EventSessionCustomPropertyDefinition definition, IEnumerable<EventSessionCustomPropertyOption> options)
+    {
+        var field = typeof(EventSessionCustomPropertyDefinition).GetField("_options", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        var list = (List<EventSessionCustomPropertyOption>)field.GetValue(definition)!;
+        list.AddRange(options);
     }
 }

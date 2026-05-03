@@ -57,6 +57,12 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
         return (items, totalCount);
     }
 
+    public async Task<int> CountDefinitionsForScope(Guid tenantId, EntityTypeName entityTypeName, CancellationToken cancellationToken)
+    {
+        return await _dbContext.CustomPropertyDefinitions
+            .CountAsync(x => x.TenantId == tenantId && x.EntityTypeName == entityTypeName, cancellationToken);
+    }
+
     public async Task<bool> ExistsScopedMachineKey(Guid tenantId, EntityTypeName entityTypeName, string namespaceValue, string key, Guid? excludeDefinitionId = null)
     {
         return await _dbContext.CustomPropertyDefinitions
@@ -98,38 +104,105 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
         Guid? defaultOptionId,
         CancellationToken cancellationToken)
     {
-        definition.DefaultOptionId = null;
-        _dbContext.Entry(definition).State = EntityState.Modified;
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        await _dbContext.CustomPropertyOptions
+        var existingOptions = await _dbContext.CustomPropertyOptions
             .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.CustomPropertyDefinitionId == definition.Id)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
 
-        if (options.Count > 0)
+        var incomingKeys = options
+            .Select(x => (x.Namespace, x.Key))
+            .ToHashSet();
+        var existingByKey = existingOptions.ToDictionary(x => (x.Namespace, x.Key));
+        Guid? persistedDefaultOptionId = null;
+
+        foreach (var option in options)
         {
-            await _dbContext.CustomPropertyOptions.AddRangeAsync(options, cancellationToken);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            if (existingByKey.TryGetValue((option.Namespace, option.Key), out var existing))
+            {
+                existing.DisplayName = option.DisplayName;
+                existing.Description = option.Description;
+                existing.Value = option.Value;
+                existing.IsDefault = option.IsDefault;
+                existing.IsActive = option.IsActive;
+                existing.SortOrder = option.SortOrder;
+                existing.ParentOptionId = option.ParentOptionId;
+                existing.UpdatedAt = option.UpdatedAt;
+                existing.UpdatedBy = option.UpdatedBy;
+                existing.IsDeleted = false;
+                existing.DeletedAt = null;
+                existing.DeletedBy = null;
+
+                if (existing.IsDefault)
+                {
+                    persistedDefaultOptionId = existing.Id;
+                }
+
+                continue;
+            }
+
+            await _dbContext.CustomPropertyOptions.AddAsync(option, cancellationToken);
+            if (option.IsDefault)
+            {
+                persistedDefaultOptionId = option.Id;
+            }
         }
 
-        if (defaultOptionId.HasValue)
+        foreach (var existing in existingOptions.Where(x => !incomingKeys.Contains((x.Namespace, x.Key))))
         {
-            definition.DefaultOptionId = defaultOptionId;
-            _dbContext.Entry(definition).State = EntityState.Modified;
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            existing.IsDefault = false;
+            existing.IsActive = false;
         }
+
+        definition.DefaultOptionId = persistedDefaultOptionId;
+        _dbContext.Entry(definition).State = EntityState.Modified;
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return await GetDefinitionWithDetails(definition.Id) ?? definition;
     }
 
     public async Task<bool> DeleteDefinition(Guid id, CancellationToken cancellationToken)
     {
-        var affectedRows = await _dbContext.CustomPropertyDefinitions
+        var definition = await _dbContext.CustomPropertyDefinitions
             .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
-            .Where(x => x.Id == id)
-            .ExecuteDeleteAsync(cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-        return affectedRows > 0;
+        if (definition == null)
+        {
+            return false;
+        }
+
+        var options = await _dbContext.CustomPropertyOptions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .Where(x => x.CustomPropertyDefinitionId == id)
+            .ToListAsync(cancellationToken);
+        var values = await _dbContext.CustomPropertyValues
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .Where(x => x.CustomPropertyDefinitionId == id)
+            .ToListAsync(cancellationToken);
+
+        definition.IsActive = false;
+        definition.DefaultOptionId = null;
+        if (!definition.IsDeleted)
+        {
+            _dbContext.CustomPropertyDefinitions.Remove(definition);
+        }
+
+        foreach (var option in options)
+        {
+            option.IsDefault = false;
+            option.IsActive = false;
+            if (!option.IsDeleted)
+            {
+                _dbContext.CustomPropertyOptions.Remove(option);
+            }
+        }
+
+        foreach (var value in values.Where(x => !x.IsDeleted))
+        {
+            _dbContext.CustomPropertyValues.Remove(value);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 }

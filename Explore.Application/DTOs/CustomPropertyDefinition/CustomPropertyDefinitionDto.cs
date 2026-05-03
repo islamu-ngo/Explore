@@ -8,6 +8,7 @@ namespace Explore.Application.DTOs.CustomPropertyDefinition;
 public class CustomPropertyDefinitionDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public EntityTypeName EntityTypeName { get; set; }
     public Guid TenantId { get; set; }
     public required string Namespace { get; set; }

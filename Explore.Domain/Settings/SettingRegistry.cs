@@ -36,6 +36,7 @@ public static class SettingRegistry
         all.AddRange(CerbosSettingDefinitions.All);
         all.AddRange(AnalyticsSettingDefinitions.All);
         all.AddRange(AiAssistantSettingDefinitions.All);
+        all.AddRange(AiAssistantPreferenceSettingDefinitions.All);
         all.AddRange(TenantDelegationSettingDefinitions.All);
         all.AddRange(FooterSettingDefinitions.All);
         all.AddRange(EventListSettingDefinitions.All);

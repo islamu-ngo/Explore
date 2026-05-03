@@ -2,6 +2,7 @@
 // ABOUTME: Ensures Layer 3 projection filter tuples are created with the expected filter types and values.
 
 using Explore.Application.Specifications.Events;
+using Explore.Domain.Enums;
 
 namespace Event.Application.UnitTests.Specifications;
 
@@ -171,5 +172,25 @@ public class EventCustomPropertyProjectionFilterTests
         await Assert.That(key).IsEqualTo(expectedKey);
         await Assert.That(from).IsEqualTo(expectedFrom);
         await Assert.That(to).IsEqualTo(expectedTo);
+    }
+
+    [Test]
+    public async Task FactoryMethods_WhenExposureCeilingOmitted_ShouldDefaultToPublic()
+    {
+        // Act
+        var filter = EventCustomPropertyProjectionFilter.Exists("test_ns", "test_key");
+
+        // Assert
+        await Assert.That(filter.ExposureCeiling).IsEqualTo(ExposureLevel.Public);
+    }
+
+    [Test]
+    public async Task FactoryMethods_WhenExposureCeilingProvided_ShouldPreserveCeiling()
+    {
+        // Act
+        var filter = EventCustomPropertyProjectionFilter.GlobalTextSearch("term", ExposureLevel.TenantAdminOnly);
+
+        // Assert
+        await Assert.That(filter.ExposureCeiling).IsEqualTo(ExposureLevel.TenantAdminOnly);
     }
 }

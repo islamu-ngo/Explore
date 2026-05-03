@@ -55,6 +55,7 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
             SetupTimedOut = _setupSecretProvider.IsTimedOut,
             InstanceStartedAt = _setupSecretProvider.InstanceStartedAt
         };
+        ApplySetupSecretStatus(response);
 
         if (!_currentUserService.IsAuthenticated)
         {
@@ -63,6 +64,42 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
 
         response.IsCurrentUserInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
         return response;
+    }
+
+    private static void ApplySetupSecretStatus(InstanceOnboardingStatusDto response)
+    {
+        if (response.IsCompleted)
+        {
+            response.SetupSecretState = "Locked";
+            response.SetupSecretGuidance = "Setup is complete. The setup secret is locked and can no longer be used.";
+            return;
+        }
+
+        if (response.SetupTimedOut)
+        {
+            response.SetupSecretState = "Expired";
+            response.SetupSecretGuidance = response.SetupSecretFromEnvironment
+                ? "The configured SETUP_SECRET is still authoritative, but this setup session has timed out. Restart the application to reopen setup mode."
+                : "The generated setup secret has expired. Restart the application and use the newly logged setup secret.";
+            return;
+        }
+
+        if (!response.IsSetupModeActive)
+        {
+            response.SetupSecretState = "Unavailable";
+            response.SetupSecretGuidance = "Setup mode is not active. If onboarding is incomplete, restart the application and check startup logs.";
+            return;
+        }
+
+        if (response.SetupSecretFromEnvironment)
+        {
+            response.SetupSecretState = "Environment";
+            response.SetupSecretGuidance = "Use the SETUP_SECRET environment variable configured for this deployment.";
+            return;
+        }
+
+        response.SetupSecretState = "Generated";
+        response.SetupSecretGuidance = "Use the generated setup secret from the API startup logs. Generated secrets expire 60 minutes after startup.";
     }
 
     private static string DeserializeString(string? rawValue, string defaultValue)

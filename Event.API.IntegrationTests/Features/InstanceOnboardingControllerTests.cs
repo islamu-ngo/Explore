@@ -181,7 +181,8 @@ public class InstanceOnboardingControllerTests
 
         var clientPayload = new CompleteInstanceOnboardingRequest
         {
-            DeploymentMode = DeploymentMode.MultiTenant
+            DeploymentMode = DeploymentMode.MultiTenant,
+            SiteProfile = new SelfHostOnboardingProfileDto { SiteName = "Integration Test Instance" }
         };
 
         using var completeRequest = CreateInstanceAdminRequest(HttpMethod.Post, $"{BaseUrl}/complete", userId, clientPayload, includeSetupSecret: true);
@@ -209,7 +210,8 @@ public class InstanceOnboardingControllerTests
 
         var clientPayload = new CompleteInstanceOnboardingRequest
         {
-            DeploymentMode = DeploymentMode.SingleTenant
+            DeploymentMode = DeploymentMode.SingleTenant,
+            SiteProfile = new SelfHostOnboardingProfileDto { SiteName = "Integration Test Instance" }
         };
 
         using var completeRequest = CreateInstanceAdminRequest(HttpMethod.Post, $"{BaseUrl}/complete", userId, clientPayload, includeSetupSecret: true);
@@ -759,6 +761,7 @@ public class InstanceOnboardingControllerTests
         return new CompleteInstanceOnboardingRequest
         {
             DeploymentMode = DeploymentMode.SingleTenant,
+            SiteProfile = new SelfHostOnboardingProfileDto { SiteName = "Integration Test Instance" },
             InstanceName = "Integration Test Instance"
         };
     }

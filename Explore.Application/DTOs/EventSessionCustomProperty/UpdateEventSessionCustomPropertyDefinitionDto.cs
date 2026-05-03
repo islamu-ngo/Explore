@@ -6,4 +6,5 @@ namespace Explore.Application.DTOs.EventSessionCustomProperty;
 public class UpdateEventSessionCustomPropertyDefinitionDto : CreateEventSessionCustomPropertyDefinitionDto
 {
     public Guid Id { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; set; }
 }

@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for UpdateInstanceGovernanceSettingsCommandHandler render-policy validation and authorization behavior.
-// ABOUTME: Verifies admin authorization, validation, governance service delegation, and Multi→Single mode-switch guard atomicity.
+// ABOUTME: Verifies admin authorization, validation, governance service delegation, and operator-controlled deployment mode locking.
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
@@ -44,7 +44,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
             .Returns(callInfo =>
             {
                 var op = callInfo.Arg<Func<CancellationToken, Task<Guid>>>();
-                return op(CancellationToken.None);
+                return op!(CancellationToken.None);
             });
 
         _handler = new UpdateInstanceGovernanceSettingsCommandHandler(
@@ -119,7 +119,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenRevertingToSingleTenant_WithThreeActiveTenants_ReturnsFailureCode()
+    public async Task Handle_WhenChangingDeploymentMode_ReturnsOperatorControlledFailure()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
         _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
@@ -128,18 +128,17 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
             SelectedDeploymentMode = "MultiTenant",
             CreatedAt = DateTime.UtcNow
         });
-        _tenantRepository.GetActiveTenantCountAsync().Returns(3);
 
         var result = await _handler.Handle(CreateCommand(CreateSettingsWithMode(DeploymentMode.SingleTenant)), CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("DeploymentModeChangeBlockedByActiveTenants");
-        await Assert.That(result.Message).IsEqualTo("Cannot revert to Single-Tenant mode.");
+        await Assert.That(result.FailureCode).IsEqualTo("DeploymentModeChangeRequiresOperatorConfiguration");
+        await Assert.That(result.Message).IsEqualTo("Deployment mode is operator-controlled.");
         await _governanceSettingService.DidNotReceive().ApplySettingsAsync(Arg.Any<Guid?>(), Arg.Any<InstanceGovernanceSettings>(), Arg.Any<Guid?>());
     }
 
     [Test]
-    public async Task Handle_WhenRevertingToSingleTenant_WithOneActiveTenant_Succeeds()
+    public async Task Handle_WhenKeepingMultiTenantMode_SucceedsWithoutActiveTenantCountCheck()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
         _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
@@ -148,36 +147,16 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
             SelectedDeploymentMode = "MultiTenant",
             CreatedAt = DateTime.UtcNow
         });
-        _tenantRepository.GetActiveTenantCountAsync().Returns(1);
-        _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns(CreateDefaultTenant());
 
-        var result = await _handler.Handle(CreateCommand(CreateSettingsWithMode(DeploymentMode.SingleTenant)), CancellationToken.None);
+        var result = await _handler.Handle(CreateCommand(CreateSettingsWithMode(DeploymentMode.MultiTenant)), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.FailureCode).IsNull();
+        await _tenantRepository.DidNotReceive().GetActiveTenantCountAsync();
     }
 
     [Test]
-    public async Task Handle_WhenRevertingToSingleTenant_WithZeroActiveTenants_Succeeds()
-    {
-        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
-        _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
-        {
-            Id = Guid.NewGuid(),
-            SelectedDeploymentMode = "MultiTenant",
-            CreatedAt = DateTime.UtcNow
-        });
-        _tenantRepository.GetActiveTenantCountAsync().Returns(0);
-        _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns(CreateDefaultTenant());
-
-        var result = await _handler.Handle(CreateCommand(CreateSettingsWithMode(DeploymentMode.SingleTenant)), CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.FailureCode).IsNull();
-    }
-
-    [Test]
-    public async Task Handle_WhenSwitchingFromSingleToMultiTenant_DoesNotCheckActiveTenantCount()
+    public async Task Handle_WhenChangingFromSingleToMultiTenant_ReturnsOperatorControlledFailure()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
         _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
@@ -189,8 +168,29 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(CreateSettingsWithMode(DeploymentMode.MultiTenant)), CancellationToken.None);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("DeploymentModeChangeRequiresOperatorConfiguration");
         await _tenantRepository.DidNotReceive().GetActiveTenantCountAsync();
+    }
+
+    [Test]
+    public async Task Handle_WhenBootstrapModeMissing_UsesSingleTenantConvention()
+    {
+        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
+        _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
+        {
+            Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow
+        });
+        _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns(CreateDefaultTenant());
+
+        var result = await _handler.Handle(CreateCommand(CreateSettingsWithMode(DeploymentMode.SingleTenant)), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _governanceSettingService.Received(1).ApplySettingsAsync(
+            PlatformDefaults.DefaultTenantId,
+            Arg.Is<InstanceGovernanceSettings>(settings => settings != null && settings.DeploymentMode.Mode == DeploymentMode.SingleTenant),
+            TestUserId);
     }
 
     [Test]

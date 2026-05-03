@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.CustomPropertyDefinition;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.CustomPropertyDefinitions.Handlers.Commands;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
 using Explore.Domain;
@@ -96,6 +97,45 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors.Any(e => e.Contains("same Namespace + Key", StringComparison.Ordinal))).IsTrue();
     }
+
+    [Test]
+    public async Task Handle_WhenConcurrencyStampIsStale_ThrowsConcurrencyConflict()
+    {
+        var tenantId = Guid.NewGuid();
+        var existing = CreateExistingDefinition(tenantId);
+        var command = new UpdateCustomPropertyDefinitionCommand
+        {
+            DefinitionDto = CreateDto(existing.Id, expectedConcurrencyStamp: Guid.NewGuid())
+        };
+
+        _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(() => _handler.Handle(command, CancellationToken.None));
+
+        await Assert.That(exception!.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+        await Assert.That(exception.EntityType).IsEqualTo("custom_property_definition");
+        await _customPropertyDefinitionRepository.DidNotReceive().UpdateWithOptions(
+            Arg.Any<CustomPropertyDefinition>(),
+            Arg.Any<IReadOnlyCollection<CustomPropertyOption>>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenConcurrencyStampIsMissing_ReturnsValidationFailure()
+    {
+        var command = new UpdateCustomPropertyDefinitionCommand
+        {
+            DefinitionDto = CreateDto(expectedConcurrencyStamp: Guid.Empty)
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors.Any(error => error.Contains("ExpectedConcurrencyStamp", StringComparison.Ordinal))).IsTrue();
+        await _customPropertyDefinitionRepository.DidNotReceive().GetTrackedDefinitionWithOptions(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
 
     [Test]
     public async Task Handle_WhenDisplayNameChanges_UsesNamespaceAndKeyAsMachineIdentity()
@@ -191,11 +231,15 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
             Arg.Any<CancellationToken>());
     }
 
-    private static UpdateCustomPropertyDefinitionDto CreateDto(Guid? id = null, string displayName = "Prayer Notes")
+    private static UpdateCustomPropertyDefinitionDto CreateDto(
+        Guid? id = null,
+        string displayName = "Prayer Notes",
+        Guid? expectedConcurrencyStamp = null)
     {
         return new UpdateCustomPropertyDefinitionDto
         {
             Id = id ?? Guid.NewGuid(),
+            ExpectedConcurrencyStamp = expectedConcurrencyStamp ?? ConcurrencyStamp,
             EntityTypeName = EntityTypeName.Organization,
             Namespace = "Tenant Community",
             Key = "Prayer Notes",
@@ -239,6 +283,9 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
             DisplayName = "Legacy",
             PropertyType = PropertyType.Option,
             ExposureLevel = ExposureLevel.Internal,
+            ConcurrencyStamp = ConcurrencyStamp,
         };
     }
+
+    private static readonly Guid ConcurrencyStamp = Guid.Parse("11111111-1111-1111-1111-111111111111");
 }

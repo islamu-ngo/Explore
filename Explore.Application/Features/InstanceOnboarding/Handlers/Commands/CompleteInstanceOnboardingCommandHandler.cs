@@ -4,14 +4,18 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
+using Explore.Application.Models;
+using Explore.Application.Models.PublicExperience;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
@@ -104,6 +108,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
         var deploymentMode = configuredDeploymentMode;
         var isSingleTenant = deploymentMode == DeploymentMode.SingleTenant;
+        var siteProfile = NormalizeSiteProfile(request.Settings);
         Guid? defaultTenantId = null;
 
         await _unitOfWork.ExecuteInTransactionAsync(async ct =>
@@ -121,11 +126,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             }
 
             await PersistDeploymentModeSettingAsync(deploymentMode);
-
-            if (!string.IsNullOrWhiteSpace(request.Settings.InstanceName))
-            {
-                await PersistInstanceNameSettingAsync(request.Settings.InstanceName.Trim());
-            }
+            await PersistSiteProfileSettingsAsync(siteProfile, isSingleTenant);
 
             await EnsurePlatformAdministratorRoleAsync(request.UserId);
             _logger.LogInformation("Onboarding: Assigned Platform Admin role to user {UserId}", request.UserId);
@@ -167,7 +168,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
         response.Success = true;
         response.Message = "Instance onboarding completed successfully.";
-        response.Id = bootstrap.Id;
+        response.Id = bootstrap?.Id ?? Guid.Empty;
         return response;
     }
 
@@ -323,7 +324,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private async Task PersistDeploymentModeSettingAsync(DeploymentMode mode)
     {
         var key = GovernanceSettingKeys.Deployment.Mode;
-        var value = System.Text.Json.JsonSerializer.Serialize(mode.ToString());
+        var value = JsonSerializer.Serialize(mode.ToString());
         var existing = await _systemSettingRepository.GetByKey(key);
 
         if (existing == null)
@@ -349,10 +350,133 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         }
     }
 
-    private async Task PersistInstanceNameSettingAsync(string instanceName)
+    private async Task PersistSiteProfileSettingsAsync(SelfHostOnboardingProfileDto siteProfile, bool isSingleTenant)
     {
-        var key = GovernanceSettingKeys.Branding.DisplayName;
-        var value = System.Text.Json.JsonSerializer.Serialize(instanceName);
+        await PersistSystemSettingAsync(
+            GovernanceSettingKeys.Branding.DisplayName,
+            JsonSerializer.Serialize(siteProfile.SiteName),
+            SettingValueType.String,
+            "Branding",
+            1,
+            "Instance brand display name");
+
+        if (!string.IsNullOrWhiteSpace(siteProfile.SupportEmail))
+        {
+            await PersistSystemSettingAsync(
+                GovernanceSettingKeys.Email.FromAddress,
+                JsonSerializer.Serialize(siteProfile.SupportEmail.Trim()),
+                SettingValueType.String,
+                "Email",
+                6,
+                "Default sender email address for outbound emails");
+        }
+
+        var canonicalHost = NormalizeCanonicalHost(siteProfile.CanonicalUrl);
+        if (!string.IsNullOrWhiteSpace(canonicalHost))
+        {
+            await PersistSystemSettingAsync(
+                GovernanceSettingKeys.Domains.InstanceBaseDomain,
+                JsonSerializer.Serialize(canonicalHost),
+                SettingValueType.String,
+                "Domains",
+                1,
+                "Instance base domain used for tenant subdomain generation");
+        }
+
+        await PersistSystemSettingAsync(
+            GovernanceSettingKeys.Localization.DefaultLanguage,
+            JsonSerializer.Serialize(siteProfile.Locale.Trim().ToLowerInvariant()),
+            SettingValueType.String,
+            "Localization",
+            1,
+            "Default language code (ISO 639-1) for the instance");
+
+        if (!isSingleTenant)
+        {
+            return;
+        }
+
+        await PersistSingleTenantPublicExperienceDefaultsAsync(siteProfile.SiteName);
+    }
+
+    private async Task PersistSingleTenantPublicExperienceDefaultsAsync(string siteName)
+    {
+        await PersistSystemSettingAsync(
+            GovernanceSettingKeys.PublicExperience.Mode,
+            JsonSerializer.Serialize(PublicExperienceMode.DiscoveryCentric.ToString()),
+            SettingValueType.String,
+            "PublicExperience",
+            1,
+            "Anonymous public experience posture");
+
+        await PersistSystemSettingAsync(
+            GovernanceSettingKeys.PublicExperience.EventCatalogLabel,
+            JsonSerializer.Serialize("Events"),
+            SettingValueType.String,
+            "PublicExperience",
+            2,
+            "Display label for the public event catalog entry point");
+
+        await PersistSystemSettingAsync(
+            GovernanceSettingKeys.Routing.DefaultPublicHomePage,
+            JsonSerializer.Serialize("EventList"),
+            SettingValueType.String,
+            "Routing",
+            1,
+            "Default anonymous public home page");
+
+        var homeBlocks = new PublicExperienceHomeBlocksConfig(
+            Blocks:
+            [
+                new PublicExperienceHomeBlockConfig(
+                    Id: "hero",
+                    Kind: PublicExperienceHomeBlockKind.Hero,
+                    Title: siteName,
+                    Subtitle: "Discover upcoming events.",
+                    LinkText: "Browse events",
+                    LinkUrl: "/events",
+                    SortOrder: 0)
+            ]);
+
+        await PersistSystemSettingAsync(
+            GovernanceSettingKeys.PublicExperience.HomeBlocks,
+            JsonSerializer.Serialize(homeBlocks),
+            SettingValueType.Json,
+            "PublicExperience",
+            3,
+            "Versioned public home block configuration document");
+
+        var ctas = new PublicExperienceCtasConfig(
+            Ctas:
+            [
+                new PublicExperienceCtaConfig(
+                    Id: "browse-events",
+                    Label: "Browse events",
+                    Url: "/events",
+                    Placement: PublicExperienceCtaPlacement.Hero,
+                    Style: PublicExperienceCtaStyle.Primary,
+                    SortOrder: 0)
+            ]);
+
+        await PersistSystemSettingAsync(
+            GovernanceSettingKeys.PublicExperience.Ctas,
+            JsonSerializer.Serialize(ctas),
+            SettingValueType.Json,
+            "PublicExperience",
+            4,
+            "Versioned public call-to-action configuration document");
+    }
+
+    private async Task PersistSystemSettingAsync(
+        string key,
+        string value,
+        SettingValueType valueType,
+        string category,
+        int displayOrder,
+        string description,
+        bool isLocked = false,
+        string? allowedValues = null)
+    {
         var existing = await _systemSettingRepository.GetByKey(key);
 
         if (existing == null)
@@ -361,11 +485,12 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             {
                 SettingKey = key,
                 Value = value,
-                ValueType = SettingValueType.String,
-                IsLocked = false,
-                Category = "Branding",
-                DisplayOrder = 1,
-                Description = "Instance brand display name",
+                ValueType = valueType,
+                IsLocked = isLocked,
+                Category = category,
+                DisplayOrder = displayOrder,
+                Description = description,
+                AllowedValues = allowedValues,
                 CreatedAt = DateTime.UtcNow
             });
         }
@@ -375,6 +500,39 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             existing.UpdatedAt = DateTime.UtcNow;
             await _systemSettingRepository.Update(existing);
         }
+    }
+
+    private static SelfHostOnboardingProfileDto NormalizeSiteProfile(CompleteInstanceOnboardingRequest settings)
+    {
+        var siteProfile = settings.SiteProfile;
+        var siteName = string.IsNullOrWhiteSpace(siteProfile.SiteName)
+            ? settings.InstanceName?.Trim() ?? string.Empty
+            : siteProfile.SiteName.Trim();
+
+        return new SelfHostOnboardingProfileDto
+        {
+            SiteName = siteName,
+            SupportEmail = string.IsNullOrWhiteSpace(siteProfile.SupportEmail) ? null : siteProfile.SupportEmail.Trim(),
+            CanonicalUrl = string.IsNullOrWhiteSpace(siteProfile.CanonicalUrl) ? null : siteProfile.CanonicalUrl.Trim(),
+            Locale = string.IsNullOrWhiteSpace(siteProfile.Locale) ? "en" : siteProfile.Locale.Trim(),
+            TimeZone = string.IsNullOrWhiteSpace(siteProfile.TimeZone) ? "UTC" : siteProfile.TimeZone.Trim(),
+            Purpose = string.IsNullOrWhiteSpace(siteProfile.Purpose) ? null : siteProfile.Purpose.Trim()
+        };
+    }
+
+    private static string? NormalizeCanonicalHost(string? canonicalUrl)
+    {
+        if (string.IsNullOrWhiteSpace(canonicalUrl))
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(canonicalUrl.Trim(), UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        return uri.Host.Trim().ToLowerInvariant();
     }
 
     private async Task EnsureDefaultTenantAdministratorAsync(Guid tenantId, Guid userId)

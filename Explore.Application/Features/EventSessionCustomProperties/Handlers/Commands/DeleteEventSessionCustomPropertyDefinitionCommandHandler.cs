@@ -1,5 +1,5 @@
-// ABOUTME: Handles deletion of session-local custom property definitions with cascaded value and option cleanup.
-// ABOUTME: Uses hard delete so namespace+key can be reused without stale-row conflicts.
+// ABOUTME: Handles deletion of session-local custom property definitions with projection cleanup.
+// ABOUTME: Normal deletes retire and soft-delete definition state so historical rows are retained for audit.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;

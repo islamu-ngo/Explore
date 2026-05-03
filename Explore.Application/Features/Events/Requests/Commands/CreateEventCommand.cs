@@ -1,5 +1,5 @@
 // ABOUTME: MediatR command for creating a new event.
-// ABOUTME: Carries the CreateEventDto payload.
+// ABOUTME: Carries the canonical CreateEventRequest graph payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Event;
@@ -11,11 +11,11 @@ namespace Explore.Application.Features.Events.Requests.Commands;
 [AuthorizeResource("event", AuthorizationActions.Create)]
 public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
-    public required CreateEventDto EventDto { get; set; }
+    public required CreateEventRequest Request { get; set; }
 
     string? ISecureRequest.ResourceId => null;
     IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        EventDto.OrganizationId != Guid.Empty
-            ? new Dictionary<string, object> { ["organizationId"] = EventDto.OrganizationId.ToString() }
+        Request.OrganizationId.HasValue
+            ? new Dictionary<string, object> { ["organizationId"] = Request.OrganizationId.Value.ToString() }
             : null;
 }

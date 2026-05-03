@@ -32,8 +32,8 @@ public static class RouteNames
     public const string GetEventById = "GetEventById";
     public const string GetEventCalendar = "GetEventCalendar";
     public const string GetMyEvents = "GetMyEvents";
+    public const string GetEventCreationContext = "GetEventCreationContext";
     public const string CreateEvent = "CreateEvent";
-    public const string CreateEventWithSessions = "CreateEventWithSessions";
     public const string UpdateEvent = "UpdateEvent";
     public const string DeleteEvent = "DeleteEvent";
     public const string GetEventSessions = "GetEventSessions";
@@ -185,6 +185,7 @@ public static class RouteNames
     public const string GetTagTypesWithTags = "GetTagTypesWithTags";
     public const string GetMyFeatureFlags = "GetMyFeatureFlags";
     public const string GetPublicExperienceSettings = "GetPublicExperienceSettings";
+    public const string GetPublicExperienceShell = "GetPublicExperienceShell";
     public const string GetTranslationByLanguage = "GetTranslationByLanguage";
     public const string GetAvailableTranslationLanguages = "GetAvailableTranslationLanguages";
     public const string GetEventSeries = "GetEventSeries";
@@ -650,6 +651,7 @@ public static class RouteNames
     #region System Routes
 
     public const string GetSystemOnboardingStatus = "GetSystemOnboardingStatus";
+    public const string GetSystemOnboardingPreflight = "GetSystemOnboardingPreflight";
 
     #endregion
 

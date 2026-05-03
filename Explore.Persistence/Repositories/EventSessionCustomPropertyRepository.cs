@@ -82,6 +82,12 @@ public class EventSessionCustomPropertyRepository : GenericRepository<EventSessi
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<int> CountDefinitionsForSession(Guid eventSessionId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventSessionCustomPropertyDefinitions
+            .CountAsync(x => x.EventSessionId == eventSessionId, cancellationToken);
+    }
+
     public async Task<bool> ExistsDefinitionKey(Guid eventSessionId, string namespaceValue, string key, Guid? excludeDefinitionId = null)
     {
         return await _dbContext.EventSessionCustomPropertyDefinitions
@@ -122,49 +128,108 @@ public class EventSessionCustomPropertyRepository : GenericRepository<EventSessi
         Guid? defaultOptionId,
         CancellationToken cancellationToken)
     {
-        definition.DefaultOptionId = null;
-        _dbContext.Entry(definition).State = EntityState.Modified;
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        await _dbContext.EventSessionCustomPropertyOptions
+        var existingOptions = await _dbContext.EventSessionCustomPropertyOptions
             .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.EventSessionCustomPropertyDefinitionId == definition.Id)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
 
-        if (options.Count > 0)
+        var incomingKeys = options
+            .Select(x => (x.Namespace, x.Key))
+            .ToHashSet();
+        var existingByKey = existingOptions.ToDictionary(x => (x.Namespace, x.Key));
+        Guid? persistedDefaultOptionId = null;
+
+        foreach (var option in options)
         {
-            await _dbContext.EventSessionCustomPropertyOptions.AddRangeAsync(options, cancellationToken);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            if (existingByKey.TryGetValue((option.Namespace, option.Key), out var existing))
+            {
+                existing.DisplayName = option.DisplayName;
+                existing.Description = option.Description;
+                existing.Value = option.Value;
+                existing.IsDefault = option.IsDefault;
+                existing.IsActive = option.IsActive;
+                existing.SortOrder = option.SortOrder;
+                existing.ParentOptionId = option.ParentOptionId;
+                existing.SourceTemplateOptionId = option.SourceTemplateOptionId;
+                existing.SourceTemplateVersion = option.SourceTemplateVersion;
+                existing.UpdatedAt = option.UpdatedAt;
+                existing.UpdatedBy = option.UpdatedBy;
+                existing.IsDeleted = false;
+                existing.DeletedAt = null;
+                existing.DeletedBy = null;
+
+                if (existing.IsDefault)
+                {
+                    persistedDefaultOptionId = existing.Id;
+                }
+
+                continue;
+            }
+
+            await _dbContext.EventSessionCustomPropertyOptions.AddAsync(option, cancellationToken);
+            if (option.IsDefault)
+            {
+                persistedDefaultOptionId = option.Id;
+            }
         }
 
-        if (defaultOptionId.HasValue)
+        foreach (var existing in existingOptions.Where(x => !incomingKeys.Contains((x.Namespace, x.Key))))
         {
-            definition.DefaultOptionId = defaultOptionId;
-            _dbContext.Entry(definition).State = EntityState.Modified;
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            existing.IsDefault = false;
+            existing.IsActive = false;
         }
+
+        definition.DefaultOptionId = persistedDefaultOptionId;
+        _dbContext.Entry(definition).State = EntityState.Modified;
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return await GetDefinitionWithDetails(definition.Id) ?? definition;
     }
 
     public async Task<bool> DeleteDefinition(Guid id, CancellationToken cancellationToken)
     {
-        await _dbContext.EventSessionCustomPropertyValues
+        var definition = await _dbContext.EventSessionCustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        if (definition == null)
+        {
+            return false;
+        }
+
+        var options = await _dbContext.EventSessionCustomPropertyOptions
             .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.EventSessionCustomPropertyDefinitionId == id)
-            .ExecuteDeleteAsync(cancellationToken);
-
-        await _dbContext.EventSessionCustomPropertyOptions
+            .ToListAsync(cancellationToken);
+        var values = await _dbContext.EventSessionCustomPropertyValues
             .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.EventSessionCustomPropertyDefinitionId == id)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
 
-        var affectedRows = await _dbContext.EventSessionCustomPropertyDefinitions
-            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
-            .Where(x => x.Id == id)
-            .ExecuteDeleteAsync(cancellationToken);
+        definition.IsActive = false;
+        definition.DefaultOptionId = null;
+        if (!definition.IsDeleted)
+        {
+            _dbContext.EventSessionCustomPropertyDefinitions.Remove(definition);
+        }
 
-        return affectedRows > 0;
+        foreach (var option in options)
+        {
+            option.IsDefault = false;
+            option.IsActive = false;
+            if (!option.IsDeleted)
+            {
+                _dbContext.EventSessionCustomPropertyOptions.Remove(option);
+            }
+        }
+
+        foreach (var value in values.Where(x => !x.IsDeleted))
+        {
+            _dbContext.EventSessionCustomPropertyValues.Remove(value);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     public async Task<List<EventSessionCustomPropertyValue>> GetValuesForSession(Guid eventSessionId)

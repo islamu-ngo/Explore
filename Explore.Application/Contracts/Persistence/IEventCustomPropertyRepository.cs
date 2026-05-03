@@ -18,6 +18,8 @@ public interface IEventCustomPropertyRepository : IGenericRepository<EventCustom
     Task<List<EventCustomPropertyDefinition>> GetAllDefinitionsForEvent(Guid eventId);
     Task<List<EventCustomPropertyDefinition>> GetTrackedDefinitionsForEvent(Guid eventId, CancellationToken cancellationToken);
 
+    Task<int> CountDefinitionsForEvent(Guid eventId, CancellationToken cancellationToken);
+
     Task<bool> ExistsDefinitionKey(Guid eventId, string namespaceValue, string key, Guid? excludeDefinitionId = null);
 
     Task<EventCustomPropertyDefinition> CreateWithOptions(

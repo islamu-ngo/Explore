@@ -25,13 +25,13 @@ public class IslamicEventStrategy : IEventStrategy
 
     public int Priority => 10; // High priority for domain-specific logic
 
-    public bool IsApplicable(CreateEventDto dto)
+    public bool IsApplicable(CreateEventRequest request)
     {
         // Islamic strategy applies when MadhabId is specified (Islamic context)
-        return dto.MadhabId.HasValue;
+        return request.MadhabId.HasValue;
     }
 
-    public Task<ValidationResult> ValidateAsync(CreateEventDto dto, CancellationToken cancellationToken = default)
+    public Task<ValidationResult> ValidateAsync(CreateEventRequest request, CancellationToken cancellationToken = default)
     {
         var result = new ValidationResult();
 

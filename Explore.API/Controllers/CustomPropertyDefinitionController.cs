@@ -42,8 +42,8 @@ public class CustomPropertyDefinitionController : ControllerBase
     /// <summary>
     /// Get shared custom-property definitions with pagination.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet(Name = RouteNames.GetCustomPropertyDefinitions)]
     [EndpointSummary("Get all CustomPropertyDefinitions")]
     [EndpointDescription("Get a paginated list of shared custom-property definitions for one entity scope. Default page size is 20, max is 100. " +
@@ -76,8 +76,8 @@ public class CustomPropertyDefinitionController : ControllerBase
     /// <summary>
     /// Get shared custom-property definition details by ID.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("{id:guid}", Name = RouteNames.GetCustomPropertyDefinitionById)]
     [EndpointSummary("Get CustomPropertyDefinition Details")]
     [EndpointDescription("Get full details of a custom property definition including its options. " +
@@ -139,6 +139,7 @@ public class CustomPropertyDefinitionController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,

@@ -1,6 +1,7 @@
 // ABOUTME: Registers multi-auth (JWT Bearer + API Key) authentication and authorization for the API.
 // ABOUTME: Dispatches X-API-Key requests to the ApiKey handler; all others go through Keycloak JWT Bearer.
 
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using Explore.API.Authentication;
@@ -108,7 +109,11 @@ public static class AuthenticationExtensions
                     KeepAlivePingTimeout = TimeSpan.FromSeconds(5),
                     KeepAlivePingPolicy = HttpKeepAlivePingPolicy.WithActiveRequests,
                     SslOptions = environment.IsDevelopment()
-                        ? new SslClientAuthenticationOptions { RemoteCertificateValidationCallback = (_, _, _, _) => true }
+                        ? new SslClientAuthenticationOptions
+                        {
+                            RemoteCertificateValidationCallback = (sender, cert, chain, errors) =>
+                                IsAllowedDevelopmentCertificate(sender, errors, environment)
+                        }
                         : default,
                     ConnectCallback = async (context, cancellationToken) =>
                     {
@@ -187,5 +192,66 @@ public static class AuthenticationExtensions
             .AddPolicy("platform_namespace_editor", policy => policy.RequireAuthenticatedUser());
 
         return services;
+    }
+
+    private static bool IsAllowedDevelopmentCertificate(object? sender, SslPolicyErrors errors, IWebHostEnvironment environment)
+    {
+        if (errors == SslPolicyErrors.None)
+        {
+            return true;
+        }
+
+        if (!environment.IsDevelopment())
+        {
+            return false;
+        }
+
+        return sender is SslStream { TargetHostName: { } host }
+               && IsDevelopmentTrustedHost(host);
+    }
+
+    private static bool IsDevelopmentTrustedHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("::1", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("100.64.0.2", StringComparison.OrdinalIgnoreCase)
+            || IsTailscaleAddress(host))
+        {
+            return true;
+        }
+
+        var additionalHosts = Environment.GetEnvironmentVariable("BFF_DEV_TRUSTED_HOSTS");
+        if (string.IsNullOrWhiteSpace(additionalHosts))
+        {
+            return false;
+        }
+
+        return additionalHosts
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(h => host.Equals(h, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsTailscaleAddress(string host)
+    {
+        if (!IPAddress.TryParse(host, out var address))
+        {
+            return false;
+        }
+
+        if (address.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = address.GetAddressBytes();
+        // Tailscale/CGNAT range: 100.64.0.0/10
+        return bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127;
     }
 }

@@ -5,7 +5,8 @@ namespace Event.Architecture.Tests;
 
 using System.Reflection;
 using Asp.Versioning;
-using Microsoft.AspNetCore.Authorization;
+using Explore.API.Controllers;
+using Explore.API.Filters;
 using Microsoft.AspNetCore.Mvc;
 using NetArchTest.Rules;
 
@@ -152,6 +153,22 @@ public class ApiConventionTests
 
         await Assert.That(violations).IsEmpty()
             .Because("middleware classes should be sealed for performance (prevents virtual dispatch)");
+    }
+
+    #endregion
+
+    #region Onboarding API Conventions
+
+    [Test]
+    [DisplayName("Tenant onboarding API must require MultiTenant deployment mode")]
+    public async Task TenantOnboardingController_ShouldRequire_MultiTenantMode()
+    {
+        var hasRequireMultiTenant = typeof(TenantOnboardingController)
+            .GetCustomAttributes(typeof(RequireMultiTenantAttribute), inherit: true)
+            .Length > 0;
+
+        await Assert.That(hasRequireMultiTenant).IsTrue()
+            .Because("SingleTenant onboarding hides tenant concepts, so the matching API must not remain normally usable.");
     }
 
     #endregion

@@ -13,5 +13,8 @@ public class UpdateCustomPropertyDefinitionDtoValidator : AbstractValidator<Upda
 
         RuleFor(x => x.Id)
             .NotEmpty().WithMessage("Id is required.");
+
+        RuleFor(x => x.ExpectedConcurrencyStamp)
+            .NotEmpty().WithMessage("ExpectedConcurrencyStamp is required.");
     }
 }

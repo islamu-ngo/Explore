@@ -46,6 +46,12 @@ public static class CachingExtensions
                 .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
                 .Tag("tenant-nav"));
 
+            // PublicExperienceShell: anonymous tenant shell, body ETagged by middleware and short-lived between setting edits.
+            options.AddPolicy("PublicExperienceShell", builder => builder
+                .Expire(TimeSpan.FromSeconds(30))
+                .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
+                .Tag("public-experience-shell"));
+
             // SystemConfig: public first-run/runtime mode state for BFF startup.
             options.AddPolicy("SystemConfig", builder => builder
                 .Expire(TimeSpan.FromSeconds(10))

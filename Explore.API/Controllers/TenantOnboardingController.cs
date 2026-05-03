@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.TenantPolicy;
@@ -19,6 +20,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Authenticated)]
+[RequireMultiTenant]
 public class TenantOnboardingController : ExploreControllerBase
 {
     private readonly IMediator _mediator;

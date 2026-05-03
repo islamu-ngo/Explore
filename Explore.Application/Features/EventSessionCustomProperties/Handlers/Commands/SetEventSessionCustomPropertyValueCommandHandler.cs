@@ -62,28 +62,13 @@ public class SetEventSessionCustomPropertyValueCommandHandler : IRequestHandler<
             return response;
         }
 
-        if (!definition.IsMulti && request.ValueDto.Ordinal > 0)
+        var runtimeValidationErrors = CustomPropertyRuntimeValueValidator.ValidateSingle(definition, request.ValueDto);
+        if (runtimeValidationErrors.Count > 0)
         {
             response.Success = false;
             response.Message = "Event session custom property value set failed.";
-            response.Errors = ["Single-value custom property definitions only accept ordinal 0."];
+            response.Errors = runtimeValidationErrors;
             return response;
-        }
-
-        if (definition.IsMulti)
-        {
-            var incomingKey = CustomPropertyValueNormalization.CreateKey(request.ValueDto);
-            var duplicateExistingValue = definition.Values
-                .Where(value => value.Ordinal != request.ValueDto.Ordinal)
-                .Any(value => CustomPropertyValueNormalization.CreateKey(value) == incomingKey);
-
-            if (duplicateExistingValue)
-            {
-                response.Success = false;
-                response.Message = "Event session custom property value set failed.";
-                response.Errors = ["Duplicate normalized values are not allowed for the same definition and session."];
-                return response;
-            }
         }
 
         var value = _mapper.Map<EventSessionCustomPropertyValue>(request.ValueDto);

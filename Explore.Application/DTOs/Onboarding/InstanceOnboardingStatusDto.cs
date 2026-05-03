@@ -13,4 +13,6 @@ public class InstanceOnboardingStatusDto
     public bool SetupSecretFromEnvironment { get; set; }
     public bool SetupTimedOut { get; set; }
     public DateTime? InstanceStartedAt { get; set; }
+    public string SetupSecretState { get; set; } = "Unavailable";
+    public string SetupSecretGuidance { get; set; } = "Setup access is not currently available.";
 }

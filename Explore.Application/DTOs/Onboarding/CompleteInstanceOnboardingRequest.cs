@@ -10,5 +10,6 @@ public sealed class CompleteInstanceOnboardingRequest
 {
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public DeploymentMode DeploymentMode { get; set; } = DeploymentMode.SingleTenant;
+    public SelfHostOnboardingProfileDto SiteProfile { get; set; } = new();
     public string? InstanceName { get; set; }
 }

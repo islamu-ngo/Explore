@@ -258,8 +258,8 @@ public class InstanceSettingsController : ExploreControllerBase
     }
 
     [HttpPost("deployment-mode", Name = RouteNames.UpdateInstanceDeploymentMode)]
-    [EndpointSummary("Switch Deployment Mode")]
-    [EndpointDescription("Switches the instance between SingleTenant and MultiTenant mode. Requires instance administrator.")]
+    [EndpointSummary("Deployment Mode Is Operator-Controlled")]
+    [EndpointDescription("Runtime deployment mode switching is disabled. Set DEPLOYMENT_MODE before first-run onboarding.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -269,38 +269,17 @@ public class InstanceSettingsController : ExploreControllerBase
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
-        var existingSettings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
-
-        if (!Enum.TryParse<Domain.Enums.DeploymentMode>(request.DeploymentMode, true, out var parsedMode))
+        _ = request;
+        return BadRequest(new BaseCommandResponse<Guid>
         {
-            return BadRequest(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Invalid deployment mode.",
-                Errors = new List<string> { "DeploymentMode must be SingleTenant or MultiTenant." }
-            });
-        }
-
-        var settings = new InstanceGovernanceSettings
-        {
-            DeploymentMode = new DeploymentModeDto { Mode = parsedMode },
-            Modules = existingSettings.Modules,
-            EventPolicy = existingSettings.EventPolicy,
-            OrganizationPolicy = existingSettings.OrganizationPolicy,
-            Branding = existingSettings.Branding,
-            Domains = existingSettings.Domains,
-            TenantDelegation = existingSettings.TenantDelegation,
-            RenderPolicy = existingSettings.RenderPolicy
-        };
-
-        var command = new UpdateInstanceGovernanceSettingsCommand
-        {
-            UserId = userId.Value,
-            Settings = settings
-        };
-
-        var response = await _mediator.Send(command, cancellationToken);
-        return HandleCommandResponse(response);
+            Success = false,
+            FailureCode = "DeploymentModeChangeRequiresOperatorConfiguration",
+            Message = "Deployment mode is operator-controlled.",
+            Errors =
+            [
+                "Set DEPLOYMENT_MODE before first-run onboarding. Runtime admin switching is disabled."
+            ]
+        });
     }
 
     // ── Infrastructure Settings (Storage, SMTP, Auth) ──────────────────

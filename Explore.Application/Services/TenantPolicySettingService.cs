@@ -122,6 +122,23 @@ public partial class TenantPolicySettingService : ITenantPolicySettingService
         }
     }
 
+    private static int DeserializeInteger(string? rawValue, int fallback)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<int>(rawValue);
+        }
+        catch
+        {
+            return int.TryParse(rawValue.Trim('"'), out var parsed) ? parsed : fallback;
+        }
+    }
+
     private static string NormalizeHomePage(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))

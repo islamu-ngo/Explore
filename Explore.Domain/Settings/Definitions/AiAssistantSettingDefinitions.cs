@@ -30,5 +30,13 @@ public static class AiAssistantSettingDefinitions
         MaxScope: SettingScope.Tenant,
         IsSensitive: true);
 
-    public static IReadOnlyList<SettingDefinition> All => [Enabled, EndpointUrl, ApiKey];
+    public static readonly SettingDefinition AllowAnonymousAccess = new(
+        Key: "ai_assistant.allow_anonymous_access",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "AiAssistant",
+        Description: "Allow unauthenticated visitors to open the AI assistant from the application shell",
+        MaxScope: SettingScope.Tenant);
+
+    public static IReadOnlyList<SettingDefinition> All => [Enabled, EndpointUrl, ApiKey, AllowAnonymousAccess];
 }

@@ -282,6 +282,42 @@ public class SettingHandlerTests
     }
 
     [Test]
+    public async Task Update_PublicExperiencePrimaryOrganization_WritesTenantOverrideViaResolver()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        var key = GovernanceSettingKeys.PublicExperience.PrimaryOrganizationId;
+        var organizationId = Guid.NewGuid().ToString();
+        SetupResolverMetadata(key, false);
+        var handler = CreateUpdateHandler();
+
+        var cmd = new UpdateSettingCommand { Key = key, Value = organizationId, Scope = SettingScope.Tenant };
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _resolver.Received(1).SetValueAsync(
+            key, Arg.Any<string>(), SettingScope.Tenant, TestTenantId,
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Update_PublicExperienceEventSectionPresets_WritesVersionedJsonViaResolver()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        var key = GovernanceSettingKeys.PublicExperience.EventSectionPresets;
+        const string presetsJson = "{\"schemaVersion\":1,\"presets\":[{\"id\":\"featured\",\"label\":\"Featured\"}]}";
+        SetupResolverMetadata(key, false);
+        var handler = CreateUpdateHandler();
+
+        var cmd = new UpdateSettingCommand { Key = key, Value = presetsJson, Scope = SettingScope.Tenant };
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _resolver.Received(1).SetValueAsync(
+            key, presetsJson, SettingScope.Tenant, TestTenantId,
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Update_PublishesNotification()
     {
         var handler = CreateUpdateHandler();

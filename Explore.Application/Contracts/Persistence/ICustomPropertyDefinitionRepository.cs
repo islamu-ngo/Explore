@@ -14,6 +14,7 @@ public interface ICustomPropertyDefinitionRepository : IGenericRepository<Custom
         EntityTypeName entityTypeName,
         int pageNumber,
         int pageSize);
+    Task<int> CountDefinitionsForScope(Guid tenantId, EntityTypeName entityTypeName, CancellationToken cancellationToken);
     Task<bool> ExistsScopedMachineKey(Guid tenantId, EntityTypeName entityTypeName, string namespaceValue, string key, Guid? excludeDefinitionId = null);
     Task<CustomPropertyDefinition> CreateWithOptions(
         CustomPropertyDefinition definition,

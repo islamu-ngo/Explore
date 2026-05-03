@@ -119,6 +119,11 @@ public class NamingConventionTests
         {
             "InstanceGovernanceSettings",
             "CompleteInstanceOnboardingRequest",
+            "CreateEventRequest",
+            "CreateEventSessionRequest",
+            "CreateEventDayRequest",
+            "CreateEventRoomRequest",
+            "CreateEventAgendaItemRequest",
             "UpdateTenantPolicyRequest",
             "BatchUpdateMode",  // Enum, not a DTO
             "UiThemeInputRules",  // Utility class, not a DTO
@@ -215,6 +220,7 @@ public class NamingConventionTests
             "Workspace",
             "TenantWorkspace",
             "SubTenant",
+            "OrganizationScope",
         ];
 
         foreach (var assembly in allAssemblies)

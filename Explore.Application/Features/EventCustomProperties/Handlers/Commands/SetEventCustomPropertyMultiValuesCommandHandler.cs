@@ -71,23 +71,12 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
             return response;
         }
 
-        if (!definition.IsMulti && request.Values.Count > 1)
+        var runtimeValidationErrors = CustomPropertyRuntimeValueValidator.ValidateMany(definition, request.Values);
+        if (runtimeValidationErrors.Count > 0)
         {
             response.Success = false;
             response.Message = "Event custom property multi-value set failed.";
-            response.Errors = ["Single-value custom property definitions cannot accept more than one value."];
-            return response;
-        }
-
-        var duplicateValue = request.Values
-            .GroupBy(CustomPropertyValueNormalization.CreateKey, StringComparer.Ordinal)
-            .FirstOrDefault(group => group.Count() > 1);
-
-        if (duplicateValue is not null)
-        {
-            response.Success = false;
-            response.Message = "Event custom property multi-value set failed.";
-            response.Errors = ["Duplicate normalized values are not allowed for the same definition and event."];
+            response.Errors = runtimeValidationErrors;
             return response;
         }
 

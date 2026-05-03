@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:33789/"
+      "url": "https://localhost:43169/"
     }
   ],
   "paths": {
@@ -2918,7 +2918,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "post": {
         "tags": [
@@ -3083,7 +3083,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "put": {
         "tags": [
@@ -3169,6 +3169,23 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -5445,12 +5462,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/CreateEventDto"
+                "$ref": "#/components/schemas/CreateEventRequest"
               }
             },
             "application/*\u002Bjson; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/CreateEventDto"
+                "$ref": "#/components/schemas/CreateEventRequest"
               }
             }
           },
@@ -5574,6 +5591,69 @@
               "application/hal\u002Bjson; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfEventListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/event/creation-context": {
+      "get": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Get Event Creation Context",
+        "description": "Returns tenant event publishing policy and the personal, organization, and group publisher options available to the current user.",
+        "operationId": "GetEventCreationContext",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventCreationContextDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventCreationContextDto"
                 }
               },
               "application/json": {},
@@ -5948,101 +6028,6 @@
           }
         },
         "x-endpoint-class": "Public"
-      }
-    },
-    "/api/event/with-sessions": {
-      "post": {
-        "tags": [
-          "Event"
-        ],
-        "summary": "Create Event with Sessions",
-        "description": "Creates a new event along with its sessions in a single transaction. At least one session is required. FirstSessionDate and LastSessionDate are computed automatically from the sessions. OrganizationId and GroupId are optional and mutually exclusive publisher contexts.",
-        "operationId": "CreateEventWithSessions",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateEventWithSessionsDto"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateEventWithSessionsDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/hal\u002Bjson; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/hal\u002Bjson; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal\u002Bjson; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          }
-        },
-        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/event/{id}/aspects/islamic": {
@@ -6658,7 +6643,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "post": {
         "tags": [
@@ -6823,7 +6808,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "put": {
         "tags": [
@@ -6909,6 +6894,23 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -7077,7 +7079,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "put": {
         "tags": [
@@ -9926,7 +9928,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "post": {
         "tags": [
@@ -10091,7 +10093,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "put": {
         "tags": [
@@ -10177,6 +10179,23 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -10345,7 +10364,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "put": {
         "tags": [
@@ -17327,8 +17346,8 @@
         "tags": [
           "InstanceSettings"
         ],
-        "summary": "Switch Deployment Mode",
-        "description": "Switches the instance between SingleTenant and MultiTenant mode. Requires instance administrator.",
+        "summary": "Deployment Mode Is Operator-Controlled",
+        "description": "Runtime deployment mode switching is disabled. Set DEPLOYMENT_MODE before first-run onboarding.",
         "operationId": "UpdateInstanceDeploymentMode",
         "parameters": [
           {
@@ -23221,6 +23240,55 @@
         "x-endpoint-class": "Public"
       }
     },
+    "/api/publicexperience/shell": {
+      "get": {
+        "tags": [
+          "PublicExperience"
+        ],
+        "summary": "Get Public Experience Shell",
+        "description": "Returns the typed public shell read model for the current tenant context.",
+        "operationId": "GetPublicExperienceShell",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicExperienceShellDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicExperienceShellDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicExperienceShellDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
     "/api/registrationmode": {
       "get": {
         "tags": [
@@ -25871,6 +25939,55 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/SystemOnboardingStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/system/onboarding-preflight": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Get System Onboarding Preflight",
+        "description": "Returns non-sensitive blocking checks and operational warnings for first-run launch readiness.",
+        "operationId": "GetSystemOnboardingPreflight",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingPreflightDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingPreflightDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingPreflightDto"
                 }
               }
             }
@@ -32915,6 +33032,9 @@
           "deploymentMode": {
             "$ref": "#/components/schemas/DeploymentMode"
           },
+          "siteProfile": {
+            "$ref": "#/components/schemas/SelfHostOnboardingProfileDto"
+          },
           "instanceName": {
             "type": [
               "null",
@@ -33425,6 +33545,80 @@
           }
         }
       },
+      "CreateEventAgendaItemRequest": {
+        "required": [
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "tempKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dayTempKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roomTempKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "locationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "roomId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "kindId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CreateEventCustomPropertyDefinitionDto": {
         "type": "object",
         "properties": {
@@ -33682,7 +33876,120 @@
           }
         }
       },
-      "CreateEventDto": {
+      "CreateEventDayRequest": {
+        "type": "object",
+        "properties": {
+          "tempKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "localDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerText": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerImageId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "isPublished": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "allowsDayScopeRegistration": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateEventRegistrationDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registrationScopeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "selectedEventDayId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "selectedSessionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "approvalStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "shareEmailWithOrganizer": {
+            "type": "boolean"
+          },
+          "consentTextAcknowledged": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "consentUiVersion": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CreateEventRequest": {
         "required": [
           "title"
         ],
@@ -33814,39 +34121,11 @@
             ],
             "format": "int32"
           },
-          "firstSessionDate": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "lastSessionDate": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
           "timezone": {
             "type": [
               "null",
               "string"
             ]
-          },
-          "firstSessionStartUtc": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "lastSessionStartUtc": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
           },
           "eventTimeZoneId": {
             "type": [
@@ -33911,69 +34190,76 @@
             ],
             "format": "int32"
           },
-          "days": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/InlineEventDayDto"
-            }
-          },
-          "rooms": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/InlineLocationRoomDto"
-            }
-          },
-          "agendaItems": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/InlineEventAgendaItemDto"
-            }
-          }
-        }
-      },
-      "CreateEventRegistrationDto": {
-        "type": "object",
-        "properties": {
-          "eventId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "registrationScopeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "selectedEventDayId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "selectedSessionIds": {
+          "categoryIds": {
             "type": "array",
             "items": {
               "type": "string",
               "format": "uuid"
             }
           },
-          "approvalStatusId": {
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventSessionRequest"
+            }
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventDayRequest"
+            }
+          },
+          "rooms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventRoomRequest"
+            }
+          },
+          "agendaItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventAgendaItemRequest"
+            }
+          }
+        }
+      },
+      "CreateEventRoomRequest": {
+        "required": [
+          "tempKey",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "tempKey": {
+            "type": "string"
+          },
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "capacity": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
@@ -33982,20 +34268,13 @@
             ],
             "format": "int32"
           },
-          "shareEmailWithOrganizer": {
-            "type": "boolean"
-          },
-          "consentTextAcknowledged": {
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
-              "null",
+              "integer",
               "string"
-            ]
-          },
-          "consentUiVersion": {
-            "type": [
-              "null",
-              "string"
-            ]
+            ],
+            "format": "int32"
           }
         }
       },
@@ -34399,16 +34678,22 @@
           }
         }
       },
-      "CreateEventSessionForEventDto": {
+      "CreateEventSessionRequest": {
         "type": "object",
         "properties": {
-          "title": {
+          "tempKey": {
             "type": [
               "null",
               "string"
             ]
           },
-          "description": {
+          "dayTempKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roomTempKey": {
             "type": [
               "null",
               "string"
@@ -34428,6 +34713,46 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "roomId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "featuredImageId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "maxAudienceAttendees": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -34461,6 +34786,13 @@
               "null",
               "string"
             ]
+          },
+          "sessionTemplateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "islamicAspect": {
             "oneOf": [
@@ -34987,149 +35319,6 @@
               "string"
             ],
             "format": "int32"
-          }
-        }
-      },
-      "CreateEventWithSessionsDto": {
-        "required": [
-          "title"
-        ],
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "slug": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "eventTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "audienceGenderId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "audienceAgeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "organizationId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "groupId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "featuredImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "isRegistrationRequired": {
-            "type": "boolean"
-          },
-          "externalRegistrationUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "eventStatusId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "visibilityTypeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "eventFormatId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "madhabId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "timezone": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "eventUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "sessions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateEventSessionForEventDto"
-            }
           }
         }
       },
@@ -36275,6 +36464,84 @@
             "items": {
               "$ref": "#/components/schemas/AgendaDayGroupDto"
             }
+          }
+        }
+      },
+      "EventCreationContextDto": {
+        "type": "object",
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "allowPersonalPublishing": {
+            "type": "boolean"
+          },
+          "allowOrganizationPublishing": {
+            "type": "boolean"
+          },
+          "allowGroupPublishing": {
+            "type": "boolean"
+          },
+          "requiresApproval": {
+            "type": "boolean"
+          },
+          "defaultPublisherMode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "unavailableReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publisherOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventCreationPublisherOptionDto"
+            }
+          }
+        }
+      },
+      "EventCreationPublisherOptionDto": {
+        "required": [
+          "publisherMode",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "publisherMode": {
+            "type": "string"
+          },
+          "publisherId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "canPublish": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -42011,147 +42278,6 @@
         }
       },
       "HalResourceOfTemplateDiffDto": {},
-      "InlineEventAgendaItemDto": {
-        "required": [
-          "title"
-        ],
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "startTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "endTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "roomId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "kindId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          }
-        }
-      },
-      "InlineEventDayDto": {
-        "type": "object",
-        "properties": {
-          "localDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "label": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "bannerText": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "bannerImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "isPublished": {
-            "type": "boolean"
-          },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "allowsDayScopeRegistration": {
-            "type": "boolean"
-          }
-        }
-      },
-      "InlineLocationRoomDto": {
-        "required": [
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "locationId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "slug": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "capacity": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          }
-        }
-      },
       "InstanceOnboardingStatusDto": {
         "type": "object",
         "properties": {
@@ -42185,6 +42311,12 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "setupSecretState": {
+            "type": "string"
+          },
+          "setupSecretGuidance": {
+            "type": "string"
           }
         }
       },
@@ -42920,6 +43052,55 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "OnboardingPreflightCheckDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "OnboardingPreflightDto": {
+        "type": "object",
+        "properties": {
+          "deploymentMode": {
+            "type": "string"
+          },
+          "isReadyToLaunch": {
+            "type": "boolean"
+          },
+          "blockingChecks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OnboardingPreflightCheckDto"
+            }
+          },
+          "warningChecks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OnboardingPreflightCheckDto"
+            }
           }
         }
       },
@@ -44122,7 +44303,207 @@
       "PropertyType": {
         "type": "integer"
       },
+      "PublicExperienceCtaDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/PublicExperienceCtaPlacement"
+          },
+          "style": {
+            "$ref": "#/components/schemas/PublicExperienceCtaStyle"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "PublicExperienceCtaPlacement": {
+        "type": "integer"
+      },
+      "PublicExperienceCtaStyle": {
+        "type": "integer"
+      },
+      "PublicExperienceEventCatalogDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicExperienceEventSectionDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "PublicExperienceHomeBlockDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PublicExperienceHomeBlockKind"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "linkText": {
+            "type": "string"
+          },
+          "linkUrl": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "PublicExperienceHomeBlockKind": {
+        "type": "integer"
+      },
+      "PublicExperienceHomeDto": {
+        "type": "object",
+        "properties": {
+          "preferredHomePage": {
+            "type": "string"
+          },
+          "brandDisplayName": {
+            "type": "string"
+          },
+          "brandLogoUrl": {
+            "type": "string"
+          },
+          "brandFaviconUrl": {
+            "type": "string"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicExperienceHomeBlockDto"
+            }
+          }
+        }
+      },
       "PublicExperienceMode": {
+        "type": "integer"
+      },
+      "PublicExperienceNavigationDto": {
+        "type": "object",
+        "properties": {
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicExperienceNavigationLinkDto"
+            }
+          }
+        }
+      },
+      "PublicExperienceNavigationLinkDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "PublicExperiencePrimaryOrganizationDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/PublicExperiencePrimaryOrganizationState"
+          },
+          "organizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "websiteUrl": {
+            "type": "string"
+          },
+          "profilePictureUri": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicExperiencePrimaryOrganizationState": {
         "type": "integer"
       },
       "PublicExperienceSettingsDto": {
@@ -44185,6 +44566,26 @@
           },
           "eventCardClickOpensDetailPage": {
             "type": "boolean"
+          },
+          "announcementBarEnabled": {
+            "type": "boolean"
+          },
+          "announcementBarMessage": {
+            "type": "string"
+          },
+          "announcementBarLinkText": {
+            "type": "string"
+          },
+          "announcementBarLinkUrl": {
+            "type": "string"
+          },
+          "announcementBarRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "communityGuidelinesContent": {
             "type": "string"
@@ -44276,6 +44677,9 @@
           "isAiAssistantAvailable": {
             "type": "boolean"
           },
+          "aiAssistantAllowAnonymousAccess": {
+            "type": "boolean"
+          },
           "footerConfig": {
             "$ref": "#/components/schemas/FooterConfigDto"
           },
@@ -44294,6 +44698,52 @@
           },
           "language": {
             "type": "string"
+          }
+        }
+      },
+      "PublicExperienceShellDto": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/PublicExperienceMode"
+          },
+          "home": {
+            "$ref": "#/components/schemas/PublicExperienceHomeDto"
+          },
+          "navigation": {
+            "$ref": "#/components/schemas/PublicExperienceNavigationDto"
+          },
+          "eventCatalog": {
+            "$ref": "#/components/schemas/PublicExperienceEventCatalogDto"
+          },
+          "primaryOrganization": {
+            "$ref": "#/components/schemas/PublicExperiencePrimaryOrganizationDto"
+          },
+          "eventSections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicExperienceEventSectionDto"
+            }
+          },
+          "ctas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicExperienceCtaDto"
+            }
+          },
+          "footer": {
+            "$ref": "#/components/schemas/FooterConfigDto"
           }
         }
       },
@@ -44776,6 +45226,38 @@
             "type": "string"
           },
           "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SelfHostOnboardingProfileDto": {
+        "type": "object",
+        "properties": {
+          "siteName": {
+            "type": "string"
+          },
+          "supportEmail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "canonicalUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locale": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "purpose": {
             "type": [
               "null",
               "string"
@@ -45891,6 +46373,26 @@
           "brandCustomCssUrl": {
             "type": "string"
           },
+          "announcementBarEnabled": {
+            "type": "boolean"
+          },
+          "announcementBarMessage": {
+            "type": "string"
+          },
+          "announcementBarLinkText": {
+            "type": "string"
+          },
+          "announcementBarLinkUrl": {
+            "type": "string"
+          },
+          "announcementBarRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
           "canOverrideHomePagePreference": {
             "type": "boolean"
           },
@@ -45983,6 +46485,9 @@
           },
           "aiAssistantApiKey": {
             "type": "string"
+          },
+          "aiAssistantAllowAnonymousAccess": {
+            "type": "boolean"
           }
         }
       },
@@ -46491,6 +46996,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "expectedConcurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "entityTypeName": {
             "$ref": "#/components/schemas/EntityTypeName"
           },
@@ -46727,6 +47236,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedConcurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -47317,6 +47830,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedConcurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -48410,6 +48927,21 @@
           "brandCustomCssUrl": {
             "type": "string"
           },
+          "announcementBarEnabled": {
+            "type": "boolean"
+          },
+          "announcementBarMessage": {
+            "type": "string"
+          },
+          "announcementBarLinkText": {
+            "type": "string"
+          },
+          "announcementBarLinkUrl": {
+            "type": "string"
+          },
+          "forceAnnouncementBarRedisplay": {
+            "type": "boolean"
+          },
           "communityGuidelinesContent": {
             "type": "string"
           },
@@ -48451,6 +48983,9 @@
           },
           "aiAssistantApiKey": {
             "type": "string"
+          },
+          "aiAssistantAllowAnonymousAccess": {
+            "type": "boolean"
           }
         }
       },

@@ -8,6 +8,7 @@ namespace Explore.Application.DTOs.EventSessionCustomProperty;
 public class EventSessionCustomPropertyDefinitionDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public Guid EventSessionId { get; set; }
     public Guid TenantId { get; set; }
     public string Namespace { get; set; } = string.Empty;

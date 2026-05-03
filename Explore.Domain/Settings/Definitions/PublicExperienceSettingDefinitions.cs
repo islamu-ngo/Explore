@@ -44,6 +44,46 @@ public static class PublicExperienceSettingDefinitions
         defaultValue: "{\"schemaVersion\":1,\"presets\":[]}",
         description: "Versioned public event-section preset configuration document");
 
+    public static readonly SettingDefinition AnnouncementBarEnabled = PublicExperienceDefinition(
+        key: GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled,
+        valueType: SettingValueType.Boolean,
+        defaultValue: "false",
+        description: "Controls whether the tenant announcement bar is displayed above public navigation");
+
+    public static readonly SettingDefinition AnnouncementBarMessage = PublicExperienceDefinition(
+        key: GovernanceSettingKeys.PublicExperience.AnnouncementBarMessage,
+        valueType: SettingValueType.String,
+        defaultValue: "\"\"",
+        description: "Tenant announcement bar message text");
+
+    public static readonly SettingDefinition AnnouncementBarLinkText = PublicExperienceDefinition(
+        key: GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkText,
+        valueType: SettingValueType.String,
+        defaultValue: "\"\"",
+        description: "Optional tenant announcement bar link label");
+
+    public static readonly SettingDefinition AnnouncementBarLinkUrl = PublicExperienceDefinition(
+        key: GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkUrl,
+        valueType: SettingValueType.String,
+        defaultValue: "\"\"",
+        description: "Optional tenant announcement bar link URL");
+
+    public static readonly SettingDefinition AnnouncementBarRevision = PublicExperienceDefinition(
+        key: GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision,
+        valueType: SettingValueType.Integer,
+        defaultValue: "0",
+        description: "Tenant announcement bar revision used to reset user dismissals");
+
+    public static readonly SettingDefinition AnnouncementBarDismissedRevision = new(
+        Key: GovernanceSettingKeys.PublicExperiencePreferences.AnnouncementBarDismissedRevision,
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "-1",
+        Category: "PublicExperiencePreferences",
+        Description: "Latest announcement bar revision dismissed by the current user",
+        MinScope: SettingScope.User,
+        MaxScope: SettingScope.User,
+        IsLockable: false);
+
     public static IReadOnlyList<SettingDefinition> All =>
     [
         Mode,
@@ -51,7 +91,13 @@ public static class PublicExperienceSettingDefinitions
         PrimaryOrganizationId,
         HomeBlocks,
         Ctas,
-        EventSectionPresets
+        EventSectionPresets,
+        AnnouncementBarEnabled,
+        AnnouncementBarMessage,
+        AnnouncementBarLinkText,
+        AnnouncementBarLinkUrl,
+        AnnouncementBarRevision,
+        AnnouncementBarDismissedRevision
     ];
 
     private static SettingDefinition PublicExperienceDefinition(

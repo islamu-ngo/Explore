@@ -28,7 +28,8 @@ public class EventSessionCustomPropertyProjectionRepository : IEventSessionCusto
 
         if (exposureCeiling.HasValue)
         {
-            query = query.Where(p => p.ExposureLevel <= exposureCeiling.Value);
+            var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(exposureCeiling.Value);
+            query = query.Where(p => visibleExposureLevels.Contains(p.ExposureLevel));
         }
 
         return await query

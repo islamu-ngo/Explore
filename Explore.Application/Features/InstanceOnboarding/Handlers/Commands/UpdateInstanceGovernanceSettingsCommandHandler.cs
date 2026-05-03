@@ -13,7 +13,6 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using static Explore.Application.Responses.FailureCodes;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
@@ -77,37 +76,27 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         }
 
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
-        var currentMode = bootstrap?.SelectedDeploymentMode;
-        var isSingleTenant = deploymentMode == DeploymentMode.SingleTenant;
-        var isRevertingToSingleTenant = string.Equals(currentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase)
-                                        && isSingleTenant;
+        var currentMode = ResolvePersistedMode(bootstrap?.SelectedDeploymentMode);
+        if (deploymentMode != currentMode)
+        {
+            response.Success = false;
+            response.FailureCode = "DeploymentModeChangeRequiresOperatorConfiguration";
+            response.Message = "Deployment mode is operator-controlled.";
+            response.Errors =
+            [
+                "Set DEPLOYMENT_MODE before first-run onboarding. Runtime admin switching is disabled."
+            ];
+            return response;
+        }
+
+        request.Settings.DeploymentMode.Mode = currentMode;
+        var isSingleTenant = currentMode == DeploymentMode.SingleTenant;
 
         LogOnboardingGuardrailRejectionIfNeeded(request.UserId, request.Settings.RenderPolicy);
 
-        // Atomic: validate active-tenant count + persist settings + update bootstrap — all in one transaction.
-        // The count check MUST be inside the transaction so validation and write cannot be separated by
-        // a concurrent admin action that activates a second tenant between check and commit.
-        string? failureCode = null;
-        string? failureMessage = null;
-        List<string>? failureErrors = null;
-
+        // Atomic: persist settings + update bootstrap in one transaction.
         var bootstrapId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            if (isRevertingToSingleTenant)
-            {
-                var activeTenantCount = await _tenantRepository.GetActiveTenantCountAsync();
-                if (activeTenantCount > 1)
-                {
-                    failureCode = FailureCodes.DeploymentModeChangeBlockedByActiveTenants;
-                    failureMessage = "Cannot revert to Single-Tenant mode.";
-                    failureErrors =
-                    [
-                        $"You have {activeTenantCount} active tenants. Archive or suspend {activeTenantCount - 1} tenant(s) before switching to Single-Tenant mode."
-                    ];
-                    return Guid.Empty;
-                }
-            }
-
             Guid? defaultTenantId = null;
             if (isSingleTenant)
             {
@@ -119,22 +108,13 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
 
             if (bootstrap != null)
             {
-                bootstrap.SelectedDeploymentMode = deploymentMode.ToString();
+                bootstrap.SelectedDeploymentMode = currentMode.ToString();
                 await _instanceBootstrapStateRepository.Update(bootstrap);
                 return bootstrap.Id;
             }
 
             return Guid.Empty;
         }, cancellationToken);
-
-        if (failureCode is not null)
-        {
-            response.Success = false;
-            response.FailureCode = failureCode;
-            response.Message = failureMessage;
-            response.Errors = failureErrors;
-            return response;
-        }
 
         // Invalidate the cached deployment mode so all in-process caches reflect the new value immediately.
         await _deploymentModeProvider.InvalidateCacheAsync();
@@ -158,6 +138,13 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
             TenantStatusId = (int)TenantStatusEnum.Active,
             TenantStatus = null!
         });
+    }
+
+    private static DeploymentMode ResolvePersistedMode(string? selectedDeploymentMode)
+    {
+        return Enum.TryParse<DeploymentMode>(selectedDeploymentMode, ignoreCase: true, out var mode)
+            ? mode
+            : DeploymentMode.SingleTenant;
     }
 
     private void LogOnboardingGuardrailRejectionIfNeeded(Guid userId, RenderPolicySettingsDto rp)

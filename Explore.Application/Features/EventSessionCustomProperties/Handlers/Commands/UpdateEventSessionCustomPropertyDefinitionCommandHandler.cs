@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Application.DTOs.EventSessionCustomProperty.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -64,6 +65,15 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             response.Success = false;
             response.Message = "Event session custom property definition not found.";
             return response;
+        }
+
+        if (definition.ConcurrencyStamp != request.DefinitionDto.ExpectedConcurrencyStamp)
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The event session custom-property definition changed since it was loaded. Reload and try again.",
+                "event_session_custom_property_definition",
+                definition.Id.ToString());
         }
 
         var governance = _customPropertyGovernancePolicy.EvaluateDefinition(request.DefinitionDto.Namespace, request.DefinitionDto.Key);

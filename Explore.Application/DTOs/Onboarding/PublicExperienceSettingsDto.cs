@@ -26,6 +26,11 @@ public class PublicExperienceSettingsDto
     public bool AllowOrganizationSelfRegistration { get; set; } = true;
     public bool AllowGroupSelfRegistration { get; set; } = true;
     public bool EventCardClickOpensDetailPage { get; set; }
+    public bool AnnouncementBarEnabled { get; set; }
+    public string AnnouncementBarMessage { get; set; } = string.Empty;
+    public string AnnouncementBarLinkText { get; set; } = string.Empty;
+    public string AnnouncementBarLinkUrl { get; set; } = string.Empty;
+    public int AnnouncementBarRevision { get; set; }
     public string CommunityGuidelinesContent { get; set; } = string.Empty;
     public List<string> EnabledModules { get; set; } = new();
     public string AnalyticsProvider { get; set; } = "none";
@@ -51,6 +56,7 @@ public class PublicExperienceSettingsDto
     public bool OnboardingPrerenderEnabled { get; set; }
     public bool DisallowInteractiveServerOnOnboarding { get; set; } = true;
     public bool IsAiAssistantAvailable { get; set; }
+    public bool AiAssistantAllowAnonymousAccess { get; set; }
     public FooterConfigDto FooterConfig { get; set; } = new();
     public Guid? DefaultThemeId { get; set; }
     public string ThemeMode { get; set; } = "system";

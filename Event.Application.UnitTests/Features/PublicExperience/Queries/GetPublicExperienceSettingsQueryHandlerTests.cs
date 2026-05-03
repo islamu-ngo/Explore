@@ -270,6 +270,34 @@ public class GetPublicExperienceSettingsQueryHandlerTests
     }
 
     [Test]
+    public async Task Handle_WithAiAssistantPolicy_IncludesAvailabilityAndAnonymousAccess()
+    {
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(new List<ModuleInfo>());
+
+        var aiSettings = new AiAssistantSettingGroup();
+        aiSettings.Populate(new Dictionary<string, ResolvedSetting>
+        {
+            [GovernanceSettingKeys.AiAssistant.Enabled] = new() { Value = "true" },
+            [GovernanceSettingKeys.AiAssistant.ApiKey] = new() { Value = "\"configured-key\"" },
+            [GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess] = new() { Value = "true" }
+        });
+
+        _hierarchicalSettingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(
+                Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(aiSettings);
+
+        var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
+
+        await Assert.That(result.IsAiAssistantAvailable).IsTrue();
+        await Assert.That(result.AiAssistantAllowAnonymousAccess).IsTrue();
+    }
+
+    [Test]
     public async Task Handle_IncludesGovernanceRenderPolicyValuesInPublicPayload()
     {
         // Arrange

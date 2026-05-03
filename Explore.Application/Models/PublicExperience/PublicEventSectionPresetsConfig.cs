@@ -12,6 +12,7 @@ public sealed record PublicEventSectionPresetConfig(
     string Label,
     PublicEventSectionOwnerFilter? Owners = null,
     PublicEventSectionEventFilter? Filters = null,
+    string? Icon = null,
     int SortOrder = 0,
     bool IsEnabled = true,
     int? Limit = null);
@@ -24,9 +25,10 @@ public sealed record PublicEventSectionOwnerFilter(
 public sealed record PublicEventSectionEventFilter(
     IReadOnlyList<Guid>? CategoryIds = null,
     IReadOnlyList<Guid>? TagIds = null,
-    IReadOnlyList<Guid>? AudienceIds = null,
-    IReadOnlyList<Guid>? EventTypeIds = null,
-    IReadOnlyList<Guid>? EventFormatIds = null,
+    IReadOnlyList<int>? AudienceGenderIds = null,
+    IReadOnlyList<int>? AudienceAgeIds = null,
+    IReadOnlyList<int>? EventTypeIds = null,
+    IReadOnlyList<int>? EventFormatIds = null,
     PublicEventSectionDateFilter? Date = null,
     IReadOnlyList<PublicEventSectionCustomPropertyFilter>? CustomProperties = null);
 
@@ -36,6 +38,7 @@ public sealed record PublicEventSectionDateFilter(
     DateOnly? StartsOnOrBefore = null);
 
 public sealed record PublicEventSectionCustomPropertyFilter(
+    string Namespace,
     string Key,
     PublicEventSectionCustomPropertyOperator Operator,
     IReadOnlyList<string>? Values = null);

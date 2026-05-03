@@ -1,4 +1,7 @@
+using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
+using System.Net.Security;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Hosting;
@@ -93,7 +96,11 @@ public class OpenApiExportService : BackgroundService
                     PooledConnectionLifetime = TimeSpan.FromMinutes(2),
                     PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
                     ConnectTimeout = TimeSpan.FromSeconds(5),
-                    SslOptions = { RemoteCertificateValidationCallback = (_, _, _, _) => true }
+                    SslOptions =
+                    {
+                        RemoteCertificateValidationCallback = (sender, cert, chain, errors) =>
+                            IsAllowedDevelopmentCertificate(sender, errors, openApiSchemaUri)
+                    }
                 };
                 using var httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
 
@@ -126,5 +133,77 @@ public class OpenApiExportService : BackgroundService
         }
 
         _logger.LogError("Failed to fetch OpenAPI spec after {MaxRetries} attempts", maxRetries);
+    }
+
+    private static bool IsAllowedDevelopmentCertificate(object? sender, SslPolicyErrors errors, string fallbackHost)
+    {
+        if (errors == SslPolicyErrors.None)
+        {
+            return true;
+        }
+
+        if (sender is SslStream { TargetHostName: { } host }
+            && IsDevelopmentTrustedHost(host))
+        {
+            return true;
+        }
+
+        // Keep behavior strict by default; only allow an explicit fallback host and trusted list.
+        return !string.IsNullOrWhiteSpace(fallbackHost) && IsDevelopmentTrustedHost(ExtractHost(fallbackHost));
+    }
+
+    private static string ExtractHost(string value)
+    {
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
+        {
+            return uri.Host;
+        }
+
+        return string.Empty;
+    }
+
+    private static bool IsDevelopmentTrustedHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("::1", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("100.64.0.2", StringComparison.OrdinalIgnoreCase)
+            || IsTailscaleAddress(host))
+        {
+            return true;
+        }
+
+        var additionalHosts = Environment.GetEnvironmentVariable("BFF_DEV_TRUSTED_HOSTS");
+        if (string.IsNullOrWhiteSpace(additionalHosts))
+        {
+            return false;
+        }
+
+        return additionalHosts
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(h => host.Equals(h, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsTailscaleAddress(string host)
+    {
+        if (!IPAddress.TryParse(host, out var address))
+        {
+            return false;
+        }
+
+        if (address.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = address.GetAddressBytes();
+        // Tailscale/CGNAT range: 100.64.0.0/10
+        return bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127;
     }
 }

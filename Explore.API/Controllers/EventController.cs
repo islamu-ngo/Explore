@@ -173,6 +173,22 @@ public class EventController : ExploreControllerBase
     }
 
     /// <summary>
+    /// Get the current user's event creation context.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("creation-context", Name = RouteNames.GetEventCreationContext)]
+    [EndpointSummary("Get Event Creation Context")]
+    [EndpointDescription("Returns tenant event publishing policy and the personal, organization, and group publisher options available to the current user.")]
+    [ProducesResponseType(typeof(EventCreationContextDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<EventCreationContextDto>> GetCreationContext(CancellationToken cancellationToken = default)
+    {
+        var context = await _mediator.Send(new GetEventCreationContextRequest(), cancellationToken);
+        return Ok(context);
+    }
+
+    /// <summary>
     /// Get event details by ID.
     /// </summary>
     [AllowAnonymous]
@@ -238,39 +254,9 @@ public class EventController : ExploreControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDto @event, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventRequest @event, CancellationToken cancellationToken = default)
     {
-        var command = new CreateEventCommand { EventDto = @event };
-        var response = await _mediator.Send(command, cancellationToken);
-
-        if (!response.Success)
-        {
-            return BadRequest(response);
-        }
-
-        return CreatedAtRoute(
-            RouteNames.GetEventById,
-            new { id = response.Id },
-            response);
-    }
-
-    /// <summary>
-    /// Create a new event with sessions in a single transaction.
-    /// </summary>
-    [Authorize]
-    [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost("with-sessions", Name = RouteNames.CreateEventWithSessions)]
-    [EndpointSummary("Create Event with Sessions")]
-    [EndpointDescription("Creates a new event along with its sessions in a single transaction. " +
-        "At least one session is required. FirstSessionDate and LastSessionDate are computed automatically from the sessions. " +
-        "OrganizationId and GroupId are optional and mutually exclusive publisher contexts.")]
-    [Consumes("application/json")]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateWithSessions([FromBody] CreateEventWithSessionsDto dto, CancellationToken cancellationToken = default)
-    {
-        var command = new CreateEventWithSessionsCommand { EventWithSessionsDto = dto };
+        var command = new CreateEventCommand { Request = @event };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)

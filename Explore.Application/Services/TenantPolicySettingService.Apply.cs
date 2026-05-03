@@ -155,6 +155,48 @@ public partial class TenantPolicySettingService
             isTenantWhiteLabelingEnabled && brandCustomCssUrlSetting?.IsLocked != true,
             actorUserId);
 
+        await SetBooleanTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled,
+            settings.AnnouncementBarEnabled,
+            true,
+            actorUserId);
+
+        await SetStringTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarMessage,
+            settings.AnnouncementBarMessage,
+            true,
+            actorUserId);
+
+        await SetStringTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkText,
+            settings.AnnouncementBarLinkText,
+            true,
+            actorUserId);
+
+        await SetStringTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkUrl,
+            settings.AnnouncementBarLinkUrl,
+            true,
+            actorUserId);
+
+        if (settings.ForceAnnouncementBarRedisplay)
+        {
+            var revisionSetting = await _tenantSettingRepository.GetByTenantAndKey(
+                tenantId,
+                GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision);
+            var nextRevision = DeserializeInteger(revisionSetting?.Value, 0) + 1;
+
+            await UpsertTenantOverrideAsync(
+                tenantId,
+                GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision,
+                JsonSerializer.Serialize(nextRevision),
+                actorUserId);
+        }
+
         await SetStringTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.Policies.CommunityGuidelinesContent,
@@ -260,6 +302,13 @@ public partial class TenantPolicySettingService
             tenantId,
             GovernanceSettingKeys.AiAssistant.ApiKey,
             settings.AiAssistantApiKey,
+            canOverrideAiAssistant,
+            actorUserId);
+
+        await SetBooleanTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
+            settings.AiAssistantAllowAnonymousAccess,
             canOverrideAiAssistant,
             actorUserId);
     }

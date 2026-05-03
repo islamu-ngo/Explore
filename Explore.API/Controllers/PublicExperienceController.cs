@@ -5,11 +5,13 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -35,5 +37,17 @@ public class PublicExperienceController : ControllerBase
     {
         var settings = await _mediator.Send(new GetPublicExperienceSettingsQuery(), cancellationToken);
         return Ok(settings);
+    }
+
+    [HttpGet("shell", Name = RouteNames.GetPublicExperienceShell)]
+    [AllowAnonymous]
+    [EndpointSummary("Get Public Experience Shell")]
+    [EndpointDescription("Returns the typed public shell read model for the current tenant context.")]
+    [ProducesResponseType(typeof(PublicExperienceShellDto), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "PublicExperienceShell")]
+    public async Task<ActionResult<PublicExperienceShellDto>> GetShell(CancellationToken cancellationToken = default)
+    {
+        var shell = await _mediator.Send(new GetPublicExperienceShellQuery(), cancellationToken);
+        return Ok(shell);
     }
 }

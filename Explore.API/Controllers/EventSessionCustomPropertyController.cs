@@ -41,8 +41,8 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Get event-session-local custom property definitions with pagination.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet(Name = RouteNames.GetEventSessionCustomPropertyDefinitions)]
     [EndpointSummary("Get all EventSessionCustomPropertyDefinitions")]
     [EndpointDescription("Get a paginated list of custom property definitions for a specific event session. " +
@@ -76,8 +76,8 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Get event-session-local custom property definition details by ID.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventSessionCustomPropertyDefinitionById)]
     [EndpointSummary("Get EventSessionCustomPropertyDefinition Details")]
     [EndpointDescription("Get full details of an event-session-local custom property definition including its options and provenance information. " +
@@ -141,6 +141,7 @@ public class EventSessionCustomPropertyController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
@@ -186,8 +187,8 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Get all custom property values for an event session.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("values", Name = RouteNames.GetEventSessionCustomPropertyValues)]
     [EndpointSummary("Get EventSessionCustomPropertyValues")]
     [EndpointDescription("Get all custom property values for a specific event session across all definitions.")]

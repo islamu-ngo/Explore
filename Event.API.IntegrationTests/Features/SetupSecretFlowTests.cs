@@ -194,6 +194,7 @@ public class SetupSecretFlowTests
         return new CompleteInstanceOnboardingRequest
         {
             DeploymentMode = DeploymentMode.SingleTenant,
+            SiteProfile = new SelfHostOnboardingProfileDto { SiteName = "Test Instance" },
             InstanceName = "Test Instance"
         };
     }

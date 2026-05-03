@@ -219,10 +219,12 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
     private IQueryable<EventSession> ApplyExactMatchFilter(IQueryable<EventSession> query, EventSessionCustomPropertyProjectionFilter filter)
     {
         var (ns, key, normalizedValue) = ((string, string, string))filter.Value;
+        var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
             p.Namespace == ns &&
             p.Key == key &&
+            visibleExposureLevels.Contains(p.ExposureLevel) &&
             p.IsFilterable &&
             p.NormalizedValue == normalizedValue));
     }
@@ -230,10 +232,12 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
     private IQueryable<EventSession> ApplyOptionMatchFilter(IQueryable<EventSession> query, EventSessionCustomPropertyProjectionFilter filter)
     {
         var (ns, key, optionId) = ((string, string, Guid))filter.Value;
+        var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
             p.Namespace == ns &&
             p.Key == key &&
+            visibleExposureLevels.Contains(p.ExposureLevel) &&
             p.IsFilterable &&
             p.OptionId == optionId));
     }
@@ -241,10 +245,12 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
     private IQueryable<EventSession> ApplyOptionsMatchAnyFilter(IQueryable<EventSession> query, EventSessionCustomPropertyProjectionFilter filter)
     {
         var (ns, key, optionIds) = ((string, string, List<Guid>))filter.Value;
+        var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
             p.Namespace == ns &&
             p.Key == key &&
+            visibleExposureLevels.Contains(p.ExposureLevel) &&
             p.IsFilterable &&
             p.OptionId != null &&
             optionIds.Contains(p.OptionId.Value)));
@@ -254,10 +260,12 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
     {
         var (ns, key, searchTerm) = ((string, string, string))filter.Value;
         var pattern = $"%{searchTerm}%";
+        var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
             p.Namespace == ns &&
             p.Key == key &&
+            visibleExposureLevels.Contains(p.ExposureLevel) &&
             p.IsSearchable &&
             p.NormalizedValue != null &&
             EF.Functions.ILike(p.NormalizedValue, pattern)));
@@ -267,8 +275,10 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
     {
         var searchTerm = (string)filter.Value;
         var pattern = $"%{searchTerm}%";
+        var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
+            visibleExposureLevels.Contains(p.ExposureLevel) &&
             p.IsSearchable &&
             p.NormalizedValue != null &&
             EF.Functions.ILike(p.NormalizedValue, pattern)));
@@ -277,19 +287,24 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
     private IQueryable<EventSession> ApplyExistsFilter(IQueryable<EventSession> query, EventSessionCustomPropertyProjectionFilter filter)
     {
         var (ns, key) = ((string, string))filter.Value;
+        var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
             p.Namespace == ns &&
-            p.Key == key));
+            p.Key == key &&
+            visibleExposureLevels.Contains(p.ExposureLevel) &&
+            p.IsFilterable));
     }
 
     private IQueryable<EventSession> ApplyBooleanTrueFilter(IQueryable<EventSession> query, EventSessionCustomPropertyProjectionFilter filter)
     {
         var (ns, key) = ((string, string))filter.Value;
+        var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
             p.Namespace == ns &&
             p.Key == key &&
+            visibleExposureLevels.Contains(p.ExposureLevel) &&
             p.IsFilterable &&
             p.BooleanValue == true));
     }
@@ -297,10 +312,12 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
     private IQueryable<EventSession> ApplyNumberRangeFilter(IQueryable<EventSession> query, EventSessionCustomPropertyProjectionFilter filter)
     {
         var (ns, key, min, max) = ((string, string, decimal?, decimal?))filter.Value;
+        var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
             p.Namespace == ns &&
             p.Key == key &&
+            visibleExposureLevels.Contains(p.ExposureLevel) &&
             p.IsFilterable &&
             p.NumberValue != null &&
             (!min.HasValue || p.NumberValue >= min.Value) &&
@@ -310,10 +327,12 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
     private IQueryable<EventSession> ApplyDateRangeFilter(IQueryable<EventSession> query, EventSessionCustomPropertyProjectionFilter filter)
     {
         var (ns, key, from, to) = ((string, string, DateTimeOffset?, DateTimeOffset?))filter.Value;
+        var visibleExposureLevels = CustomPropertyExposureScope.VisibleAtOrBelow(filter.ExposureCeiling);
         return query.Where(s => _dbContext.EventSessionCustomPropertyProjections.Any(p =>
             p.EventSessionId == s.Id &&
             p.Namespace == ns &&
             p.Key == key &&
+            visibleExposureLevels.Contains(p.ExposureLevel) &&
             p.IsFilterable &&
             p.DateTimeValue != null &&
             (!from.HasValue || p.DateTimeValue >= from.Value) &&

@@ -8,4 +8,5 @@ namespace Explore.Application.DTOs.CustomPropertyDefinition;
 public class UpdateCustomPropertyDefinitionDto : CreateCustomPropertyDefinitionDto
 {
     public Guid Id { get; set; }
+    public Guid ExpectedConcurrencyStamp { get; set; }
 }

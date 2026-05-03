@@ -1,5 +1,5 @@
 // ABOUTME: FluentValidation validator for the minimal onboarding request payload.
-// ABOUTME: Validates that DeploymentMode is a defined enum value and InstanceName length is reasonable.
+// ABOUTME: Validates deployment mode and the Application-owned self-hosted site profile.
 
 using FluentValidation;
 
@@ -12,6 +12,11 @@ public class CompleteInstanceOnboardingRequestValidator : AbstractValidator<Comp
         RuleFor(x => x.DeploymentMode)
             .IsInEnum()
             .WithMessage("DeploymentMode must be SingleTenant or MultiTenant.");
+
+        RuleFor(x => x.SiteProfile)
+            .NotNull()
+            .WithMessage("SiteProfile is required.")
+            .SetValidator(new SelfHostOnboardingProfileDtoValidator());
 
         RuleFor(x => x.InstanceName)
             .MaximumLength(200)

@@ -41,8 +41,8 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Get event-local custom property definitions with pagination.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet(Name = RouteNames.GetEventCustomPropertyDefinitions)]
     [EndpointSummary("Get all EventCustomPropertyDefinitions")]
     [EndpointDescription("Get a paginated list of custom property definitions for a specific event. " +
@@ -76,8 +76,8 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Get event-local custom property definition details by ID.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventCustomPropertyDefinitionById)]
     [EndpointSummary("Get EventCustomPropertyDefinition Details")]
     [EndpointDescription("Get full details of an event-local custom property definition including its options and provenance information. " +
@@ -141,6 +141,7 @@ public class EventCustomPropertyController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
         Guid id,
@@ -186,8 +187,8 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Get all custom property values for an event.
     /// </summary>
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("values", Name = RouteNames.GetEventCustomPropertyValues)]
     [EndpointSummary("Get EventCustomPropertyValues")]
     [EndpointDescription("Get all custom property values for a specific event across all definitions.")]

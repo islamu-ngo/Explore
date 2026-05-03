@@ -25,19 +25,19 @@ public class TechEventStrategy : IEventStrategy
 
     public int Priority => 10; // Same priority as Islamic for domain modules
 
-    public bool IsApplicable(CreateEventDto dto)
+    public bool IsApplicable(CreateEventRequest request)
     {
         // Tech strategy applies when the event has tech-related characteristics
         // For now, check if EventType suggests a tech event (can be expanded)
         // This is a simplified check - full implementation would check event type
-        return false; // Will be enabled when TechAspect is added to CreateEventDto
+        return false; // Will be enabled when TechAspect is added to CreateEventRequest
     }
 
-    public Task<ValidationResult> ValidateAsync(CreateEventDto dto, CancellationToken cancellationToken = default)
+    public Task<ValidationResult> ValidateAsync(CreateEventRequest request, CancellationToken cancellationToken = default)
     {
         var result = new ValidationResult();
 
-        // Tech-specific validation will be added when TechAspect is in CreateEventDto
+        // Tech-specific validation will be added when TechAspect is in CreateEventRequest
         // For now, return empty result
 
         return Task.FromResult(result);

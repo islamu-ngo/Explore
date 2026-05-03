@@ -117,6 +117,45 @@ public class SetEventCustomPropertyValueCommandHandlerTests
         await repository.Received(1).SetValue(Arg.Any<EventCustomPropertyValue>(), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Handle_WhenNumberDefinitionReceivesTextValue_ReturnsFailure()
+    {
+        var definitionId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var repository = Substitute.For<IEventCustomPropertyRepository>();
+        var definition = CreateDefinition(definitionId, eventId, isMulti: false, propertyType: PropertyType.Number);
+        repository.GetDefinitionWithDetails(definitionId).Returns(definition);
+        var handler = CreateSut(repository);
+
+        var result = await handler.Handle(
+            CreateCommand(definitionId, eventId, ordinal: 0, textValue: "not-a-number"),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That((result.Errors ?? []).Any(error => error.Contains("NumberValue", StringComparison.Ordinal))).IsTrue();
+        await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
+    }
+
+    [Test]
+    public async Task Handle_WhenInactiveDefinitionReceivesValue_ReturnsFailure()
+    {
+        var definitionId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var repository = Substitute.For<IEventCustomPropertyRepository>();
+        var definition = CreateDefinition(definitionId, eventId, isMulti: false);
+        definition.IsActive = false;
+        repository.GetDefinitionWithDetails(definitionId).Returns(definition);
+        var handler = CreateSut(repository);
+
+        var result = await handler.Handle(
+            CreateCommand(definitionId, eventId, ordinal: 0, textValue: "Arabic"),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That((result.Errors ?? []).Any(error => error.Contains("not active", StringComparison.Ordinal))).IsTrue();
+        await repository.DidNotReceiveWithAnyArgs().SetValue(default!, default);
+    }
+
     private static SetEventCustomPropertyValueCommandHandler CreateSut(
         IEventCustomPropertyRepository repository,
         IUnitOfWork? unitOfWork = null,
@@ -145,7 +184,11 @@ public class SetEventCustomPropertyValueCommandHandlerTests
         };
     }
 
-    private static EventCustomPropertyDefinition CreateDefinition(Guid definitionId, Guid eventId, bool isMulti)
+    private static EventCustomPropertyDefinition CreateDefinition(
+        Guid definitionId,
+        Guid eventId,
+        bool isMulti,
+        PropertyType propertyType = PropertyType.Text)
     {
         return new EventCustomPropertyDefinition
         {
@@ -155,7 +198,7 @@ public class SetEventCustomPropertyValueCommandHandlerTests
             Namespace = "tenant.event",
             Key = "primary_language",
             DisplayName = "Primary Language",
-            PropertyType = PropertyType.Text,
+            PropertyType = propertyType,
             ExposureLevel = ExposureLevel.OrganizerOnly,
             IsActive = true,
             IsMulti = isMulti

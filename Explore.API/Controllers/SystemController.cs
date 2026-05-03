@@ -37,4 +37,16 @@ public sealed class SystemController : ExploreControllerBase
         var status = await _mediator.Send(new GetSystemOnboardingStatusQuery(), cancellationToken);
         return Ok(status);
     }
+
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("onboarding-preflight", Name = RouteNames.GetSystemOnboardingPreflight)]
+    [EndpointSummary("Get System Onboarding Preflight")]
+    [EndpointDescription("Returns non-sensitive blocking checks and operational warnings for first-run launch readiness.")]
+    [ProducesResponseType(typeof(OnboardingPreflightDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<OnboardingPreflightDto>> GetOnboardingPreflight(CancellationToken cancellationToken = default)
+    {
+        var preflight = await _mediator.Send(new GetOnboardingPreflightQuery(), cancellationToken);
+        return Ok(preflight);
+    }
 }

@@ -41,6 +41,7 @@ public partial class TenantPolicySettingService
         var systemAiAssistantEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.Enabled);
         var systemAiAssistantEndpointUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.EndpointUrl);
         var systemAiAssistantApiKey = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.ApiKey);
+        var systemAiAssistantAllowAnonymousAccess = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
         var systemCommunityGuidelines = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
         var systemRenderPreset = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Preset);
         var systemRenderAdvanced = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled);
@@ -68,9 +69,15 @@ public partial class TenantPolicySettingService
         var tenantBrandLogoUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.LogoUrl);
         var tenantBrandFaviconUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.FaviconUrl);
         var tenantBrandCustomCssUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.CustomCssUrl);
+        var tenantAnnouncementEnabled = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled);
+        var tenantAnnouncementMessage = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarMessage);
+        var tenantAnnouncementLinkText = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkText);
+        var tenantAnnouncementLinkUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkUrl);
+        var tenantAnnouncementRevision = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision);
         var tenantAiAssistantEnabled = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.Enabled);
         var tenantAiAssistantEndpointUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.EndpointUrl);
         var tenantAiAssistantApiKey = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.ApiKey);
+        var tenantAiAssistantAllowAnonymousAccess = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
         var tenantCommunityGuidelines = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
 
         var isMultiTenant = DeserializeString(systemDeploymentMode?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
@@ -173,6 +180,11 @@ public partial class TenantPolicySettingService
                 systemBrandCustomCssUrl?.Value,
                 string.Empty,
                 isTenantWhiteLabelingEnabled && systemBrandCustomCssUrl?.IsLocked != true),
+            AnnouncementBarEnabled = DeserializeBoolean(tenantAnnouncementEnabled?.Value, false),
+            AnnouncementBarMessage = DeserializeString(tenantAnnouncementMessage?.Value, string.Empty),
+            AnnouncementBarLinkText = DeserializeString(tenantAnnouncementLinkText?.Value, string.Empty),
+            AnnouncementBarLinkUrl = DeserializeString(tenantAnnouncementLinkUrl?.Value, string.Empty),
+            AnnouncementBarRevision = DeserializeInteger(tenantAnnouncementRevision?.Value, 0),
             CanOverrideHomePagePreference = canOverrideHomePage,
             CanOverrideSubdomain = canOverrideSubdomain,
             CanOverrideCustomDomain = canOverrideCustomDomain,
@@ -263,6 +275,11 @@ public partial class TenantPolicySettingService
                 tenantAiAssistantApiKey?.Value,
                 systemAiAssistantApiKey?.Value,
                 string.Empty,
+                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+            AiAssistantAllowAnonymousAccess = ResolveBoolean(
+                tenantAiAssistantAllowAnonymousAccess?.Value,
+                systemAiAssistantAllowAnonymousAccess?.Value,
+                false,
                 !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
             CommunityGuidelinesContent = ResolveString(
                 tenantCommunityGuidelines?.Value,

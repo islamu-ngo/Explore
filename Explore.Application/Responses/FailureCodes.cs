@@ -15,4 +15,5 @@ public static class FailureCodes
     /// </summary>
     public const string DeploymentModeChangeBlockedByActiveTenants =
         "DeploymentModeChangeBlockedByActiveTenants";
+
 }

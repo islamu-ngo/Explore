@@ -63,6 +63,7 @@ public class CustomPropertyDefinitionControllerTests
         var dto = new UpdateCustomPropertyDefinitionDto
         {
             Id = id,
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
             EntityTypeName = EntityTypeName.Organization,
             Namespace = "tenant.community",
             Key = "prayer_notes",

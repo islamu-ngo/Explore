@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.CustomPropertyDefinition.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -62,6 +63,15 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
             response.Success = false;
             response.Message = "Custom-property definition not found.";
             return response;
+        }
+
+        if (definition.ConcurrencyStamp != request.DefinitionDto.ExpectedConcurrencyStamp)
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The custom-property definition changed since it was loaded. Reload and try again.",
+                "custom_property_definition",
+                definition.Id.ToString());
         }
 
         var governance = _customPropertyGovernancePolicy.EvaluateDefinition(request.DefinitionDto.Namespace, request.DefinitionDto.Key);

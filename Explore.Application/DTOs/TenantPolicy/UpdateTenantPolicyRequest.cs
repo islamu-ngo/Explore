@@ -20,6 +20,11 @@ public class UpdateTenantPolicyRequest
     public string BrandLogoUrl { get; set; } = string.Empty;
     public string BrandFaviconUrl { get; set; } = string.Empty;
     public string BrandCustomCssUrl { get; set; } = string.Empty;
+    public bool AnnouncementBarEnabled { get; set; }
+    public string AnnouncementBarMessage { get; set; } = string.Empty;
+    public string AnnouncementBarLinkText { get; set; } = string.Empty;
+    public string AnnouncementBarLinkUrl { get; set; } = string.Empty;
+    public bool ForceAnnouncementBarRedisplay { get; set; }
 
     // Community guidelines
     public string CommunityGuidelinesContent { get; set; } = string.Empty;
@@ -40,4 +45,5 @@ public class UpdateTenantPolicyRequest
     public bool AiAssistantEnabled { get; set; }
     public string AiAssistantEndpointUrl { get; set; } = string.Empty;
     public string AiAssistantApiKey { get; set; } = string.Empty;
+    public bool AiAssistantAllowAnonymousAccess { get; set; }
 }

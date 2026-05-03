@@ -132,24 +132,7 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.FeaturedImage, opt => opt.Ignore())
             .ForMember(dest => dest.Tenant, opt => opt.Ignore());
 
-        // CreateEvent / UpdateEvent
-        CreateMap<CreateEventDto, Event>()
-            .ForMember(dest => dest.Id, opt => opt.Ignore())
-            .ForMember(dest => dest.ActorId, opt => opt.Ignore())
-            .ForMember(dest => dest.TotalViews, opt => opt.Ignore())
-            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
-            .ForMember(dest => dest.SessionCount, opt => opt.Ignore())
-            .ForMember(dest => dest.AtprotoRecordId, opt => opt.Ignore())
-            .ForMember(dest => dest.IsUserReported, opt => opt.Ignore())
-            .ForMember(dest => dest.FirstSessionDate, opt => opt.MapFrom(src =>
-                src.FirstSessionDate.HasValue ? DateOnly.FromDateTime(src.FirstSessionDate.Value.DateTime) : (DateOnly?)null))
-            .ForMember(dest => dest.LastSessionDate, opt => opt.MapFrom(src =>
-                src.LastSessionDate.HasValue ? DateOnly.FromDateTime(src.LastSessionDate.Value.DateTime) : (DateOnly?)null))
-            .ForMember(dest => dest.FirstSessionStartUtc, opt => opt.MapFrom(src => src.FirstSessionStartUtc ?? src.FirstSessionDate))
-            .ForMember(dest => dest.LastSessionStartUtc, opt => opt.MapFrom(src => src.LastSessionStartUtc ?? src.LastSessionDate))
-            .ForMember(dest => dest.EventTimeZoneId, opt => opt.MapFrom(src => src.EventTimeZoneId ?? src.Timezone))
-            .ForMember(dest => dest.Timezone, opt => opt.MapFrom(src => src.Timezone ?? src.EventTimeZoneId));
-
+        // UpdateEvent
         CreateMap<UpdateEventDto, Event>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.ActorId, opt => opt.Ignore())

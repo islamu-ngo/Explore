@@ -18,6 +18,8 @@ public interface IEventSessionCustomPropertyRepository : IGenericRepository<Even
     Task<List<EventSessionCustomPropertyDefinition>> GetAllDefinitionsForSession(Guid eventSessionId);
     Task<List<EventSessionCustomPropertyDefinition>> GetTrackedDefinitionsForSession(Guid eventSessionId, CancellationToken cancellationToken);
 
+    Task<int> CountDefinitionsForSession(Guid eventSessionId, CancellationToken cancellationToken);
+
     Task<bool> ExistsDefinitionKey(Guid eventSessionId, string namespaceValue, string key, Guid? excludeDefinitionId = null);
 
     Task<EventSessionCustomPropertyDefinition> CreateWithOptions(

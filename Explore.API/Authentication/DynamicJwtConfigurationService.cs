@@ -2,6 +2,7 @@
 // ABOUTME: Swaps its ConfigurationManager + ValidIssuer when onboarding/save-config handlers call ReloadAsync.
 
 using System.Net.Http;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using Explore.Application.Contracts.Services;
@@ -171,10 +172,10 @@ public sealed class DynamicJwtConfigurationService : IJwtAuthorityRefreshNotifie
             }
         };
 
-        if (_environment.IsDevelopment()
-            || string.Equals(_configuration["Keycloak:RequireHttpsMetadata"], "false", StringComparison.OrdinalIgnoreCase))
+        if (_environment.IsDevelopment())
         {
-            handler.SslOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+            handler.SslOptions.RemoteCertificateValidationCallback = (sender, cert, chain, errors) =>
+                IsAllowedDevelopmentCertificate(sender, errors);
         }
 
         var httpClient = new HttpClient(handler)
@@ -197,6 +198,67 @@ public sealed class DynamicJwtConfigurationService : IJwtAuthorityRefreshNotifie
             documentRetriever);
 
         return new State(manager, authority, source);
+    }
+
+    private bool IsAllowedDevelopmentCertificate(object? sender, SslPolicyErrors errors)
+    {
+        if (errors == SslPolicyErrors.None)
+        {
+            return true;
+        }
+
+        if (!_environment.IsDevelopment())
+        {
+            return false;
+        }
+
+        return sender is SslStream { TargetHostName: { } host }
+               && IsDevelopmentTrustedHost(host);
+    }
+
+    private static bool IsDevelopmentTrustedHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("::1", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("100.64.0.2", StringComparison.OrdinalIgnoreCase)
+            || IsTailscaleAddress(host))
+        {
+            return true;
+        }
+
+        var additionalHosts = Environment.GetEnvironmentVariable("BFF_DEV_TRUSTED_HOSTS");
+        if (string.IsNullOrWhiteSpace(additionalHosts))
+        {
+            return false;
+        }
+
+        return additionalHosts
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(h => host.Equals(h, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsTailscaleAddress(string host)
+    {
+        if (!IPAddress.TryParse(host, out var address))
+        {
+            return false;
+        }
+
+        if (address.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = address.GetAddressBytes();
+        // Tailscale/CGNAT range: 100.64.0.0/10
+        return bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127;
     }
 
     private sealed record State(
