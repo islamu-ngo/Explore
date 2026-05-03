@@ -19,7 +19,9 @@ First-run onboarding source:
 Runtime source after onboarding:
 
 1. persisted bootstrap/system setting selected during onboarding,
-2. later instance-admin changes to `deployment.mode`.
+2. operator-controlled migration work only.
+
+Normal instance-admin UI cannot switch deployment mode after onboarding. To launch in multi-tenant mode, set `DEPLOYMENT_MODE=multi_tenant` before first-run onboarding. Leaving it unset launches convention-first single-tenant setup.
 
 ## Single-Tenant Mode Behavior
 
@@ -66,7 +68,7 @@ Mode behavior affects:
 - admin UX paths,
 - effective policy/delegation paths in tenant settings.
 
-Instance administrators can switch from single-tenant to multi-tenant at runtime. They can switch from multi-tenant back to single-tenant only when one or fewer active tenants remain.
+Deployment mode is intentionally operator-governed after onboarding. Do not treat `deployment.mode` as a casual runtime toggle; use an explicit migration/runbook if an installed instance must change modes.
 
 ## Related
 

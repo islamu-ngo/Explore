@@ -213,9 +213,12 @@
       "redirectUris": [
         "http://localhost:7002/*",
         "https://localhost:7177/*",
+        "https://100.64.0.2:7177/*",
         "http://localhost/*",
         "https://localhost/*",
         "http://127.0.0.1/*",
+        "https://100.64.0.2/*",
+        "http://100.64.0.2/*",
         "http://host.docker.internal/*"
       ],
       "webOrigins": ["+"],
@@ -230,7 +233,7 @@
       "optionalClientScopes": ["address", "phone"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:7002/*##https://localhost:7177/*##http://localhost/*##https://localhost/*",
+        "post.logout.redirect.uris": "http://localhost:7002/*##https://localhost:7177/*##http://localhost/*##https://localhost/*##https://100.64.0.2:7177/*##https://100.64.0.2/*##http://100.64.0.2:7177/*##http://100.64.0.2/*",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false",
         "use.refresh.tokens": "true",

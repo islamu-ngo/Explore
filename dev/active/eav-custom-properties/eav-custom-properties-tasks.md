@@ -3,7 +3,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 # EAV Custom Properties - Task Checklist
 
-**Last Updated: 2026-05-02 (100/100 hardening checklist added after implementation-reality review)**
+**Last Updated: 2026-05-02 (Phase 12 delete lifecycle hardening recorded)**
 
 ---
 
@@ -21,8 +21,14 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 - Phase 9.10 — Org/Group cleanup: ⏳ PENDING
 - Phase 9.11 — NSwag regen: ✅ CLOSED (swagger snapshot + generated client refreshed; client build/regeneration succeeded; client tests 909 total / 908 passed / 1 known skipped)
 - Phase 8.5.13 — Projection updater Prometheus metrics: ✅ CLOSED (`Explore.Projections` inline update + dirty-scope skip counters, event/session updater wiring, API/application/architecture verification passed)
+- Phase 12.1 — Runtime value validation: 🟡 PARTIAL (event/session runtime writes now validate active definition, typed shape, requiredness, `IsMulti`, ranges, regex, URL schemes, option membership/active state, and duplicate normalized values through a shared Application helper; shared org/group value writes still need wiring)
+- Phase 12.2 — Public exposure hardening: 🟡 PARTIAL (raw custom-property definition/value controller reads are now authenticated instead of anonymous; public event/session projection search/filter/`Exists` paths apply explicit exposure ceilings; export/moderation ceilings and Docker proof remain)
+- Phase 12.3 — Option lifecycle hardening: 🟡 PARTIAL (shared/event/session option updates now preserve semantic identity by `Namespace + Key`, remap defaults to persisted option IDs, and retire omitted rows instead of hard-replacing option sets; definition delete/purge semantics still require product/ops decision)
+- Phase 12.4 — Projection operability authorization: ✅ CLOSED (projection status, dirty-scope, event projection-row inspection, and session projection-row inspection queries now require handler-level `custom_property_projection:view` authorization metadata and implement `ISecureRequest`)
+- Phase 12.5 — Concurrency/stale-state hardening: ✅ CLOSED (shared/event/session custom-property definition detail DTOs expose `ConcurrencyStamp`, update DTOs require `ExpectedConcurrencyStamp`, and stale admin updates throw `409 concurrent_update` before mutating tracked entities)
+- Phase 12.6 — Delete lifecycle hardening: 🟡 PARTIAL (normal shared/event/session definition deletes now retire and soft-delete definitions, options, and values through tracked EF deletes; explicit audited purge workflow remains a product/ops decision)
 
-**Build state**: Phase 9.11 generated-client build ✅ on 2026-04-30. Phase 8.5.13 API Release build and persistence integration test project Release build ✅ on 2026-05-02. Full-solution Release build currently fails outside these slices on unrelated existing analyzer/package issues plus a transient locked client PDB during static-web-assets fingerprinting.
+**Build state**: Phase 12.1/12.2/12.3/12.4/12.5/12.6 API Release build ✅ and architecture tests ✅ on 2026-05-02. Phase 12.5 targeted concurrency/application tests ✅ 1089/1089, `Explore.Blazor.Client` Release build ✅, and `Explore.Blazor.Client.Tests` ✅ 968 total / 967 passed / 1 known skipped on 2026-05-02. Phase 12.4 projection authorization metadata tests ✅ 5/5 on 2026-05-02. Phase 12.2 projection filter unit/application test run ✅ 1078/1078 on 2026-05-02. Phase 12.3/12.6 targeted persistence option/delete lifecycle tests ✅ 6/6 on 2026-05-02. Phase 9.11 generated-client build ✅ on 2026-04-30. Phase 8.5.13 persistence integration test project Release build ✅ on 2026-05-02. Full-solution Release build currently fails outside these slices on unrelated existing analyzer/package issues plus a transient locked client PDB during static-web-assets fingerprinting.
 
 **Client test state**: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped on 2026-04-30.
 
@@ -30,14 +36,14 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 **Orphan to delete**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs`
 
-**Next recommended implementation slice**: Phase 12.1 + 12.2. The system is now majorly implemented; the fastest path to 100/100 is shared runtime value validation plus public exposure hardening, then Docker/Testcontainers certification. Phase 9.6/9.6A preview admin overviews remain useful but lower priority.
+**Next recommended implementation slice**: Continue Phase 12 with Docker/Testcontainers certification and export/moderation exposure proof. Event/session runtime validation, raw endpoint authentication, public projection `Exists`/search/filter exposure ceilings, projection operability authorization, normal option-update lifecycle hardening, definition stale-update conflict handling, and normal delete soft-delete/retirement are now in place; shared org/group value wiring, explicit purge semantics, and full Docker-gated exposure proof remain.
 
 **100/100 hardening focus (2026-05-02):**
 - runtime value writes must validate against effective definition metadata, not only DTO shape;
 - public/anonymous custom-property reads must enforce exposure ceiling server-side;
 - option updates must preserve semantic identity and retire instead of hard-delete when values exist;
-- projection normalized values and `Exists` filters must be exposure-safe and tracking-independent;
-- concurrency stamps must roundtrip through API/client write flows;
+- projection normalized values and `Exists` filters must remain exposure-safe and tracking-independent, with Docker proof still required;
+- concurrency stamps now roundtrip through custom-property definition API/client write flows and stale writes fail as `409 concurrent_update`;
 - a product ADR must decide whether "full data model customization" means custom fields only or a future runtime schema engine.
 
 ---

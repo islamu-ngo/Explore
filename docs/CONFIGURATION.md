@@ -176,7 +176,9 @@ Static deployment config is bound from `Deployment` section (`DeploymentSettings
 - `HidePlatformAdminInSingleTenant` (default `true`)
 - `DefaultTenantSubdomain`
 
-First-run onboarding mode is controlled only by API configuration. Set `DEPLOYMENT_MODE=multi_tenant` in the Infisical `/api` folder to show the multi-tenant onboarding flow. If `DEPLOYMENT_MODE` is absent, onboarding is single-tenant only.
+First-run onboarding mode is controlled only by API configuration. Set `DEPLOYMENT_MODE=multi_tenant` in the Infisical `/api` folder to show the multi-tenant onboarding flow. If `DEPLOYMENT_MODE` is absent, onboarding is single-tenant only. Invalid deployment-mode values fail safely to single-tenant setup.
+
+Normal admin UI does not switch deployment mode after onboarding. Choose multi-tenant mode before first launch by setting the API environment value; otherwise the convention-first path launches a single-tenant site with the default tenant hidden internally.
 
 ## Reverse Proxy Trust Configuration
 
@@ -196,7 +198,7 @@ Runtime nuance:
 
 - Before onboarding completes, tenant resolution uses a single-tenant fallback so setup endpoints remain reachable.
 - Onboarding persists the configured API deployment mode into the database.
-- After onboarding, runtime mode comes from the persisted database setting and instance administrators may switch it at runtime, including reverting to single-tenant only when one active tenant remains.
+- After onboarding, deployment mode is operator-controlled. Runtime admin switching is disabled in the normal governance UI; change mode only through an explicit operator migration path.
 
 ## Localization / TMS Settings (Governance)
 

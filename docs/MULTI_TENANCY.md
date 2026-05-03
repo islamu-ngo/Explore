@@ -11,7 +11,7 @@ First-run onboarding mode:
 - `DEPLOYMENT_MODE=multi_tenant` shows the multi-tenant onboarding flow.
 - absent `DEPLOYMENT_MODE` shows the single-tenant onboarding flow only.
 
-After onboarding, runtime mode comes from persisted database settings and can be changed by instance administrators.
+After onboarding, runtime mode is operator-controlled. Normal instance-admin UI cannot switch deployment mode; launch multi-tenant mode by setting `DEPLOYMENT_MODE=multi_tenant` before first-run onboarding or by following an explicit operator migration runbook.
 
 Modes:
 

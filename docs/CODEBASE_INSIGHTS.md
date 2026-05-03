@@ -30,7 +30,7 @@ The API-authoritative tenant resolver uses this order for normal multi-tenant re
 
 ### Runtime vs Static Deployment Mode
 
-The system checks deployment mode (SingleTenant/MultiTenant) **at runtime from the database** (`SystemSettings` table), not just from `appsettings.json`. This means a running instance can be switched between modes without redeployment. The static config is only a fallback when the DB is unreachable.
+The system checks deployment mode (SingleTenant/MultiTenant) **at runtime from the database** (`SystemSettings` table), not just from `appsettings.json`. First-run onboarding persists the operator-selected mode from API configuration. Normal admin UI does not treat deployment mode as a runtime toggle; mode changes after onboarding require an explicit operator migration path.
 
 ### Not All Entities Are Tenant-Scoped
 

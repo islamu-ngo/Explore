@@ -173,7 +173,12 @@ Resilience: push and reload failures are logged but never fail the calling comma
 Instance bootstrap uses `ISetupSecretProvider`:
 
 - if setup mode is active and no env secret exists, API auto-generates a setup secret and logs it at startup;
-- onboarding endpoints in BFF (`/bff/setup-secret*`) validate and synchronize secret state.
+- onboarding endpoints in BFF (`/bff/setup-secret*`) validate and synchronize secret state;
+- setup status returns client-safe state labels (`Environment`, `Generated`, `Expired`, `Locked`, `Unavailable`) and operator guidance without exposing raw secrets;
+- generated setup secrets expire 60 minutes after API startup, and recovery is to restart the API and use the newly logged generated secret;
+- environment-provided setup secrets remain authoritative, but a timed-out setup window still requires an API restart to reopen setup mode.
+
+The convention-first launch path is Setup Secret → Admin Auth → Site Profile → Preflight → Launch. Preflight readiness data is non-sensitive and separates launch blockers from operational warnings.
 
 ## External API Key Operations
 

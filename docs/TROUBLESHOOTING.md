@@ -63,10 +63,12 @@ Symptoms:
 Checks:
 1. API logs: setup mode active vs completed.
 2. BFF endpoints:
-   - `POST /bff/setup-secret`
-   - `POST /bff/setup-secret/sync`
+    - `POST /bff/setup-secret`
+    - `POST /bff/setup-secret/sync`
 3. ensure secret is not being injected directly by client headers; proxy strips and re-resolves trusted value.
 4. auto-generated setup secrets expire after 60 minutes from API startup.
+5. if the setup page reports `Environment`, use the configured `SETUP_SECRET` value; if it reports `Generated`, use the API startup log secret; if it reports `Expired`, restart the API to reopen setup mode.
+6. use `GET /api/System/onboarding-preflight` to inspect non-sensitive launch blockers and operational warnings before retrying completion.
 
 ## Tenant Resolution Problems
 

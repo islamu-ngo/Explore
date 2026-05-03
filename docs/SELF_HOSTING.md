@@ -151,6 +151,10 @@ See [SECRETS.md](SECRETS.md) for full provider configuration and [CONFIGURATION.
 | `DEPLOYMENT_MODE` | Set to `multi_tenant` in the API environment/Infisical `/api` folder to start onboarding in multi-tenant mode. Omit for single-tenant onboarding. | *(unset = single tenant)* |
 | `Deployment__DefaultTenantId` | Default tenant UUID | `018e4e5c-7f00-7000-8000-000000000001` |
 
+Most self-hosted installs should leave `DEPLOYMENT_MODE` unset. The first-run flow then launches a single-tenant site, hides tenant mechanics, and creates the internal default tenant during completion. Set `DEPLOYMENT_MODE=multi_tenant` only before first launch when the deployment is intentionally hosting multiple tenants.
+
+During first-run onboarding, complete the flow in this order: enter the setup secret, authenticate the initial administrator, fill the Site Profile, review Preflight, then Launch. Preflight blocks missing critical launch requirements such as auth provider and canonical host configuration, and warns about operational maturity items such as SMTP, object storage, backups, observability, and public exposure policy.
+
 ## Keycloak Realm Setup
 
 1. Create a realm named `islamu`
