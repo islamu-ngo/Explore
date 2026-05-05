@@ -65,7 +65,7 @@ public static class SecretResolutionServiceCollectionExtensions
             .AddCheck<SecretResolverHealthCheck>(
                 name: HealthCheckName,
                 failureStatus: HealthStatus.Degraded,
-                tags: ["secrets", "infrastructure"]);
+                tags: ["ready", "secrets", "infrastructure"]);
 
         return services;
     }

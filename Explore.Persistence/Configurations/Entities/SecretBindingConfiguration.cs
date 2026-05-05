@@ -22,15 +22,27 @@ public class SecretBindingConfiguration : IEntityTypeConfiguration<SecretBinding
             .IsRequired()
             .HasMaxLength(256);
 
-        builder.Property(e => e.Scope)
-            .IsRequired()
-            .HasConversion<int>();
+        builder.Ignore(e => e.Scope);
+
+        builder.Property(e => e.SettingScopeId)
+            .IsRequired();
+
+        builder.HasOne(e => e.SettingScope)
+            .WithMany()
+            .HasForeignKey(e => e.SettingScopeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(e => e.ScopeId);
 
-        builder.Property(e => e.SourceType)
-            .IsRequired()
-            .HasConversion<int>();
+        builder.Ignore(e => e.SourceType);
+
+        builder.Property(e => e.SecretSourceTypeId)
+            .IsRequired();
+
+        builder.HasOne(e => e.SecretSourceType)
+            .WithMany()
+            .HasForeignKey(e => e.SecretSourceTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Normalized metadata columns. Exactly one group is populated per row (enforced by CHECK below).
         builder.Property(e => e.InfisicalEnvironment).HasMaxLength(64);
@@ -44,10 +56,16 @@ public class SecretBindingConfiguration : IEntityTypeConfiguration<SecretBinding
             .IsRequired()
             .HasDefaultValue(false);
 
-        builder.Property(e => e.LastValidationResult)
+        builder.Ignore(e => e.LastValidationResult);
+
+        builder.Property(e => e.SecretValidationStatusId)
             .IsRequired()
-            .HasConversion<int>()
-            .HasDefaultValue(Explore.Domain.Enums.SecretValidationResult.NotValidated);
+            .HasDefaultValue((int)Explore.Domain.Enums.SecretValidationResult.NotValidated);
+
+        builder.HasOne(e => e.SecretValidationStatus)
+            .WithMany()
+            .HasForeignKey(e => e.SecretValidationStatusId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(e => e.LastValidationError)
             .HasMaxLength(1000);
@@ -77,27 +95,27 @@ public class SecretBindingConfiguration : IEntityTypeConfiguration<SecretBinding
             .HasDatabaseName("ix_secret_bindings_setting_key_scope_id_tenant_unique");
 
         // Lookup index by scope for bulk listing
-        builder.HasIndex(e => new { e.Scope, e.ScopeId })
-            .HasDatabaseName("ix_secret_bindings_scope_scope_id");
+        builder.HasIndex(e => new { e.SettingScopeId, e.ScopeId })
+            .HasDatabaseName("ix_secret_bindings_setting_scope_id_scope_id");
 
         builder.ToTable(t =>
         {
-            // CHECK: scope/scope_id consistency (Instance=0 requires ScopeId NULL, Tenant=1 requires ScopeId NOT NULL).
+            // CHECK: scope/scope_id consistency (Instance=1 requires ScopeId NULL, Tenant=2 requires ScopeId NOT NULL).
             t.HasCheckConstraint(
-                "ck_secret_bindings_scope_scope_id",
-                "(scope = 0 AND scope_id IS NULL) OR (scope = 1 AND scope_id IS NOT NULL)");
+                "ck_secret_bindings_setting_scope_scope_id",
+                "(setting_scope_id = 1 AND scope_id IS NULL) OR (setting_scope_id = 2 AND scope_id IS NOT NULL)");
 
             // CHECK: exactly one metadata group populated per SourceType.
-            //  SourceType 0 (Infisical): env/path/key all NOT NULL, other groups NULL.
-            //  SourceType 1 (InlineEncrypted): ciphertext + version NOT NULL, other groups NULL.
-            //  SourceType 2 (EnvironmentVariable): variable_name NOT NULL, other groups NULL.
+            //  SecretSourceType 0 (Infisical): env/path/key all NOT NULL, other groups NULL.
+            //  SecretSourceType 1 (InlineEncrypted): ciphertext + version NOT NULL, other groups NULL.
+            //  SecretSourceType 2 (EnvironmentVariable): variable_name NOT NULL, other groups NULL.
             t.HasCheckConstraint(
                 "ck_secret_bindings_source_metadata",
-                "(source_type = 0 AND infisical_environment IS NOT NULL AND infisical_path IS NOT NULL AND infisical_key IS NOT NULL " +
+                "(secret_source_type_id = 0 AND infisical_environment IS NOT NULL AND infisical_path IS NOT NULL AND infisical_key IS NOT NULL " +
                 "  AND environment_variable_name IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL) " +
-                "OR (source_type = 1 AND inline_ciphertext IS NOT NULL AND inline_ciphertext_version IS NOT NULL " +
+                "OR (secret_source_type_id = 1 AND inline_ciphertext IS NOT NULL AND inline_ciphertext_version IS NOT NULL " +
                 "  AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND environment_variable_name IS NULL) " +
-                "OR (source_type = 2 AND environment_variable_name IS NOT NULL " +
+                "OR (secret_source_type_id = 2 AND environment_variable_name IS NOT NULL " +
                 "  AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL)");
         });
     }

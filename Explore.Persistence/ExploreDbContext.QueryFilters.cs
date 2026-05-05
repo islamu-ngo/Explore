@@ -24,6 +24,10 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
+        modelBuilder.Entity<EventSessionGroup>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
         // Event-related entities (tenant only - no soft delete)
         modelBuilder.Entity<EventRegistration>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
@@ -38,6 +42,10 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<EventSessionAgendaItem>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
+        modelBuilder.Entity<EventSessionGroupSession>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
         modelBuilder.Entity<EventRoleAssignment>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));

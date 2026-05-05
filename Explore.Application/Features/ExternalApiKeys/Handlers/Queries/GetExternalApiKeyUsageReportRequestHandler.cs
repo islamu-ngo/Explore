@@ -5,7 +5,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Features.ExternalApiKeys.Requests.Queries;
-using Explore.Domain.Enums;
+using Explore.Application.Lookups;
 using MediatR;
 
 namespace Explore.Application.Features.ExternalApiKeys.Handlers.Queries;
@@ -55,7 +55,9 @@ public class GetExternalApiKeyUsageReportRequestHandler : IRequestHandler<GetExt
                 ApiKeyId = s.ApiKeyId,
                 ApiKeyName = s.ApiKeyName,
                 TenantId = s.TenantId,
-                OwnerType = (ExternalApiKeyOwnerType)s.OwnerType,
+                ExternalApiKeyOwnerTypeId = s.OwnerType,
+                ExternalApiKeyOwnerTypeCode = NormalizedLookupMetadata.ExternalApiKeyOwnerType(s.OwnerType).Code,
+                ExternalApiKeyOwnerTypeName = NormalizedLookupMetadata.ExternalApiKeyOwnerType(s.OwnerType).Name,
                 OwnerId = s.OwnerId,
                 TotalRequestCount = s.TotalRequestCount,
                 TotalCreditsUsed = s.TotalCreditsUsed,

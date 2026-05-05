@@ -160,6 +160,12 @@ public class LinkRelationsTests
         await Assert.That(LinkRelations.Registration).IsEqualTo("registration");
     }
 
+    [Test]
+    public async Task PublishReadiness_ShouldBeCorrect()
+    {
+        await Assert.That(LinkRelations.PublishReadiness).IsEqualTo("publish-readiness");
+    }
+
     #endregion
 
     #region All Relations Should Be Non-Empty

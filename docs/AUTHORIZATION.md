@@ -65,7 +65,7 @@ The actual logic of "is this user allowed to do this?" is delegated to a runtime
 -   **Wrapper**: `RuntimeAuthorizationProvider` is injected into the `AuthorizationBehavior` and decides which concrete provider to use.
 -   **Providers**:
     -   `CerbosAuthorizationService`: Offloads decision-making to an external Cerbos Policy Decision Point (PDP).
-    -   `FallbackAuthorizationService`: Uses a local, database-backed RBAC implementation.
+    -   `FallbackAuthorizationService`: Uses a local, database-backed RBAC implementation when local authorization is selected.
 
 ### 3.4. HATEOAS Link Authorization
 
@@ -89,7 +89,7 @@ The API uses a Hypermedia as the Engine of Application State (HATEOAS) model, an
 
 ### 4.2. Fallback RBAC Service
 
--   **Description**: A local, in-database implementation of Role-Based Access Control. It serves as the default authorization provider and as a fallback if Cerbos is unavailable.
+-   **Description**: A local, in-database implementation of Role-Based Access Control. It serves as the default authorization provider. It is not used as an automatic fallback when the instance-level Cerbos provider is selected and unavailable.
 -   **Logic**: The `FallbackAuthorizationService` contains hardcoded rules for known resources (`event`, `organization`, `tenant_setting`, etc.) and denies access by default for any unknown resource type.
 -   **Notable Rules**:
     -   Instance administrators bypass most checks.
@@ -102,14 +102,14 @@ The `RuntimeAuthorizationProvider` selects the authorization engine for a given 
 
 1.  **Tenant BYO Cerbos**: If the current tenant has a specific "Bring Your Own" Cerbos instance configured, it is used.
 2.  **Instance-Level Setting**: If not, the system checks the instance-wide `AuthorizationProvider` setting (from the `SystemSetting` table).
-    -   If `"cerbos"`, it uses the instance's shared `CerbosAuthorizationService`.
-    -   If any other value (or null), it uses the `FallbackAuthorizationService`.
+    -   If `"cerbos"`, it uses the instance's shared `CerbosAuthorizationService` and fails closed if the PDP is unavailable.
+    -   If any other value (or null), it uses the local `FallbackAuthorizationService`.
 
 ### 4.4. Failure Modes
 
 The system is designed to fail safely — deny by default when the configured provider is unavailable.
 
--   **Instance Cerbos Failure**: If the connection to the instance-level Cerbos PDP fails (e.g., network error, timeout), all authorization checks are denied. The operator explicitly chose Cerbos; falling back to a potentially more permissive local RBAC would silently bypass intended policies. Restore Cerbos connectivity or switch the `authorization.provider` setting to resolve.
+-   **Instance Cerbos Failure**: If the connection to the instance-level Cerbos PDP fails (e.g., network error, timeout), all authorization checks are denied. The operator explicitly chose Cerbos; falling back to a potentially more permissive local RBAC would silently bypass intended policies. Restore Cerbos connectivity or explicitly switch the authorization provider setting to local RBAC through instance administration to recover without Cerbos.
 -   **BYO Cerbos Failure**:
     -   If the tenant's BYO configuration has `failure_mode=closed`, the fallback provider runs in `SafeMode`, denying all requests except for those from an instance administrator.
     -   If `failure_mode=open`, the fallback provider runs its standard RBAC logic.

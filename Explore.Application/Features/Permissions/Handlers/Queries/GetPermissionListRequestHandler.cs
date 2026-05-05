@@ -5,6 +5,7 @@ using AutoMapper;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Permission;
 using Explore.Application.Features.Permissions.Requests.Queries;
+using Explore.Application.Lookups;
 using MediatR;
 
 namespace Explore.Application.Features.Permissions.Handlers.Queries;
@@ -24,8 +25,12 @@ public class GetPermissionListRequestHandler : IRequestHandler<GetPermissionList
 
     public async Task<List<PermissionListDto>> Handle(GetPermissionListRequest request, CancellationToken cancellationToken)
     {
-        var permissions = await _permissionRegistry.GetFilteredPermissionsAsync(
-            request.Scope,
+        var roleScopeId = request.RoleScopeId.HasValue && NormalizedLookupMetadata.IsRoleScopeId(request.RoleScopeId.Value)
+            ? request.RoleScopeId
+            : null;
+
+        var permissions = await _permissionRegistry.GetFilteredPermissionsByScopeIdAsync(
+            roleScopeId,
             request.ExcludeFiltered);
 
         if (!string.IsNullOrEmpty(request.GroupName))

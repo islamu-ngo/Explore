@@ -179,7 +179,7 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SecretProviderHealthCheck>>(),
                     sp.GetService<SecretRefreshMetrics>()),
                 failureStatus: HealthStatus.Degraded,
-                tags: [SecretProviderHealthCheck.Tag]));
+                tags: ["ready", SecretProviderHealthCheck.Tag]));
 
         // Wrap provider with auditing decorator if enabled
         if (enableAuditing)

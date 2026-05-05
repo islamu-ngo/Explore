@@ -14,6 +14,11 @@ public interface IRoleRepository : IGenericRepository<Role, int>
     Task<IReadOnlyList<Role>> GetByScopeAsync(RoleScopeEnum scope);
 
     /// <summary>
+    /// Gets all roles for a normalized role scope lookup ID.
+    /// </summary>
+    Task<IReadOnlyList<Role>> GetByScopeIdAsync(int roleScopeId);
+
+    /// <summary>
     /// Gets a role by its unique MasterCode (e.g., "org.admin", "tenant.owner").
     /// </summary>
     Task<Role?> GetByMasterCodeAsync(string masterCode);

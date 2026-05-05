@@ -22,6 +22,26 @@ This project stores most entities directly under `Explore.Domain/` (not in an `E
 7. Module governance:
    `ModuleDefinition`, `TenantCapability`, plus event aspect entities
 
+## Normalized Lookup Families
+
+Several previously enum-shaped persistence fields are now modeled as lookup/reference rows with stable integer IDs, stable `MasterCode` values, human-readable `FullName`, and optional `Description`. The persisted entity stores the `{LookupName}Id` FK plus a navigation; any enum property that remains on the domain entity is a convenience wrapper ignored by EF, not a database column.
+
+| Domain field | Persisted FK | Lookup entity/table |
+|---|---|---|
+| `Role.Scope` | `RoleScopeId` | `RoleScope` / `role_scopes` |
+| `Permission.Scope` | `RoleScopeId` | `RoleScope` / `role_scopes` |
+| `SystemSetting.ValueType` | `SettingValueTypeId` | `SettingValueTypeLookup` / `setting_value_types` |
+| `ConfigurationChangeLog.Scope` | `SettingScopeId` | `SettingScopeLookup` / `setting_scopes` |
+| `SecretBinding.Scope` | `SettingScopeId` | `SettingScopeLookup` / `setting_scopes` |
+| `SecretBinding.SourceType` | `SecretSourceTypeId` | `SecretSourceTypeLookup` / `secret_source_types` |
+| `SecretBinding.LastValidationResult` | `SecretValidationStatusId` | `SecretValidationStatus` / `secret_validation_statuses` |
+| `ExternalApiKey.OwnerType` | `ExternalApiKeyOwnerTypeId` | `ExternalApiKeyOwnerTypeLookup` / `external_api_key_owner_types` |
+| `ExternalApiKey.Status` | `ExternalApiKeyStatusId` | `ExternalApiKeyStatus` / `external_api_key_statuses` |
+| `ExternalApiKey.CreditPeriod` | `ExternalApiKeyCreditPeriodId` | `ExternalApiKeyCreditPeriod` / `external_api_key_credit_periods` |
+| `Notification.Scope` | `NotificationScopeId` | `NotificationScopeType` / `notification_scope_types` |
+
+API DTOs expose lookup primitives (`*Id`, `*Code`, `*Name`) rather than domain enum values. Repositories query on the normalized FK IDs. Handlers may convert IDs to internal enums only for business-rule switches while keeping persistence and public contracts normalized.
+
 ## Non-Inferable Modeling Patterns
 
 ### 1) PII Split (1:1 extension tables)

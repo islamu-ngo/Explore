@@ -30,7 +30,14 @@ public class SystemSetting : IAuditableEntity
     /// <summary>
     /// Data type of the value for validation purposes.
     /// </summary>
-    public SettingValueType ValueType { get; set; }
+    public int SettingValueTypeId { get; set; }
+    public SettingValueTypeLookup SettingValueTypeLookup { get; set; } = null!;
+
+    public SettingValueType ValueType
+    {
+        get => (SettingValueType)SettingValueTypeId;
+        set => SettingValueTypeId = (int)value;
+    }
 
     /// <summary>
     /// When true, tenants cannot override this setting value.

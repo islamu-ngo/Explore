@@ -323,6 +323,35 @@ public partial class AuthorizationParityTests
             .Because($"These Cerbos policy files do not reference their schema: [{string.Join(", ", missingRef)}]");
     }
 
+    [Test]
+    [DisplayName("HATEOAS link policies use explicit AuthorizationActions permission metadata")]
+    public async Task AllLinkPoliciesHaveExplicitPermissionActions()
+    {
+        var policyDirectory = FindHateoasPoliciesPath();
+        var violations = new List<string>();
+
+        foreach (var file in Directory.GetFiles(policyDirectory, "*LinkPolicy.cs"))
+        {
+            var source = File.ReadAllText(file);
+            var fileName = Path.GetFileName(file);
+
+            if (source.Contains(".WithPermission(", StringComparison.Ordinal))
+                violations.Add($"{fileName}: use RequirePermission(...) instead of setting raw permission metadata");
+
+            if (source.Contains("PermissionAction.", StringComparison.Ordinal))
+                violations.Add($"{fileName}: use AuthorizationActions string constants instead of PermissionAction enum values");
+
+            foreach (Match match in MissingAuthorizationActionRegex().Matches(source))
+            {
+                violations.Add($"{fileName}: RequirePermission call does not start with AuthorizationActions at index {match.Index}");
+            }
+        }
+
+        await Assert.That(violations)
+            .IsEmpty()
+            .Because("HATEOAS links are authorization affordances; permission-bound links must name explicit actions and cannot fall back to HTTP method inference.");
+    }
+
     // ──────────────────────────────────────────
     // Utility methods
     // ──────────────────────────────────────────
@@ -356,9 +385,19 @@ public partial class AuthorizationParityTests
         throw new FileNotFoundException($"Could not find {fileName} in project {projectHint}");
     }
 
+    private static string FindHateoasPoliciesPath()
+    {
+        var eventLinkPolicyPath = FindSourceFile("EventLinkPolicy.cs", "Explore.API");
+        return Path.GetDirectoryName(eventLinkPolicyPath)
+            ?? throw new DirectoryNotFoundException("Could not resolve Explore.API/Hateoas/Policies.");
+    }
+
     [GeneratedRegex("""\"(\w+)\"\s*=>""")]
     private static partial Regex FallbackSwitchCaseRegex();
 
     [GeneratedRegex("""resource:\s*["']?(\w+)["']?""")]
     private static partial Regex CerbosResourceKindRegex();
+
+    [GeneratedRegex(@"\.RequirePermission\s*\(\s*(?!AuthorizationActions\.)", RegexOptions.Singleline)]
+    private static partial Regex MissingAuthorizationActionRegex();
 }

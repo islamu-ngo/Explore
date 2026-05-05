@@ -34,9 +34,15 @@ public class ConfigurationChangeLogConfiguration : IEntityTypeConfiguration<Conf
             .IsRequired()
             .HasColumnType("text");
 
-        builder.Property(e => e.Scope)
-            .IsRequired()
-            .HasConversion<int>();
+        builder.Ignore(e => e.Scope);
+
+        builder.Property(e => e.SettingScopeId)
+            .IsRequired();
+
+        builder.HasOne(e => e.SettingScope)
+            .WithMany()
+            .HasForeignKey(e => e.SettingScopeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(e => e.ActionType)
             .IsRequired()
@@ -50,6 +56,6 @@ public class ConfigurationChangeLogConfiguration : IEntityTypeConfiguration<Conf
         builder.HasIndex(e => e.UserId);
         builder.HasIndex(e => e.SettingKey);
         builder.HasIndex(e => e.Timestamp);
-        builder.HasIndex(e => new { e.Scope, e.ScopeId });
+        builder.HasIndex(e => new { e.SettingScopeId, e.ScopeId });
     }
 }

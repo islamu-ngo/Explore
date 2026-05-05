@@ -167,25 +167,25 @@ public class UiThemePaletteTests
 
     private static UiThemePalette CreateWhitePalette() => new()
     {
-        Primary = "#0F62FE", PrimaryContrastText = "#FFFFFF",
-        Secondary = "#475569", SecondaryContrastText = "#FFFFFF",
-        Background = "#F1F5F9", Surface = "#FFFFFF",
-        AppbarBackground = "#FFFFFF", AppbarText = "#1E293B",
-        DrawerBackground = "#FFFFFF", DrawerText = "#1E293B", DrawerIcon = "#475569",
-        TextPrimary = "#0F172A", TextSecondary = "#475569",
-        Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
-        LinesDefault = "#CBD5E1", Divider = "#CBD5E1"
+        Primary = "#18181B", PrimaryContrastText = "#FFFFFF",
+        Secondary = "#52525B", SecondaryContrastText = "#FFFFFF",
+        Background = "#F5F5F7", Surface = "#FFFFFF",
+        AppbarBackground = "#FFFFFF", AppbarText = "#18181B",
+        DrawerBackground = "#FFFFFF", DrawerText = "#18181B", DrawerIcon = "#52525B",
+        TextPrimary = "#18181B", TextSecondary = "#404040",
+        Info = "#52525B", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
+        LinesDefault = "#A1A1AA", Divider = "#E4E4E7"
     };
 
     private static UiThemePalette CreateBlackPalette() => new()
     {
-        Primary = "#3B82F6", PrimaryContrastText = "#FFFFFF",
-        Secondary = "#F1F5F9", SecondaryContrastText = "#0F172A",
-        Background = "#0B0F19", Surface = "#1E293B",
-        AppbarBackground = "rgba(11,15,25,0.85)", AppbarText = "#F1F5F9",
-        DrawerBackground = "#0B0F19", DrawerText = "#F1F5F9", DrawerIcon = "#CBD5E1",
-        TextPrimary = "#F8FAFC", TextSecondary = "#94A3B8",
-        Info = "#60A5FA", Success = "#10B981", Warning = "#F59E0B", Error = "#EF4444",
-        LinesDefault = "#334155", Divider = "#1E293B"
+        Primary = "#FAFAFA", PrimaryContrastText = "#1A1A1A",
+        Secondary = "#A1A1AA", SecondaryContrastText = "#1A1A1A",
+        Background = "#1A1A1A", Surface = "#242424",
+        AppbarBackground = "rgba(18,18,18,0.92)", AppbarText = "#FAFAFA",
+        DrawerBackground = "#1A1A1A", DrawerText = "#FAFAFA", DrawerIcon = "#A1A1AA",
+        TextPrimary = "#FAFAFA", TextSecondary = "#A1A1AA",
+        Info = "#A1A1AA", Success = "#34D399", Warning = "#FBBF24", Error = "#F87171",
+        LinesDefault = "#3F3F46", Divider = "#2E2E2E"
     };
 }

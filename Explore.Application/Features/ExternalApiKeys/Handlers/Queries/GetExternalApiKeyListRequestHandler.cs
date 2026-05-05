@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Features.ExternalApiKeys.Requests.Queries;
+using Explore.Application.Lookups;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
@@ -80,14 +81,19 @@ public class GetExternalApiKeyListRequestHandler : IRequestHandler<GetExternalAp
                 Description = key.Description,
                 KeyId = key.KeyId,
                 MaskedKeyId = MaskKeyId(key.KeyId),
-                OwnerType = key.OwnerType,
+                ExternalApiKeyOwnerTypeId = key.ExternalApiKeyOwnerTypeId,
+                ExternalApiKeyOwnerTypeCode = NormalizedLookupMetadata.ExternalApiKeyOwnerType(key.ExternalApiKeyOwnerTypeId).Code,
+                ExternalApiKeyOwnerTypeName = NormalizedLookupMetadata.ExternalApiKeyOwnerType(key.ExternalApiKeyOwnerTypeId).Name,
                 OwnerId = key.OwnerId,
                 Scopes = SplitScopes(key.Scopes),
-                Status = (ExternalApiKeyStatusEnum)key.ExternalApiKeyStatusId,
-                StatusName = ((ExternalApiKeyStatusEnum)key.ExternalApiKeyStatusId).ToString(),
+                ExternalApiKeyStatusId = key.ExternalApiKeyStatusId,
+                ExternalApiKeyStatusCode = NormalizedLookupMetadata.ExternalApiKeyStatus(key.ExternalApiKeyStatusId).Code,
+                ExternalApiKeyStatusName = NormalizedLookupMetadata.ExternalApiKeyStatus(key.ExternalApiKeyStatusId).Name,
                 ExpiresAt = key.ExpiresAt,
                 LastUsedAt = key.LastUsedAt,
-                CreditPeriod = (ExternalApiKeyCreditPeriodEnum)key.ExternalApiKeyCreditPeriodId,
+                ExternalApiKeyCreditPeriodId = key.ExternalApiKeyCreditPeriodId,
+                ExternalApiKeyCreditPeriodCode = NormalizedLookupMetadata.ExternalApiKeyCreditPeriod(key.ExternalApiKeyCreditPeriodId).Code,
+                ExternalApiKeyCreditPeriodName = NormalizedLookupMetadata.ExternalApiKeyCreditPeriod(key.ExternalApiKeyCreditPeriodId).Name,
                 CreditLimit = key.CreditLimit,
                 MaxRolloverCredits = key.MaxRolloverCredits
             })

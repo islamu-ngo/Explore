@@ -34,6 +34,13 @@ public interface IPermissionRegistryService
         bool excludeFiltered = true);
 
     /// <summary>
+    /// Gets permissions for a normalized role scope lookup ID, optionally excluding filtered ones.
+    /// </summary>
+    Task<IReadOnlyList<Permission>> GetFilteredPermissionsByScopeIdAsync(
+        int? roleScopeId = null,
+        bool excludeFiltered = true);
+
+    /// <summary>
     /// Invalidates the cached permissions. Call after permission table changes.
     /// </summary>
     void InvalidateCache();
@@ -83,12 +90,19 @@ public class PermissionRegistryService : IPermissionRegistryService
         RoleScopeEnum? scope = null,
         bool excludeFiltered = true)
     {
+        return await GetFilteredPermissionsByScopeIdAsync(scope.HasValue ? (int)scope.Value : null, excludeFiltered);
+    }
+
+    public async Task<IReadOnlyList<Permission>> GetFilteredPermissionsByScopeIdAsync(
+        int? roleScopeId = null,
+        bool excludeFiltered = true)
+    {
         var all = await GetAllPermissionsAsync();
 
         var filtered = all.AsEnumerable();
 
-        if (scope.HasValue)
-            filtered = filtered.Where(p => p.Scope == scope.Value);
+        if (roleScopeId.HasValue)
+            filtered = filtered.Where(p => p.RoleScopeId == roleScopeId.Value);
 
         if (excludeFiltered)
             filtered = filtered.Where(p => !p.IsFiltered);

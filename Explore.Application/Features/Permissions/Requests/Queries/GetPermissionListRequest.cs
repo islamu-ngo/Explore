@@ -2,7 +2,6 @@
 // ABOUTME: Used by admin UI for permission management and role assignment dropdowns.
 
 using Explore.Application.DTOs.Permission;
-using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.Permissions.Requests.Queries;
@@ -10,9 +9,9 @@ namespace Explore.Application.Features.Permissions.Requests.Queries;
 public class GetPermissionListRequest : IRequest<List<PermissionListDto>>
 {
     /// <summary>
-    /// Optional scope filter (Platform, Tenant, Organization).
+    /// Optional normalized role scope lookup ID filter.
     /// </summary>
-    public RoleScopeEnum? Scope { get; set; }
+    public int? RoleScopeId { get; set; }
 
     /// <summary>
     /// Optional group filter (e.g., "Events", "Organizations").

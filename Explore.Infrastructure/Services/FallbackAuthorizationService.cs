@@ -132,6 +132,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             // Event resources require explicit tenant/event context before inherited authority checks.
             "event" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "event_session" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "event_session_group" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "event_session_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "event_day" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "event_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
@@ -255,6 +256,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
     private static bool IsEventScopedResourceKind(string resourceKind) =>
         resourceKind is "event"
             or "event_session"
+            or "event_session_group"
             or "event_session_agenda_item"
             or "event_day"
             or "event_agenda_item"

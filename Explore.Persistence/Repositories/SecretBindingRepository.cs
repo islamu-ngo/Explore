@@ -17,6 +17,13 @@ public class SecretBindingRepository : GenericRepository<SecretBinding, Guid>, I
         _dbContext = dbContext;
     }
 
+    private static int ToSettingScopeId(SecretScope scope) => scope switch
+    {
+        SecretScope.Instance => (int)ConfigurationScopeEnum.Instance,
+        SecretScope.Tenant => (int)ConfigurationScopeEnum.Tenant,
+        _ => throw new ArgumentOutOfRangeException(nameof(scope), scope, "Unsupported secret scope.")
+    };
+
     public Task<SecretBinding?> GetByKeyAndScopeAsync(
         string settingKey,
         SecretScope scope,
@@ -27,7 +34,7 @@ public class SecretBindingRepository : GenericRepository<SecretBinding, Guid>, I
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 b => b.SettingKey == settingKey
-                     && b.Scope == scope
+                      && b.SettingScopeId == ToSettingScopeId(scope)
                      && b.ScopeId == scopeId,
                 cancellationToken);
     }
@@ -39,7 +46,7 @@ public class SecretBindingRepository : GenericRepository<SecretBinding, Guid>, I
     {
         return await _dbContext.SecretBindings
             .AsNoTracking()
-            .Where(b => b.Scope == scope && b.ScopeId == scopeId)
+            .Where(b => b.SettingScopeId == ToSettingScopeId(scope) && b.ScopeId == scopeId)
             .OrderBy(b => b.SettingKey)
             .ToListAsync(cancellationToken);
     }
@@ -64,7 +71,7 @@ public class SecretBindingRepository : GenericRepository<SecretBinding, Guid>, I
             .AsNoTracking()
             .AnyAsync(
                 b => b.SettingKey == settingKey
-                     && b.Scope == scope
+                      && b.SettingScopeId == ToSettingScopeId(scope)
                      && b.ScopeId == scopeId,
                 cancellationToken);
     }

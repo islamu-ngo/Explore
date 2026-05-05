@@ -19,7 +19,14 @@ public class ExternalApiKey : IAuditableEntity
     public required string SecretHash { get; set; }
     public required string Scopes { get; set; }
 
-    public ExternalApiKeyOwnerType OwnerType { get; set; }
+    public int ExternalApiKeyOwnerTypeId { get; set; }
+    public ExternalApiKeyOwnerTypeLookup ExternalApiKeyOwnerType { get; set; } = null!;
+
+    public ExternalApiKeyOwnerType OwnerType
+    {
+        get => (ExternalApiKeyOwnerType)ExternalApiKeyOwnerTypeId;
+        set => ExternalApiKeyOwnerTypeId = (int)value;
+    }
     public Guid OwnerId { get; set; }
 
     public int ExternalApiKeyStatusId { get; set; }

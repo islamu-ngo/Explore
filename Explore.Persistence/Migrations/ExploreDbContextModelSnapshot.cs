@@ -750,10 +750,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("old_value");
 
-                    b.Property<int>("Scope")
-                        .HasColumnType("integer")
-                        .HasColumnName("scope");
-
                     b.Property<Guid?>("ScopeId")
                         .HasColumnType("uuid")
                         .HasColumnName("scope_id");
@@ -763,6 +759,10 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("setting_key");
+
+                    b.Property<int>("SettingScopeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("setting_scope_id");
 
                     b.Property<DateTime>("Timestamp")
                         .ValueGeneratedOnAdd()
@@ -794,8 +794,8 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_configuration_change_logs_user_id");
 
-                    b.HasIndex("Scope", "ScopeId")
-                        .HasDatabaseName("ix_configuration_change_logs_scope_scope_id");
+                    b.HasIndex("SettingScopeId", "ScopeId")
+                        .HasDatabaseName("ix_configuration_change_logs_setting_scope_id_scope_id");
 
                     b.ToTable("configuration_change_logs", (string)null);
                 });
@@ -4090,6 +4090,203 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("event_session_custom_property_values", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventSessionGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("color");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_published");
+
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
+                    b.Property<string>("Slug")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("slug");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_groups");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_session_groups_event_id");
+
+                    b.HasIndex("LocationId")
+                        .HasDatabaseName("ix_event_session_groups_location_id");
+
+                    b.HasIndex("RoomId")
+                        .HasDatabaseName("ix_event_session_groups_room_id");
+
+                    b.HasIndex("TenantId", "EventId", "Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_session_groups_tenant_event_slug")
+                        .HasFilter("is_deleted = false AND slug IS NOT NULL");
+
+                    b.HasIndex("TenantId", "EventId", "SortOrder")
+                        .HasDatabaseName("ix_event_session_groups_tenant_event_sort");
+
+                    b.ToTable("event_session_groups", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionGroupSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("EventSessionGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_group_id");
+
+                    b.Property<Guid>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_primary");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_group_sessions");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_session_group_sessions_event_id");
+
+                    b.HasIndex("EventSessionGroupId")
+                        .HasDatabaseName("ix_event_session_group_sessions_event_session_group_id");
+
+                    b.HasIndex("EventSessionId")
+                        .HasDatabaseName("ix_event_session_group_sessions_event_session_id");
+
+                    b.HasIndex("TenantId", "EventSessionGroupId", "SortOrder")
+                        .HasDatabaseName("ix_event_session_group_sessions_tenant_group_sort");
+
+                    b.HasIndex("TenantId", "EventId", "EventSessionGroupId", "EventSessionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_session_group_sessions_tenant_event_group_session")
+                        .HasFilter("is_deleted = false");
+
+                    b.HasIndex("TenantId", "EventId", "EventSessionId", "IsPrimary")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_session_group_sessions_tenant_event_session_primary")
+                        .HasFilter("is_primary = true AND is_deleted = false");
+
+                    b.ToTable("event_session_group_sessions", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.EventSessionIslamicAspect", b =>
                 {
                     b.Property<Guid>("EventSessionId")
@@ -5266,6 +5463,10 @@ namespace Explore.Persistence.Migrations
                         .HasDefaultValue(1)
                         .HasColumnName("external_api_key_credit_period_id");
 
+                    b.Property<int>("ExternalApiKeyOwnerTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("external_api_key_owner_type_id");
+
                     b.Property<int>("ExternalApiKeyStatusId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -5301,10 +5502,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("owner_id");
 
-                    b.Property<int>("OwnerType")
-                        .HasColumnType("integer")
-                        .HasColumnName("owner_type");
-
                     b.Property<string>("Scopes")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -5335,6 +5532,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ExternalApiKeyCreditPeriodId")
                         .HasDatabaseName("ix_external_api_keys_external_api_key_credit_period_id");
 
+                    b.HasIndex("ExternalApiKeyOwnerTypeId")
+                        .HasDatabaseName("ix_external_api_keys_external_api_key_owner_type_id");
+
                     b.HasIndex("ExternalApiKeyStatusId")
                         .HasDatabaseName("ix_external_api_keys_external_api_key_status_id");
 
@@ -5345,8 +5545,8 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "ExternalApiKeyStatusId")
                         .HasDatabaseName("ix_external_api_keys_tenant_id_external_api_key_status_id");
 
-                    b.HasIndex("TenantId", "OwnerType", "OwnerId")
-                        .HasDatabaseName("ix_external_api_keys_tenant_id_owner_type_owner_id");
+                    b.HasIndex("TenantId", "ExternalApiKeyOwnerTypeId", "OwnerId")
+                        .HasDatabaseName("ix_external_api_keys_tenant_id_external_api_key_owner_type_id_");
 
                     b.ToTable("external_api_keys", (string)null);
                 });
@@ -5378,6 +5578,39 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_external_api_key_credit_periods");
 
                     b.ToTable("external_api_key_credit_periods", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ExternalApiKeyOwnerTypeLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_external_api_key_owner_types");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_external_api_key_owner_types_master_code");
+
+                    b.ToTable("external_api_key_owner_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKeyQuota", b =>
@@ -6566,6 +6799,39 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("notification_reasons", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.NotificationScopeType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_scope_types");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notification_scope_types_master_code");
+
+                    b.ToTable("notification_scope_types", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.NotificationType", b =>
                 {
                     b.Property<int>("Id")
@@ -7165,9 +7431,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("resource_kind");
 
-                    b.Property<int>("Scope")
+                    b.Property<int>("RoleScopeId")
                         .HasColumnType("integer")
-                        .HasColumnName("scope");
+                        .HasColumnName("role_scope_id");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -7184,8 +7450,8 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_permissions_mastercode");
 
-                    b.HasIndex("Scope")
-                        .HasDatabaseName("ix_permissions_scope");
+                    b.HasIndex("RoleScopeId")
+                        .HasDatabaseName("ix_permissions_role_scope_id");
 
                     b.HasIndex("ResourceKind", "Action")
                         .HasDatabaseName("ix_permissions_resource_action");
@@ -7508,9 +7774,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("master_code");
 
-                    b.Property<int>("Scope")
+                    b.Property<int>("RoleScopeId")
                         .HasColumnType("integer")
-                        .HasColumnName("scope");
+                        .HasColumnName("role_scope_id");
 
                     b.HasKey("Id")
                         .HasName("pk_roles");
@@ -7519,8 +7785,8 @@ namespace Explore.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_roles_mastercode");
 
-                    b.HasIndex("Scope")
-                        .HasDatabaseName("ix_roles_scope");
+                    b.HasIndex("RoleScopeId")
+                        .HasDatabaseName("ix_roles_role_scope_id");
 
                     b.ToTable("roles", (string)null);
                 });
@@ -7557,6 +7823,39 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("role_permissions", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.RoleScope", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_role_scopes");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_role_scopes_master_code");
+
+                    b.ToTable("role_scopes", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.ScheduleItemKind", b =>
                 {
                     b.Property<int>("Id")
@@ -7588,6 +7887,72 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_schedule_item_kinds_master_code");
 
                     b.ToTable("schedule_item_kinds", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.SecretSourceTypeLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_secret_source_types");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_secret_source_types_master_code");
+
+                    b.ToTable("secret_source_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.SecretValidationStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_secret_validation_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_secret_validation_statuses_master_code");
+
+                    b.ToTable("secret_validation_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Secrets.SecretBinding", b =>
@@ -7654,19 +8019,19 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("last_validation_error");
 
-                    b.Property<int>("LastValidationResult")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("last_validation_result");
-
-                    b.Property<int>("Scope")
-                        .HasColumnType("integer")
-                        .HasColumnName("scope");
-
                     b.Property<Guid?>("ScopeId")
                         .HasColumnType("uuid")
                         .HasColumnName("scope_id");
+
+                    b.Property<int>("SecretSourceTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("secret_source_type_id");
+
+                    b.Property<int>("SecretValidationStatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("secret_validation_status_id");
 
                     b.Property<string>("SettingKey")
                         .IsRequired()
@@ -7674,9 +8039,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("setting_key");
 
-                    b.Property<int>("SourceType")
+                    b.Property<int>("SettingScopeId")
                         .HasColumnType("integer")
-                        .HasColumnName("source_type");
+                        .HasColumnName("setting_scope_id");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -7689,25 +8054,97 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_secret_bindings");
 
+                    b.HasIndex("SecretSourceTypeId")
+                        .HasDatabaseName("ix_secret_bindings_secret_source_type_id");
+
+                    b.HasIndex("SecretValidationStatusId")
+                        .HasDatabaseName("ix_secret_bindings_secret_validation_status_id");
+
                     b.HasIndex("SettingKey")
                         .IsUnique()
                         .HasDatabaseName("ix_secret_bindings_setting_key_instance_unique")
                         .HasFilter("scope_id IS NULL");
-
-                    b.HasIndex("Scope", "ScopeId")
-                        .HasDatabaseName("ix_secret_bindings_scope_scope_id");
 
                     b.HasIndex("SettingKey", "ScopeId")
                         .IsUnique()
                         .HasDatabaseName("ix_secret_bindings_setting_key_scope_id_tenant_unique")
                         .HasFilter("scope_id IS NOT NULL");
 
+                    b.HasIndex("SettingScopeId", "ScopeId")
+                        .HasDatabaseName("ix_secret_bindings_setting_scope_id_scope_id");
+
                     b.ToTable("secret_bindings", null, t =>
                         {
-                            t.HasCheckConstraint("ck_secret_bindings_scope_scope_id", "(scope = 0 AND scope_id IS NULL) OR (scope = 1 AND scope_id IS NOT NULL)");
+                            t.HasCheckConstraint("ck_secret_bindings_setting_scope_scope_id", "(setting_scope_id = 1 AND scope_id IS NULL) OR (setting_scope_id = 2 AND scope_id IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_secret_bindings_source_metadata", "(source_type = 0 AND infisical_environment IS NOT NULL AND infisical_path IS NOT NULL AND infisical_key IS NOT NULL   AND environment_variable_name IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL) OR (source_type = 1 AND inline_ciphertext IS NOT NULL AND inline_ciphertext_version IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND environment_variable_name IS NULL) OR (source_type = 2 AND environment_variable_name IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL)");
+                            t.HasCheckConstraint("ck_secret_bindings_source_metadata", "(secret_source_type_id = 0 AND infisical_environment IS NOT NULL AND infisical_path IS NOT NULL AND infisical_key IS NOT NULL   AND environment_variable_name IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL) OR (secret_source_type_id = 1 AND inline_ciphertext IS NOT NULL AND inline_ciphertext_version IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND environment_variable_name IS NULL) OR (secret_source_type_id = 2 AND environment_variable_name IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL)");
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.SettingScopeLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_setting_scopes");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_setting_scopes_master_code");
+
+                    b.ToTable("setting_scopes", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.SettingValueTypeLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_setting_value_types");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_setting_value_types_master_code");
+
+                    b.ToTable("setting_value_types", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
@@ -7870,6 +8307,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("setting_key");
 
+                    b.Property<int>("SettingValueTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("setting_value_type_id");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -7883,16 +8324,15 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("value");
 
-                    b.Property<int>("ValueType")
-                        .HasColumnType("integer")
-                        .HasColumnName("value_type");
-
                     b.HasKey("Id")
                         .HasName("pk_system_settings");
 
                     b.HasIndex("SettingKey")
                         .IsUnique()
                         .HasDatabaseName("ix_system_settings_setting_key");
+
+                    b.HasIndex("SettingValueTypeId")
+                        .HasDatabaseName("ix_system_settings_setting_value_type_id");
 
                     b.ToTable("system_settings", (string)null);
                 });
@@ -9716,6 +10156,18 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.ConfigurationChangeLog", b =>
+                {
+                    b.HasOne("Explore.Domain.SettingScopeLookup", "SettingScope")
+                        .WithMany()
+                        .HasForeignKey("SettingScopeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_configuration_change_logs_setting_scopes_setting_scope_id");
+
+                    b.Navigation("SettingScope");
+                });
+
             modelBuilder.Entity("Explore.Domain.CustomPropertyDefinition", b =>
                 {
                     b.HasOne("Explore.Domain.CustomPropertyOption", "DefaultOption")
@@ -9937,7 +10389,7 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_event_agenda_items_event_days_event_day_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
-                        .WithMany()
+                        .WithMany("AgendaItems")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
@@ -10515,7 +10967,7 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_event_sessions_event_days_event_day_id");
 
                     b.HasOne("Explore.Domain.Event", "Event")
-                        .WithMany()
+                        .WithMany("Sessions")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
@@ -10762,6 +11214,82 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("EventSession");
 
                     b.Navigation("Option");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionGroup", b =>
+                {
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany("SessionGroups")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_groups_events_event_id");
+
+                    b.HasOne("Explore.Domain.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_session_groups_locations_location_id");
+
+                    b.HasOne("Explore.Domain.LocationRoom", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_session_groups_location_rooms_room_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_groups_tenants_tenant_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("Room");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionGroupSession", b =>
+                {
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_group_sessions_events_event_id");
+
+                    b.HasOne("Explore.Domain.EventSessionGroup", "EventSessionGroup")
+                        .WithMany("Sessions")
+                        .HasForeignKey("EventSessionGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_group_sessions_event_session_groups_event_ses");
+
+                    b.HasOne("Explore.Domain.EventSession", "EventSession")
+                        .WithMany("SessionGroups")
+                        .HasForeignKey("EventSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_group_sessions_event_sessions_event_session_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_group_sessions_tenants_tenant_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("EventSession");
+
+                    b.Navigation("EventSessionGroup");
 
                     b.Navigation("Tenant");
                 });
@@ -11069,6 +11597,13 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_external_api_keys_external_api_key_credit_periods_external_");
 
+                    b.HasOne("Explore.Domain.ExternalApiKeyOwnerTypeLookup", "ExternalApiKeyOwnerType")
+                        .WithMany()
+                        .HasForeignKey("ExternalApiKeyOwnerTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_external_api_keys_external_api_key_owner_types_external_api");
+
                     b.HasOne("Explore.Domain.ExternalApiKeyStatus", "ExternalApiKeyStatus")
                         .WithMany()
                         .HasForeignKey("ExternalApiKeyStatusId")
@@ -11083,6 +11618,8 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_external_api_keys_tenants_tenant_id");
 
                     b.Navigation("ExternalApiKeyCreditPeriod");
+
+                    b.Navigation("ExternalApiKeyOwnerType");
 
                     b.Navigation("ExternalApiKeyStatus");
 
@@ -11286,12 +11823,12 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_notifications_notification_reasons_notification_reason_id");
 
-                    b.HasOne("Explore.Domain.ActorType", "NotificationScope")
+                    b.HasOne("Explore.Domain.NotificationScopeType", "NotificationScope")
                         .WithMany()
                         .HasForeignKey("NotificationScopeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_notifications_actor_types_notification_scope_id");
+                        .HasConstraintName("fk_notifications_notification_scope_types_notification_scope_id");
 
                     b.HasOne("Explore.Domain.NotificationType", "NotificationType")
                         .WithMany()
@@ -11489,6 +12026,18 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Organization");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Permission", b =>
+                {
+                    b.HasOne("Explore.Domain.RoleScope", "RoleScope")
+                        .WithMany()
+                        .HasForeignKey("RoleScopeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_permissions_role_scopes_role_scope_id");
+
+                    b.Navigation("RoleScope");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformUserRole", b =>
@@ -13765,6 +14314,18 @@ namespace Explore.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Explore.Domain.Role", b =>
+                {
+                    b.HasOne("Explore.Domain.RoleScope", "RoleScope")
+                        .WithMany()
+                        .HasForeignKey("RoleScopeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_roles_role_scopes_role_scope_id");
+
+                    b.Navigation("RoleScope");
+                });
+
             modelBuilder.Entity("Explore.Domain.RolePermission", b =>
                 {
                     b.HasOne("Explore.Domain.Permission", "Permission")
@@ -13784,6 +14345,36 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Permission");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Secrets.SecretBinding", b =>
+                {
+                    b.HasOne("Explore.Domain.SecretSourceTypeLookup", "SecretSourceType")
+                        .WithMany()
+                        .HasForeignKey("SecretSourceTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_secret_bindings_secret_source_types_secret_source_type_id");
+
+                    b.HasOne("Explore.Domain.SecretValidationStatus", "SecretValidationStatus")
+                        .WithMany()
+                        .HasForeignKey("SecretValidationStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_secret_bindings_secret_validation_statuses_secret_validatio");
+
+                    b.HasOne("Explore.Domain.SettingScopeLookup", "SettingScope")
+                        .WithMany()
+                        .HasForeignKey("SettingScopeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_secret_bindings_setting_scopes_setting_scope_id");
+
+                    b.Navigation("SecretSourceType");
+
+                    b.Navigation("SecretValidationStatus");
+
+                    b.Navigation("SettingScope");
                 });
 
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
@@ -13813,6 +14404,18 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("FileType");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.SystemSetting", b =>
+                {
+                    b.HasOne("Explore.Domain.SettingValueTypeLookup", "SettingValueTypeLookup")
+                        .WithMany()
+                        .HasForeignKey("SettingValueTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_system_settings_setting_value_types_setting_value_type_id");
+
+                    b.Navigation("SettingValueTypeLookup");
                 });
 
             modelBuilder.Entity("Explore.Domain.Tag", b =>
@@ -14985,7 +15588,13 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.Event", b =>
                 {
+                    b.Navigation("AgendaItems");
+
                     b.Navigation("IslamicAspect");
+
+                    b.Navigation("SessionGroups");
+
+                    b.Navigation("Sessions");
 
                     b.Navigation("TechAspect");
                 });
@@ -15015,6 +15624,8 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.EventSession", b =>
                 {
                     b.Navigation("IslamicAspect");
+
+                    b.Navigation("SessionGroups");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyDefinition", b =>
@@ -15027,6 +15638,11 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyOption", b =>
                 {
                     b.Navigation("ChildOptions");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionGroup", b =>
+                {
+                    b.Navigation("Sessions");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionTemplate", b =>

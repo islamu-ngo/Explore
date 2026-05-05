@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Hateoas;
+using Explore.Domain.Enums;
 
 /// <summary>
 /// Link policy for EventDto (detail view).
@@ -35,11 +36,19 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
 
         // Sessions link - event has sessions
         yield return new LinkDefinition(
-            "sessions",
+            LinkRelations.Sessions,
             RouteNames.GetEventSessions,
             new { eventId = dto.Id },
             "GET",
             $"Event sessions ({dto.SessionCount ?? 0})");
+
+        yield return new LinkDefinition(
+            LinkRelations.SessionGroups,
+            RouteNames.GetEventSessionGroupsByEvent,
+            new { eventId = dto.Id },
+            "GET",
+            "Program sections");
+
 
         // Categories link
         yield return new LinkDefinition(
@@ -120,6 +129,27 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
 
+        if (dto.EventStatusId == (int)EventStatusEnum.Draft)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.PublishReadiness,
+                RouteNames.GetEventPublishReadiness,
+                new { id = dto.Id },
+                "GET",
+                "Review publish readiness",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
+
+            yield return new LinkDefinition(
+                LinkRelations.Publish,
+                RouteNames.PublishEvent,
+                new { id = dto.Id },
+                "POST",
+                "Publish event",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Event, dto);
+        }
+
         // Delete link - requires authentication
         yield return new LinkDefinition(
             "delete",
@@ -178,6 +208,7 @@ public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListD
                 "GET",
                 $"{dto.SessionCount} sessions");
         }
+
 
         // Actor link
         yield return new LinkDefinition(

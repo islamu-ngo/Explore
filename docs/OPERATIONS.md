@@ -26,14 +26,35 @@ If migration fails, startup fails (application does not continue).
 
 Via `Explore.ServiceDefaults` + app-specific checks:
 
-- `/health`: readiness (all registered checks)
-- `/alive`: liveness (`live`-tag checks)
+- `/health`: readiness (`ready`-tag checks only)
+- `/alive`: liveness (`live`-tag checks only)
 - `/metrics`: Prometheus scraping endpoint
 
 Status-code contract:
 
 - `Healthy` / `Degraded` -> `200`
 - `Unhealthy` -> `503`
+
+Readiness interpretation:
+
+| Check | Host | Healthy | Degraded | Unhealthy |
+|---|---|---|---|---|
+| `shutdown` | API, Blazor | Process is accepting traffic | Not used | Graceful shutdown is active; remove from load balancer |
+| `database` | API, Blazor | EF Core can reach PostgreSQL | Not used | Database unavailable or migration/runtime connectivity failed |
+| `distributed-cache` | API, Blazor | Effective cache round-trip works | Configured Redis fell back to in-memory cache | Effective cache round-trip failed |
+| `oidc-discovery` | API, Blazor | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
+| `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
+| `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
+| `explore-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
+| `secret_provider` / `secret-resolver` | API, Blazor | Secret backend/resolution path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
+
+Operational rules:
+
+- Point load balancer readiness checks at `/health` and liveness checks at `/alive`.
+- Treat `Degraded` as deployable only when the affected dependency is optional for the deployment mode and the response body clearly identifies the dependency.
+- Treat `Unhealthy` as non-deployable for rolling updates; fix the dependency or intentionally switch the related feature/provider off.
+- Instance Cerbos readiness follows authorization fail-closed semantics: if the operator selected `authorization.provider=cerbos`, an unreachable PDP makes `/health` unhealthy rather than silently falling back to local RBAC.
+- Local authorization mode skips Cerbos readiness, so self-hosted/local deployments do not need a Cerbos PDP unless explicitly selected.
 
 ## Graceful Shutdown Contract
 

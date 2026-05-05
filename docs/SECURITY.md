@@ -214,8 +214,11 @@ They are not security enforcement. Security enforcement remains server-side thro
 
 Post-onboarding provider management safety:
 
-- `PUT /api/InstanceOnboarding/admin/auth-provider-configuration` requires authenticated instance admin context.
-- Update flow denies requests that would disable all providers linked to the current admin account (self-lockout prevention).
+- `GET/PUT /api/instance/settings/auth-provider` requires authenticated instance admin context.
+- Authentication update flow denies requests that would disable all providers linked to the current admin account (self-lockout prevention).
+- `GET/PUT /api/instance/settings/authz-provider` requires authenticated instance admin context and stores the selected runtime authorization provider.
+- Authorization update flow permits exactly one active provider: local RBAC or Cerbos. Cerbos endpoint changes are verified before the setting is applied.
+- If Cerbos is selected and unavailable, authorized requests fail closed. Recovery is an explicit operator action: switch the authorization provider setting back to local RBAC; the runtime does not silently fail over.
 
 If enrichment fails, authentication still continues and server-side authorization remains authoritative.
 

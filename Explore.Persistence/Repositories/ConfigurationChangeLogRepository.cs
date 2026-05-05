@@ -31,7 +31,7 @@ public class ConfigurationChangeLogRepository : GenericRepository<ConfigurationC
     {
         var query = _dbContext.Set<ConfigurationChangeLog>()
             .AsNoTracking()
-            .Where(c => c.Scope == scope);
+            .Where(c => c.SettingScopeId == (int)scope);
 
         if (scopeId.HasValue)
         {

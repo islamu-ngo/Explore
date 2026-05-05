@@ -1,8 +1,6 @@
 // ABOUTME: Full permission detail DTO including all fields for admin views.
 // ABOUTME: Used by GetPermissionList and GetAssignablePermissions queries.
 
-using Explore.Domain.Enums;
-
 namespace Explore.Application.DTOs.Permission;
 
 public class PermissionDto
@@ -15,7 +13,9 @@ public class PermissionDto
     public required string Action { get; set; }
     public string? FieldScope { get; set; }
     public required string GroupName { get; set; }
-    public RoleScopeEnum Scope { get; set; }
+    public int RoleScopeId { get; set; }
+    public required string RoleScopeCode { get; set; }
+    public required string RoleScopeName { get; set; }
     public bool IsSystem { get; set; }
     public bool IsFiltered { get; set; }
     public bool IsActive { get; set; }

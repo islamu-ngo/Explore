@@ -37,7 +37,7 @@ public class PermissionRepository : GenericRepository<Permission, int>, IPermiss
     {
         return await _dbContext.Permissions
             .AsNoTracking()
-            .Where(p => p.Scope == scope && p.IsActive)
+            .Where(p => p.RoleScopeId == (int)scope && p.IsActive)
             .OrderBy(p => p.GroupName)
             .ThenBy(p => p.ResourceKind)
             .ThenBy(p => p.Action)
@@ -78,7 +78,7 @@ public class PermissionRepository : GenericRepository<Permission, int>, IPermiss
             .Where(p =>
                 p.IsActive &&
                 !p.IsFiltered &&
-                (int)p.Scope >= (int)targetScope &&
+                p.RoleScopeId >= (int)targetScope &&
                 callerPermissionIds.Contains(p.Id))
             .OrderBy(p => p.GroupName)
             .ThenBy(p => p.ResourceKind)

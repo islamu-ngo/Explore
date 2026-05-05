@@ -182,6 +182,27 @@ public class HateoasAuthorizationEvaluatorTests
     }
 
     [Test]
+    [DisplayName("Permission-bound links without explicit action are denied without provider call")]
+    public async Task PermissionResourceWithoutAction_Denied_NoProviderCall()
+    {
+        var links = new List<LinkDefinition>
+        {
+            LinkDefinition.Action("archive", "ArchiveEvent", "POST").Authenticated() with
+            {
+                PermissionResourceKind = "event",
+                PermissionResourceId = "id-1",
+            },
+        };
+
+        var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
+
+        await Assert.That(result[0]).IsFalse();
+        await _authProvider.DidNotReceive().IsAllowedBatchAsync(
+            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     [DisplayName("RequiresAuth with unauthenticated user denies link")]
     public async Task RequiresAuth_Unauthenticated_Denied()
     {

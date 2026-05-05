@@ -33,6 +33,7 @@ public static class MachineScopeMapping
         {
             case ResourceKinds.Event:
             case ResourceKinds.EventSession:
+            case ResourceKinds.EventSessionGroup:
             case ResourceKinds.EventSessionAgendaItem:
             case ResourceKinds.EventDay:
             case ResourceKinds.EventAgendaItem:

@@ -2,6 +2,7 @@
 // ABOUTME: Enforces SecretDefinitionRegistry invariants (allowed scope/source, scope-id consistency, metadata exclusivity).
 
 using Explore.Domain.Enums;
+using SecretSourceTypeEnum = Explore.Domain.Enums.SecretSourceType;
 
 namespace Explore.Domain.Secrets;
 
@@ -20,7 +21,7 @@ public partial class SecretBinding
         string key,
         bool isLocked = false)
     {
-        var definition = GetValidDefinition(settingKey, scope, scopeId, SecretSourceType.Infisical);
+        var definition = GetValidDefinition(settingKey, scope, scopeId, SecretSourceTypeEnum.Infisical);
 
         if (string.IsNullOrWhiteSpace(environment))
             throw new ArgumentException("Infisical environment is required.", nameof(environment));
@@ -35,7 +36,7 @@ public partial class SecretBinding
             SettingKey = settingKey,
             Scope = scope,
             ScopeId = scopeId,
-            SourceType = SecretSourceType.Infisical,
+            SourceType = SecretSourceTypeEnum.Infisical,
             InfisicalEnvironment = environment,
             InfisicalPath = path,
             InfisicalKey = key,
@@ -56,7 +57,7 @@ public partial class SecretBinding
         int ciphertextVersion,
         bool isLocked = false)
     {
-        GetValidDefinition(settingKey, scope, scopeId, SecretSourceType.InlineEncrypted);
+        GetValidDefinition(settingKey, scope, scopeId, SecretSourceTypeEnum.InlineEncrypted);
 
         if (ciphertext is null || ciphertext.Length == 0)
             throw new ArgumentException("Inline ciphertext must be non-empty.", nameof(ciphertext));
@@ -68,7 +69,7 @@ public partial class SecretBinding
             SettingKey = settingKey,
             Scope = scope,
             ScopeId = scopeId,
-            SourceType = SecretSourceType.InlineEncrypted,
+            SourceType = SecretSourceTypeEnum.InlineEncrypted,
             InlineCiphertext = ciphertext,
             InlineCiphertextVersion = ciphertextVersion,
             IsLocked = isLocked,
@@ -85,7 +86,7 @@ public partial class SecretBinding
         string variableName,
         bool isLocked = false)
     {
-        GetValidDefinition(settingKey, scope, scopeId, SecretSourceType.EnvironmentVariable);
+        GetValidDefinition(settingKey, scope, scopeId, SecretSourceTypeEnum.EnvironmentVariable);
 
         if (string.IsNullOrWhiteSpace(variableName))
             throw new ArgumentException("Environment variable name is required.", nameof(variableName));
@@ -95,7 +96,7 @@ public partial class SecretBinding
             SettingKey = settingKey,
             Scope = scope,
             ScopeId = scopeId,
-            SourceType = SecretSourceType.EnvironmentVariable,
+            SourceType = SecretSourceTypeEnum.EnvironmentVariable,
             EnvironmentVariableName = variableName,
             IsLocked = isLocked,
         };
@@ -107,7 +108,7 @@ public partial class SecretBinding
     /// </summary>
     public void SwitchToInfisical(string environment, string path, string key)
     {
-        GetValidDefinition(SettingKey, Scope, ScopeId, SecretSourceType.Infisical);
+        GetValidDefinition(SettingKey, Scope, ScopeId, SecretSourceTypeEnum.Infisical);
 
         if (string.IsNullOrWhiteSpace(environment))
             throw new ArgumentException("Infisical environment is required.", nameof(environment));
@@ -117,7 +118,7 @@ public partial class SecretBinding
             throw new ArgumentException("Infisical key is required.", nameof(key));
 
         ClearMetadata();
-        SourceType = SecretSourceType.Infisical;
+        SourceType = SecretSourceTypeEnum.Infisical;
         InfisicalEnvironment = environment;
         InfisicalPath = path;
         InfisicalKey = key;
@@ -130,7 +131,7 @@ public partial class SecretBinding
     /// </summary>
     public void SwitchToInlineEncrypted(byte[] ciphertext, int ciphertextVersion)
     {
-        GetValidDefinition(SettingKey, Scope, ScopeId, SecretSourceType.InlineEncrypted);
+        GetValidDefinition(SettingKey, Scope, ScopeId, SecretSourceTypeEnum.InlineEncrypted);
 
         if (ciphertext is null || ciphertext.Length == 0)
             throw new ArgumentException("Inline ciphertext must be non-empty.", nameof(ciphertext));
@@ -138,7 +139,7 @@ public partial class SecretBinding
             throw new ArgumentOutOfRangeException(nameof(ciphertextVersion), "Ciphertext version must be >= 1.");
 
         ClearMetadata();
-        SourceType = SecretSourceType.InlineEncrypted;
+        SourceType = SecretSourceTypeEnum.InlineEncrypted;
         InlineCiphertext = ciphertext;
         InlineCiphertextVersion = ciphertextVersion;
         ResetValidation();
@@ -150,13 +151,13 @@ public partial class SecretBinding
     /// </summary>
     public void SwitchToEnvironmentVariable(string variableName)
     {
-        GetValidDefinition(SettingKey, Scope, ScopeId, SecretSourceType.EnvironmentVariable);
+        GetValidDefinition(SettingKey, Scope, ScopeId, SecretSourceTypeEnum.EnvironmentVariable);
 
         if (string.IsNullOrWhiteSpace(variableName))
             throw new ArgumentException("Environment variable name is required.", nameof(variableName));
 
         ClearMetadata();
-        SourceType = SecretSourceType.EnvironmentVariable;
+        SourceType = SecretSourceTypeEnum.EnvironmentVariable;
         EnvironmentVariableName = variableName;
         ResetValidation();
     }
@@ -215,7 +216,7 @@ public partial class SecretBinding
             // Bootstrap secrets cannot be InlineEncrypted - this is a domain invariant
             // (the DB cannot unlock itself). That is an InvalidOperationException (business rule),
             // not an ArgumentException (caller error).
-            if (definition.IsBootstrapSecret && sourceType == SecretSourceType.InlineEncrypted)
+            if (definition.IsBootstrapSecret && sourceType == SecretSourceTypeEnum.InlineEncrypted)
             {
                 throw new InvalidOperationException(
                     $"Bootstrap secret '{settingKey}' cannot be InlineEncrypted. " +

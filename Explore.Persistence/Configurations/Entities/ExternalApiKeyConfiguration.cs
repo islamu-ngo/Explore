@@ -21,7 +21,9 @@ public class ExternalApiKeyConfiguration : IEntityTypeConfiguration<ExternalApiK
         builder.Property(e => e.SecretHash).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Scopes).HasMaxLength(1000).IsRequired();
         builder.Property(e => e.LastUsedIp).HasMaxLength(64);
-        builder.Property(e => e.OwnerType).HasConversion<int>().IsRequired();
+        builder.Ignore(e => e.OwnerType);
+
+        builder.Property(e => e.ExternalApiKeyOwnerTypeId).IsRequired();
 
         builder.Property(e => e.ExternalApiKeyStatusId)
             .HasDefaultValue((int)ExternalApiKeyStatusEnum.Active)
@@ -34,13 +36,18 @@ public class ExternalApiKeyConfiguration : IEntityTypeConfiguration<ExternalApiK
         builder.Property(e => e.TenantId).IsRequired(false);
 
         builder.HasIndex(e => e.KeyId).IsUnique();
-        builder.HasIndex(e => new { e.TenantId, e.OwnerType, e.OwnerId });
+        builder.HasIndex(e => new { e.TenantId, e.ExternalApiKeyOwnerTypeId, e.OwnerId });
         builder.HasIndex(e => new { e.TenantId, e.ExternalApiKeyStatusId });
 
         builder.HasOne(e => e.Tenant)
             .WithMany()
             .HasForeignKey(e => e.TenantId)
             .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.ExternalApiKeyOwnerType)
+            .WithMany()
+            .HasForeignKey(e => e.ExternalApiKeyOwnerTypeId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.ExternalApiKeyStatus)

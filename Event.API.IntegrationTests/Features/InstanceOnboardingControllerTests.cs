@@ -325,8 +325,8 @@ public class InstanceOnboardingControllerTests
         await Assert.That(config.GoogleSsoEnabled).IsTrue();
     }
 
-    // TODO: Re-enable once OpenFeature SDK ChannelClosedException on shutdown is resolved.
-    // [Test]
+    [Skip("Category: API integration. Removal: enable when OpenFeature SDK shutdown no longer throws ChannelClosedException during WebApplicationFactory disposal.")]
+    [Test]
     public async Task SetupAuthProviderConfigurationFlow_SaveThenComplete_ShouldExposeConfiguredAndProtectPublicReadAfterCompletion()
     {
         using var factory = CreateFactoryWithSetupSecret();

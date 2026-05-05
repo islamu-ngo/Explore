@@ -19,9 +19,14 @@ public class RoleRepository : GenericRepository<Role, int>, IRoleRepository
 
     public async Task<IReadOnlyList<Role>> GetByScopeAsync(RoleScopeEnum scope)
     {
+        return await GetByScopeIdAsync((int)scope);
+    }
+
+    public async Task<IReadOnlyList<Role>> GetByScopeIdAsync(int roleScopeId)
+    {
         return await _dbContext.Roles
             .AsNoTracking()
-            .Where(r => r.Scope == scope)
+            .Where(r => r.RoleScopeId == roleScopeId)
             .OrderBy(r => r.Id)
             .ToListAsync();
     }

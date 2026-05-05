@@ -77,7 +77,8 @@ public class ExternalApiKeyIntegrationTests
         await Assert.That(body).IsNotNull();
         await Assert.That(body!.Id).IsEqualTo(apiKeyId);
         await Assert.That(body.Name).IsEqualTo("Reader Bot");
-        await Assert.That(body.OwnerType).IsEqualTo(ExternalApiKeyOwnerType.User);
+        await Assert.That(body.ExternalApiKeyOwnerTypeId).IsEqualTo((int)ExternalApiKeyOwnerType.User);
+        await Assert.That(body.ExternalApiKeyOwnerTypeCode).IsEqualTo("USER");
         await Assert.That(body.OwnerId).IsEqualTo(userId);
         await Assert.That(body.Scopes).IsEquivalentTo(["events:read", "events:write"]);
         await Assert.That(body.KeyId.Length).IsEqualTo(16);
@@ -153,7 +154,7 @@ public class ExternalApiKeyIntegrationTests
         {
             Name = name,
             Scopes = scopes,
-            OwnerType = ExternalApiKeyOwnerType.User
+            ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User
         };
 
         using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/externalapikey", userId);

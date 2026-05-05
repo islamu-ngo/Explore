@@ -105,7 +105,7 @@ public class ExternalApiKeyQuotaRepository : GenericRepository<ExternalApiKeyQuo
                 q.ExternalApiKeyId,
                 q.ExternalApiKey.Name,
                 q.ExternalApiKey.TenantId,
-                q.ExternalApiKey.OwnerType,
+                q.ExternalApiKey.ExternalApiKeyOwnerTypeId,
                 q.ExternalApiKey.OwnerId,
                 q.ExternalApiKey.CreditLimit
             })
@@ -113,7 +113,7 @@ public class ExternalApiKeyQuotaRepository : GenericRepository<ExternalApiKeyQuo
                 g.Key.ExternalApiKeyId,
                 g.Key.Name,
                 g.Key.TenantId,
-                (int)g.Key.OwnerType,
+                g.Key.ExternalApiKeyOwnerTypeId,
                 g.Key.OwnerId,
                 g.Sum(q => q.RequestCount),
                 g.Sum(q => q.CreditsUsed),
@@ -134,7 +134,7 @@ public class ExternalApiKeyQuotaRepository : GenericRepository<ExternalApiKeyQuo
                 q.ExternalApiKeyId,
                 q.ExternalApiKey.Name,
                 q.ExternalApiKey.TenantId,
-                q.ExternalApiKey.OwnerType,
+                q.ExternalApiKey.ExternalApiKeyOwnerTypeId,
                 q.ExternalApiKey.OwnerId,
                 q.ExternalApiKey.CreditLimit
             })
@@ -142,7 +142,7 @@ public class ExternalApiKeyQuotaRepository : GenericRepository<ExternalApiKeyQuo
                 g.Key.ExternalApiKeyId,
                 g.Key.Name,
                 g.Key.TenantId,
-                (int)g.Key.OwnerType,
+                g.Key.ExternalApiKeyOwnerTypeId,
                 g.Key.OwnerId,
                 g.Sum(q => q.RequestCount),
                 g.Sum(q => q.CreditsUsed),

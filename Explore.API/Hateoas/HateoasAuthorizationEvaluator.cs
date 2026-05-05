@@ -52,6 +52,16 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
                 continue;
             }
 
+            if (RequiresExplicitPermissionAction(definition))
+            {
+                _logger.LogWarning(
+                    "Link '{Rel}' for resource '{ResourceKind}' is permission-bound but has no explicit action. Denying link.",
+                    definition.Rel,
+                    definition.PermissionResourceKind);
+                results[i] = false;
+                continue;
+            }
+
             var check = BuildCheck(definition);
             if (check is null)
             {
@@ -149,25 +159,7 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             return null;
 
         var action = definition.PermissionAction;
-
-        // Fallback: infer action from HTTP method (legacy path — all migrated policies now set explicit actions).
-        if (string.IsNullOrWhiteSpace(action))
-        {
-            action = MapMethodToAction(definition.Method);
-
-            if (!string.IsNullOrWhiteSpace(action))
-            {
-                _logger.LogWarning(
-                    "Link '{Rel}' for resource '{ResourceKind}' used HTTP method inference for action '{Action}'. " +
-                    "Migrate to explicit AuthorizationActions constant via RequirePermission().",
-                    definition.Rel,
-                    definition.PermissionResourceKind,
-                    action);
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(action))
-            return null;
+        Debug.Assert(!string.IsNullOrWhiteSpace(action), "Permission-bound links must be screened before BuildCheck.");
 
         var resourceId = definition.PermissionResourceId
             ?? ExtractResourceId(definition.RouteValues)
@@ -177,25 +169,9 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
         return new AuthorizationCheck(definition.PermissionResourceKind, resourceId, action, attrs);
     }
 
-    /// <summary>
-    /// Legacy fallback: infers authorization action from HTTP method.
-    /// All migrated link policies now set explicit actions via RequirePermission() with AuthorizationActions constants.
-    /// This method only fires if a link has PermissionResourceKind set but no PermissionAction — which should
-    /// no longer occur after the Phase 2 descriptor migration.
-    /// </summary>
-    [Obsolete("All link policies should use explicit AuthorizationActions constants. Remove when no callers remain.")]
-    private static string? MapMethodToAction(string? method)
-    {
-        return method?.ToUpperInvariant() switch
-        {
-            "GET" => "read",
-            "POST" => "create",
-            "PUT" => "update",
-            "PATCH" => "update",
-            "DELETE" => "delete",
-            _ => null
-        };
-    }
+    private static bool RequiresExplicitPermissionAction(LinkDefinition definition) =>
+        !string.IsNullOrWhiteSpace(definition.PermissionResourceKind) &&
+        string.IsNullOrWhiteSpace(definition.PermissionAction);
 
     private static string? ExtractResourceId(object? routeValues)
     {

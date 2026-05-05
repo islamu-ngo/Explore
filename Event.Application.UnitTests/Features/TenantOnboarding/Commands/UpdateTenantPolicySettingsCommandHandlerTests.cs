@@ -90,7 +90,8 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
     {
         // Arrange: user is neither tenant admin nor instance admin
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>());
+        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(false);
 
         // Act
         var result = await _handler.Handle(CreateCommand(), CancellationToken.None);
@@ -122,11 +123,34 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenResolvedUserIsTenantAdmin_ReturnsSuccess()
+    {
+        // Arrange: Keycloak subjects are resolved to an internal user before command authorization.
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(new[] { TestTenantId });
+        _onboardingStateRepository.GetByTenantId(TestTenantId).Returns(new TenantOnboardingState
+        {
+            Id = Guid.NewGuid(),
+            TenantId = TestTenantId,
+            Tenant = null!,
+            IsCompleted = true
+        });
+
+        // Act
+        var result = await _handler.Handle(CreateCommand(), CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.Success).IsTrue();
+        await _policySettingService.Received(1).ApplyTenantSettingsAsync(TestTenantId, TestUserId, Arg.Any<UpdateTenantPolicyRequest>());
+    }
+
+    [Test]
     public async Task Handle_WhenInstanceAdmin_ReturnsSuccess()
     {
         // Arrange: user is not tenant admin but is instance admin
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminTenantIdsAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>());
+        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
         _onboardingStateRepository.GetByTenantId(TestTenantId).Returns(new TenantOnboardingState
         {
             Id = Guid.NewGuid(),
@@ -147,7 +171,8 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
     {
         // Arrange: regular member (not admin)
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
-        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>());
+        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(false);
 
         // Act
         await _handler.Handle(CreateCommand(), CancellationToken.None);

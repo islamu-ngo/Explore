@@ -18,7 +18,14 @@ public class Role
     /// <summary>
     /// The scope at which this role applies: Platform, Tenant, Organization, Group, or Event.
     /// </summary>
-    public RoleScopeEnum Scope { get; set; }
+    public int RoleScopeId { get; set; }
+    public RoleScope RoleScope { get; set; } = null!;
+
+    public RoleScopeEnum Scope
+    {
+        get => (RoleScopeEnum)RoleScopeId;
+        set => RoleScopeId = (int)value;
+    }
 
     /// <summary>
     /// Prevents deletion of built-in system roles.

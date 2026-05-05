@@ -4,7 +4,6 @@
 namespace Explore.Application.DTOs.Settings;
 
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Domain;
 
 /// <summary>
 /// A fully resolved setting value with metadata for client-side rendering.
@@ -14,7 +13,9 @@ public class EffectiveSettingDto
 {
     public required string Key { get; init; }
     public required string Value { get; init; }
-    public SettingValueType ValueType { get; init; }
+    public int SettingValueTypeId { get; init; }
+    public required string SettingValueTypeCode { get; init; }
+    public required string SettingValueTypeName { get; init; }
     public SettingSource Source { get; init; }
     public bool IsLocked { get; init; }
     public bool CanEdit { get; init; }

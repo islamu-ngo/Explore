@@ -63,7 +63,7 @@ public class ExternalApiKeyObservabilityTests
             ExternalApiKeyDto = new CreateExternalApiKeyDto
             {
                 Name = "Deploy Bot",
-                OwnerType = ExternalApiKeyOwnerType.User,
+                ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User,
                 Scopes = ["events:read", "events:write"]
             }
         };

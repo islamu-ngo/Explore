@@ -29,9 +29,15 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
         builder.Property(e => e.Value)
             .IsRequired();
 
-        builder.Property(e => e.ValueType)
-            .IsRequired()
-            .HasConversion<int>();
+        builder.Ignore(e => e.ValueType);
+
+        builder.Property(e => e.SettingValueTypeId)
+            .IsRequired();
+
+        builder.HasOne(e => e.SettingValueTypeLookup)
+            .WithMany()
+            .HasForeignKey(e => e.SettingValueTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(e => e.IsLocked)
             .IsRequired()
@@ -56,4 +62,3 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
         // Seed initial system settings using centralized SeedIds
     }
 }
-

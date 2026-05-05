@@ -63,7 +63,7 @@ public class ExternalApiKeyRepository : GenericRepository<ExternalApiKey, Guid>,
     {
         return await _dbContext.ExternalApiKeys
             .AsNoTracking()
-            .Where(apiKey => apiKey.OwnerType == ownerType && apiKey.OwnerId == ownerId)
+            .Where(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && apiKey.OwnerId == ownerId)
             .ToListAsync();
     }
 
@@ -79,7 +79,7 @@ public class ExternalApiKeyRepository : GenericRepository<ExternalApiKey, Guid>,
         {
             var chunkResults = await _dbContext.ExternalApiKeys
                 .AsNoTracking()
-                .Where(apiKey => apiKey.OwnerType == ownerType && chunk.Contains(apiKey.OwnerId))
+                .Where(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && chunk.Contains(apiKey.OwnerId))
                 .ToListAsync();
             results.AddRange(chunkResults);
         }
@@ -90,7 +90,7 @@ public class ExternalApiKeyRepository : GenericRepository<ExternalApiKey, Guid>,
     {
         return await _dbContext.ExternalApiKeys
             .AsNoTracking()
-            .AnyAsync(apiKey => apiKey.OwnerType == ownerType && apiKey.OwnerId == ownerId && apiKey.Name == name);
+            .AnyAsync(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && apiKey.OwnerId == ownerId && apiKey.Name == name);
     }
 
     public async Task<ExternalApiKey?> GetByIdIgnoringTenantFilter(Guid id)
@@ -105,7 +105,7 @@ public class ExternalApiKeyRepository : GenericRepository<ExternalApiKey, Guid>,
         return await _dbContext.ExternalApiKeys
             .IgnoreTenantFilter()
             .AsNoTracking()
-            .Where(apiKey => apiKey.OwnerType == ownerType && apiKey.OwnerId == ownerId)
+            .Where(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && apiKey.OwnerId == ownerId)
             .ToListAsync();
     }
 
@@ -114,6 +114,6 @@ public class ExternalApiKeyRepository : GenericRepository<ExternalApiKey, Guid>,
         return await _dbContext.ExternalApiKeys
             .IgnoreTenantFilter()
             .AsNoTracking()
-            .AnyAsync(apiKey => apiKey.OwnerType == ownerType && apiKey.OwnerId == ownerId && apiKey.Name == name);
+            .AnyAsync(apiKey => apiKey.ExternalApiKeyOwnerTypeId == (int)ownerType && apiKey.OwnerId == ownerId && apiKey.Name == name);
     }
 }

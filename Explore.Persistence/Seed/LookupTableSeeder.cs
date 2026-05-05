@@ -30,6 +30,13 @@ public static class LookupTableSeeder
     public static async Task SeedAsync(ExploreDbContext context, CancellationToken cancellationToken = default)
     {
         await SeedActorTypesAsync(context, cancellationToken);
+        await SeedRoleScopesAsync(context, cancellationToken);
+        await SeedSettingScopesAsync(context, cancellationToken);
+        await SeedSettingValueTypesAsync(context, cancellationToken);
+        await SeedSecretSourceTypesAsync(context, cancellationToken);
+        await SeedSecretValidationStatusesAsync(context, cancellationToken);
+        await SeedExternalApiKeyOwnerTypesAsync(context, cancellationToken);
+        await SeedNotificationScopeTypesAsync(context, cancellationToken);
         await SeedApprovalStatusesAsync(context, cancellationToken);
         await SeedAnalyticsProvidersAsync(context, cancellationToken);
         await SeedTenantStatusesAsync(context, cancellationToken);
@@ -113,6 +120,94 @@ public static class LookupTableSeeder
             new ActorType { Id = (int)ActorTypeEnum.User, MasterCode = "USER", FullName = "User", Description = "Individual user actor" },
             new ActorType { Id = (int)ActorTypeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "Organization actor" },
             new ActorType { Id = (int)ActorTypeEnum.Bot, MasterCode = "BOT", FullName = "Bot", Description = "Automated bot actor" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedRoleScopesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<RoleScope>().AnyAsync(ct)) return;
+
+        context.Set<RoleScope>().AddRange(
+            new RoleScope { Id = (int)RoleScopeEnum.Platform, MasterCode = "PLATFORM", FullName = "Platform", Description = "Platform-wide roles and permissions" },
+            new RoleScope { Id = (int)RoleScopeEnum.Tenant, MasterCode = "TENANT", FullName = "Tenant", Description = "Tenant-scoped roles and permissions" },
+            new RoleScope { Id = (int)RoleScopeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "Organization-scoped roles and permissions" },
+            new RoleScope { Id = (int)RoleScopeEnum.Group, MasterCode = "GROUP", FullName = "Group", Description = "Group-scoped roles and permissions" },
+            new RoleScope { Id = (int)RoleScopeEnum.Event, MasterCode = "EVENT", FullName = "Event", Description = "Event-scoped roles and permissions" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedSettingScopesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<SettingScopeLookup>().AnyAsync(ct)) return;
+
+        context.Set<SettingScopeLookup>().AddRange(
+            new SettingScopeLookup { Id = (int)ConfigurationScopeEnum.System, MasterCode = "SYSTEM", FullName = "System", Description = "Global system configuration scope" },
+            new SettingScopeLookup { Id = (int)ConfigurationScopeEnum.Instance, MasterCode = "INSTANCE", FullName = "Instance", Description = "Application instance configuration scope" },
+            new SettingScopeLookup { Id = (int)ConfigurationScopeEnum.Tenant, MasterCode = "TENANT", FullName = "Tenant", Description = "Tenant configuration scope" },
+            new SettingScopeLookup { Id = (int)ConfigurationScopeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "Organization configuration scope" },
+            new SettingScopeLookup { Id = (int)ConfigurationScopeEnum.Group, MasterCode = "GROUP", FullName = "Group", Description = "Group configuration scope" },
+            new SettingScopeLookup { Id = (int)ConfigurationScopeEnum.User, MasterCode = "USER", FullName = "User", Description = "User configuration scope" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedSettingValueTypesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<SettingValueTypeLookup>().AnyAsync(ct)) return;
+
+        context.Set<SettingValueTypeLookup>().AddRange(
+            new SettingValueTypeLookup { Id = (int)SettingValueType.String, MasterCode = "STRING", FullName = "String", Description = "String setting value" },
+            new SettingValueTypeLookup { Id = (int)SettingValueType.Integer, MasterCode = "INTEGER", FullName = "Integer", Description = "Integer setting value" },
+            new SettingValueTypeLookup { Id = (int)SettingValueType.Boolean, MasterCode = "BOOLEAN", FullName = "Boolean", Description = "Boolean setting value" },
+            new SettingValueTypeLookup { Id = (int)SettingValueType.Decimal, MasterCode = "DECIMAL", FullName = "Decimal", Description = "Decimal setting value" },
+            new SettingValueTypeLookup { Id = (int)SettingValueType.Json, MasterCode = "JSON", FullName = "JSON", Description = "JSON setting value" },
+            new SettingValueTypeLookup { Id = (int)SettingValueType.DateTime, MasterCode = "DATE_TIME", FullName = "Date/Time", Description = "Date/time setting value" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedSecretSourceTypesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<SecretSourceTypeLookup>().AnyAsync(ct)) return;
+
+        context.Set<SecretSourceTypeLookup>().AddRange(
+            new SecretSourceTypeLookup { Id = (int)SecretSourceType.Infisical, MasterCode = "INFISICAL", FullName = "Infisical", Description = "Secret value is stored in Infisical" },
+            new SecretSourceTypeLookup { Id = (int)SecretSourceType.InlineEncrypted, MasterCode = "INLINE_ENCRYPTED", FullName = "Inline Encrypted", Description = "Secret value is stored encrypted in the database" },
+            new SecretSourceTypeLookup { Id = (int)SecretSourceType.EnvironmentVariable, MasterCode = "ENVIRONMENT_VARIABLE", FullName = "Environment Variable", Description = "Secret value is resolved from an environment variable" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedSecretValidationStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<SecretValidationStatus>().AnyAsync(ct)) return;
+
+        context.Set<SecretValidationStatus>().AddRange(
+            new SecretValidationStatus { Id = (int)SecretValidationResult.NotValidated, MasterCode = "NOT_VALIDATED", FullName = "Not Validated", Description = "Secret source has not been validated" },
+            new SecretValidationStatus { Id = (int)SecretValidationResult.Success, MasterCode = "SUCCESS", FullName = "Success", Description = "Secret source validation succeeded" },
+            new SecretValidationStatus { Id = (int)SecretValidationResult.Failure, MasterCode = "FAILURE", FullName = "Failure", Description = "Secret source validation failed" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedExternalApiKeyOwnerTypesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<ExternalApiKeyOwnerTypeLookup>().AnyAsync(ct)) return;
+
+        context.Set<ExternalApiKeyOwnerTypeLookup>().AddRange(
+            new ExternalApiKeyOwnerTypeLookup { Id = (int)ExternalApiKeyOwnerType.User, MasterCode = "USER", FullName = "User", Description = "External API key owned by a user" },
+            new ExternalApiKeyOwnerTypeLookup { Id = (int)ExternalApiKeyOwnerType.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "External API key owned by an organization" },
+            new ExternalApiKeyOwnerTypeLookup { Id = (int)ExternalApiKeyOwnerType.Group, MasterCode = "GROUP", FullName = "Group", Description = "External API key owned by a group" },
+            new ExternalApiKeyOwnerTypeLookup { Id = (int)ExternalApiKeyOwnerType.Tenant, MasterCode = "TENANT", FullName = "Tenant", Description = "External API key owned by a tenant" },
+            new ExternalApiKeyOwnerTypeLookup { Id = (int)ExternalApiKeyOwnerType.InstanceAdmin, MasterCode = "INSTANCE_ADMIN", FullName = "Instance Admin", Description = "External API key owned by an instance administrator" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedNotificationScopeTypesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<NotificationScopeType>().AnyAsync(ct)) return;
+
+        context.Set<NotificationScopeType>().AddRange(
+            new NotificationScopeType { Id = (int)ActorTypeEnum.User, MasterCode = "USER", FullName = "User", Description = "Notification targets a single user" },
+            new NotificationScopeType { Id = (int)ActorTypeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "Notification targets an organization scope" },
+            new NotificationScopeType { Id = (int)ActorTypeEnum.Group, MasterCode = "GROUP", FullName = "Group", Description = "Notification targets a group scope" },
+            new NotificationScopeType { Id = (int)ActorTypeEnum.System, MasterCode = "SYSTEM", FullName = "System", Description = "Notification targets a system scope" });
         await context.SaveChangesAsync(ct);
     }
 
@@ -623,7 +718,7 @@ public static class LookupTableSeeder
         };
 
         var eventPermissions = await context.Permissions
-            .Where(p => eventPermissionCodes.Contains(p.MasterCode) && p.Scope != RoleScopeEnum.Event)
+            .Where(p => eventPermissionCodes.Contains(p.MasterCode) && p.RoleScopeId != (int)RoleScopeEnum.Event)
             .ToListAsync(ct);
 
         if (eventPermissions.Count == 0)
@@ -960,7 +1055,7 @@ public static class LookupTableSeeder
 
     private static async Task SeedUiThemePresetsAsync(ExploreDbContext context, CancellationToken ct)
     {
-        var currentSeedVersion = 3;
+        var currentSeedVersion = 6;
         var existingPresets = await context.UiThemePresets
             .Where(p => p.IsSystem && p.TenantId == null)
             .ToListAsync(ct);
@@ -981,25 +1076,25 @@ public static class LookupTableSeeder
             SeedVersion = currentSeedVersion,
             LightPalette = new Domain.ValueObjects.UiThemePalette
             {
-                Primary = "#0F62FE", PrimaryContrastText = "#FFFFFF",
-                Secondary = "#475569", SecondaryContrastText = "#FFFFFF",
-                Background = "#F1F5F9", Surface = "#FFFFFF",
-                AppbarBackground = "#FFFFFF", AppbarText = "#1E293B",
-                DrawerBackground = "#FFFFFF", DrawerText = "#1E293B", DrawerIcon = "#475569",
-                TextPrimary = "#0F172A", TextSecondary = "#475569",
-                Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
-                LinesDefault = "#CBD5E1", Divider = "#CBD5E1"
+                Primary = "#18181B", PrimaryContrastText = "#FFFFFF",
+                Secondary = "#52525B", SecondaryContrastText = "#FFFFFF",
+                Background = "#F5F5F7", Surface = "#FFFFFF",
+                AppbarBackground = "#FFFFFF", AppbarText = "#18181B",
+                DrawerBackground = "#FFFFFF", DrawerText = "#18181B", DrawerIcon = "#52525B",
+                TextPrimary = "#18181B", TextSecondary = "#404040",
+                Info = "#52525B", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
+                LinesDefault = "#A1A1AA", Divider = "#E4E4E7"
             },
             DarkPalette = new Domain.ValueObjects.UiThemePalette
             {
-                Primary = "#3B82F6", PrimaryContrastText = "#FFFFFF",
-                Secondary = "#F1F5F9", SecondaryContrastText = "#0F172A",
-                Background = "#0B0F19", Surface = "#1E293B",
-                AppbarBackground = "rgba(11,15,25,0.85)", AppbarText = "#F1F5F9",
-                DrawerBackground = "#0B0F19", DrawerText = "#F1F5F9", DrawerIcon = "#CBD5E1",
-                TextPrimary = "#F8FAFC", TextSecondary = "#94A3B8",
-                Info = "#60A5FA", Success = "#10B981", Warning = "#F59E0B", Error = "#EF4444",
-                LinesDefault = "#334155", Divider = "#1E293B"
+                Primary = "#FAFAFA", PrimaryContrastText = "#1A1A1A",
+                Secondary = "#A1A1AA", SecondaryContrastText = "#1A1A1A",
+                Background = "#1A1A1A", Surface = "#242424",
+                AppbarBackground = "rgba(26,26,26,0.92)", AppbarText = "#FAFAFA",
+                DrawerBackground = "#1A1A1A", DrawerText = "#FAFAFA", DrawerIcon = "#A1A1AA",
+                TextPrimary = "#FAFAFA", TextSecondary = "#A1A1AA",
+                Info = "#A1A1AA", Success = "#34D399", Warning = "#FBBF24", Error = "#F87171",
+                LinesDefault = "#3F3F46", Divider = "#2E2E2E"
             }
         };
 
@@ -1017,24 +1112,24 @@ public static class LookupTableSeeder
             LightPalette = new Domain.ValueObjects.UiThemePalette
             {
                 Primary = "#16A34A", PrimaryContrastText = "#FFFFFF",
-                Secondary = "#475569", SecondaryContrastText = "#FFFFFF",
-                Background = "#F0FDF4", Surface = "#FFFFFF",
-                AppbarBackground = "#FFFFFF", AppbarText = "#14532D",
-                DrawerBackground = "#FFFFFF", DrawerText = "#14532D", DrawerIcon = "#475569",
-                TextPrimary = "#052E16", TextSecondary = "#475569",
+                Secondary = "#52525B", SecondaryContrastText = "#FFFFFF",
+                Background = "#F5F5F7", Surface = "#FFFFFF",
+                AppbarBackground = "#FFFFFF", AppbarText = "#18181B",
+                DrawerBackground = "#FFFFFF", DrawerText = "#18181B", DrawerIcon = "#52525B",
+                TextPrimary = "#18181B", TextSecondary = "#52525B",
                 Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
-                LinesDefault = "#BBF7D0", Divider = "#BBF7D0"
+                LinesDefault = "#D4D4D8", Divider = "#E4E4E7"
             },
             DarkPalette = new Domain.ValueObjects.UiThemePalette
             {
-                Primary = "#22C55E", PrimaryContrastText = "#052E16",
-                Secondary = "#E2E8F0", SecondaryContrastText = "#0F172A",
-                Background = "#052E16", Surface = "#14532D",
-                AppbarBackground = "rgba(5,46,22,0.85)", AppbarText = "#F0FDF4",
-                DrawerBackground = "#052E16", DrawerText = "#F0FDF4", DrawerIcon = "#BBF7D0",
-                TextPrimary = "#F0FDF4", TextSecondary = "#BBF7D0",
-                Info = "#60A5FA", Success = "#22C55E", Warning = "#F59E0B", Error = "#EF4444",
-                LinesDefault = "#14532D", Divider = "#14532D"
+                Primary = "#22C55E", PrimaryContrastText = "#18181B",
+                Secondary = "#E4E4E7", SecondaryContrastText = "#18181B",
+                Background = "#121212", Surface = "#1E1E1E",
+                AppbarBackground = "rgba(18,18,18,0.92)", AppbarText = "#FAFAFA",
+                DrawerBackground = "#121212", DrawerText = "#FAFAFA", DrawerIcon = "#A1A1AA",
+                TextPrimary = "#FAFAFA", TextSecondary = "#A1A1AA",
+                Info = "#60A5FA", Success = "#22C55E", Warning = "#FBBF24", Error = "#F87171",
+                LinesDefault = "#3F3F46", Divider = "#27272A"
             }
         };
 
@@ -1044,7 +1139,7 @@ public static class LookupTableSeeder
             TenantId = null,
             ThemeKey = "abyssal-dark",
             DisplayName = "Abyssal Dark",
-            Description = "Dark-first theme with deep navy tones, still offering a light palette.",
+            Description = "Dark-first theme with deep charcoal tones, still offering a light palette.",
             IsSystem = true,
             IsEditable = false,
             IsActive = true,
@@ -1052,24 +1147,24 @@ public static class LookupTableSeeder
             LightPalette = new Domain.ValueObjects.UiThemePalette
             {
                 Primary = "#0F62FE", PrimaryContrastText = "#FFFFFF",
-                Secondary = "#475569", SecondaryContrastText = "#FFFFFF",
-                Background = "#F8FAFC", Surface = "#FFFFFF",
-                AppbarBackground = "#FFFFFF", AppbarText = "#0F172A",
-                DrawerBackground = "#FFFFFF", DrawerText = "#0F172A", DrawerIcon = "#64748B",
-                TextPrimary = "#0F172A", TextSecondary = "#64748B",
+                Secondary = "#52525B", SecondaryContrastText = "#FFFFFF",
+                Background = "#F5F5F7", Surface = "#FFFFFF",
+                AppbarBackground = "#FFFFFF", AppbarText = "#18181B",
+                DrawerBackground = "#FFFFFF", DrawerText = "#18181B", DrawerIcon = "#71717A",
+                TextPrimary = "#18181B", TextSecondary = "#71717A",
                 Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
-                LinesDefault = "#E2E8F0", Divider = "#E2E8F0"
+                LinesDefault = "#D4D4D8", Divider = "#E4E4E7"
             },
             DarkPalette = new Domain.ValueObjects.UiThemePalette
             {
-                Primary = "#60A5FA", PrimaryContrastText = "#0F172A",
-                Secondary = "#94A3B8", SecondaryContrastText = "#0F172A",
-                Background = "#020617", Surface = "#0F172A",
-                AppbarBackground = "rgba(2,6,23,0.95)", AppbarText = "#F8FAFC",
-                DrawerBackground = "#020617", DrawerText = "#F8FAFC", DrawerIcon = "#64748B",
-                TextPrimary = "#F8FAFC", TextSecondary = "#94A3B8",
+                Primary = "#60A5FA", PrimaryContrastText = "#18181B",
+                Secondary = "#A1A1AA", SecondaryContrastText = "#18181B",
+                Background = "#09090B", Surface = "#18181B",
+                AppbarBackground = "rgba(9,9,11,0.95)", AppbarText = "#FAFAFA",
+                DrawerBackground = "#09090B", DrawerText = "#FAFAFA", DrawerIcon = "#71717A",
+                TextPrimary = "#FAFAFA", TextSecondary = "#A1A1AA",
                 Info = "#60A5FA", Success = "#34D399", Warning = "#FBBF24", Error = "#F87171",
-                LinesDefault = "#1E293B", Divider = "#1E293B"
+                LinesDefault = "#27272A", Divider = "#27272A"
             }
         };
 
@@ -1087,24 +1182,24 @@ public static class LookupTableSeeder
             LightPalette = new Domain.ValueObjects.UiThemePalette
             {
                 Primary = "#3B82F6", PrimaryContrastText = "#FFFFFF",
-                Secondary = "#6B7280", SecondaryContrastText = "#FFFFFF",
-                Background = "#FFFFFF", Surface = "#F9FAFB",
-                AppbarBackground = "#FFFFFF", AppbarText = "#111827",
-                DrawerBackground = "#F9FAFB", DrawerText = "#111827", DrawerIcon = "#6B7280",
-                TextPrimary = "#111827", TextSecondary = "#6B7280",
+                Secondary = "#71717A", SecondaryContrastText = "#FFFFFF",
+                Background = "#FFFFFF", Surface = "#FAFAFA",
+                AppbarBackground = "#FFFFFF", AppbarText = "#18181B",
+                DrawerBackground = "#FAFAFA", DrawerText = "#18181B", DrawerIcon = "#71717A",
+                TextPrimary = "#18181B", TextSecondary = "#71717A",
                 Info = "#3B82F6", Success = "#10B981", Warning = "#F59E0B", Error = "#EF4444",
-                LinesDefault = "#E5E7EB", Divider = "#F3F4F6"
+                LinesDefault = "#E4E4E7", Divider = "#F4F4F5"
             },
             DarkPalette = new Domain.ValueObjects.UiThemePalette
             {
-                Primary = "#60A5FA", PrimaryContrastText = "#0F172A",
-                Secondary = "#94A3B8", SecondaryContrastText = "#0F172A",
-                Background = "#0F172A", Surface = "#1E293B",
-                AppbarBackground = "#0F172A", AppbarText = "#F8FAFC",
-                DrawerBackground = "#0F172A", DrawerText = "#F8FAFC", DrawerIcon = "#64748B",
-                TextPrimary = "#F8FAFC", TextSecondary = "#94A3B8",
+                Primary = "#60A5FA", PrimaryContrastText = "#18181B",
+                Secondary = "#A1A1AA", SecondaryContrastText = "#18181B",
+                Background = "#121212", Surface = "#1E1E1E",
+                AppbarBackground = "#121212", AppbarText = "#FAFAFA",
+                DrawerBackground = "#121212", DrawerText = "#FAFAFA", DrawerIcon = "#71717A",
+                TextPrimary = "#FAFAFA", TextSecondary = "#A1A1AA",
                 Info = "#60A5FA", Success = "#34D399", Warning = "#FBBF24", Error = "#F87171",
-                LinesDefault = "#334155", Divider = "#334155"
+                LinesDefault = "#3F3F46", Divider = "#3F3F46"
             }
         };
 
@@ -1192,24 +1287,24 @@ public static class LookupTableSeeder
             LightPalette = new Domain.ValueObjects.UiThemePalette
             {
                 Primary = "#2563EB", PrimaryContrastText = "#FFFFFF",
-                Secondary = "#64748B", SecondaryContrastText = "#FFFFFF",
+                Secondary = "#71717A", SecondaryContrastText = "#FFFFFF",
                 Background = "#FFFFFF", Surface = "#FFFFFF",
-                AppbarBackground = "#FFFFFF", AppbarText = "#0F172A",
-                DrawerBackground = "#F8FAFC", DrawerText = "#0F172A", DrawerIcon = "#64748B",
-                TextPrimary = "#0F172A", TextSecondary = "#475569",
+                AppbarBackground = "#FFFFFF", AppbarText = "#18181B",
+                DrawerBackground = "#FAFAFA", DrawerText = "#18181B", DrawerIcon = "#71717A",
+                TextPrimary = "#18181B", TextSecondary = "#52525B",
                 Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
-                LinesDefault = "#E2E8F0", Divider = "#E2E8F0"
+                LinesDefault = "#D4D4D8", Divider = "#E4E4E7"
             },
             DarkPalette = new Domain.ValueObjects.UiThemePalette
             {
-                Primary = "#60A5FA", PrimaryContrastText = "#0F172A",
-                Secondary = "#94A3B8", SecondaryContrastText = "#0F172A",
-                Background = "#0F172A", Surface = "#1E293B",
-                AppbarBackground = "rgba(15,23,42,0.92)", AppbarText = "#F8FAFC",
-                DrawerBackground = "#0F172A", DrawerText = "#F8FAFC", DrawerIcon = "#94A3B8",
-                TextPrimary = "#F8FAFC", TextSecondary = "#94A3B8",
+                Primary = "#60A5FA", PrimaryContrastText = "#18181B",
+                Secondary = "#A1A1AA", SecondaryContrastText = "#18181B",
+                Background = "#121212", Surface = "#1E1E1E",
+                AppbarBackground = "rgba(18,18,18,0.92)", AppbarText = "#FAFAFA",
+                DrawerBackground = "#121212", DrawerText = "#FAFAFA", DrawerIcon = "#A1A1AA",
+                TextPrimary = "#FAFAFA", TextSecondary = "#A1A1AA",
                 Info = "#60A5FA", Success = "#34D399", Warning = "#FBBF24", Error = "#F87171",
-                LinesDefault = "#334155", Divider = "#1E293B"
+                LinesDefault = "#3F3F46", Divider = "#27272A"
             }
         };
 

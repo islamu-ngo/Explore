@@ -44,7 +44,7 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
         var response = new BaseCommandResponse<Guid>();
         var tenantId = _tenantContext.TenantId;
 
-        if (!await IsUserAuthorizedAsync(tenantId, cancellationToken))
+        if (!await IsUserAuthorizedAsync(tenantId, request.UserId, cancellationToken))
         {
             response.Success = false;
             response.Message = "Only tenant administrators or instance administrators can update tenant settings.";
@@ -67,14 +67,20 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
         return response;
     }
 
-    private async Task<bool> IsUserAuthorizedAsync(Guid tenantId, CancellationToken cancellationToken)
+    private async Task<bool> IsUserAuthorizedAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken)
     {
         if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
         {
             return true;
         }
 
-        return await _adminContext.IsInstanceAdminAsync(cancellationToken);
+        var adminTenantIds = await _adminContext.GetAdminTenantIdsAsync(userId, cancellationToken);
+        if (adminTenantIds.Contains(tenantId))
+        {
+            return true;
+        }
+
+        return await _adminContext.IsInstanceAdminAsync(userId, cancellationToken);
     }
 
     private async Task EnsureLockedSettingsAreNotModifiedAsync(Guid tenantId, UpdateTenantPolicyRequest requestSettings)

@@ -19,6 +19,7 @@ using Explore.Application.DTOs.TagType;
 using Explore.Application.DTOs.TagTypeTags;
 using Explore.Application.DTOs.VisibilityType;
 using Explore.Domain;
+using Explore.Application.Lookups;
 
 namespace Explore.Application.Profiles;
 
@@ -101,11 +102,19 @@ public class LookupMappingProfile : Profile
         CreateMap<Domain.GroupPosition, DTOs.GroupPosition.GroupPositionDto>().ReverseMap();
         CreateMap<Domain.GroupPosition, DTOs.GroupPosition.GroupPositionListDto>().ReverseMap();
 
-        CreateMap<Domain.Role, DTOs.Role.RoleDto>();
-        CreateMap<Domain.Role, DTOs.Role.RoleListDto>();
+        CreateMap<Domain.Role, DTOs.Role.RoleDto>()
+            .ForMember(dest => dest.RoleScopeCode, opt => opt.MapFrom(src => NormalizedLookupMetadata.RoleScope(src.RoleScopeId).Code))
+            .ForMember(dest => dest.RoleScopeName, opt => opt.MapFrom(src => NormalizedLookupMetadata.RoleScope(src.RoleScopeId).Name));
+        CreateMap<Domain.Role, DTOs.Role.RoleListDto>()
+            .ForMember(dest => dest.RoleScopeCode, opt => opt.MapFrom(src => NormalizedLookupMetadata.RoleScope(src.RoleScopeId).Code))
+            .ForMember(dest => dest.RoleScopeName, opt => opt.MapFrom(src => NormalizedLookupMetadata.RoleScope(src.RoleScopeId).Name));
 
-        CreateMap<Domain.Permission, DTOs.Permission.PermissionDto>();
-        CreateMap<Domain.Permission, DTOs.Permission.PermissionListDto>();
+        CreateMap<Domain.Permission, DTOs.Permission.PermissionDto>()
+            .ForMember(dest => dest.RoleScopeCode, opt => opt.MapFrom(src => NormalizedLookupMetadata.RoleScope(src.RoleScopeId).Code))
+            .ForMember(dest => dest.RoleScopeName, opt => opt.MapFrom(src => NormalizedLookupMetadata.RoleScope(src.RoleScopeId).Name));
+        CreateMap<Domain.Permission, DTOs.Permission.PermissionListDto>()
+            .ForMember(dest => dest.RoleScopeCode, opt => opt.MapFrom(src => NormalizedLookupMetadata.RoleScope(src.RoleScopeId).Code))
+            .ForMember(dest => dest.RoleScopeName, opt => opt.MapFrom(src => NormalizedLookupMetadata.RoleScope(src.RoleScopeId).Name));
 
         CreateMap<Domain.FileType, FileTypeDto>().ReverseMap();
         CreateMap<Domain.FileType, FileTypeListDto>().ReverseMap();

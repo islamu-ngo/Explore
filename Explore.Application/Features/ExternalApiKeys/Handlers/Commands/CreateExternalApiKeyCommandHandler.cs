@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey.Validators;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
+using Explore.Application.Lookups;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
@@ -60,7 +61,9 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
         var currentUserId = _userContext.GetRequiredUserId();
         var dto = request.ExternalApiKeyDto;
 
-        var tenantId = dto.OwnerType == ExternalApiKeyOwnerType.InstanceAdmin
+        var ownerType = ToOwnerType(dto.ExternalApiKeyOwnerTypeId);
+
+        var tenantId = ownerType == ExternalApiKeyOwnerType.InstanceAdmin
             ? (Guid?)null
             : _tenantContext.TenantId;
 
@@ -101,7 +104,7 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
             KeyId = keyId,
             SecretHash = ApiKeyHashing.ComputeHash(secret),
             Scopes = NormalizeScopes(dto.Scopes),
-            OwnerType = dto.OwnerType,
+            OwnerType = ownerType,
             OwnerId = authorityResult.OwnerId,
             ExternalApiKeyStatusId = (int)ExternalApiKeyStatusEnum.Active,
             ExternalApiKeyStatus = null!,
@@ -139,7 +142,9 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
     private async Task<OwnerAuthorityResult> CheckOwnerAuthorityAsync(
         DTOs.ExternalApiKey.CreateExternalApiKeyDto dto, Guid currentUserId, CancellationToken cancellationToken)
     {
-        switch (dto.OwnerType)
+        var ownerType = ToOwnerType(dto.ExternalApiKeyOwnerTypeId);
+
+        switch (ownerType)
         {
             case ExternalApiKeyOwnerType.User:
                 return OwnerAuthorityResult.Authorized(currentUserId);
@@ -196,8 +201,18 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
             default:
                 return OwnerAuthorityResult.Denied(
                     "Unsupported owner type.",
-                    $"Owner type '{dto.OwnerType}' is not supported.");
+                    $"Owner type id '{dto.ExternalApiKeyOwnerTypeId}' is not supported.");
         }
+    }
+
+    private static ExternalApiKeyOwnerType ToOwnerType(int ownerTypeId)
+    {
+        if (!NormalizedLookupMetadata.IsExternalApiKeyOwnerTypeId(ownerTypeId))
+        {
+            return 0;
+        }
+
+        return (ExternalApiKeyOwnerType)ownerTypeId;
     }
 
     private static string NormalizeScopes(IEnumerable<string> scopes)

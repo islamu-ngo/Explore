@@ -1,15 +1,13 @@
 // ABOUTME: Input model for issuing an external API key for any of the five owner types.
 // ABOUTME: Supports User, Organization, Group, Tenant, and InstanceAdmin keys with optional credit quota configuration.
 
-using Explore.Domain.Enums;
-
 namespace Explore.Application.DTOs.ExternalApiKey;
 
 public class CreateExternalApiKeyDto
 {
     public required string Name { get; set; }
     public string? Description { get; set; }
-    public ExternalApiKeyOwnerType OwnerType { get; set; } = ExternalApiKeyOwnerType.User;
+    public int ExternalApiKeyOwnerTypeId { get; set; } = 1;
     public Guid? OrganizationId { get; set; }
     public Guid? GroupId { get; set; }
     public List<string> Scopes { get; set; } = [];

@@ -11,6 +11,7 @@ using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
+using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
@@ -123,6 +124,26 @@ public static class ResourceDescriptors
 
     public static readonly ResourceDescriptor<EventSessionDto> EventSession = new(
         ResourceKinds.EventSession,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["eventId"] = dto.EventId.ToString(),
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EventSessionGroupDto> EventSessionGroup = new(
+        ResourceKinds.EventSessionGroup,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["eventId"] = dto.EventId.ToString(),
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EventSessionGroupListDto> EventSessionGroupList = new(
+        ResourceKinds.EventSessionGroup,
         dto => dto.Id.ToString(),
         dto => new Dictionary<string, object>
         {

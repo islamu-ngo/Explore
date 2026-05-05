@@ -23,7 +23,7 @@ public class PlatformUserRoleRepository : GenericRepository<PlatformUserRole, Gu
             .AsNoTracking()
             .Include(x => x.Role)
             .AnyAsync(x => x.UserId == userId
-                && x.Role.Scope == RoleScopeEnum.Platform
+                && x.Role.RoleScopeId == (int)RoleScopeEnum.Platform
                 && x.Role.MasterCode == "platform.admin");
     }
 
@@ -39,6 +39,6 @@ public class PlatformUserRoleRepository : GenericRepository<PlatformUserRole, Gu
         return await _dbContext.PlatformUserRoles
             .AsNoTracking()
             .Include(x => x.Role)
-            .AnyAsync(x => x.Role.Scope == RoleScopeEnum.Platform && x.Role.MasterCode == "platform.admin");
+            .AnyAsync(x => x.Role.RoleScopeId == (int)RoleScopeEnum.Platform && x.Role.MasterCode == "platform.admin");
     }
 }

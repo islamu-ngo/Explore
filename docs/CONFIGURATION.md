@@ -150,7 +150,8 @@ Consent cookie design:
 Post-onboarding management note:
 
 - Instance admins can update analytics governance values through `PUT /api/InstanceOnboarding/analytics-governance`.
-- Instance admins can update auth-provider governance values through `PUT /api/InstanceOnboarding/admin/auth-provider-configuration`.
+- Instance admins can update authentication provider governance values through `PUT /api/instance/settings/auth-provider`.
+- Instance admins can update the active authorization provider through `PUT /api/instance/settings/authz-provider`.
 - Secret values (`keycloak`/`google` client secrets) continue to use secret-setting storage, not plain governance values.
 
 ## Settings Cascade Rules

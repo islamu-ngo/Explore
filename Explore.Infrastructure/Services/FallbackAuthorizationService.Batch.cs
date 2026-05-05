@@ -106,7 +106,7 @@ public partial class FallbackAuthorizationService
             "organization_review" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "group" => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "group_member" => action is "view" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "event" or "event_session" or "event_session_agenda_item" or "event_day" or "event_agenda_item"
+            "event" or "event_session" or "event_session_group" or "event_session_agenda_item" or "event_day" or "event_agenda_item"
                 => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                     && (IsTenantAdminForResourceTenant(profile, resourceKind, resourceId, resourceAttributes)
                         || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId)

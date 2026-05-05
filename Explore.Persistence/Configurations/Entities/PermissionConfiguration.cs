@@ -39,9 +39,15 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.Property(e => e.Scope)
-            .IsRequired()
-            .HasConversion<int>();
+        builder.Ignore(e => e.Scope);
+
+        builder.Property(e => e.RoleScopeId)
+            .IsRequired();
+
+        builder.HasOne(e => e.RoleScope)
+            .WithMany()
+            .HasForeignKey(e => e.RoleScopeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(e => e.IsSystem)
             .IsRequired()
@@ -69,7 +75,7 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             .HasDatabaseName("ix_permissions_resource_action");
 
         // Filter by scope for capability ceiling queries
-        builder.HasIndex(e => e.Scope)
-            .HasDatabaseName("ix_permissions_scope");
+        builder.HasIndex(e => e.RoleScopeId)
+            .HasDatabaseName("ix_permissions_role_scope_id");
     }
 }

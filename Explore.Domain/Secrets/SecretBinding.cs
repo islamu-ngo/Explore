@@ -43,7 +43,24 @@ public partial class SecretBinding : IAuditableEntity
     /// Scope level: <see cref="SecretScope.Instance"/> for instance-wide bindings (<see cref="ScopeId"/> MUST be null),
     /// or <see cref="SecretScope.Tenant"/> for tenant-scoped bindings (<see cref="ScopeId"/> MUST be the tenant id).
     /// </summary>
-    public SecretScope Scope { get; set; }
+    public int SettingScopeId { get; set; }
+    public SettingScopeLookup SettingScope { get; set; } = null!;
+
+    public SecretScope Scope
+    {
+        get => SettingScopeId switch
+        {
+            1 => SecretScope.Instance,
+            2 => SecretScope.Tenant,
+            _ => throw new InvalidOperationException($"Setting scope id '{SettingScopeId}' is not valid for secret bindings.")
+        };
+        set => SettingScopeId = value switch
+        {
+            SecretScope.Instance => 1,
+            SecretScope.Tenant => 2,
+            _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unsupported secret scope.")
+        };
+    }
 
     /// <summary>
     /// Null when <see cref="Scope"/> = <see cref="SecretScope.Instance"/>; the tenant id when <see cref="Scope"/> = <see cref="SecretScope.Tenant"/>.
@@ -53,7 +70,14 @@ public partial class SecretBinding : IAuditableEntity
     /// <summary>
     /// Declares which data plane holds the active secret value. Dispatch on this, never chain fallbacks.
     /// </summary>
-    public SecretSourceType SourceType { get; set; }
+    public int SecretSourceTypeId { get; set; }
+    public SecretSourceTypeLookup SecretSourceType { get; set; } = null!;
+
+    public SecretSourceType SourceType
+    {
+        get => (SecretSourceType)SecretSourceTypeId;
+        set => SecretSourceTypeId = (int)value;
+    }
 
     /// <summary>Infisical environment slug (e.g. <c>prod</c>, <c>staging</c>). Populated only when <see cref="SourceType"/> = <see cref="SecretSourceType.Infisical"/>.</summary>
     public string? InfisicalEnvironment { get; set; }
@@ -88,7 +112,14 @@ public partial class SecretBinding : IAuditableEntity
     /// <summary>
     /// Result of the most recent validation attempt (resolve + fetch from the declared source).
     /// </summary>
-    public SecretValidationResult LastValidationResult { get; set; } = SecretValidationResult.NotValidated;
+    public int SecretValidationStatusId { get; set; }
+    public SecretValidationStatus SecretValidationStatus { get; set; } = null!;
+
+    public SecretValidationResult LastValidationResult
+    {
+        get => (SecretValidationResult)SecretValidationStatusId;
+        set => SecretValidationStatusId = (int)value;
+    }
 
     /// <summary>
     /// Sanitized error message from the most recent validation failure. Never contains secret values.

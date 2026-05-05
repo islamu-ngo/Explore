@@ -1,12 +1,11 @@
 // ABOUTME: Unified role controller replacing OrganizationRoleController and UserRoleController.
-// ABOUTME: Supports scope filtering via query parameter (Platform, Tenant, Organization, Group, Event).
+// ABOUTME: Supports filtering by normalized role scope lookup ID.
 
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Role;
 using Explore.Application.Features.Roles.Requests.Queries;
-using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -28,18 +27,18 @@ public class RoleController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET: api/role?scope=Organization
+    // GET: api/role?roleScopeId=2
     [HttpGet(Name = RouteNames.GetRoles)]
     [EndpointSummary("Get all Roles")]
-    [EndpointDescription("Retrieve roles, optionally filtered by scope (Platform, Tenant, Organization, Group, Event). Returns all roles when no scope specified.")]
+    [EndpointDescription("Retrieve roles, optionally filtered by normalized roleScopeId. Returns all roles when no roleScopeId is specified.")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(List<RoleListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<RoleListDto>>> GetAll(
-        [FromQuery] RoleScopeEnum? scope = null,
+        [FromQuery] int? roleScopeId = null,
         CancellationToken cancellationToken = default)
     {
-        var roles = await _mediator.Send(new GetRoleListRequest { Scope = scope }, cancellationToken);
+        var roles = await _mediator.Send(new GetRoleListRequest { RoleScopeId = roleScopeId }, cancellationToken);
         return Ok(roles);
     }
 

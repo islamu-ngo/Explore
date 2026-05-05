@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Features.ExternalApiKeys;
+using Explore.Application.Lookups;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using FluentValidation;
@@ -27,8 +28,9 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
         _organizationRepository = organizationRepository;
         _groupRepository = groupRepository;
 
-        RuleFor(x => x.OwnerType)
-            .IsInEnum().WithMessage("Invalid owner type.");
+        RuleFor(x => x.ExternalApiKeyOwnerTypeId)
+            .Must(NormalizedLookupMetadata.IsExternalApiKeyOwnerTypeId)
+            .WithMessage("Invalid external API key owner type.");
 
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("API key name is required.")
@@ -42,10 +44,10 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
             .WithMessage("Scopes cannot contain empty values.")
             .Must(scopes => ExternalApiKeyScopes.AreAllValid(scopes))
             .WithMessage((dto, _) => $"Invalid scopes: {string.Join(", ", ExternalApiKeyScopes.GetInvalid(dto.Scopes))}.")
-            .Must((dto, scopes) => ExternalApiKeyScopeCeiling.AreWithinCeiling(dto.OwnerType, scopes))
-            .WithMessage((dto, _) => $"Scopes exceed ceiling for {dto.OwnerType}: {string.Join(", ", ExternalApiKeyScopeCeiling.GetExceeding(dto.OwnerType, dto.Scopes))}.");
+            .Must((dto, scopes) => ExternalApiKeyScopeCeiling.AreWithinCeiling(ToOwnerType(dto.ExternalApiKeyOwnerTypeId), scopes))
+            .WithMessage((dto, _) => $"Scopes exceed ceiling for {ToOwnerType(dto.ExternalApiKeyOwnerTypeId)}: {string.Join(", ", ExternalApiKeyScopeCeiling.GetExceeding(ToOwnerType(dto.ExternalApiKeyOwnerTypeId), dto.Scopes))}.");
 
-        When(x => x.OwnerType == ExternalApiKeyOwnerType.Organization, () =>
+        When(x => ToOwnerType(x.ExternalApiKeyOwnerTypeId) == ExternalApiKeyOwnerType.Organization, () =>
         {
             RuleFor(x => x.OrganizationId)
                 .NotEmpty().WithMessage("Organization ID is required for organization-owned API keys.")
@@ -53,7 +55,7 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
                 .WithMessage("Organization does not exist.");
         });
 
-        When(x => x.OwnerType == ExternalApiKeyOwnerType.Group, () =>
+        When(x => ToOwnerType(x.ExternalApiKeyOwnerTypeId) == ExternalApiKeyOwnerType.Group, () =>
         {
             RuleFor(x => x.GroupId)
                 .NotEmpty().WithMessage("Group ID is required for group-owned API keys.")
@@ -74,23 +76,30 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
 
         // InstanceAdmin keys have TenantId=null, so the standard tenant query filter
         // would never match them. Use the tenant-filter-bypass variant.
-        if (dto.OwnerType == ExternalApiKeyOwnerType.InstanceAdmin)
+        var ownerType = ToOwnerType(dto.ExternalApiKeyOwnerTypeId);
+
+        if (ownerType == ExternalApiKeyOwnerType.InstanceAdmin)
         {
-            return !await _externalApiKeyRepository.ExistsByOwnerAndNameIgnoringTenantFilter(dto.OwnerType, ownerId.Value, name);
+            return !await _externalApiKeyRepository.ExistsByOwnerAndNameIgnoringTenantFilter(ownerType, ownerId.Value, name);
         }
 
-        return !await _externalApiKeyRepository.ExistsByOwnerAndName(dto.OwnerType, ownerId.Value, name);
+        return !await _externalApiKeyRepository.ExistsByOwnerAndName(ownerType, ownerId.Value, name);
     }
 
     private static Guid? ResolveOwnerId(CreateExternalApiKeyDto dto, Guid currentUserId, Guid? tenantId)
     {
-        return dto.OwnerType switch
+        return ToOwnerType(dto.ExternalApiKeyOwnerTypeId) switch
         {
             ExternalApiKeyOwnerType.Organization => dto.OrganizationId,
             ExternalApiKeyOwnerType.Group => dto.GroupId,
             ExternalApiKeyOwnerType.Tenant => tenantId,
             _ => currentUserId // User and InstanceAdmin both use current user's ID
         };
+    }
+
+    private static ExternalApiKeyOwnerType ToOwnerType(int ownerTypeId)
+    {
+        return (ExternalApiKeyOwnerType)ownerTypeId;
     }
 
     private async Task<bool> OrganizationExistsAsync(Guid? organizationId, CancellationToken cancellationToken)

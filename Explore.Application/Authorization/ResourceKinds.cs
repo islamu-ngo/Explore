@@ -15,6 +15,7 @@ public static class ResourceKinds
 {
     public const string Event = "event";
     public const string EventSession = "event_session";
+    public const string EventSessionGroup = "event_session_group";
     public const string EventSessionAgendaItem = "event_session_agenda_item";
     public const string EventDay = "event_day";
     public const string EventAgendaItem = "event_agenda_item";

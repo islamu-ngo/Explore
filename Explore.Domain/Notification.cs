@@ -37,12 +37,11 @@ public class Notification : ITenantEntity, IAuditableEntity, ISoftDeletable
     public string? EntityId { get; set; }
 
     /// <summary>
-    /// The scope of this notification, reusing ActorType as the scope classifier.
-    /// User(1)=Personal, Organization(2)=OrgScope, Group(4)=GroupScope, System(5)=SystemScope.
+    /// The scope of this notification: Personal/User, Organization, Group, or System.
     /// </summary>
     [ForeignKey("NotificationScope")]
     public int NotificationScopeId { get; set; }
-    public required ActorType NotificationScope { get; set; }
+    public required NotificationScopeType NotificationScope { get; set; }
 
     /// <summary>
     /// Optional: the actor (user, org, bot, system) that caused this notification.

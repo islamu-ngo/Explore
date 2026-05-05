@@ -38,7 +38,14 @@ public class ConfigurationChangeLog : IAuditableEntity
     /// <summary>
     /// The hierarchy level at which the change was made.
     /// </summary>
-    public ConfigurationScopeEnum Scope { get; set; }
+    public int SettingScopeId { get; set; }
+    public SettingScopeLookup SettingScope { get; set; } = null!;
+
+    public ConfigurationScopeEnum Scope
+    {
+        get => (ConfigurationScopeEnum)SettingScopeId;
+        set => SettingScopeId = (int)value;
+    }
 
     /// <summary>
     /// The ID of the scoped entity (TenantId or OrganizationId). Null for Instance/System scope.

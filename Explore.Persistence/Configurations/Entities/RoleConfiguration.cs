@@ -24,9 +24,15 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(e => e.Description)
             .HasMaxLength(500);
 
-        builder.Property(e => e.Scope)
-            .IsRequired()
-            .HasConversion<int>();
+        builder.Ignore(e => e.Scope);
+
+        builder.Property(e => e.RoleScopeId)
+            .IsRequired();
+
+        builder.HasOne(e => e.RoleScope)
+            .WithMany()
+            .HasForeignKey(e => e.RoleScopeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(e => e.IsSystem)
             .IsRequired()
@@ -38,7 +44,7 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
             .HasDatabaseName("ix_roles_mastercode");
 
         // Fast lookup by scope (e.g., get all Organization roles)
-        builder.HasIndex(e => e.Scope)
-            .HasDatabaseName("ix_roles_scope");
+        builder.HasIndex(e => e.RoleScopeId)
+            .HasDatabaseName("ix_roles_role_scope_id");
     }
 }
