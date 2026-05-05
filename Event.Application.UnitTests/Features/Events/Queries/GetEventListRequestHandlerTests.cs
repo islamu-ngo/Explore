@@ -148,6 +148,35 @@ public class GetEventListRequestHandlerTests
         await _eventRepository.DidNotReceiveWithAnyArgs().GetEventsWithDetailsPaged(default, default, default!);
     }
 
+    [Test]
+    public async Task Handle_WithSameRequestForDifferentTenants_UsesTenantScopedCacheEntries()
+    {
+        var tenantAId = Guid.NewGuid();
+        var tenantBId = Guid.NewGuid();
+        var currentTenantId = tenantAId;
+
+        _tenantContext.TenantId.Returns(_ => currentTenantId);
+        _mapper.Map<List<EventListDto>>(Arg.Any<List<Explore.Domain.Event>>())
+            .Returns(call => ((List<Explore.Domain.Event>)call[0]!).Select(CreateEventListDto).ToList());
+        _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
+            .Returns(_ =>
+            {
+                var title = currentTenantId == tenantAId ? "Tenant A Event" : "Tenant B Event";
+                return (new List<Explore.Domain.Event> { CreateEventProbe(Guid.NewGuid(), title, currentTenantId) }, 1);
+            });
+
+        var tenantAResult = await _handler.Handle(new GetEventListRequest(), CancellationToken.None);
+        currentTenantId = tenantBId;
+        var tenantBResult = await _handler.Handle(new GetEventListRequest(), CancellationToken.None);
+
+        await Assert.That(tenantAResult.Items.Single().Title).IsEqualTo("Tenant A Event");
+        await Assert.That(tenantBResult.Items.Single().Title).IsEqualTo("Tenant B Event");
+        await _eventRepository.Received(2).GetEventsWithDetailsPaged(
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<EventQuerySpecification>());
+    }
+
     private static bool HasActorFilter(EventQuerySpecification specification, Guid actorId)
     {
         var probe = CreateEventProbe(actorId);
@@ -155,27 +184,65 @@ public class GetEventListRequestHandlerTests
         return specification.Filters.Any(filter => filter.Predicate.Compile()(probe) && !filter.Predicate.Compile()(other));
     }
 
-    private static Explore.Domain.Event CreateEventProbe(Guid actorId) => new()
+    private static Explore.Domain.Event CreateEventProbe(Guid actorId) =>
+        CreateEventProbe(actorId, "probe", Guid.NewGuid());
+
+    private static Explore.Domain.Event CreateEventProbe(Guid actorId, string title, Guid tenantId) => new()
     {
-        Title = "probe",
+        Title = title,
         Actor = null!,
         ActorId = actorId,
+        TenantId = tenantId,
         Tenant = null!,
         VisibilityType = null!,
         EventStatus = null!,
         EventFormat = null!
     };
 
+    private static EventListDto CreateEventListDto(Explore.Domain.Event @event) => new()
+    {
+        Id = @event.Id,
+        Title = @event.Title,
+        EventTypeFullName = string.Empty,
+        AudienceGenderFullName = string.Empty,
+        AudienceAgeFullName = string.Empty,
+        ActorDisplayName = string.Empty,
+        ActorTypeFullName = string.Empty,
+        EventStatusFullName = string.Empty,
+        VisibilityTypeFullName = string.Empty,
+        EventFormatFullName = string.Empty,
+        TenantId = @event.TenantId
+    };
+
     private sealed class TestHybridCache : HybridCache
     {
-        public override ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, HybridCacheEntryOptions? options = null, IEnumerable<string>? tags = null, CancellationToken cancellationToken = default)
+        private readonly Dictionary<string, object?> _values = new();
+
+        public override async ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, HybridCacheEntryOptions? options = null, IEnumerable<string>? tags = null, CancellationToken cancellationToken = default)
         {
-            return factory(state, cancellationToken);
+            if (_values.TryGetValue(key, out var value) && value is T cached)
+            {
+                return cached;
+            }
+
+            var created = await factory(state, cancellationToken);
+            _values[key] = created;
+            return created;
         }
 
-        public override ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+        public override ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
+        {
+            _values.Remove(key);
+            return ValueTask.CompletedTask;
+        }
+
         public override ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
-        public override ValueTask SetAsync<T>(string key, T value, HybridCacheEntryOptions? options = null, IEnumerable<string>? tags = null, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+
+        public override ValueTask SetAsync<T>(string key, T value, HybridCacheEntryOptions? options = null, IEnumerable<string>? tags = null, CancellationToken cancellationToken = default)
+        {
+            _values[key] = value;
+            return ValueTask.CompletedTask;
+        }
     }
 
     [Test]

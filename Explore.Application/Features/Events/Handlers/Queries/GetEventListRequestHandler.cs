@@ -59,9 +59,10 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         }
 
         var specification = await BuildSpecificationAsync(request, ownershipActorId, cancellationToken);
+        var tenantCacheKey = _tenantContext.TenantId.ToString("N");
         var ownershipCacheKey = ownershipActorId?.ToString("N") ?? "none";
         var cacheKeySuffix = specification.ToCacheKeySuffix();
-        var cacheKey = $"events:list:{request.PageNumber}:{request.PageSize}:owner:{ownershipCacheKey}:{cacheKeySuffix}";
+        var cacheKey = $"events:list:tenant:{tenantCacheKey}:{request.PageNumber}:{request.PageSize}:owner:{ownershipCacheKey}:{cacheKeySuffix}";
 
         var cachedResult = await _cache.GetOrCreateAsync(
             cacheKey,
