@@ -54,6 +54,13 @@
                     This dedicated composer keeps the event shell separate from program items. Event ID: @EventId
                 </MudAlert>
 
+                @if (!_canAddSession)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-4">
+                        You do not currently have permission to add sessions to this event draft.
+                    </MudAlert>
+                }
+
                 <EditForm Model="_session" OnValidSubmit="SaveSessionAsync">
                     <DataAnnotationsValidator />
 
@@ -100,7 +107,7 @@
                                          Value="@_session.MaxAudienceAttendees"
                                          ValueChanged="@(value => _session.MaxAudienceAttendees = value)"
                                          Variant="Variant.Outlined"
-                                         Min="0"
+                                         Min="1"
                                          Placeholder="Optional" />
                     </div>
 
@@ -108,7 +115,7 @@
                         <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToEventDraft" Disabled="@_isSaving">
                             Back to event draft
                         </AppButton>
-                        <AppButton ButtonType="ButtonType.Submit" StartIcon="@Icons.Material.Filled.Save" Disabled="@_isSaving">
+                        <AppButton ButtonType="ButtonType.Submit" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isSaving || !_canAddSession)">
                             @(_isSaving ? "Saving..." : "Save session")
                         </AppButton>
                     </div>
@@ -135,6 +142,7 @@
     private TimeSpan? _endTime = new(10, 0, 0);
     private bool _isLoading = true;
     private bool _isSaving;
+    private bool _canAddSession;
     private string? _errorMessage;
     private string? _successMessage;
 
@@ -144,6 +152,10 @@
         if (_event is null)
         {
             _errorMessage = "The event draft could not be loaded.";
+        }
+        else
+        {
+            _canAddSession = _event.HasHalLink("add-session");
         }
 
         _isLoading = false;
@@ -192,6 +204,12 @@
             return false;
         }
 
+        if (!_canAddSession)
+        {
+            validationError = "You do not currently have permission to add sessions to this event draft.";
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(_session.Title))
         {
             validationError = "Session title is required.";
@@ -215,8 +233,9 @@
         _session.EventId = EventId;
         _session.TenantId = _event.TenantId;
         _session.Title = _session.Title.Trim();
-        _session.StartTime = new DateTimeOffset(start);
-        _session.EndTime = new DateTimeOffset(end);
+        _session.MaxAudienceAttendees = _session.MaxAudienceAttendees > 0 ? _session.MaxAudienceAttendees : null;
+        _session.StartTime = DateTimeHelper.ConvertLocalToUtc(start);
+        _session.EndTime = DateTimeHelper.ConvertLocalToUtc(end);
         return true;
     }
 
