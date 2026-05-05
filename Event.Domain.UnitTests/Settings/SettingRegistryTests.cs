@@ -272,6 +272,12 @@ public class SettingRegistryTests
             GovernanceSettingKeys.PublicExperience.HomeBlocks,
             GovernanceSettingKeys.PublicExperience.Ctas,
             GovernanceSettingKeys.PublicExperience.EventSectionPresets,
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarEnabled,
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarMessage,
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkText,
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkUrl,
+            GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision,
+            GovernanceSettingKeys.PublicExperiencePreferences.AnnouncementBarDismissedRevision,
         });
 
         foreach (var key in keys)
@@ -283,11 +289,23 @@ public class SettingRegistryTests
     [Test]
     public async Task Registry_PublicExperienceSettingsAreInstanceToTenantScopedOnly()
     {
-        foreach (var definition in PublicExperienceSettingDefinitions.All)
+        foreach (var definition in PublicExperienceSettingDefinitions.All
+                     .Where(d => d.Category == "PublicExperience"))
         {
             await Assert.That(definition.MinScope).IsEqualTo(SettingScope.Instance);
             await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.Tenant);
         }
+    }
+
+    [Test]
+    public async Task Registry_PublicExperienceDismissalPreferenceIsUserScoped()
+    {
+        var definition = SettingRegistry.Get(GovernanceSettingKeys.PublicExperiencePreferences.AnnouncementBarDismissedRevision);
+
+        await Assert.That(definition).IsNotNull();
+        await Assert.That(definition!.MinScope).IsEqualTo(SettingScope.User);
+        await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.User);
+        await Assert.That(definition.IsLockable).IsFalse();
     }
 
     [Test]
