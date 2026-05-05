@@ -6,6 +6,8 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventRegistration;
+using Explore.Application.DTOs.EventSession;
+using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.Hateoas;
 using Explore.Domain.Enums;
 
@@ -43,11 +45,50 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             $"Event sessions ({dto.SessionCount ?? 0})");
 
         yield return new LinkDefinition(
+            LinkRelations.Program,
+            RouteNames.GetEventSessionGroupsByEvent,
+            new { eventId = dto.Id },
+            "GET",
+            "Event program");
+
+        yield return new LinkDefinition(
             LinkRelations.SessionGroups,
             RouteNames.GetEventSessionGroupsByEvent,
             new { eventId = dto.Id },
             "GET",
             "Program sections");
+
+        var eventScopedResourceAttributes = new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["eventId"] = dto.Id.ToString()
+        };
+
+        yield return new LinkDefinition(
+            LinkRelations.AddSession,
+            RouteNames.CreateEventSession,
+            null,
+            "POST",
+            "Add session",
+            RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.Create,
+                typeof(EventSessionDto),
+                dto.Id.ToString(),
+                eventScopedResourceAttributes);
+
+        yield return new LinkDefinition(
+            LinkRelations.AddSessionGroup,
+            RouteNames.CreateEventSessionGroup,
+            null,
+            "POST",
+            "Add program section",
+            RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.Create,
+                typeof(EventSessionGroupDto),
+                dto.Id.ToString(),
+                eventScopedResourceAttributes);
 
 
         // Categories link

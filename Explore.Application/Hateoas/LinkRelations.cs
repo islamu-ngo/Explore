@@ -112,6 +112,21 @@ public static class LinkRelations
     public const string Sessions = "sessions";
 
     /// <summary>
+    /// Program overview for an event, composed from program sections and sessions.
+    /// </summary>
+    public const string Program = "program";
+
+    /// <summary>
+    /// Action link for adding a session to an event program.
+    /// </summary>
+    public const string AddSession = "add-session";
+
+    /// <summary>
+    /// Action link for adding a program section, track, devroom, or stage to an event.
+    /// </summary>
+    public const string AddSessionGroup = "add-session-group";
+
+    /// <summary>
     /// Speakers for a session.
     /// </summary>
     public const string Speakers = "speakers";
