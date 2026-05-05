@@ -1,0 +1,421 @@
+// ABOUTME: Tenant-admin service for editing public experience governance settings through the BFF API.
+// ABOUTME: Wraps generic tenant settings endpoints with a typed model for post-onboarding public UX controls.
+
+using System.Globalization;
+using Explore.Blazor.Client.Clients;
+using Microsoft.Extensions.Logging;
+
+namespace Explore.Blazor.Client.Services;
+
+public interface ITenantPublicExperienceAdminService
+{
+    Task<TenantPublicExperienceAdminModel> GetSettingsAsync(CancellationToken cancellationToken = default);
+    Task ApplyAnnouncementBarSettingsAsync(TenantPolicySettingsModel model, CancellationToken cancellationToken = default);
+    Task<PublicExperienceAdminSaveResult> SaveAsync(TenantPublicExperienceAdminModel model, CancellationToken cancellationToken = default);
+    Task<PublicExperienceAdminSaveResult> SaveSingleTenantPolicySettingsAsync(TenantPolicySettingsModel model, CancellationToken cancellationToken = default);
+    Task<PublicExperienceAdminSaveResult> SaveAnnouncementBarAsync(TenantPolicySettingsModel model, bool forceRedisplay, CancellationToken cancellationToken = default);
+}
+
+public sealed class TenantPublicExperienceAdminService(
+    IEventApiClient apiClient,
+    ILogger<TenantPublicExperienceAdminService> logger) : ITenantPublicExperienceAdminService
+{
+    private const string Category = "PublicExperience";
+    private const string ModeKey = "public_experience.mode";
+    private const string EventCatalogLabelKey = "public_experience.event_catalog_label";
+    private const string PrimaryOrganizationIdKey = "public_experience.primary_organization_id";
+    private const string HomeBlocksKey = "public_experience.home_blocks";
+    private const string CtasKey = "public_experience.ctas";
+    private const string EventSectionPresetsKey = "public_experience.event_section_presets";
+    private const string AnnouncementBarEnabledKey = "public_experience.announcement_bar.enabled";
+    private const string AnnouncementBarMessageKey = "public_experience.announcement_bar.message";
+    private const string AnnouncementBarLinkTextKey = "public_experience.announcement_bar.link_text";
+    private const string AnnouncementBarLinkUrlKey = "public_experience.announcement_bar.link_url";
+    private const string AnnouncementBarRevisionKey = "public_experience.announcement_bar.revision";
+
+    private const string EventsCategory = "Events";
+    private const string OrganizationsCategory = "Organizations";
+    private const string GroupsCategory = "Groups";
+    private const string AiAssistantCategory = "AiAssistant";
+    private const string EventsUserSubmissionEnabledKey = "events.user_submission_enabled";
+    private const string EventsOrganizationSubmissionEnabledKey = "events.organization_submission_enabled";
+    private const string EventsGroupSubmissionEnabledKey = "events.group_submission_enabled";
+    private const string EventsRequireApprovalKey = "events.require_approval";
+    private const string EventsCardClickOpensDetailPageKey = "events.card_click_opens_detail_page";
+    private const string OrganizationsVerificationRequiredKey = "organizations.verification_required";
+    private const string OrganizationsSelfRegistrationEnabledKey = "organizations.self_registration_enabled";
+    private const string GroupsSelfRegistrationEnabledKey = "groups.self_registration_enabled";
+    private const string AiAssistantEnabledKey = "ai_assistant.enabled";
+    private const string AiAssistantEndpointUrlKey = "ai_assistant.endpoint_url";
+    private const string AiAssistantApiKeyKey = "ai_assistant.api_key";
+    private const string AiAssistantAllowAnonymousAccessKey = "ai_assistant.allow_anonymous_access";
+
+    private const string DefaultMode = "DiscoveryCentric";
+    private const string DefaultEventCatalogLabel = "Events";
+    private const string DefaultHomeBlocksJson = "{\"schemaVersion\":1,\"blocks\":[]}";
+    private const string DefaultCtasJson = "{\"schemaVersion\":1,\"ctas\":[]}";
+    private const string DefaultEventSectionPresetsJson = "{\"schemaVersion\":1,\"presets\":[]}";
+
+    public async Task<TenantPublicExperienceAdminModel> GetSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            SettingGroupResponseDto response = await apiClient.GetTenantScopedSettingsAsync(
+                Category,
+                cancellationToken: cancellationToken);
+
+            Dictionary<string, EffectiveSettingDto> settings = response.Settings
+                .Where(setting => !string.IsNullOrWhiteSpace(setting.Key))
+                .ToDictionary(setting => setting.Key, StringComparer.OrdinalIgnoreCase);
+
+            return new TenantPublicExperienceAdminModel
+            {
+                Mode = GetString(settings, ModeKey, DefaultMode),
+                EventCatalogLabel = GetString(settings, EventCatalogLabelKey, DefaultEventCatalogLabel),
+                PrimaryOrganizationId = GetGuid(settings, PrimaryOrganizationIdKey),
+                HomeBlocksJson = GetString(settings, HomeBlocksKey, DefaultHomeBlocksJson),
+                CtasJson = GetString(settings, CtasKey, DefaultCtasJson),
+                EventSectionPresetsJson = GetString(settings, EventSectionPresetsKey, DefaultEventSectionPresetsJson),
+                CanEditMode = CanEdit(settings, ModeKey),
+                CanEditEventCatalogLabel = CanEdit(settings, EventCatalogLabelKey),
+                CanEditPrimaryOrganization = CanEdit(settings, PrimaryOrganizationIdKey),
+                CanEditHomeBlocks = CanEdit(settings, HomeBlocksKey),
+                CanEditCtas = CanEdit(settings, CtasKey),
+                CanEditEventSectionPresets = CanEdit(settings, EventSectionPresetsKey)
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load tenant public experience settings.");
+            return new TenantPublicExperienceAdminModel();
+        }
+    }
+
+    public async Task ApplyAnnouncementBarSettingsAsync(
+        TenantPolicySettingsModel model,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            SettingGroupResponseDto response = await apiClient.GetTenantScopedSettingsAsync(
+                Category,
+                cancellationToken: cancellationToken);
+
+            Dictionary<string, EffectiveSettingDto> settings = response.Settings
+                .Where(setting => !string.IsNullOrWhiteSpace(setting.Key))
+                .ToDictionary(setting => setting.Key, StringComparer.OrdinalIgnoreCase);
+
+            model.AnnouncementBarEnabled = GetBoolean(settings, AnnouncementBarEnabledKey, false);
+            model.AnnouncementBarMessage = GetString(settings, AnnouncementBarMessageKey, string.Empty);
+            model.AnnouncementBarLinkText = GetString(settings, AnnouncementBarLinkTextKey, string.Empty);
+            model.AnnouncementBarLinkUrl = GetString(settings, AnnouncementBarLinkUrlKey, string.Empty);
+            model.AnnouncementBarRevision = GetInteger(settings, AnnouncementBarRevisionKey, 0);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load tenant announcement bar settings.");
+        }
+    }
+
+    public async Task<PublicExperienceAdminSaveResult> SaveAsync(
+        TenantPublicExperienceAdminModel model,
+        CancellationToken cancellationToken = default)
+    {
+        Dictionary<string, string> values = BuildEditableValues(model);
+
+        if (values.Count == 0)
+        {
+            return PublicExperienceAdminSaveResult.Failed("No public experience settings are editable.");
+        }
+
+        try
+        {
+            BatchUpdateResponseDto response = await apiClient.UpdateTenantSettingsBatchAsync(
+                Category,
+                new UpdateSettingBatchDto
+                {
+                    Values = values,
+                    Mode = 1 // Strict admin save: reject the batch if any key is locked or invalid.
+                },
+                cancellationToken: cancellationToken);
+
+            return response.Success == true
+                ? PublicExperienceAdminSaveResult.Successful()
+                : PublicExperienceAdminSaveResult.Failed(BuildFailureMessage(response));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save tenant public experience settings.");
+            return PublicExperienceAdminSaveResult.Failed("Failed to save public experience settings.");
+        }
+    }
+
+    public async Task<PublicExperienceAdminSaveResult> SaveSingleTenantPolicySettingsAsync(
+        TenantPolicySettingsModel model,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            PublicExperienceAdminSaveResult eventsResult = await SaveBatchAsync(
+                EventsCategory,
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [EventsUserSubmissionEnabledKey] = FormatBoolean(model.AllowUserSubmittedEvents),
+                    [EventsOrganizationSubmissionEnabledKey] = FormatBoolean(model.AllowOrganizationSubmittedEvents),
+                    [EventsGroupSubmissionEnabledKey] = FormatBoolean(model.AllowGroupSubmittedEvents),
+                    [EventsRequireApprovalKey] = FormatBoolean(model.RequireEventApproval),
+                    [EventsCardClickOpensDetailPageKey] = FormatBoolean(model.EventCardClickOpensDetailPage)
+                },
+                cancellationToken);
+            if (!eventsResult.Success)
+            {
+                return eventsResult;
+            }
+
+            PublicExperienceAdminSaveResult organizationsResult = await SaveBatchAsync(
+                OrganizationsCategory,
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [OrganizationsVerificationRequiredKey] = FormatBoolean(model.RequireOrganizationVerification),
+                    [OrganizationsSelfRegistrationEnabledKey] = FormatBoolean(model.AllowOrganizationSelfRegistration)
+                },
+                cancellationToken);
+            if (!organizationsResult.Success)
+            {
+                return organizationsResult;
+            }
+
+            PublicExperienceAdminSaveResult groupsResult = await SaveBatchAsync(
+                GroupsCategory,
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [GroupsSelfRegistrationEnabledKey] = FormatBoolean(model.AllowGroupSelfRegistration)
+                },
+                cancellationToken);
+            if (!groupsResult.Success)
+            {
+                return groupsResult;
+            }
+
+            if (!model.CanOverrideAiAssistant)
+            {
+                return PublicExperienceAdminSaveResult.Successful();
+            }
+
+            return await SaveBatchAsync(
+                AiAssistantCategory,
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [AiAssistantEnabledKey] = FormatBoolean(model.AiAssistantEnabled),
+                    [AiAssistantEndpointUrlKey] = model.AiAssistantEndpointUrl?.Trim() ?? string.Empty,
+                    [AiAssistantApiKeyKey] = model.AiAssistantApiKey ?? string.Empty,
+                    [AiAssistantAllowAnonymousAccessKey] = FormatBoolean(model.AiAssistantAllowAnonymousAccess)
+                },
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save single-tenant policy settings.");
+            return PublicExperienceAdminSaveResult.Failed("Failed to save policy settings.");
+        }
+    }
+
+    public async Task<PublicExperienceAdminSaveResult> SaveAnnouncementBarAsync(
+        TenantPolicySettingsModel model,
+        bool forceRedisplay,
+        CancellationToken cancellationToken = default)
+    {
+        int revision = forceRedisplay ? model.AnnouncementBarRevision + 1 : model.AnnouncementBarRevision;
+        Dictionary<string, string> values = new(StringComparer.OrdinalIgnoreCase)
+        {
+            [AnnouncementBarEnabledKey] = FormatBoolean(model.AnnouncementBarEnabled),
+            [AnnouncementBarMessageKey] = model.AnnouncementBarMessage?.Trim() ?? string.Empty,
+            [AnnouncementBarLinkTextKey] = model.AnnouncementBarLinkText?.Trim() ?? string.Empty,
+            [AnnouncementBarLinkUrlKey] = model.AnnouncementBarLinkUrl?.Trim() ?? string.Empty,
+            [AnnouncementBarRevisionKey] = revision.ToString(CultureInfo.InvariantCulture)
+        };
+
+        try
+        {
+            PublicExperienceAdminSaveResult result = await SaveBatchAsync(Category, values, cancellationToken);
+            if (result.Success)
+            {
+                model.AnnouncementBarRevision = revision;
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save tenant announcement bar settings.");
+            return PublicExperienceAdminSaveResult.Failed("Failed to save announcement bar settings.");
+        }
+    }
+
+    private static Dictionary<string, string> BuildEditableValues(TenantPublicExperienceAdminModel model)
+    {
+        Dictionary<string, string> values = new(StringComparer.OrdinalIgnoreCase);
+
+        if (model.CanEditMode)
+        {
+            values[ModeKey] = string.IsNullOrWhiteSpace(model.Mode) ? DefaultMode : model.Mode;
+        }
+
+        if (model.CanEditEventCatalogLabel)
+        {
+            values[EventCatalogLabelKey] = string.IsNullOrWhiteSpace(model.EventCatalogLabel)
+                ? DefaultEventCatalogLabel
+                : model.EventCatalogLabel.Trim();
+        }
+
+        if (model.CanEditPrimaryOrganization)
+        {
+            values[PrimaryOrganizationIdKey] = model.PrimaryOrganizationId?.ToString("D") ?? string.Empty;
+        }
+
+        if (model.CanEditHomeBlocks)
+        {
+            values[HomeBlocksKey] = NormalizeJson(model.HomeBlocksJson, DefaultHomeBlocksJson);
+        }
+
+        if (model.CanEditCtas)
+        {
+            values[CtasKey] = NormalizeJson(model.CtasJson, DefaultCtasJson);
+        }
+
+        if (model.CanEditEventSectionPresets)
+        {
+            values[EventSectionPresetsKey] = NormalizeJson(model.EventSectionPresetsJson, DefaultEventSectionPresetsJson);
+        }
+
+        return values;
+    }
+
+    private async Task<PublicExperienceAdminSaveResult> SaveBatchAsync(
+        string category,
+        Dictionary<string, string> values,
+        CancellationToken cancellationToken)
+    {
+        BatchUpdateResponseDto response = await apiClient.UpdateTenantSettingsBatchAsync(
+            category,
+            new UpdateSettingBatchDto
+            {
+                Values = values,
+                Mode = 1
+            },
+            cancellationToken: cancellationToken);
+
+        return response.Success == true
+            ? PublicExperienceAdminSaveResult.Successful()
+            : PublicExperienceAdminSaveResult.Failed(BuildFailureMessage(response));
+    }
+
+    private static string FormatBoolean(bool value) => value ? "true" : "false";
+
+    private static string GetString(
+        IReadOnlyDictionary<string, EffectiveSettingDto> settings,
+        string key,
+        string fallback)
+    {
+        if (!settings.TryGetValue(key, out EffectiveSettingDto? setting) || string.IsNullOrWhiteSpace(setting.Value))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<string>(setting.Value);
+            return string.IsNullOrWhiteSpace(deserialized) ? fallback : deserialized;
+        }
+        catch
+        {
+            return setting.Value.Trim('"');
+        }
+    }
+
+    private static bool GetBoolean(
+        IReadOnlyDictionary<string, EffectiveSettingDto> settings,
+        string key,
+        bool fallback)
+    {
+        return settings.TryGetValue(key, out EffectiveSettingDto? setting)
+            && bool.TryParse(setting.Value?.Trim('"'), out var value)
+                ? value
+                : fallback;
+    }
+
+    private static int GetInteger(
+        IReadOnlyDictionary<string, EffectiveSettingDto> settings,
+        string key,
+        int fallback)
+    {
+        return settings.TryGetValue(key, out EffectiveSettingDto? setting)
+            && int.TryParse(setting.Value?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+                ? value
+                : fallback;
+    }
+
+    private static Guid? GetGuid(IReadOnlyDictionary<string, EffectiveSettingDto> settings, string key)
+    {
+        return settings.TryGetValue(key, out EffectiveSettingDto? setting)
+            && Guid.TryParse(setting.Value, out Guid value)
+                ? value
+                : null;
+    }
+
+    private static bool CanEdit(IReadOnlyDictionary<string, EffectiveSettingDto> settings, string key)
+    {
+        return !settings.TryGetValue(key, out EffectiveSettingDto? setting) || setting.CanEdit != false;
+    }
+
+    private static string NormalizeJson(string? value, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+    }
+
+    private static string BuildFailureMessage(BatchUpdateResponseDto response)
+    {
+        if (!string.IsNullOrWhiteSpace(response.Message))
+        {
+            return response.Message;
+        }
+
+        string[] skipped = response.Results
+            .Where(result => result.Applied != true && !string.IsNullOrWhiteSpace(result.SkipReason))
+            .Select(result => $"{result.Key}: {result.SkipReason}")
+            .ToArray();
+
+        return skipped.Length == 0
+            ? "Public experience settings were not saved."
+            : string.Join("; ", skipped);
+    }
+}
+
+public sealed class TenantPublicExperienceAdminModel
+{
+    public string Mode { get; set; } = "DiscoveryCentric";
+    public string EventCatalogLabel { get; set; } = "Events";
+    public Guid? PrimaryOrganizationId { get; set; }
+    public string HomeBlocksJson { get; set; } = "{\"schemaVersion\":1,\"blocks\":[]}";
+    public string CtasJson { get; set; } = "{\"schemaVersion\":1,\"ctas\":[]}";
+    public string EventSectionPresetsJson { get; set; } = "{\"schemaVersion\":1,\"presets\":[]}";
+    public bool CanEditMode { get; set; } = true;
+    public bool CanEditEventCatalogLabel { get; set; } = true;
+    public bool CanEditPrimaryOrganization { get; set; } = true;
+    public bool CanEditHomeBlocks { get; set; } = true;
+    public bool CanEditCtas { get; set; } = true;
+    public bool CanEditEventSectionPresets { get; set; } = true;
+
+    public bool CanEditAny => CanEditMode
+        || CanEditEventCatalogLabel
+        || CanEditPrimaryOrganization
+        || CanEditHomeBlocks
+        || CanEditCtas
+        || CanEditEventSectionPresets;
+}
+
+public sealed record PublicExperienceAdminSaveResult(bool Success, string Message)
+{
+    public static PublicExperienceAdminSaveResult Successful() => new(true, string.Empty);
+    public static PublicExperienceAdminSaveResult Failed(string message) => new(false, message);
+}

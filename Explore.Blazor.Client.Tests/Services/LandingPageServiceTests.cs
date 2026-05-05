@@ -9,7 +9,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// <summary>
 /// Tests LandingPageService across three areas:
 /// 1. GetFeaturedEventsAsync - sorting, filtering, count limiting, error handling
-/// 2. GetTotalMembersCountAsync - placeholder value
+/// 2. GetTotalMembersCountAsync - TotalCount extraction, error handling
 /// 3. GetUpcomingEventsCountAsync - TotalCount extraction, error handling
 /// </summary>
 public class LandingPageServiceTests
@@ -117,13 +117,31 @@ public class LandingPageServiceTests
     #region GetTotalMembersCountAsync Tests
 
     [Test]
-    public async Task GetTotalMembersCountAsync_ReturnsPlaceholderValue()
+    public async Task GetTotalMembersCountAsync_ReturnsTotalCountFromActorApi()
     {
+        // Arrange
+        var halResponse = new HalCollectionResourceOfActorListDto { TotalCount = 1247 };
+
+        _apiClient.GetActorsAsync().ReturnsForAnyArgs(halResponse);
+
         // Act
         var result = await _service.GetTotalMembersCountAsync();
 
         // Assert
         await Assert.That(result).IsEqualTo(1247);
+    }
+
+    [Test]
+    public async Task GetTotalMembersCountAsync_ReturnsZero_WhenApiThrows()
+    {
+        // Arrange
+        _apiClient.GetActorsAsync().ThrowsAsyncForAnyArgs(new ApiException("API Error", 500, null, null, null));
+
+        // Act
+        var result = await _service.GetTotalMembersCountAsync();
+
+        // Assert
+        await Assert.That(result).IsEqualTo(0);
     }
 
     #endregion

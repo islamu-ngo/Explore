@@ -85,14 +85,21 @@ public class LandingPageService : ILandingPageService
     {
         try
         {
-            // TODO: Implement actual member count from API
-            _logger.LogDebug("Returning placeholder member count");
-            return await Task.FromResult(1247);
+            _logger.LogDebug("Fetching member count from actor API");
+            var response = await _apiClient.GetActorsAsync(pageNumber: ApiConstants.FirstPage, pageSize: 1);
+            var count = response?.TotalCount ?? 0;
+            _logger.LogDebug("Retrieved {Count} members", count);
+            return count;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[LandingPageService.GetTotalMembersCountAsync] API error fetching members count. StatusCode: {StatusCode}", ex.StatusCode);
+            return 0;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[LandingPageService.GetTotalMembersCountAsync] Unexpected error fetching members count");
-            return 1200; // Fallback value
+            return 0;
         }
     }
 

@@ -6,7 +6,6 @@
 @rendermode InteractiveServer
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IUserService UserService
-@inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
 <PageTitle>Tenant Onboarding</PageTitle>
@@ -35,6 +34,45 @@
             <AppButton Href="/events">
                 Go to Events
             </AppButton>
+        }
+        else if (_showCompletionPrompt)
+        {
+            <MudStack Spacing="4">
+                <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">
+                    Tenant onboarding is complete. Choose where you want to go next.
+                </MudAlert>
+
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6">
+                        <MudPaper Elevation="0" Class="pa-4 h-100" Outlined="true">
+                            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Tune administration settings</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                                Review policies, branding, domains, and public experience before inviting visitors.
+                            </MudText>
+                            <AppButton Href="@_administrationSettingsHref"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.AdminPanelSettings">
+                                Go to administration settings
+                            </AppButton>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudPaper Elevation="0" Class="pa-4 h-100" Outlined="true">
+                            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Start browsing events</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                                Skip configuration for now and open the event catalog with the current defaults.
+                            </MudText>
+                            <AppButton Href="/events"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Event">
+                                Go to events
+                            </AppButton>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudStack>
         }
         else
         {
@@ -158,6 +196,8 @@
     private bool _isLoading = true;
     private bool _isSaving;
     private bool _canEdit;
+    private bool _showCompletionPrompt;
+    private string _administrationSettingsHref = "/admin/tenant/settings";
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
@@ -173,10 +213,14 @@
         }
 
         _canEdit = status.IsCurrentUserTenantAdministrator || status.IsCurrentUserPlatformAdministrator;
+        _administrationSettingsHref = status.IsCurrentUserTenantAdministrator
+            ? "/admin/tenant/settings"
+            : "/admin/instance/settings";
 
         if (status.IsCompleted && _canEdit)
         {
-            Navigation.NavigateTo("/events");
+            _showCompletionPrompt = true;
+            _isLoading = false;
             return;
         }
 
@@ -195,7 +239,7 @@
         if (response.Success)
         {
             Snackbar.Add("Tenant onboarding completed.", Severity.Success);
-            Navigation.NavigateTo("/", forceLoad: true);
+            _showCompletionPrompt = true;
             return;
         }
 

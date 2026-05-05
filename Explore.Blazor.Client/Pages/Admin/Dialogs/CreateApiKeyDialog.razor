@@ -137,7 +137,7 @@
         _isSubmitting = true;
         _errorMessage = null;
 
-        _dto.OwnerType = OwnerType;
+        _dto.ExternalApiKeyOwnerTypeId = OwnerType;
         _dto.OrganizationId = OrganizationId;
         _dto.GroupId = GroupId;
         _dto.Scopes = _selectedScopes.OrderBy(s => s).ToList();

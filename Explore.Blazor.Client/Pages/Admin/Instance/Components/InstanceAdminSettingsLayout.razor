@@ -9,6 +9,7 @@
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IPublicExperienceService PublicExperienceService
+@inject ITenantPublicExperienceAdminService TenantPublicExperienceAdminService
 @inject AiAssistantState AiAssistantState
 @inject ISnackbar Snackbar
 
@@ -103,7 +104,9 @@
                         }
                         else if (_currentSection == "auth-providers")
                         {
-                            <InstanceAuthProviderSection Model="_authProviderModel" IsSingleTenant="IsSingleTenantMode" />
+                            <InstanceAuthProviderSection Model="_authProviderModel"
+                                                         AuthorizationModel="_authorizationProviderModel"
+                                                         IsSingleTenant="IsSingleTenantMode" />
                         }
                         else if (_currentSection == "modules")
                         {
@@ -152,7 +155,11 @@
                         }
                         else if (_currentSection == "announcement-bar" && IsSingleTenantMode)
                         {
-                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantAnnouncementBarSection Model="_tenantModel" />
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantAnnouncementBarSection Model="_tenantModel" HasExistingAnnouncementBar="_hasAnnouncementBar" />
+                        }
+                        else if (_currentSection == "public-experience" && IsSingleTenantMode)
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPublicExperienceSection @ref="_publicExperienceSection" Model="_publicExperienceModel" />
                         }
                         else if (_currentSection == "organizations" && IsSingleTenantMode)
                         {
@@ -205,12 +212,25 @@
                             @if (_currentSection == "announcement-bar" && IsSingleTenantMode)
                             {
                                 <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
-                                    <AppButton Variant="Variant.Outlined"
-                                               OnClick="@(() => SaveAsync(false))"
-                                               Disabled="_isSaving"
-                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                                        @(_isSaving ? "Saving..." : "Save Text Update")
-                                    </AppButton>
+                                    @if (_hasAnnouncementBar)
+                                    {
+                                        <AppButton Variant="Variant.Outlined"
+                                                   Color="Color.Error"
+                                                   OnClick="RemoveAnnouncementBarAsync"
+                                                   Disabled="_isSaving"
+                                                   StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Delete)">
+                                            @(_isSaving ? "Saving..." : "Remove Announcement Bar")
+                                        </AppButton>
+                                    }
+                                    @if (_hasAnnouncementBar && HasUsableAnnouncementBar(_tenantModel))
+                                    {
+                                        <AppButton Variant="Variant.Outlined"
+                                                   OnClick="@(() => SaveAsync(false))"
+                                                   Disabled="_isSaving"
+                                                   StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                            @(_isSaving ? "Saving..." : "Save Text Update")
+                                        </AppButton>
+                                    }
                                     <AppButton OnClick="@(() => SaveAsync(true))"
                                                Disabled="_isSaving"
                                                StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Campaign)">
@@ -253,13 +273,18 @@
     private InstanceStorageSettingsModel _storageModel = new();
     private InstanceSmtpSettingsModel _smtpModel = new();
     private AuthProviderConfigurationModel _authProviderModel = new();
+    private AuthorizationProviderConfigurationModel _authorizationProviderModel = new();
     private TenantPolicySettingsModel _tenantModel = new();
+    private TenantPublicExperienceAdminModel _publicExperienceModel = new();
+    private Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPublicExperienceSection? _publicExperienceSection;
     private Explore.Blazor.Client.Models.Analytics.AnalyticsGovernanceSettingsModel _analyticsModel = new();
     private FooterGovernanceSettingsModel _footerGovernance = new();
     private int _tenantCount;
     private bool _isLoading = true;
     private bool _isSaving;
     private bool _canEdit;
+    private bool _hasAnnouncementBar;
+    private bool _lastAnnouncementSaveStartedWithExistingBar;
     private string? _errorMessage;
     private string _currentSection = "governance";
     private bool _showMobileMenu = true;
@@ -268,7 +293,7 @@
                                        || string.IsNullOrWhiteSpace(_deploymentMode);
 
     private static bool IsSettingsSection(string section) =>
-        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "announcement-bar" or "advanced" or "analytics-privacy" or "footer-governance"
+        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "announcement-bar" or "public-experience" or "advanced" or "analytics-privacy" or "footer-governance"
             // Localization and Footer manage their own Save button
             ;
 
@@ -295,13 +320,14 @@
         var storageTask = InstanceOnboardingService.GetStorageSettingsAsync();
         var smtpTask = InstanceOnboardingService.GetSmtpSettingsAsync();
         var authTask = InstanceOnboardingService.GetAuthProviderConfigurationAsync();
+        var authorizationTask = InstanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync();
         var analyticsTask = InstanceOnboardingService.GetAnalyticsGovernanceSettingsAsync();
         var footerGovTask = InstanceOnboardingService.GetFooterGovernanceSettingsAsync();
         var tenantCountTask = InstanceOnboardingService.GetActiveTenantCountAsync();
 
         await Task.WhenAll(deploymentTask, modulesTask, eventTask, orgTask, brandingTask,
             domainTask, delegationTask, renderTask, storageTask, smtpTask, authTask,
-            analyticsTask, footerGovTask, tenantCountTask);
+            authorizationTask, analyticsTask, footerGovTask, tenantCountTask);
 
         _deploymentMode = deploymentTask.Result.Mode;
         _modules = modulesTask.Result;
@@ -314,6 +340,7 @@
         _storageModel = storageTask.Result;
         _smtpModel = smtpTask.Result;
         _authProviderModel = authTask.Result;
+        _authorizationProviderModel = authorizationTask.Result;
         _analyticsModel = analyticsTask.Result;
         _footerGovernance = footerGovTask.Result;
         _tenantCount = tenantCountTask.Result;
@@ -321,6 +348,9 @@
         if (IsSingleTenantMode)
         {
             _tenantModel = await TenantOnboardingService.GetSettingsAsync();
+            await TenantPublicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(_tenantModel);
+            _hasAnnouncementBar = HasUsableAnnouncementBar(_tenantModel);
+            _publicExperienceModel = await TenantPublicExperienceAdminService.GetSettingsAsync();
         }
 
         _isLoading = false;
@@ -336,6 +366,12 @@
 
     private async Task SaveAsync(bool forceAnnouncementBarRedisplay)
     {
+        if (_currentSection == "public-experience" && IsSingleTenantMode)
+        {
+            await SavePublicExperienceAsync();
+            return;
+        }
+
         _isSaving = true;
         _errorMessage = null;
 
@@ -361,6 +397,7 @@
                 break;
             case "auth-providers":
                 tasks.Add(InstanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(_authProviderModel));
+                tasks.Add(InstanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(_authorizationProviderModel));
                 break;
             case "modules":
                 tasks.Add(InstanceOnboardingService.UpdateModuleSettingsAsync(_modules));
@@ -384,27 +421,28 @@
                 _eventPolicy.AllowOrganizationSubmittedEvents = _tenantModel.AllowOrganizationSubmittedEvents;
                 _eventPolicy.AllowGroupSubmittedEvents = _tenantModel.AllowGroupSubmittedEvents;
                 _eventPolicy.EventCardClickOpensDetailPage = _tenantModel.EventCardClickOpensDetailPage;
+                _orgPolicy.RequireOrganizationVerification = _tenantModel.RequireOrganizationVerification;
                 _orgPolicy.AllowOrganizationSelfRegistration = _tenantModel.AllowOrganizationSelfRegistration;
                 _orgPolicy.AllowGroupSelfRegistration = _tenantModel.AllowGroupSelfRegistration;
 
                 tasks.Add(InstanceOnboardingService.UpdateEventPolicyAsync(_eventPolicy));
                 tasks.Add(InstanceOnboardingService.UpdateOrganizationPolicyAsync(_orgPolicy));
 
-                var tenantResponse = await TenantOnboardingService.UpdateSettingsAsync(_tenantModel);
-                if (!tenantResponse.Success)
+                PublicExperienceAdminSaveResult policyResponse = await TenantPublicExperienceAdminService.SaveSingleTenantPolicySettingsAsync(_tenantModel);
+                if (!policyResponse.Success)
                 {
                     _isSaving = false;
-                    _errorMessage = string.IsNullOrWhiteSpace(tenantResponse.Message)
+                    _errorMessage = string.IsNullOrWhiteSpace(policyResponse.Message)
                         ? "Policy settings failed."
-                        : tenantResponse.Message;
+                        : policyResponse.Message;
                     return;
                 }
                 break;
             case "announcement-bar" when IsSingleTenantMode:
-                _tenantModel.ForceAnnouncementBarRedisplay = forceAnnouncementBarRedisplay;
-
-                var announcementResponse = await TenantOnboardingService.UpdateSettingsAsync(_tenantModel);
-                _tenantModel.ForceAnnouncementBarRedisplay = false;
+                var hadAnnouncementBarBeforeSave = _hasAnnouncementBar;
+                PublicExperienceAdminSaveResult announcementResponse = await TenantPublicExperienceAdminService.SaveAnnouncementBarAsync(
+                    _tenantModel,
+                    forceAnnouncementBarRedisplay);
 
                 if (!announcementResponse.Success)
                 {
@@ -414,6 +452,9 @@
                         : announcementResponse.Message;
                     return;
                 }
+
+                _hasAnnouncementBar = HasUsableAnnouncementBar(_tenantModel);
+                _lastAnnouncementSaveStartedWithExistingBar = hadAnnouncementBarBeforeSave;
                 break;
             case "advanced":
                 tasks.Add(InstanceOnboardingService.UpdateRenderPolicyAsync(_renderPolicy));
@@ -440,11 +481,81 @@
         _isSaving = false;
         await RefreshShellExperienceAsync();
 
-        var successMessage = _currentSection == "announcement-bar" && forceAnnouncementBarRedisplay
-            ? "Announcement bar saved. Users who dismissed it will see it again."
+        var successMessage = _currentSection == "announcement-bar"
+            ? GetAnnouncementSaveMessage(_lastAnnouncementSaveStartedWithExistingBar, forceAnnouncementBarRedisplay)
             : "Settings saved.";
 
         Snackbar.Add(successMessage, Severity.Success);
+    }
+
+    private async Task RemoveAnnouncementBarAsync()
+    {
+        _tenantModel.AnnouncementBarEnabled = false;
+        _tenantModel.AnnouncementBarMessage = string.Empty;
+        _tenantModel.AnnouncementBarLinkText = string.Empty;
+        _tenantModel.AnnouncementBarLinkUrl = string.Empty;
+        _tenantModel.ForceAnnouncementBarRedisplay = false;
+
+        _isSaving = true;
+        _errorMessage = null;
+
+        PublicExperienceAdminSaveResult response = await TenantPublicExperienceAdminService.SaveAnnouncementBarAsync(
+            _tenantModel,
+            forceRedisplay: false);
+        _isSaving = false;
+
+        if (response.Success)
+        {
+            _hasAnnouncementBar = false;
+            await RefreshShellExperienceAsync();
+            Snackbar.Add("Announcement bar removed.", Severity.Success);
+            return;
+        }
+
+        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+            ? "Failed to remove announcement bar."
+            : response.Message;
+    }
+
+    private static bool HasUsableAnnouncementBar(TenantPolicySettingsModel model) =>
+        model.AnnouncementBarEnabled && !string.IsNullOrWhiteSpace(model.AnnouncementBarMessage);
+
+    private static string GetAnnouncementSaveMessage(bool hadAnnouncementBarBeforeSave, bool forceAnnouncementBarRedisplay)
+    {
+        if (!hadAnnouncementBarBeforeSave)
+        {
+            return "Announcement bar created.";
+        }
+
+        return forceAnnouncementBarRedisplay
+            ? "Announcement bar saved. Users who dismissed it will see it again."
+            : "Announcement bar text updated.";
+    }
+
+    private async Task SavePublicExperienceAsync()
+    {
+        if (_publicExperienceSection?.HasValidJson != true)
+        {
+            _errorMessage = "Public experience JSON fields must contain valid JSON objects before saving.";
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+
+        PublicExperienceAdminSaveResult response = await TenantPublicExperienceAdminService.SaveAsync(_publicExperienceModel);
+        _isSaving = false;
+
+        if (response.Success)
+        {
+            await RefreshShellExperienceAsync();
+            Snackbar.Add("Public experience settings saved.", Severity.Success);
+            return;
+        }
+
+        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+            ? "Failed to save public experience settings."
+            : response.Message;
     }
 
     private IReadOnlyList<NavItem> BuildNavItems(bool isSingleTenant)
@@ -458,8 +569,9 @@
                 new("lookups",          Icons.Material.Filled.TableChart,      "Lookup Tables"),
                 new("policies",         Icons.Material.Filled.Policy,          "Policies"),
                 new("announcement-bar", Icons.Material.Filled.Announcement,    "Announcement Bar"),
+                new("public-experience",Icons.Material.Filled.HomeWork,        "Public Experience"),
                 new("themes",           Icons.Material.Filled.ColorLens,       "Themes"),
-                new("auth-providers",   Icons.Material.Filled.Key,             "Auth Providers"),
+                new("auth-providers",   Icons.Material.Filled.Key,             "Authentication and Authorization Providers"),
                 new("modules",          Icons.Material.Filled.Extension,       "Modules"),
                 new("domain",           Icons.Material.Filled.Language,        "Domain"),
                 new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),
@@ -479,7 +591,7 @@
             new("domain",           Icons.Material.Filled.Language,        "Domain"),
             new("branding",         Icons.Material.Filled.Palette,         "Branding"),
             new("themes",           Icons.Material.Filled.ColorLens,       "Themes"),
-            new("auth-providers",   Icons.Material.Filled.Key,             "Auth Providers"),
+            new("auth-providers",   Icons.Material.Filled.Key,             "Authentication and Authorization Providers"),
             new("modules",          Icons.Material.Filled.Extension,       "Modules"),
             new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),
             new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),

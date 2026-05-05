@@ -1,5 +1,5 @@
 @* ABOUTME: Shared section component for managing external API keys across all 5 admin panels. *@
-@* ABOUTME: Parameterized by OwnerType (User/Org/Group/Tenant/InstanceAdmin) with create, list, and revoke. *@
+@* ABOUTME: Parameterized by normalized owner type lookup ID with create, list, and revoke. *@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
@@ -70,10 +70,10 @@
                 </MudTd>
                 <MudTd DataLabel="Status">
                     <MudChip T="string"
-                             Color="@ExternalApiKeyConstants.GetStatusColor(context.Status)"
+                             Color="@ExternalApiKeyConstants.GetStatusColor(context.ExternalApiKeyStatusId)"
                              Size="Size.Small"
                              Variant="Variant.Outlined">
-                        @ExternalApiKeyConstants.GetStatusLabel(context.Status)
+                        @context.ExternalApiKeyStatusName
                     </MudChip>
                 </MudTd>
                 <MudTd DataLabel="Scopes">
@@ -106,7 +106,7 @@
                     </MudText>
                 </MudTd>
                 <MudTd DataLabel="Actions" Style="text-align:right">
-                    @if (context.Status == 1)
+                    @if (context.ExternalApiKeyStatusId == 1)
                     {
                         <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                        Color="Color.Error"
@@ -144,8 +144,8 @@
         {
             var all = await ApiKeyService.GetApiKeysAsync();
             _apiKeys = all
-                .Where(k => k.OwnerType == OwnerType)
-                .OrderByDescending(k => k.Status == 1)
+                .Where(k => k.ExternalApiKeyOwnerTypeId == OwnerType)
+                .OrderByDescending(k => k.ExternalApiKeyStatusId == 1)
                 .ThenByDescending(k => k.LastUsedAt)
                 .ToList();
         }

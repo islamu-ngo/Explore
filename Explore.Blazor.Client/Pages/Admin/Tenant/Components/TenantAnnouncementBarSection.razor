@@ -9,7 +9,14 @@
         <MudText Typo="Typo.h5" Style="font-weight: 700;">Announcement Bar</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
             Add a dismissible message above the site navigation. Leave it disabled to show no announcement bar.
-            A text-only save keeps previous user dismissals. Use "Save and show to everyone" when the announcement should reappear for users who already closed it.
+            @if (HasExistingAnnouncementBar)
+            {
+                <span>A text-only save keeps previous user dismissals. Use "Save and show to everyone" when the announcement should reappear for users who already closed it.</span>
+            }
+            else
+            {
+                <span>Create the announcement when it is ready; users will not see anything while it is disabled or the message is blank.</span>
+            }
         </MudText>
     </div>
 
@@ -75,4 +82,7 @@
 @code {
     [Parameter]
     public TenantPolicySettingsModel Model { get; set; } = new();
+
+    [Parameter]
+    public bool HasExistingAnnouncementBar { get; set; }
 }

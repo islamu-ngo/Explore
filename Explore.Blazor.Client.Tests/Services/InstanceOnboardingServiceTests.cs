@@ -274,6 +274,68 @@ public class InstanceOnboardingServiceTests
 
     #endregion
 
+    #region AuthorizationProviderAdminAsync
+
+    [Test]
+    public async Task GetAuthorizationProviderConfigurationAsAdminAsync_UsesAdminSettingsEndpoint()
+    {
+        // Arrange
+        Uri? requestUri = null;
+        var expected = new AuthorizationProviderConfigurationModel
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
+            CerbosEndpointVerified = true
+        };
+        SetupBffClient(request =>
+        {
+            requestUri = request.RequestUri;
+            return Task.FromResult(CreateJsonResponse(expected));
+        });
+
+        // Act
+        var result = await _service.GetAuthorizationProviderConfigurationAsAdminAsync();
+
+        // Assert
+        await Assert.That(requestUri).IsNotNull();
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/authz-provider");
+        await Assert.That(result.Provider).IsEqualTo("cerbos");
+        await Assert.That(result.CerbosEndpointVerified).IsTrue();
+    }
+
+    [Test]
+    public async Task UpdateAuthorizationProviderConfigurationAsAdminAsync_UsesAdminSettingsEndpoint()
+    {
+        // Arrange
+        Uri? requestUri = null;
+        HttpMethod? method = null;
+        string? requestBody = null;
+        var commandResponse = new InstanceCommandResponseModel { Success = true, Message = "Updated" };
+        SetupBffClient(async request =>
+        {
+            requestUri = request.RequestUri;
+            method = request.Method;
+            requestBody = await request.Content!.ReadAsStringAsync();
+            return CreateJsonResponse(commandResponse);
+        });
+
+        // Act
+        var result = await _service.UpdateAuthorizationProviderConfigurationAsAdminAsync(new AuthorizationProviderConfigurationModel
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "cerbosgrpc.local:3593"
+        });
+
+        // Assert
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(requestUri).IsNotNull();
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/authz-provider");
+        await Assert.That(method).IsEqualTo(HttpMethod.Put);
+        await Assert.That(requestBody).Contains("cerbos", StringComparison.OrdinalIgnoreCase);
+    }
+
+    #endregion
+
     #region ValidateSecretAsync
 
     [Test]

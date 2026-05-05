@@ -9,6 +9,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IInstanceOnboardingService _onboardingService;
+    private readonly ITenantPublicExperienceAdminService _publicExperienceAdminService;
     private readonly BunitNavigationManager _nav;
 
     public TenantAdminSettingsRedirectTests()
@@ -19,6 +20,9 @@ public class TenantAdminSettingsRedirectTests : IDisposable
 
         _onboardingService = _ctx.AddMockService<IInstanceOnboardingService>();
         _ctx.AddMockService<ITenantOnboardingService>();
+        _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
+        _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new TenantPublicExperienceAdminModel());
 
         _nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         _nav.NavigateTo("/admin/tenant/settings");

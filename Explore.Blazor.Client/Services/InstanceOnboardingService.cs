@@ -58,7 +58,9 @@ public interface IInstanceOnboardingService
 
     // Authorization provider configuration
     Task<AuthorizationProviderConfigurationModel> GetAuthorizationProviderConfigurationAsync();
+    Task<AuthorizationProviderConfigurationModel> GetAuthorizationProviderConfigurationAsAdminAsync();
     Task<InstanceCommandResponseModel> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationModel config);
+    Task<InstanceCommandResponseModel> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationModel config);
     Task<InstanceCommandResponseModel> VerifyCerbosEndpointAsync(string grpcEndpoint);
     Task<bool> IsAuthorizationProviderConfiguredAsync();
 
@@ -286,8 +288,15 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         await GetAsync<AuthorizationProviderConfigurationModel>("api/InstanceOnboarding/authz-provider-configuration/internal")
         ?? new AuthorizationProviderConfigurationModel();
 
+    public async Task<AuthorizationProviderConfigurationModel> GetAuthorizationProviderConfigurationAsAdminAsync() =>
+        await GetAsync<AuthorizationProviderConfigurationModel>("api/instance/settings/authz-provider")
+        ?? new AuthorizationProviderConfigurationModel();
+
     public Task<InstanceCommandResponseModel> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationModel config) =>
         SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/authz-provider-configuration", config);
+
+    public Task<InstanceCommandResponseModel> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationModel config) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/authz-provider", config);
 
     public Task<InstanceCommandResponseModel> VerifyCerbosEndpointAsync(string grpcEndpoint) =>
         SendCommandAsync(HttpMethod.Post, "api/InstanceOnboarding/authz-provider-configuration/verify", new { GrpcEndpoint = grpcEndpoint });

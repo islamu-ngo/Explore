@@ -1,106 +1,324 @@
-@* ABOUTME: Instance admin settings section for post-onboarding authentication provider management. *@
-@* ABOUTME: Allows enabling/disabling Keycloak, Google, and ATProto login plus instance-level lock flags. *@
+@* ABOUTME: Instance admin settings section for authentication and authorization provider management. *@
+@* ABOUTME: Uses explicit enable/disable actions while preserving onboarding provider configuration state. *@
 
 @using Explore.Blazor.Client.Services
 @using MudBlazor
 
+@inject IDialogService DialogService
+
 <div class="settings-section">
     <div class="settings-section-header">
-        <MudText Typo="Typo.h5" Style="font-weight: 700;">Auth Providers</MudText>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Authentication and Authorization Providers</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-            Configure which authentication providers users can use on this instance.
+            Configure how users sign in and how protected operations are authorized on this instance.
         </MudText>
     </div>
 
-    @if (!HasAnyProviderEnabled)
-    {
-        <MudAlert Severity="Severity.Warning" Class="mb-4">
-            At least one provider must remain enabled.
-        </MudAlert>
-    }
-
-    <MudStack Spacing="3">
+    <MudStack Spacing="4">
         <MudPaper Outlined="true" Class="pa-4">
-            <MudStack Spacing="2">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                    <MudSwitch T="bool" @bind-Value="Model.KeycloakEnabled" Color="Color.Primary">Keycloak</MudSwitch>
-                    <MudTooltip Text="Self-hosted OIDC provider for full identity management control.">
-                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
-                    </MudTooltip>
-                </MudStack>
+            <MudStack Spacing="3">
+                <div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Authentication Providers</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        At least one authentication provider must remain enabled. Multiple providers may be enabled.
+                    </MudText>
+                </div>
 
-                @if (Model.KeycloakEnabled)
+                @if (!HasAnyAuthenticationProviderEnabled)
                 {
-                    <AppTextField T="string" T="string" Label="Authority URL" @bind-Value="Model.KeycloakAuthority" />
-                    <AppTextField T="string" T="string" Label="Client ID" @bind-Value="Model.KeycloakClientId" />
-                    <AppTextField T="string" T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.KeycloakClientSecret" />
+                    <MudAlert Severity="Severity.Warning">
+                        At least one authentication provider must remain enabled.
+                    </MudAlert>
                 }
 
-                @if (!IsSingleTenant)
-                {
-                <MudSwitch T="bool" @bind-Value="Model.LockKeycloakEnabled" Color="Color.Warning">
-                    Lock Keycloak setting for tenants
-                </MudSwitch>
-                }
+                <MudPaper Outlined="true" Class="pa-4">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">Keycloak</MudText>
+                                <MudTooltip Text="Self-hosted OIDC provider for full identity management control.">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                                </MudTooltip>
+                                @if (Model.KeycloakDetectedFromEnvironment)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Auto-detected</MudChip>
+                                }
+                                @ProviderStatusChip(Model.KeycloakEnabled)
+                            </MudStack>
+                            @AuthenticationProviderButton("Keycloak", Model.KeycloakEnabled, () => SetAuthenticationProviderAsync("Keycloak", v => Model.KeycloakEnabled = v, Model.KeycloakEnabled))
+                        </MudStack>
+
+                        @if (Model.KeycloakEnabled)
+                        {
+                            <AppTextField T="string" Label="Authority URL" @bind-Value="Model.KeycloakAuthority" />
+                            <AppTextField T="string" Label="Client ID" @bind-Value="Model.KeycloakClientId" />
+                            <AppTextField T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.KeycloakClientSecret" />
+                        }
+
+                        @if (!IsSingleTenant)
+                        {
+                            <MudSwitch T="bool" @bind-Value="Model.LockKeycloakEnabled" Color="Color.Warning">
+                                Lock Keycloak setting for tenants
+                            </MudSwitch>
+                        }
+                    </MudStack>
+                </MudPaper>
+
+                <MudPaper Outlined="true" Class="pa-4">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">AT Protocol Login</MudText>
+                                <MudTooltip Text="Users authenticate with AT Protocol identities; optionally link decentralization separately.">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                                </MudTooltip>
+                                @ProviderStatusChip(Model.AtprotoLoginEnabled)
+                            </MudStack>
+                            @AuthenticationProviderButton("AT Protocol Login", Model.AtprotoLoginEnabled, () => SetAuthenticationProviderAsync("AT Protocol Login", v => Model.AtprotoLoginEnabled = v, Model.AtprotoLoginEnabled))
+                        </MudStack>
+
+                        @if (Model.AtprotoLoginEnabled)
+                        {
+                            <AppTextField T="string" Label="Public URL" @bind-Value="Model.AtprotoPublicUrl" HelperText="Used to serve ATProto OAuth client metadata." />
+                        }
+
+                        @if (!IsSingleTenant)
+                        {
+                            <MudSwitch T="bool" @bind-Value="Model.LockAtprotoLoginEnabled" Color="Color.Warning">
+                                Lock AT Protocol setting for tenants
+                            </MudSwitch>
+                        }
+                    </MudStack>
+                </MudPaper>
+
+                <MudPaper Outlined="true" Class="pa-4">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">Google SSO</MudText>
+                                <MudTooltip Text="OAuth sign-in using Google accounts.">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                                </MudTooltip>
+                                @ProviderStatusChip(Model.GoogleSsoEnabled)
+                            </MudStack>
+                            @AuthenticationProviderButton("Google SSO", Model.GoogleSsoEnabled, () => SetAuthenticationProviderAsync("Google SSO", v => Model.GoogleSsoEnabled = v, Model.GoogleSsoEnabled))
+                        </MudStack>
+
+                        @if (Model.GoogleSsoEnabled)
+                        {
+                            <AppTextField T="string" Label="Client ID" @bind-Value="Model.GoogleClientId" />
+                            <AppTextField T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.GoogleClientSecret" />
+                        }
+
+                        @if (!IsSingleTenant)
+                        {
+                            <MudSwitch T="bool" @bind-Value="Model.LockGoogleSsoEnabled" Color="Color.Warning">
+                                Lock Google setting for tenants
+                            </MudSwitch>
+                        }
+                    </MudStack>
+                </MudPaper>
             </MudStack>
         </MudPaper>
 
         <MudPaper Outlined="true" Class="pa-4">
-            <MudStack Spacing="2">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                    <MudSwitch T="bool" @bind-Value="Model.AtprotoLoginEnabled" Color="Color.Primary">AT Protocol Login</MudSwitch>
-                    <MudTooltip Text="Users authenticate with AT Protocol identities; optionally link decentralization separately.">
-                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
-                    </MudTooltip>
-                </MudStack>
+            <MudStack Spacing="3">
+                <div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Authorization Providers</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Exactly one authorization provider is active. Cerbos mode fails closed when the external PDP is unavailable.
+                    </MudText>
+                </div>
 
-                @if (Model.AtprotoLoginEnabled)
-                {
-                    <AppTextField T="string" T="string" Label="Public URL" @bind-Value="Model.AtprotoPublicUrl" HelperText="Used to serve ATProto OAuth client metadata." />
-                }
+                <MudPaper Outlined="true" Class="pa-4" Style="@GetAuthorizationCardStyle(LocalProvider)">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">Local (Built-in RBAC)</MudText>
+                                <MudTooltip Text="Use the built-in authorization implementation with no external Cerbos dependency.">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                                </MudTooltip>
+                                @ProviderStatusChip(IsAuthorizationProviderSelected(LocalProvider))
+                            </MudStack>
+                            <AppButton Variant="@(IsAuthorizationProviderSelected(LocalProvider) ? Variant.Outlined : Variant.Filled)"
+                                       Color="Color.Primary"
+                                       Disabled="@IsAuthorizationProviderSelected(LocalProvider)"
+                                       OnClick="@(() => SelectAuthorizationProviderAsync(LocalProvider))">
+                                @(IsAuthorizationProviderSelected(LocalProvider) ? "Enabled" : "Enable Local Authorization")
+                            </AppButton>
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
 
-                @if (!IsSingleTenant)
-                {
-                <MudSwitch T="bool" @bind-Value="Model.LockAtprotoLoginEnabled" Color="Color.Warning">
-                    Lock AT Protocol setting for tenants
-                </MudSwitch>
-                }
-            </MudStack>
-        </MudPaper>
+                <MudPaper Outlined="true" Class="pa-4" Style="@GetAuthorizationCardStyle(CerbosProvider)">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">Cerbos (External PDP)</MudText>
+                                <MudTooltip Text="Route protected authorization checks to Cerbos. When selected, authorized requests are denied if Cerbos is unavailable.">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                                </MudTooltip>
+                                @if (AuthorizationModel.CerbosDetectedFromEnvironment)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Auto-detected</MudChip>
+                                }
+                                @if (AuthorizationModel.CerbosEndpointVerified)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">Verified</MudChip>
+                                }
+                                @ProviderStatusChip(IsAuthorizationProviderSelected(CerbosProvider))
+                            </MudStack>
+                            <AppButton Variant="@(IsAuthorizationProviderSelected(CerbosProvider) ? Variant.Outlined : Variant.Filled)"
+                                       Color="Color.Primary"
+                                       Disabled="@IsAuthorizationProviderSelected(CerbosProvider)"
+                                       OnClick="@(() => SelectAuthorizationProviderAsync(CerbosProvider))">
+                                @(IsAuthorizationProviderSelected(CerbosProvider) ? "Enabled" : "Enable Cerbos Authorization")
+                            </AppButton>
+                        </MudStack>
 
-        <MudPaper Outlined="true" Class="pa-4">
-            <MudStack Spacing="2">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                    <MudSwitch T="bool" @bind-Value="Model.GoogleSsoEnabled" Color="Color.Primary">Google SSO</MudSwitch>
-                    <MudTooltip Text="OAuth sign-in using Google accounts.">
-                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
-                    </MudTooltip>
-                </MudStack>
+                        @if (IsAuthorizationProviderSelected(CerbosProvider))
+                        {
+                            @if (AuthorizationModel.CerbosDetectedFromEnvironment && AuthorizationModel.CerbosEndpointVerified)
+                            {
+                                <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
+                                    Cerbos was detected from environment and verified successfully during setup.
+                                </MudAlert>
+                            }
+                            else if (AuthorizationModel.CerbosDetectedFromEnvironment)
+                            {
+                                <MudAlert Severity="Severity.Warning" Dense="true">
+                                    A Cerbos endpoint was detected from environment, but it is not currently marked verified. Saving Cerbos will verify the endpoint before applying it.
+                                </MudAlert>
+                            }
 
-                @if (Model.GoogleSsoEnabled)
-                {
-                    <AppTextField T="string" T="string" Label="Client ID" @bind-Value="Model.GoogleClientId" />
-                    <AppTextField T="string" T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.GoogleClientSecret" />
-                }
+                            <AppTextField T="string"
+                                          Label="Cerbos gRPC Endpoint"
+                                          Value="AuthorizationModel.CerbosGrpcEndpoint"
+                                          ValueChanged="OnCerbosEndpointChanged"
+                                          Placeholder="https://cerbosgrpc.example.com:443 or cerbosgrpc.example.com:443"
+                                          HelperText="Accepts a full URL or bare host:port. Bare remote endpoints default to HTTPS; localhost defaults to HTTP." />
 
-                @if (!IsSingleTenant)
-                {
-                <MudSwitch T="bool" @bind-Value="Model.LockGoogleSsoEnabled" Color="Color.Warning">
-                    Lock Google setting for tenants
-                </MudSwitch>
-                }
+                            @if (!AuthorizationModel.CerbosEndpointVerified)
+                            {
+                                <MudAlert Severity="Severity.Warning" Dense="true">
+                                    Saving with Cerbos enabled will test the endpoint before changing the active authorization provider.
+                                </MudAlert>
+                            }
+                        }
+                    </MudStack>
+                </MudPaper>
             </MudStack>
         </MudPaper>
     </MudStack>
 </div>
 
 @code {
+    private const string LocalProvider = "local";
+    private const string CerbosProvider = "cerbos";
+
     [Parameter, EditorRequired]
     public AuthProviderConfigurationModel Model { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public AuthorizationProviderConfigurationModel AuthorizationModel { get; set; } = null!;
 
     [Parameter]
     public bool IsSingleTenant { get; set; }
 
-    private bool HasAnyProviderEnabled =>
+    private bool HasAnyAuthenticationProviderEnabled =>
         Model.KeycloakEnabled || Model.AtprotoLoginEnabled || Model.GoogleSsoEnabled;
+
+    private RenderFragment ProviderStatusChip(bool enabled) => @<MudChip T="string"
+        Size="Size.Small"
+        Color="@(enabled ? Color.Success : Color.Default)"
+        Variant="Variant.Outlined">@(enabled ? "Enabled" : "Disabled")</MudChip>;
+
+    private RenderFragment AuthenticationProviderButton(string providerName, bool enabled, Func<Task> onClick) => @<AppButton
+        Variant="@(enabled ? Variant.Outlined : Variant.Filled)"
+        Color="@(enabled ? Color.Error : Color.Primary)"
+        OnClick="CreateAuthenticationClick(onClick)">@(enabled ? $"Disable {providerName}" : $"Enable {providerName}")</AppButton>;
+
+    private EventCallback<MouseEventArgs> CreateAuthenticationClick(Func<Task> onClick) =>
+        EventCallback.Factory.Create<MouseEventArgs>(this, onClick);
+
+    private async Task SetAuthenticationProviderAsync(string providerName, Action<bool> setEnabled, bool currentlyEnabled)
+    {
+        if (currentlyEnabled && CountEnabledAuthenticationProviders() == 1)
+        {
+            await DialogService.ShowMessageBoxAsync(new MessageBoxOptions
+            {
+                Title = "Authentication provider required",
+                Message = $"{providerName} is the only enabled authentication provider. Enable another provider before disabling it.",
+                YesText = "OK"
+            }, DialogOptionsFactory.Confirmation());
+            return;
+        }
+
+        var action = currentlyEnabled ? "Disable" : "Enable";
+        var confirmed = await DialogService.ShowMessageBoxAsync(new MessageBoxOptions
+        {
+            Title = $"{action} {providerName}",
+            Message = currentlyEnabled
+                ? $"Disable {providerName} for new sign-ins? Existing sessions are not immediately signed out."
+                : $"Enable {providerName} for sign-ins after these settings are saved?",
+            YesText = action,
+            CancelText = "Cancel"
+        }, DialogOptionsFactory.Confirmation());
+
+        if (confirmed == true)
+        {
+            setEnabled(!currentlyEnabled);
+        }
+    }
+
+    private int CountEnabledAuthenticationProviders()
+    {
+        var count = 0;
+        if (Model.KeycloakEnabled) count++;
+        if (Model.AtprotoLoginEnabled) count++;
+        if (Model.GoogleSsoEnabled) count++;
+        return count;
+    }
+
+    private bool IsAuthorizationProviderSelected(string provider) =>
+        string.Equals(AuthorizationModel.Provider, provider, StringComparison.OrdinalIgnoreCase);
+
+    private string GetAuthorizationCardStyle(string provider) =>
+        IsAuthorizationProviderSelected(provider)
+            ? "border: 2px solid var(--mud-palette-primary);"
+            : string.Empty;
+
+    private async Task SelectAuthorizationProviderAsync(string provider)
+    {
+        if (IsAuthorizationProviderSelected(provider))
+        {
+            return;
+        }
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(new MessageBoxOptions
+        {
+            Title = provider == LocalProvider ? "Switch to local authorization" : "Switch to Cerbos authorization",
+            Message = provider == LocalProvider
+                ? "Switching from Cerbos to local authorization removes Cerbos policy evaluation, centralized decision logs, and external PDP enforcement. Use this only when you intend to run authorization locally or need to recover from Cerbos being unavailable."
+                : "Switching to Cerbos routes protected authorization checks to the external PDP. If Cerbos is unavailable, authenticated requests fail closed by design.",
+            YesText = provider == LocalProvider ? "Switch to Local" : "Switch to Cerbos",
+            CancelText = "Cancel"
+        }, DialogOptionsFactory.Confirmation());
+
+        if (confirmed == true)
+        {
+            AuthorizationModel.Provider = provider;
+        }
+    }
+
+    private void OnCerbosEndpointChanged(string value)
+    {
+        var endpointChanged = !string.Equals(AuthorizationModel.CerbosGrpcEndpoint, value, StringComparison.Ordinal);
+        AuthorizationModel.CerbosGrpcEndpoint = value;
+
+        if (endpointChanged)
+        {
+            AuthorizationModel.CerbosEndpointVerified = false;
+        }
+    }
 }

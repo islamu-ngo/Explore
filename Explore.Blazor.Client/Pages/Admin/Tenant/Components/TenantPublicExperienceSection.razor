@@ -1,0 +1,200 @@
+@* ABOUTME: Tenant-admin public experience editor for post-onboarding site posture and home shell settings. *@
+@* ABOUTME: Keeps organization-centric behavior optional after convention-first SingleTenant launch. *@
+
+@using System.Text.Json
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
+@using MudBlazor
+
+@inject IOrganizationService OrganizationService
+@inject ILogger<TenantPublicExperienceSection> Logger
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Public Experience</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Choose what anonymous visitors see after launch. Discovery keeps the fastest convention-first setup;
+            organization-centric mode emphasizes a selected primary organization after you configure one.
+        </MudText>
+    </div>
+
+    @if (_isLoadingOrganizations)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-6">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Loading organizations...</MudText>
+        </MudStack>
+    }
+    else
+    {
+        <MudStack Spacing="4" Class="settings-form-section mt-4">
+            @if (!Model.CanEditAny)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                    Public experience settings are locked by the platform administrator and cannot be changed here.
+                </MudAlert>
+            }
+
+            @if (_organizationLoadFailed)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                    Organizations could not be loaded. You can still save discovery settings and JSON configuration.
+                </MudAlert>
+            }
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string"
+                               Label="Public experience mode"
+                               Variant="Variant.Outlined"
+                               @bind-Value="Model.Mode"
+                               Disabled="!Model.CanEditMode"
+                               HelperText="Discovery is the default launch mode. Organization-centric requires a valid primary organization.">
+                        <MudSelectItem Value="@("DiscoveryCentric")">Discovery-centric</MudSelectItem>
+                        <MudSelectItem Value="@("OrganizationCentric")">Organization-centric</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <AppTextField T="string"
+                                  @bind-Value="Model.EventCatalogLabel"
+                                  Label="Event catalog label"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true"
+                                  ReadOnly="!Model.CanEditEventCatalogLabel"
+                                  HelperText="For example: Events, Program, Classes, or Gatherings." />
+                </MudItem>
+            </MudGrid>
+
+            <MudSelect T="Guid?"
+                       Label="Primary organization"
+                       Variant="Variant.Outlined"
+                       @bind-Value="Model.PrimaryOrganizationId"
+                       Disabled="!Model.CanEditPrimaryOrganization"
+                       HelperText="Optional. Required only when using organization-centric public experience.">
+                <MudSelectItem T="Guid?" Value="@((Guid?)null)">No primary organization</MudSelectItem>
+                @foreach (OrganizationListDto organization in _organizations.Where(organization => organization.Id.HasValue))
+                {
+                    <MudSelectItem @key="organization.Id" T="Guid?" Value="@organization.Id">
+                        @organization.FullName
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (IsOrganizationCentricWithoutPrimaryOrganization)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                    Organization-centric mode needs a primary organization. Without one, the public shell will fall back to a safe non-blocking state.
+                </MudAlert>
+            }
+
+            <MudExpansionPanels Elevation="0" Class="mt-2">
+                <MudExpansionPanel Text="Advanced home blocks JSON">
+                    <AppTextField T="string"
+                                  @bind-Value="Model.HomeBlocksJson"
+                                  Label="Home blocks JSON"
+                                  Variant="Variant.Outlined"
+                                  Lines="8"
+                                  FullWidth="true"
+                                  ReadOnly="!Model.CanEditHomeBlocks"
+                                  HelperText="Versioned config, for example { schemaVersion: 1, blocks: [] }." />
+                    @RenderJsonWarning(Model.HomeBlocksJson, "home blocks")
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="Advanced calls-to-action JSON">
+                    <AppTextField T="string"
+                                  @bind-Value="Model.CtasJson"
+                                  Label="CTAs JSON"
+                                  Variant="Variant.Outlined"
+                                  Lines="8"
+                                  FullWidth="true"
+                                  ReadOnly="!Model.CanEditCtas"
+                                  HelperText="Versioned config, for example { schemaVersion: 1, ctas: [] }." />
+                    @RenderJsonWarning(Model.CtasJson, "CTAs")
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="Advanced event section presets JSON">
+                    <AppTextField T="string"
+                                  @bind-Value="Model.EventSectionPresetsJson"
+                                  Label="Event section presets JSON"
+                                  Variant="Variant.Outlined"
+                                  Lines="10"
+                                  FullWidth="true"
+                                  ReadOnly="!Model.CanEditEventSectionPresets"
+                                  HelperText="Typed preset config powers curated public event sections without storing raw query strings." />
+                    @RenderJsonWarning(Model.EventSectionPresetsJson, "event section presets")
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </MudStack>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<OrganizationListDto> _organizations = [];
+    private bool _isLoadingOrganizations = true;
+    private bool _organizationLoadFailed;
+
+    [Parameter]
+    public TenantPublicExperienceAdminModel Model { get; set; } = new();
+
+    public bool HasValidJson => IsValidJson(Model.HomeBlocksJson)
+        && IsValidJson(Model.CtasJson)
+        && IsValidJson(Model.EventSectionPresetsJson);
+
+    private bool IsOrganizationCentricWithoutPrimaryOrganization =>
+        string.Equals(Model.Mode, "OrganizationCentric", StringComparison.OrdinalIgnoreCase)
+        && Model.PrimaryOrganizationId is null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            PaginatedResult<OrganizationListDto> page = await OrganizationService.GetOrganizationsPagedAsync(1, 100);
+            _organizations = page.Items?.ToList() ?? [];
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load organizations for tenant public experience settings.");
+            _organizationLoadFailed = true;
+            _organizations = [];
+        }
+        finally
+        {
+            _isLoadingOrganizations = false;
+        }
+    }
+
+    private static bool IsValidJson(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(value);
+            return document.RootElement.ValueKind == JsonValueKind.Object;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static RenderFragment RenderJsonWarning(string value, string label) => builder =>
+    {
+        if (IsValidJson(value))
+        {
+            return;
+        }
+
+        builder.OpenComponent<MudAlert>(0);
+        builder.AddAttribute(1, nameof(MudAlert.Severity), Severity.Warning);
+        builder.AddAttribute(2, nameof(MudAlert.Variant), Variant.Outlined);
+        builder.AddAttribute(3, nameof(MudAlert.Dense), true);
+        builder.AddAttribute(4, nameof(MudAlert.Class), "mt-2");
+        builder.AddAttribute(5, nameof(MudAlert.ChildContent), (RenderFragment)(contentBuilder =>
+        {
+            contentBuilder.AddContent(6, $"The {label} value must be a JSON object before saving.");
+        }));
+        builder.CloseComponent();
+    };
+}

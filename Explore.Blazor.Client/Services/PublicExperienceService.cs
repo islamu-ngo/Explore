@@ -8,6 +8,8 @@ namespace Explore.Blazor.Client.Services;
 
 public interface IPublicExperienceService
 {
+    event Action? SettingsChanged;
+
     Task<PublicExperienceSettingsModel?> GetSettingsAsync();
     Task<PublicExperienceShellModel?> GetShellAsync();
     string ResolveHomeRoute(PublicExperienceSettingsModel? settings);
@@ -26,6 +28,8 @@ public class PublicExperienceService : IPublicExperienceService
     private PublicExperienceShellModel? _cachedShell;
     private DateTimeOffset _shellCacheExpiresAt;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+
+    public event Action? SettingsChanged;
 
     public PublicExperienceService(
         IHttpClientFactory httpClientFactory,
@@ -95,6 +99,7 @@ public class PublicExperienceService : IPublicExperienceService
         _settingsCacheExpiresAt = default;
         _cachedShell = null;
         _shellCacheExpiresAt = default;
+        SettingsChanged?.Invoke();
     }
 
     public string ResolveHomeRoute(PublicExperienceSettingsModel? settings)

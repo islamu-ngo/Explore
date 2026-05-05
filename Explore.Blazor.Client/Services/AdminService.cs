@@ -788,7 +788,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            dto.AdditionalProperties["assignCurrentUserAsTenantAdmin"] = assignCurrentUserAsTenantAdmin;
+            dto.AssignCurrentUserAsTenantAdmin = assignCurrentUserAsTenantAdmin;
             return await _apiClient.CreateTenantAsync(dto);
         }
         catch (ApiException ex)
@@ -822,4 +822,3 @@ public class AdminService : IAdminService
         }
     }
 }
-
