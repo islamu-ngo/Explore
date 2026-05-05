@@ -735,11 +735,11 @@ public partial class CreateEvent
 
     // ========== Session Management ==========
 
-    private void AddSession()
+    private async Task AddSessionAsync()
     {
         _isMultiSessionEnabled = true;
-        AnnounceSchedulingChange("Multiple sessions enabled. Add the next session details in the drawer.");
-        _sessionWorkflow.OpenForCreate(sessions, imagePreviewUrl);
+        AnnounceSchedulingChange("Saving this event as a draft before opening the dedicated session composer.");
+        await SubmitEventAsync(CreateEventSubmitIntent.SaveDraftAndAddSession);
     }
 
     private void ToggleMultiSession()
@@ -1251,6 +1251,12 @@ public partial class CreateEvent
                     return;
                 }
 
+                if (intent == CreateEventSubmitIntent.SaveDraftAndAddSession)
+                {
+                    Navigation.NavigateTo($"/events/{createdEventId}/sessions/create");
+                    return;
+                }
+
                 await ReviewAndPublishDraftAsync(createdEventId);
             }
             else
@@ -1379,6 +1385,7 @@ public partial class CreateEvent
     private enum CreateEventSubmitIntent
     {
         SaveDraft,
+        SaveDraftAndAddSession,
         ReviewAndPublish
     }
 

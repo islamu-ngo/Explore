@@ -426,7 +426,7 @@
                                 <ScheduleTimelineComposer Sessions="sessions"
                                                           TimezoneDisplay="@_selectedTimezoneDisplay"
                                                           CanUseRooms="CanUseRoomSetup"
-                                                          OnAddSession="AddSession"
+                                                          OnAddSession="AddSessionAsync"
                                                           OnAddItineraryItem="PrepareItineraryForDay"
                                                           OnEditSession="@(idx => _sessionWorkflow.OpenForEdit(sessions, idx))"
                                                           OnDuplicateSession="@(idx => _sessionWorkflow.DuplicateSession(sessions, idx))"

@@ -638,6 +638,34 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
+    public async Task AddSessionAsync_SavesDraftAndNavigatesToDedicatedSessionComposer()
+    {
+        // Arrange
+        var createdEventId = Guid.NewGuid();
+        _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = createdEventId
+        });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+        PrepareValidSubmitState(cut.Instance);
+
+        // Act
+        await InvokePrivateAsync(cut.Instance, "AddSessionAsync");
+
+        // Assert
+        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(request => request.EventStatusId == 1));
+        await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}/sessions/create");
+    }
+
+    [Test]
     public async Task CreateEvent_WhenReviewPublishIsReady_PublishesDraftWithConcurrencyStamp()
     {
         // Arrange

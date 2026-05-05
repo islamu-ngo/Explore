@@ -1,0 +1,224 @@
+@page "/events/{EventId:guid}/sessions/create"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+
+<PageTitle>Add session</PageTitle>
+
+<main class="create-session" aria-labelledby="create-session-title">
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+        <MudPaper Class="create-session__surface pa-6" Elevation="0">
+            <MudText Typo="Typo.h4" HtmlTag="h1" id="create-session-title" Class="mb-2">Add session</MudText>
+            @if (_isLoading)
+            {
+                <div class="create-session__loading" role="status" aria-live="polite">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Loading event draft...</MudText>
+                </div>
+            }
+            else if (_event is null)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                    @(_errorMessage ?? "The event draft could not be loaded. Return to the draft and try again.")
+                </MudAlert>
+
+                <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToEventDraft">
+                    Back to event draft
+                </AppButton>
+            }
+            else
+            {
+                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
+                    Add a talk, workshop, panel, class, or activity to <strong>@_event.Title</strong>. Program items are sessions, not child events.
+                </MudText>
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+                        @_errorMessage
+                    </MudAlert>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_successMessage))
+                {
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-4" role="status">
+                        @_successMessage
+                    </MudAlert>
+                }
+
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+                    This dedicated composer keeps the event shell separate from program items. Event ID: @EventId
+                </MudAlert>
+
+                <EditForm Model="_session" OnValidSubmit="SaveSessionAsync">
+                    <DataAnnotationsValidator />
+
+                    <div class="create-session__form-grid">
+                        <AppTextField T="string"
+                                      Value="@_session.Title"
+                                      ValueChanged="@(value => _session.Title = value)"
+                                      For="@(() => _session.Title)"
+                                      Required="true"
+                                      FullWidth="true"
+                                      Placeholder="Session title"
+                                      aria-label="Session title" />
+
+                        <AppTextField T="string"
+                                      Value="@_session.Description"
+                                      ValueChanged="@(value => _session.Description = value)"
+                                      For="@(() => _session.Description)"
+                                      FullWidth="true"
+                                      Lines="4"
+                                      Placeholder="What will attendees learn or do?"
+                                      aria-label="Session description" />
+
+                        <MudDatePicker Label="Session date"
+                                       Date="@_sessionDate"
+                                       DateChanged="@(value => _sessionDate = value)"
+                                       Required="true"
+                                       Variant="Variant.Outlined" />
+
+                        <div class="create-session__time-grid">
+                            <MudTimePicker Label="Start time"
+                                           Time="@_startTime"
+                                           TimeChanged="@(value => _startTime = value)"
+                                           Required="true"
+                                           Variant="Variant.Outlined" />
+                            <MudTimePicker Label="End time"
+                                           Time="@_endTime"
+                                           TimeChanged="@(value => _endTime = value)"
+                                           Required="true"
+                                           Variant="Variant.Outlined" />
+                        </div>
+
+                        <MudNumericField T="int?"
+                                         Label="Capacity"
+                                         Value="@_session.MaxAudienceAttendees"
+                                         ValueChanged="@(value => _session.MaxAudienceAttendees = value)"
+                                         Variant="Variant.Outlined"
+                                         Min="0"
+                                         Placeholder="Optional" />
+                    </div>
+
+                    <div class="create-session__actions">
+                        <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToEventDraft" Disabled="@_isSaving">
+                            Back to event draft
+                        </AppButton>
+                        <AppButton ButtonType="ButtonType.Submit" StartIcon="@Icons.Material.Filled.Save" Disabled="@_isSaving">
+                            @(_isSaving ? "Saving..." : "Save session")
+                        </AppButton>
+                    </div>
+                </EditForm>
+            }
+        </MudPaper>
+    </MudContainer>
+</main>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+
+    [Inject] private IEventService EventService { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private EventDto? _event;
+    private readonly CreateEventSessionDto _session = new()
+    {
+        RegistrationModeId = 1,
+        Title = string.Empty
+    };
+    private DateTime? _sessionDate = DateTime.Today.AddDays(1);
+    private TimeSpan? _startTime = new(9, 0, 0);
+    private TimeSpan? _endTime = new(10, 0, 0);
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _event = await EventService.GetEventByIdAsync(EventId);
+        if (_event is null)
+        {
+            _errorMessage = "The event draft could not be loaded.";
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task SaveSessionAsync()
+    {
+        _errorMessage = null;
+        _successMessage = null;
+
+        if (!TryPrepareSession(out var validationError))
+        {
+            _errorMessage = validationError;
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var result = await EventService.CreateSessionAsync(_session);
+            if (result.Success == true && result.Id.HasValue && result.Id.Value != Guid.Empty)
+            {
+                _successMessage = "Session saved. Returning to the event draft.";
+                Navigation.NavigateTo($"/events/{EventId}/edit");
+                return;
+            }
+
+            _errorMessage = result.Message ?? "Session could not be saved. Check the details and try again.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Session could not be saved: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private bool TryPrepareSession(out string? validationError)
+    {
+        validationError = null;
+        if (_event?.TenantId is null || _event.TenantId == Guid.Empty)
+        {
+            validationError = "The event draft is missing tenant context. Return to the draft and try again.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_session.Title))
+        {
+            validationError = "Session title is required.";
+            return false;
+        }
+
+        if (!_sessionDate.HasValue || !_startTime.HasValue || !_endTime.HasValue)
+        {
+            validationError = "Session date, start time, and end time are required.";
+            return false;
+        }
+
+        var start = _sessionDate.Value.Date + _startTime.Value;
+        var end = _sessionDate.Value.Date + _endTime.Value;
+        if (end <= start)
+        {
+            validationError = "End time must be after start time.";
+            return false;
+        }
+
+        _session.EventId = EventId;
+        _session.TenantId = _event.TenantId;
+        _session.Title = _session.Title.Trim();
+        _session.StartTime = new DateTimeOffset(start);
+        _session.EndTime = new DateTimeOffset(end);
+        return true;
+    }
+
+    private void BackToEventDraft() => Navigation.NavigateTo($"/events/{EventId}/edit");
+}

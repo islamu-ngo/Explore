@@ -1,0 +1,50 @@
+/* ABOUTME: CSS isolation for the dedicated event session creation page. */
+/* ABOUTME: Keeps program-item authoring visually aligned with the progressive-disclosure event composer. */
+
+.create-session {
+    min-height: 100%;
+    background: var(--isl-color-surface-subtle, transparent);
+}
+
+.create-session__surface {
+    border: 1px solid var(--isl-color-border, rgba(0, 0, 0, 0.12));
+    border-radius: var(--isl-radius-xl, 1rem);
+}
+
+.create-session__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--isl-space-3, 0.75rem);
+    padding-block: var(--isl-space-8, 2rem);
+}
+
+.create-session__form-grid {
+    display: grid;
+    gap: var(--isl-space-4, 1rem);
+}
+
+.create-session__time-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-4, 1rem);
+}
+
+.create-session__actions {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--isl-space-3, 0.75rem);
+    margin-block-start: var(--isl-space-6, 1.5rem);
+}
+
+@media (max-width: 48em) {
+    .create-session__time-grid,
+    .create-session__actions {
+        grid-template-columns: 1fr;
+    }
+
+    .create-session__actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+}
