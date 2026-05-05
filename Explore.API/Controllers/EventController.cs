@@ -271,6 +271,54 @@ public class EventController : ExploreControllerBase
     }
 
     /// <summary>
+    /// Review whether an event is ready to publish.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("{id:guid}/publish-readiness", Name = RouteNames.GetEventPublishReadiness)]
+    [EndpointSummary("Get Event Publish Readiness")]
+    [EndpointDescription("Returns machine-readable readiness errors that block publishing an event.")]
+    [ProducesResponseType(typeof(EventPublishReadinessDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EventPublishReadinessDto>> GetPublishReadiness(Guid id, CancellationToken cancellationToken = default)
+    {
+        var readiness = await _mediator.Send(new GetEventPublishReadinessRequest { Id = id }, cancellationToken);
+        return readiness is null ? NotFound() : Ok(readiness);
+    }
+
+    /// <summary>
+    /// Publish a draft event.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("{id:guid}/publish", Name = RouteNames.PublishEvent)]
+    [EndpointSummary("Publish Event")]
+    [EndpointDescription("Publishes a draft event after readiness and concurrency validation. Side effects are written to the transactional outbox.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Publish(Guid id, [FromBody] PublishEventRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new PublishEventCommand
+        {
+            Id = id,
+            Request = request
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return response.FailureCode == "event_publish_concurrency_conflict"
+                ? Conflict(response)
+                : BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
     /// Update an existing event. Supports full update (EventDto) or targeted field updates (e.g., EventStatusDto).
     /// Supply only the DTO(s) to update; null properties are ignored.
     /// </summary>
