@@ -3,7 +3,7 @@ ABOUTME: Treats EAV as the Layer 3 extension system only, with governed semantic
 
 # EAV Custom Properties - Implementation Plan
 
-**Last Updated: 2026-05-02 (implementation-reality review added; 100/100 completion delta locked)**
+**Last Updated: 2026-05-03 (Phase 12.7 projection quota completion updated)**
 
 ---
 
@@ -89,14 +89,14 @@ The remaining work to reach a **100/100 implementation** is no longer "build the
 |---|---|---|
 | Layer model | Strong. Layer 1/2/3 separation is documented and mostly enforced. | Remove remaining ambiguity, especially legacy overlap such as Layer 1 `Event.MadhabId` vs Layer 2 `EventIslamicAspect.MadhabId`, or document migration/compatibility reason explicitly. |
 | Runtime definitions/options/values | Strong. Event and session scopes exist with typed columns, ordinals, options, templates, and provenance. | Enforce every definition rule on every value write and publish/read workflow, not just definition shape. |
-| Typed validation | Partially implemented. Definition validators are strong; value handlers mostly validate identity, ordinal, and duplicates. | Central runtime value validator must enforce `PropertyType`, exactly-one-value shape, option membership/active state, length/range/regex/url scheme, requiredness, and active-definition rules. |
-| Exposure/privacy | Partially implemented in aggregate/projection paths. Raw definition/value endpoints still need a hard exposure audit. | Anonymous/public reads must never leak internal definitions, values, options, or existence; every read path must apply caller exposure ceiling. |
-| Projection layer | Strong infrastructure exists: live updates, rebuilds, dirty scopes, status, admin endpoints, metrics. | Fix option normalized-value loading, projection relevance rules, exposure-safe `Exists`, and prove all with Docker/Testcontainers API + persistence tests. |
-| Sync/provenance | Strong service shape exists for event and session templates. | Preserve historical values and option semantics under rename/retire/reorder; prove stale business version and technical concurrency conflict paths separately. |
-| Option lifecycle | Risky. Some update paths replace option sets destructively. | Diff options by `Namespace + Key`, preserve IDs where semantic identity is unchanged, retire instead of hard-delete when values exist, and block destructive edits without explicit purge workflow. |
-| Deletion/retirement | Mixed. Entities support soft delete, but repositories still use hard `ExecuteDeleteAsync` in some Layer 3 paths. | Normal workflow retires/soft-deletes; hard delete only for explicit purge with no dependent historical state and audit trail. |
-| Concurrency | Entity tokens exist broadly, but update DTO/handler conflict UX is incomplete. | Expose `ConcurrencyStamp`/ETag-backed checks for every mutable admin/runtime write and map technical conflicts to consistent `409 concurrent_update`. |
-| Quotas | Quota resolver/settings exist in several paths. | Enforce every quota in all create/update/instantiation/sync/multi-value/rebuild/dirty-scope paths with boundary tests. |
+| Typed validation | Improved. Event/session runtime writes now share an Application validator for active definitions, typed shape, requiredness, `IsMulti`, ranges, regex, URL schemes, option membership/active state, and duplicate normalized values. | Wire shared org/group value writes if/when an Application/API write surface is added; add remaining shared-value branch coverage. |
+| Exposure/privacy | Improved. Raw custom-property definition/value reads are authenticated; public projection search/filter/`Exists` paths apply exposure ceilings. | Prove export/moderation payloads and Docker/API roundtrips cannot leak internal definitions, values, options, existence, or facets. |
+| Projection layer | Strong infrastructure exists and discovery filters are now exposure-scoped; projection read/inspection queries require handler-level authorization. | Fix option normalized-value loading, decide projection row relevance rules, and prove exposure/dirty-scope/rebuild behavior with Docker/Testcontainers. |
+| Sync/provenance | Strong service shape exists for event and session templates. | Preserve historical values and option semantics under rename/retire/reorder with Docker proof; keep stale business version and technical concurrency conflict paths separate. |
+| Option lifecycle | Improved. Shared/event/session `UpdateWithOptions` now merges by normalized `Namespace + Key`, preserves IDs, remaps defaults, revives matched soft-deleted rows, and retires omitted options. | Add explicit audited purge workflow/policy for no-dependent-history cases. |
+| Deletion/retirement | Improved. Normal shared/event/session definition deletes now retire and soft-delete definitions, options, and values through tracked EF deletes. | Add explicit purge command/policy, audit summary, and Docker proof for historical reads after retirement. |
+| Concurrency | Improved. Shared/event/session custom-property definition detail DTOs expose `ConcurrencyStamp`; update DTOs require `ExpectedConcurrencyStamp`; stale admin updates throw `409 concurrent_update`. | Extend the same UX to any remaining mutable runtime/template surfaces that do not yet roundtrip stamps. |
+| Quotas | Improved. Definition-count quotas are enforced for shared/event/session create flows; `MaxOptionsPerDefinition` is enforced on shared/event/session create/update; `MaxMultiValueRowsPerValue` is enforced for event/session multi-value writes; `MaxDefinitionsPerTemplate` is enforced for event template create/update; `SyncApplyMaxPayloadBytes` is enforced for event/session template sync plans; `ProjectionRebuildBatchSize` is enforced for operator rebuild requests and used by rebuild/drain workers; `MaxDirtyScopePendingPerTenant` is enforced before dirty-scope backlog upsert. | Add full `quota - 1`, `quota`, `quota + 1` boundary matrix and normalize `quota_exceeded` error shape. |
 | UI | Strong Blazor surfaces exist. | Gate every mutation affordance through HAL links, expose validation/exposure errors inline, and make projection/sync recovery self-service. |
 | No-code modeling boundary | EAV supports custom fields, not arbitrary entity/relation modeling. | Product decision required: keep scope as "runtime custom fields" or introduce a separate runtime schema engine for user-defined aggregates/relationships. Do not pretend EAV alone is full data modeling. |
 
@@ -147,7 +147,36 @@ The remaining work to reach a **100/100 implementation** is no longer "build the
      - schema versioning/migration,
      - permission model,
      - import/export contracts.
-   - If the product promise is **full custom fields for existing event/session/org/group resources**, explicitly state that this EAV implementation is the correct boundary and keep Layer 1/2 semantics out of Layer 3.
+    - If the product promise is **full custom fields for existing event/session/org/group resources**, explicitly state that this EAV implementation is the correct boundary and keep Layer 1/2 semantics out of Layer 3.
+
+#### Current Progress Consolidated From Execution Log (2026-05-03)
+
+The standalone execution log has been removed. Progress now lives in this plan, the task checklist, and the context handoff file.
+
+| Phase | Status | Current evidence |
+|---|---|---|
+| 12.1 Runtime validation | 🟡 Partial | Event/session runtime writes validate effective definition metadata through `CustomPropertyRuntimeValueValidator`; shared org/group runtime value write surface was not found. |
+| 12.2 Exposure hardening | 🟡 Partial | Raw custom-property definition/value controller reads are authenticated; event/session projection search/filter/`Exists` paths are exposure-ceiling scoped. Export/moderation proof remains. |
+| 12.3 Option lifecycle | 🟡 Partial | Shared/event/session option updates preserve semantic identity by `Namespace + Key`, remap defaults to persisted IDs, and retire omitted rows instead of replacing option sets destructively. Explicit purge remains. |
+| 12.4 Projection operability authorization | ✅ Closed | Projection status, dirty-scope, and row-inspection queries implement `ISecureRequest` and require `custom_property_projection:view`. |
+| 12.5 Concurrency/stale-state | ✅ Closed for definition updates | Shared/event/session definition reads expose `ConcurrencyStamp`; updates require `ExpectedConcurrencyStamp`; stale updates throw `ConcurrencyConflictException` with `concurrent_update`. |
+| 12.6 Delete lifecycle | 🟡 Partial | Normal shared/event/session definition deletes retire and soft-delete definitions/options/values through tracked EF deletes. Explicit audited purge remains. |
+| 12.7 Quota sweep | 🟡 Partial | All configured local quota keys now have enforcing code paths: definition counts, options, multi-value rows, template definition count, sync payload bytes, projection rebuild batch size, and dirty-scope pending backlog. Boundary matrix and normalized error shape remain. |
+
+Current verified baseline from Phase 12 local work:
+
+- `Event.Application.UnitTests` targeted projection rebuild quota run passed 6/6 tests; earlier Phase 12.7 quota run passed 1110/1110 tests.
+- `Explore.API` Release build passed for the latest Phase 12.7 projection quota slice.
+- `Event.Architecture.Tests` passed 143/143 for the latest Phase 12.7 projection quota slice.
+- Prior Phase 12 slices passed targeted projection filter, projection authorization, persistence option/delete lifecycle, Blazor client build, Blazor client tests, API build, architecture tests, and `git diff --check` where noted in the task/context files.
+
+Current priority order:
+
+1. Add quota boundary tests and normalize the `quota_exceeded` error shape.
+2. Run Docker/Testcontainers certification for exposure, projection authorization, option lifecycle, concurrency, delete lifecycle, quota behavior, sync, and aggregate read flows.
+3. Prove export/moderation payload exposure ceilings; current searches found no dedicated custom-property export/moderation composer beyond aggregate facets.
+4. Decide and implement explicit audited purge workflow/policy.
+5. Decide the runtime modeling boundary ADR: custom fields on existing resources versus a separate runtime schema engine.
 
 ## Execution Reset
 

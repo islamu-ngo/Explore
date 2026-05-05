@@ -163,19 +163,24 @@ When creating/updating events, the `StrategyResolver` picks the right strategy b
 
 ---
 
-## 7. Lookup Table Dual-Track System
+## 7. Lookup Table Normalization System
 
-Lookup tables are managed in **two synchronized places**:
+Lookup tables are the persistence source of truth for stable reference data. Persisted entities store normalized FK IDs (`RoleScopeId`, `SettingValueTypeId`, `ExternalApiKeyOwnerTypeId`, etc.) plus navigations to lookup rows. Domain enum convenience properties may remain for internal switches, but EF configurations ignore those wrappers and map only the FK columns.
 
-### Track 1: Domain Enums
-`Explore.Domain/Enums/{EntityName}Enum.cs` — Defines the int IDs and names. Used in code for type-safe references.
+### Canonical Lookup Row Shape
 
-### Track 2: EF Core HasData Seeding
-`Explore.Persistence/Configurations/Entities/{EntityName}Configuration.cs` — Uses `HasData()` to seed the database with matching values.
+Normalized lookup entities use:
 
-### The Synchronization Rule
+- `Id` — stable integer primary key, `ValueGeneratedNever()`.
+- `MasterCode` — stable uppercase API/business code, unique.
+- `FullName` — display label.
+- `Description` — optional explanatory text.
 
-The enum values and HasData seed values **must always match**. If you add a new enum value, you must also add a matching `HasData()` entry. The `LookupTableSeeder` class helps ensure runtime synchronization.
+API DTOs expose lookup primitives (`*Id`, `*Code`, `*Name`) instead of enum values. Clients should send IDs for writes/filters and use codes for durable business logic/display decisions.
+
+### Normalized Lookup Families
+
+The current normalized families include role scopes, setting scopes, setting value types, secret source types, secret validation statuses, external API key owner types, external API key statuses, external API key credit periods, and notification scope types. Keep `Explore.Application/Lookups/NormalizedLookupMetadata.cs` synchronized with runtime lookup seed values when DTOs need deterministic code/name projection without loading navigations.
 
 ### Which ID Type for What
 
@@ -190,9 +195,11 @@ The enum values and HasData seed values **must always match**. If you add a new 
 
 ### Two Seeding Mechanisms
 
-1. **EF Configuration HasData()** — Lookup tables are seeded via entity configurations. This creates migration-tracked seed data. Used for: EventType, EventStatus, EventFormat, AudienceAge, etc.
+1. **Runtime lookup seeding** — `LookupTableSeeder` is called from `DatabaseSeeder` and is authoritative for the normalized lookup families. This avoids EF migration churn/circular-FK issues while preserving stable IDs and codes.
 
-2. **Runtime DatabaseSeeder** — Called at startup via `DatabaseSeeder.cs`. Seeds main entities (Tenant, User, Organization, Actor, StorageObject, Event). Uses `SeedIds.cs` for deterministic GUIDs.
+2. **Runtime aggregate seeding** — `DatabaseSeeder.cs` also seeds main entities (Tenant, User, Organization, Actor, StorageObject, Event). It uses `SeedIds.cs` for deterministic GUIDs.
+
+Legacy/simple lookup tables may still use migration-managed seed data, but new normalized enum-to-lookup work should prefer the runtime lookup seeder unless there is a documented reason to use `HasData()`.
 
 ### SeedIds and UUIDv7
 

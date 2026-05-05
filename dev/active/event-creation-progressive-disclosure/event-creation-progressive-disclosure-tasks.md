@@ -1,251 +1,200 @@
-<!-- ABOUTME: Phase checklist for event creation progressive disclosure implementation. -->
-<!-- ABOUTME: Tracks contract, UI, accessibility, security, audit, and verification work. -->
+<!-- ABOUTME: Task checklist for corrected Event Creation Composer program/session direction. -->
+<!-- ABOUTME: Replaces child-event subevent planning with EventSessionGroup and EventSession program management. -->
 
 # Event Creation Progressive Disclosure Tasks
 
-Last Updated: 2026-05-03
+Last Updated: 2026-05-05 14:05 CEST
 
-## Phase 0: Documentation, Contract, And Architecture Review
+## Current Handoff Status
 
-- [x] Run release build baseline: `dotnet build --configuration Release --verbosity quiet`.
-- [x] Verify `CreateEventRequest`, generated `EventApiClient.g.cs`, and `PopulateSchedulingOnRequest()` mapping.
-- [x] Confirm or dismiss the suspected day `DateOnly`/generated-client mismatch.
-- [x] Identify every place Blazor currently composes sessions, days, rooms, agenda items, temp keys, draft/publish state, and schedule references.
-- [ ] Decide final request/command names for create draft, update draft, publish readiness, and publish.
-- [ ] Decide API route names and HAL relation/policy changes for draft/update/publish affordances.
-- [x] Define first `EventCreationContextResponse` shape for publisher context policy.
-- [x] Decide `EventCreationContext` route: `GET /api/event/creation-context`.
-- [x] Decide publication-context selector behavior for personal, organization, and group contexts from server context payload, not hardcoded tabs.
-- [ ] Decide old graph-shaped `CreateEventRequest` endpoint fate; default is delete/replace after draft/update/publish exists.
-- [ ] Decide idempotency strategy for create draft and publish, aligned with existing `Idempotency-Key` middleware.
-- [ ] Decide optimistic concurrency strategy for update draft and publish, aligned with `ConcurrencyStamp`/expected version.
-- [ ] Decide RFC 9457 ProblemDetails/readiness error contract with `PublishReadinessError { Code, FieldPath, Message, Severity }`.
-- [ ] Decide IANA timezone strategy and Windows timezone mapping if runtime/deployment requires it.
-- [ ] Identify policy-required fields by publication context.
-- [ ] Identify audit events required for draft/update/schedule/visibility/registration/image/publish/unpublish/cancel.
-- [ ] Identify outbox/domain events required for publish side effects.
-- [ ] Identify object-storage/image failure behavior, replacement cleanup/tombstoning, and self-host S3/MinIO-compatible storage smoke coverage.
-- [x] Confirm Domain requires no UI/progressive-disclosure concepts.
+The plan has been corrected. “Subevent” in the prior discussion means **session/program item**, not child `Event`.
 
-Acceptance criteria:
+The active model is:
 
-- [x] Contract leakage is documented with file evidence.
-- [ ] Draft and publish split is explicitly designed.
-- [ ] Schedule composition ownership is assigned to Application.
-- [ ] Required fields that cannot stay hidden are identified.
-- [x] No implementation proceeds on a Blazor-only assumption.
-- [ ] Blazor skeleton work is blocked until creation context, lifecycle contracts, HAL action authority, schedule composer ownership, timezone model, readiness error contract, security rule, idempotency/concurrency, accessibility automation, and old endpoint deletion are settled.
+```text
+Event -> EventSessionGroup / Track / Devroom / Program section -> EventSession / Program item
+```
 
-## Phase 1: Application/API Shape Cleanup
+`Event.ParentEventId` is not the default program model. It must be rolled back if it was only introduced for program parts; do not retain it without an approved true-event-hierarchy use case.
 
-- [ ] Add or reshape `CreateEventDraftRequest` / command equivalent.
-- [ ] Add or reshape `UpdateEventDraftRequest` / command equivalent.
-- [ ] Add publish readiness validation request/query/command equivalent.
-- [ ] Add `PublishEventRequest` / command equivalent.
-- [x] Add `EventCreationContextResponse` and context endpoint.
-- [ ] Add HAL links for draft creation, publish readiness, publish, upload, lookup, and policy refresh.
-- [ ] Keep HAL as action links only; keep field requirements and allowed values in the creation-context payload.
-- [ ] Add Application `EventScheduleComposer` or `EventScheduleBuilder`.
-- [ ] Convert local date, local start/end, and timezone ID into server-derived UTC instants.
-- [ ] Validate ambiguous/invalid local times and return actionable errors.
-- [ ] Add timezone coverage for spring-forward skipped time, fall-back ambiguous time, crossing midnight, multi-day across DST, timezone changes after sessions exist, and viewer timezone display.
-- [ ] Split draft validation from publish validation.
-- [ ] Delete/replace old graph-shaped `CreateEventRequest` primary create path after new endpoints exist.
-- [ ] Remove client-controlled `EventStatusId` mutation as a draft/publish mechanism.
-- [ ] Require idempotency key support for create draft and publish.
-- [ ] Require expected concurrency stamp/version for update draft and publish.
-- [ ] Return clear conflict ProblemDetails for stale expected concurrency values.
-- [ ] Return structured publish-readiness ProblemDetails with use-case field paths, not Blazor section names.
-- [ ] Validate tenant/owner scope for organization, group, location, room, image, template, series, registration policy, category, tag, language, custom field, and schedule item kind references.
-- [ ] Reject referenced IDs unless they belong to the current tenant, are active, are allowed for selected publication context, and are usable by the actor for the requested operation.
-- [ ] Resolve client owner IDs against authorized publication contexts server-side.
-- [ ] Ignore client status on draft create; publish state transition only through `PublishEventCommand`.
-- [ ] Ensure draft can save without image unless policy requires it.
-- [ ] Ensure failed image upload does not corrupt draft state.
-- [ ] Validate image references are tenant-scoped and active.
-- [ ] Define replacement image cleanup or tombstone behavior.
-- [ ] Write audit record and outbox event in the same transaction for publish.
-- [ ] Prevent direct external side effects in publish handler; use outbox/background processing for notifications, search, feeds, calendar, activity, and analytics.
-- [ ] Add trace spans and structured logs around draft create/update/readiness/publish.
-- [x] Update API endpoints, route names, response metadata, and controller actions for creation context.
-- [ ] Update HAL policies/assemblers for create draft, update draft, publish readiness, publish, and publication contexts.
-- [x] Regenerate OpenAPI and Blazor generated client.
-- [x] Update Blazor service layer methods after OpenAPI and generated client regeneration.
-- [ ] Add Application tests for draft validation, publish validation, schedule composition, timezone handling, tenant/reference validation, and audit acceptance.
+## Phase 0 — Stop Wrong Direction
 
-Acceptance criteria:
+- [ ] Inventory all `ParentEventId` code, migration, DTOs, handlers, routes, HAL links, tests, and docs.
+- [ ] Roll back `ParentEventId` unless a concrete true-event-hierarchy use case is approved before rollback starts.
+- [ ] Remove the migration/code/routes/DTO fields introduced only for program parts.
+- [ ] If an approved true hierarchy use case appears later, create a separate ADR/plan and reintroduce cleanly.
+- [ ] Remove active UX targets: `old parent-event selector`, `old add-child-event action`, `old child-event context banner`, `old child-event program item`.
+- [ ] Remove active API targets: parent candidates for program, child-event program summary, `add-subevent` link.
+- [ ] Confirm `EventSession` is no longer described as obsolete/legacy for talks/workshops.
+- [ ] Update `docs/ARCHITECTURE.md` if it currently says child `Event` records are the program model.
+- [ ] Acceptance: grep finds no active “old child-event interpretation for talks/workshops” direction.
 
-- [ ] Blazor no longer owns internal schedule graph/temp-key composition for the primary create path.
-- [ ] Save draft and publish are separate Application/API use cases.
-- [ ] Old graph create path is not preserved as a compatibility shim.
-- [ ] Publish actions and context options are HAL/server-backed.
-- [ ] Application tests prove reference IDs are tenant/owner-scoped, not merely existent.
-- [ ] ProblemDetails contract covers readiness errors and concurrency conflicts.
-- [ ] Publish handler writes state, audit, and outbox atomically.
+## Phase 1 — Add Program Group Model
 
-## Phase 2: Progressive Create Page Skeleton
+### Domain
 
-- [x] Reduce initial visible form to essential fields.
-- [ ] Add `CreateEventFormModel` for UI-only state: expanded sections, publication context, quick session rows, drawer state, temp client IDs, upload preview, and summaries.
-- [x] Load `EventCreationContext` before rendering policy-dependent owner/context/format/default fields.
-- [x] Replace User/Organization/Group tab-like selector with a redesigned creation-context-first publication-context selector.
-- [x] Show context status such as approval required, can publish, or draft only.
-- [x] Add visible label for event name and any fields currently relying on placeholders.
-- [ ] Add quiet timezone summary and edit affordance near date/time.
-- [ ] Move Event Appearance into More options.
-- [x] Move taxonomy-heavy options out of the initial visible flow.
-- [ ] Move image/appearance to a compact desktop secondary column.
-- [ ] Keep mobile first viewport focused on essential fields, not image upload.
-- [ ] Wire Save draft to the draft use case through the Blazor service layer.
-- [ ] Wire `Review and publish` to publish readiness through the Blazor service layer.
-- [ ] Show review confirmation before final publish.
-- [ ] Wire `Publish event` inside confirmation to publish use case.
-- [ ] Expand and focus relevant sections when server validation/readiness errors return.
-- [ ] Map use-case field paths such as `schedule.sessions[0].date` to visible UI sections.
-- [ ] Display optimistic-concurrency conflict errors with reload/merge guidance.
+- [ ] Add `EventSessionGroup` entity.
+- [ ] Add `EventSessionGroupSession` explicit join entity.
+- [ ] Add `Event.Sessions`, `Event.SessionGroups`, and `Event.AgendaItems` navigations only if consistent with existing domain style.
+- [ ] Never name `EventSession` collections `ChildEvents`.
+- [ ] Add group assignment collection navigation on `EventSession` if useful.
+- [ ] Use `LocationRoom? Room`, not a new `Room` abstraction.
+- [ ] Include tenant, audit, soft-delete, and concurrency fields per project conventions.
+- [ ] Keep Domain free of EF/API/Blazor/MediatR references.
 
-Acceptance criteria:
+### Persistence
 
-- [ ] Simple draft save works without publish-only fields.
-- [x] No tabs or steppers introduced.
-- [x] Essential fields remain visible without expansion.
-- [ ] Policy-required fields are elevated when required.
-- [ ] UI actions are gated by service/HAL affordances, not local role checks.
-- [x] Creation-context policy drives owner/context/format/default UI.
+- [ ] Add DbSets for `EventSessionGroup` and `EventSessionGroupSession`.
+- [ ] Add EF configurations.
+- [ ] Configure `(tenant_id, event_id, slug)` unique active index for groups.
+- [ ] Configure `(tenant_id, event_id, sort_order)` group sort index.
+- [ ] Configure `(tenant_id, event_session_group_id, event_session_id)` unique join index.
+- [ ] Configure `(tenant_id, event_session_group_id, sort_order)` join sort index.
+- [ ] Enforce `Group.EventId == Session.EventId == Join.EventId`.
+- [ ] Enforce `Group.TenantId == Session.TenantId == Join.TenantId`.
+- [ ] Configure restrictive/explicit delete behavior so groups do not accidentally delete sessions.
+- [ ] Generate focused migration.
+- [ ] Update model snapshot through EF tooling.
 
-## Phase 3: Unified Schedule
+### Application
 
-- [ ] Replace scheduling toggles with one Schedule section.
-- [x] Add schedule summary text.
-- [ ] Add `Add schedule details`.
-- [ ] Add `Add another session`.
-- [ ] Add `Add itinerary item`.
-- [ ] Add conditional `Add rooms` only when format/context supports rooms.
-- [ ] Infer day groups from local session and itinerary dates.
-- [ ] Allow day label editing only after days exist.
-- [ ] Send user-facing schedule input to Application schedule composition.
-- [ ] Keep rooms, itinerary items, day grouping, day labels, and schedule-specific capacity/time details inside Schedule.
-- [ ] Keep timezone summary near date/time and editable through schedule precision.
-- [ ] Announce schedule additions/removals.
+- [ ] Add group DTOs.
+- [ ] Add group assignment DTOs.
+- [ ] Add `GetEventSessionGroupsQuery`.
+- [ ] Add `CreateEventSessionGroupCommand`.
+- [ ] Add `UpdateEventSessionGroupCommand`.
+- [ ] Add `AssignSessionToGroupCommand`.
+- [ ] Add `ReorderEventSessionGroupSessionsCommand`.
+- [ ] Validate same tenant and same event for every group/session assignment.
+- [ ] Validate slug uniqueness within event.
 
-Acceptance criteria:
+## Phase 2 — Application/API Program Contracts
 
-- [ ] One-session events do not expose day/room/agenda controls.
-- [ ] Online events do not expose rooms.
-- [ ] Multi-date schedules infer days deterministically.
-- [ ] Ambiguous/invalid local times are handled with actionable errors.
-- [ ] DTO/internal graph mapping is owned by Application, not Blazor.
-- [ ] Rooms and itinerary are not moved into More options.
+### Event draft contracts
 
-## Phase 4: Session Drawer Simplification
+- [ ] Add/finish `CreateEventDraftRequest`.
+- [ ] Add/finish `UpdateEventDraftRequest`.
+- [ ] Remove client-controlled `EventStatusId` from draft creation path.
+- [ ] Add idempotency key for draft create.
+- [ ] Add concurrency handling for draft update.
+- [ ] Keep publish readiness separate from draft persistence.
 
-- [ ] Introduce a quick session editor component or split component path.
-- [ ] Avoid mode-flag explosion in `SessionEditorPanel`.
-- [ ] Show only title/date/start/end initially.
-- [ ] Collapse Description.
-- [ ] Collapse Different location.
-- [ ] Collapse Capacity and registration.
-- [ ] Collapse Languages.
-- [ ] Collapse Custom image.
-- [ ] Collapse Blueprint/custom fields.
-- [ ] Add inheritance summaries.
-- [ ] Store explicit overrides only.
-- [ ] Compute effective values for summaries, validation, and submission.
-- [ ] Restore focus on drawer close.
-- [ ] Support keyboard close.
-- [ ] Add accessible drawer title and description.
-- [ ] Use mobile full-width drawer behavior where needed.
-- [ ] Announce drawer open/close and major changes.
-- [ ] Verify `EventEdit.razor` behavior and adjust intentionally if needed.
+### Session contracts
 
-Acceptance criteria:
+- [ ] Add `GetEventSessionCreateContextQuery`.
+- [ ] Add `CreateEventSessionRequest` or `CreateEventSessionDraftRequest`.
+- [ ] Add `UpdateEventSessionRequest`.
+- [ ] Add `GetEventProgramSummaryQuery`.
+- [ ] Add `EventSessionKind` lookup and seed values: Talk, Workshop, Panel, Lecture, Class, Activity, Keynote, LightningTalk, BOF, Demo, QAndA, Other.
+- [ ] Ensure session create context includes inherited event defaults.
+- [ ] Include available groups/tracks/devrooms in session create context.
+- [ ] Include room/location/language/speaker/category/tag/template/custom-field options.
+- [ ] Validate session time inside event window or map readiness warning if policy allows exceptions.
+- [ ] Validate speaker/room conflicts where supported.
 
-- [ ] Adding a session is fast and minimal.
-- [ ] Optional overrides still work.
-- [ ] Event/session inheritance semantics are explicit and test-covered.
-- [ ] EventEdit usage is not accidentally broken.
+### API/HAL
 
-## Phase 5: More Options And Policy-Aware Fields
+- [ ] Add/verify event HAL links: `program`, `sessions`, `add-session`, `session-groups`, `add-session-group`.
+- [ ] Add/verify session HAL links: `self`, `event`, `edit`, `delete`, `speakers`, `languages`, `groups`.
+- [ ] Add group endpoints.
+- [ ] Add program summary endpoint.
+- [ ] Add session create context endpoint.
+- [ ] Ensure Blazor uses HAL links instead of role checks.
 
-- [x] Convert Event Options into collapsed More options.
-- [ ] Group options by outcome: reach/discoverability, organization, registration/capacity, schedule precision, presentation.
-- [ ] Add Visibility/audience/format summary.
-- [ ] Add Categories/tags/series summary.
-- [ ] Add Template/custom fields summary.
-- [ ] Add Registration rules summary.
-- [ ] Add Appearance summary.
-- [ ] Add Timezone summary/edit path.
-- [ ] Keep rooms and itinerary out of More options.
-- [ ] Keep schedule-specific capacity/time details in Schedule.
-- [ ] Elevate policy-required fields out of More options.
-- [ ] Keep template/custom field path hidden until explicitly opened or required.
-- [x] Keep categories/tags available but not prominent initially.
+## Phase 3 — Create Event Action Bar
 
-Acceptance criteria:
+- [ ] Replace `old add-child-event flow` with `Add session`.
+- [ ] If event is unsaved, `Add session` creates a draft first.
+- [ ] If event is dirty, `Add session` updates the draft first.
+- [ ] Navigate to `/events/{eventId}/sessions/create`.
+- [ ] Use server session create context for inherited defaults.
+- [ ] Return to Event composer after save/cancel.
+- [ ] Refresh Program summary after returning.
+- [ ] Announce navigation/save state for assistive tech.
 
-- [x] Initial page is not taxonomy-heavy.
-- [ ] Summaries update when settings change.
-- [x] Advanced options remain accessible.
-- [ ] Required fields are never hidden in a way that invisibly blocks save/publish.
-- [ ] HAL/context policy drives available actions and publication options.
-- [ ] More options contains timezone override, visibility/audience, classification, registration rules, template/custom fields, and presentation.
+## Phase 4 — Dedicated Session Create/Edit Page
 
-## Phase 6: Accessibility, Mobile, Tests, And Verification
+- [ ] Add route `/events/{eventId}/sessions/create`.
+- [ ] Add route `/events/{eventId}/sessions/{sessionId}/edit`.
+- [ ] Page title defaults to `Add program item`.
+- [ ] Support contextual labels: talk/workshop/panel/activity/session.
+- [ ] Add fields for type, title, description, date/start/end/timezone.
+- [ ] Add location and room selection.
+- [ ] Add program section/track/devroom picker.
+- [ ] Add speaker picker/management affordance.
+- [ ] Add language picker.
+- [ ] Add capacity/registration mode fields.
+- [ ] Add category/tag/custom-property/template fields.
+- [ ] Add image support if contract-backed.
+- [ ] Save creates/updates `EventSession`.
+- [ ] No right sidebar session editor as primary create UX.
 
-- [x] Add visible labels where missing.
-- [x] Remove placeholder-only label patterns.
-- [x] Add `aria-expanded`/`aria-controls` to custom reveal controls.
-- [x] Announce dynamic reveals and schedule changes.
-- [ ] Save and restore focus around drawer/dialog open-close paths.
-- [ ] Verify publish-readiness errors focus the first relevant visible error.
-- [ ] Ensure hidden inactive fields do not validate.
-- [ ] Verify keyboard users can complete the whole flow.
-- [ ] Verify keyboard navigation through schedule, More options, drawer, upload, save, review, confirmation, and publish.
-- [ ] Polish mobile single-column layout.
-- [ ] Add sticky or otherwise reachable mobile action bar.
-- [ ] Verify mobile action bar does not obscure focused controls.
-- [x] Avoid cramped side-by-side date/time grids on small screens.
-- [x] Add/update `CreateEventProgressiveDisclosureTests`.
-- [ ] Add/update `CreateEventPublishReadinessErrorTests`.
-- [x] Add/update `CreateEventPublicationContextTests`.
-- [ ] Add/update `CreateEventScheduleSummaryTests`.
-- [ ] Add/update `SessionQuickEditorPanelTests`.
-- [ ] Add/update `CreateEventFocusManagementTests`.
-- [ ] Add/update `CreateEventDraftCommandHandlerTests`.
-- [ ] Add/update `UpdateEventDraftCommandHandlerTests`.
-- [ ] Add/update `PublishEventCommandHandlerTests`.
-- [ ] Add/update `PublishReadinessValidatorTests`.
-- [ ] Add/update `EventScheduleComposerTests`.
-- [x] Add/update `EventCreationPolicyTests`.
-- [ ] Add/update `EventReferenceAuthorizationTests`.
-- [ ] Add/update `EventAuditTests`.
-- [ ] Add/update `EventCreationContextEndpointTests`.
-- [ ] Add/update `EventDraftEndpointTests`.
-- [ ] Add/update `EventPublishEndpointTests`.
-- [ ] Add/update `EventHalAffordanceTests`.
-- [ ] Add/update `ProblemDetailsContractTests`.
-- [ ] Add schedule inference/composition tests where practical.
-- [ ] Add publish readiness error reveal/focus tests.
-- [ ] Add security tests for referenced ID tenant/owner scope.
-- [ ] Add audit logging acceptance tests.
-- [ ] Add outbox/domain-event acceptance tests for publish side effects.
-- [ ] Add object-storage failure behavior tests.
-- [ ] Add self-host smoke coverage for fresh deployment, creation context load, draft create, draft update, image upload, failed image upload, readiness validation, publish, service restart, event load, and audit verification.
-- [x] Run `dotnet build --configuration Release --verbosity quiet`.
-- [x] Run `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`.
-- [x] Run `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` if Application/API code changes.
-- [x] Run relevant Application/API tests when contract or handler code changes.
-- [ ] Manually verify desktop and mobile behavior.
+## Phase 5 — Program Summary UI
 
-Acceptance criteria:
+- [ ] Replace final nested schedule composer target with `ProgramSection`.
+- [ ] Add `ProgramDayGroup`.
+- [ ] Add `ProgramItem`.
+- [ ] Add `SessionGroupSection`.
+- [ ] Add `SessionGroupPicker` where needed.
+- [ ] Add `AddSessionAction`.
+- [ ] Add `SessionCreateContextBanner`.
+- [ ] Saved empty event state shows `[Add session]` and `[Add section/track]`.
+- [ ] Unsaved event state shows `[Save draft and add session]`.
+- [ ] Group sessions by program section and local day.
+- [ ] Show time, room/location, speakers, language, capacity/registration, readiness warnings.
+- [ ] Editing a program item navigates to dedicated session edit page.
+- [ ] Include `EventAgendaItem` logistics in summary where useful.
 
-- [ ] WCAG 2.2 AA expectations are met for labels, focus, keyboard, and dynamic content.
-- [ ] No hidden required fields block submission without visible explanation.
-- [ ] Mobile layout is usable.
-- [ ] Mobile action bar does not obscure focused controls.
-- [x] Build passes.
-- [x] Relevant tests pass.
-- [x] No Clean Architecture violations.
-- [ ] No MudBlazor v8 APIs introduced.
-- [ ] No design-system CSS violations.
-- [ ] HAL, ProblemDetails, idempotency, concurrency, outbox, audit, object-storage, and self-host smoke paths pass.
+## Phase 6 — Theme And Core UX Cleanup
+
+- [ ] Event name remains the only bare editorial input.
+- [ ] Other fields remain structured accessible controls.
+- [ ] Theme quick bar updates page-level CSS variables.
+- [ ] Theme tray contains advanced-only controls.
+- [ ] Remove duplicated quick controls from tray.
+- [ ] More Options contains rare fields only.
+- [ ] Mobile order: event basics, theme, options summary, Program summary, actions.
+
+## Phase 7 — Lifecycle, Permissions, And Hardening
+
+- [ ] Plan future session lifecycle states: Draft, Submitted, InReview, Accepted, Rejected, Published, Cancelled.
+- [ ] Add/plan event-scoped permissions: `event.program.view`, `event.program.manage`, `event.session.create`, `event.session.update`, `event.session.delete`, `event.session.review`, `event.session.assign_speaker`, `event.session.assign_group`, `event.session.publish`, `event.session_group.create`, `event.session_group.update`, `event.session_group.delete`, `event.session_group.reorder`.
+- [ ] Add readiness paths for `program.sessions[*]`.
+- [ ] Add readiness paths for `program.groups[*]`.
+- [ ] Add readiness paths for `program.agenda[*]`.
+- [ ] Add audit for group/session assignment.
+- [ ] Add audit for reorder.
+- [ ] Add ProblemDetails for program validation failures.
+- [ ] Add architecture tests for new layers.
+- [ ] Add Application unit tests for validators/handlers.
+- [ ] Add Persistence integration tests for group lifecycle and assignments.
+- [ ] Add API integration tests for HAL links and endpoints.
+- [ ] Add Blazor/component tests for Add session flow.
+- [ ] Add accessibility verification for keyboard/focus/announcements.
+
+## Obsolete / Demoted Primary-Create Targets
+
+Do not build these as the primary program path:
+
+- [ ] `ScheduleComposer` as a giant nested session composer.
+- [ ] right-sidebar `SessionEditorPanel` for initial talk/workshop creation.
+- [ ] `SessionInlineEditor` for talks/workshops.
+- [ ] `AddScheduleItemMenu` as the primary way to add talks/workshops.
+- [ ] `old parent-event selector` for program parts.
+- [ ] `old add-child-event action`.
+- [ ] `old child-event context banner`.
+- [ ] `old child-event program item`.
+- [ ] child-event Program summary.
+- [ ] `PopulateSchedulingOnRequest()` as long-term graph-shaped create mapping.
+
+Keep `EventSession`; it is the central program item.
+
+## Verification Checklist
+
+- [ ] `git diff --check -- dev/active/event-creation-progressive-disclosure/*.md`
+- [ ] `rg -n "child-event Program summary|parent candidate lookup as a required program feature|child-event program interpretation" dev/active/event-creation-progressive-disclosure`
+- [ ] Confirm matches, if any, are rollback-only or approved true-hierarchy context.
+- [ ] Confirm docs name `EventSessionGroup` and `EventSessionGroupSession` as the next model.
+- [ ] Confirm docs require rollback of program-only `ParentEventId`.
+- [ ] Confirm docs contain no `ChildEvents` session naming.
+- [ ] Confirm docs say no giant nested session form and no primary right-sidebar session editor.

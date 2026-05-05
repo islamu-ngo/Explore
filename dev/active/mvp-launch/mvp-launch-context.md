@@ -1,389 +1,225 @@
-ABOUTME: Key decisions, files, and constraints for the MVP launch sprint.
-ABOUTME: Read this file first when resuming work on MVP launch tasks.
+ABOUTME: Current decisions, files, and constraints for the MVP launch sprint.
+ABOUTME: Read this before resuming implementation; pair it with mvp-launch-plan.md and mvp-launch-tasks.md.
 
 # MVP Launch — Context
 
-## SESSION PROGRESS
+## Session Progress
 
-### ✅ COMPLETED (2026-03-29)
-- Full MVP report analysis (`dev/active/mvp-report.md`)
-- Architecture, domain, API, security, outbox, and Blazor docs review
-- Verified Blazor Dockerfile bug (confirmed .NET 9.0, API Dockerfile already at 10.0)
-- Verified Redis missing from docker-compose.yml
-- Reviewed in-flight tracks: HATEOAS (5 phases not started), External API (Phases 0-4 done), Navbar (Phases 1-6 done)
-- Created implementation plan with 13 work packages across tiered gates
-- Architect review incorporated — tiers split, gates added, scope refined
+### Completed 2026-05-03 Rebaseline
 
-### ✅ COMPLETED (2026-04-24)
-- **6 parallel codebase audits** launched and completed:
-  - `bg_c31f5002`: Event domain + registration flow mapping
-  - `bg_38ed2dd0`: Blazor UI completeness audit
-  - `bg_2c93737d`: Infra/notifications/observability/config audit
-  - `bg_82fa4e05`: Test coverage + architecture tests audit
-  - `bg_e5a7ccf0`: Multi-tenancy + auth + security audit
-  - `bg_3189f603`: Docs + PWA + public-facing surface audit
-- **Plan extended** from 13 WPs / 4 gates / 4 tiers → **25 WPs / 7 gates / 6 tiers**
-- **12 new decisions** added (D11–D22)
-- **12 new work packages** added (WP-14 through WP-25)
-- **3 new release gates** added (Gate E: Legal/Compliance, Gate F: SEO/Discoverability, Gate G: Security Audit Trail)
-- `mvp-launch-plan.md` fully rewritten (~1066 lines)
-- Risk table expanded from 10 → 22 risks
-- Sprint plan reorganized to 8 sprints / 18-day target
+- Replaced stale `mvp-launch-plan.md` with a source-aligned closure plan.
+- Updated `mvp-launch-tasks.md` Quick Resume and closure order so work starts with evidence/status reconciliation, not old WP-1.4.
+- Reviewed repo conventions: Clean Architecture, CQRS/MediatR, EF Core 10 named query filters, Blazor BFF/InteractiveAuto, HAL-driven UI affordances, and project-level test verification.
+- Used Tavily for current external research on Microsoft Blazor security/BFF guidance, EF Core 10 named filters, Playwright testing practices, and schema.org/Event structured data.
+- Used Context7 for ASP.NET Core Blazor security, EF Core 10 filters, MudBlazor, and Playwright .NET tracing/isolation docs.
+- Collected parallel codebase/doc-agent outputs. The external-docs subagent failed because its configured model was unavailable; direct Tavily/Context7 research replaced it.
 
-### ✅ IMPORTANT DISCOVERIES (2026-03-29)
-- **MyRegistrations page EXISTS** at `Pages/User/MyRegistrations.razor` (route `/my/registrations`)
-- **Share functionality EXISTS** in `EventDetail.razor` via `ShareEventAsync()` (Web Share API + clipboard)
-- **EventRegistrationService** has full CRUD including `GetRegistrationsByUserAsync`, `CancelRegistrationAsync`
-- **EventRegistrationController** has `GET /api/eventregistration/by-user/{userId}` and `DELETE`
-- **Admin onboarding EXISTS** in `Pages/Onboarding/` (InstanceOnboarding, TenantOnboarding, StartupGate)
-- WP-4, WP-7, WP-10 scope dramatically reduced
+### Completed 2026-05-03 WP-18 Core Health Checks
 
-### ✅ IMPORTANT DISCOVERIES (2026-04-24 audit)
-- **Legal pages exist** (Privacy, Terms, Community Guidelines) — good baseline, no License/Accessibility statement yet
-- **Cookie consent banner exists** — GDPR-compliant, non-blocking, equal Accept/Decline buttons
-- **Analytics bridge exists** — privacy-first (PostHog/Plausible/Umami support), consent-driven
-- **Audit log entity exists** — schema is there but admin-action/PII-access logging is missing
-- **Notification entity exists** — in-app notifications already implemented (MarkAsRead, Archive, Snooze handlers)
-- **Registration intent aggregate exists** — parent `EventRegistrationIntent` + child `EventRegistration` rows with policy snapshot
-- **`Ical.Net`-compatible infrastructure not yet added** — library is green-lit via D7 but not installed
-- **No dedicated error pages** — only generic `Error.razor` (development-focused, not branded)
-- **No sitemap.xml / robots.txt** — SEO baseline broken
-- **No JSON-LD on any page** — structured data missing
-- **All UI strings are hardcoded English** — no `IStringLocalizer` usage; `LanguagePicker.razor` exists but non-functional
-- **Obsolete HAL legacy fallback** — `MapMethodToAction()` still active for policies missing explicit `PermissionAction`
-- **Capacity fields exist** (`EventSession.MaxAudienceAttendees`, `CurrentAudienceAttendees`) but **not enforced** in registration handler
-- **Only 5 E2E smoke tests** — no critical-flow coverage
-- **Placeholder images** (placehold.co references, landing_image_nonuser.png potentially missing)
-- **Rate limit on setup-secret already exists** as `setup_secret` policy (5/60s/IP) — just needs to be applied to the validation endpoint
+- Implemented readiness/liveness separation in `Explore.ServiceDefaults`: `/health` now includes checks tagged `ready`; `/alive` remains liveness-only.
+- Added shared readiness checks for distributed cache and OIDC discovery.
+- Added API SMTP readiness via `IEmailService.TestConnectionAsync()`.
+- Added Blazor BFF downstream API readiness and EF Core database readiness.
+- Tagged secret-provider health checks as readiness checks so secret backends are visible in `/health`.
+- Exposed Blazor Redis fallback state through `IDistributedCacheBackendState` so configured Redis fallback is reported as degraded instead of hidden.
+- Verification passed: `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet` and `dotnet build Explore.Blazor/Explore.Blazor.csproj --configuration Release --verbosity quiet`.
+- Verification passed: `dotnet run --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/*NoKeycloakAuthenticationTests*/*" --minimum-expected-tests 1 --no-progress` ran 8 tests, 0 failed.
+- Verification note: `dotnet test --filter` is not valid for these TUnit/Microsoft Testing Platform projects; use `dotnet run --project ... -- --treenode-filter ...` for targeted runs.
 
-### 🟡 IN PROGRESS
-- `mvp-launch-context.md` — being updated now
+### Current Source-Aligned Findings
 
-### ⚠️ BLOCKERS
-- None
+- WP-1 infrastructure source work is implemented; Docker/Aspire runtime evidence remains blocked locally by Docker Desktop/QEMU.
+- WP-14 unsubscribe foundation exists; remaining work is branded confirmation UI, audit logging, email header injection, dispatch-time consent, and integration tests.
+- WP-15 branded error pages exist; runtime route/status-code smoke remains.
+- WP-16 sitemap/robots/canonical foundation exists; JSON-LD and OG gaps remain.
+- WP-6 iCal endpoint/UI exists; runtime/calendar-app and generated-client drift checks remain.
+- WP-4, WP-5, and WP-7 are implemented enough to shift to runtime smoke/regression evidence.
+- WP-17 capacity/waitlist appears implemented in source even though old tasks said not started; audit before adding code.
+- WP-18 health checks are source complete, including conditional Cerbos readiness and operator interpretation docs; remaining WP-18 work is runtime smoke with live dependencies.
+- WP-19.5 BFF CSP is implemented in `Explore.Blazor/Extensions/MiddlewareExtensions.cs` and registered in `Explore.Blazor/Program.cs`; runtime browser smoke remains.
+- WP-19.7 HAL legacy fallback removal is implemented in `Explore.API/Hateoas/HateoasAuthorizationEvaluator.cs`: permission-bound links without explicit actions now fail closed and no HTTP method action inference remains.
+- WP-19.7 verification passed through `AuthorizationParityTests`; the targeted Application unit test project is blocked by unrelated custom-property projection test compile errors.
+- WP-25.1 placeholder cleanup is source complete: `ImageHelper` generates local SVG data URI fallbacks, `MyEvents` and `MyRegistrations` use it, and no `placehold.co` source references remain outside tests/docs.
+- WP-25.2 landing-page member count is source complete: `LandingPageService` now reads `GetActorsAsync(...).TotalCount` instead of hardcoded placeholder values, with targeted tests for success and API failure fallback.
+- WP-25 price/currency audit is partially complete: visible event price/currency usage is display-only in list/detail/card/created pages, and `EventEdit.razor` has no visible event price/currency inputs; `CreateEvent` must be re-checked after publish-flow dirty work is reconciled.
+- WP-19 audit hardening outside CSP, WP-20 JSON-LD/OG, WP-23 accessibility, WP-24 manifest, and deferred API/client-generation TODO cleanup remain active launch work.
+- Some Blazor pages still use `RoleHelper` for action affordance decisions; distinguish allowed coarse navigation from forbidden per-resource mutation gating.
+- Runtime visual smoke is still needed for local image fallbacks and landing-page stats after the Blazor publish-flow blocker is cleared.
+- Event publish flow files are currently dirty/in-flight; reconcile before editing WP-9 source.
+- `dev/active/navbar-customization/` is a stale reference; use `dev/active/sidebar-dock-layout-refactor/` only if shell/sidebar work is launch-critical.
+
+### Next Work
+
+- Phase 0 evidence baseline: reconcile source/task status, run build and available project tests, and record Docker blocker separately from product work.
+- Phase 1 runtime verification for already implemented foundations: WP-1, WP-6, WP-14, WP-15, WP-16, WP-17, and WP-18 runtime dependency states.
+- Next implementation slice should be WP-19 audit hardening, WP-25 placeholder/TODO cleanup, or WP-3 registration email/consent, depending on whether publish-flow dirty files are still in-flight.
+
+### Blockers
+
+- Docker/Testcontainers runtime verification is blocked in the current local environment by Docker Desktop/QEMU startup failure.
+- `dotnet build Explore.Blazor/Explore.Blazor.csproj --configuration Release --verbosity quiet` is currently blocked by unrelated dirty publish-flow/client work, including `Explore.Blazor.Client/Pages/Events/CreateEvent.razor.cs` using `??` between `List<EventPublishReadinessErrorDto>` and an array. Do not treat this as CSP-slice failure.
+- `dotnet run --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release -- --treenode-filter "/*/*/*HateoasAuthorizationEvaluatorTests*/*" --minimum-expected-tests 1 --no-progress` is currently blocked before execution by unrelated custom-property projection test compile errors.
+- API build verification passes after conditional Cerbos readiness; the targeted Application unit project remains blocked by unrelated custom-property projection test signature drift.
+- Do not treat that local infrastructure blocker as proof the product code is launch-ready; collect evidence in a healthy runtime.
 
 ---
 
 ## Key Decisions
 
 ### D1: Email Verification Ownership
-- **Email verification is Keycloak's job** (user correction)
-- AT Proto handle → PDS's responsibility
-- App does NOT implement email verification or account creation
+
+- Email verification is Keycloak's responsibility.
+- AT Protocol handle verification is the PDS responsibility.
+- The application does not implement account email verification.
 
 ### D2: DataProtection Strategy
-- **Blazor BFF only.** Do NOT register in API project. API is bearer-only, never needs the BFF key ring.
-- **Separate `DataProtectionKeyContext`** — NOT on `ExploreDbContext` (keys are global, not tenant-scoped; avoids pooling/filter complexity)
-- NuGet: `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` v10.0.5 (explicit reference)
-- `SetApplicationName("islamu-event")`
-- Migration: `--context DataProtectionKeyContext --output-dir Migrations/DataProtection`
-- Migration committed to source; auto-applied at startup by `Event.MigrationService`
-- Table: `DataProtectionKeys` (Id int PK, FriendlyName text?, Xml text?) — entity provided by package
 
-### D3: Outbox Payload — Reference (not Snapshot)
-- Payload contains **IDs only**: `registrationId`, `eventId`, `eventSessionId`, `userId`, `tenantId`, `correlationId`
-- Handler fetches fresh data from repos at dispatch time
-- Why: smaller payload, fresher data, no stale snapshot if event edited after registration
-- Trade-off: more DB reads at dispatch; acceptable for MVP volume
+- DataProtection persistence is Blazor BFF only. Do not register the BFF key ring in API.
+- Use separate `Explore.Persistence/DataProtectionKeyContext.cs`; do not attach global keys to tenant-scoped `ExploreDbContext`.
+- Current package version is `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` 10.0.7 via central package management.
+- `Event.MigrationService` applies DataProtection migrations.
+
+### D3: Outbox Payload
+
+- Registration email outbox payloads should be reference payloads with IDs only.
+- Dispatch handlers fetch fresh data from repositories at send time.
+- Consumers must be idempotent because the outbox is at-least-once.
 
 ### D4: Email Idempotency
-- Handler keyed by `(EventType="RegistrationConfirmed", registrationId)`
-- Must check prior send state before dispatching
-- Options: `ConfirmationEmailSentAt` marker on registration entity, or accept rare duplicates with logging
-- Structured logging fields: `RegistrationId`, `EventId`, `UserId`, `TenantId`, `OutboxMessageId`
 
-### D5: Outbox Dispatcher Strategy
-- Replace `LoggingOutboxMessageDispatcher` with `RoutingOutboxMessageDispatcher`
-- Strategy pattern: `IOutboxMessageHandler` per event type
-- Unhandled types fall back to logging (preserves current behavior)
+- Key idempotency by event type plus registration/outbox identity.
+- Prefer durable send markers or send-log checks over in-memory suppression.
+- Structured logs must include registration, event, user, tenant, outbox message, and correlation IDs.
+
+### D5: Outbox Dispatch Strategy
+
+- Replace logging-only dispatch for known launch event types with routing to explicit handlers.
+- Unknown event types may fall back to logging, but launch-critical events cannot be logging-only.
 
 ### D6: Email Template Approach
-- Simple string interpolation for MVP (no Razor/Liquid/Scriban engine)
-- Template lives in `Explore.Infrastructure/Mail/Templates/`
-- Tenant branding (logo, colors) is post-MVP
+
+- Keep MVP templates simple and maintainable; do not introduce a full templating engine unless needed.
+- Email builder must support unsubscribe URL/header data and tenant-safe public URLs.
 
 ### D7: iCal Library
-- `Ical.Net` v5.2.1 (NuGet) — netstandard2.0, MIT, 28M+ downloads
-- Stable UID = event GUID (not random — allows calendar app updates)
-- UTC normalization for all timestamps
-- Google Calendar URL as optional complement
 
-### D8: Redis — Graceful Degradation
-- **App must work optimally without Redis.** In-memory fallback is mandatory.
-- Context: self-hostable platform. Minimal infra = Blazor + API + DB. Redis/Cerbos/Keycloak etc. are optional enhancements.
-- App must log effective cache backend at startup (Redis vs in-memory)
-- If Redis configured but unavailable: log warning, degrade to in-memory, do NOT fail startup
+- `Ical.Net` 5.2.1 is installed for single-event `.ics` export.
+- Stable UID should derive from event identity.
+- Timestamps must be normalized and validated by runtime/calendar-app smoke tests.
 
-### D9: External API Key — Disable for MVP
-- Do NOT ship with unlimited API key access
-- Disable endpoints via config until Phase 5 rate limiting is complete
-- Safer product decision than partial security
+### D8: Redis Degradation
 
-### D10: WP-9 Scope — Split
-- **MVP minimum:** Explicit "Save as Draft" / "Publish" buttons on create/edit form
-- **Post-MVP:** `beforeunload` guard, advanced status transitions, undo publish
-- `beforeunload` is easy to underestimate and annoying if done poorly
+- The app must run without Redis for self-hostable MVP deployments.
+- If Redis is configured but unavailable, log degradation clearly and expose readiness status according to environment expectations.
+- Always log the effective cache backend.
 
-### D11: i18n Explicitly Deferred (NEW 2026-04-24)
-- **Decision:** Hardcoded English only for v1 launch. No `IStringLocalizer`, no `.resx`, no RTL detection.
-- **Rationale:** Launching v1 to English-speaking audience; full locale coverage is a 1-2 week project on its own.
-- **Revisit:** After MVP launch, prioritize if non-English community adoption materializes.
-- **Blazor-localization track:** Formally parked. Reference `dev/active/blazor-localization/`.
+### D9: External API Key Scope
 
-### D12: Capacity Enforcement Scope (NEW 2026-04-24)
-- **MVP:** Prevent over-registration via atomic SQL check + auto-waitlist when any session is full.
-- **Post-MVP:** Auto-promote waitlist on cancellation; capacity-alert emails; bulk approval UI; CSV export.
+- Disable external API key functionality for MVP unless rate limiting, auditing, documentation, and tests are complete.
+- A safe disabled state is preferable to partial public API security.
 
-### D13: Unsubscribe Mechanism (NEW 2026-04-24)
-- **Implementation:** Per-category tokens (not a single kill-switch). Categories: `registration-confirmations`, `event-reminders` (future), `event-updates` (future), `organizer-announcements`.
-- **One-click compliance:** RFC 8058 `List-Unsubscribe` + `List-Unsubscribe-Post` headers; GET link in email body.
-- **Token encryption:** `ITimeLimitedDataProtector` via BFF's DataProtection key ring (reuses WP-1.2 infra). 180-day lifetime.
+### D10: Publish UX Scope
 
-### D14: PWA Scope (NEW 2026-04-24)
-- **MVP:** `manifest.json` only (makes app installable).
-- **Post-MVP:** Service worker, offline caching, background sync, push notifications.
+- MVP needs clear Save Draft versus Publish behavior.
+- Publish-flow source files are currently in-flight; inspect before changing WP-9 code.
+- Advanced undo/beforeunload/status workflows are post-MVP unless already present.
 
-### D15: Health-Check Strategy (NEW 2026-04-24)
-- **Ready tagged:** Database, Redis (if enabled), Keycloak OIDC discovery, SMTP.
-- **Degraded vs Unhealthy:** Redis + SMTP report `Degraded` when app has working fallback; `Unhealthy` forces pod NotReady.
+### D11: Localization Scope
 
-### D16: Audit-Log Access Control (NEW 2026-04-24)
-- **Instance admin:** full visibility across all tenants.
-- **Tenant admin:** only their tenant's audit entries.
-- **Regular user:** own actions only via `/api/users/me/audit-log`.
-- **Permission key:** `audit_log:read` (tenant-scoped) + `audit_log:read_all` (instance-scoped).
+- Do not start a parallel `IStringLocalizer`/`.resx` migration during MVP launch.
+- Avoid adding new hardcoded user-facing strings in touched files when the existing translation/service pattern is available.
+- If translation integration is outside the work package, document the waiver instead of inventing a second localization architecture.
 
-### D17: Setup-Secret Rate-Limiting Policy (NEW 2026-04-24)
-- Reuse existing `setup_secret` policy (5/60s/IP) — no new policy needed.
-- Apply to `validate-secret` endpoint; emit warning log after 3 consecutive failures.
+### D12: Capacity Scope
 
-### D18: Error-Page Strategy (NEW 2026-04-24)
-- Three dedicated routes: `/errors/404`, `/errors/403`, `/errors/500`.
-- Middleware re-executes status code pages for non-interactive responses.
-- Pages branded with tenant logo + site name; display correlation ID on 500.
+- MVP must prevent over-registration and represent waitlist state clearly.
+- Auto-promotion, organizer capacity alerts, bulk approval, and CSV export are post-MVP.
+- Because source appears to include capacity/waitlist support now, audit before implementing.
 
-### D19: RSS/ICS Feeds Deferred (NEW 2026-04-24)
-- **MVP:** Single-event `.ics` download (WP-6).
-- **Post-MVP:** Organization-level `.ics` feed, tenant-level `.ics`, RSS/Atom for discovery.
+### D13: Unsubscribe Mechanism
 
-### D20: Snapshot-Testing Library (NEW 2026-04-24)
-- **Choice:** `Verify.TUnit` v26+ if TUnit adapter available; fall back to `Verify.Xunit`.
-- **Snapshot location:** `tests/snapshots/` (shared across projects).
-- **Review policy:** any snapshot diff must be PR-reviewed visually.
+- Use per-category unsubscribe tokens, not a global kill switch.
+- Support RFC 8058 `List-Unsubscribe` and `List-Unsubscribe-Post` for one-click unsubscribe.
+- Tokens use `ITimeLimitedDataProtector` and fail safely for invalid/expired input.
 
-### D21: Placeholder Asset Policy (NEW 2026-04-24)
-- **Production rule:** no `placehold.co` references, no missing image paths.
-- Every image either resolves or uses a branded CSS fallback pattern.
-- When tenant hasn't uploaded a logo, use instance default logo.
+### D14: PWA Scope
 
-### D22: Capacity Enforcement Mode (NEW 2026-04-24)
-- **Auto-waitlist on full** — parent intent = `Waitlisted` when any child session is full.
-- **Rejected alternative:** Option B (reject whole registration) — worse UX.
-- **Concurrency:** SQL `UPDATE ... WHERE CurrentAudienceAttendees < MaxAudienceAttendees RETURNING ...` in same transaction.
+- MVP is manifest-only if not already present.
+- Service worker, offline caching, background sync, and push are post-MVP.
+
+### D15: Health Check Strategy
+
+- Keep liveness separate from readiness.
+- Readiness includes database, distributed cache/Redis fallback state, Keycloak/OIDC discovery, SMTP, conditional Cerbos PDP readiness, downstream API readiness for the BFF, and secret-provider checks.
+- Degraded dependencies should be explicit, not hidden.
+- Missing SMTP configuration is degraded; configured-but-failing SMTP is unhealthy.
+- Missing OIDC configuration is healthy/skipped so fresh self-hosted deployments still start; configured-but-invalid OIDC metadata is unhealthy.
+- Local authorization provider mode skips Cerbos readiness; configured instance Cerbos mode is unhealthy if the PDP cannot pass gRPC health.
+
+### D16: Audit Log Access Control
+
+- Instance admins can read all audit entries.
+- Tenant admins can read tenant-scoped entries.
+- Regular users can read their own audit entries only.
+- PII access, admin setting changes, preference changes, and authorization denials need audit/structured-log evidence.
+
+### D17: Setup-Secret Rate Limiting
+
+- Reuse the existing setup-secret rate-limit policy.
+- Tests should verify endpoint metadata for every setup-secret validation path.
+
+### D18: Error Page Strategy
+
+- Branded 404/403/500 pages already exist.
+- Remaining work is runtime status-code re-execution, browser smoke, accessibility, and 500 correlation display.
+
+### D19: Feeds Deferred
+
+- MVP is single-event `.ics` download.
+- Organization/tenant calendar feeds and RSS/Atom are post-MVP.
+
+### D20: Snapshot Testing
+
+- `Verify.TUnit` 31.9.4 is in use.
+- Snapshot diffs must be reviewed intentionally.
+- Prioritize HATEOAS links, DTO shapes, and ProblemDetails contracts.
+
+### D21: Placeholder Asset Policy
+
+- Production pages must not depend on `placehold.co`.
+- Missing logos/images should use local or tenant-branded fallbacks; current source fallback is `ImageHelper` SVG data URIs.
+
+### D22: Accessibility Scope
+
+- MVP accessibility work should focus on launch-critical flows: discovery, event detail, registration, My Registrations, error pages, unsubscribe, and onboarding.
+- Use existing design system wrappers and token patterns.
 
 ---
 
-## Key Files by Work Package
+## Key Files
 
-### WP-1: Infrastructure Fixes
-| File | Change |
-|------|--------|
-| `Explore.Blazor/Dockerfile` | .NET 9 → 10 (both base and SDK lines) |
-| `Explore.API/Dockerfile` | Already .NET 10 — no change |
-| `docker-compose.yml` | Add Redis service + redis_data volume |
-| `Explore.Blazor/Program.cs` | AddDataProtection().PersistKeysToDbContext() |
-| New: `Explore.Persistence/DataProtectionKeyContext.cs` | Separate DbContext for keys |
-| `Explore.Blazor.Client/Pages/Events/Components/EventRegistration.razor` line 87 | Remove broken email promise |
-
-### WP-2: Navbar Customization Phase 7
-| File | Change |
-|------|--------|
-| `dev/active/navbar-customization/navbar-customization-tasks.md` | Reference for Phase 7 tasks |
-| Various Blazor UI files | Soft-delete compliance, URL validators, cache invalidation |
-
-### WP-3: Registration Email
-| File | Change |
-|------|--------|
-| `Explore.Application/Features/EventRegistrations/Handlers/Commands/CreateEventRegistrationCommandHandler.cs` | Create OutboxMessage with reference payload |
-| New: `Explore.Application/Contracts/Outbox/IOutboxMessageHandler.cs` | Handler interface |
-| New: `Explore.Infrastructure/Outbox/RoutingOutboxMessageDispatcher.cs` | Replaces logging dispatcher |
-| New: `Explore.Infrastructure/Outbox/Handlers/RegistrationConfirmedOutboxHandler.cs` | Email dispatch |
-| New: `Explore.Infrastructure/Mail/Templates/RegistrationConfirmedEmailBuilder.cs` | HTML template |
-| `Explore.Application/Contracts/Infrastructure/IEmailService.cs` | Existing — no change |
-| `Explore.Infrastructure/Mail/SmtpEmailService.cs` | Existing — no change |
-
-### WP-4: My Registrations Enhancement
-| File | Change |
-|------|--------|
-| `Explore.Blazor.Client/Pages/User/MyRegistrations.razor` | Add calendar button per card |
-| `Explore.Blazor.Client/Shared/NavMenu.razor` or user menu | Verify link exists |
-
-### WP-5: Post-Registration UX
-| File | Change |
-|------|--------|
-| `Explore.Blazor.Client/Pages/Events/Components/EventRegistration.razor` lines 77-96 | Enhance success state |
-
-### WP-6: iCal
-| File | Change |
-|------|--------|
-| `Explore.API/Controllers/EventController.cs` | Add calendar endpoint |
-| `Explore.API/Hateoas/RouteNames.cs` | Add `GetEventCalendar` constant |
-| `Explore.Blazor.Client/Pages/Events/EventDetail.razor` | Add calendar button |
-| `Explore.Blazor.Client/Pages/User/MyRegistrations.razor` | Add per-event calendar button |
-
-### WP-7: Share Verification
-| File | Check |
+| Area | Files |
 |------|-------|
-| `Explore.Blazor.Client/Pages/Events/EventDetail.razor` | Share button visible? |
-| `Explore.Blazor.Client/Pages/Events/Components/EventCard.razor` | Share on list cards? |
-
-### WP-8: HATEOAS Fix
-| File | Change |
-|------|--------|
-| `Explore.Blazor.Client/Pages/Organizations/OrganizationDetails.razor.cs` | Remove RoleHelper.CanManage, use HasHalLink |
-| `Explore.Blazor.Client/Helpers/HalResourceExtensions.cs` | Add HasHalLink for Org/Group DTOs |
-| `Explore.API/Hateoas/LinkDefinitionDerivation.cs` | Remove obsolete `MapMethodToAction()` |
-| All link policy classes | Ensure explicit `RequirePermission("resource", "action")` |
-
-### WP-9: Save Draft vs Publish
-| File | Change |
-|------|--------|
-| `Explore.Blazor.Client/Pages/Events/CreateEvent.razor` | Add "Save as Draft" + "Publish" buttons |
-| `Explore.Blazor.Client/Pages/Events/EditEvent.razor` | Conditional buttons based on status |
-
-### WP-14: Email Unsubscribe (NEW)
-| File | Change |
-|------|--------|
-| New: `Explore.Infrastructure/Mail/Unsubscribe/UnsubscribeTokenService.cs` | Token encrypt/decrypt via DataProtection |
-| New: `Explore.API/Controllers/EmailUnsubscribeController.cs` | GET + POST unsubscribe endpoints |
-| New or existing: `UserNotificationPreferences` entity + repository | Preference categories table |
-| `Explore.Infrastructure/Mail/Templates/RegistrationConfirmedEmailBuilder.cs` | Accept + render unsubscribe URL |
-| `Explore.Infrastructure/Mail/SmtpEmailService.cs` | Inject List-Unsubscribe headers |
-| `dev/active/organizer-email-consent/` | Reconcile scope before starting |
-
-### WP-15: Branded Error Pages (NEW)
-| File | Change |
-|------|--------|
-| New: `Explore.Blazor.Client/Pages/Errors/NotFound.razor` | `@page "/errors/404"` |
-| New: `Explore.Blazor.Client/Pages/Errors/Unauthorized.razor` | `@page "/errors/403"` |
-| New: `Explore.Blazor.Client/Pages/Errors/ServerError.razor` | `@page "/errors/500"` |
-| `Explore.Blazor/Components/Pages/Error.razor` | Enhance with branded content |
-| `Explore.Blazor/Program.cs` | `UseStatusCodePagesWithReExecute("/errors/{0}")` |
-| `Explore.Blazor.Client/Routes.razor` | Add catch-all route fallback |
-
-### WP-16: SEO Foundation (NEW)
-| File | Change |
-|------|--------|
-| New: `Explore.API/Controllers/SitemapController.cs` | `GET /sitemap.xml` |
-| New: `Explore.Blazor/wwwroot/robots.txt` (static) or controller | Per-environment directives |
-| Multiple `.razor` pages | Add `<link rel="canonical">` tags |
-
-### WP-17: Capacity Enforcement (NEW)
-| File | Change |
-|------|--------|
-| `CreateEventRegistrationCommandHandler.cs` | Capacity check + auto-waitlist |
-| `EventRegistration.razor` | "Join waitlist" button when full |
-| `MyRegistrations.razor` | Verify waitlist badge renders |
-| New migration | Unique index on `(UserId, EventSessionId)` where `IsDeleted=false` |
-
-### WP-18: Health Checks (NEW)
-| File | Change |
-|------|--------|
-| `Explore.API/Program.cs` | Add Redis/Keycloak/SMTP health checks |
-| `Explore.Blazor/Program.cs` | Same |
-| New: `Explore.Infrastructure/HealthChecks/KeycloakHealthCheck.cs` | OIDC discovery check |
-| New: `Explore.Infrastructure/HealthChecks/SmtpHealthCheck.cs` | SMTP connection check |
-| `docs/TROUBLESHOOTING.md` | Health-check interpretation table |
-
-### WP-19: Security Audit Trail (NEW)
-| File | Change |
-|------|--------|
-| `Explore.API/Controllers/InstanceOnboardingController.cs` | Apply `setup_secret` rate limit |
-| `Explore.Persistence/Repositories/UserPiiRepository.cs` | Wrap reads with audit logging |
-| `Explore.Persistence/Repositories/ActorPiiRepository.cs` | Same |
-| New: `Explore.Application/Common/Behaviors/AuditLoggingBehavior.cs` | MediatR pipeline behavior |
-| `Explore.Application/Common/Authorization/FallbackAuthorizationService.cs` | Log denials |
-| New: `Explore.Blazor/Middleware/BffCspMiddleware.cs` | CSP header middleware |
-| `Explore.API/Hateoas/LinkDefinitionDerivation.cs` | Delete `MapMethodToAction()` |
-| All 36 link policy classes | Ensure explicit `RequirePermission` |
-
-### WP-20: Public Page SEO/OG (NEW)
-| File | Change |
-|------|--------|
-| `Explore.Blazor.Client/Pages/Events/EventDetail.razor` | JSON-LD `schema.org/Event` |
-| `Explore.Blazor.Client/Pages/Organizations/OrganizationProfile.razor` | JSON-LD `schema.org/Organization` |
-| `Home.razor`, `LandingPageForNonUsers.razor`, `LandingPageForUsers.razor` | OG/Twitter meta tags |
-| `OrganizationDetails.razor` | OG tags + breadcrumbs |
-
-### WP-21: E2E Critical-Flow Tests (NEW)
-| File | Change |
-|------|--------|
-| New: `Explore.Blazor.Client.E2ETests/CriticalFlows/RegistrationFlowTests.cs` | Full registration E2E |
-| New: `Explore.Blazor.Client.E2ETests/CriticalFlows/MultiTenancyIsolationTests.cs` | Tenant isolation |
-| New: `Explore.Blazor.Client.E2ETests/CriticalFlows/AuthorizationEnforcementTests.cs` | Authz check |
-| New: `Explore.Blazor.Client.E2ETests/CriticalFlows/BffTokenForwardingTests.cs` | Token chain |
-
-### WP-22: Snapshot Tests (NEW)
-| File | Change |
-|------|--------|
-| `Event.API.IntegrationTests` project | Install `Verify.TUnit` or `Verify.Xunit` |
-| New: `tests/snapshots/` directory | Baseline snapshot storage |
-| New test files | Snapshot EventDto, OrgDto, UserDto, ProblemDetails |
-
-### WP-23: Accessibility Polish (NEW)
-| File | Change |
-|------|--------|
-| `Explore.Blazor.Client/Pages/Events/EventDetail.razor` | Add breadcrumbs |
-| `Explore.Blazor.Client/Layout/MainLayout.razor` | ARIA landmarks |
-| `Explore.Blazor.Client/Layout/SetupLayout.razor` | ARIA landmarks |
-| New: `Explore.Blazor.Client/Shared/FocusOnNavigate.razor` | Focus management component |
-
-### WP-24: PWA Manifest (NEW)
-| File | Change |
-|------|--------|
-| New: `Explore.Blazor/wwwroot/manifest.json` or controller endpoint | PWA manifest |
-| `Explore.Blazor/App.razor` | Link manifest + theme-color meta |
-
-### WP-25: Placeholder & TODO Cleanup (NEW)
-| File | Change |
-|------|--------|
-| `Explore.Blazor.Client/Pages/User/MyRegistrations.razor` | Replace placehold.co |
-| `Explore.Blazor.Client/Pages/Landing/LandingPageForNonUsers.razor` | Verify landing image |
-| `EventList.razor`, `EventEdit.razor`, `CreateEvent.razor` | Resolve TODOs |
-
----
-
-## Technical Constraints
-
-1. Repositories return entities, never DTOs — mapping in handlers
-2. Validators are manually instantiated — no DI
-3. Commands return `BaseCommandResponse<Guid>`
-4. GET = AllowAnonymous, write = Authorize
-5. File-scoped namespaces for new C# files
-6. ABOUTME header on all new files
-7. Outbox messages are at-least-once — consumers must be idempotent
-8. NSwag client regeneration required after API changes (see checklist in plan)
-9. Named query filters for soft delete: `.HasQueryFilter(name: "SoftDelete", ...)`
-10. Never blunt `IgnoreQueryFilters()` — always use `IgnoreQueryFilters([QueryFilterNames.SoftDelete])`
-11. TUnit is the test framework (not xUnit/NUnit)
-12. bUnit for Blazor component tests
-13. App must work without Redis (in-memory fallback)
-14. HAL `_links` is exclusive source of UI action affordance — never use `RoleHelper.CanManage` or `IsInRole`
-15. EF Core named query filters: `.HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted)`
-16. UserId extraction fallback: `sub` → `nameidentifier` → `sid`
-17. HATEOAS link policies use `yield return` pattern (not `list.Add()`)
-18. `EventQuerySpecification` is immutable — every `With*()` returns new instance
-19. Capacity enforcement uses atomic SQL `UPDATE ... WHERE ... RETURNING ...` (not application-level check)
-20. Unsubscribe tokens use `ITimeLimitedDataProtector` — 180-day lifetime, per-category
-21. CSP header must include `wasm-unsafe-eval` for Blazor WASM + `'unsafe-inline'` for MudBlazor styles
+| Plan docs | `dev/active/mvp-launch/mvp-launch-plan.md`, `mvp-launch-tasks.md`, `mvp-launch-context.md` |
+| DataProtection | `Explore.Persistence/DataProtectionKeyContext.cs`, `Explore.Persistence/Extensions/DataProtectionServiceCollectionExtensions.cs`, `Event.MigrationService/Worker.cs` |
+| Unsubscribe | `Explore.API/Controllers/EmailUnsubscribeController.cs`, `Explore.Infrastructure/Mail/Unsubscribe/EmailUnsubscribeTokenService.cs` |
+| Calendar | `Explore.API/Controllers/EventController.cs`, `Explore.API/Hateoas/RouteNames.cs`, Blazor event detail/My Registrations pages |
+| SEO/errors | `Explore.API/Controllers/SitemapController.cs`, `Explore.Blazor/Controllers/RobotsController.cs`, `Explore.Blazor.Client/Pages/Errors/` |
+| Capacity/waitlist | `Explore.Application/Features/EventRegistrations/Handlers/Commands/CreateEventRegistrationCommandHandler.cs`, `Explore.Persistence/Repositories/EventRegistrationIntentRepository.cs`, `ApprovalStatusEnum`, lookup seed |
+| HAL/security debt | `Explore.API/Hateoas/HateoasAuthorizationEvaluator.cs`, Blazor pages using `RoleHelper` for action affordances |
+| Placeholder debt | `Explore.Blazor.Client/Helpers/ImageHelper.cs`, `Explore.Blazor.Client/Pages/User/MyRegistrations.razor`, `Explore.Blazor.Client/Pages/Events/MyEvents.razor.cs` |
+| Publish flow in-flight | Event publish command/request/validator/handler/controller/HATEOAS files shown dirty in current worktree |
 
 ---
 
 ## Quick Resume
 
-1. Read this context file
-2. Check `mvp-launch-tasks.md` for current progress
-3. Read `mvp-launch-plan.md` for overall strategy and release gates
-4. Start with WP-1.4 (broken promise fix) → then WP-1.1/1.2/1.3 → smoke test Gates A+B
-5. Follow NSwag checklist (in plan) after any API changes
-6. Sprint order: WP-1 → WP-14/15/16 → WP-17/18/19 → WP-3/6/7/4/5 → WP-20/24/8 → WP-2/9/12 → WP-21/22/11 → WP-23/25/10
+1. Open `mvp-launch-plan.md` and follow Phase 0.
+2. Use `mvp-launch-tasks.md` only after reconciling old task statuses with source.
+3. Do not restart old WP-1.4; it is already done.
+4. Close runtime evidence for implemented foundations first.
+5. Then complete registration email/consent, health/audit/CSP/HAL cleanup, public SEO polish, and test evidence.
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+No implementation work was performed for this active task during the sidebar dock refactor handoff session. Existing context, plan, and task files remain the authoritative state for this workstream. Do not infer progress or blockers here from the sidebar/dock-specific changes unless a future session explicitly broadens scope.

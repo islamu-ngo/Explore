@@ -70,7 +70,7 @@ Complex filtering uses a custom Specification Pattern:
 1. Layer 1 stores universal semantics directly on `Event`, `EventSession`, and other first-class related entities.
 2. Layer 2 stores sector-standard semantics in typed 1:1 schema such as `EventIslamicAspect`, `EventTechAspect`, and `EventSessionIslamicAspect`.
 3. Layer 3 stores tenant-specific long-tail extensions through governed custom-property entities and event/session template/runtime rows.
-4. `Event` remains the parent program/container aggregate; `EventSession` remains the scheduled child aggregate.
+4. `Event` is the event/program container; `EventSessionGroup` organizes tracks, devrooms, stages, and program sections; `EventSession` is the scheduled content item for talks, workshops, panels, classes, and activities; `EventAgendaItem` covers logistics such as breaks, meals, prayer slots, and transitions.
 5. Layer 3 must not redefine or replace Layer 2 semantics; reserved namespaces and collision rules are part of the custom-properties architecture.
 6. If a custom property becomes sector-standard or discovery-critical, promote it into typed Layer 2 schema instead of adding sector-specific factories to `EventCustomPropertyProjectionFilter` or `EventSessionCustomPropertyProjectionFilter`.
 7. `EventCustomPropertyProjection`, `EventSessionCustomPropertyProjection`, and aggregate event-with-sessions read views are derived query models only; source of truth remains typed schema plus event-local and session-local custom-property rows.

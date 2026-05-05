@@ -610,3 +610,8 @@ Legend: `S` = <2h, `M` = 2-6h, `L` = 6-12h, `XL` = 12h+. Check tasks off as they
 - Import/Export API for bulk binding management.
 - Dynamic `SecretDefinition` registration (runtime loading).
 - Vault dynamic secrets with lease management (schema ready, provider not implemented).
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+- [x] No task-state changes were made for this workstream during the sidebar dock refactor handoff session.
+- [ ] Reconfirm this workstream's current state from its existing context/plan before resuming implementation.

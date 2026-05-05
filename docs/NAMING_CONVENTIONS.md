@@ -126,7 +126,7 @@ Named as `{Parent}{Module}Aspect`:
 
 ## Enum Naming
 
-Enums are named `{EntityName}Enum` and placed in `Explore.Domain/Enums/`. They mirror the int IDs used in lookup tables:
+Enums are named `{EntityName}Enum` and placed in `Explore.Domain/Enums/`. When an enum-backed concept is persisted, the database column should be a normalized lookup FK named `{LookupName}Id`, and API contracts should expose `{LookupName}Id`, `{LookupName}Code`, and `{LookupName}Name` rather than the enum wrapper:
 
 ```
 EventTypeEnum.cs       → values: Conference = 1, Workshop = 2, ...
@@ -134,7 +134,7 @@ EventStatusEnum.cs     → values: Draft = 1, Published = 2, ...
 AudienceAgeEnum.cs     → values: AllAges = 1, Children = 2, ...
 ```
 
-Each enum value maps to a lookup table row's int `Id`.
+Each enum value may map to a lookup table row's int `Id` for internal convenience, but EF should map the FK property and ignore enum wrapper properties on normalized entities.
 
 ---
 

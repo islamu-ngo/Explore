@@ -108,3 +108,8 @@
 5. Run:
    - `dotnet build "Explore.Blazor.Client/Explore.Blazor.Client.csproj" --configuration Release --verbosity minimal`
    - `dotnet test --project "Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj" --configuration Release --verbosity minimal`
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+- [x] No task-state changes were made for this workstream during the sidebar dock refactor handoff session.
+- [ ] Reconfirm this workstream's current state from its existing context/plan before resuming implementation.

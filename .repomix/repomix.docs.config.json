@@ -1,8 +1,10 @@
 {
   "include": [
+    "schemas/**/*",
     "docs/**/*",
     "README.md",
     "CLAUDE.md",
+    "AGENTS.md",
     "docker-compose.yml",
     "global.json",
     "Directory.Build.props",

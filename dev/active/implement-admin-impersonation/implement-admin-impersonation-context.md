@@ -75,3 +75,6 @@
 - Re-open this context file and matching *-tasks.md before resuming work.
 - Re-run project build/tests relevant to that task branch before new edits.
 
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+No implementation work was performed for this active task during the sidebar dock refactor handoff session. Existing context, plan, and task files remain the authoritative state for this workstream. Do not infer progress or blockers here from the sidebar/dock-specific changes unless a future session explicitly broadens scope.

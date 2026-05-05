@@ -16,76 +16,7 @@ Table "actor_types" {
   "master_code" varchar(100) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_actor_types_master_code']
-  }
-
   Note: 'Lookup: classifies federated actors. Values: User(1), Organization(2), Group(3), Bot(4). Seeded.'
-}
-
-Table "role_scopes" {
-  "id" int [pk, not null]
-  "master_code" varchar(50) [not null]
-  "full_name" varchar(100) [not null]
-  "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_role_scopes_master_code']
-  }
-
-  Note: 'Lookup: RBAC role and permission scopes. Values: Platform(0), Tenant(1), Organization(2), Group(3), Event(4). Seeded.'
-}
-
-Table "setting_scopes" {
-  "id" int [pk, not null]
-  "master_code" varchar(50) [not null]
-  "full_name" varchar(100) [not null]
-  "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_setting_scopes_master_code']
-  }
-
-  Note: 'Lookup: configuration hierarchy scopes. Values: System(0), Instance(1), Tenant(2), Organization(3), Group(4), User(5). Seeded.'
-}
-
-Table "setting_value_types" {
-  "id" int [pk, not null]
-  "master_code" varchar(50) [not null]
-  "full_name" varchar(100) [not null]
-  "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_setting_value_types_master_code']
-  }
-
-  Note: 'Lookup: system setting value data types. Values: String(0), Integer(1), Boolean(2), Decimal(3), Json(4), DateTime(5). Seeded.'
-}
-
-Table "secret_source_types" {
-  "id" int [pk, not null]
-  "master_code" varchar(50) [not null]
-  "full_name" varchar(100) [not null]
-  "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_secret_source_types_master_code']
-  }
-
-  Note: 'Lookup: secret value source types. Values: Infisical(0), InlineEncrypted(1), EnvironmentVariable(2). Seeded.'
-}
-
-Table "secret_validation_statuses" {
-  "id" int [pk, not null]
-  "master_code" varchar(50) [not null]
-  "full_name" varchar(100) [not null]
-  "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_secret_validation_statuses_master_code']
-  }
-
-  Note: 'Lookup: secret validation lifecycle. Values: NotValidated(0), Success(1), Failure(2). Seeded.'
 }
 
 Table "analytics_providers" {
@@ -93,10 +24,6 @@ Table "analytics_providers" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_analytics_providers_master_code']
-  }
 
   Note: 'Lookup: supported analytics engines. Values: PostHog(1), Plausible(2), GoogleAnalytics(3). Seeded.'
 }
@@ -106,10 +33,6 @@ Table "approval_statuses" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_approval_statuses_master_code']
-  }
 
   Note: 'Lookup: entity approval lifecycle. Values: Pending(1), Approved(2), Rejected(3), Deferred(4). Seeded.'
 }
@@ -122,10 +45,6 @@ Table "audience_ages" {
   "min_age" int
   "max_age" int
 
-  indexes {
-    master_code [unique, name: 'ix_audience_ages_master_code']
-  }
-
   Note: 'Lookup: age-group targeting. Values: AllAges(1), Kids(2), Teens(3), Adults(4). Seeded.'
 }
 
@@ -134,10 +53,6 @@ Table "audience_genders" {
   "master_code" text [not null]
   "full_name" text [not null]
   "description" text
-
-  indexes {
-    master_code [unique, name: 'ix_audience_genders_master_code']
-  }
 
   Note: 'Lookup: gender-based targeting. Values: Mixed(1), MenOnly(2), WomenOnly(3). Seeded.'
 }
@@ -148,10 +63,6 @@ Table "category_types" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_category_types_master_code']
-  }
-
   Note: 'Lookup: classifies categories for different contexts (Events, Organizations, Users). Seeded.'
 }
 
@@ -160,10 +71,6 @@ Table "did_custody_types" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_did_custody_types_master_code']
-  }
 
   Note: 'Lookup: ATProto DID key management model. Values: SelfCustody(1), PlatformManaged(2). Seeded.'
 }
@@ -174,10 +81,6 @@ Table "event_formats" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_event_formats_master_code']
-  }
-
   Note: 'Lookup: event delivery mode. Values: InPerson(1), Virtual(2), Hybrid(3). Seeded.'
 }
 
@@ -186,10 +89,6 @@ Table "event_statuses" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_event_statuses_master_code']
-  }
 
   Note: 'Lookup: event lifecycle state. Values: Draft(1), Published(2), Cancelled(3), Completed(4), Archived(5). Seeded.'
 }
@@ -216,10 +115,6 @@ Table "file_types" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_file_types_master_code']
-  }
-
   Note: 'Lookup: media/document classifications. Values: Image(1), Video(2), Document(3), Archive(4). Seeded.'
 }
 
@@ -228,10 +123,6 @@ Table "group_positions" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_group_positions_master_code']
-  }
 
   Note: 'Lookup: formal roles within a group. Values: Lead(1), Admin(2), Moderator(3), Member(4). Seeded.'
 }
@@ -242,10 +133,6 @@ Table "languages" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_languages_master_code']
-  }
-
   Note: 'Lookup: ISO language codes for localization and content metadata. Seeded.'
 }
 
@@ -254,10 +141,6 @@ Table "madhabs" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_madhabs_master_code']
-  }
 
   Note: 'Lookup: Islamic schools of jurisprudence. Values: Hanafi(1), Maliki(2), Shafii(3), Hanbali(4), Other(5). Seeded.'
 }
@@ -268,10 +151,6 @@ Table "organization_positions" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_organization_positions_master_code']
-  }
-
   Note: 'Lookup: formal roles within an organization. Values: CEO(1), Admin(2), Staff(3), Volunteer(4). Seeded.'
 }
 
@@ -280,10 +159,6 @@ Table "owner_types" {
   "master_code" text [not null]
   "full_name" text [not null]
   "description" text
-
-  indexes {
-    master_code [unique, name: 'ix_owner_types_master_code']
-  }
 
   Note: 'Lookup: classifies entities that can own resources. Values: User(1), Organization(2), Group(3), Tenant(4), InstanceAdmin(5). Seeded.'
 }
@@ -294,10 +169,6 @@ Table "registration_modes" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_registration_modes_master_code']
-  }
-
   Note: 'Lookup: registration policy. Values: Open(1), ApprovalRequired(2), InviteOnly(3), Closed(4). Seeded.'
 }
 
@@ -306,10 +177,6 @@ Table "tag_types" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_tag_types_master_code']
-  }
 
   Note: 'Lookup: classifies tags for different contexts. Seeded.'
 }
@@ -321,10 +188,6 @@ Table "tenant_statuses" {
   "description" varchar(500)
   "is_active_state" boolean [not null]
 
-  indexes {
-    master_code [unique, name: 'ix_tenant_statuses_master_code']
-  }
-
   Note: 'Lookup: tenant lifecycle. Values: Active(1), Suspended(2), Provisioning(3), Deactivated(4). Seeded.'
 }
 
@@ -333,10 +196,6 @@ Table "visibility_types" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_visibility_types_master_code']
-  }
 
   Note: 'Lookup: discovery level. Values: Public(1), Private(2), Unlisted(3), MembersOnly(4). Seeded.'
 }
@@ -347,10 +206,6 @@ Table "schedule_item_kinds" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_schedule_item_kinds_master_code']
-  }
-
   Note: 'Lookup: classifies agenda items. Values: Intro(1), Talk(2), QAndA(3), Break(4), Prayer(5), Outro(6), Logistics(7), Custom(8). Seeded.'
 }
 
@@ -359,10 +214,6 @@ Table "event_registration_policies" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_event_registration_policies_master_code']
-  }
 
   Note: 'Lookup: defines which registration scopes are allowed for an event. Values: WholeEventOnly(1), WholeDayOnly(2), SessionSelectionOnly(3), WholeEventOrDay(4), WholeEventOrSession(5), Flexible(6). Seeded.'
 }
@@ -373,27 +224,17 @@ Table "registration_scopes" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_registration_scopes_master_code']
-  }
-
   Note: 'Lookup: granularity of a registration intent. Values: Event(1), Day(2), SessionSelection(3). Seeded.'
 }
 
 Table "external_api_key_statuses" {
   "id" int [pk, not null]
-  "master_code" varchar(50) [not null]
+  "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-  "is_usable" boolean [not null]
-
-  indexes {
-    (master_code) [unique, name: 'ix_external_api_key_statuses_master_code']
-  }
 
   Note: 'Lookup: external API key state. Values: Active(1), Revoked(2), Expired(3). Seeded.'
 }
-
 
 Table "external_api_key_credit_periods" {
   "id" int [pk, not null]
@@ -401,24 +242,7 @@ Table "external_api_key_credit_periods" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_external_api_key_credit_periods_master_code']
-  }
-
   Note: 'Lookup: credit reset frequency. Values: None(1), Daily(2), Weekly(3), Monthly(4). Seeded.'
-}
-
-Table "external_api_key_owner_types" {
-  "id" int [pk, not null]
-  "master_code" varchar(50) [not null]
-  "full_name" varchar(100) [not null]
-  "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_external_api_key_owner_types_master_code']
-  }
-
-  Note: 'Lookup: external API key owner classifiers. Values: User(1), Organization(2), Group(3), Tenant(4), InstanceAdmin(5). Seeded.'
 }
 
 Table "notification_types" {
@@ -427,24 +251,7 @@ Table "notification_types" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  indexes {
-    master_code [unique, name: 'ix_notification_types_master_code']
-  }
-
   Note: 'Lookup: notification classification. Seeded.'
-}
-
-Table "notification_scope_types" {
-  "id" int [pk, not null]
-  "master_code" varchar(50) [not null]
-  "full_name" varchar(100) [not null]
-  "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_notification_scope_types_master_code']
-  }
-
-  Note: 'Lookup: notification scope classifiers. Values: User(1), Organization(2), Group(4), System(5). Seeded.'
 }
 
 Table "notification_entity_types" {
@@ -452,10 +259,6 @@ Table "notification_entity_types" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_notification_entity_types_master_code']
-  }
 
   Note: 'Lookup: type of entity a notification relates to. Seeded.'
 }
@@ -465,10 +268,6 @@ Table "notification_reasons" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_notification_reasons_master_code']
-  }
 
   Note: 'Lookup: why a notification was triggered. Seeded.'
 }
@@ -505,7 +304,7 @@ Table "system_settings" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "setting_key" varchar(256) [not null]
   "value" text [not null]
-  "setting_value_type_id" int [not null]
+  "value_type" int [not null]
   "is_locked" boolean [not null]
   "allowed_values" jsonb
   "description" varchar(1000)
@@ -528,7 +327,7 @@ Table "configuration_change_logs" {
   "setting_key" varchar(256) [not null]
   "old_value" text
   "new_value" text [not null]
-  "setting_scope_id" int [not null]
+  "scope" int [not null]
   "scope_id" uuid
   "action_type" varchar(50) [not null]
   "created_at" timestamptz [not null]
@@ -540,43 +339,35 @@ Table "configuration_change_logs" {
     user_id
     setting_key
     timestamp
-    (setting_scope_id, scope_id) [name: 'ix_configuration_change_logs_setting_scope_id_scope_id']
+    (scope, scope_id)
   }
 }
 
 Table "secret_bindings" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "setting_key" varchar(256) [not null]
-  "setting_scope_id" int [not null]
+  "scope" int [not null]
   "scope_id" uuid
-  "environment_variable_name" varchar(256)
-  "infisical_environment" varchar(64)
-  "infisical_key" varchar(256)
-  "infisical_path" varchar(512)
-  "inline_ciphertext" bytea
-  "inline_ciphertext_version" int
-  "is_locked" boolean [not null]
+  "secret_name" varchar(256) [not null]
+  "vault_provider" varchar(100) [not null]
+  "source_type" int [not null]
+  "is_active" boolean [not null]
   "last_validated_at" timestamptz
-  "last_validated_by" uuid
-  "last_validation_error" varchar(1000)
-  "secret_validation_status_id" int [not null]
-  "secret_source_type_id" int [not null]
+  "validation_status" int [not null]
+  "validation_error" text
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
 
   indexes {
-    setting_key [name: 'ix_secret_bindings_setting_key_instance_unique', note: 'filter: scope_id IS NULL']
-    (setting_key, scope_id) [unique, name: 'ix_secret_bindings_setting_key_scope_id_tenant_unique', note: 'filter: scope_id IS NOT NULL']
-    secret_source_type_id [name: 'ix_secret_bindings_secret_source_type_id']
-    secret_validation_status_id [name: 'ix_secret_bindings_secret_validation_status_id']
-    (setting_scope_id, scope_id) [name: 'ix_secret_bindings_setting_scope_id_scope_id']
+    setting_key [name: 'ix_secret_bindings_setting_key_instance_unique', note: 'filter: scope = 0']
+    (setting_key, scope_id) [unique, name: 'ix_secret_bindings_setting_key_scope_id_tenant_unique', note: 'filter: scope = 1']
+    (scope, scope_id) [name: 'ix_secret_bindings_scope_scope_id']
   }
 
-  Note: 'Maps application settings to external secrets providers (Infisical, env vars, and inline encrypted values).'
+  Note: 'Maps application settings to external vault secrets (KeyVault, AWS Secrets, etc.).'
 }
-
 
 // ============================================================
 // RBAC (Roles & Permissions)
@@ -587,12 +378,12 @@ Table "roles" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
-  "role_scope_id" int [not null]
+  "scope" int [not null]
   "is_system" boolean [not null]
 
   indexes {
     master_code [unique, name: 'ix_roles_mastercode']
-    role_scope_id [name: 'ix_roles_role_scope_id']
+    scope [name: 'ix_roles_scope']
   }
 }
 
@@ -605,7 +396,7 @@ Table "permissions" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
   "group_name" varchar(100) [not null]
-  "role_scope_id" int [not null]
+  "scope" int [not null]
   "is_system" boolean [not null]
   "is_filtered" boolean [not null]
   "is_active" boolean [not null]
@@ -617,7 +408,7 @@ Table "permissions" {
   indexes {
     master_code [unique, name: 'ix_permissions_mastercode']
     (resource_kind, action) [name: 'ix_permissions_resource_action']
-    role_scope_id [name: 'ix_permissions_role_scope_id']
+    scope [name: 'ix_permissions_scope']
   }
 }
 
@@ -780,8 +571,14 @@ Table "instance_policy_sets" {
   "updated_at" timestamptz
   "updated_by" uuid
   "xmin" xid [not null, note: 'rowversion / optimistic concurrency']
+  "branding_policy" jsonb [not null]
+  "domains_policy" jsonb [not null]
+  "events_policy" jsonb [not null]
+  "modules_policy" jsonb [not null]
+  "organizations_policy" jsonb [not null]
+  "render_policy" jsonb [not null]
+  "tenant_delegation_policy" jsonb [not null]
 }
-
 
 // ============================================================
 // Tenants
@@ -860,13 +657,16 @@ Table "tenant_navigation_links" {
 Table "tenant_footer_link_groups" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "tenant_id" uuid
-  "title" varchar(100) [not null]
+  "title" varchar(200) [not null]
   "order" int [not null]
   "is_active" boolean [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
 
   indexes {
     tenant_id [name: 'ix_tenant_footer_link_groups_tenant_id']
@@ -876,12 +676,11 @@ Table "tenant_footer_link_groups" {
   Note: 'TenantId null = instance-default group.'
 }
 
-
 Table "tenant_footer_links" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "footer_link_group_id" uuid [not null]
   "label" varchar(200) [not null]
-  "url" varchar(1000) [not null]
+  "url" varchar(2000) [not null]
   "open_in_new_tab" boolean [not null]
   "order" int [not null]
   "is_active" boolean [not null]
@@ -889,12 +688,14 @@ Table "tenant_footer_links" {
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
 
   indexes {
     (footer_link_group_id, order) [name: 'ix_tenant_footer_links_footer_link_group_id_order']
   }
 }
-
 
 // ============================================================
 // Appearance (UI Themes)
@@ -909,6 +710,40 @@ Table "ui_themes" {
   "is_active" boolean [not null]
   "is_default" boolean [not null]
   "sort_order" int [not null]
+  "light_primary" varchar(7) [not null]
+  "light_secondary" varchar(7) [not null]
+  "light_background" varchar(7) [not null]
+  "light_surface" varchar(7) [not null]
+  "light_appbar_background" varchar(32) [not null]
+  "light_appbar_text" varchar(7) [not null]
+  "light_drawer_background" varchar(32) [not null]
+  "light_drawer_text" varchar(7) [not null]
+  "light_drawer_icon" varchar(7) [not null]
+  "light_text_primary" varchar(7) [not null]
+  "light_text_secondary" varchar(7) [not null]
+  "light_info" varchar(7) [not null]
+  "light_success" varchar(7) [not null]
+  "light_warning" varchar(7) [not null]
+  "light_error" varchar(7) [not null]
+  "light_lines_default" varchar(7) [not null]
+  "light_divider" varchar(32) [not null]
+  "dark_primary" varchar(7) [not null]
+  "dark_secondary" varchar(7) [not null]
+  "dark_background" varchar(7) [not null]
+  "dark_surface" varchar(7) [not null]
+  "dark_appbar_background" varchar(32) [not null]
+  "dark_appbar_text" varchar(7) [not null]
+  "dark_drawer_background" varchar(32) [not null]
+  "dark_drawer_text" varchar(7) [not null]
+  "dark_drawer_icon" varchar(7) [not null]
+  "dark_text_primary" varchar(7) [not null]
+  "dark_text_secondary" varchar(7) [not null]
+  "dark_info" varchar(7) [not null]
+  "dark_success" varchar(7) [not null]
+  "dark_warning" varchar(7) [not null]
+  "dark_error" varchar(7) [not null]
+  "dark_lines_default" varchar(7) [not null]
+  "dark_divider" varchar(32) [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -923,7 +758,6 @@ Table "ui_themes" {
   }
 }
 
-
 Table "ui_theme_presets" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "tenant_id" uuid
@@ -932,11 +766,42 @@ Table "ui_theme_presets" {
   "description" varchar(1000)
   "is_active" boolean [not null]
   "is_archived" boolean [not null]
-  "is_system" boolean [not null]
-  "is_editable" boolean [not null]
-  "seed_version" int [not null]
-  "deprecated_at" timestamptz
   "sort_order" int [not null]
+  "origin" int [not null]
+  "light_primary" varchar(7) [not null]
+  "light_secondary" varchar(7) [not null]
+  "light_background" varchar(7) [not null]
+  "light_surface" varchar(7) [not null]
+  "light_appbar_background" varchar(32) [not null]
+  "light_appbar_text" varchar(7) [not null]
+  "light_drawer_background" varchar(32) [not null]
+  "light_drawer_text" varchar(7) [not null]
+  "light_drawer_icon" varchar(7) [not null]
+  "light_text_primary" varchar(7) [not null]
+  "light_text_secondary" varchar(7) [not null]
+  "light_info" varchar(7) [not null]
+  "light_success" varchar(7) [not null]
+  "light_warning" varchar(7) [not null]
+  "light_error" varchar(7) [not null]
+  "light_lines_default" varchar(7) [not null]
+  "light_divider" varchar(32) [not null]
+  "dark_primary" varchar(7) [not null]
+  "dark_secondary" varchar(7) [not null]
+  "dark_background" varchar(7) [not null]
+  "dark_surface" varchar(7) [not null]
+  "dark_appbar_background" varchar(32) [not null]
+  "dark_appbar_text" varchar(7) [not null]
+  "dark_drawer_background" varchar(32) [not null]
+  "dark_drawer_text" varchar(7) [not null]
+  "dark_drawer_icon" varchar(7) [not null]
+  "dark_text_primary" varchar(7) [not null]
+  "dark_text_secondary" varchar(7) [not null]
+  "dark_info" varchar(7) [not null]
+  "dark_success" varchar(7) [not null]
+  "dark_warning" varchar(7) [not null]
+  "dark_error" varchar(7) [not null]
+  "dark_lines_default" varchar(7) [not null]
+  "dark_divider" varchar(32) [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -946,12 +811,11 @@ Table "ui_theme_presets" {
   "deleted_by" uuid
 
   indexes {
-    theme_key [unique, name: 'ix_ui_theme_presets_theme_key', note: 'filter: tenant_id IS NULL AND is_deleted = false']
-    (tenant_id, theme_key) [unique, name: 'ix_ui_theme_presets_tenant_id_theme_key', note: 'filter: tenant_id IS NOT NULL AND is_deleted = false']
+    theme_key [unique, name: 'ix_ui_theme_presets_theme_key', note: 'filter: tenant_id IS NULL']
+    (tenant_id, theme_key) [unique, name: 'ix_ui_theme_presets_tenant_id_theme_key', note: 'filter: tenant_id IS NOT NULL']
     (tenant_id, is_active) [name: 'ix_ui_theme_presets_tenant_id_is_active']
   }
 }
-
 
 Table "tenant_onboarding_states" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
@@ -977,12 +841,15 @@ Table "tenant_policy_sets" {
   "updated_at" timestamptz
   "updated_by" uuid
   "xmin" xid [not null, note: 'rowversion / optimistic concurrency']
+  "events_policy" jsonb [not null]
+  "organizations_policy" jsonb [not null]
+  "branding_policy" jsonb [not null]
+  "render_policy" jsonb [not null]
 
   indexes {
     tenant_id [unique, name: 'ix_tenant_policy_sets_tenant_id']
   }
 }
-
 
 Table "tenant_lifecycle_logs" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
@@ -1064,7 +931,7 @@ Table "external_api_keys" {
   "key_id" varchar(64) [not null]
   "secret_hash" varchar(500) [not null]
   "scopes" varchar(1000) [not null]
-  "external_api_key_owner_type_id" int [not null]
+  "owner_type" int [not null]
   "owner_id" uuid [not null]
   "external_api_key_status_id" int [not null]
   "external_api_key_credit_period_id" int [not null]
@@ -1080,8 +947,7 @@ Table "external_api_keys" {
 
   indexes {
     key_id [unique, name: 'ix_external_api_keys_key_id']
-    external_api_key_owner_type_id [name: 'ix_external_api_keys_external_api_key_owner_type_id']
-    (tenant_id, external_api_key_owner_type_id, owner_id) [name: 'ix_external_api_keys_tenant_id_external_api_key_owner_type_id_']
+    (tenant_id, owner_type, owner_id) [name: 'ix_external_api_keys_tenant_id_owner_type_owner_id']
     (tenant_id, external_api_key_status_id) [name: 'ix_external_api_keys_tenant_id_external_api_key_status_id']
   }
 }
@@ -1089,12 +955,11 @@ Table "external_api_keys" {
 Table "external_api_key_quotas" {
   "id" uuid [pk, not null]
   "external_api_key_id" uuid [not null]
-  "period_start" date [not null]
-  "period_end" date [not null]
-  "credit_limit" int [not null]
-  "credits_used" int [not null]
-  "rollover_credits" int [not null]
-  "request_count" bigint [not null]
+  "period_start" timestamptz [not null]
+  "period_end" timestamptz [not null]
+  "credits_allowed" int [not null]
+  "credits_consumed" int [not null]
+  "credits_remaining" int [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -1104,7 +969,6 @@ Table "external_api_key_quotas" {
     (external_api_key_id, period_start) [unique]
   }
 }
-
 
 // ============================================================
 // Taxonomy (Categories, Tags)
@@ -1812,7 +1676,6 @@ Table "actors" {
   "tenant_id" uuid [not null]
   "profile_picture_id" uuid
   "banner_picture_id" uuid
-  "background_image_id" uuid
   "background_color" varchar(50)
   "background_effect" varchar(50)
   "banner_color" varchar(50)
@@ -1830,20 +1693,16 @@ Table "actors" {
   "deleted_by" uuid
 
   indexes {
-    (actor_type_id) [name: 'ix_actors_actor_type_id']
-    (background_image_id) [name: 'ix_actors_background_image_id']
-    (banner_picture_id) [name: 'ix_actors_banner_picture_id']
-    (did_custody_type_id) [name: 'ix_actors_did_custody_type_id']
-    (user_id) [unique, name: 'ix_actors_user_id', note: 'filtered: user_id IS NOT NULL']
-    (organization_id) [unique, name: 'ix_actors_organization_id', note: 'filtered: organization_id IS NOT NULL']
-    (group_id) [unique, name: 'ix_actors_group_id', note: 'filtered: group_id IS NOT NULL']
-    (profile_picture_id) [name: 'ix_actors_profile_picture_id']
+    user_id [unique, note: 'filtered: user_id IS NOT NULL']
+    organization_id [unique, note: 'filtered: organization_id IS NOT NULL']
+    group_id [unique, note: 'filtered: group_id IS NOT NULL']
+    profile_picture_id [name: 'ix_actors_profile_picture_id']
+    banner_picture_id [name: 'ix_actors_banner_picture_id']
     (tenant_id) [name: 'ix_actors_tenant_id']
   }
 
   Note: 'Federated identity (User|Org|Group|Bot). Check: CK_Actor_UserOrOrganization ensures exactly one owner FK or none (bot/service).'
 }
-
 
 Table "actor_pii" {
   "actor_id" uuid [pk, not null, note: 'shared PK with actors']
@@ -1965,62 +1824,64 @@ Table "user_notification_preferences" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "tenant_id" uuid [not null]
   "user_id" uuid [not null]
-  "category" varchar(128) [not null]
-  "is_enabled" boolean [not null]
+  "category" varchar(100) [not null]
+  "is_email_enabled" boolean [not null]
+  "is_push_enabled" boolean [not null]
+  "is_in_app_enabled" boolean [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
 
   indexes {
-    (tenant_id, user_id, category) [unique, name: 'ix_user_notification_preferences_tenant_id_user_id_category']
-    (user_id) [name: 'ix_user_notification_preferences_user_id']
+    (tenant_id, user_id, category) [unique]
   }
 }
-
 
 Table "user_appearance_profiles" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "user_id" uuid [not null]
   "tenant_id" uuid
   "name" varchar(200) [not null]
+  "description" varchar(1000)
   "is_default" boolean [not null]
   "is_archived" boolean [not null]
-  "is_user_editable" boolean [not null]
-  "theme_mode" varchar(10) [not null]
+  "theme_mode" int [not null]
   "theme_key" varchar(128)
   "source_preset_id" uuid
-  "source_preset_key" varchar(128)
-  "source_preset_seed_version" int
-  "cloned_at" timestamptz
+  "light_primary" varchar(7)
+  "light_secondary" varchar(7)
+  "light_background" varchar(7)
+  "light_surface" varchar(7)
+  "dark_primary" varchar(7)
+  "dark_secondary" varchar(7)
+  "dark_background" varchar(7)
+  "dark_surface" varchar(7)
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
 
   indexes {
-    (user_id, source_preset_id) [name: 'ix_user_appearance_profiles_user_id_source_preset_id']
-    (user_id, tenant_id, is_archived) [name: 'ix_user_appearance_profiles_user_id_tenant_id_is_archived']
-    (user_id, tenant_id, is_default) [unique, name: 'ix_user_appearance_profiles_user_id_tenant_id_is_default', note: 'filter: is_default = true']
-    (user_id, tenant_id, name) [name: 'ix_user_appearance_profiles_user_id_tenant_id_name']
+    (user_id, tenant_id, name)
+    (user_id, tenant_id, is_archived)
+    (user_id, tenant_id, is_default) [unique, name: 'ix_user_appearance_profiles_is_default', note: 'filter: is_default = true AND is_archived = false']
+    (user_id, source_preset_id)
   }
 }
-
 
 Table "user_appearance_preferences" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "user_id" uuid [not null]
   "tenant_id" uuid
   "active_profile_id" uuid
-  "direction" varchar(10) [not null]
-  "language" varchar(10) [not null]
-  "theme_mode" varchar(10) [not null]
+  "resolution_source" int [not null]
+  "last_resolved_at" timestamptz [not null]
 
   indexes {
-    (user_id, tenant_id) [unique, name: 'ix_user_appearance_preferences_user_id_tenant_id']
+    (user_id, tenant_id) [unique]
   }
 }
-
 
 // ============================================================
 // Organizations
@@ -2130,12 +1991,12 @@ Table "organization_policy_sets" {
   "updated_at" timestamptz
   "updated_by" uuid
   "xmin" xid [not null, note: 'rowversion / optimistic concurrency']
+  "events_policy" jsonb [not null]
 
   indexes {
     organization_id [unique, name: 'ix_organization_policy_sets_organization_id']
   }
 }
-
 
 // ============================================================
 // Groups
@@ -2294,11 +2155,6 @@ Table "events" {
   "registration_policy_id" int [note: 'FK to event_registration_policies. Null = Flexible.']
   "event_format_id" int [not null]
   "atproto_record_id" uuid
-  "instantiated_from_template_at" timestamptz
-  "last_synced_from_template_at" timestamptz
-  "source_template_id" uuid
-  "source_template_key" text
-  "source_template_version" int
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -2317,25 +2173,10 @@ Table "events" {
     (tenant_id, first_session_date, last_session_date) [name: 'ix_events_tenant_daterange']
     (tenant_id, event_type_id) [name: 'ix_events_tenant_eventtype']
     (tenant_id, slug) [name: 'ix_events_tenant_slug']
-    (tenant_id, visibility_type_id) [name: 'ix_events_tenant_visibility']
-    (actor_id) [name: 'ix_events_actor_id']
-    (atproto_record_id) [name: 'ix_events_atproto_record_id']
-    (audience_age_id) [name: 'ix_events_audience_age_id']
-    (audience_gender_id) [name: 'ix_events_audience_gender_id']
-    (background_image_id) [name: 'ix_events_background_image_id']
-    (featured_image_id) [name: 'ix_events_featured_image_id']
-    (event_format_id) [name: 'ix_events_event_format_id']
-    (event_series_id) [name: 'ix_events_event_series_id']
-    (event_status_id) [name: 'ix_events_event_status_id']
-    (event_type_id) [name: 'ix_events_event_type_id']
-    (madhab_id) [name: 'ix_events_madhab_id']
-    (registration_policy_id) [name: 'ix_events_registration_policy_id']
-    (visibility_type_id) [name: 'ix_events_visibility_type_id']
   }
 
   Note: 'Core aggregate. Check: CK_Event_NonNegativePrice (price >= 0). Soft-deletable, tenant-scoped, concurrency-protected.'
 }
-
 
 Table "event_islamic_aspects" {
   "id" uuid [pk, not null, note: 'shared PK with events']
@@ -2435,7 +2276,6 @@ Table "event_sessions" {
   "location_id" uuid
   "room_id" uuid
   "title" varchar(500)
-  "featured_image_id" uuid
   "tenant_id" uuid [not null]
   "slug" varchar(200)
   "max_audience_attendees" int
@@ -2451,11 +2291,6 @@ Table "event_sessions" {
   "local_end_time" time [not null]
   "local_start_minute_of_day" int [not null]
   "local_end_minute_of_day" int [not null]
-  "instantiated_from_template_at" timestamptz
-  "last_synced_from_template_at" timestamptz
-  "source_template_id" uuid
-  "source_template_key" text
-  "source_template_version" int
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -2469,17 +2304,10 @@ Table "event_sessions" {
     (tenant_id, event_id, local_start_date, local_start_minute_of_day) [name: 'ix_event_sessions_tenant_event_local_start']
     (tenant_id, room_id, start_time, end_time) [name: 'ix_event_sessions_tenant_room_time']
     (tenant_id, event_day_id, sort_order) [name: 'ix_event_sessions_tenant_day_sort']
-    (event_day_id) [name: 'ix_event_sessions_event_day_id']
-    (event_id) [name: 'ix_event_sessions_event_id']
-    (registration_mode_id) [name: 'ix_event_sessions_registration_mode_id']
-    (featured_image_id) [name: 'ix_event_sessions_featured_image_id']
-    (location_id) [name: 'ix_event_sessions_location_id']
-    (room_id) [name: 'ix_event_sessions_room_id']
   }
 
   Note: 'Check: CK_EventSession_NonNegativePrice, CK_EventSession_DurationPositive.'
 }
-
 
 Table "event_session_islamic_aspects" {
   "event_session_id" uuid [pk, not null, note: 'shared PK with event_sessions']
@@ -2611,38 +2439,24 @@ Table "event_session_categories" {
   "event_session_id" uuid [not null]
   "category_id" uuid [not null]
   "tenant_id" uuid [not null]
-  "created_at" timestamptz [not null]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
 
   indexes {
-    category_id [name: 'ix_event_session_categories_category_id']
-    event_session_id [name: 'ix_event_session_categories_event_session_id']
     (event_session_id, category_id) [unique]
     (tenant_id, event_session_id, category_id) [name: 'ix_event_session_categories_tenant_session_category']
   }
 }
-
 
 Table "event_session_tags" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "event_session_id" uuid [not null]
   "tag_id" uuid [not null]
   "tenant_id" uuid [not null]
-  "created_at" timestamptz [not null]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
 
   indexes {
-    event_session_id [name: 'ix_event_session_tags_event_session_id']
-    tag_id [name: 'ix_event_session_tags_tag_id']
     (event_session_id, tag_id) [unique]
     (tenant_id, event_session_id, tag_id) [name: 'ix_event_session_tags_tenant_session_tag']
   }
 }
-
 
 Table "event_contact_share_consents" {
   "id" uuid [pk, not null, note: 'uuidv7()']
@@ -2671,7 +2485,7 @@ Table "event_contact_share_consents" {
   }
 }
 
-Table "event_contact_share_exports" {
+Table "event_contact_share_export" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "tenant_id" uuid [not null]
   "recipient_actor_id" uuid [not null]
@@ -2683,23 +2497,14 @@ Table "event_contact_share_exports" {
 
   indexes {
     (tenant_id, recipient_actor_id, created_at) [name: 'ix_eventcontactshareexports_recipient_date']
-    (recipient_actor_id) [name: 'ix_event_contact_share_exports_recipient_actor_id']
-    (event_id) [name: 'ix_event_contact_share_exports_event_id']
-    (exported_by_user_id) [name: 'ix_event_contact_share_exports_exported_by_user_id']
   }
 }
 
-
-Table "event_contact_share_export_items" {
+Table "event_contact_share_export_item" {
   "export_id" uuid [pk, not null]
   "consent_id" uuid [pk, not null]
   "email_snapshot" varchar(320) [not null]
-
-  indexes {
-    (consent_id) [name: 'ix_event_contact_share_export_items_consent_id']
-  }
 }
-
 
 // ============================================================
 // Audit & Notifications
@@ -2731,19 +2536,15 @@ Table "notifications" {
   "notification_type_id" int [not null]
   "notification_reason_id" int [not null]
   "source_entity_type_id" int [not null]
-  "notification_entity_type_id" int [not null]
-  "source_actor_id" uuid
-  "recipient_context_actor_id" uuid
-  "notification_scope_id" int
-  "entity_id" varchar(200)
-  "title" varchar(500) [not null]
-  "body" varchar(2000) [not null]
-  "snoozed_until" timestamptz
+  "source_entity_id" uuid [not null]
+  "title" varchar(200) [not null]
+  "content" varchar(2000) [not null]
+  "action_url" varchar(1000)
   "is_read" boolean [not null]
   "read_at" timestamptz
   "is_archived" boolean [not null]
   "archived_at" timestamptz
-  "notification_reason_id" int [not null]
+  "notification_scope_id" uuid
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -2753,20 +2554,13 @@ Table "notifications" {
   "deleted_by" uuid
 
   indexes {
-    notification_entity_type_id [name: 'ix_notifications_notification_entity_type_id']
-    notification_reason_id [name: 'ix_notifications_notification_reason_id']
-    notification_scope_id [name: 'ix_notifications_notification_scope_id']
-    notification_type_id [name: 'ix_notifications_notification_type_id']
-    recipient_context_actor_id [name: 'ix_notifications_recipient_context_actor_id']
-    source_actor_id [name: 'ix_notifications_source_actor_id']
     (tenant_id, user_id, is_read, created_at) [name: 'ix_notifications_tenant_user_unread', note: 'descending: created_at']
-    (tenant_id, user_id, created_at) [name: 'ix_notifications_unread_by_user', note: 'descending: created_at', unique]
+    (tenant_id, user_id, created_at) [name: 'ix_notifications_unread_by_user', note: 'descending: created_at']
     (tenant_id, notification_type_id) [name: 'ix_notifications_tenant_type']
     (user_id, notification_scope_id, is_read) [name: 'ix_notifications_user_scope']
     (user_id, is_archived, created_at) [name: 'ix_notifications_user_archived', note: 'descending: created_at']
   }
 }
-
 
 Table "policy_change_outbox" {
   "id" uuid [pk, not null]
@@ -2788,12 +2582,10 @@ Table "policy_change_outbox" {
 
 Table "idempotency_records" {
   "id" uuid [pk, not null, note: 'uuidv7()']
-  "key" varchar(128) [not null]
+  "key" varchar(255) [not null]
   "tenant_id" uuid [not null]
-  "user_id" varchar(256)
   "expires_at" timestamptz [not null]
-  "status_code" int
-  "content_type" varchar(256)
+  "response_status_code" int
   "response_body" text
   "created_at" timestamptz [not null]
 
@@ -2803,80 +2595,22 @@ Table "idempotency_records" {
   }
 }
 
-
 // ============================================================
 // Views
 // ============================================================
 
-Table "custom_property_projection_dirty_scope" {
-  "id" bigint [pk, not null, note: 'bigint identity']
-  "projection_name" varchar(100) [not null]
-  "projection_version" int [not null]
-  "tenant_id" uuid [not null]
-  "scope_type" varchar(50) [not null]
-  "scope_id" uuid
-  "definition_id" uuid
-  "reason" varchar(200) [not null]
-  "created_at" timestamptz [not null]
-  "drained_at" timestamptz
+Table "event_with_sessions_view" {
+  "event_id" uuid [pk]
+  "tenant_id" uuid
+  "event_title" varchar(200)
+  "session_count" int
+  "total_views" int
+  "first_session_start_utc" timestamptz
+  "last_session_end_utc" timestamptz
+  "is_deleted" boolean
 
-  indexes {
-    tenant_id [name: 'ix_custom_property_projection_dirty_scope_tenant_id']
-    (projection_name, projection_version, tenant_id) [name: 'ix_dirty_scope_pending', note: 'filter: drained_at IS NULL']
-    (projection_name, projection_version, tenant_id, scope_type, scope_id, definition_id) [unique, name: 'ix_dirty_scope_unique']
-  }
+  Note: 'Materialized or standard view for listing performance.'
 }
-
-Table "custom_property_projection_status" {
-  "projection_name" varchar(100) [not null]
-  "projection_version" int [not null]
-  "tenant_id" uuid [not null]
-  "state" varchar(50) [not null]
-  "last_rebuild_started_at" timestamptz
-  "last_rebuild_completed_at" timestamptz
-  "rows_processed" bigint [not null]
-  "rows_failed" bigint [not null]
-  "last_checkpoint" varchar(200)
-  "last_error_message" varchar(2000)
-  "concurrency_stamp" uuid [not null]
-
-  indexes {
-    tenant_id [name: 'ix_custom_property_projection_status_tenant_id']
-  }
-
-  Note: 'PK is (projection_name, projection_version, tenant_id).'
-}
-
-Table "event_role_assignments" {
-  "id" uuid [pk, not null, note: 'uuidv7()']
-  "tenant_id" uuid [not null]
-  "event_id" uuid [not null]
-  "user_id" uuid [not null]
-  "role_id" int [not null]
-  "status" int [not null]
-  "starts_at_utc" timestamptz [not null]
-  "expires_at_utc" timestamptz
-  "revoked_at_utc" timestamptz
-  "revoked_by_user_id" uuid
-  "version" bigint [not null, note: 'concurrency token']
-  "created_at" timestamptz [not null]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
-
-  indexes {
-    event_id [name: 'ix_event_role_assignments_event_id']
-    role_id [name: 'ix_event_role_assignments_role_id']
-    user_id [name: 'ix_event_role_assignments_user_id']
-    (tenant_id, event_id, role_id, status) [name: 'ix_event_role_assignments_tenant_event_role_status']
-    (tenant_id, event_id, user_id, role_id) [unique, name: 'ix_event_role_assignments_unique_pending_active', note: 'filter: status IN (1, 2)']
-    (tenant_id, event_id, user_id, status) [name: 'ix_event_role_assignments_tenant_event_user_status']
-    (tenant_id, user_id, event_id, status) [name: 'ix_event_role_assignments_tenant_user_event_status']
-  }
-
-  Note: 'Check: ck_event_role_assignments_validity_window (expires_at_utc IS NULL OR expires_at_utc > starts_at_utc).'
-}
-
 
 // ============================================================
 // Relationships (Foreign Keys)
@@ -2901,8 +2635,6 @@ Ref: "tenant_members"."user_id" > "users"."id" [delete: cascade]
 Ref: "user_pii"."user_id" - "users"."id" [delete: cascade]
 Ref: "platform_user_roles"."user_id" > "users"."id" [delete: restrict]
 Ref: "platform_user_roles"."role_id" > "roles"."id" [delete: restrict]
-Ref: "roles"."role_scope_id" > "role_scopes"."id" [delete: restrict]
-Ref: "permissions"."role_scope_id" > "role_scopes"."id" [delete: restrict]
 Ref: "role_permissions"."role_id" > "roles"."id" [delete: cascade]
 Ref: "role_permissions"."permission_id" > "permissions"."id" [delete: cascade]
 Ref: "user_authentication_tokens"."user_id" > "users"."id" [delete: restrict]
@@ -3006,11 +2738,11 @@ Ref: "event_contact_share_consents"."user_id" > "users"."id" [delete: restrict]
 Ref: "event_contact_share_consents"."recipient_actor_id" > "actors"."id" [delete: restrict]
 Ref: "event_contact_share_consents"."source_event_id" > "events"."id" [delete: restrict]
 Ref: "event_contact_share_consents"."source_event_registration_intent_id" > "event_registration_intents"."id" [delete: restrict]
-Ref: "event_contact_share_exports"."recipient_actor_id" > "actors"."id" [delete: restrict]
-Ref: "event_contact_share_exports"."event_id" > "events"."id" [delete: restrict]
-Ref: "event_contact_share_exports"."exported_by_user_id" > "users"."id" [delete: restrict]
-Ref: "event_contact_share_export_items"."export_id" > "event_contact_share_exports"."id" [delete: cascade]
-Ref: "event_contact_share_export_items"."consent_id" > "event_contact_share_consents"."id" [delete: restrict]
+Ref: "event_contact_share_export"."recipient_actor_id" > "actors"."id" [delete: restrict]
+Ref: "event_contact_share_export"."event_id" > "events"."id" [delete: restrict]
+Ref: "event_contact_share_export"."exported_by_user_id" > "users"."id" [delete: restrict]
+Ref: "event_contact_share_export_item"."export_id" > "event_contact_share_export"."id" [delete: cascade]
+Ref: "event_contact_share_export_item"."consent_id" > "event_contact_share_consents"."id" [delete: restrict]
 
 // Custom Properties (EAV)
 Ref: "custom_property_definitions"."default_option_id" > "custom_property_options"."id" [delete: cascade]
@@ -3057,18 +2789,9 @@ Ref: "event_session_custom_property_projections"."event_session_custom_property_
 Ref: "notifications"."notification_type_id" > "notification_types"."id" [delete: restrict]
 Ref: "notifications"."notification_reason_id" > "notification_reasons"."id" [delete: restrict]
 Ref: "notifications"."source_entity_type_id" > "notification_entity_types"."id" [delete: restrict]
-Ref: "notifications"."notification_scope_id" > "notification_scope_types"."id" [delete: restrict]
 Ref: "notifications"."user_id" > "users"."id" [delete: restrict]
 
 // API Keys
-Ref: "external_api_keys"."external_api_key_owner_type_id" > "external_api_key_owner_types"."id" [delete: restrict]
 Ref: "external_api_keys"."external_api_key_status_id" > "external_api_key_statuses"."id" [delete: restrict]
 Ref: "external_api_keys"."external_api_key_credit_period_id" > "external_api_key_credit_periods"."id" [delete: restrict]
 Ref: "external_api_key_quotas"."external_api_key_id" > "external_api_keys"."id" [delete: cascade]
-
-// Configuration & Secrets
-Ref: "system_settings"."setting_value_type_id" > "setting_value_types"."id" [delete: restrict]
-Ref: "configuration_change_logs"."setting_scope_id" > "setting_scopes"."id" [delete: restrict]
-Ref: "secret_bindings"."setting_scope_id" > "setting_scopes"."id" [delete: restrict]
-Ref: "secret_bindings"."secret_source_type_id" > "secret_source_types"."id" [delete: restrict]
-Ref: "secret_bindings"."secret_validation_status_id" > "secret_validation_statuses"."id" [delete: restrict]

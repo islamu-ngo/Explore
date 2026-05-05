@@ -830,3 +830,7 @@ All five open questions from the v1 draft were answered in the CTO feedback pass
 ## New Open Question (surfaced during revision)
 
 **Tier-1 "first-boot" experience with empty bundles** — if a fresh self-hoster deploys without configuring a TMS, the picker correctly shows `en`/`fr`/`ar` from `CultureRegistry ∩ enabled_languages`, but the bundles shipped with the container are populated in Slice A (Phase 5). Slice A delivery sequence must land Phase 5 BEFORE any public rollout, otherwise Tier-1 users see English content even when Arabic is selected. Mitigation: Phase 5 is in-slice with Phase 1 and is on the Slice A critical path; Slice A is not declared done until bundles are populated and `LanguageContext.IsRtl = true` for `ar` produces RTL layout with populated Arabic content. This is captured as an acceptance criterion in `blazor-localization-tasks.md` Phase 5.
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+No implementation work was performed for this active task during the sidebar dock refactor handoff session. Existing context, plan, and task files remain the authoritative state for this workstream. Do not infer progress or blockers here from the sidebar/dock-specific changes unless a future session explicitly broadens scope.

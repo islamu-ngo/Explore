@@ -5,19 +5,19 @@
 
 # API Contract Action Inventory
 
-**Generated:** 2026-05-03 14:29:26Z (UTC)
+**Generated:** 2026-05-05 16:33:33Z (UTC)
 **Source:** `/openapi/event-api.json`
 **Governed by:** [docs/GOVERNANCE.md#api-contract-rules](../../../docs/GOVERNANCE.md#api-contract-rules)
 
 ## Summary
 
-- Total paths: **256**
-- Total operations: **382**
+- Total paths: **263**
+- Total operations: **392**
 - Operations missing `operationId`: **0**
 - Operation IDs with placeholder fallback pattern (ends in digit or `\dAsync`): **0**
 - URL-segment-versioned paths (`^/api/v\d`, banned by governance): **0**
 - Operations missing `x-endpoint-class` extension: **0**
-- Classification breakdown: `Admin`=6, `Authenticated`=259, `Public`=117
+- Classification breakdown: `Admin`=6, `Authenticated`=266, `Public`=120
 
 ## Operations
 
@@ -108,303 +108,313 @@
 | 83 | `/api/event/{id}/aspects/tech` | `PUT` | `UpsertEventTechAspect` | Create/Update Event Tech Aspect | Event | _(Phase 1.4)_ | `Authenticated` | no |
 | 84 | `/api/event/{id}/aspects/tech` | `DELETE` | `DeleteEventTechAspect` | Delete Event Tech Aspect | Event | _(Phase 1.4)_ | `Authenticated` | no |
 | 85 | `/api/event/{id}/calendar` | `GET` | `GetEventCalendar` | Download Event Calendar | Event | _(Phase 1.4)_ | `Public` | no |
-| 86 | `/api/eventagendaitem` | `POST` | `CreateEventAgendaItem` | Create Agenda Item | EventAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
-| 87 | `/api/eventagendaitem/agenda-projection/{eventId}` | `GET` | `GetEventAgendaProjection` | Get Event Agenda Projection | EventAgendaItem | _(Phase 1.4)_ | `Public` | no |
-| 88 | `/api/eventagendaitem/by-event/{eventId}` | `GET` | `GetEventAgendaItemsByEvent` | Get Agenda Items by Event | EventAgendaItem | _(Phase 1.4)_ | `Public` | no |
-| 89 | `/api/eventagendaitem/{id}` | `GET` | `GetEventAgendaItemById` | Get Agenda Item Details | EventAgendaItem | _(Phase 1.4)_ | `Public` | no |
-| 90 | `/api/eventagendaitem/{id}` | `PUT` | `UpdateEventAgendaItem` | Update Agenda Item | EventAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
-| 91 | `/api/eventagendaitem/{id}` | `DELETE` | `DeleteEventAgendaItem` | Delete Agenda Item | EventAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
-| 92 | `/api/eventcustomproperty` | `GET` | `GetEventCustomPropertyDefinitions` | Get all EventCustomPropertyDefinitions | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 93 | `/api/eventcustomproperty` | `POST` | `CreateEventCustomPropertyDefinition` | Create EventCustomPropertyDefinition | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 94 | `/api/eventcustomproperty/value` | `PUT` | `SetEventCustomPropertyValue` | Set EventCustomPropertyValue | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 95 | `/api/eventcustomproperty/values` | `GET` | `GetEventCustomPropertyValues` | Get EventCustomPropertyValues | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 96 | `/api/eventcustomproperty/values` | `PUT` | `SetEventCustomPropertyMultiValues` | Set EventCustomPropertyMultiValues | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 97 | `/api/eventcustomproperty/{id}` | `GET` | `GetEventCustomPropertyDefinitionById` | Get EventCustomPropertyDefinition Details | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 98 | `/api/eventcustomproperty/{id}` | `PUT` | `UpdateEventCustomPropertyDefinition` | Update EventCustomPropertyDefinition | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 99 | `/api/eventcustomproperty/{id}` | `DELETE` | `DeleteEventCustomPropertyDefinition` | _(none)_ | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 100 | `/api/eventday` | `POST` | `CreateEventDay` | Create Event Day | EventDay | _(Phase 1.4)_ | `Authenticated` | no |
-| 101 | `/api/eventday/by-event/{eventId}` | `GET` | `GetEventDaysByEvent` | Get Event Days by Event | EventDay | _(Phase 1.4)_ | `Public` | no |
-| 102 | `/api/eventday/{id}` | `GET` | `GetEventDayById` | Get Event Day Details | EventDay | _(Phase 1.4)_ | `Public` | no |
-| 103 | `/api/eventday/{id}` | `PUT` | `UpdateEventDay` | Update Event Day | EventDay | _(Phase 1.4)_ | `Authenticated` | no |
-| 104 | `/api/eventday/{id}` | `DELETE` | `DeleteEventDay` | Delete Event Day | EventDay | _(Phase 1.4)_ | `Authenticated` | no |
-| 105 | `/api/eventformat` | `GET` | `GetEventFormatOptions` | Get all Event Formats | EventFormat | _(Phase 1.4)_ | `Public` | no |
-| 106 | `/api/eventformat/{id}` | `GET` | `GetEventFormatOptionById` | Get Event Format by ID | EventFormat | _(Phase 1.4)_ | `Public` | no |
-| 107 | `/api/eventregistration` | `GET` | `GetEventRegistrations` | Get all Event Registrations | EventRegistration | _(Phase 1.4)_ | `Public` | no |
-| 108 | `/api/eventregistration` | `POST` | `CreateEventRegistration` | Register User for Event Session | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
-| 109 | `/api/eventregistration/by-session/{eventSessionId}` | `GET` | `GetRegistrationsBySession` | Get Registrations by Event Session | EventRegistration | _(Phase 1.4)_ | `Public` | no |
-| 110 | `/api/eventregistration/by-user/{userId}` | `GET` | `GetRegistrationsByUser` | Get Registrations by User | EventRegistration | _(Phase 1.4)_ | `Public` | no |
-| 111 | `/api/eventregistration/{id}` | `GET` | `GetEventRegistrationById` | Get Event Registration by ID | EventRegistration | _(Phase 1.4)_ | `Public` | no |
-| 112 | `/api/eventregistration/{id}` | `PUT` | `UpdateEventRegistration` | Update Event Registration | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
-| 113 | `/api/eventregistration/{id}` | `DELETE` | `DeleteEventRegistration` | Cancel Event Registration | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
-| 114 | `/api/eventregistrationpolicy` | `GET` | `GetEventRegistrationPolicies` | Get all Event Registration Policies | EventRegistrationPolicy | _(Phase 1.4)_ | `Public` | no |
-| 115 | `/api/events/{eventId}/template-sync/apply` | `POST` | `ApplyEventTemplateSync` | _(none)_ | EventTemplateSync | _(Phase 1.4)_ | `Authenticated` | no |
-| 116 | `/api/events/{eventId}/template-sync/diff` | `GET` | `GetEventTemplateSyncDiff` | _(none)_ | EventTemplateSync | _(Phase 1.4)_ | `Authenticated` | no |
-| 117 | `/api/events/{eventId}/template-sync/history` | `GET` | `GetEventTemplateSyncHistory` | _(none)_ | EventTemplateSync | _(Phase 1.4)_ | `Authenticated` | no |
-| 118 | `/api/eventseries` | `GET` | `GetEventSeries` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Public` | no |
-| 119 | `/api/eventseries` | `POST` | `CreateEventSeries` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Authenticated` | no |
-| 120 | `/api/eventseries/top` | `GET` | `GetTopEventSeries` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Public` | no |
-| 121 | `/api/eventseries/{id}` | `GET` | `GetEventSeriesById` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Public` | no |
-| 122 | `/api/eventseries/{id}` | `PUT` | `UpdateEventSeries` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Authenticated` | no |
-| 123 | `/api/eventseries/{id}` | `DELETE` | `DeleteEventSeries` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Authenticated` | no |
-| 124 | `/api/eventsession` | `GET` | `GetEventSessionsList` | Get all Event Sessions | EventSession | _(Phase 1.4)_ | `Public` | no |
-| 125 | `/api/eventsession` | `POST` | `CreateEventSession` | Create Event Session | EventSession | _(Phase 1.4)_ | `Authenticated` | no |
-| 126 | `/api/eventsession/by-event/{eventId}` | `GET` | `GetEventSessions` | Get Sessions by Event | EventSession | _(Phase 1.4)_ | `Public` | no |
-| 127 | `/api/eventsession/{id}` | `GET` | `GetEventSessionById` | Get Event Session Details | EventSession | _(Phase 1.4)_ | `Public` | no |
-| 128 | `/api/eventsession/{id}` | `PUT` | `UpdateEventSession` | Update Event Session | EventSession | _(Phase 1.4)_ | `Authenticated` | no |
-| 129 | `/api/eventsession/{id}` | `DELETE` | `DeleteEventSession` | Delete Event Session | EventSession | _(Phase 1.4)_ | `Authenticated` | no |
-| 130 | `/api/eventsessionagendaitem` | `GET` | `GetEventSessionAgendaItems` | Get all Agenda Items | EventSessionAgendaItem | _(Phase 1.4)_ | `Public` | no |
-| 131 | `/api/eventsessionagendaitem` | `POST` | `CreateEventSessionAgendaItem` | Create Agenda Item | EventSessionAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
-| 132 | `/api/eventsessionagendaitem/by-session/{sessionId}` | `GET` | `GetEventSessionAgendaItemsBySession` | Get Agenda Items by Session | EventSessionAgendaItem | _(Phase 1.4)_ | `Public` | no |
-| 133 | `/api/eventsessionagendaitem/{id}` | `GET` | `GetEventSessionAgendaItemById` | Get Agenda Item Details | EventSessionAgendaItem | _(Phase 1.4)_ | `Public` | no |
-| 134 | `/api/eventsessionagendaitem/{id}` | `PUT` | `UpdateEventSessionAgendaItem` | Update Agenda Item | EventSessionAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
-| 135 | `/api/eventsessionagendaitem/{id}` | `DELETE` | `DeleteEventSessionAgendaItem` | Delete Agenda Item | EventSessionAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
-| 136 | `/api/eventsessioncustomproperty` | `GET` | `GetEventSessionCustomPropertyDefinitions` | Get all EventSessionCustomPropertyDefinitions | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 137 | `/api/eventsessioncustomproperty` | `POST` | `CreateEventSessionCustomPropertyDefinition` | Create EventSessionCustomPropertyDefinition | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 138 | `/api/eventsessioncustomproperty/value` | `PUT` | `SetEventSessionCustomPropertyValue` | Set EventSessionCustomPropertyValue | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 139 | `/api/eventsessioncustomproperty/values` | `GET` | `GetEventSessionCustomPropertyValues` | Get EventSessionCustomPropertyValues | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 140 | `/api/eventsessioncustomproperty/values` | `PUT` | `SetEventSessionCustomPropertyMultiValues` | Set EventSessionCustomPropertyMultiValues | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 141 | `/api/eventsessioncustomproperty/{id}` | `GET` | `GetEventSessionCustomPropertyDefinitionById` | Get EventSessionCustomPropertyDefinition Details | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 142 | `/api/eventsessioncustomproperty/{id}` | `PUT` | `UpdateEventSessionCustomPropertyDefinition` | Update EventSessionCustomPropertyDefinition | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 143 | `/api/eventsessioncustomproperty/{id}` | `DELETE` | `DeleteEventSessionCustomPropertyDefinition` | _(none)_ | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
-| 144 | `/api/eventsessiontemplate` | `GET` | `GetEventSessionTemplates` | Get all EventSessionTemplates | EventSessionTemplate | _(Phase 1.4)_ | `Public` | no |
-| 145 | `/api/eventsessiontemplate` | `POST` | `CreateEventSessionTemplate` | Create EventSessionTemplate | EventSessionTemplate | _(Phase 1.4)_ | `Authenticated` | no |
-| 146 | `/api/eventsessiontemplate/{id}` | `GET` | `GetEventSessionTemplateById` | Get EventSessionTemplate Details | EventSessionTemplate | _(Phase 1.4)_ | `Public` | no |
-| 147 | `/api/eventsessiontemplate/{id}` | `PUT` | `UpdateEventSessionTemplate` | Update EventSessionTemplate | EventSessionTemplate | _(Phase 1.4)_ | `Authenticated` | no |
-| 148 | `/api/eventsessiontemplate/{id}` | `DELETE` | `DeleteEventSessionTemplate` | _(none)_ | EventSessionTemplate | _(Phase 1.4)_ | `Authenticated` | no |
-| 149 | `/api/eventstatus` | `GET` | `GetEventStatuses` | Get all Event Statuses | EventStatus | _(Phase 1.4)_ | `Public` | no |
-| 150 | `/api/eventstatus/{id}` | `GET` | `GetEventStatusById` | Get Event Status by ID | EventStatus | _(Phase 1.4)_ | `Public` | no |
-| 151 | `/api/eventtemplate` | `GET` | `GetEventTemplates` | Get all EventTemplates | EventTemplate | _(Phase 1.4)_ | `Public` | no |
-| 152 | `/api/eventtemplate` | `POST` | `CreateEventTemplate` | Create EventTemplate | EventTemplate | _(Phase 1.4)_ | `Authenticated` | no |
-| 153 | `/api/eventtemplate/{id}` | `GET` | `GetEventTemplateById` | Get EventTemplate Details | EventTemplate | _(Phase 1.4)_ | `Public` | no |
-| 154 | `/api/eventtemplate/{id}` | `PUT` | `UpdateEventTemplate` | Update EventTemplate | EventTemplate | _(Phase 1.4)_ | `Authenticated` | no |
-| 155 | `/api/eventtemplate/{id}` | `DELETE` | `DeleteEventTemplate` | _(none)_ | EventTemplate | _(Phase 1.4)_ | `Authenticated` | no |
-| 156 | `/api/eventtype` | `GET` | `GetEventTypes` | Get all Event Types | EventType | _(Phase 1.4)_ | `Public` | no |
-| 157 | `/api/externalapikey` | `GET` | `GetExternalApiKeys` | Get visible external API keys | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
-| 158 | `/api/externalapikey` | `POST` | `CreateExternalApiKey` | Create a new external API key | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
-| 159 | `/api/externalapikey/usage-report` | `GET` | `GetExternalApiKeyUsageReport` | Get API key usage report | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
-| 160 | `/api/externalapikey/{id}` | `GET` | `GetExternalApiKeyById` | Get external API key details | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
-| 161 | `/api/externalapikey/{id}` | `PUT` | `UpdateExternalApiKey` | Update an external API key policy | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
-| 162 | `/api/externalapikey/{id}` | `DELETE` | `DeleteExternalApiKey` | Revoke an external API key | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
-| 163 | `/api/features/my-flags` | `GET` | `GetMyFeatureFlags` | _(none)_ | Features | _(Phase 1.4)_ | `Authenticated` | no |
-| 164 | `/api/filetype` | `GET` | `GetFileTypes` | Get all File Types | FileType | _(Phase 1.4)_ | `Public` | no |
-| 165 | `/api/filetype/{id}` | `GET` | `GetFileTypeById` | Get File Type by ID | FileType | _(Phase 1.4)_ | `Public` | no |
-| 166 | `/api/footer/config` | `GET` | `GetFooterConfig` | _(none)_ | Footer | _(Phase 1.4)_ | `Public` | no |
-| 167 | `/api/footer/link-groups` | `GET` | `GetFooterLinkGroups` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
-| 168 | `/api/footer/link-groups` | `POST` | `CreateFooterLinkGroup` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
-| 169 | `/api/footer/link-groups/reorder` | `POST` | `ReorderFooterLinkGroups` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
-| 170 | `/api/footer/link-groups/{groupId}/links` | `POST` | `CreateFooterLink` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
-| 171 | `/api/footer/link-groups/{id}` | `GET` | `GetFooterLinkGroupById` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
-| 172 | `/api/footer/link-groups/{id}` | `PUT` | `UpdateFooterLinkGroup` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
-| 173 | `/api/footer/link-groups/{id}` | `DELETE` | `DeleteFooterLinkGroup` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
-| 174 | `/api/footer/links/{id}` | `PUT` | `UpdateFooterLink` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
-| 175 | `/api/footer/links/{id}` | `DELETE` | `DeleteFooterLink` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
-| 176 | `/api/footer/settings` | `PUT` | `UpdateTenantFooterSettings` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
-| 177 | `/api/group` | `GET` | `GetGroups` | Get all Groups | Group | _(Phase 1.4)_ | `Public` | no |
-| 178 | `/api/group` | `POST` | `CreateGroup` | Create Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
-| 179 | `/api/group/my` | `GET` | `GetMyGroups` | Get my Groups | Group | _(Phase 1.4)_ | `Authenticated` | no |
-| 180 | `/api/group/{id}` | `GET` | `GetGroupById` | Get Group Details | Group | _(Phase 1.4)_ | `Public` | no |
-| 181 | `/api/group/{id}` | `PUT` | `UpdateGroup` | Update Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
-| 182 | `/api/group/{id}` | `DELETE` | `DeleteGroup` | Delete Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
-| 183 | `/api/groupmember` | `POST` | `CreateGroupMember` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 184 | `/api/groupmember/member/{id}` | `GET` | `GetGroupMemberById` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Public` | no |
-| 185 | `/api/groupmember/role` | `PUT` | `UpdateGroupMember` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 186 | `/api/groupmember/{groupId}` | `GET` | `GetGroupMembers` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Public` | no |
-| 187 | `/api/groupmember/{id}` | `DELETE` | `DeleteGroupMember` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 188 | `/api/groupposition` | `GET` | `GetGroupPositions` | Get all Group Positions | GroupPosition | _(Phase 1.4)_ | `Public` | no |
-| 189 | `/api/groupposition/{id}` | `GET` | `GetGroupPositionById` | Get Group Position by ID | GroupPosition | _(Phase 1.4)_ | `Public` | no |
-| 190 | `/api/indexeddid` | `GET` | `GetIndexedDids` | _(none)_ | IndexedDid | _(Phase 1.4)_ | `Public` | no |
-| 191 | `/api/indexeddid` | `POST` | `CreateIndexedDid` | _(none)_ | IndexedDid | _(Phase 1.4)_ | `Authenticated` | no |
-| 192 | `/api/indexeddid/{did}` | `GET` | `GetIndexedDidByDid` | _(none)_ | IndexedDid | _(Phase 1.4)_ | `Public` | no |
-| 193 | `/api/indexeddid/{did}` | `PUT` | `UpdateIndexedDid` | _(none)_ | IndexedDid | _(Phase 1.4)_ | `Authenticated` | no |
-| 194 | `/api/indexeddid/{did}` | `DELETE` | `DeleteIndexedDid` | _(none)_ | IndexedDid | _(Phase 1.4)_ | `Authenticated` | no |
-| 195 | `/api/instance/settings/analytics-governance` | `GET` | `GetInstanceAnalyticsGovernanceSettings` | Get Analytics Governance Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 196 | `/api/instance/settings/analytics-governance` | `PUT` | `UpdateInstanceAnalyticsGovernanceSettings` | Update Analytics Governance Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 197 | `/api/instance/settings/auth-provider` | `GET` | `GetInstanceAuthProviderConfiguration` | Get Auth Provider Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 198 | `/api/instance/settings/auth-provider` | `PUT` | `UpdateInstanceAuthProviderConfiguration` | Update Auth Provider Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 199 | `/api/instance/settings/auth-provider/status` | `GET` | `GetInstanceAuthProviderConfigurationStatus` | Check Auth Provider Configuration Status | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 200 | `/api/instance/settings/authz-provider` | `GET` | `GetInstanceAuthorizationProviderConfiguration` | Get Authorization Provider Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 201 | `/api/instance/settings/authz-provider` | `PUT` | `UpdateInstanceAuthorizationProviderConfiguration` | Update Authorization Provider Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 202 | `/api/instance/settings/authz-provider/status` | `GET` | `GetInstanceAuthorizationProviderConfigurationStatus` | Check Authorization Provider Configuration Status | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 203 | `/api/instance/settings/branding` | `GET` | `GetInstanceBrandingSettings` | Get Branding Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 204 | `/api/instance/settings/branding` | `PUT` | `UpdateInstanceBrandingSettings` | Update Branding Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 205 | `/api/instance/settings/deployment-mode` | `GET` | `GetInstanceDeploymentMode` | Get Deployment Mode | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 206 | `/api/instance/settings/deployment-mode` | `POST` | `UpdateInstanceDeploymentMode` | Deployment Mode Is Operator-Controlled | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 207 | `/api/instance/settings/domains` | `GET` | `GetInstanceDomainSettings` | Get Domain Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 208 | `/api/instance/settings/domains` | `PUT` | `UpdateInstanceDomainSettings` | Update Domain Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 209 | `/api/instance/settings/events` | `GET` | `GetInstanceEventPolicy` | Get Event Policy | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 210 | `/api/instance/settings/events` | `PUT` | `UpdateInstanceEventPolicy` | Update Event Policy | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 211 | `/api/instance/settings/footer-governance` | `GET` | `GetFooterGovernanceSettings` | Get Footer Governance Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 212 | `/api/instance/settings/footer-governance` | `PUT` | `UpdateFooterGovernanceSettings` | Update Footer Governance Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 213 | `/api/instance/settings/modules` | `GET` | `GetInstanceModuleSettings` | Get Module Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 214 | `/api/instance/settings/modules` | `PUT` | `UpdateInstanceModuleSettings` | Update Module Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 215 | `/api/instance/settings/organizations` | `GET` | `GetInstanceOrganizationPolicy` | Get Organization Policy | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 216 | `/api/instance/settings/organizations` | `PUT` | `UpdateInstanceOrganizationPolicy` | Update Organization Policy | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 217 | `/api/instance/settings/render-policy` | `GET` | `GetInstanceRenderPolicySettings` | Get Render Policy Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 218 | `/api/instance/settings/render-policy` | `PUT` | `UpdateInstanceRenderPolicySettings` | Update Render Policy Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 219 | `/api/instance/settings/resolver-config` | `GET` | `GetInstanceResolverConfiguration` | Get Tenant Resolver Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 220 | `/api/instance/settings/resolver-config` | `PUT` | `UpdateInstanceResolverConfiguration` | Update Tenant Resolver Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 221 | `/api/instance/settings/smtp` | `GET` | `GetInstanceSmtpSettings` | Get Instance SMTP Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 222 | `/api/instance/settings/smtp` | `PUT` | `UpdateInstanceSmtpSettings` | Update Instance SMTP Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 223 | `/api/instance/settings/smtp/test` | `POST` | `TestInstanceSmtpConnection` | Test SMTP Connection | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 224 | `/api/instance/settings/storage` | `GET` | `GetInstanceStorageSettings` | Get Instance Storage Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 225 | `/api/instance/settings/storage` | `PUT` | `UpdateInstanceStorageSettings` | Update Instance Storage Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 226 | `/api/instance/settings/storage/test` | `POST` | `TestInstanceStorageConnection` | Test Storage Connection | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 227 | `/api/instance/settings/tenant-delegation` | `GET` | `GetInstanceTenantDelegationSettings` | Get Tenant Delegation Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 228 | `/api/instance/settings/tenant-delegation` | `PUT` | `UpdateInstanceTenantDelegationSettings` | Update Tenant Delegation Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
-| 229 | `/api/instanceonboarding/auth-provider-configuration` | `GET` | `GetInstanceOnboardingAuthProviderConfiguration` | Get Auth Provider Configuration (Public) | InstanceOnboarding | _(Phase 1.4)_ | `Public` | no |
-| 230 | `/api/instanceonboarding/auth-provider-configuration` | `PUT` | `SaveInstanceOnboardingAuthProviderConfiguration` | Save Auth Provider Configuration (Setup) | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
-| 231 | `/api/instanceonboarding/auth-provider-configuration/internal` | `GET` | `GetInstanceOnboardingAuthProviderConfigurationInternal` | Get Auth Provider Configuration (Internal) | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
-| 232 | `/api/instanceonboarding/authz-provider-configuration` | `PUT` | `SaveInstanceOnboardingAuthorizationProviderConfiguration` | Save Authorization Provider Configuration (Setup) | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
-| 233 | `/api/instanceonboarding/authz-provider-configuration/internal` | `GET` | `GetInstanceOnboardingAuthorizationProviderConfigurationInternal` | Get Authorization Provider Configuration (Internal) | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
-| 234 | `/api/instanceonboarding/authz-provider-configuration/verify` | `POST` | `VerifyInstanceOnboardingAuthorizationProviderEndpoint` | Verify Cerbos Authorization Endpoint | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
-| 235 | `/api/instanceonboarding/complete` | `POST` | `CompleteInstanceOnboarding` | Complete Instance Onboarding | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
-| 236 | `/api/instanceonboarding/status` | `GET` | `GetInstanceOnboardingStatus` | Get Instance Onboarding Status | InstanceOnboarding | _(Phase 1.4)_ | `Public` | no |
-| 237 | `/api/instanceonboarding/validate-secret` | `POST` | `ValidateInstanceSetupSecret` | Validate Setup Secret | InstanceOnboarding | _(Phase 1.4)_ | `Public` | no |
-| 238 | `/api/language` | `GET` | `GetLanguages` | Get all Languages | Language | _(Phase 1.4)_ | `Public` | no |
-| 239 | `/api/language/{id}` | `GET` | `GetLanguageById` | Get Language Details | Language | _(Phase 1.4)_ | `Public` | no |
-| 240 | `/api/location` | `GET` | `GetLocations` | Get all Locations | Location | _(Phase 1.4)_ | `Public` | no |
-| 241 | `/api/location` | `POST` | `CreateLocation` | Create Location | Location | _(Phase 1.4)_ | `Authenticated` | no |
-| 242 | `/api/location/by-city/{city}` | `GET` | `GetLocationsByCity` | Get Locations by City | Location | _(Phase 1.4)_ | `Public` | no |
-| 243 | `/api/location/by-country/{country}` | `GET` | `GetLocationsByCountry` | Get Locations by Country | Location | _(Phase 1.4)_ | `Public` | no |
-| 244 | `/api/location/{id}` | `GET` | `GetLocationById` | Get Location Details | Location | _(Phase 1.4)_ | `Public` | no |
-| 245 | `/api/location/{id}` | `PUT` | `UpdateLocation` | Update Location | Location | _(Phase 1.4)_ | `Authenticated` | no |
-| 246 | `/api/location/{id}` | `DELETE` | `DeleteLocation` | Delete Location | Location | _(Phase 1.4)_ | `Authenticated` | no |
-| 247 | `/api/locationroom` | `POST` | `CreateLocationRoom` | Create Room | LocationRoom | _(Phase 1.4)_ | `Authenticated` | no |
-| 248 | `/api/locationroom/by-location/{locationId}` | `GET` | `GetLocationRoomsByLocation` | Get Rooms by Location | LocationRoom | _(Phase 1.4)_ | `Public` | no |
-| 249 | `/api/locationroom/{id}` | `GET` | `GetLocationRoomById` | Get Room Details | LocationRoom | _(Phase 1.4)_ | `Public` | no |
-| 250 | `/api/locationroom/{id}` | `PUT` | `UpdateLocationRoom` | Update Room | LocationRoom | _(Phase 1.4)_ | `Authenticated` | no |
-| 251 | `/api/locationroom/{id}` | `DELETE` | `DeleteLocationRoom` | Delete Room | LocationRoom | _(Phase 1.4)_ | `Authenticated` | no |
-| 252 | `/api/madhab` | `GET` | `GetMadhabs` | Get all Madhabs | Madhab | _(Phase 1.4)_ | `Public` | no |
-| 253 | `/api/madhab/{id}` | `GET` | `GetMadhabById` | Get Madhab by ID | Madhab | _(Phase 1.4)_ | `Public` | no |
-| 254 | `/api/module/available` | `GET` | `GetAvailableModules` | Get Available Modules | Module | _(Phase 1.4)_ | `Public` | no |
-| 255 | `/api/module/enabled` | `GET` | `GetEnabledModules` | Get Enabled Modules | Module | _(Phase 1.4)_ | `Public` | no |
-| 256 | `/api/module/{moduleKey}/disable` | `POST` | `DisableModule` | Disable Module | Module | _(Phase 1.4)_ | `Authenticated` | no |
-| 257 | `/api/module/{moduleKey}/enable` | `POST` | `EnableModule` | Enable Module | Module | _(Phase 1.4)_ | `Authenticated` | no |
-| 258 | `/api/module/{moduleKey}/enabled` | `GET` | `CheckModuleEnabled` | Check Module Enabled | Module | _(Phase 1.4)_ | `Public` | no |
-| 259 | `/api/module/{moduleKey}/schema` | `GET` | `GetModuleSchemaUrl` | Get Module Schema URL | Module | _(Phase 1.4)_ | `Public` | no |
-| 260 | `/api/notification` | `GET` | `GetNotifications` | Get User Notifications | Notification | _(Phase 1.4)_ | `Authenticated` | no |
-| 261 | `/api/notification/read-all` | `POST` | `MarkAllNotificationsAsRead` | Mark All Notifications as Read | Notification | _(Phase 1.4)_ | `Authenticated` | no |
-| 262 | `/api/notification/unread-count` | `GET` | `GetUnreadNotificationCount` | Get Unread Notification Count | Notification | _(Phase 1.4)_ | `Authenticated` | no |
-| 263 | `/api/notification/{id}` | `GET` | `GetNotificationById` | Get Notification by ID | Notification | _(Phase 1.4)_ | `Authenticated` | no |
-| 264 | `/api/notification/{id}` | `DELETE` | `DeleteNotification` | Delete Notification | Notification | _(Phase 1.4)_ | `Authenticated` | no |
-| 265 | `/api/notification/{id}/archive` | `PATCH` | `ArchiveNotification` | Archive Notification | Notification | _(Phase 1.4)_ | `Authenticated` | no |
-| 266 | `/api/notification/{id}/read` | `PATCH` | `MarkNotificationAsRead` | Mark Notification as Read | Notification | _(Phase 1.4)_ | `Authenticated` | no |
-| 267 | `/api/notification/{id}/snooze` | `PATCH` | `SnoozeNotification` | Snooze Notification | Notification | _(Phase 1.4)_ | `Authenticated` | no |
-| 268 | `/api/organization` | `GET` | `GetOrganizations` | Get all Organizations | Organization | _(Phase 1.4)_ | `Public` | no |
-| 269 | `/api/organization` | `POST` | `CreateOrganization` | Create Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
-| 270 | `/api/organization/my` | `GET` | `GetMyOrganizations` | Get my Organizations | Organization | _(Phase 1.4)_ | `Authenticated` | no |
-| 271 | `/api/organization/updatestatustype/{id}` | `PUT` | `UpdateOrganizationApprovalStatus` | Update Organization Approval Status | Organization | _(Phase 1.4)_ | `Authenticated` | no |
-| 272 | `/api/organization/{id}` | `GET` | `GetOrganizationById` | Get Organization Details | Organization | _(Phase 1.4)_ | `Public` | no |
-| 273 | `/api/organization/{id}` | `PUT` | `UpdateOrganization` | Update Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
-| 274 | `/api/organization/{id}` | `DELETE` | `DeleteOrganization` | Delete Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
-| 275 | `/api/organizationmember` | `POST` | `AddOrganizationMember` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 276 | `/api/organizationmember/invitations` | `GET` | `GetMyOrganizationInvitations` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 277 | `/api/organizationmember/invitations/{id}/accept` | `POST` | `AcceptOrganizationInvitation` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 278 | `/api/organizationmember/invitations/{id}/decline` | `POST` | `DeclineOrganizationInvitation` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 279 | `/api/organizationmember/role` | `PUT` | `UpdateOrganizationMemberRole` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 280 | `/api/organizationmember/{id}` | `DELETE` | `DeleteOrganizationMember` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 281 | `/api/organizationmember/{organizationId}` | `GET` | `GetOrganizationMembersByOrganization` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Public` | no |
-| 282 | `/api/organizationposition` | `GET` | `GetOrganizationPositions` | Get all Organization Positions | OrganizationPosition | _(Phase 1.4)_ | `Public` | no |
-| 283 | `/api/organizationposition/{id}` | `GET` | `GetOrganizationPositionById` | Get Organization Position by ID | OrganizationPosition | _(Phase 1.4)_ | `Public` | no |
-| 284 | `/api/organizationreview` | `GET` | `GetOrganizationReviews` | _(none)_ | OrganizationReview | _(Phase 1.4)_ | `Public` | no |
-| 285 | `/api/organizationreview` | `POST` | `CreateOrganizationReview` | _(none)_ | OrganizationReview | _(Phase 1.4)_ | `Authenticated` | no |
-| 286 | `/api/organizationreview/user/{userId}` | `GET` | `GetOrganizationReviewsByUser` | _(none)_ | OrganizationReview | _(Phase 1.4)_ | `Public` | no |
-| 287 | `/api/organizationreview/{organizationId}` | `GET` | `GetOrganizationReviewsByOrganization` | _(none)_ | OrganizationReview | _(Phase 1.4)_ | `Public` | no |
-| 288 | `/api/publicexperience/settings` | `GET` | `GetPublicExperienceSettings` | Get Public Experience Settings | PublicExperience | _(Phase 1.4)_ | `Public` | no |
-| 289 | `/api/publicexperience/shell` | `GET` | `GetPublicExperienceShell` | Get Public Experience Shell | PublicExperience | _(Phase 1.4)_ | `Public` | no |
-| 290 | `/api/registrationmode` | `GET` | `GetRegistrationModes` | Get all Registration Modes | RegistrationMode | _(Phase 1.4)_ | `Public` | no |
-| 291 | `/api/registrationmode/{id}` | `GET` | `GetRegistrationModeById` | Get Registration Mode by ID | RegistrationMode | _(Phase 1.4)_ | `Public` | no |
-| 292 | `/api/registrationscope` | `GET` | `GetRegistrationScopes` | Get all Registration Scopes | RegistrationScope | _(Phase 1.4)_ | `Public` | no |
-| 293 | `/api/role` | `GET` | `GetRoles` | Get all Roles | Role | _(Phase 1.4)_ | `Public` | no |
-| 294 | `/api/role/{id}` | `GET` | `GetRoleById` | Get Role by ID | Role | _(Phase 1.4)_ | `Public` | no |
-| 295 | `/api/scheduleitemkind` | `GET` | `GetScheduleItemKinds` | Get all Schedule Item Kinds | ScheduleItemKind | _(Phase 1.4)_ | `Public` | no |
-| 296 | `/api/settings/tenant/keys/{key}` | `PUT` | `UpdateTenantSetting` | Update Single Tenant Setting | Settings | _(Phase 1.4)_ | `Authenticated` | no |
-| 297 | `/api/settings/tenant/keys/{key}/lock` | `POST` | `LockTenantSetting` | Lock Tenant Setting | Settings | _(Phase 1.4)_ | `Authenticated` | no |
-| 298 | `/api/settings/tenant/keys/{key}/lock` | `DELETE` | `UnlockTenantSetting` | Unlock Tenant Setting | Settings | _(Phase 1.4)_ | `Authenticated` | no |
-| 299 | `/api/settings/tenant/{category}` | `GET` | `GetTenantScopedSettings` | Get Tenant Settings | Settings | _(Phase 1.4)_ | `Authenticated` | no |
-| 300 | `/api/settings/tenant/{category}` | `PUT` | `UpdateTenantSettingsBatch` | Batch Update Tenant Settings | Settings | _(Phase 1.4)_ | `Authenticated` | no |
-| 301 | `/api/settings/user/keys/{key}` | `PUT` | `UpdateUserSetting` | Update Single User Setting | Settings | _(Phase 1.4)_ | `Authenticated` | no |
-| 302 | `/api/settings/user/keys/{key}` | `DELETE` | `ResetUserSetting` | Reset User Setting | Settings | _(Phase 1.4)_ | `Authenticated` | no |
-| 303 | `/api/settings/user/{category}` | `GET` | `GetUserSettings` | Get User Settings | Settings | _(Phase 1.4)_ | `Authenticated` | no |
-| 304 | `/api/settings/user/{category}` | `PUT` | `UpdateUserSettingsBatch` | Batch Update User Settings | Settings | _(Phase 1.4)_ | `Authenticated` | no |
-| 305 | `/api/storageobject` | `GET` | `GetStorageObjects` | Get all Storage Objects | StorageObject | _(Phase 1.4)_ | `Public` | no |
-| 306 | `/api/storageobject` | `POST` | `CreateStorageObject` | Create Storage Object Record | StorageObject | _(Phase 1.4)_ | `Authenticated` | no |
-| 307 | `/api/storageobject/file/{fileKey}` | `GET` | `GetStorageObjectFile` | Get File Content | StorageObject | _(Phase 1.4)_ | `Public` | no |
-| 308 | `/api/storageobject/generate-upload-url` | `POST` | `GenerateStorageObjectUploadUrl` | Generate Pre-signed Upload URL | StorageObject | _(Phase 1.4)_ | `Authenticated` | no |
-| 309 | `/api/storageobject/presigned-url-by-key/{objectKey}` | `GET` | `GetStorageObjectPresignedDownloadUrlByKey` | Get Presigned Download URL by Key | StorageObject | _(Phase 1.4)_ | `Public` | no |
-| 310 | `/api/storageobject/{id}` | `GET` | `GetStorageObjectById` | Get Storage Object by ID | StorageObject | _(Phase 1.4)_ | `Public` | no |
-| 311 | `/api/storageobject/{id}` | `PUT` | `UpdateStorageObject` | Update Storage Object | StorageObject | _(Phase 1.4)_ | `Authenticated` | no |
-| 312 | `/api/storageobject/{id}` | `DELETE` | `DeleteStorageObject` | Delete Storage Object | StorageObject | _(Phase 1.4)_ | `Authenticated` | no |
-| 313 | `/api/storageobject/{id}/presigned-url` | `GET` | `GetStorageObjectPresignedDownloadUrl` | Get Presigned Download URL | StorageObject | _(Phase 1.4)_ | `Public` | no |
-| 314 | `/api/storageobject/{id}/public` | `GET` | `GetPublicStorageObjectImage` | Get Public Image | StorageObject | _(Phase 1.4)_ | `Public` | no |
-| 315 | `/api/syncstate` | `GET` | `GetSyncStates` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
-| 316 | `/api/syncstate` | `POST` | `CreateSyncState` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
-| 317 | `/api/syncstate/{id}` | `GET` | `GetSyncStateById` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
-| 318 | `/api/syncstate/{id}` | `PUT` | `UpdateSyncState` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
-| 319 | `/api/syncstate/{id}` | `DELETE` | `DeleteSyncState` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
-| 320 | `/api/system/onboarding-preflight` | `GET` | `GetSystemOnboardingPreflight` | Get System Onboarding Preflight | System | _(Phase 1.4)_ | `Public` | no |
-| 321 | `/api/system/onboarding-status` | `GET` | `GetSystemOnboardingStatus` | Get System Onboarding Status | System | _(Phase 1.4)_ | `Public` | no |
-| 322 | `/api/tag` | `GET` | `GetTags` | Get all Tags | Tag | _(Phase 1.4)_ | `Public` | no |
-| 323 | `/api/tag` | `POST` | `CreateTag` | Create Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
-| 324 | `/api/tag/{id}` | `GET` | `GetTagById` | Get Tag Details | Tag | _(Phase 1.4)_ | `Public` | no |
-| 325 | `/api/tag/{id}` | `PUT` | `UpdateTag` | Update Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
-| 326 | `/api/tag/{id}` | `DELETE` | `DeleteTag` | Delete Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
-| 327 | `/api/tagtype` | `GET` | `GetTagTypes` | _(none)_ | TagType | _(Phase 1.4)_ | `Public` | no |
-| 328 | `/api/tagtype/with-tags` | `GET` | `GetTagTypesWithTags` | Get Tag Types with Tags | TagType | _(Phase 1.4)_ | `Public` | no |
-| 329 | `/api/tagtype/{id}` | `GET` | `GetTagTypeById` | _(none)_ | TagType | _(Phase 1.4)_ | `Public` | no |
-| 330 | `/api/tenant` | `GET` | `GetTenants` | Get all Tenants | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 331 | `/api/tenant` | `POST` | `CreateTenant` | Create new Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 332 | `/api/tenant/count` | `GET` | `GetActiveTenantCount` | Get Active Tenant Count | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 333 | `/api/tenant/navigation` | `GET` | `GetTenantNavigationLinks` | Get Tenant Navigation Links | Tenant | _(Phase 1.4)_ | `Public` | no |
-| 334 | `/api/tenant/navigation` | `POST` | `CreateTenantNavigationLink` | Create Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 335 | `/api/tenant/navigation/reorder` | `PUT` | `ReorderTenantNavigationLinks` | Reorder Tenant Navigation Links | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 336 | `/api/tenant/navigation/{id}` | `PUT` | `UpdateTenantNavigationLink` | Update Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 337 | `/api/tenant/navigation/{id}` | `DELETE` | `DeleteTenantNavigationLink` | Delete Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 338 | `/api/tenant/{id}` | `GET` | `GetTenantById` | Get Tenant by ID | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 339 | `/api/tenant/{id}` | `PUT` | `UpdateTenant` | Update Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 340 | `/api/tenant/{id}` | `DELETE` | `DeleteTenant` | Delete Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
-| 341 | `/api/tenantmember` | `GET` | `GetTenantMembers` | Get all Tenant Members | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 342 | `/api/tenantmember` | `POST` | `CreateTenantMember` | Create new Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 343 | `/api/tenantmember/{id}` | `GET` | `GetTenantMemberById` | Get Tenant Member by ID | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 344 | `/api/tenantmember/{id}` | `PUT` | `UpdateTenantMember` | Update Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 345 | `/api/tenantmember/{id}` | `DELETE` | `DeleteTenantMember` | Delete Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
-| 346 | `/api/tenantonboarding/complete` | `POST` | `CompleteTenantOnboarding` | Complete Tenant Onboarding | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
-| 347 | `/api/tenantonboarding/settings` | `GET` | `GetTenantOnboardingPolicySettings` | Get Tenant Policy Settings | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
-| 348 | `/api/tenantonboarding/settings` | `PUT` | `UpdateTenantOnboardingPolicySettings` | Update Tenant Policy Settings | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
-| 349 | `/api/tenantonboarding/status` | `GET` | `GetTenantOnboardingStatus` | Get Tenant Onboarding Status | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
-| 350 | `/api/tenantonboarding/steps` | `PUT` | `SaveTenantOnboardingStepProgress` | Save Tenant Onboarding Step Progress | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
-| 351 | `/api/translation/languages` | `GET` | `GetAvailableTranslationLanguages` | Get Available Languages | Translation | _(Phase 1.4)_ | `Public` | no |
-| 352 | `/api/translation/{languageCode}` | `GET` | `GetTranslationByLanguage` | Get Translations | Translation | _(Phase 1.4)_ | `Public` | no |
-| 353 | `/api/user` | `GET` | `GetCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 354 | `/api/user` | `PUT` | `UpdateCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 355 | `/api/user` | `DELETE` | `DeleteCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 356 | `/api/user/admin-authority` | `GET` | `GetCurrentUserAdminAuthority` | Get current user's admin authority | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 357 | `/api/user/appearance` | `GET` | `GetCurrentUserAppearancePreferences` | Get Resolved Appearance | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 358 | `/api/user/appearance/active-profile` | `PUT` | `setActiveAppearanceProfile` | Set Active Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 359 | `/api/user/appearance/generate-palette` | `GET` | `generateAppearancePalette` | Generate Palette From Colors | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 360 | `/api/user/appearance/mode` | `PUT` | `setAppearanceThemeMode` | Set Theme Mode | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 361 | `/api/user/appearance/presets` | `GET` | `GetAvailableThemes` | Get Available Presets | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 362 | `/api/user/appearance/profiles` | `GET` | `getUserAppearanceProfiles` | Get User Appearance Profiles | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 363 | `/api/user/appearance/profiles` | `POST` | `createCustomAppearanceProfile` | Create Custom Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 364 | `/api/user/appearance/profiles/from-preset/{presetId}` | `POST` | `clonePresetToProfile` | Clone Preset Into User Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 365 | `/api/user/appearance/profiles/{profileId}` | `PUT` | `updateAppearanceProfile` | Update User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 366 | `/api/user/appearance/profiles/{profileId}/archive` | `PUT` | `archiveAppearanceProfile` | Archive User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 367 | `/api/user/appearance/profiles/{profileId}/duplicate` | `POST` | `duplicateAppearanceProfile` | Duplicate User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
-| 368 | `/api/user/sync` | `POST` | `SyncUser` | Sync user from identity provider | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 369 | `/api/user/{userId}/organizations` | `GET` | `GetUserOrganizations` | Get user's organizations | User | _(Phase 1.4)_ | `Authenticated` | no |
-| 370 | `/api/userauthenticationtoken` | `GET` | `GetUserAuthenticationTokens` | Get all User Authentication Tokens | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 371 | `/api/userauthenticationtoken` | `POST` | `CreateUserAuthenticationToken` | Create new User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 372 | `/api/userauthenticationtoken/{id}` | `GET` | `GetUserAuthenticationTokenById` | Get User Authentication Token by ID | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 373 | `/api/userauthenticationtoken/{id}` | `PUT` | `UpdateUserAuthenticationToken` | Update User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 374 | `/api/userauthenticationtoken/{id}` | `DELETE` | `DeleteUserAuthenticationToken` | Delete User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
-| 375 | `/api/userexternallogin` | `GET` | `GetUserExternalLogins` | Get all User External Logins | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 376 | `/api/userexternallogin` | `POST` | `CreateUserExternalLogin` | Create new User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 377 | `/api/userexternallogin/{id}` | `GET` | `GetUserExternalLoginById` | Get User External Login by ID | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 378 | `/api/userexternallogin/{id}` | `PUT` | `UpdateUserExternalLogin` | Update User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 379 | `/api/userexternallogin/{id}` | `DELETE` | `DeleteUserExternalLogin` | Delete User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
-| 380 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | _(Phase 1.4)_ | `Public` | no |
-| 381 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | _(Phase 1.4)_ | `Public` | no |
-| 382 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | _(Phase 1.4)_ | `Public` | no |
+| 86 | `/api/event/{id}/publish` | `POST` | `PublishEvent` | Publish Event | Event | _(Phase 1.4)_ | `Authenticated` | no |
+| 87 | `/api/event/{id}/publish-readiness` | `GET` | `GetEventPublishReadiness` | Get Event Publish Readiness | Event | _(Phase 1.4)_ | `Authenticated` | no |
+| 88 | `/api/eventagendaitem` | `POST` | `CreateEventAgendaItem` | Create Agenda Item | EventAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
+| 89 | `/api/eventagendaitem/agenda-projection/{eventId}` | `GET` | `GetEventAgendaProjection` | Get Event Agenda Projection | EventAgendaItem | _(Phase 1.4)_ | `Public` | no |
+| 90 | `/api/eventagendaitem/by-event/{eventId}` | `GET` | `GetEventAgendaItemsByEvent` | Get Agenda Items by Event | EventAgendaItem | _(Phase 1.4)_ | `Public` | no |
+| 91 | `/api/eventagendaitem/{id}` | `GET` | `GetEventAgendaItemById` | Get Agenda Item Details | EventAgendaItem | _(Phase 1.4)_ | `Public` | no |
+| 92 | `/api/eventagendaitem/{id}` | `PUT` | `UpdateEventAgendaItem` | Update Agenda Item | EventAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
+| 93 | `/api/eventagendaitem/{id}` | `DELETE` | `DeleteEventAgendaItem` | Delete Agenda Item | EventAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
+| 94 | `/api/eventcustomproperty` | `GET` | `GetEventCustomPropertyDefinitions` | Get all EventCustomPropertyDefinitions | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 95 | `/api/eventcustomproperty` | `POST` | `CreateEventCustomPropertyDefinition` | Create EventCustomPropertyDefinition | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 96 | `/api/eventcustomproperty/value` | `PUT` | `SetEventCustomPropertyValue` | Set EventCustomPropertyValue | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 97 | `/api/eventcustomproperty/values` | `GET` | `GetEventCustomPropertyValues` | Get EventCustomPropertyValues | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 98 | `/api/eventcustomproperty/values` | `PUT` | `SetEventCustomPropertyMultiValues` | Set EventCustomPropertyMultiValues | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 99 | `/api/eventcustomproperty/{id}` | `GET` | `GetEventCustomPropertyDefinitionById` | Get EventCustomPropertyDefinition Details | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 100 | `/api/eventcustomproperty/{id}` | `PUT` | `UpdateEventCustomPropertyDefinition` | Update EventCustomPropertyDefinition | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 101 | `/api/eventcustomproperty/{id}` | `DELETE` | `DeleteEventCustomPropertyDefinition` | _(none)_ | EventCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 102 | `/api/eventday` | `POST` | `CreateEventDay` | Create Event Day | EventDay | _(Phase 1.4)_ | `Authenticated` | no |
+| 103 | `/api/eventday/by-event/{eventId}` | `GET` | `GetEventDaysByEvent` | Get Event Days by Event | EventDay | _(Phase 1.4)_ | `Public` | no |
+| 104 | `/api/eventday/{id}` | `GET` | `GetEventDayById` | Get Event Day Details | EventDay | _(Phase 1.4)_ | `Public` | no |
+| 105 | `/api/eventday/{id}` | `PUT` | `UpdateEventDay` | Update Event Day | EventDay | _(Phase 1.4)_ | `Authenticated` | no |
+| 106 | `/api/eventday/{id}` | `DELETE` | `DeleteEventDay` | Delete Event Day | EventDay | _(Phase 1.4)_ | `Authenticated` | no |
+| 107 | `/api/eventformat` | `GET` | `GetEventFormatOptions` | Get all Event Formats | EventFormat | _(Phase 1.4)_ | `Public` | no |
+| 108 | `/api/eventformat/{id}` | `GET` | `GetEventFormatOptionById` | Get Event Format by ID | EventFormat | _(Phase 1.4)_ | `Public` | no |
+| 109 | `/api/eventregistration` | `GET` | `GetEventRegistrations` | Get all Event Registrations | EventRegistration | _(Phase 1.4)_ | `Public` | no |
+| 110 | `/api/eventregistration` | `POST` | `CreateEventRegistration` | Register User for Event Session | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
+| 111 | `/api/eventregistration/by-session/{eventSessionId}` | `GET` | `GetRegistrationsBySession` | Get Registrations by Event Session | EventRegistration | _(Phase 1.4)_ | `Public` | no |
+| 112 | `/api/eventregistration/by-user/{userId}` | `GET` | `GetRegistrationsByUser` | Get Registrations by User | EventRegistration | _(Phase 1.4)_ | `Public` | no |
+| 113 | `/api/eventregistration/{id}` | `GET` | `GetEventRegistrationById` | Get Event Registration by ID | EventRegistration | _(Phase 1.4)_ | `Public` | no |
+| 114 | `/api/eventregistration/{id}` | `PUT` | `UpdateEventRegistration` | Update Event Registration | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
+| 115 | `/api/eventregistration/{id}` | `DELETE` | `DeleteEventRegistration` | Cancel Event Registration | EventRegistration | _(Phase 1.4)_ | `Authenticated` | no |
+| 116 | `/api/eventregistrationpolicy` | `GET` | `GetEventRegistrationPolicies` | Get all Event Registration Policies | EventRegistrationPolicy | _(Phase 1.4)_ | `Public` | no |
+| 117 | `/api/events/{eventId}/template-sync/apply` | `POST` | `ApplyEventTemplateSync` | _(none)_ | EventTemplateSync | _(Phase 1.4)_ | `Authenticated` | no |
+| 118 | `/api/events/{eventId}/template-sync/diff` | `GET` | `GetEventTemplateSyncDiff` | _(none)_ | EventTemplateSync | _(Phase 1.4)_ | `Authenticated` | no |
+| 119 | `/api/events/{eventId}/template-sync/history` | `GET` | `GetEventTemplateSyncHistory` | _(none)_ | EventTemplateSync | _(Phase 1.4)_ | `Authenticated` | no |
+| 120 | `/api/eventseries` | `GET` | `GetEventSeries` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Public` | no |
+| 121 | `/api/eventseries` | `POST` | `CreateEventSeries` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Authenticated` | no |
+| 122 | `/api/eventseries/top` | `GET` | `GetTopEventSeries` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Public` | no |
+| 123 | `/api/eventseries/{id}` | `GET` | `GetEventSeriesById` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Public` | no |
+| 124 | `/api/eventseries/{id}` | `PUT` | `UpdateEventSeries` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Authenticated` | no |
+| 125 | `/api/eventseries/{id}` | `DELETE` | `DeleteEventSeries` | _(none)_ | EventSeries | _(Phase 1.4)_ | `Authenticated` | no |
+| 126 | `/api/eventsession` | `GET` | `GetEventSessionsList` | Get all Event Sessions | EventSession | _(Phase 1.4)_ | `Public` | no |
+| 127 | `/api/eventsession` | `POST` | `CreateEventSession` | Create Event Session | EventSession | _(Phase 1.4)_ | `Authenticated` | no |
+| 128 | `/api/eventsession/by-event/{eventId}` | `GET` | `GetEventSessions` | Get Sessions by Event | EventSession | _(Phase 1.4)_ | `Public` | no |
+| 129 | `/api/eventsession/{id}` | `GET` | `GetEventSessionById` | Get Event Session Details | EventSession | _(Phase 1.4)_ | `Public` | no |
+| 130 | `/api/eventsession/{id}` | `PUT` | `UpdateEventSession` | Update Event Session | EventSession | _(Phase 1.4)_ | `Authenticated` | no |
+| 131 | `/api/eventsession/{id}` | `DELETE` | `DeleteEventSession` | Delete Event Session | EventSession | _(Phase 1.4)_ | `Authenticated` | no |
+| 132 | `/api/eventsessionagendaitem` | `GET` | `GetEventSessionAgendaItems` | Get all Agenda Items | EventSessionAgendaItem | _(Phase 1.4)_ | `Public` | no |
+| 133 | `/api/eventsessionagendaitem` | `POST` | `CreateEventSessionAgendaItem` | Create Agenda Item | EventSessionAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
+| 134 | `/api/eventsessionagendaitem/by-session/{sessionId}` | `GET` | `GetEventSessionAgendaItemsBySession` | Get Agenda Items by Session | EventSessionAgendaItem | _(Phase 1.4)_ | `Public` | no |
+| 135 | `/api/eventsessionagendaitem/{id}` | `GET` | `GetEventSessionAgendaItemById` | Get Agenda Item Details | EventSessionAgendaItem | _(Phase 1.4)_ | `Public` | no |
+| 136 | `/api/eventsessionagendaitem/{id}` | `PUT` | `UpdateEventSessionAgendaItem` | Update Agenda Item | EventSessionAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
+| 137 | `/api/eventsessionagendaitem/{id}` | `DELETE` | `DeleteEventSessionAgendaItem` | Delete Agenda Item | EventSessionAgendaItem | _(Phase 1.4)_ | `Authenticated` | no |
+| 138 | `/api/eventsessioncustomproperty` | `GET` | `GetEventSessionCustomPropertyDefinitions` | Get all EventSessionCustomPropertyDefinitions | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 139 | `/api/eventsessioncustomproperty` | `POST` | `CreateEventSessionCustomPropertyDefinition` | Create EventSessionCustomPropertyDefinition | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 140 | `/api/eventsessioncustomproperty/value` | `PUT` | `SetEventSessionCustomPropertyValue` | Set EventSessionCustomPropertyValue | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 141 | `/api/eventsessioncustomproperty/values` | `GET` | `GetEventSessionCustomPropertyValues` | Get EventSessionCustomPropertyValues | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 142 | `/api/eventsessioncustomproperty/values` | `PUT` | `SetEventSessionCustomPropertyMultiValues` | Set EventSessionCustomPropertyMultiValues | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 143 | `/api/eventsessioncustomproperty/{id}` | `GET` | `GetEventSessionCustomPropertyDefinitionById` | Get EventSessionCustomPropertyDefinition Details | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 144 | `/api/eventsessioncustomproperty/{id}` | `PUT` | `UpdateEventSessionCustomPropertyDefinition` | Update EventSessionCustomPropertyDefinition | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 145 | `/api/eventsessioncustomproperty/{id}` | `DELETE` | `DeleteEventSessionCustomPropertyDefinition` | _(none)_ | EventSessionCustomProperty | _(Phase 1.4)_ | `Authenticated` | no |
+| 146 | `/api/eventsessiongroup` | `POST` | `CreateEventSessionGroup` | Create Event Session Group | EventSessionGroup | _(Phase 1.4)_ | `Authenticated` | no |
+| 147 | `/api/eventsessiongroup/by-event/{eventId}` | `GET` | `GetEventSessionGroupsByEvent` | Get Event Session Groups by Event | EventSessionGroup | _(Phase 1.4)_ | `Public` | no |
+| 148 | `/api/eventsessiongroup/{id}` | `GET` | `GetEventSessionGroupById` | Get Event Session Group Details | EventSessionGroup | _(Phase 1.4)_ | `Public` | no |
+| 149 | `/api/eventsessiongroup/{id}` | `PUT` | `UpdateEventSessionGroup` | Update Event Session Group | EventSessionGroup | _(Phase 1.4)_ | `Authenticated` | no |
+| 150 | `/api/eventsessiongroup/{id}` | `DELETE` | `DeleteEventSessionGroup` | Delete Event Session Group | EventSessionGroup | _(Phase 1.4)_ | `Authenticated` | no |
+| 151 | `/api/eventsessiongroup/{id}/sessions` | `GET` | `GetEventSessionGroupSessions` | Get Event Session Group Sessions | EventSessionGroup | _(Phase 1.4)_ | `Public` | no |
+| 152 | `/api/eventsessiongroup/{id}/sessions` | `POST` | `AssignEventSessionToGroup` | Assign Event Session to Group | EventSessionGroup | _(Phase 1.4)_ | `Authenticated` | no |
+| 153 | `/api/eventsessiongroup/{id}/sessions/{sessionId}` | `DELETE` | `UnassignEventSessionFromGroup` | Unassign Event Session from Group | EventSessionGroup | _(Phase 1.4)_ | `Authenticated` | no |
+| 154 | `/api/eventsessiontemplate` | `GET` | `GetEventSessionTemplates` | Get all EventSessionTemplates | EventSessionTemplate | _(Phase 1.4)_ | `Public` | no |
+| 155 | `/api/eventsessiontemplate` | `POST` | `CreateEventSessionTemplate` | Create EventSessionTemplate | EventSessionTemplate | _(Phase 1.4)_ | `Authenticated` | no |
+| 156 | `/api/eventsessiontemplate/{id}` | `GET` | `GetEventSessionTemplateById` | Get EventSessionTemplate Details | EventSessionTemplate | _(Phase 1.4)_ | `Public` | no |
+| 157 | `/api/eventsessiontemplate/{id}` | `PUT` | `UpdateEventSessionTemplate` | Update EventSessionTemplate | EventSessionTemplate | _(Phase 1.4)_ | `Authenticated` | no |
+| 158 | `/api/eventsessiontemplate/{id}` | `DELETE` | `DeleteEventSessionTemplate` | _(none)_ | EventSessionTemplate | _(Phase 1.4)_ | `Authenticated` | no |
+| 159 | `/api/eventstatus` | `GET` | `GetEventStatuses` | Get all Event Statuses | EventStatus | _(Phase 1.4)_ | `Public` | no |
+| 160 | `/api/eventstatus/{id}` | `GET` | `GetEventStatusById` | Get Event Status by ID | EventStatus | _(Phase 1.4)_ | `Public` | no |
+| 161 | `/api/eventtemplate` | `GET` | `GetEventTemplates` | Get all EventTemplates | EventTemplate | _(Phase 1.4)_ | `Public` | no |
+| 162 | `/api/eventtemplate` | `POST` | `CreateEventTemplate` | Create EventTemplate | EventTemplate | _(Phase 1.4)_ | `Authenticated` | no |
+| 163 | `/api/eventtemplate/{id}` | `GET` | `GetEventTemplateById` | Get EventTemplate Details | EventTemplate | _(Phase 1.4)_ | `Public` | no |
+| 164 | `/api/eventtemplate/{id}` | `PUT` | `UpdateEventTemplate` | Update EventTemplate | EventTemplate | _(Phase 1.4)_ | `Authenticated` | no |
+| 165 | `/api/eventtemplate/{id}` | `DELETE` | `DeleteEventTemplate` | _(none)_ | EventTemplate | _(Phase 1.4)_ | `Authenticated` | no |
+| 166 | `/api/eventtype` | `GET` | `GetEventTypes` | Get all Event Types | EventType | _(Phase 1.4)_ | `Public` | no |
+| 167 | `/api/externalapikey` | `GET` | `GetExternalApiKeys` | Get visible external API keys | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
+| 168 | `/api/externalapikey` | `POST` | `CreateExternalApiKey` | Create a new external API key | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
+| 169 | `/api/externalapikey/usage-report` | `GET` | `GetExternalApiKeyUsageReport` | Get API key usage report | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
+| 170 | `/api/externalapikey/{id}` | `GET` | `GetExternalApiKeyById` | Get external API key details | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
+| 171 | `/api/externalapikey/{id}` | `PUT` | `UpdateExternalApiKey` | Update an external API key policy | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
+| 172 | `/api/externalapikey/{id}` | `DELETE` | `DeleteExternalApiKey` | Revoke an external API key | ExternalApiKey | _(Phase 1.4)_ | `Authenticated` | no |
+| 173 | `/api/features/my-flags` | `GET` | `GetMyFeatureFlags` | _(none)_ | Features | _(Phase 1.4)_ | `Authenticated` | no |
+| 174 | `/api/filetype` | `GET` | `GetFileTypes` | Get all File Types | FileType | _(Phase 1.4)_ | `Public` | no |
+| 175 | `/api/filetype/{id}` | `GET` | `GetFileTypeById` | Get File Type by ID | FileType | _(Phase 1.4)_ | `Public` | no |
+| 176 | `/api/footer/config` | `GET` | `GetFooterConfig` | _(none)_ | Footer | _(Phase 1.4)_ | `Public` | no |
+| 177 | `/api/footer/link-groups` | `GET` | `GetFooterLinkGroups` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
+| 178 | `/api/footer/link-groups` | `POST` | `CreateFooterLinkGroup` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
+| 179 | `/api/footer/link-groups/reorder` | `POST` | `ReorderFooterLinkGroups` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
+| 180 | `/api/footer/link-groups/{groupId}/links` | `POST` | `CreateFooterLink` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
+| 181 | `/api/footer/link-groups/{id}` | `GET` | `GetFooterLinkGroupById` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
+| 182 | `/api/footer/link-groups/{id}` | `PUT` | `UpdateFooterLinkGroup` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
+| 183 | `/api/footer/link-groups/{id}` | `DELETE` | `DeleteFooterLinkGroup` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
+| 184 | `/api/footer/links/{id}` | `PUT` | `UpdateFooterLink` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
+| 185 | `/api/footer/links/{id}` | `DELETE` | `DeleteFooterLink` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
+| 186 | `/api/footer/settings` | `PUT` | `UpdateTenantFooterSettings` | _(none)_ | Footer | _(Phase 1.4)_ | `Authenticated` | no |
+| 187 | `/api/group` | `GET` | `GetGroups` | Get all Groups | Group | _(Phase 1.4)_ | `Public` | no |
+| 188 | `/api/group` | `POST` | `CreateGroup` | Create Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
+| 189 | `/api/group/my` | `GET` | `GetMyGroups` | Get my Groups | Group | _(Phase 1.4)_ | `Authenticated` | no |
+| 190 | `/api/group/{id}` | `GET` | `GetGroupById` | Get Group Details | Group | _(Phase 1.4)_ | `Public` | no |
+| 191 | `/api/group/{id}` | `PUT` | `UpdateGroup` | Update Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
+| 192 | `/api/group/{id}` | `DELETE` | `DeleteGroup` | Delete Group | Group | _(Phase 1.4)_ | `Authenticated` | no |
+| 193 | `/api/groupmember` | `POST` | `CreateGroupMember` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 194 | `/api/groupmember/member/{id}` | `GET` | `GetGroupMemberById` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Public` | no |
+| 195 | `/api/groupmember/role` | `PUT` | `UpdateGroupMember` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 196 | `/api/groupmember/{groupId}` | `GET` | `GetGroupMembers` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Public` | no |
+| 197 | `/api/groupmember/{id}` | `DELETE` | `DeleteGroupMember` | _(none)_ | GroupMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 198 | `/api/groupposition` | `GET` | `GetGroupPositions` | Get all Group Positions | GroupPosition | _(Phase 1.4)_ | `Public` | no |
+| 199 | `/api/groupposition/{id}` | `GET` | `GetGroupPositionById` | Get Group Position by ID | GroupPosition | _(Phase 1.4)_ | `Public` | no |
+| 200 | `/api/indexeddid` | `GET` | `GetIndexedDids` | _(none)_ | IndexedDid | _(Phase 1.4)_ | `Public` | no |
+| 201 | `/api/indexeddid` | `POST` | `CreateIndexedDid` | _(none)_ | IndexedDid | _(Phase 1.4)_ | `Authenticated` | no |
+| 202 | `/api/indexeddid/{did}` | `GET` | `GetIndexedDidByDid` | _(none)_ | IndexedDid | _(Phase 1.4)_ | `Public` | no |
+| 203 | `/api/indexeddid/{did}` | `PUT` | `UpdateIndexedDid` | _(none)_ | IndexedDid | _(Phase 1.4)_ | `Authenticated` | no |
+| 204 | `/api/indexeddid/{did}` | `DELETE` | `DeleteIndexedDid` | _(none)_ | IndexedDid | _(Phase 1.4)_ | `Authenticated` | no |
+| 205 | `/api/instance/settings/analytics-governance` | `GET` | `GetInstanceAnalyticsGovernanceSettings` | Get Analytics Governance Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 206 | `/api/instance/settings/analytics-governance` | `PUT` | `UpdateInstanceAnalyticsGovernanceSettings` | Update Analytics Governance Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 207 | `/api/instance/settings/auth-provider` | `GET` | `GetInstanceAuthProviderConfiguration` | Get Auth Provider Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 208 | `/api/instance/settings/auth-provider` | `PUT` | `UpdateInstanceAuthProviderConfiguration` | Update Auth Provider Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 209 | `/api/instance/settings/auth-provider/status` | `GET` | `GetInstanceAuthProviderConfigurationStatus` | Check Auth Provider Configuration Status | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 210 | `/api/instance/settings/authz-provider` | `GET` | `GetInstanceAuthorizationProviderConfiguration` | Get Authorization Provider Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 211 | `/api/instance/settings/authz-provider` | `PUT` | `UpdateInstanceAuthorizationProviderConfiguration` | Update Authorization Provider Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 212 | `/api/instance/settings/authz-provider/status` | `GET` | `GetInstanceAuthorizationProviderConfigurationStatus` | Check Authorization Provider Configuration Status | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 213 | `/api/instance/settings/branding` | `GET` | `GetInstanceBrandingSettings` | Get Branding Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 214 | `/api/instance/settings/branding` | `PUT` | `UpdateInstanceBrandingSettings` | Update Branding Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 215 | `/api/instance/settings/deployment-mode` | `GET` | `GetInstanceDeploymentMode` | Get Deployment Mode | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 216 | `/api/instance/settings/deployment-mode` | `POST` | `UpdateInstanceDeploymentMode` | Deployment Mode Is Operator-Controlled | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 217 | `/api/instance/settings/domains` | `GET` | `GetInstanceDomainSettings` | Get Domain Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 218 | `/api/instance/settings/domains` | `PUT` | `UpdateInstanceDomainSettings` | Update Domain Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 219 | `/api/instance/settings/events` | `GET` | `GetInstanceEventPolicy` | Get Event Policy | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 220 | `/api/instance/settings/events` | `PUT` | `UpdateInstanceEventPolicy` | Update Event Policy | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 221 | `/api/instance/settings/footer-governance` | `GET` | `GetFooterGovernanceSettings` | Get Footer Governance Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 222 | `/api/instance/settings/footer-governance` | `PUT` | `UpdateFooterGovernanceSettings` | Update Footer Governance Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 223 | `/api/instance/settings/modules` | `GET` | `GetInstanceModuleSettings` | Get Module Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 224 | `/api/instance/settings/modules` | `PUT` | `UpdateInstanceModuleSettings` | Update Module Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 225 | `/api/instance/settings/organizations` | `GET` | `GetInstanceOrganizationPolicy` | Get Organization Policy | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 226 | `/api/instance/settings/organizations` | `PUT` | `UpdateInstanceOrganizationPolicy` | Update Organization Policy | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 227 | `/api/instance/settings/render-policy` | `GET` | `GetInstanceRenderPolicySettings` | Get Render Policy Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 228 | `/api/instance/settings/render-policy` | `PUT` | `UpdateInstanceRenderPolicySettings` | Update Render Policy Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 229 | `/api/instance/settings/resolver-config` | `GET` | `GetInstanceResolverConfiguration` | Get Tenant Resolver Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 230 | `/api/instance/settings/resolver-config` | `PUT` | `UpdateInstanceResolverConfiguration` | Update Tenant Resolver Configuration | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 231 | `/api/instance/settings/smtp` | `GET` | `GetInstanceSmtpSettings` | Get Instance SMTP Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 232 | `/api/instance/settings/smtp` | `PUT` | `UpdateInstanceSmtpSettings` | Update Instance SMTP Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 233 | `/api/instance/settings/smtp/test` | `POST` | `TestInstanceSmtpConnection` | Test SMTP Connection | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 234 | `/api/instance/settings/storage` | `GET` | `GetInstanceStorageSettings` | Get Instance Storage Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 235 | `/api/instance/settings/storage` | `PUT` | `UpdateInstanceStorageSettings` | Update Instance Storage Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 236 | `/api/instance/settings/storage/test` | `POST` | `TestInstanceStorageConnection` | Test Storage Connection | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 237 | `/api/instance/settings/tenant-delegation` | `GET` | `GetInstanceTenantDelegationSettings` | Get Tenant Delegation Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 238 | `/api/instance/settings/tenant-delegation` | `PUT` | `UpdateInstanceTenantDelegationSettings` | Update Tenant Delegation Settings | InstanceSettings | _(Phase 1.4)_ | `Authenticated` | no |
+| 239 | `/api/instanceonboarding/auth-provider-configuration` | `GET` | `GetInstanceOnboardingAuthProviderConfiguration` | Get Auth Provider Configuration (Public) | InstanceOnboarding | _(Phase 1.4)_ | `Public` | no |
+| 240 | `/api/instanceonboarding/auth-provider-configuration` | `PUT` | `SaveInstanceOnboardingAuthProviderConfiguration` | Save Auth Provider Configuration (Setup) | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
+| 241 | `/api/instanceonboarding/auth-provider-configuration/internal` | `GET` | `GetInstanceOnboardingAuthProviderConfigurationInternal` | Get Auth Provider Configuration (Internal) | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
+| 242 | `/api/instanceonboarding/authz-provider-configuration` | `PUT` | `SaveInstanceOnboardingAuthorizationProviderConfiguration` | Save Authorization Provider Configuration (Setup) | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
+| 243 | `/api/instanceonboarding/authz-provider-configuration/internal` | `GET` | `GetInstanceOnboardingAuthorizationProviderConfigurationInternal` | Get Authorization Provider Configuration (Internal) | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
+| 244 | `/api/instanceonboarding/authz-provider-configuration/verify` | `POST` | `VerifyInstanceOnboardingAuthorizationProviderEndpoint` | Verify Cerbos Authorization Endpoint | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
+| 245 | `/api/instanceonboarding/complete` | `POST` | `CompleteInstanceOnboarding` | Complete Instance Onboarding | InstanceOnboarding | _(Phase 1.4)_ | `Admin` | no |
+| 246 | `/api/instanceonboarding/status` | `GET` | `GetInstanceOnboardingStatus` | Get Instance Onboarding Status | InstanceOnboarding | _(Phase 1.4)_ | `Public` | no |
+| 247 | `/api/instanceonboarding/validate-secret` | `POST` | `ValidateInstanceSetupSecret` | Validate Setup Secret | InstanceOnboarding | _(Phase 1.4)_ | `Public` | no |
+| 248 | `/api/language` | `GET` | `GetLanguages` | Get all Languages | Language | _(Phase 1.4)_ | `Public` | no |
+| 249 | `/api/language/{id}` | `GET` | `GetLanguageById` | Get Language Details | Language | _(Phase 1.4)_ | `Public` | no |
+| 250 | `/api/location` | `GET` | `GetLocations` | Get all Locations | Location | _(Phase 1.4)_ | `Public` | no |
+| 251 | `/api/location` | `POST` | `CreateLocation` | Create Location | Location | _(Phase 1.4)_ | `Authenticated` | no |
+| 252 | `/api/location/by-city/{city}` | `GET` | `GetLocationsByCity` | Get Locations by City | Location | _(Phase 1.4)_ | `Public` | no |
+| 253 | `/api/location/by-country/{country}` | `GET` | `GetLocationsByCountry` | Get Locations by Country | Location | _(Phase 1.4)_ | `Public` | no |
+| 254 | `/api/location/{id}` | `GET` | `GetLocationById` | Get Location Details | Location | _(Phase 1.4)_ | `Public` | no |
+| 255 | `/api/location/{id}` | `PUT` | `UpdateLocation` | Update Location | Location | _(Phase 1.4)_ | `Authenticated` | no |
+| 256 | `/api/location/{id}` | `DELETE` | `DeleteLocation` | Delete Location | Location | _(Phase 1.4)_ | `Authenticated` | no |
+| 257 | `/api/locationroom` | `POST` | `CreateLocationRoom` | Create Room | LocationRoom | _(Phase 1.4)_ | `Authenticated` | no |
+| 258 | `/api/locationroom/by-location/{locationId}` | `GET` | `GetLocationRoomsByLocation` | Get Rooms by Location | LocationRoom | _(Phase 1.4)_ | `Public` | no |
+| 259 | `/api/locationroom/{id}` | `GET` | `GetLocationRoomById` | Get Room Details | LocationRoom | _(Phase 1.4)_ | `Public` | no |
+| 260 | `/api/locationroom/{id}` | `PUT` | `UpdateLocationRoom` | Update Room | LocationRoom | _(Phase 1.4)_ | `Authenticated` | no |
+| 261 | `/api/locationroom/{id}` | `DELETE` | `DeleteLocationRoom` | Delete Room | LocationRoom | _(Phase 1.4)_ | `Authenticated` | no |
+| 262 | `/api/madhab` | `GET` | `GetMadhabs` | Get all Madhabs | Madhab | _(Phase 1.4)_ | `Public` | no |
+| 263 | `/api/madhab/{id}` | `GET` | `GetMadhabById` | Get Madhab by ID | Madhab | _(Phase 1.4)_ | `Public` | no |
+| 264 | `/api/module/available` | `GET` | `GetAvailableModules` | Get Available Modules | Module | _(Phase 1.4)_ | `Public` | no |
+| 265 | `/api/module/enabled` | `GET` | `GetEnabledModules` | Get Enabled Modules | Module | _(Phase 1.4)_ | `Public` | no |
+| 266 | `/api/module/{moduleKey}/disable` | `POST` | `DisableModule` | Disable Module | Module | _(Phase 1.4)_ | `Authenticated` | no |
+| 267 | `/api/module/{moduleKey}/enable` | `POST` | `EnableModule` | Enable Module | Module | _(Phase 1.4)_ | `Authenticated` | no |
+| 268 | `/api/module/{moduleKey}/enabled` | `GET` | `CheckModuleEnabled` | Check Module Enabled | Module | _(Phase 1.4)_ | `Public` | no |
+| 269 | `/api/module/{moduleKey}/schema` | `GET` | `GetModuleSchemaUrl` | Get Module Schema URL | Module | _(Phase 1.4)_ | `Public` | no |
+| 270 | `/api/notification` | `GET` | `GetNotifications` | Get User Notifications | Notification | _(Phase 1.4)_ | `Authenticated` | no |
+| 271 | `/api/notification/read-all` | `POST` | `MarkAllNotificationsAsRead` | Mark All Notifications as Read | Notification | _(Phase 1.4)_ | `Authenticated` | no |
+| 272 | `/api/notification/unread-count` | `GET` | `GetUnreadNotificationCount` | Get Unread Notification Count | Notification | _(Phase 1.4)_ | `Authenticated` | no |
+| 273 | `/api/notification/{id}` | `GET` | `GetNotificationById` | Get Notification by ID | Notification | _(Phase 1.4)_ | `Authenticated` | no |
+| 274 | `/api/notification/{id}` | `DELETE` | `DeleteNotification` | Delete Notification | Notification | _(Phase 1.4)_ | `Authenticated` | no |
+| 275 | `/api/notification/{id}/archive` | `PATCH` | `ArchiveNotification` | Archive Notification | Notification | _(Phase 1.4)_ | `Authenticated` | no |
+| 276 | `/api/notification/{id}/read` | `PATCH` | `MarkNotificationAsRead` | Mark Notification as Read | Notification | _(Phase 1.4)_ | `Authenticated` | no |
+| 277 | `/api/notification/{id}/snooze` | `PATCH` | `SnoozeNotification` | Snooze Notification | Notification | _(Phase 1.4)_ | `Authenticated` | no |
+| 278 | `/api/organization` | `GET` | `GetOrganizations` | Get all Organizations | Organization | _(Phase 1.4)_ | `Public` | no |
+| 279 | `/api/organization` | `POST` | `CreateOrganization` | Create Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
+| 280 | `/api/organization/my` | `GET` | `GetMyOrganizations` | Get my Organizations | Organization | _(Phase 1.4)_ | `Authenticated` | no |
+| 281 | `/api/organization/updatestatustype/{id}` | `PUT` | `UpdateOrganizationApprovalStatus` | Update Organization Approval Status | Organization | _(Phase 1.4)_ | `Authenticated` | no |
+| 282 | `/api/organization/{id}` | `GET` | `GetOrganizationById` | Get Organization Details | Organization | _(Phase 1.4)_ | `Public` | no |
+| 283 | `/api/organization/{id}` | `PUT` | `UpdateOrganization` | Update Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
+| 284 | `/api/organization/{id}` | `DELETE` | `DeleteOrganization` | Delete Organization | Organization | _(Phase 1.4)_ | `Authenticated` | no |
+| 285 | `/api/organizationmember` | `POST` | `AddOrganizationMember` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 286 | `/api/organizationmember/invitations` | `GET` | `GetMyOrganizationInvitations` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 287 | `/api/organizationmember/invitations/{id}/accept` | `POST` | `AcceptOrganizationInvitation` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 288 | `/api/organizationmember/invitations/{id}/decline` | `POST` | `DeclineOrganizationInvitation` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 289 | `/api/organizationmember/role` | `PUT` | `UpdateOrganizationMemberRole` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 290 | `/api/organizationmember/{id}` | `DELETE` | `DeleteOrganizationMember` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 291 | `/api/organizationmember/{organizationId}` | `GET` | `GetOrganizationMembersByOrganization` | _(none)_ | OrganizationMember | _(Phase 1.4)_ | `Public` | no |
+| 292 | `/api/organizationposition` | `GET` | `GetOrganizationPositions` | Get all Organization Positions | OrganizationPosition | _(Phase 1.4)_ | `Public` | no |
+| 293 | `/api/organizationposition/{id}` | `GET` | `GetOrganizationPositionById` | Get Organization Position by ID | OrganizationPosition | _(Phase 1.4)_ | `Public` | no |
+| 294 | `/api/organizationreview` | `GET` | `GetOrganizationReviews` | _(none)_ | OrganizationReview | _(Phase 1.4)_ | `Public` | no |
+| 295 | `/api/organizationreview` | `POST` | `CreateOrganizationReview` | _(none)_ | OrganizationReview | _(Phase 1.4)_ | `Authenticated` | no |
+| 296 | `/api/organizationreview/user/{userId}` | `GET` | `GetOrganizationReviewsByUser` | _(none)_ | OrganizationReview | _(Phase 1.4)_ | `Public` | no |
+| 297 | `/api/organizationreview/{organizationId}` | `GET` | `GetOrganizationReviewsByOrganization` | _(none)_ | OrganizationReview | _(Phase 1.4)_ | `Public` | no |
+| 298 | `/api/publicexperience/settings` | `GET` | `GetPublicExperienceSettings` | Get Public Experience Settings | PublicExperience | _(Phase 1.4)_ | `Public` | no |
+| 299 | `/api/publicexperience/shell` | `GET` | `GetPublicExperienceShell` | Get Public Experience Shell | PublicExperience | _(Phase 1.4)_ | `Public` | no |
+| 300 | `/api/registrationmode` | `GET` | `GetRegistrationModes` | Get all Registration Modes | RegistrationMode | _(Phase 1.4)_ | `Public` | no |
+| 301 | `/api/registrationmode/{id}` | `GET` | `GetRegistrationModeById` | Get Registration Mode by ID | RegistrationMode | _(Phase 1.4)_ | `Public` | no |
+| 302 | `/api/registrationscope` | `GET` | `GetRegistrationScopes` | Get all Registration Scopes | RegistrationScope | _(Phase 1.4)_ | `Public` | no |
+| 303 | `/api/role` | `GET` | `GetRoles` | Get all Roles | Role | _(Phase 1.4)_ | `Public` | no |
+| 304 | `/api/role/{id}` | `GET` | `GetRoleById` | Get Role by ID | Role | _(Phase 1.4)_ | `Public` | no |
+| 305 | `/api/scheduleitemkind` | `GET` | `GetScheduleItemKinds` | Get all Schedule Item Kinds | ScheduleItemKind | _(Phase 1.4)_ | `Public` | no |
+| 306 | `/api/settings/tenant/keys/{key}` | `PUT` | `UpdateTenantSetting` | Update Single Tenant Setting | Settings | _(Phase 1.4)_ | `Authenticated` | no |
+| 307 | `/api/settings/tenant/keys/{key}/lock` | `POST` | `LockTenantSetting` | Lock Tenant Setting | Settings | _(Phase 1.4)_ | `Authenticated` | no |
+| 308 | `/api/settings/tenant/keys/{key}/lock` | `DELETE` | `UnlockTenantSetting` | Unlock Tenant Setting | Settings | _(Phase 1.4)_ | `Authenticated` | no |
+| 309 | `/api/settings/tenant/{category}` | `GET` | `GetTenantScopedSettings` | Get Tenant Settings | Settings | _(Phase 1.4)_ | `Authenticated` | no |
+| 310 | `/api/settings/tenant/{category}` | `PUT` | `UpdateTenantSettingsBatch` | Batch Update Tenant Settings | Settings | _(Phase 1.4)_ | `Authenticated` | no |
+| 311 | `/api/settings/user/keys/{key}` | `PUT` | `UpdateUserSetting` | Update Single User Setting | Settings | _(Phase 1.4)_ | `Authenticated` | no |
+| 312 | `/api/settings/user/keys/{key}` | `DELETE` | `ResetUserSetting` | Reset User Setting | Settings | _(Phase 1.4)_ | `Authenticated` | no |
+| 313 | `/api/settings/user/{category}` | `GET` | `GetUserSettings` | Get User Settings | Settings | _(Phase 1.4)_ | `Authenticated` | no |
+| 314 | `/api/settings/user/{category}` | `PUT` | `UpdateUserSettingsBatch` | Batch Update User Settings | Settings | _(Phase 1.4)_ | `Authenticated` | no |
+| 315 | `/api/storageobject` | `GET` | `GetStorageObjects` | Get all Storage Objects | StorageObject | _(Phase 1.4)_ | `Public` | no |
+| 316 | `/api/storageobject` | `POST` | `CreateStorageObject` | Create Storage Object Record | StorageObject | _(Phase 1.4)_ | `Authenticated` | no |
+| 317 | `/api/storageobject/file/{fileKey}` | `GET` | `GetStorageObjectFile` | Get File Content | StorageObject | _(Phase 1.4)_ | `Public` | no |
+| 318 | `/api/storageobject/generate-upload-url` | `POST` | `GenerateStorageObjectUploadUrl` | Generate Pre-signed Upload URL | StorageObject | _(Phase 1.4)_ | `Authenticated` | no |
+| 319 | `/api/storageobject/presigned-url-by-key/{objectKey}` | `GET` | `GetStorageObjectPresignedDownloadUrlByKey` | Get Presigned Download URL by Key | StorageObject | _(Phase 1.4)_ | `Public` | no |
+| 320 | `/api/storageobject/{id}` | `GET` | `GetStorageObjectById` | Get Storage Object by ID | StorageObject | _(Phase 1.4)_ | `Public` | no |
+| 321 | `/api/storageobject/{id}` | `PUT` | `UpdateStorageObject` | Update Storage Object | StorageObject | _(Phase 1.4)_ | `Authenticated` | no |
+| 322 | `/api/storageobject/{id}` | `DELETE` | `DeleteStorageObject` | Delete Storage Object | StorageObject | _(Phase 1.4)_ | `Authenticated` | no |
+| 323 | `/api/storageobject/{id}/presigned-url` | `GET` | `GetStorageObjectPresignedDownloadUrl` | Get Presigned Download URL | StorageObject | _(Phase 1.4)_ | `Public` | no |
+| 324 | `/api/storageobject/{id}/public` | `GET` | `GetPublicStorageObjectImage` | Get Public Image | StorageObject | _(Phase 1.4)_ | `Public` | no |
+| 325 | `/api/syncstate` | `GET` | `GetSyncStates` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
+| 326 | `/api/syncstate` | `POST` | `CreateSyncState` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
+| 327 | `/api/syncstate/{id}` | `GET` | `GetSyncStateById` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
+| 328 | `/api/syncstate/{id}` | `PUT` | `UpdateSyncState` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
+| 329 | `/api/syncstate/{id}` | `DELETE` | `DeleteSyncState` | _(none)_ | SyncState | _(Phase 1.4)_ | `Authenticated` | no |
+| 330 | `/api/system/onboarding-preflight` | `GET` | `GetSystemOnboardingPreflight` | Get System Onboarding Preflight | System | _(Phase 1.4)_ | `Public` | no |
+| 331 | `/api/system/onboarding-status` | `GET` | `GetSystemOnboardingStatus` | Get System Onboarding Status | System | _(Phase 1.4)_ | `Public` | no |
+| 332 | `/api/tag` | `GET` | `GetTags` | Get all Tags | Tag | _(Phase 1.4)_ | `Public` | no |
+| 333 | `/api/tag` | `POST` | `CreateTag` | Create Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
+| 334 | `/api/tag/{id}` | `GET` | `GetTagById` | Get Tag Details | Tag | _(Phase 1.4)_ | `Public` | no |
+| 335 | `/api/tag/{id}` | `PUT` | `UpdateTag` | Update Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
+| 336 | `/api/tag/{id}` | `DELETE` | `DeleteTag` | Delete Tag | Tag | _(Phase 1.4)_ | `Authenticated` | no |
+| 337 | `/api/tagtype` | `GET` | `GetTagTypes` | _(none)_ | TagType | _(Phase 1.4)_ | `Public` | no |
+| 338 | `/api/tagtype/with-tags` | `GET` | `GetTagTypesWithTags` | Get Tag Types with Tags | TagType | _(Phase 1.4)_ | `Public` | no |
+| 339 | `/api/tagtype/{id}` | `GET` | `GetTagTypeById` | _(none)_ | TagType | _(Phase 1.4)_ | `Public` | no |
+| 340 | `/api/tenant` | `GET` | `GetTenants` | Get all Tenants | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 341 | `/api/tenant` | `POST` | `CreateTenant` | Create new Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 342 | `/api/tenant/count` | `GET` | `GetActiveTenantCount` | Get Active Tenant Count | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 343 | `/api/tenant/navigation` | `GET` | `GetTenantNavigationLinks` | Get Tenant Navigation Links | Tenant | _(Phase 1.4)_ | `Public` | no |
+| 344 | `/api/tenant/navigation` | `POST` | `CreateTenantNavigationLink` | Create Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 345 | `/api/tenant/navigation/reorder` | `PUT` | `ReorderTenantNavigationLinks` | Reorder Tenant Navigation Links | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 346 | `/api/tenant/navigation/{id}` | `PUT` | `UpdateTenantNavigationLink` | Update Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 347 | `/api/tenant/navigation/{id}` | `DELETE` | `DeleteTenantNavigationLink` | Delete Tenant Navigation Link | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 348 | `/api/tenant/{id}` | `GET` | `GetTenantById` | Get Tenant by ID | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 349 | `/api/tenant/{id}` | `PUT` | `UpdateTenant` | Update Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 350 | `/api/tenant/{id}` | `DELETE` | `DeleteTenant` | Delete Tenant | Tenant | _(Phase 1.4)_ | `Authenticated` | no |
+| 351 | `/api/tenantmember` | `GET` | `GetTenantMembers` | Get all Tenant Members | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 352 | `/api/tenantmember` | `POST` | `CreateTenantMember` | Create new Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 353 | `/api/tenantmember/{id}` | `GET` | `GetTenantMemberById` | Get Tenant Member by ID | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 354 | `/api/tenantmember/{id}` | `PUT` | `UpdateTenantMember` | Update Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 355 | `/api/tenantmember/{id}` | `DELETE` | `DeleteTenantMember` | Delete Tenant Member | TenantMember | _(Phase 1.4)_ | `Authenticated` | no |
+| 356 | `/api/tenantonboarding/complete` | `POST` | `CompleteTenantOnboarding` | Complete Tenant Onboarding | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
+| 357 | `/api/tenantonboarding/settings` | `GET` | `GetTenantOnboardingPolicySettings` | Get Tenant Policy Settings | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
+| 358 | `/api/tenantonboarding/settings` | `PUT` | `UpdateTenantOnboardingPolicySettings` | Update Tenant Policy Settings | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
+| 359 | `/api/tenantonboarding/status` | `GET` | `GetTenantOnboardingStatus` | Get Tenant Onboarding Status | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
+| 360 | `/api/tenantonboarding/steps` | `PUT` | `SaveTenantOnboardingStepProgress` | Save Tenant Onboarding Step Progress | TenantOnboarding | _(Phase 1.4)_ | `Authenticated` | no |
+| 361 | `/api/translation/languages` | `GET` | `GetAvailableTranslationLanguages` | Get Available Languages | Translation | _(Phase 1.4)_ | `Public` | no |
+| 362 | `/api/translation/{languageCode}` | `GET` | `GetTranslationByLanguage` | Get Translations | Translation | _(Phase 1.4)_ | `Public` | no |
+| 363 | `/api/user` | `GET` | `GetCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 364 | `/api/user` | `PUT` | `UpdateCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 365 | `/api/user` | `DELETE` | `DeleteCurrentUser` | _(none)_ | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 366 | `/api/user/admin-authority` | `GET` | `GetCurrentUserAdminAuthority` | Get current user's admin authority | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 367 | `/api/user/appearance` | `GET` | `GetCurrentUserAppearancePreferences` | Get Resolved Appearance | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 368 | `/api/user/appearance/active-profile` | `PUT` | `setActiveAppearanceProfile` | Set Active Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 369 | `/api/user/appearance/generate-palette` | `GET` | `generateAppearancePalette` | Generate Palette From Colors | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 370 | `/api/user/appearance/mode` | `PUT` | `setAppearanceThemeMode` | Set Theme Mode | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 371 | `/api/user/appearance/presets` | `GET` | `GetAvailableThemes` | Get Available Presets | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 372 | `/api/user/appearance/profiles` | `GET` | `getUserAppearanceProfiles` | Get User Appearance Profiles | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 373 | `/api/user/appearance/profiles` | `POST` | `createCustomAppearanceProfile` | Create Custom Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 374 | `/api/user/appearance/profiles/from-preset/{presetId}` | `POST` | `clonePresetToProfile` | Clone Preset Into User Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 375 | `/api/user/appearance/profiles/{profileId}` | `PUT` | `updateAppearanceProfile` | Update User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 376 | `/api/user/appearance/profiles/{profileId}/archive` | `PUT` | `archiveAppearanceProfile` | Archive User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 377 | `/api/user/appearance/profiles/{profileId}/duplicate` | `POST` | `duplicateAppearanceProfile` | Duplicate User Appearance Profile | UserAppearance | _(Phase 1.4)_ | `Authenticated` | no |
+| 378 | `/api/user/sync` | `POST` | `SyncUser` | Sync user from identity provider | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 379 | `/api/user/{userId}/organizations` | `GET` | `GetUserOrganizations` | Get user's organizations | User | _(Phase 1.4)_ | `Authenticated` | no |
+| 380 | `/api/userauthenticationtoken` | `GET` | `GetUserAuthenticationTokens` | Get all User Authentication Tokens | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 381 | `/api/userauthenticationtoken` | `POST` | `CreateUserAuthenticationToken` | Create new User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 382 | `/api/userauthenticationtoken/{id}` | `GET` | `GetUserAuthenticationTokenById` | Get User Authentication Token by ID | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 383 | `/api/userauthenticationtoken/{id}` | `PUT` | `UpdateUserAuthenticationToken` | Update User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 384 | `/api/userauthenticationtoken/{id}` | `DELETE` | `DeleteUserAuthenticationToken` | Delete User Authentication Token | UserAuthenticationToken | _(Phase 1.4)_ | `Authenticated` | no |
+| 385 | `/api/userexternallogin` | `GET` | `GetUserExternalLogins` | Get all User External Logins | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 386 | `/api/userexternallogin` | `POST` | `CreateUserExternalLogin` | Create new User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 387 | `/api/userexternallogin/{id}` | `GET` | `GetUserExternalLoginById` | Get User External Login by ID | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 388 | `/api/userexternallogin/{id}` | `PUT` | `UpdateUserExternalLogin` | Update User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 389 | `/api/userexternallogin/{id}` | `DELETE` | `DeleteUserExternalLogin` | Delete User External Login | UserExternalLogin | _(Phase 1.4)_ | `Authenticated` | no |
+| 390 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | _(Phase 1.4)_ | `Public` | no |
+| 391 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | _(Phase 1.4)_ | `Public` | no |
+| 392 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | _(Phase 1.4)_ | `Public` | no |
 
 ## Columns
 

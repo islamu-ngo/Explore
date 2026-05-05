@@ -55,7 +55,7 @@ Inline-end overlay panels must slide toward their actual inline edge. In LTR tha
 
 `Explore.Blazor.Client.Components.Docking` contains the first host layer:
 
-- `DockLayoutHost` creates a scope grid with logical start/content/end tracks and a bottom row. It reads open `DockMode.Docked` panels from `DockLayoutState`, observes MudBlazor browser breakpoints, exposes width custom properties from runtime state, and collapses docked inline widths to `0px` on `Xs`/`Sm` breakpoints.
+- `DockLayoutHost` creates a scope grid with logical start/content/end tracks and a bottom row. It reads open `DockMode.Docked` panels from `DockLayoutState`, observes MudBlazor browser breakpoints, exposes width custom properties from runtime state, and treats only `Breakpoint.Xs` as hard mobile.
 - `DockSideHost` renders ordered open docked panels for one `(DockScope, DockSide)` group on desktop and suppresses docked side-host rendering on mobile so temporary overlay chrome owns panel behavior.
 - `DockPanelHost` renders descriptor-driven panel chrome with accessible labels, panel ids, mode/side data attributes, tokenized width, and logical borders.
 - `DockOverlayHost` renders open `Overlay`, `Temporary`, and `Inspector` panels separately from persistent grid tracks. On mobile, it also projects open docked side panels into effective `Temporary` render entries while leaving runtime state in its desktop `Docked` mode, so resize/persistence semantics remain stable across breakpoints. Closing overlays remain mounted for the tokenized reverse slide/fade animation before unmounting.
@@ -63,13 +63,30 @@ Inline-end overlay panels must slide toward their actual inline edge. In LTR tha
 
 These hosts now render the production shell and EventList workspace panels. Temporary bridge services remain only where toggles still need compatibility (`SidebarState`, `AiAssistantState`, and page-local EventList adapter booleans); do not remove those bridges until all consumers are audited and tests pass.
 
-`Explore.Blazor.Client.Components.Shell.AppSideNav` is the extracted left navigation panel content. During the migration window it remains hosted by the existing `MainLayout` `MudDrawer`; later shell migration should register the same content as the `shell.left-nav` descriptor content instead of duplicating the navigation tree.
+`Explore.Blazor.Client.Components.Shell.AppSideNav` is the extracted left navigation panel content. The shell registers the same content as the `shell.left-nav` descriptor content instead of duplicating the navigation tree.
 
-`Explore.Blazor.Client.Components.Shell.ShellDockPanels` owns the shell descriptors for `shell.left-nav` and `shell.ai-assistant`. `MainLayout` currently registers those descriptors and render fragments into `DockLayoutState` while preserving the legacy `MudDrawer` and `AiAssistantRail` rendering path. Legacy `SidebarState` and `AiAssistantState` changes are mirrored into dock state so the future `DockLayoutHost` migration can reuse the same shell descriptors without a second content model.
+`Explore.Blazor.Client.Components.Shell.ShellDockPanels` owns the shell descriptors for `shell.left-nav` and `shell.ai-assistant`. `MainLayout` registers those descriptors and render fragments into `DockLayoutState`. Legacy `SidebarState` and `AiAssistantState` changes are still mirrored into dock state while remaining top-nav/settings consumers are migrated or formalized behind a facade.
 
 During the bridge period, hidden-chrome routes such as setup/onboarding/startup must mirror both shell descriptors closed, and layout disposal must unregister shell descriptors. These lifecycle behaviors are covered in `MainLayoutTests` so future host migration does not accidentally leave stale shell panels in scoped dock state.
 
-Top navigation controls remain legacy-rendered during the bridge period. The sidebar and AI buttons still toggle `SidebarState` and `AiAssistantState` so the current `MudDrawer` and `AiAssistantRail` behavior is preserved, but the handlers also mirror through `shell.left-nav` and `shell.ai-assistant` when the shell descriptors are present. This keeps future `DockLayoutHost` migration aligned with the visible shell state without changing production rendering yet.
+Top navigation controls still bridge through `SidebarState` and `AiAssistantState` during the compatibility period, but the handlers mirror through `shell.left-nav` and `shell.ai-assistant` when the shell descriptors are present. This keeps bridge consumers aligned with the visible dock state while the remaining public toggle APIs are migrated or wrapped.
+
+## Responsive policy
+
+The dock engine intentionally separates hard mobile behavior from constrained desktop behavior:
+
+- Hard mobile is `Breakpoint.Xs` only. `DockLayoutHost` passes `isMobile: true` to `DockLayoutState.UpdateViewport` only when MudBlazor reports `Breakpoint.Xs`.
+- `Sm` and wider viewports remain desktop/constrained-desktop layouts. They may project a start panel into overlay chrome, but they do not globally switch every docked inline panel to mobile behavior.
+- The center-content floor is `375px` (`MinimumMobileContentWidth` in `DockLayoutState`). This is the minimum remaining content width the policy tries to preserve when combining start and end docked panels.
+- Start-side docked panels can coexist with end-side docked panels until the combined docked width would leave less than `375px` for content. When that happens, explicit start-panel opens are rendered through overlay chrome while the runtime state can remain `DockMode.Docked` for persistence and resize semantics.
+- End-side panels keep at most one active/open panel when hard-mobile or constrained-width rules would leave too little content. If a user explicitly opens an end panel, the policy keeps the preferred panel; otherwise it keeps the active or last ordered end panel.
+- Viewport policy changes use `DockLayoutChangeReason.ViewportPolicy` and must not autosave durable layout preferences. Autosave belongs to meaningful user/reset changes whose scoped persistent snapshot actually changed.
+
+Maintainer tuning guidance:
+
+- Change `MinimumMobileContentWidth` only with matching tests at constrained widths such as `970px` and `1000px`.
+- Do not broaden hard mobile from `Xs` to `Sm` without visual evidence showing the desktop/tablet layout is unusable; previous `Sm` behavior closed/projected panels too early.
+- Keep descriptor widths and token widths in sync before changing thresholds, because the content-floor calculation is based on runtime panel widths.
 
 Before production shell host migration, `MainLayoutTests` must preserve the shell accessibility/navigation contract: the skip link targets `#main-content`, the main landmark keeps `tabindex="-1"`, visible-chrome routes expose header/footer/sidebar navigation landmarks, hidden-chrome routes keep skip/main/live-region anchors while hiding shell chrome, and navigation changes call `IAccessibilityFocusService.FocusOnNavigateAsync()`.
 
@@ -103,7 +120,8 @@ The first stack implementation is intentionally tabbed only. Arbitrary split pan
 - Do not use page-level shell compensation hacks to account for global rails.
 - Do not use physical CSS direction properties in new dock CSS; use `inline-start`, `inline-end`, `padding-inline-*`, `margin-inline-*`, and logical borders.
 - Do not migrate EventList detail preview until regression coverage exists; it must remain inspector/overlay style.
-- Do not remove `SidebarState`, `AiAssistantState`, or `RightSidebar` until all consumers are migrated and tests pass.
+- Do not remove `SidebarState` or `AiAssistantState` until all consumers are migrated and tests pass.
+- Do not reintroduce `RightSidebar` as an EventList/workspace host; the orphaned component was removed after a consumer audit.
 - Do not introduce external/plugin panel loading in this phase; registration is compile-time and component-owned.
 
 `Event.Architecture.Tests/DockLayoutArchitectureTests.cs` enforces the descriptor-driven contract by rejecting central panel enums and new page-scoped CSS shell compensation outside known legacy migration debt. Keep this test focused on preventing regressions while the visual baseline gap blocks production shell/workspace host migration.

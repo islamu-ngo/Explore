@@ -89,3 +89,8 @@ Known risks:
 1. MQContract NuGet packages may not be in `.csproj` files
 2. Journal entry from 2026-04-24 mentions orphan MQContract build break in EventPublishedIntegrationEvent.cs
 3. No tests have been run yet
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+- [x] No task-state changes were made for this workstream during the sidebar dock refactor handoff session.
+- [ ] Reconfirm this workstream's current state from its existing context/plan before resuming implementation.

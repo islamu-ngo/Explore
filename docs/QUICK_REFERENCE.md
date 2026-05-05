@@ -25,6 +25,7 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 19. ETag middleware uses weak ETags (SHA256) — only on `application/json` and `application/hal+json` responses.
 20. Named route constants in `RouteNames` must match `[HttpGet(Name = "...")]` attribute values on controller actions.
 21. **HAL links are the single source of truth for UI**: Clients must gate action affordances (Edit, Delete, etc.) by checking for the presence of the corresponding link in the `_links` object, never by local role/claim inspection.
+22. Normalized lookup DTOs expose `*Id`, `*Code`, and `*Name`; do not expose persisted enum wrappers in API contracts.
 
 ## Multi-Tenancy Reminder
 Runtime tenant resolution:
@@ -54,7 +55,7 @@ Governance settings resolution uses a **5-tier cascade**: User → Group → Org
 3. Repository returning DTOs and leaking app-layer concerns.
 4. Assuming one command-response pattern across all legacy features without checking local feature conventions.
 5. Changing middleware pipeline order in Program.cs without understanding dependencies (e.g., rate limiting after auth).
-6. Adding a new lookup table without matching enum and HasData() seed — both must be synchronized.
+6. Adding a normalized lookup table without stable IDs/codes in `LookupTableSeeder` and matching DTO metadata projection.
 
 ## Controller-Authoring Standard (Forward Policy)
 

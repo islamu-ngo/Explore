@@ -161,3 +161,7 @@ grep -r "MQContract" Explore.Application/Explore.Application.csproj Explore.Infr
 # dotnet add Explore.Infrastructure/Explore.Infrastructure.csproj package MQContract.RabbitMQ
 # dotnet add Explore.Infrastructure/Explore.Infrastructure.csproj package MQContract.InMemory
 ```
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+No implementation work was performed for this active task during the sidebar dock refactor handoff session. Existing context, plan, and task files remain the authoritative state for this workstream. Do not infer progress or blockers here from the sidebar/dock-specific changes unless a future session explicitly broadens scope.

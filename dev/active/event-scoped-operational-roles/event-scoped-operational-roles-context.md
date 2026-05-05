@@ -354,3 +354,7 @@ Implementation has progressed through the foundation, event-child context, autho
   - `Event.Application.UnitTests/Features/EventRoleAssignments/Commands/EventRoleAssignmentCommandHandlerTests.cs`
   - `Event.Application.UnitTests/Behaviors/FallbackAuthorizationServiceTests.cs`
 - The working tree contains many unrelated pre-existing modifications from other active workstreams. Use path-scoped diffs before summarizing or committing.
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+No implementation work was performed for this active task during the sidebar dock refactor handoff session. Existing context, plan, and task files remain the authoritative state for this workstream. Do not infer progress or blockers here from the sidebar/dock-specific changes unless a future session explicitly broadens scope.

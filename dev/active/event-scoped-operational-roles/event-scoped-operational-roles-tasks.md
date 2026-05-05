@@ -637,3 +637,8 @@ Last Updated: 2026-05-01 Europe/Brussels — implementation handoff after verifi
 - Do not add finance/payment manager, reviewer/approver, speaker coordinator, volunteer, event moderator, emergency Instance Admin UI, custom event roles UI, or event-role inheritance in v1.
 - Do not use normal soft delete as assignment lifecycle.
 - Do not use SQL Server-style byte-array rowversion for PostgreSQL event-role assignment concurrency.
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+- [x] No task-state changes were made for this workstream during the sidebar dock refactor handoff session.
+- [ ] Reconfirm this workstream's current state from its existing context/plan before resuming implementation.

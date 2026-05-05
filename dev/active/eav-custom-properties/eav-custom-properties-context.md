@@ -3,7 +3,69 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 # EAV Custom Properties - Context
 
-**Last Updated: 2026-05-02 (Phase 8.5.13 projection updater Prometheus metrics completed)**
+**Last Updated: 2026-05-03 (Phase 12.7 projection quota completion updated)**
+
+---
+
+## CURRENT HANDOFF (2026-05-03) — PHASE 12 HARDENING STATE
+
+This context replaces the deleted execution log. The active folder now intentionally contains only:
+
+- `eav-custom-properties-plan.md`
+- `eav-custom-properties-tasks.md`
+- `eav-custom-properties-context.md`
+
+### Current Implementation State
+
+- Phase 12.1 runtime validation is partial: event/session runtime value writes now use `Explore.Application/Features/CustomProperties/CustomPropertyRuntimeValueValidator.cs` for active definition, typed value shape, requiredness, `IsMulti`, text/url/number/datetime constraints, option membership/active state, and normalized duplicate checks. Shared org/group runtime value write wiring is still open because no Application/API write surface was found.
+- Phase 12.2 exposure hardening is partial: raw custom-property definition/value controller reads are authenticated, projection search/filter/`Exists` paths apply explicit exposure ceilings, and projection row repositories no longer rely on enum-order visibility comparisons. Export/moderation payload proof remains open.
+- Phase 12.3 option lifecycle hardening is partial: shared/event/session `UpdateWithOptions` methods merge options by normalized `Namespace + Key`, preserve matched IDs, remap defaults to persisted option IDs, revive matched soft-deleted rows, and retire omitted options by clearing active/default flags. Explicit purge remains open.
+- Phase 12.4 projection operability authorization is closed: projection status, dirty-scope, and row-inspection query contracts implement `ISecureRequest` and require `custom_property_projection:view`.
+- Phase 12.5 concurrency/stale-state hardening is closed for shared/event/session definition updates: read DTOs expose `ConcurrencyStamp`, update DTOs require `ExpectedConcurrencyStamp`, handlers throw `ConcurrencyConflictException` with `concurrent_update` before mapping/persistence on stale writes, API metadata documents 409 responses, and Blazor shared-definition flag updates send the fetched stamp.
+- Phase 12.6 delete lifecycle hardening is partial: normal shared/event/session definition deletes now retire and soft-delete definitions, options, and values through tracked EF deletes so the existing SaveChanges audit/soft-delete interceptor preserves history. Explicit audited purge remains open.
+- Phase 12.7 quota sweep is partial: all configured local quota keys now have enforcing code paths. Shared/event/session definition creation enforces definition-count quotas; shared/event/session create/update enforce `MaxOptionsPerDefinition`; event/session multi-value writes enforce `MaxMultiValueRowsPerValue`; event template create/update enforces `MaxDefinitionsPerTemplate`; event/session template sync applies `SyncApplyMaxPayloadBytes`; operator rebuild requests enforce `ProjectionRebuildBatchSize` and pass the requested batch size to rebuild execution; rebuild/drain workers use the configured batch size by default; dirty-scope upserts enforce `MaxDirtyScopePendingPerTenant`. Quota boundary matrix and normalized error shape remain open.
+
+### Key Decisions Made In Phase 12
+
+- Raw custom-property controller reads are not public until purpose-built public surfaces can apply explicit exposure ceilings.
+- Projection visibility uses an explicit hierarchy helper instead of comparing `ExposureLevel` enum values, because the enum declaration order does not represent public-to-internal visibility rank.
+- `Exists` discovery filters require a filterable projection row inside the exposure ceiling; existence is treated as potentially sensitive metadata.
+- Option updates preserve semantic identity by `Namespace + Key` rather than preserving incoming handler-generated IDs.
+- Normal delete means retire and soft-delete; hard delete is reserved for a future explicit purge workflow with audit and no-dependent-history proof.
+- Definition update concurrency uses DTO stamp roundtrip (`ConcurrencyStamp` read, `ExpectedConcurrencyStamp` write) rather than `If-Match` for the current implementation slice.
+- Quota errors currently use a `quota_exceeded:` prefix in handler validation failures; a fully normalized error envelope remains an open Phase 12.7 task.
+
+### Files Modified By Phase 12 Hardening
+
+- Runtime validation: `CustomPropertyRuntimeValueValidator.cs`, event/session set-value and multi-value handlers, and focused Application tests.
+- Exposure hardening: shared/event/session custom-property controllers, projection filter specifications, event/session repositories, projection repositories, and projection filter tests.
+- Projection operability auth: five projection query request contracts plus `ProjectionQueryAuthorizationMetadataTests.cs`.
+- Option lifecycle and delete lifecycle: shared/event/session custom-property repositories plus `CustomPropertyOptionLifecycleRepositoryTests.cs`.
+- Concurrency: shared/event/session definition DTOs, validators, update handlers, controllers, Blazor detail model/service, generated client update payloads, and stale-write tests.
+- Quotas: shared/event/session repository contracts and implementations, create/update definition handlers, event/session multi-value handlers, event template create/update handlers, event/session template sync services, projection rebuild handlers/updaters, shared create/update tests, event/session runtime definition quota tests, multi-value tests, template sync tests, event template quota tests, and projection rebuild quota tests.
+- Documentation: this context file, `eav-custom-properties-plan.md`, and `eav-custom-properties-tasks.md` now carry the active progress previously held in the execution log.
+
+### Current Blockers And Issues
+
+- Docker/Testcontainers proof is still required for full certification and is blocked locally when Docker is unavailable.
+- Shared `CustomPropertyValue` storage exists, but no Application/API shared org/group runtime value write path was found to wire into the runtime validator.
+- No dedicated custom-property export/moderation payload composer was found beyond aggregate facets, so export/moderation proof is still a verification/product-surface task.
+- `Explore.Blazor.Client/Clients/EventApiClient.g.cs` was patched for concurrency payloads during Phase 12.5; run NSwag regeneration when the API/OpenAPI flow is next refreshed.
+
+### Next Immediate Steps
+
+1. Add quota boundary tests for `quota - 1`, `quota`, and `quota + 1`, then normalize the `quota_exceeded` error shape.
+2. Run Docker/Testcontainers certification for runtime validation, projection exposure, projection authorization, option lifecycle, concurrency, delete lifecycle, quotas, sync, and aggregate flows.
+3. Decide explicit audited purge workflow/policy.
+4. Decide Phase 12.9 product boundary: custom fields only on existing resources, or a separate runtime schema engine plan for user-defined entities/relationships.
+
+### Verification Commands To Re-run
+
+- `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal` (latest targeted projection quota run: 6/6; earlier Phase 12.7 quota run: 1110/1110)
+- `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`
+- `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal` when Docker/Testcontainers are available.
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal` (latest Phase 12.7 projection quota run: 143/143)
+- `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --verbosity quiet` and `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal` after NSwag regeneration/client updates.
 
 ---
 
@@ -988,3 +1050,7 @@ If a property becomes central to those areas, it must be:
 - `.claude/skills/clean-architecture-rules/SKILL.md`
 - `.claude/skills/cqrs-mediatr-guidelines/SKILL.md`
 - `.claude/skills/dotnet-efcore-guidelines/SKILL.md`
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+No implementation work was performed for this active task during the sidebar dock refactor handoff session. Existing context, plan, and task files remain the authoritative state for this workstream. Do not infer progress or blockers here from the sidebar/dock-specific changes unless a future session explicitly broadens scope.

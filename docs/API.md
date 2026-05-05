@@ -207,15 +207,15 @@ Denied requests throw `AuthorizationException` → mapped to `403 Forbidden` by 
 
 Non-interactive callers authenticate with long-lived `X-API-Key` credentials in the form `{keyId}.{secret}`. The endpoint contract is otherwise identical to JWT callers — only the credential presentation and principal shape differ.
 
-**Owner Types** (enum values stored alongside each key):
+**Owner Types** are normalized lookup rows. Write contracts use `externalApiKeyOwnerTypeId`; read contracts expose `externalApiKeyOwnerTypeId`, `externalApiKeyOwnerTypeCode`, and `externalApiKeyOwnerTypeName` so clients do not depend on domain enum serialization.
 
-| Value | Owner | Tenant Binding | Effective Authority |
-|---|---|---|---|
-| `1` | `User` | Required | Key inherits the owner user's memberships (tenant/org/group admin claims) |
-| `2` | `Organization` | Required | Acts as organization admin for the owning org within the bound tenant |
-| `3` | `Group` | Required | Acts as group admin for the owning group within the bound tenant |
-| `4` | `Tenant` | Required | Acts as tenant admin for the bound tenant |
-| `5` | `InstanceAdmin` | **Nullable** | Cross-tenant operator; bypasses tenant isolation |
+| ID | Code | Owner | Tenant Binding | Effective Authority |
+|---|---|---|---|---|
+| `1` | `USER` | User | Required | Key inherits the owner user's memberships (tenant/org/group admin claims) |
+| `2` | `ORGANIZATION` | Organization | Required | Acts as organization admin for the owning org within the bound tenant |
+| `3` | `GROUP` | Group | Required | Acts as group admin for the owning group within the bound tenant |
+| `4` | `TENANT` | Tenant | Required | Acts as tenant admin for the bound tenant |
+| `5` | `INSTANCE_ADMIN` | Instance Admin | **Nullable** | Cross-tenant operator; bypasses tenant isolation |
 
 **Scope Model** (`ExternalApiKeyScopes`): `events:read`, `events:write`, `organizations:read`, `organizations:write`, `groups:read`, `groups:write`, `users:read`, `users:write`, `lookups:read`, `registrations:write`, `api-keys:manage`, `admin:tenant`, `admin:instance`. Effective permissions are the intersection of (a) the scopes on the key and (b) the owner's authority ceiling (`ExternalApiKeyScopeCeiling`). Keys cannot hold scopes above their owner type.
 

@@ -57,6 +57,56 @@ dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.cs
 dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
 ```
 
+### Test Taxonomy And CI Lanes
+
+Use TUnit metadata to route tests into the smallest lane that proves the behavior. TUnit uses `--treenode-filter` for metadata filtering; do not use VSTest-style `--filter` examples for TUnit projects.
+
+| Lane | TUnit Metadata | Projects | Purpose | Default Frequency |
+|------|----------------|----------|---------|-------------------|
+| Unit | `[Category("Unit")]` or project-level unit suite | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Explore.Secrets.UnitTests` | Fast domain, handler, validator, mapping, and service behavior | Every PR |
+| Architecture | project-level architecture suite | `Event.Architecture.Tests` | Clean Architecture, naming, accessibility structure, authorization parity, and test-suite governance | Every PR |
+| Component | `[Category("Component")]` or project-level UI suite | `Explore.Blazor.Client.Tests` | bUnit component, service, accessibility, wrapper, and design-system behavior | Every PR |
+| API Contract | `[Category(TestCategories.Fast)]`, `[Category(TestCategories.Security)]`, `[Category(TestCategories.PolicyContract)]` | `Event.API.IntegrationTests` | HTTP serialization, HAL, ProblemDetails, auth matrix, Cerbos contract, and API surface rules | Every PR where possible |
+| Real Runtime | `[NotInParallel("RealRuntimeDb")]` / PostgreSQL fixtures | `Event.Persistence.IntegrationTests`, real-runtime API tests | Provider-specific EF Core, migrations, query filters, tenant isolation, and repository behavior | Merge/nightly |
+| Stress | stress fixture/category | `Event.API.IntegrationTests` | Rate limiting, retry headers, timeout, and high-volume middleware behavior | Nightly/manual |
+| BFF Integration | BFF integration suite/categories | `Explore.Blazor.IntegrationTests` | Cookie auth, token refresh, YARP forwarding, tenant hints, and BFF middleware | Every PR for no-infra tests; nightly for Keycloak-backed tests |
+| E2E | `[Category("E2E")]` or E2E project | `Explore.Blazor.Client.E2ETests` | Browser-only critical journeys through Aspire | Nightly/manual |
+| Manual Visual | `[Category("Manual visual")]` or visual baseline tests | `Explore.Blazor.Client.E2ETests` | Screenshot baseline review and layout regressions | Manual/approved baseline lane |
+
+Example TUnit filters:
+
+```bash
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --treenode-filter "////[Category=Security]"
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet --treenode-filter "////[Category=E2E]"
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet --treenode-filter "////[Category!=Manual visual]"
+```
+
+### Disabled Test Governance
+
+Disabled tests are allowed only when the test still expresses required future behavior and cannot run in the current lane. Do not comment out `[Test]`; either keep the test active, mark it with `[Skip("Category: ... Removal: ...")]`, or delete it when the behavior is obsolete or unnecessary.
+
+Skip reason requirements:
+
+- `Category:` names the owning suite or lane (`E2E`, `Stress`, `API contract`, `Component accessibility`, `Manual visual`, etc.).
+- `Removal:` states the concrete condition for re-enabling or deleting the skip.
+- No permanent skips. Infrastructure-gated tests move to a nightly/manual lane through category filters; they do not remain hidden from governance.
+- No backward-compatibility preservation tests while the project is in development mode. If a test only protects an obsolete API, DTO shape, route alias, or UI behavior, delete it instead of skipping it.
+
+`Event.Architecture.Tests.CodeHygieneTests` enforces that test source files do not contain commented-out `[Test]` markers and that every `[Skip]` includes both `Category:` and `Removal:`.
+
+### Critical Risk Traceability Matrix
+
+| Risk | Primary Test Project(s) | Required Coverage |
+|------|--------------------------|-------------------|
+| Tenant isolation leaks | `Event.Persistence.IntegrationTests`, `Event.API.IntegrationTests`, `Explore.Blazor.Client.E2ETests` | EF named filters, repository queries, API tenant binding, browser-visible cross-tenant denial |
+| Authorization drift | `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Event.Architecture.Tests` | Handler authorization outcomes, endpoint 401/403/ProblemDetails, Cerbos/fallback parity |
+| BFF token/header boundary failure | `Explore.Blazor.IntegrationTests`, `Explore.Blazor.Client.E2ETests` | Cookie-only browser state, server-side token forwarding, setup-secret stripping/replacement, trusted tenant hint forwarding |
+| HAL/UI action mismatch | `Event.API.IntegrationTests`, `Explore.Blazor.Client.Tests` | HATEOAS link policies, response contracts, UI affordances gated by `_links` |
+| Relational persistence regression | `Event.Persistence.IntegrationTests` | PostgreSQL migrations, query translation, constraints, soft delete, tenant filters, Respawn reset |
+| Rate limiting/timeout/idempotency regressions | `Event.API.IntegrationTests` | Stress host policies, Retry-After metadata, ProblemDetails, idempotency and request-timeout middleware behavior |
+| Critical browser journeys fail | `Explore.Blazor.Client.E2ETests` | Aspire-backed smoke, registration, tenant isolation, authorization enforcement, and BFF forwarding flows |
+| Accessibility/design-system drift | `Explore.Blazor.Client.Tests`, `Event.Architecture.Tests` | bUnit semantic component checks, structural accessibility guardrails, wrapper behavior |
+
 ## E2E Browser Tests (Explore.Blazor.Client.E2ETests)
 
 - Uses Playwright for real browser automation.
@@ -86,6 +136,7 @@ dotnet test --project <ProjectPath> --configuration Release -- --report-trx --re
 | **CSS Direction** | Scoped CSS avoids physical direction properties (`margin-left` → `margin-inline-start`) — advisory |
 | **Authorization Parity** | Every resource kind has a Cerbos policy and fallback case |
 | **ABOUTME Headers** | All C# files start with `ABOUTME:` comments |
+| **Test Suite Governance** | Disabled tests use explicit skip metadata, never commented-out `[Test]` markers |
 
 ### Accessibility Convention Tests
 
@@ -124,8 +175,9 @@ TDD is the default unless explicitly allowed to skip.
 - Test one behavior per test method
 - Use descriptive test names: `MethodName_Condition_ExpectedResult`
 - Use real data and APIs in integration tests — avoid mocks in end-to-end flows
-- Run all 8 test projects before submitting a PR
+- Run all required project-level test projects before submitting a PR; never use solution-level `dotnet test`
 - Keep test output pristine — no unexpected warnings or stack traces
+- Prefer deleting unnecessary or backward-compatibility-only tests over preserving obsolete behavior
 
 ### Do Not
 
@@ -134,6 +186,8 @@ TDD is the default unless explicitly allowed to skip.
 - Use mocks in integration/E2E tests
 - Create ad-hoc test scripts — use the test projects
 - Skip architecture tests — they are CI gates
+- Comment out `[Test]` attributes to hide failing tests
+- Add backward-compatibility tests for obsolete behavior while the project is in development mode
 
 ## Test Data And Fixtures
 

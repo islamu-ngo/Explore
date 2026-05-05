@@ -4,6 +4,7 @@
     "dev/_journal/**/*",
     "README.md",
     "CLAUDE.md",
+    "AGENTS.md",
     ".claude",
     ".claude/commands/dev-docs.md",
     ".claude/commands/dev-docs-update.md",

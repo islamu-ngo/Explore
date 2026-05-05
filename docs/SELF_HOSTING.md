@@ -208,9 +208,9 @@ The API exposes health endpoints:
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/health` | Overall health status |
-| `/health/ready` | Readiness probe (DB, Keycloak, storage) |
-| `/health/live` | Liveness probe |
+| `/health` | Readiness probe for `ready`-tag checks (database, cache, OIDC when configured, SMTP, conditional Cerbos, secrets) |
+| `/alive` | Liveness probe for `live`-tag checks |
+| `/metrics` | Prometheus metrics endpoint |
 
 Health check components:
 
@@ -236,7 +236,7 @@ See [OPERATIONS.md](OPERATIONS.md) for full observability configuration.
 2. **Pull new images** — `docker compose pull`
 3. **Stop services** — `docker compose down` (graceful shutdown waits for in-flight requests)
 4. **Start services** — `docker compose up -d`
-5. **Verify** — check `/health/ready` returns healthy
+5. **Verify** — check `/health` is `Healthy` or intentionally `Degraded`, and `/alive` returns healthy
 6. **Monitor** — watch logs for migration completion and startup errors
 
 Migrations apply automatically. Rollback requires restoring the database backup and reverting to previous images.

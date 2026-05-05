@@ -1,6 +1,6 @@
 {
   "include": [
-    "schema/**/*",
+    "schemas/**/*",
     "Event.API.IntegrationTests/**/*",
     "Event.Application.UnitTests/**/*",
     "Event.Architecture.Tests/**/*",
@@ -16,7 +16,6 @@
     "Explore.Secrets/**/*",
     "Explore.ServiceDefaults/**/*",
     "docs/**/*",
-    "_bmad-output/**/*",
     ".claude/**/*",
     ".opencode/**/*",
     ".taskmaster/**/*",

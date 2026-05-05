@@ -3,7 +3,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 # EAV Custom Properties - Task Checklist
 
-**Last Updated: 2026-05-02 (Phase 12 delete lifecycle hardening recorded)**
+**Last Updated: 2026-05-03 (Phase 12.7 projection quota completion updated)**
 
 ---
 
@@ -27,8 +27,9 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 - Phase 12.4 — Projection operability authorization: ✅ CLOSED (projection status, dirty-scope, event projection-row inspection, and session projection-row inspection queries now require handler-level `custom_property_projection:view` authorization metadata and implement `ISecureRequest`)
 - Phase 12.5 — Concurrency/stale-state hardening: ✅ CLOSED (shared/event/session custom-property definition detail DTOs expose `ConcurrencyStamp`, update DTOs require `ExpectedConcurrencyStamp`, and stale admin updates throw `409 concurrent_update` before mutating tracked entities)
 - Phase 12.6 — Delete lifecycle hardening: 🟡 PARTIAL (normal shared/event/session definition deletes now retire and soft-delete definitions, options, and values through tracked EF deletes; explicit audited purge workflow remains a product/ops decision)
+- Phase 12.7 — Quota sweep: 🟡 PARTIAL (configured local quota keys now have enforcing code paths: shared/event/session definition-count quotas, `MaxOptionsPerDefinition`, `MaxMultiValueRowsPerValue`, `MaxDefinitionsPerTemplate`, `SyncApplyMaxPayloadBytes`, `ProjectionRebuildBatchSize`, and `MaxDirtyScopePendingPerTenant`; full boundary matrix and normalized error shape still need sweep completion)
 
-**Build state**: Phase 12.1/12.2/12.3/12.4/12.5/12.6 API Release build ✅ and architecture tests ✅ on 2026-05-02. Phase 12.5 targeted concurrency/application tests ✅ 1089/1089, `Explore.Blazor.Client` Release build ✅, and `Explore.Blazor.Client.Tests` ✅ 968 total / 967 passed / 1 known skipped on 2026-05-02. Phase 12.4 projection authorization metadata tests ✅ 5/5 on 2026-05-02. Phase 12.2 projection filter unit/application test run ✅ 1078/1078 on 2026-05-02. Phase 12.3/12.6 targeted persistence option/delete lifecycle tests ✅ 6/6 on 2026-05-02. Phase 9.11 generated-client build ✅ on 2026-04-30. Phase 8.5.13 persistence integration test project Release build ✅ on 2026-05-02. Full-solution Release build currently fails outside these slices on unrelated existing analyzer/package issues plus a transient locked client PDB during static-web-assets fingerprinting.
+**Build state**: Phase 12.1/12.2/12.3/12.4/12.5/12.6 API Release build ✅ and architecture tests ✅ on 2026-05-02. Phase 12.7 projection quota completion API Release build ✅, targeted Application projection quota tests ✅ 6/6, and `Event.Architecture.Tests` ✅ 143/143 on 2026-05-03; earlier Phase 12.7 quota run passed ✅ 1110/1110. Phase 12.5 targeted concurrency/application tests ✅ 1089/1089, `Explore.Blazor.Client` Release build ✅, and `Explore.Blazor.Client.Tests` ✅ 968 total / 967 passed / 1 known skipped on 2026-05-02. Phase 12.4 projection authorization metadata tests ✅ 5/5 on 2026-05-02. Phase 12.2 projection filter unit/application test run ✅ 1078/1078 on 2026-05-02. Phase 12.3/12.6 targeted persistence option/delete lifecycle tests ✅ 6/6 on 2026-05-02. Phase 9.11 generated-client build ✅ on 2026-04-30. Phase 8.5.13 persistence integration test project Release build ✅ on 2026-05-02. Full-solution Release build currently fails outside these slices on unrelated existing analyzer/package issues plus a transient locked client PDB during static-web-assets fingerprinting.
 
 **Client test state**: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped on 2026-04-30.
 
@@ -36,7 +37,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 **Orphan to delete**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs`
 
-**Next recommended implementation slice**: Continue Phase 12 with Docker/Testcontainers certification and export/moderation exposure proof. Event/session runtime validation, raw endpoint authentication, public projection `Exists`/search/filter exposure ceilings, projection operability authorization, normal option-update lifecycle hardening, definition stale-update conflict handling, and normal delete soft-delete/retirement are now in place; shared org/group value wiring, explicit purge semantics, and full Docker-gated exposure proof remain.
+**Next recommended implementation slice**: Add quota boundary tests and normalize the `quota_exceeded` error shape, then Docker/Testcontainers certification. Event/session runtime validation, raw endpoint authentication, public projection `Exists`/search/filter exposure ceilings, projection operability authorization, normal option-update lifecycle hardening, definition stale-update conflict handling, normal delete soft-delete/retirement, and local quota enforcement are now in place; shared org/group value wiring, explicit purge semantics, export/moderation proof, and full Docker-gated exposure proof remain.
 
 **100/100 hardening focus (2026-05-02):**
 - runtime value writes must validate against effective definition metadata, not only DTO shape;
@@ -44,6 +45,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 - option updates must preserve semantic identity and retire instead of hard-delete when values exist;
 - projection normalized values and `Exists` filters must remain exposure-safe and tracking-independent, with Docker proof still required;
 - concurrency stamps now roundtrip through custom-property definition API/client write flows and stale writes fail as `409 concurrent_update`;
+- definition, option, multi-value, template-definition, sync-payload, projection rebuild batch, and dirty-scope backlog quotas now fail before persistence or backlog upsert with `quota_exceeded`/quota guardrails, but full boundary tests and normalized error shape still need completion;
 - a product ADR must decide whether "full data model customization" means custom fields only or a future runtime schema engine.
 
 ---
@@ -68,7 +70,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 - `dotnet test Explore.Blazor.Client.Tests`: ⚠️ 779 pass / 25 fail / 1 skip (Gap 2 — Cerbos substrate expansion broke existing mocks)
 - `dotnet test Event.Persistence.IntegrationTests`: ⏸ deferred to CI (no Docker locally)
 
-**Gap tracker** (full detail in `progress.md`)
+**Historical gap tracker** (current status now consolidated in this tasks file, the plan, and the context handoff)
 - Gap 1: Blazor sync pages temporarily gate on `_diff is not null` instead of HAL link — requires API controller to emit `HalResource<TemplateDiffDto>`
 - Gap 2: 25 pre-existing Blazor tests fail with 403 — test fixtures need `IMachinePrincipalAccessor` stub
 - Gap 3: Integration tests running (`bg_40ad9ae4`) — CI Docker required for actual execution
@@ -741,44 +743,53 @@ OUT of scope:
 
 ---
 
-## Phase 12: 100/100 Hardening And Product-Boundary Closure ⏳ REQUIRED
+## Phase 12: 100/100 Hardening And Product-Boundary Closure 🟡 IN PROGRESS
 
-- [ ] **12.1** Build shared runtime value validator for shared/event/session custom-property values
-  - [ ] **12.1.1** Validate `PropertyType` shape and exactly-one typed value channel
-  - [ ] **12.1.2** Validate text/url min/max/regex/scheme constraints
-  - [ ] **12.1.3** Validate number and datetime ranges
-  - [ ] **12.1.4** Validate option membership, tenant scope, and active option state
+- [ ] **12.1** Build shared runtime value validator for shared/event/session custom-property values — 🟡 event/session runtime writes done; shared org/group value write surface still missing
+  - [x] **12.1.1** Validate `PropertyType` shape and exactly-one typed value channel for event/session runtime writes
+  - [x] **12.1.2** Validate text/url min/max/regex/scheme constraints for event/session runtime writes
+  - [x] **12.1.3** Validate number and datetime ranges for event/session runtime writes
+  - [x] **12.1.4** Validate option membership and active option state for event/session runtime writes
   - [ ] **12.1.5** Validate requiredness at publish/export/sync completeness boundaries
-  - [ ] **12.1.6** Replace handler-local partial checks with the shared validator
-  - [ ] **12.1.7** Add event/session/shared unit tests for all success/failure branches
-- [ ] **12.2** Harden public exposure and anonymous reads
-  - [ ] **12.2.1** Audit all `AllowAnonymous` custom-property endpoints
-  - [ ] **12.2.2** Apply server-side exposure ceiling to definitions/options/values/projections/facets
-  - [ ] **12.2.3** Make public `Exists`/search/filter behavior exposure-safe
+  - [x] **12.1.6** Replace event/session handler-local partial checks with the shared validator
+  - [ ] **12.1.7** Add remaining shared org/group unit tests if/when shared runtime value write APIs are implemented
+- [ ] **12.2** Harden public exposure and anonymous reads — 🟡 raw reads authenticated and projection discovery exposure-scoped; export/moderation and Docker proof remain
+  - [x] **12.2.1** Audit all `AllowAnonymous` custom-property endpoints and remove anonymous raw custom-property definition/value reads
+  - [ ] **12.2.2** Apply server-side exposure ceiling to every definitions/options/values/projections/facets/export/moderation path
+  - [x] **12.2.3** Make public `Exists`/search/filter behavior exposure-safe
   - [ ] **12.2.4** Add API integration tests proving internal data cannot be observed anonymously
-- [ ] **12.3** Replace destructive option replacement with semantic diff
-  - [ ] **12.3.1** Match options by normalized `Namespace + Key`
-  - [ ] **12.3.2** Preserve option IDs for unchanged machine identity
-  - [ ] **12.3.3** Retire missing options when historical values exist
+- [ ] **12.3** Replace destructive option replacement with semantic diff — 🟡 normal update lifecycle done; explicit purge still open
+  - [x] **12.3.1** Match options by normalized `Namespace + Key`
+  - [x] **12.3.2** Preserve option IDs for unchanged machine identity
+  - [x] **12.3.3** Retire missing options instead of hard-replacing option sets
   - [ ] **12.3.4** Hard-delete only purge-safe no-history options
-  - [ ] **12.3.5** Add tests for display rename, sort change, retirement, and sync update survival
-- [ ] **12.4** Complete concurrency-stamp roundtrip
-  - [ ] **12.4.1** Add stamps to mutable read DTOs
-  - [ ] **12.4.2** Require stamp or `If-Match` on mutable update endpoints
-  - [ ] **12.4.3** Preserve stamps through generated client and Blazor editors
-  - [ ] **12.4.4** Add missing-stamp/stale-stamp/success tests
-- [ ] **12.5** Projection correctness perfection pass
+  - [ ] **12.3.5** Add Docker/PostgreSQL tests for display rename, sort change, retirement, historical values, and sync update survival
+- [x] **12.4** Complete concurrency-stamp roundtrip for shared/event/session custom-property definition updates
+  - [x] **12.4.1** Add stamps to mutable custom-property definition read DTOs
+  - [x] **12.4.2** Require `ExpectedConcurrencyStamp` on mutable custom-property definition update DTOs
+  - [x] **12.4.3** Preserve stamps through generated client and Blazor shared-definition editor path
+  - [x] **12.4.4** Add missing-stamp and stale-stamp tests for current definition update flows
+- [ ] **12.5** Projection correctness perfection pass — 🟡 exposure-safe `Exists` done; remaining projection correctness proof still open
   - [ ] **12.5.1** Compute option `NormalizedValue` from explicit DB option lookup/include
   - [ ] **12.5.2** Decide and enforce projection row relevance rules
-  - [ ] **12.5.3** Make `Exists` filters exposure/governance safe
+  - [x] **12.5.3** Make `Exists` filters exposure/governance safe
   - [ ] **12.5.4** Add event/session Testcontainers parity proofs
-- [ ] **12.6** Soft delete, retirement, and purge policy
-  - [ ] **12.6.1** Normal delete retires/soft-deletes when dependents exist
+- [ ] **12.6** Soft delete, retirement, and purge policy — 🟡 normal delete lifecycle done; explicit purge policy still open
+  - [x] **12.6.1** Normal delete retires/soft-deletes definitions/options/values
   - [ ] **12.6.2** Explicit purge command proves no dependent history
   - [ ] **12.6.3** Audit retirement and purge with operator/reason/dependent-count summary
   - [ ] **12.6.4** Integration tests prove historical reads after retirement
-- [ ] **12.7** Quota completion sweep
-  - [ ] **12.7.1** Verify every quota in `Hard Limits And Quotas` has an enforcing handler/service
+- [ ] **12.7** Quota completion sweep — 🟡 local quota keys enforced; boundary matrix and normalized error shape open
+  - [x] **12.7.A** Enforce shared `MaxDefinitionsPerTenantPerEntityScope` on definition creation
+  - [x] **12.7.B** Enforce event `MaxDefinitionsPerEvent` on event-local definition creation
+  - [x] **12.7.C** Enforce session `MaxDefinitionsPerEventSession` on session-local definition creation
+  - [x] **12.7.D** Enforce `MaxOptionsPerDefinition` on shared/event/session create and update flows
+  - [x] **12.7.E** Enforce `MaxMultiValueRowsPerValue` on event/session multi-value writes
+  - [x] **12.7.F** Enforce `MaxDefinitionsPerTemplate` on event template create/update flows
+  - [x] **12.7.G** Enforce `SyncApplyMaxPayloadBytes` on event/session template sync plans
+  - [x] **12.7.H** Enforce `ProjectionRebuildBatchSize` on operator rebuild requests and projection rebuild/drain workers
+  - [x] **12.7.I** Enforce `MaxDirtyScopePendingPerTenant` before dirty-scope backlog upsert
+  - [x] **12.7.1** Verify every quota in `Hard Limits And Quotas` has an enforcing handler/service
   - [ ] **12.7.2** Add `quota - 1`, `quota`, `quota + 1` boundary tests
   - [ ] **12.7.3** Normalize `quota_exceeded` error shape
 - [ ] **12.8** Docker-gated end-to-end certification
@@ -820,3 +831,8 @@ Per Rule 17 (ruthless sequencing, CTO review 2026-04-11): no gate begins until t
 | D | Projection integration | **D1 Correctness → D2 Operability → D3 Consumption** (Rule 17) | ✅ complete (2026-04-21) |
 | E | Explicit sync workflows | — (keep implementation boring) | ⏳ planned |
 | F | Aggregate read views + lexicon docs (narrow: one view + one doc only) | — | ⏳ planned |
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+- [x] No task-state changes were made for this workstream during the sidebar dock refactor handoff session.
+- [ ] Reconfirm this workstream's current state from its existing context/plan before resuming implementation.

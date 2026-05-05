@@ -1,9 +1,11 @@
-ABOUTME: Checklist for all MVP launch work packages with acceptance criteria and release gates.
-ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Updated 2026-04-28 (Enterprise Grade Alignment).
+ABOUTME: Executable checklist for MVP launch work packages with acceptance criteria and release gates.
+ABOUTME: Rebaselined after the 2026-05-03 source/doc audit; use the plan for strategy and this file for execution.
 
 # MVP Launch — Task Checklist
 
-> **Last Updated:** 2026-04-28 (25 WPs, 7 gates, 7 tiers)
+> **Last Updated:** 2026-05-03 (rebaselined closure checklist)
+
+> **Current execution rule:** do not start from the old WP order. Begin with Phase 0 evidence/status reconciliation from `mvp-launch-plan.md`, then close runtime verification for already implemented foundations before adding new feature code.
 
 ---
 
@@ -72,7 +74,7 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 > **2026-04-29 implementation note:** WP-1 code changes are implemented and compiler/unit-style verification is green. Docker/Testcontainers verification is blocked in the current local environment because `docker info` fails with `Docker Desktop is unable to start` / `qemu: process terminated unexpectedly`; rerun Docker-dependent smoke and integration checks once Docker is healthy.
 
-#### WP-1.4: Fix Broken Email Promise (DO THIS FIRST)
+#### WP-1.4: Fix Broken Email Promise ✅ IMPLEMENTED
 - [x] Open `Explore.Blazor.Client/Pages/Events/Components/EventRegistration.razor`
 - [x] Line 87: Remove "You will receive a confirmation email shortly."
 - [x] Replace with: "Your registration has been confirmed."
@@ -138,18 +140,16 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 ## Tier 1B — Pre-Launch Hardening
 
-### WP-2: Navbar Customization Phase 7 ⏳ NOT STARTED (2 days)
-- [ ] Read `dev/active/navbar-customization/navbar-customization-tasks.md`
-- [ ] Read `dev/active/navbar-customization/navbar-customization-context.md`
-- [ ] Complete all Phase 7 soft-delete compliance tasks
-- [ ] Complete URL validator tasks
-- [ ] Complete cache invalidation tasks
-- [ ] Run all tests — no regressions
-- Acceptance: Phase 7 complete; tests pass
+### WP-2: Sidebar/Dock Layout Handoff or MVP Removal ⏳ NEEDS DECISION
+- [ ] Remove stale `dev/active/navbar-customization/` dependency from MVP scope.
+- [ ] If shell/sidebar work is still launch-critical, reconcile against `dev/active/sidebar-dock-layout-refactor/` instead.
+- [ ] If not launch-critical, explicitly mark WP-2 deferred/removed for MVP.
+- [ ] Run affected Blazor client tests if any shell/layout source is touched.
+- Acceptance: MVP plan no longer depends on a dead active track.
 
 ---
 
-## Tier 2 — Enterprise Core & Compliance ⏳ NOT STARTED (4-5 days)
+## Tier 2 — Enterprise Core & Compliance 🟡 PARTIAL (4-5 days)
 
 ### WP-14: Email Unsubscribe & GDPR Compliance (1.5 days)
 
@@ -209,6 +209,8 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 ### WP-17: Capacity Enforcement & Basic Waitlist (1.5 days)
 
+> **2026-05-03 audit note:** Tasks below were originally written as greenfield work, but source now appears to contain capacity/waitlist support in the registration intent repository, waitlist UI, lookup seed, and approval status enum. Reconcile the implementation before writing new code. Convert any already-satisfied items to verification/tests instead of duplicating logic.
+
 #### WP-17.1: Capacity Check in Registration Handler
 - [ ] Open `CreateEventRegistrationCommandHandler.cs`
 - [ ] For each session: query `CurrentAudienceAttendees` vs `MaxAudienceAttendees`
@@ -245,40 +247,43 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 **Acceptance:** Gate D "capacity + waitlist + no double-register" passes.
 
-### WP-18: External Dependency Health Checks (1 day)
+### WP-18: External Dependency Health Checks ✅ SOURCE COMPLETE — runtime smoke remains (1 day)
+
+> **2026-05-03 implementation note:** `/health` is now readiness-only and `/alive` is liveness-only in `Explore.ServiceDefaults`. API readiness includes database, distributed cache, OIDC discovery, SMTP, conditional Cerbos PDP readiness, and secret-provider checks. Blazor BFF readiness includes database, distributed cache/fallback state, OIDC discovery, and downstream API readiness. API build passes after conditional Cerbos readiness; targeted no-Keycloak API integration tests pass via TUnit `--treenode-filter` and confirm `/alive` returns 200 without OIDC. Current Blazor build is blocked by unrelated dirty publish-flow/client work.
 
 #### WP-18.1: Redis Health Check
-- [ ] Add `.AddRedis(connectionString, tags: ["ready"])` if Redis configured (skip when not configured)
-- [ ] `Degraded` (not `Unhealthy`) when Redis unreachable + in-memory fallback active
-- Acceptance: Redis health reported in `/health`
+- [x] Add distributed-cache readiness check tagged `ready`
+- [x] Report configured cache state and Blazor Redis fallback degradation when fallback is active
+- Acceptance: Redis/effective cache health reported in `/health`
 
 #### WP-18.2: Keycloak OIDC Discovery Health Check
-- [ ] Custom health check: HEAD `{authority}/.well-known/openid-configuration` with 5s timeout
-- [ ] Tagged `ready`
+- [x] Custom health check: GET configured metadata address or `{authority}/.well-known/openid-configuration` with 5s timeout
+- [x] Tagged `ready`
 - Acceptance: Keycloak health reported in `/health`
 
 #### WP-18.3: SMTP Health Check
-- [ ] Reuse `SmtpEmailService.TestConnectionAsync()` with 10s timeout
-- [ ] Tagged `ready`; `Degraded` on failure (email is async via outbox)
+- [x] Reuse `IEmailService.TestConnectionAsync()`
+- [x] Tagged `ready`; missing SMTP configuration reports `Degraded`; configured connection failures report `Unhealthy`
 - Acceptance: SMTP health reported in `/health`
 
 #### WP-18.4: Cerbos Health Check (Conditional)
-- [ ] If `CerbosSettings.Enabled == true`: gRPC health check against Cerbos endpoint
-- [ ] Tagged `ready`; failure mode aligned with existing fallback
+- [x] If instance `authorization.provider` is `cerbos`: gRPC health check against the configured Cerbos endpoint
+- [x] Local provider mode reports healthy/skipped so local-only/self-hosted deployments are not made unhealthy by unused Cerbos defaults
+- [x] Tagged `ready`; configured Cerbos unreachable reports `Unhealthy`, aligned with existing instance Cerbos fail-closed authorization behavior
 - Acceptance: Cerbos health reported when enabled
 
 #### WP-18.5: Operator Docs
-- [ ] Update troubleshooting docs with health-check interpretation table
-- [ ] Document: `/health` 200 Degraded vs 503 Unhealthy; SLO per dependency
+- [x] Update troubleshooting docs with health-check interpretation table — `docs/OPERATIONS.md`
+- [x] Document: `/health` 200 Degraded vs 503 Unhealthy; dependency-specific operator actions documented
 - Acceptance: Docs updated
 
 #### WP-18.6: Tests
 - [ ] Integration: `/health` returns 200 Healthy with all deps up
 - [ ] Integration: `/health` returns 200 Degraded when Redis unreachable (NOT 503)
-- [ ] Integration: `/alive` returns 200 regardless of external deps
+- [x] Integration: `/alive` returns 200 regardless of missing OIDC authority
 - Acceptance: Tests pass
 
-**Acceptance:** Gate A "all deps observable via /health" passes.
+**Acceptance:** Gate A "all deps observable via /health" passes in source/build/test evidence; live Docker/Aspire dependency smoke remains.
 
 ### WP-19: Security Audit Trail Hardening (1.5 days)
 
@@ -305,9 +310,12 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 - Acceptance: Authz denials logged
 
 #### WP-19.5: BFF CSP Header
-- [ ] Create `Explore.Blazor/Middleware/BffCspMiddleware.cs`
-- [ ] CSP: `default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'`
-- [ ] Register before `UseStaticFiles`; scoped to non-API Blazor responses
+- [x] Add BFF security-header middleware through `Explore.Blazor/Extensions/MiddlewareExtensions.cs`
+- [x] CSP: `default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'`
+- [x] Register immediately after forwarded headers/graceful shutdown and before static assets, routing, controllers, and BFF endpoints
+- [x] Add companion headers: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
+- [x] Add integration coverage in `BffNoKeycloakResilienceTests.StaticPages_CarryContentSecurityPolicyHeader`
+- [ ] Runtime browser smoke: verify Blazor/MudBlazor assets still load with the CSP in a healthy app host
 - Acceptance: BFF HTML responses carry CSP header
 
 #### WP-19.6: Audit Log Access Control
@@ -318,26 +326,30 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 - Acceptance: Access control enforced
 
 #### WP-19.7: Remove Obsolete HAL Legacy Fallback
-- [ ] Ensure all 36 link policies call `RequirePermission("resource", "action")` explicitly
-- [ ] Delete `[Obsolete] MapMethodToAction()` method and callsites
-- [ ] Architecture test: `AllLinkPoliciesHaveExplicitPermissionActions`
-- Acceptance: Legacy fallback deleted; architecture test passes
+- [x] Ensure link policies call `RequirePermission(...)` with explicit `AuthorizationActions` metadata
+- [x] Delete `[Obsolete] MapMethodToAction()` method and callsites from `HateoasAuthorizationEvaluator`
+- [x] Fail closed when a permission-bound link has `PermissionResourceKind` but no explicit `PermissionAction`
+- [x] Unit regression added: `PermissionResourceWithoutAction_Denied_NoProviderCall`
+- [x] Architecture test added: `AllLinkPoliciesHaveExplicitPermissionActions`
+- [x] Verification: `dotnet run --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*AuthorizationParityTests*/*" --minimum-expected-tests 1 --no-progress` passed 12 tests
+- [ ] Verification blocked: targeted `Event.Application.UnitTests` run currently cannot compile because unrelated custom-property projection tests are stale against in-flight constructor/signature changes
+- Acceptance: Legacy fallback deleted; architecture test passes; unit source diagnostics clean; targeted unit runtime pending unrelated test-project compile fix
 
 #### WP-19.8: Tests
 - [ ] Integration: setup-secret returns 429 after 5 attempts
 - [ ] Integration: PII read writes audit entry
 - [ ] Integration: setting change writes audit entry with old vs new
 - [ ] Integration: authz denial writes audit entry
-- [ ] Integration: BFF response carries CSP header
+- [x] Integration: BFF response carries CSP header
 - [ ] Integration: tenant admin cannot query other tenant's audit logs
-- [ ] Architecture: all link policies have explicit action set
+- [x] Architecture: all link policies have explicit action set
 - Acceptance: Tests pass
 
 **Acceptance:** Gate G passes fully.
 
 ---
 
-## Tier 3 — Core Business Workflows ⏳ NOT STARTED (6-7 days)
+## Tier 3 — Core Business Workflows 🟡 PARTIAL (6-7 days)
 
 ### WP-3: Registration Confirmation Email (3 days)
 
@@ -469,7 +481,7 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 ---
 
-## Tier 4 — Public Readiness & Discoverability ⏳ NOT STARTED (3-4 days)
+## Tier 4 — Public Readiness & Discoverability 🟡 PARTIAL (3-4 days)
 
 ### WP-15: Branded Error Pages ✅ IMPLEMENTED — runtime smoke pending (1 day)
 
@@ -564,7 +576,7 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 ---
 
-## Tier 5 — Quality Assurance ⏳ NOT STARTED (4-5 days)
+## Tier 5 — Quality Assurance 🟡 PARTIAL (4-5 days)
 
 ### WP-21: E2E Critical-Flow Tests (2 days)
 
@@ -634,7 +646,7 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 ---
 
-## Tier 6 — Final Polish ⏳ NOT STARTED (2-3 days)
+## Tier 6 — Final Polish ⏳ OPEN (2-3 days)
 
 ### WP-20: Public Page SEO & OG Polish (1 day)
 
@@ -714,21 +726,28 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 - [ ] Cache 5 minutes; vary by tenant + host
 - Acceptance: Per-tenant manifest works
 
-### WP-25: Placeholder & TODO Cleanup (0.5 day)
+### WP-25: Placeholder & TODO Cleanup (0.5 day) — PARTIAL
 
 #### WP-25.1: Replace Placeholder Images
-- [ ] `MyRegistrations.razor`: swap `placehold.co` with real event image or branded fallback
-- [ ] `LandingPageForNonUsers.razor`: verify `landing_image_nonuser.png` exists in `wwwroot/image/`
-- Acceptance: No external placeholder URLs in production
+- [x] `ImageHelper`: replace external placeholder URLs with local SVG data URI fallbacks
+- [x] `MyEvents.razor.cs`: delegate fallback generation to `ImageHelper`
+- [x] `MyRegistrations.razor`: swap `placehold.co` with real event image or branded fallback
+- [x] Add `ImageHelperTests` coverage for featured image passthrough, local SVG fallbacks, and invalid color fallback
+- [x] `LandingPageForNonUsers.razor`: verified `image/landing_image_nonuser.png` is backed by `Explore.Blazor.Client/wwwroot/image/landing_image_nonuser.png`
+- Acceptance: No external placeholder URLs in production source; runtime visual smoke remains
 
 #### WP-25.2: Resolve Critical TODOs
-- [ ] Sweep `EventList.razor`, `EventEdit.razor`, `CreateEvent.razor` for TODO/FIXME
-- [ ] Fix (≤30 min each) OR file GitHub issue + link from comment
-- Acceptance: No unresolved TODOs without tickets
+- [x] Replace `LandingPageService` hardcoded member-count TODO with `GetActorsAsync(...).TotalCount`
+- [x] Add `LandingPageServiceTests` coverage for actor total-count extraction and API failure fallback
+- [ ] Defer `ImageStorageService.DeleteImageAsync` TODO until API delete support is available
+- [ ] Defer `EventSessionSpeakerService` generated-client TODOs until NSwag/client regeneration exposes the missing operations
+- [ ] Sweep `EventList.razor`, `EventEdit.razor`, `CreateEvent.razor` for TODO/FIXME after publish-flow dirty work is reconciled
+- Acceptance: Critical touched-file TODOs removed; generated-client/API-dependent TODOs explicitly deferred
 
 #### WP-25.3: Price/CurrencyCode Audit
-- [ ] Ensure `Price` / `CurrencyCode` NOT in UI create/edit forms
-- [ ] Document decision (keep in domain for post-MVP or remove) in journal
+- [x] Source audit found `Price` / `CurrencyCode` display-only usage in event cards/detail/list/created pages
+- [x] Source audit found no visible `Price` / `CurrencyCode` inputs in `EventEdit.razor`; `TechAspectEditDialog` prize currency is unrelated
+- [ ] Re-check `CreateEvent` after publish-flow dirty work is reconciled before final sign-off
 - Acceptance: Decision documented; no misleading UI
 
 #### WP-25.4: Final Docs Pass
@@ -738,30 +757,28 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 ---
 
-## Tier 7 — Pre-Existing Deferred Items ⏳ NOT STARTED (2 days)
+## Tier 7 — Pre-Existing Deferred Items ⏳ DECISION NEEDED (2 days)
 
 ### WP-10: User Onboarding — Gap Analysis (1 day)
 ### WP-12: Production Docker & External API Key (1 day)
 
 ---
 
-## Sprint Order (Extended, 8 Sprints / 18 Days)
+## Closure Order (Rebaselined 2026-05-03)
 
-| Sprint | Days | Work Packages | Gate Target |
-|--------|------|---------------|-------------|
-| 1 | 1-2 | WP-1 (all infra fixes) | Gate A + B |
-| 2 | 3-4 | WP-14 (Unsubscribe) + WP-15 (Error pages) + WP-16 (Sitemap/Robots) | Gate E partial + Gate F partial |
-| 3 | 5-7 | WP-17 (Capacity) + WP-18 (Health checks) + WP-19 (Security audit) | Gate G + Gate D partial |
-| 4 | 8-10 | WP-3 (Email) + WP-6 (iCal) + WP-7 (Share) + WP-4 (MyReg) + WP-5 (Post-Reg UX) | Gate C + Gate D full |
-| 5 | 11-12 | WP-20 (SEO/OG) + WP-24 (PWA manifest) + WP-8 (HATEOAS + legacy removal) | Gate F complete |
-| 6 | 13-14 | WP-2 (Navbar Ph7) + WP-9 (Draft/Publish) + WP-12 (Prod Docker + ExtAPIKey disable) | — |
-| 7 | 15-16 | WP-21 (E2E tests) + WP-22 (Snapshots) + WP-11 (test gap sweep) | — |
-| 8 | 17-18 | WP-23 (A11y) + WP-25 (Placeholders) + WP-10 (Onboarding decision) + final gate sign-off | All gates green |
+| Phase | Work Packages | Gate Target |
+|-------|---------------|-------------|
+| 0 | Evidence baseline: reconcile task statuses, dirty worktree, build/test baseline, Docker blocker | No stale assumptions |
+| 1 | WP-1, WP-6, WP-14, WP-15, WP-16, WP-17 verification/closure | Gates A/B/D/E/F partial |
+| 2 | WP-3 registration email + remaining WP-14 dispatch consent/header work + registration duplicate/waitlist evidence | Gates C/D/E |
+| 3 | WP-18 health, WP-19 audit/CSP, WP-8 HAL fallback/RoleHelper cleanup, WP-12 disable/harden external API keys, WP-9 publish flow after in-flight source is reconciled | Gate G |
+| 4 | WP-20 JSON-LD/OG, WP-23 accessibility, WP-24 manifest, WP-25 placeholder/TODO cleanup, WP-10 waiver/closure | Gate F polish |
+| 5 | WP-21 E2E, WP-22 snapshots, WP-11 handler/test coverage, final gate sign-off | Gate H / all gates green |
 
 ### If Schedule Compresses
-- **Tier 5** (WP-21/22) can slip to Week 4 if Tier 1-3 held quality bar
-- **Tier 6** (WP-23/24) can slip to post-MVP if gates A-G are otherwise green
-- **Never slip:** Tier 2 (WP-14/17/18/19) — gate-critical
+- Defer manifest/offline-adjacent polish before deferring registration integrity, unsubscribe, health, audit, or runtime evidence.
+- Do not defer WP-21/WP-22 entirely; at minimum, critical-flow E2E and HATEOAS/ProblemDetails snapshots must provide release evidence.
+- Never slip: registration truthfulness, capacity/duplicate safety, unsubscribe compliance, health/readiness, audit/security, and BFF token safety.
 
 ---
 
@@ -781,6 +798,12 @@ Apply whenever API surface changes (WP-3, WP-6, WP-14, WP-16):
 
 1. Read `mvp-launch-context.md` for key decisions
 2. Check this file for current progress
-3. Start with WP-1.4 (broken promise) → then WP-1.1/1.2/1.3 → smoke test Gates A+B
-4. Sprint order: WP-1 → WP-14/15/16 → WP-17/18/19 → WP-3/6/7/4/5 → WP-20/24/8 → WP-2/9/12 → WP-21/22/11 → WP-23/25/10
-5. Follow NSwag checklist after any API changes
+3. Start with Phase 0 evidence/status reconciliation from `mvp-launch-plan.md`, not WP-1.4
+4. Close runtime evidence for implemented foundations: WP-1, WP-6, WP-14, WP-15, WP-16, WP-17
+5. Then complete registration email/consent, health/audit/CSP/HAL cleanup, public SEO polish, and test evidence in that order
+6. Follow NSwag checklist after any API changes
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+- [x] No task-state changes were made for this workstream during the sidebar dock refactor handoff session.
+- [ ] Reconfirm this workstream's current state from its existing context/plan before resuming implementation.

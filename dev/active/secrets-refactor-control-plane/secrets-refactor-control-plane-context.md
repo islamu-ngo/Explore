@@ -192,3 +192,7 @@ Same as previous revision — see `secrets-refactor-control-plane-context.md` hi
 - `docs/QUICK_REFERENCE.md` - Critical rules.
 - `docs/SECRETS.md` - Will be rewritten at end of Phase 6.
 - `.claude/skills/` — all project skills as listed in previous context.
+
+## Session Handoff — 2026-05-03 Europe/Brussels
+
+No implementation work was performed for this active task during the sidebar dock refactor handoff session. Existing context, plan, and task files remain the authoritative state for this workstream. Do not infer progress or blockers here from the sidebar/dock-specific changes unless a future session explicitly broadens scope.
