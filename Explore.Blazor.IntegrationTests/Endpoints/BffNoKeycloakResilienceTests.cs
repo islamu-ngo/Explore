@@ -125,6 +125,22 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
             "static pages should be accessible regardless of auth configuration");
     }
 
+    [Test]
+    public async Task StaticPages_CarryContentSecurityPolicyHeader()
+    {
+        var response = await _client.GetAsync("/");
+
+        response.Headers.TryGetValues("Content-Security-Policy", out var values).Should().BeTrue(
+            "BFF HTML responses must carry the launch CSP header");
+
+        var csp = values.Should().ContainSingle().Subject;
+        csp.Should().Contain("default-src 'self'");
+        csp.Should().Contain("script-src 'self' 'wasm-unsafe-eval'");
+        csp.Should().Contain("frame-ancestors 'none'");
+        csp.Should().Contain("base-uri 'self'");
+        csp.Should().Contain("object-src 'none'");
+    }
+
     #endregion
 
     private sealed class AuthStatusPayload

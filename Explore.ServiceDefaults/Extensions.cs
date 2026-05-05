@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Explore.ServiceDefaults.HealthChecks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
@@ -117,6 +118,35 @@ public static class Extensions
         return builder;
     }
 
+    public static TBuilder AddOidcDiscoveryReadinessCheck<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
+    {
+        builder.Services.AddHttpClient(OidcDiscoveryHealthCheck.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
+
+        builder.Services.AddHealthChecks()
+            .AddCheck<OidcDiscoveryHealthCheck>(
+                "oidc-discovery",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["ready", "oidc", "infrastructure"]);
+
+        return builder;
+    }
+
+    public static TBuilder AddDistributedCacheReadinessCheck<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
+    {
+        builder.Services.AddHealthChecks()
+            .AddCheck<DistributedCacheHealthCheck>(
+                "distributed-cache",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["ready", "cache", "infrastructure"]);
+
+        return builder;
+    }
+
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
         // Health check endpoints for container orchestration (Coolify, K8s, etc.)
@@ -125,6 +155,7 @@ public static class Extensions
 
         var healthCheckOptions = new HealthCheckOptions
         {
+            Predicate = r => r.Tags.Contains("ready"),
             ResponseWriter = WriteHealthCheckResponse,
             ResultStatusCodes =
             {
@@ -134,7 +165,7 @@ public static class Extensions
             }
         };
 
-        // All health checks must pass for app to be considered ready to accept traffic
+        // Only readiness checks must pass for app to be considered ready to accept traffic.
         app.MapHealthChecks(HealthEndpointPath, healthCheckOptions);
 
         // Only health checks tagged with the "live" tag must pass for app to be considered alive

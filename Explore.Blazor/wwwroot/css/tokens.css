@@ -166,7 +166,7 @@
 :root {
     /* ── Card ── */
     --isl-card-border-radius: var(--isl-radius-card);
-    --isl-card-border: 1px solid color-mix(in oklch, var(--isl-color-border) 70%, transparent);
+    --isl-card-border: 1px solid var(--isl-color-border);
     --isl-card-transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     --isl-card-hover-shadow: var(--isl-shadow-lg);
     --isl-card-hover-border-color: color-mix(in oklch, var(--isl-color-primary) 40%, var(--isl-color-border));

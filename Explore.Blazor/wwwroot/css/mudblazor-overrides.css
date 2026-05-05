@@ -112,3 +112,28 @@
 .filter-bar__drawer-overlay .mud-overlay-scrim {
     background-color: var(--isl-overlay-scrim) !important;
 }
+
+/* ========================================
+   Component Borders — Global Outlined Overrides
+   JUSTIFICATION: MudBlazor's default outlined border uses --mud-palette-divider
+   which can be too subtle for component separation. This strengthens the
+   border to use lines-default for clearer visual hierarchy in both light
+   and dark modes. Applies to all MudCard, MudPaper, and MudTextField
+   outlined variants globally.
+   ======================================== */
+
+/* Outlined cards and papers get a solid border from the lines-default token */
+.mud-card.mud-card-outlined,
+.mud-paper.mud-paper-outlined {
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+/* Text fields in outlined variant — ensure border is always visible */
+.mud-input-outlined .mud-input-outlined-border {
+    border-color: var(--mud-palette-lines-default);
+}
+
+/* Tables — ensure row separators are visible */
+.mud-table .mud-table-row {
+    border-bottom: 1px solid var(--mud-palette-table-lines);
+}

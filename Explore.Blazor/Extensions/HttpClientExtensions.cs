@@ -6,6 +6,7 @@ using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.HealthChecks;
 using Explore.Blazor.Services;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
@@ -71,6 +72,13 @@ public static class HttpClientExtensions
 
         // Admin claims transformation client (shorter timeout, no token forwarding handler)
         services.AddHttpClient(BffAdminClaimsTransformation.HttpClientName, client =>
+        {
+            client.BaseAddress = new Uri(apiBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(5);
+        }).ConfigureDevCertBypass(environment)
+          .AddAdminResilience();
+
+        services.AddHttpClient(ApiReadinessHealthCheck.HttpClientName, client =>
         {
             client.BaseAddress = new Uri(apiBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(5);

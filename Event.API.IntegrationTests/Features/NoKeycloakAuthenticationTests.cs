@@ -128,6 +128,17 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
             "health endpoints must be accessible for infrastructure monitoring");
     }
 
+    [Test]
+    public async Task NoAuthority_AliveEndpoint_ReturnsOk()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/alive");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            "liveness must not depend on database, OIDC, SMTP, or other readiness-only dependencies");
+    }
+
     #endregion
 
     #region Startup Stability

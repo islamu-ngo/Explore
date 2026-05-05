@@ -23,4 +23,9 @@
     </ProjectReference>
     <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\docker\keycloak\ISLAMU-realm.test.json" Link="TestAssets\ISLAMU-realm.test.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

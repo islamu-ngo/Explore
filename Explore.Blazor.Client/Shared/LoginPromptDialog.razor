@@ -1,93 +1,45 @@
-@* ABOUTME: Unified login/signup dialog with glassmorphism backdrop and ISLAMU OIDC + ATProto handle options.
-   ABOUTME: Single modal, no tabs — "Continue with ISLAMU" button, ATProto handle input, auto-focus. *@
+@* ABOUTME: Contextual sign-in intercept shown before protected actions.
+   ABOUTME: Defers provider selection to the dedicated login flow. *@
 
 @using MudBlazor
 @inject NavigationManager Navigation
-@inject IJSRuntime JS
 
 <MudDialog Class="login-prompt" DefaultFocus="DefaultFocus.None">
     <DialogContent>
         <div class="login-prompt__container">
-            @* Close button *@
             <AppIconButton Icon="@Icons.Material.Filled.Close"
                            Size="Size.Small"
                            Class="login-prompt__close"
                            OnClick="Close" />
 
-            @* Header — text only *@
             <div class="login-prompt__header">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Primary" Size="Size.Large" />
                 <MudText Typo="Typo.h5" Class="login-prompt__title">
-                    Welcome to ISLAMU
+                    Sign in required
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="login-prompt__message">
+                    @Message
                 </MudText>
             </div>
 
-            @* Continue with ISLAMU + info icon *@
             <div class="login-prompt__section">
-                <div class="login-prompt__islamu-group">
-                    <MudChip T="string"
-                             Size="Size.Small"
-                             Color="Color.Primary"
-                             Variant="Variant.Filled"
-                             Class="login-prompt__recommended-chip">
-                        Recommended
-                    </MudChip>
-                    <div class="login-prompt__islamu-row">
-                        <AppButton Variant="Variant.Outlined"
-                                   FullWidth="true"
-                                   Size="Size.Large"
-                                   StartIcon="@Icons.Material.Filled.Login"
-                                   OnClick="LoginWithIslamu"
-                                   Class="login-prompt__btn login-prompt__btn--islamu">
-                            Continue with ISLAMU
-                        </AppButton>
-                        <MudTooltip Text="One account for login and registration. Your handle is auto-generated and hosted on the ISLAMU PDS."
-                                    Arrow="true"
-                                    Placement="Placement.Right">
-                            <AppIconButton Icon="@Icons.Material.Outlined.Info"
-                                           Size="Size.Small"
-                                           Class="login-prompt__info-icon" />
-                        </MudTooltip>
-                    </div>
-                </div>
-
-                @* Divider *@
-                <div class="login-prompt__divider">
-                    <span class="login-prompt__divider-line"></span>
-                    <span class="login-prompt__divider-text">or use your handle</span>
-                    <span class="login-prompt__divider-line"></span>
-                </div>
-
-                @* ATProto handle input *@
-                <MudTextField @ref="_handleInput"
-                              T="string"
-                              @bind-Value="_atProtoHandle"
-                              Label="ATProto Handle"
-                              Placeholder="amir.islamu.ngo"
-                              Variant="Variant.Outlined"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.AlternateEmail"
-                              Class="login-prompt__input"
-                              Immediate="true"
-                              OnKeyUp="HandleKeyPress" />
-
-                <AppButton Variant="Variant.Outlined"
+                <AppButton Variant="Variant.Filled"
+                           Color="Color.Primary"
                            FullWidth="true"
                            Size="Size.Large"
-                           OnClick="LoginWithHandle"
-                           Disabled="@string.IsNullOrWhiteSpace(_atProtoHandle)"
-                           Class="login-prompt__btn login-prompt__btn--handle">
-                    Continue
+                           StartIcon="@Icons.Material.Filled.Login"
+                           OnClick="ContinueToLogin"
+                           Class="login-prompt__btn login-prompt__btn--primary">
+                    Continue to Login
                 </AppButton>
-            </div>
 
-            @* Footer *@
-            <div class="login-prompt__footer">
-                <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">
-                    By signing in, you agree to our
-                    <MudLink Href="/terms" Typo="Typo.caption" Color="Color.Primary" Underline="Underline.Hover">Terms of Service</MudLink>
-                    and
-                    <MudLink Href="/privacy" Typo="Typo.caption" Color="Color.Primary" Underline="Underline.Hover">Privacy Policy</MudLink>.
-                </MudText>
+                <AppButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           FullWidth="true"
+                           OnClick="Close"
+                           Class="login-prompt__btn login-prompt__btn--cancel">
+                    Not now
+                </AppButton>
             </div>
         </div>
     </DialogContent>
@@ -100,53 +52,19 @@
     [Parameter]
     public string? ReturnUrl { get; set; }
 
-    private string _atProtoHandle = string.Empty;
-    private MudTextField<string>? _handleInput;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && _handleInput?.InputReference.ElementReference.Id is not null)
-        {
-            await Task.Delay(300);
-            try
-            {
-                await _handleInput.FocusAsync();
-            }
-            catch
-            {
-                // Silently fail - focus is a UX convenience, not critical
-            }
-        }
-    }
+    [Parameter]
+    public string Message { get; set; } = "You need to sign in before continuing.";
 
     private void Close()
     {
         MudDialog.Close();
     }
 
-    private void LoginWithIslamu()
+    private void ContinueToLogin()
     {
         MudDialog.Close();
         var returnUrl = ReturnUrl ?? "/";
-        Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
-    }
-
-    private void LoginWithHandle()
-    {
-        if (string.IsNullOrWhiteSpace(_atProtoHandle)) return;
-        MudDialog.Close();
-        var returnUrl = ReturnUrl ?? "/";
-        Navigation.NavigateTo(
-            $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}&login_hint={Uri.EscapeDataString(_atProtoHandle)}",
-            forceLoad: true);
-    }
-
-    private void HandleKeyPress(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            LoginWithHandle();
-        }
+        Navigation.NavigateTo($"/auth/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
     }
 
     /// <summary>
@@ -154,11 +72,13 @@
     /// </summary>
     public static async Task<IDialogReference> ShowAsync(
         IDialogService dialogService,
-        string? returnUrl = null)
+        string? returnUrl = null,
+        string? message = null)
     {
         var parameters = new DialogParameters
         {
-            ["ReturnUrl"] = returnUrl
+            ["ReturnUrl"] = returnUrl,
+            ["Message"] = message ?? "You need to sign in before continuing."
         };
         var options = new DialogOptions
         {

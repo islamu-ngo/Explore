@@ -87,6 +87,37 @@ public class AccessTokenForwardingHandlerTests
     }
 
     [Test]
+    public async Task SendAsync_WithExpiredHttpContextToken_UsesFreshStoredToken()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var expiredContextToken = CreateUnsignedJwt(userId, DateTime.UtcNow.AddMinutes(-5));
+        var freshStoredToken = CreateUnsignedJwt(userId, DateTime.UtcNow.AddMinutes(30));
+        var httpContext = CreateHttpContext(userId, expiredContextToken);
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+
+        var tokenStoreService = new CircuitAccessTokenService(
+            httpContextAccessor,
+            NullLogger<CircuitAccessTokenService>.Instance);
+        tokenStoreService.SetToken(freshStoredToken);
+
+        var innerHandler = new CapturingHandler();
+        var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
+        var circuitUserContext = Substitute.For<ICircuitUserContext>();
+        var handler = new AccessTokenForwardingHandler(httpContextAccessor, circuitTokenService, circuitUserContext, NullLogger<AccessTokenForwardingHandler>.Instance)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/protected");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Authorization).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization!.Parameter).IsEqualTo(freshStoredToken);
+    }
+
+    [Test]
     public async Task SendAsync_WithinCircuitActivityScope_UsesCircuitUserContextTokenStore()
     {
         var userId = Guid.NewGuid().ToString();
@@ -125,14 +156,14 @@ public class AccessTokenForwardingHandlerTests
         await Assert.That(innerHandler.CapturedRequest.Headers.Authorization.Parameter).IsEqualTo(token);
     }
 
-    private static string CreateUnsignedJwt(string userId)
+    private static string CreateUnsignedJwt(string userId, DateTime? expires = null)
     {
         var jwt = new JwtSecurityToken(
             claims:
             [
                 new Claim("sub", userId)
             ],
-            expires: DateTime.UtcNow.AddMinutes(30));
+            expires: expires ?? DateTime.UtcNow.AddMinutes(30));
 
         return new JwtSecurityTokenHandler().WriteToken(jwt);
     }

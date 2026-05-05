@@ -6,21 +6,20 @@ using Explore.Blazor.Client.E2ETests.Fixtures;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
-[ClassDataSource<AppHostFixture, PlaywrightFixture, PostgreSqlContainerFixture>(
-    Shared = [SharedType.PerTestSession, SharedType.PerTestSession, SharedType.PerTestSession])]
+[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
+[NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]
 public class AuthorizationEnforcementFlowTests(
     AppHostFixture appHost,
-    PlaywrightFixture playwright,
-    PostgreSqlContainerFixture database)
+    PlaywrightFixture playwright)
 {
     [Test]
-    [Skip("Infrastructure-gated critical flow: requires Docker, Aspire AppHost, Keycloak login seed, and authenticated low-privilege browser state.")]
+    [Skip("Category: E2E. Removal: enable in the nightly lane when Docker, Aspire AppHost, Keycloak login seed, and authenticated low-privilege browser state are deterministic.")]
     public async Task AuthorizationEnforcementHidesEditAffordancesAndRejectsDirectMutation()
     {
-        await database.ResetAsync();
+        await appHost.ResetDatabaseAsync();
 
-        var page = await playwright.CreatePageAsync();
+        var page = await playwright.CreatePageAsync(nameof(AuthorizationEnforcementHidesEditAffordancesAndRejectsDirectMutation));
         try
         {
             await AssertAnonymousProtectedRouteRedirectsToLoginAsync(page, "/events/create");
@@ -34,7 +33,7 @@ public class AuthorizationEnforcementFlowTests(
         }
         finally
         {
-            await page.CloseAsync();
+            await playwright.ClosePageAsync(page, nameof(AuthorizationEnforcementHidesEditAffordancesAndRejectsDirectMutation));
         }
     }
 

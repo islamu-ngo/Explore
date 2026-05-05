@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:43169/"
+      "url": "https://localhost:34617/"
     }
   ],
   "paths": {
@@ -6030,6 +6030,216 @@
         "x-endpoint-class": "Public"
       }
     },
+    "/api/event/{id}/publish-readiness": {
+      "get": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Get Event Publish Readiness",
+        "description": "Returns machine-readable readiness errors that block publishing an event.",
+        "operationId": "GetEventPublishReadiness",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPublishReadinessDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPublishReadinessDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/event/{id}/publish": {
+      "post": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Publish Event",
+        "description": "Publishes a draft event after readiness and concurrency validation. Side effects are written to the transactional outbox.",
+        "operationId": "PublishEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishEventRequestDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishEventRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/event/{id}/aspects/islamic": {
       "get": {
         "tags": [
@@ -10536,6 +10746,736 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventsessiongroup/by-event/{eventId}": {
+      "get": {
+        "tags": [
+          "EventSessionGroup"
+        ],
+        "summary": "Get Event Session Groups by Event",
+        "description": "Get tracks, devrooms, stages, or program sections for a specific event.",
+        "operationId": "GetEventSessionGroupsByEvent",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionGroupListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionGroupListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/eventsessiongroup/{id}": {
+      "get": {
+        "tags": [
+          "EventSessionGroup"
+        ],
+        "summary": "Get Event Session Group Details",
+        "description": "Get detailed information about a specific track, devroom, stage, or program section.",
+        "operationId": "GetEventSessionGroupById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionGroupDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionGroupDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      },
+      "put": {
+        "tags": [
+          "EventSessionGroup"
+        ],
+        "summary": "Update Event Session Group",
+        "description": "Update a track, devroom, stage, or program section for an event.",
+        "operationId": "UpdateEventSessionGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionGroupRequestDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionGroupRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "delete": {
+        "tags": [
+          "EventSessionGroup"
+        ],
+        "summary": "Delete Event Session Group",
+        "description": "Delete a track, devroom, stage, or program section. Sessions remain intact.",
+        "operationId": "DeleteEventSessionGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventsessiongroup/{id}/sessions": {
+      "get": {
+        "tags": [
+          "EventSessionGroup"
+        ],
+        "summary": "Get Event Session Group Sessions",
+        "description": "Get talks, workshops, panels, or activities assigned to a specific program section.",
+        "operationId": "GetEventSessionGroupSessions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      },
+      "post": {
+        "tags": [
+          "EventSessionGroup"
+        ],
+        "summary": "Assign Event Session to Group",
+        "description": "Assign a talk, workshop, panel, or activity to a program section.",
+        "operationId": "AssignEventSessionToGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignSessionToGroupRequestDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignSessionToGroupRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventsessiongroup": {
+      "post": {
+        "tags": [
+          "EventSessionGroup"
+        ],
+        "summary": "Create Event Session Group",
+        "description": "Create a track, devroom, stage, or program section for an event.",
+        "operationId": "CreateEventSessionGroup",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSessionGroupRequestDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSessionGroupRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventsessiongroup/{id}/sessions/{sessionId}": {
+      "delete": {
+        "tags": [
+          "EventSessionGroup"
+        ],
+        "summary": "Unassign Event Session from Group",
+        "description": "Remove a talk, workshop, panel, or activity from a program section without deleting the session.",
+        "operationId": "UnassignEventSessionFromGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/json; v=0.1": {
                 "schema": {
@@ -23493,14 +24433,19 @@
           "Role"
         ],
         "summary": "Get all Roles",
-        "description": "Retrieve roles, optionally filtered by scope (Platform, Tenant, Organization, Group, Event). Returns all roles when no scope specified.",
+        "description": "Retrieve roles, optionally filtered by normalized roleScopeId. Returns all roles when no roleScopeId is specified.",
         "operationId": "GetRoles",
         "parameters": [
           {
-            "name": "scope",
+            "name": "roleScopeId",
             "in": "query",
             "schema": {
-              "$ref": "#/components/schemas/RoleScopeEnum"
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
             }
           },
           {
@@ -32139,6 +33084,34 @@
           }
         }
       },
+      "AssignSessionToGroupRequestDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventSessionGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventSessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "AtprotoRecordDto": {
         "required": [
           "did",
@@ -34678,6 +35651,64 @@
           }
         }
       },
+      "CreateEventSessionGroupRequestDto": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "roomId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isPublished": {
+            "type": "boolean"
+          }
+        }
+      },
       "CreateEventSessionRequest": {
         "type": "object",
         "properties": {
@@ -35382,8 +36413,13 @@
               "string"
             ]
           },
-          "ownerType": {
-            "$ref": "#/components/schemas/ExternalApiKeyOwnerType"
+          "externalApiKeyOwnerTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "organizationId": {
             "type": [
@@ -36353,7 +37389,9 @@
       "EffectiveSettingDto": {
         "required": [
           "key",
-          "value"
+          "value",
+          "settingValueTypeCode",
+          "settingValueTypeName"
         ],
         "type": "object",
         "properties": {
@@ -36363,8 +37401,19 @@
           "value": {
             "type": "string"
           },
-          "valueType": {
-            "$ref": "#/components/schemas/SettingValueType"
+          "settingValueTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "settingValueTypeCode": {
+            "type": "string"
+          },
+          "settingValueTypeName": {
+            "type": "string"
           },
           "source": {
             "$ref": "#/components/schemas/SettingSource"
@@ -36725,6 +37774,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
             "type": "string",
             "format": "uuid"
           },
@@ -37649,6 +38702,46 @@
           }
         }
       },
+      "EventPublishReadinessDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isReady": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventPublishReadinessErrorDto"
+            }
+          }
+        }
+      },
+      "EventPublishReadinessErrorDto": {
+        "required": [
+          "code",
+          "fieldPath",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fieldPath": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          }
+        }
+      },
       "EventRegistrationDto": {
         "type": "object",
         "properties": {
@@ -38501,6 +39594,47 @@
               }
             }
           },
+          "sessionGroups": {
+            "type": "array",
+            "items": {
+              "required": [
+                "name"
+              ],
+              "type": "object",
+              "properties": {
+                "eventSessionGroupId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "color": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "isPrimary": {
+                  "type": "boolean"
+                },
+                "sortOrder": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int32"
+                }
+              }
+            }
+          },
           "tenantId": {
             "type": "string",
             "format": "uuid"
@@ -38816,6 +39950,47 @@
                   "null",
                   "string"
                 ]
+              }
+            }
+          },
+          "sessionGroups": {
+            "type": "array",
+            "items": {
+              "required": [
+                "name"
+              ],
+              "type": "object",
+              "properties": {
+                "eventSessionGroupId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "color": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "isPrimary": {
+                  "type": "boolean"
+                },
+                "sortOrder": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int32"
+                }
               }
             }
           }
@@ -39203,14 +40378,17 @@
       "ExposureLevel": {
         "type": "integer"
       },
-      "ExternalApiKeyCreditPeriodEnum": {
-        "type": "integer"
-      },
       "ExternalApiKeyListDto": {
         "required": [
           "name",
           "keyId",
-          "maskedKeyId"
+          "maskedKeyId",
+          "externalApiKeyOwnerTypeCode",
+          "externalApiKeyOwnerTypeName",
+          "externalApiKeyStatusCode",
+          "externalApiKeyStatusName",
+          "externalApiKeyCreditPeriodCode",
+          "externalApiKeyCreditPeriodName"
         ],
         "type": "object",
         "properties": {
@@ -39233,8 +40411,19 @@
           "maskedKeyId": {
             "type": "string"
           },
-          "ownerType": {
-            "$ref": "#/components/schemas/ExternalApiKeyOwnerType"
+          "externalApiKeyOwnerTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "externalApiKeyOwnerTypeCode": {
+            "type": "string"
+          },
+          "externalApiKeyOwnerTypeName": {
+            "type": "string"
           },
           "ownerId": {
             "type": "string",
@@ -39246,10 +40435,18 @@
               "type": "string"
             }
           },
-          "status": {
-            "$ref": "#/components/schemas/ExternalApiKeyStatusEnum"
+          "externalApiKeyStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
-          "statusName": {
+          "externalApiKeyStatusCode": {
+            "type": "string"
+          },
+          "externalApiKeyStatusName": {
             "type": "string"
           },
           "expiresAt": {
@@ -39266,8 +40463,19 @@
             ],
             "format": "date-time"
           },
-          "creditPeriod": {
-            "$ref": "#/components/schemas/ExternalApiKeyCreditPeriodEnum"
+          "externalApiKeyCreditPeriodId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "externalApiKeyCreditPeriodCode": {
+            "type": "string"
+          },
+          "externalApiKeyCreditPeriodName": {
+            "type": "string"
           },
           "creditLimit": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -39289,15 +40497,11 @@
           }
         }
       },
-      "ExternalApiKeyOwnerType": {
-        "type": "integer"
-      },
-      "ExternalApiKeyStatusEnum": {
-        "type": "integer"
-      },
       "ExternalApiKeyUsageReportDto": {
         "required": [
-          "apiKeyName"
+          "apiKeyName",
+          "externalApiKeyOwnerTypeCode",
+          "externalApiKeyOwnerTypeName"
         ],
         "type": "object",
         "properties": {
@@ -39315,8 +40519,19 @@
             ],
             "format": "uuid"
           },
-          "ownerType": {
-            "$ref": "#/components/schemas/ExternalApiKeyOwnerType"
+          "externalApiKeyOwnerTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "externalApiKeyOwnerTypeCode": {
+            "type": "string"
+          },
+          "externalApiKeyOwnerTypeName": {
+            "type": "string"
           },
           "ownerId": {
             "type": "string",
@@ -39842,6 +41057,14 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfEventSessionGroupListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array"
+          }
+        }
+      },
       "HalCollectionEmbeddedOfEventSessionListDto": {
         "type": "object",
         "properties": {
@@ -40335,6 +41558,58 @@
           },
           "_embedded": {
             "$ref": "#/components/schemas/HalCollectionEmbeddedOfEventSessionCustomPropertyDefinitionListDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfEventSessionGroupListDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfEventSessionGroupListDto"
           }
         }
       },
@@ -41175,6 +42450,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string"
           },
@@ -41932,6 +43211,47 @@
               }
             }
           },
+          "sessionGroups": {
+            "type": "array",
+            "items": {
+              "required": [
+                "name"
+              ],
+              "type": "object",
+              "properties": {
+                "eventSessionGroupId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "color": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "isPrimary": {
+                  "type": "boolean"
+                },
+                "sortOrder": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int32"
+                }
+              }
+            }
+          },
           "tenantId": {
             "type": "string",
             "format": "uuid"
@@ -41969,6 +43289,7 @@
           }
         }
       },
+      "HalResourceOfEventSessionGroupDto": {},
       "HalResourceOfEventSessionTemplateDto": {},
       "HalResourceOfEventTemplateDto": {},
       "HalResourceOfGroupDto": {},
@@ -44747,6 +46068,15 @@
           }
         }
       },
+      "PublishEventRequestDto": {
+        "type": "object",
+        "properties": {
+          "expectedConcurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "RebuildProjectionRequestDto": {
         "type": "object",
         "properties": {
@@ -45105,7 +46435,9 @@
       "RoleDto": {
         "required": [
           "masterCode",
-          "fullName"
+          "fullName",
+          "roleScopeCode",
+          "roleScopeName"
         ],
         "type": "object",
         "properties": {
@@ -45129,8 +46461,19 @@
               "string"
             ]
           },
-          "scope": {
-            "$ref": "#/components/schemas/RoleScopeEnum"
+          "roleScopeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "roleScopeCode": {
+            "type": "string"
+          },
+          "roleScopeName": {
+            "type": "string"
           },
           "isSystem": {
             "type": "boolean"
@@ -45143,7 +46486,9 @@
       "RoleListDto": {
         "required": [
           "masterCode",
-          "fullName"
+          "fullName",
+          "roleScopeCode",
+          "roleScopeName"
         ],
         "type": "object",
         "properties": {
@@ -45161,16 +46506,24 @@
           "fullName": {
             "type": "string"
           },
-          "scope": {
-            "$ref": "#/components/schemas/RoleScopeEnum"
+          "roleScopeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "roleScopeCode": {
+            "type": "string"
+          },
+          "roleScopeName": {
+            "type": "string"
           },
           "isSystem": {
             "type": "boolean"
           }
         }
-      },
-      "RoleScopeEnum": {
-        "type": "integer"
       },
       "SaveTenantOnboardingStepDto": {
         "required": [
@@ -45493,9 +46846,6 @@
             ]
           }
         }
-      },
-      "SettingValueType": {
-        "type": "integer"
       },
       "SharedContactDto": {
         "type": "object",
@@ -48113,6 +49463,68 @@
           }
         }
       },
+      "UpdateEventSessionGroupRequestDto": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "roomId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isPublished": {
+            "type": "boolean"
+          }
+        }
+      },
       "UpdateEventSessionTemplateDto": {
         "type": "object",
         "properties": {
@@ -49807,6 +51219,9 @@
     },
     {
       "name": "EventSessionCustomProperty"
+    },
+    {
+      "name": "EventSessionGroup"
     },
     {
       "name": "EventSessionTemplate"

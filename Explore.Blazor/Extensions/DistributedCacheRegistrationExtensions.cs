@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Explore.ServiceDefaults.HealthChecks;
 
 namespace Explore.Blazor.Extensions;
 
@@ -50,7 +51,9 @@ public static class DistributedCacheRegistrationExtensions
         builder.Services.TryAddSingleton<MemoryDistributedCache>();
         builder.Services.AddSingleton(sp => new RedisDistributedCachePrimary(
             (IDistributedCache)CreateService(redisDescriptor, sp)));
-        builder.Services.AddSingleton<IDistributedCache, RedisFallbackDistributedCache>();
+        builder.Services.AddSingleton<RedisFallbackDistributedCache>();
+        builder.Services.AddSingleton<IDistributedCache>(sp => sp.GetRequiredService<RedisFallbackDistributedCache>());
+        builder.Services.AddSingleton<IDistributedCacheBackendState>(sp => sp.GetRequiredService<RedisFallbackDistributedCache>());
         builder.Services.AddHostedService<DistributedCacheStartupProbe>();
 
         bootstrapLogger.LogInformation(
@@ -87,9 +90,19 @@ public static class DistributedCacheRegistrationExtensions
     private sealed class RedisFallbackDistributedCache(
         RedisDistributedCachePrimary primary,
         MemoryDistributedCache fallback,
-        ILogger<RedisFallbackDistributedCache> logger) : IDistributedCache
+        ILogger<RedisFallbackDistributedCache> logger) : IDistributedCache, IDistributedCacheBackendState
     {
         private int fallbackActivated;
+
+        public string BackendName => "redis";
+
+        public bool IsConfigured => true;
+
+        public bool IsDegraded => IsFallbackActive();
+
+        public string Status => IsFallbackActive()
+            ? "Redis is unavailable; in-memory fallback is active."
+            : "Redis is active.";
 
         public byte[]? Get(string key)
         {

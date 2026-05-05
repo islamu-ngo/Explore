@@ -1,0 +1,70 @@
+.login-page {
+    min-height: min(42rem, calc(100vh - 6rem));
+    display: flex;
+    align-items: center;
+}
+
+::deep .login-page__card {
+    width: 100%;
+    border-radius: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+}
+
+::deep .login-page__title {
+    font-weight: 800 !important;
+    letter-spacing: -0.03em;
+}
+
+.login-page__subtitle {
+    max-width: 30rem;
+}
+
+.login-page__providers {
+    width: 100%;
+}
+
+.login-page__provider {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-2);
+}
+
+.login-page__provider-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+}
+
+::deep .login-page__recommended-chip {
+    font-weight: 700 !important;
+}
+
+::deep .login-page__provider-button {
+    border-radius: 0.875rem !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+}
+
+.login-page__handle-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-4);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--mud-palette-primary) 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 18%, transparent);
+}
+
+::deep .login-page__handle-submit {
+    border-radius: 0.875rem !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+}
+
+@media (max-width: 37.5em) {
+    .login-page {
+        min-height: auto;
+        align-items: flex-start;
+    }
+}

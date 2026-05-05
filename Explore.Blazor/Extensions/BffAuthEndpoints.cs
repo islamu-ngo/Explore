@@ -166,7 +166,7 @@ public static class BffAuthEndpoints
         }
 
         var redirectUrl = string.IsNullOrEmpty(provider)
-            ? $"/auth/challenge?returnUrl={returnUrl}"
+            ? $"/login?returnUrl={returnUrl}"
             : $"/auth/challenge?provider={Uri.EscapeDataString(provider)}&returnUrl={returnUrl}";
 
         ctx.Response.Redirect(redirectUrl);

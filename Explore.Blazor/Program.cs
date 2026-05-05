@@ -3,6 +3,8 @@ using Blazouter.Server.Extensions;
 using Explore.Blazor;
 using Explore.Blazor.Components;
 using Explore.Blazor.Extensions;
+using Explore.Blazor.HealthChecks;
+using Explore.Persistence;
 using Explore.Secrets.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -39,6 +41,8 @@ builder.Configuration.AddInfisicalBlazorCompatibility();
 
 builder.AddServiceDefaults();
 builder.AddResilientDistributedCache(connectionName: "cache");
+builder.AddDistributedCacheReadinessCheck();
+builder.AddOidcDiscoveryReadinessCheck();
 
 builder.Services.AddSecretManagement(builder.Configuration);
 
@@ -100,7 +104,12 @@ builder.Services.AddHealthChecks()
         if (shutdownState.IsShuttingDown)
             return HealthCheckResult.Unhealthy("Application is shutting down");
         return HealthCheckResult.Healthy();
-    }, tags: ["live", "ready"]);
+    }, tags: ["live", "ready"])
+    .AddDbContextCheck<ExploreDbContext>("database", tags: ["ready"])
+    .AddCheck<ApiReadinessHealthCheck>(
+        "explore-api",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "api", "infrastructure"]);
 
 // ──────────────────────────────────────────────
 // Middleware Pipeline
@@ -114,6 +123,7 @@ await app.InitializeDynamicAuthSchemesAsync();
 
 app.UseForwardedHeadersMiddleware();
 app.ConfigureGracefulShutdown(shutdownState);
+app.UseBffSecurityHeaders();
 app.MapDefaultEndpoints();
 
 if (app.Environment.IsDevelopment())

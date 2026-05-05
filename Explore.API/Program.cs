@@ -3,6 +3,7 @@ using System.Net;
 using Explore.API.BackgroundServices;
 using Explore.API.Configuration;
 using Explore.API.Extensions;
+using Explore.API.HealthChecks;
 using Explore.API.Middleware;
 using Explore.API.Services;
 using Explore.API.Services.Calendar;
@@ -11,6 +12,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Telemetry;
 using Explore.Infrastructure;
+using Explore.Infrastructure.HealthChecks;
 using Explore.Persistence;
 using Explore.Persistence.Seed;
 using Explore.Secrets.Extensions;
@@ -48,6 +50,8 @@ builder.Host.ConfigureHostOptions(options =>
 
 builder.AddServiceDefaults();
 builder.AddRedisDistributedCache(connectionName: "cache");
+builder.AddDistributedCacheReadinessCheck();
+builder.AddOidcDiscoveryReadinessCheck();
 builder.Configuration.AddInfisicalCompatibility();
 
 // Add secret management services (refresh service, health checks, metrics, audit logging)
@@ -226,7 +230,15 @@ builder.Services.AddHealthChecks()
             return HealthCheckResult.Unhealthy("Application is shutting down");
         return HealthCheckResult.Healthy();
     }, tags: ["live", "ready"])
-    .AddDbContextCheck<ExploreDbContext>("database", tags: ["ready"]);
+    .AddDbContextCheck<ExploreDbContext>("database", tags: ["ready"])
+    .AddCheck<SmtpHealthCheck>(
+        "smtp",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "smtp", "infrastructure"])
+    .AddCheck<CerbosReadinessHealthCheck>(
+        "cerbos",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "cerbos", "infrastructure"]);
 
 // Request timeouts: default 30s, lookups 10s, complex 60s
 builder.Services.AddApiRequestTimeouts(builder.Configuration);

@@ -111,7 +111,11 @@ public class AuthRedirectPagesTests : IDisposable
         await Assert.That(nav.Uri).EndsWith("/login?returnUrl=%2Fevents");
         await Assert.That(cut.Markup).Contains("Continue with Keycloak");
         await Assert.That(cut.Markup).Contains("Continue with Google");
-        await Assert.That(cut.Markup).Contains("AT Protocol");
+        await Assert.That(cut.Markup).Contains("Continue with ATProto");
+        await Assert.That(cut.Markup.IndexOf("Continue with Keycloak", StringComparison.Ordinal))
+            .IsLessThan(cut.Markup.IndexOf("Continue with Google", StringComparison.Ordinal));
+        await Assert.That(cut.Markup.IndexOf("Continue with Google", StringComparison.Ordinal))
+            .IsLessThan(cut.Markup.IndexOf("Continue with ATProto", StringComparison.Ordinal));
     }
 
     [Test]
@@ -217,8 +221,38 @@ public class AuthRedirectPagesTests : IDisposable
 
         // Assert
         await Assert.That(nav.Uri).EndsWith("/login?returnUrl=%2Fdashboard");
-        await Assert.That(cut.Markup).Contains("AT Protocol");
-        await Assert.That(cut.Markup).Contains("Handle");
+        await Assert.That(cut.Markup).Contains("Continue with ATProto");
+        await Assert.That(cut.Markup).DoesNotContain("ATProto handle");
+    }
+
+    [Test]
+    public async Task LoginRedirect_ClickingAtproto_ShouldRevealHandleInput()
+    {
+        // Arrange
+        ConfigureAuthProviderClient(new
+        {
+            providers = new[]
+            {
+                new { name = "Keycloak", displayName = "Keycloak", type = "button", recommended = true },
+                new { name = "Google", displayName = "Google", type = "button", recommended = false },
+                new { name = "Atproto", displayName = "AT Protocol", type = "handle_input", recommended = false }
+            }
+        });
+
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
+        nav.NavigateTo("/login?returnUrl=%2Fdashboard");
+
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+
+        // Act
+        var atprotoButton = cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Continue with ATProto", StringComparison.Ordinal));
+        atprotoButton.Click();
+
+        // Assert
+        await Assert.That(nav.Uri).EndsWith("/login?returnUrl=%2Fdashboard");
+        await Assert.That(cut.Markup).Contains("ATProto handle");
     }
 
     [Test]

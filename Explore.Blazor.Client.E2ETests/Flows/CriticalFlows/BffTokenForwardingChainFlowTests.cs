@@ -6,22 +6,21 @@ using Explore.Blazor.Client.E2ETests.Seeds;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
-[ClassDataSource<AppHostFixture, PlaywrightFixture, PostgreSqlContainerFixture>(
-    Shared = [SharedType.PerTestSession, SharedType.PerTestSession, SharedType.PerTestSession])]
+[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
+[NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]
 public partial class BffTokenForwardingChainFlowTests(
     AppHostFixture appHost,
-    PlaywrightFixture playwright,
-    PostgreSqlContainerFixture database)
+    PlaywrightFixture playwright)
 {
     [Test]
-    [Skip("Infrastructure-gated critical flow: requires Docker, Aspire AppHost, Keycloak login seed, and deterministic BFF cookie auth state.")]
+    [Skip("Category: E2E. Removal: enable in the nightly lane when Docker, Aspire AppHost, Keycloak login seed, and deterministic BFF cookie auth state are available.")]
     public async Task LoginBffYarpApiTenantHalLinksRenderInBlazor()
     {
-        await database.ResetAsync();
-        var scenario = await SeedTenantIsolationScenarioAsync(database);
+        await appHost.ResetDatabaseAsync();
+        var scenario = await SeedTenantIsolationScenarioAsync(appHost);
 
-        var page = await playwright.CreatePageAsync();
+        var page = await playwright.CreatePageAsync(nameof(LoginBffYarpApiTenantHalLinksRenderInBlazor));
         try
         {
             await page.SetExtraHTTPHeadersAsync(new Dictionary<string, string>
@@ -39,7 +38,7 @@ public partial class BffTokenForwardingChainFlowTests(
         }
         finally
         {
-            await page.CloseAsync();
+            await playwright.ClosePageAsync(page, nameof(LoginBffYarpApiTenantHalLinksRenderInBlazor));
         }
     }
 
@@ -88,9 +87,9 @@ public partial class BffTokenForwardingChainFlowTests(
     }
 
     private static async Task<TenantIsolationScenarioSeed.Result> SeedTenantIsolationScenarioAsync(
-        PostgreSqlContainerFixture database)
+        AppHostFixture appHost)
     {
-        await using var context = database.CreateDbContext();
+        await using var context = appHost.CreateDbContext();
         return await TenantIsolationScenarioSeed.SeedAsync(context);
     }
 

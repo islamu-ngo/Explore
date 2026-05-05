@@ -6,7 +6,7 @@ namespace Event.Api.IntegrationTests.Fixtures;
 /// <summary>
 /// Test category constants for the hybrid test taxonomy.
 /// Use <c>[Category(TestCategories.Fast)]</c> to tag tests.
-/// Run selective categories via <c>dotnet test --filter "Category=Security"</c>.
+/// Run selective TUnit categories via <c>dotnet test --treenode-filter "////[Category=Security]"</c>.
 /// </summary>
 public static class TestCategories
 {

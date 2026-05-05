@@ -7,6 +7,10 @@ public sealed class PlaywrightFixture : IAsyncInitializer, IAsyncDisposable
 {
     private IPlaywright? _playwright;
     private IBrowser? _browser;
+    private readonly string _artifactRoot = Path.Combine(
+        AppContext.BaseDirectory,
+        "TestResults",
+        "playwright-artifacts");
 
     public IBrowser Browser => _browser ?? throw new InvalidOperationException("Browser not initialized");
 
@@ -25,14 +29,55 @@ public sealed class PlaywrightFixture : IAsyncInitializer, IAsyncDisposable
         });
     }
 
-    public async Task<IPage> CreatePageAsync()
+    public async Task<IPage> CreatePageAsync(string artifactName = "page")
     {
+        Directory.CreateDirectory(_artifactRoot);
+
+        var safeArtifactName = SanitizeArtifactName(artifactName);
+        var artifactId = $"{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}-{safeArtifactName}";
+        var videoDirectory = Path.Combine(_artifactRoot, "videos", artifactId);
+        Directory.CreateDirectory(videoDirectory);
+
         var context = await Browser.NewContextAsync(new BrowserNewContextOptions
         {
-            IgnoreHTTPSErrors = true
+            IgnoreHTTPSErrors = true,
+            RecordVideoDir = videoDirectory
+        });
+
+        await context.Tracing.StartAsync(new TracingStartOptions
+        {
+            Screenshots = true,
+            Snapshots = true,
+            Sources = true,
+            Title = safeArtifactName
         });
 
         return await context.NewPageAsync();
+    }
+
+    public async Task ClosePageAsync(IPage page, string artifactName)
+    {
+        var context = page.Context;
+        var safeArtifactName = SanitizeArtifactName(artifactName);
+        var screenshotPath = Path.Combine(_artifactRoot, $"{safeArtifactName}.png");
+        var tracePath = Path.Combine(_artifactRoot, $"{safeArtifactName}.zip");
+
+        try
+        {
+            if (!page.IsClosed)
+            {
+                await page.ScreenshotAsync(new PageScreenshotOptions
+                {
+                    FullPage = true,
+                    Path = screenshotPath
+                });
+            }
+        }
+        finally
+        {
+            await context.Tracing.StopAsync(new TracingStopOptions { Path = tracePath });
+            await context.CloseAsync();
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -43,5 +88,15 @@ public sealed class PlaywrightFixture : IAsyncInitializer, IAsyncDisposable
         }
 
         _playwright?.Dispose();
+    }
+
+    private static string SanitizeArtifactName(string artifactName)
+    {
+        var invalidCharacters = Path.GetInvalidFileNameChars();
+        var sanitized = new string(artifactName
+            .Select(character => invalidCharacters.Contains(character) ? '-' : character)
+            .ToArray());
+
+        return string.IsNullOrWhiteSpace(sanitized) ? "page" : sanitized;
     }
 }

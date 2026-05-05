@@ -89,7 +89,8 @@ public class StressRateLimitingTests(StressApiFixture fixture)
     // TODO: Re-enable once OpenFeature SDK ChannelClosedException on shutdown is resolved.
     // The test itself passes but WebApplicationFactory.DisposeAsync -> OpenFeature.Api.ShutdownAsync
     // throws ChannelClosedException during teardown, causing TUnit to report the test as failed.
-    // [Test]
+    [Skip("Category: Stress. Removal: enable when OpenFeature SDK shutdown no longer throws ChannelClosedException during WebApplicationFactory disposal.")]
+    [Test]
     public async Task RateLimited_ShouldReturnProblemDetailsBody()
     {
         await _fixture.ResetDatabaseAsync();
@@ -141,7 +142,7 @@ public class StressRateLimitingTests(StressApiFixture fixture)
     }
 
     [Test]
-    [Skip("Infrastructure-gated: current Stress host does not enforce the setup-secret endpoint limiter; metadata coverage guards policy wiring until runtime limiter setup is corrected.")]
+    [Skip("Category: Stress. Removal: enable when the Stress host enforces the setup-secret endpoint limiter; metadata coverage guards policy wiring until runtime limiter setup is corrected.")]
     public async Task SetupSecretValidationRepeatedAttemptsShouldEventuallyReturnTooManyRequests()
     {
         HttpResponseMessage? rateLimitedResponse = null;

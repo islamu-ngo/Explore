@@ -119,19 +119,33 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
                 return storedToken;
             }
 
+            if (!IsUsableAccessToken(_localToken))
+            {
+                _localToken = null;
+                return null;
+            }
+
             return _localToken;
         }
     }
 
     public void SetToken(string? token)
     {
-        _localToken = token;
-
         if (string.IsNullOrEmpty(token))
         {
+            _localToken = null;
             _logger.LogWarning("[CircuitAccessTokenService] SetToken called with null/empty token");
             return;
         }
+
+        if (!IsUsableAccessToken(token))
+        {
+            _localToken = null;
+            _logger.LogWarning("[CircuitAccessTokenService] SetToken ignored an expired or near-expiry access token");
+            return;
+        }
+
+        _localToken = token;
 
         // Extract userId from the JWT token itself (not from HttpContext)
         var userId = ExtractUserIdFromToken(token, _logger) ?? GetUserIdFromHttpContext();
@@ -189,11 +203,12 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
         var userId = _userId ?? GetUserIdFromHttpContext();
         if (!string.IsNullOrEmpty(userId) && _tokenStore.TryGetValue(userId, out var entry))
         {
-            // Token expires after 1 hour (should match JWT expiry)
-            if (entry.CreatedAt > DateTime.UtcNow.AddHours(-1))
+            if (IsUsableAccessToken(entry.Token))
             {
                 return entry.Token;
             }
+
+            _tokenStore.TryRemove(userId, out _);
         }
         return null;
     }
@@ -220,12 +235,13 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
 
         if (_tokenStore.TryGetValue(userId, out var entry))
         {
-            if (entry.CreatedAt > DateTime.UtcNow.AddHours(-1))
+            if (IsUsableAccessToken(entry.Token))
             {
                 logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUser] Found valid token for {UserId} (length: {Len})",
                     userId, entry.Token.Length);
                 return entry.Token;
             }
+            _tokenStore.TryRemove(userId, out _);
             logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUser] Token for {UserId} is expired", userId);
         }
         else
@@ -238,10 +254,42 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
     private static void CleanupOldTokens()
     {
         var cutoff = DateTime.UtcNow.AddHours(-2);
-        var oldKeys = _tokenStore.Where(kvp => kvp.Value.CreatedAt < cutoff).Select(kvp => kvp.Key).ToList();
+        var oldKeys = _tokenStore
+            .Where(kvp => kvp.Value.CreatedAt < cutoff || !IsUsableAccessToken(kvp.Value.Token))
+            .Select(kvp => kvp.Key)
+            .ToList();
         foreach (var key in oldKeys)
         {
             _tokenStore.TryRemove(key, out _);
+        }
+    }
+
+    internal static bool IsUsableAccessToken(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (!handler.CanReadToken(token))
+            {
+                return true;
+            }
+
+            var jwt = handler.ReadJwtToken(token);
+            if (jwt.ValidTo == DateTime.MinValue)
+            {
+                return true;
+            }
+
+            return jwt.ValidTo > DateTime.UtcNow.AddSeconds(30);
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -291,8 +339,19 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                 token = await httpContext!.GetTokenAsync("access_token");
                 if (!string.IsNullOrEmpty(token))
                 {
-                    source = "HttpContext";
-                    _logger.LogDebug("[AccessTokenForwardingHandler] Got token from HttpContext (length: {Len})", token.Length);
+                    if (CircuitAccessTokenService.IsUsableAccessToken(token))
+                    {
+                        source = "HttpContext";
+                        _logger.LogDebug("[AccessTokenForwardingHandler] Got token from HttpContext (length: {Len})", token.Length);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "[AccessTokenForwardingHandler] Ignoring expired or near-expiry HttpContext token at {Path} | TokenSummary={TokenSummary}",
+                            request.RequestUri?.PathAndQuery,
+                            DescribeToken(token));
+                        token = null;
+                    }
                 }
                 else
                 {

@@ -12,10 +12,10 @@
 
 <PageTitle>Sign in</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
-    <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Sign in</MudText>
-        <MudText Typo="Typo.body2" Class="mb-4">
+<MudContainer MaxWidth="MaxWidth.Small" Class="login-page py-8">
+    <MudPaper Class="login-page__card pa-6">
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="login-page__title mb-2">Sign in</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="login-page__subtitle mb-4">
             Choose an authentication provider to continue.
         </MudText>
 
@@ -44,53 +44,54 @@
         }
         else
         {
-            <MudStack Spacing="3">
-                @foreach (var provider in _buttonProviders)
+            <MudStack Spacing="3" Class="login-page__providers">
+                @foreach (var provider in _providers)
                 {
-                    <MudStack Spacing="1">
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                            <MudText Typo="Typo.subtitle2">@provider.DisplayName</MudText>
+                    <div class="login-page__provider" @key="provider.Name">
+                        <div class="login-page__provider-header">
+                            <MudText Typo="Typo.subtitle2">@GetProviderDisplayName(provider)</MudText>
                             @if (provider.Recommended)
                             {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="login-page__recommended-chip">
                                     Recommended
                                 </MudChip>
                             }
-                        </MudStack>
+                        </div>
 
                         <AppButton Variant="@(provider.Recommended ? Variant.Filled : Variant.Outlined)"
                                    Color="@(provider.Recommended ? Color.Primary : Color.Default)"
                                    FullWidth="true"
                                    Size="Size.Large"
-                                   StartIcon="@Icons.Material.Filled.Login"
-                                   OnClick="@(() => StartButtonProviderChallenge(provider))">
-                            Continue with @provider.DisplayName
+                                   StartIcon="@GetProviderIcon(provider)"
+                                   OnClick="@(() => StartProvider(provider))"
+                                   Class="login-page__provider-button">
+                            Continue with @GetProviderDisplayName(provider)
                         </AppButton>
-                    </MudStack>
-                }
 
-                @if (_atprotoProvider is not null)
-                {
-                    <MudDivider Class="my-1" />
+                        @if (IsAtproto(provider) && string.Equals(_expandedProviderName, provider.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="login-page__handle-panel">
+                                <AppTextField T="string"
+                                              Label="ATProto handle"
+                                              Placeholder="user.bsky.social"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.AlternateEmail"
+                                              Immediate="true"
+                                              @bind-Value="_atprotoHandle"
+                                              OnKeyUp="HandleAtprotoKeyUp" />
 
-                    <MudText Typo="Typo.subtitle2">AT Protocol</MudText>
-                    <AppTextField T="string"
-                                  Label="Handle"
-                                  Placeholder="user.bsky.social"
-                                  Adornment="Adornment.Start"
-                                  AdornmentIcon="@Icons.Material.Filled.AlternateEmail"
-                                  Immediate="true"
-                                  @bind-Value="_atprotoHandle"
-                                  OnKeyUp="HandleAtprotoKeyUp" />
-
-                    <AppButton Variant="Variant.Outlined"
-                               Color="Color.Default"
-                               FullWidth="true"
-                               Size="Size.Large"
-                               Disabled="@string.IsNullOrWhiteSpace(_atprotoHandle)"
-                               OnClick="StartAtprotoChallenge">
-                        Continue with Handle
-                    </AppButton>
+                                <AppButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           FullWidth="true"
+                                           Size="Size.Large"
+                                           Disabled="@string.IsNullOrWhiteSpace(_atprotoHandle)"
+                                           OnClick="StartAtprotoChallenge"
+                                           Class="login-page__handle-submit">
+                                    Continue
+                                </AppButton>
+                            </div>
+                        }
+                    </div>
                 }
             </MudStack>
         }
@@ -119,8 +120,8 @@
     private string _returnUrl = "/";
     private string _forcedProviderQuery = string.Empty;
     private string _atprotoHandle = string.Empty;
-    private List<AuthProviderItem> _buttonProviders = [];
-    private AuthProviderItem? _atprotoProvider;
+    private string? _expandedProviderName;
+    private List<AuthProviderItem> _providers = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -146,12 +147,16 @@
                 return;
             }
 
-            _buttonProviders = providers
-                .Where(p => string.Equals(p.Type, "button", StringComparison.OrdinalIgnoreCase))
+            _providers = providers
+                .OrderBy(GetProviderSortOrder)
+                .ThenBy(p => GetProviderDisplayName(p), StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            _atprotoProvider = providers.FirstOrDefault(
-                p => string.Equals(p.Type, "handle_input", StringComparison.OrdinalIgnoreCase));
+            var hintedAtproto = _providers.FirstOrDefault(IsAtproto);
+            if (hintedAtproto is not null && !string.IsNullOrWhiteSpace(_atprotoHandle))
+            {
+                _expandedProviderName = hintedAtproto.Name;
+            }
 
             _isLoading = false;
 
@@ -185,7 +190,7 @@
 
             if (forcedProvider is not null)
             {
-                if (string.Equals(forcedProvider.Type, "button", StringComparison.OrdinalIgnoreCase))
+                if (IsButtonProvider(forcedProvider))
                 {
                     _isAutoRedirecting = true;
                     _hasTriggeredRedirect = true;
@@ -194,7 +199,7 @@
                     return;
                 }
 
-                if (string.Equals(forcedProvider.Name, "Atproto", StringComparison.OrdinalIgnoreCase)
+                if (IsAtproto(forcedProvider)
                     && !string.IsNullOrWhiteSpace(_atprotoHandle))
                 {
                     _isAutoRedirecting = true;
@@ -213,7 +218,7 @@
 
         var provider = providers[0];
 
-        if (string.Equals(provider.Type, "button", StringComparison.OrdinalIgnoreCase))
+        if (IsButtonProvider(provider))
         {
             _isAutoRedirecting = true;
             _hasTriggeredRedirect = true;
@@ -222,8 +227,7 @@
             return;
         }
 
-        if (string.Equals(provider.Name, "Atproto", StringComparison.OrdinalIgnoreCase) &&
-            !string.IsNullOrWhiteSpace(_atprotoHandle))
+        if (IsAtproto(provider) && !string.IsNullOrWhiteSpace(_atprotoHandle))
         {
             _isAutoRedirecting = true;
             _hasTriggeredRedirect = true;
@@ -239,13 +243,26 @@
         Navigation.NavigateTo(challengeUrl, forceLoad: true);
     }
 
+    private void StartProvider(AuthProviderItem provider)
+    {
+        if (IsAtproto(provider))
+        {
+            _expandedProviderName = provider.Name;
+            return;
+        }
+
+        StartButtonProviderChallenge(provider);
+    }
+
     private void StartAtprotoChallenge()
     {
-        var challengeUrl = $"/auth/challenge?provider=atproto&returnUrl={Uri.EscapeDataString(_returnUrl)}";
-        if (!string.IsNullOrWhiteSpace(_atprotoHandle))
+        if (string.IsNullOrWhiteSpace(_atprotoHandle))
         {
-            challengeUrl += $"&login_hint={Uri.EscapeDataString(_atprotoHandle.Trim())}";
+            return;
         }
+
+        var challengeUrl = $"/auth/challenge?provider=atproto&returnUrl={Uri.EscapeDataString(_returnUrl)}";
+        challengeUrl += $"&login_hint={Uri.EscapeDataString(_atprotoHandle.Trim())}";
 
         Navigation.NavigateTo(challengeUrl, forceLoad: true);
     }
@@ -256,6 +273,43 @@
         {
             StartAtprotoChallenge();
         }
+    }
+
+    private static bool IsButtonProvider(AuthProviderItem provider)
+    {
+        return string.Equals(provider.Type, "button", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsAtproto(AuthProviderItem provider)
+    {
+        return string.Equals(provider.Type, "handle_input", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(MapProviderNameToQueryValue(provider.Name), "atproto", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int GetProviderSortOrder(AuthProviderItem provider)
+    {
+        return MapProviderNameToQueryValue(provider.Name) switch
+        {
+            "keycloak" => 0,
+            "google" => 1,
+            "atproto" => 2,
+            _ => 100
+        };
+    }
+
+    private static string GetProviderDisplayName(AuthProviderItem provider)
+    {
+        return IsAtproto(provider) ? "ATProto" : provider.DisplayName;
+    }
+
+    private static string GetProviderIcon(AuthProviderItem provider)
+    {
+        return MapProviderNameToQueryValue(provider.Name) switch
+        {
+            "google" => Icons.Material.Filled.AccountCircle,
+            "atproto" => Icons.Material.Filled.AlternateEmail,
+            _ => Icons.Material.Filled.Login
+        };
     }
 
     private void ReadQueryParameters()

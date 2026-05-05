@@ -163,7 +163,7 @@ public static class YarpProxyExtensions
         }
 
         var token = await context.HttpContext.GetTokenAsync("access_token");
-        if (!string.IsNullOrEmpty(token))
+        if (!string.IsNullOrEmpty(token) && CircuitAccessTokenService.IsUsableAccessToken(token))
         {
             context.ProxyRequest.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);

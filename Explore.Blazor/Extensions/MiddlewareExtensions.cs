@@ -8,11 +8,22 @@ using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Net.Http.Headers;
 
 namespace Explore.Blazor.Extensions;
 
 public static class MiddlewareExtensions
 {
+    private const string ContentSecurityPolicy =
+        "default-src 'self'; " +
+        "img-src 'self' data: https:; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self' 'wasm-unsafe-eval'; " +
+        "connect-src 'self'; " +
+        "frame-ancestors 'none'; " +
+        "base-uri 'self'; " +
+        "object-src 'none'";
+
     /// <summary>
     /// Configures forwarded headers for reverse proxy / SSL termination (Coolify, Nginx).
     /// Restores the original request scheme and client IP from X-Forwarded-* headers.
@@ -33,6 +44,15 @@ public static class MiddlewareExtensions
         var logger = app.Logger;
         app.Use((context, next) => LogForwardedHeadersAsync(context, next, logger));
 
+        return app;
+    }
+
+    /// <summary>
+    /// Adds browser security headers at the BFF boundary before any response is written.
+    /// </summary>
+    public static WebApplication UseBffSecurityHeaders(this WebApplication app)
+    {
+        app.Use(AddBffSecurityHeadersAsync);
         return app;
     }
 
@@ -138,6 +158,21 @@ public static class MiddlewareExtensions
         await next();
     }
 
+    private static async Task AddBffSecurityHeadersAsync(HttpContext context, Func<Task> next)
+    {
+        context.Response.OnStarting(() =>
+        {
+            var headers = context.Response.Headers;
+            headers[HeaderNames.ContentSecurityPolicy] = ContentSecurityPolicy;
+            headers[HeaderNames.XFrameOptions] = "DENY";
+            headers[HeaderNames.XContentTypeOptions] = "nosniff";
+            headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+            return Task.CompletedTask;
+        });
+
+        await next();
+    }
+
     // Stores the XSRF request token in a non-HttpOnly cookie so the SPA can echo it as a header.
     private static async Task DistributeAntiforgeryTokenAsync(
         HttpContext ctx,
@@ -154,7 +189,7 @@ public static class MiddlewareExtensions
                 {
                     HttpOnly = false,
                     Secure = secureCookie,
-                    SameSite = SameSiteMode.Lax,
+                    SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
                     Path = "/"
                 });
             }

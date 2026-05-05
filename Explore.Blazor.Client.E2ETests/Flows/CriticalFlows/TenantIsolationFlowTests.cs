@@ -6,20 +6,19 @@ using Explore.Blazor.Client.E2ETests.Seeds;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
-[ClassDataSource<AppHostFixture, PlaywrightFixture, PostgreSqlContainerFixture>(
-    Shared = [SharedType.PerTestSession, SharedType.PerTestSession, SharedType.PerTestSession])]
+[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
+[NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]
 public class TenantIsolationFlowTests(
     AppHostFixture appHost,
-    PlaywrightFixture playwright,
-    PostgreSqlContainerFixture database)
+    PlaywrightFixture playwright)
 {
     [Test]
-    [Skip("Infrastructure-gated critical flow: requires Docker, Aspire AppHost PostgreSQL override wiring, and deterministic tenant host/header routing.")]
+    [Skip("Category: E2E. Removal: enable in the nightly lane when Docker, Aspire AppHost PostgreSQL override wiring, and deterministic tenant host/header routing are available.")]
     public async Task TenantIsolationTenantAEventIsHiddenFromTenantBContext()
     {
-        await database.ResetAsync();
-        var scenario = await SeedTenantIsolationScenarioAsync(database);
+        await appHost.ResetDatabaseAsync();
+        var scenario = await SeedTenantIsolationScenarioAsync(appHost);
 
         var tenantAPage = await CreateTenantPageAsync(scenario.TenantASlug);
         var tenantBPage = await CreateTenantPageAsync(scenario.TenantBSlug);
@@ -38,14 +37,14 @@ public class TenantIsolationFlowTests(
         }
         finally
         {
-            await tenantAPage.CloseAsync();
-            await tenantBPage.CloseAsync();
+            await playwright.ClosePageAsync(tenantAPage, $"{nameof(TenantIsolationTenantAEventIsHiddenFromTenantBContext)}-tenant-a");
+            await playwright.ClosePageAsync(tenantBPage, $"{nameof(TenantIsolationTenantAEventIsHiddenFromTenantBContext)}-tenant-b");
         }
     }
 
     private async Task<IPage> CreateTenantPageAsync(string tenantSlug)
     {
-        var page = await playwright.CreatePageAsync();
+        var page = await playwright.CreatePageAsync($"{nameof(TenantIsolationTenantAEventIsHiddenFromTenantBContext)}-{tenantSlug}");
         await page.SetExtraHTTPHeadersAsync(new Dictionary<string, string>
         {
             ["X-Tenant-Slug"] = tenantSlug
@@ -65,9 +64,9 @@ public class TenantIsolationFlowTests(
     }
 
     private static async Task<TenantIsolationScenarioSeed.Result> SeedTenantIsolationScenarioAsync(
-        PostgreSqlContainerFixture database)
+        AppHostFixture appHost)
     {
-        await using var context = database.CreateDbContext();
+        await using var context = appHost.CreateDbContext();
         return await TenantIsolationScenarioSeed.SeedAsync(context);
     }
 }
