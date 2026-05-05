@@ -13,5 +13,13 @@ public class CreateEventSessionCommand : IRequest<BaseCommandResponse<Guid>>, IS
 {
     public required CreateEventSessionDto EventSessionDto { get; set; }
 
+    public Guid TenantId { get; set; }
+
     string? ISecureRequest.ResourceId => EventSessionDto.EventId.ToString();
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString(),
+        ["eventId"] = EventSessionDto.EventId.ToString()
+    };
 }

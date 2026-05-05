@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Features.EventSessions.Requests.Queries;
@@ -30,15 +31,18 @@ public class EventSessionController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<EventSessionController> _logger;
+    private readonly ITenantContext _tenantContext;
     private readonly IResourceAssembler<EventSessionDto, EventSessionListDto> _resourceAssembler;
 
     public EventSessionController(
         IMediator mediator,
         ILogger<EventSessionController> logger,
+        ITenantContext tenantContext,
         IResourceAssembler<EventSessionDto, EventSessionListDto> resourceAssembler)
     {
         _mediator = mediator;
         _logger = logger;
+        _tenantContext = tenantContext;
         _resourceAssembler = resourceAssembler;
     }
 
@@ -136,7 +140,11 @@ public class EventSessionController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionDto session, CancellationToken cancellationToken = default)
     {
-        var command = new CreateEventSessionCommand { EventSessionDto = session };
+        var command = new CreateEventSessionCommand
+        {
+            EventSessionDto = session,
+            TenantId = _tenantContext.TenantId
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
