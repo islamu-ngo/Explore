@@ -4,6 +4,9 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
+using Explore.Domain;
+using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -25,6 +28,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     public async Task InitializeAsync()
     {
         await _database.InitializeAsync();
+        await PreconfigureTenantRoutingAsync();
         await _keycloak.InitializeAsync();
 
         var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.Explore_AppHost>();
@@ -124,5 +128,64 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         {
             resource.WithEnvironment("ConnectionStrings__EventMigrationService", connectionString);
         }
+    }
+
+    private async Task PreconfigureTenantRoutingAsync()
+    {
+        await using var context = _database.CreateDbContext();
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Deployment.Mode,
+            $"\"{DeploymentMode.MultiTenant}\"",
+            SettingValueType.String,
+            "System");
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Routing.ResolverPathEnabled,
+            "true",
+            SettingValueType.Boolean,
+            "Routing");
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Routing.PathPrefix,
+            "\"/t\"",
+            SettingValueType.String,
+            "Routing");
+
+        await context.SaveChangesAsync();
+    }
+
+    private static void UpsertSystemSetting(
+        ExploreDbContext context,
+        string settingKey,
+        string value,
+        SettingValueType valueType,
+        string category)
+    {
+        var setting = context.SystemSettings.Local.FirstOrDefault(x => x.SettingKey == settingKey)
+            ?? context.SystemSettings.FirstOrDefault(x => x.SettingKey == settingKey);
+
+        if (setting is null)
+        {
+            context.SystemSettings.Add(new SystemSetting
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = settingKey,
+                Value = value,
+                ValueType = valueType,
+                Category = category,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            return;
+        }
+
+        setting.Value = value;
+        setting.ValueType = valueType;
+        setting.Category ??= category;
+        setting.UpdatedAt = DateTime.UtcNow;
     }
 }

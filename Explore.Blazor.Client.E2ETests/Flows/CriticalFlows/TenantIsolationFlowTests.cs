@@ -1,5 +1,5 @@
-// ABOUTME: Playwright critical-flow scaffold for browser-visible tenant isolation.
-// ABOUTME: Documents the tenant A event visibility contract from a tenant B browser context.
+// ABOUTME: Playwright critical flow for tenant isolation through the Blazor BFF proxy.
+// ABOUTME: Documents that path-routed tenant A event data is hidden from tenant B API context.
 
 using Explore.Blazor.Client.E2ETests.Fixtures;
 using Explore.Blazor.Client.E2ETests.Seeds;
@@ -14,7 +14,6 @@ public class TenantIsolationFlowTests(
     PlaywrightFixture playwright)
 {
     [Test]
-    [Skip("Category: E2E. Removal: enable in the nightly lane when Docker, Aspire AppHost PostgreSQL override wiring, and deterministic tenant host/header routing are available.")]
     public async Task TenantIsolationTenantAEventIsHiddenFromTenantBContext()
     {
         await appHost.ResetDatabaseAsync();
@@ -25,15 +24,11 @@ public class TenantIsolationFlowTests(
 
         try
         {
-            await BrowseEventsAsync(tenantAPage);
-            await tenantAPage.GetByText(scenario.TenantAEventTitle, new PageGetByTextOptions { Exact = false })
-                .WaitForAsync();
+            var tenantAEvents = await GetTenantEventsPayloadAsync(tenantAPage, scenario.TenantASlug);
+            await Assert.That(tenantAEvents).Contains(scenario.TenantAEventTitle);
 
-            await BrowseEventsAsync(tenantBPage);
-            await Assert.That(await tenantBPage.GetByText(scenario.TenantAEventTitle, new PageGetByTextOptions
-            {
-                Exact = false
-            }).CountAsync()).IsEqualTo(0);
+            var tenantBEvents = await GetTenantEventsPayloadAsync(tenantBPage, scenario.TenantBSlug);
+            await Assert.That(tenantBEvents).DoesNotContain(scenario.TenantAEventTitle);
         }
         finally
         {
@@ -44,23 +39,16 @@ public class TenantIsolationFlowTests(
 
     private async Task<IPage> CreateTenantPageAsync(string tenantSlug)
     {
-        var page = await playwright.CreatePageAsync($"{nameof(TenantIsolationTenantAEventIsHiddenFromTenantBContext)}-{tenantSlug}");
-        await page.SetExtraHTTPHeadersAsync(new Dictionary<string, string>
-        {
-            ["X-Tenant-Slug"] = tenantSlug
-        });
-
-        return page;
+        return await playwright.CreatePageAsync($"{nameof(TenantIsolationTenantAEventIsHiddenFromTenantBContext)}-{tenantSlug}");
     }
 
-    private async Task BrowseEventsAsync(IPage page)
+    private async Task<string> GetTenantEventsPayloadAsync(IPage page, string tenantSlug)
     {
-        var response = await page.GotoAsync($"{appHost.BlazorBaseUrl}/events");
+        var response = await page.Context.APIRequest.GetAsync($"{appHost.BlazorBaseUrl}/t/{tenantSlug}/api/Event");
         await Assert.That(response).IsNotNull();
-        await Assert.That(response!.Status).IsEqualTo((int)HttpStatusCode.OK);
+        await Assert.That(response.Status).IsEqualTo((int)HttpStatusCode.OK);
 
-        await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Explore Events" })
-            .WaitForAsync();
+        return await response.TextAsync();
     }
 
     private static async Task<TenantIsolationScenarioSeed.Result> SeedTenantIsolationScenarioAsync(

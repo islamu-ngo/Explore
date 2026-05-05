@@ -2,6 +2,7 @@
 // ABOUTME: Creates two tenant contexts and a public event owned only by tenant A.
 
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 
@@ -19,6 +20,8 @@ public static class TenantIsolationScenarioSeed
 
     public static async Task<Result> SeedAsync(ExploreDbContext context)
     {
+        SeedMultiTenantBootstrapState(context);
+
         var tenantA = CreateTenant("Tenant A E2E", "tenant-a-e2e");
         var tenantB = CreateTenant("Tenant B E2E", "tenant-b-e2e");
 
@@ -47,6 +50,72 @@ public static class TenantIsolationScenarioSeed
             tenantB.Slug,
             tenantAEvent.Id,
             tenantAEvent.Title);
+    }
+
+    private static void SeedMultiTenantBootstrapState(ExploreDbContext context)
+    {
+        var now = DateTime.UtcNow;
+
+        context.InstanceBootstrapStates.Add(new InstanceBootstrapState
+        {
+            Id = Guid.NewGuid(),
+            IsCompleted = true,
+            CreatedAt = now,
+            CompletedAt = now,
+            SelectedDeploymentMode = DeploymentMode.MultiTenant.ToString()
+        });
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Deployment.Mode,
+            $"\"{DeploymentMode.MultiTenant}\"",
+            SettingValueType.String,
+            "System");
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Routing.ResolverPathEnabled,
+            "true",
+            SettingValueType.Boolean,
+            "Routing");
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Routing.PathPrefix,
+            "\"/t\"",
+            SettingValueType.String,
+            "Routing");
+    }
+
+    private static void UpsertSystemSetting(
+        ExploreDbContext context,
+        string settingKey,
+        string value,
+        SettingValueType valueType,
+        string category)
+    {
+        var setting = context.SystemSettings.Local.FirstOrDefault(x => x.SettingKey == settingKey)
+            ?? context.SystemSettings.FirstOrDefault(x => x.SettingKey == settingKey);
+
+        if (setting is null)
+        {
+            context.SystemSettings.Add(new SystemSetting
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = settingKey,
+                Value = value,
+                ValueType = valueType,
+                Category = category,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            return;
+        }
+
+        setting.Value = value;
+        setting.ValueType = valueType;
+        setting.Category ??= category;
+        setting.UpdatedAt = DateTime.UtcNow;
     }
 
     private static Tenant CreateTenant(string name, string slug) => new()
