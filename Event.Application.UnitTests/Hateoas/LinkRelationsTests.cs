@@ -89,6 +89,24 @@ public class LinkRelationsTests
     }
 
     [Test]
+    public async Task Program_ShouldBeCorrect()
+    {
+        await Assert.That(LinkRelations.Program).IsEqualTo("program");
+    }
+
+    [Test]
+    public async Task AddSession_ShouldBeCorrect()
+    {
+        await Assert.That(LinkRelations.AddSession).IsEqualTo("add-session");
+    }
+
+    [Test]
+    public async Task AddSessionGroup_ShouldBeCorrect()
+    {
+        await Assert.That(LinkRelations.AddSessionGroup).IsEqualTo("add-session-group");
+    }
+
+    [Test]
     public async Task Speakers_ShouldBeCorrect()
     {
         await Assert.That(LinkRelations.Speakers).IsEqualTo("speakers");
