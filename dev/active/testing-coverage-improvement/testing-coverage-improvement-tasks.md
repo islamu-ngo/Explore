@@ -18,7 +18,7 @@ Current phase: Phase 1 — Activate critical E2E/nightly confidence.
 
 Start here:
 
-1. Continue Phase 1 by wiring deterministic Keycloak/BFF-cookie auth state before unskipping authenticated critical flows.
+1. Continue Phase 1 by unskipping authorization enforcement or BFF token-forwarding with the verified Keycloak/BFF-cookie helper.
 2. Keep the active E2E smoke tests and Playwright artifact fixture green while expanding coverage.
 3. Keep updating this file and `testing-coverage-improvement-context.md` after each implementation session.
 
@@ -62,7 +62,7 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 - [x] Wire `AppHostFixture` to the E2E PostgreSQL Testcontainer and inject the connection string into AppHost child projects.
 - [x] Copy `docker/keycloak/ISLAMU-realm.test.json` into the E2E test output as the deterministic realm asset.
 - [x] Activate meaningful frontend load and anonymous auth-status assertions in `Explore.Blazor.Client.E2ETests/Flows/SmokeTests.cs`.
-- [ ] Activate `TenantIsolationFlowTests.cs` with seeded tenant data and cross-tenant denial assertions.
+- [x] Activate `TenantIsolationFlowTests.cs` with seeded tenant data and cross-tenant denial assertions.
 - [ ] Activate `AuthorizationEnforcementFlowTests.cs` for low-privilege browser/API enforcement.
 - [ ] Activate `BffTokenForwardingChainFlowTests.cs` for browser cookie → BFF → API token forwarding.
 - [ ] Activate `RegistrationFlowTests.cs` after auth state is stable.
@@ -71,11 +71,12 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 
 ### Acceptance Criteria
 
-- [ ] Core E2E flows are not permanently skip-gated.
+- [~] Core E2E flows are not permanently skip-gated.
 - [x] Nightly E2E uses Aspire AppHost, PostgreSQL Testcontainers, Keycloak, and Playwright for the active smoke lane.
 - [x] Shared AppHost database reset callers are serialized with `[NotInParallel("E2EAppHostDb")]`.
 - [x] Active smoke tests use readiness waits, semantic locators, and browser-context API assertions where practical.
 - [x] E2E failures produce useful artifacts.
+- [x] Tenant isolation E2E verifies tenant A event data is absent from tenant B responses and guards tenant-scoped event-list caching.
 
 ### Dependencies
 
@@ -92,7 +93,7 @@ dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETe
 dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet --treenode-filter "/*/*/SmokeTests/*"
 ```
 
-Use the filtered smoke command for the active Phase 1 smoke lane. The AppHost PostgreSQL prerequisite is wired, reset callers are serialized with `E2EAppHostDb`, deterministic Keycloak/BFF-cookie auth is verified, and smoke passes 3/3. Use the full E2E project command only after the remaining skipped critical flows are activated deliberately.
+Use the filtered smoke command for the active Phase 1 smoke lane. The AppHost PostgreSQL prerequisite is wired, reset callers are serialized with `E2EAppHostDb`, deterministic Keycloak/BFF-cookie auth is verified, smoke passes 3/3, and tenant isolation passes 1/1. Use the full E2E project command only after the remaining skipped critical flows are activated deliberately.
 
 ## Phase 2 — Restore Application unit-test purity and handler coverage
 

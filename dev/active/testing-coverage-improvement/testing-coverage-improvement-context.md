@@ -42,14 +42,18 @@ Last Updated: 2026-05-05
 - Added `BffCookieAuthHelper` to drive real browser Keycloak login, assert `/auth/status` authenticated, verify the BFF HttpOnly auth cookie, and ensure browser storage does not contain token-shaped values.
 - Added and verified `SmokeTests.AuthStatus_KeycloakLogin_ReturnsAuthenticatedWithServerCookieOnly`.
 - Isolated E2E Blazor from local Infisical secrets by clearing Infisical bootstrap env vars on the `explore-blazor` AppHost resource so the test realm secret wins.
+- Activated `TenantIsolationFlowTests.cs` as an API-boundary tenant isolation E2E through the Aspire AppHost.
+- Seeded completed multi-tenant bootstrap/routing state and tenant A/B event data for the tenant isolation scenario.
+- Fixed a real cross-tenant cache leak in `Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs` by adding `ITenantContext.TenantId` to the `events:list` HybridCache key.
+- Added `GetEventListRequestHandlerTests.Handle_WithSameRequestForDifferentTenants_UsesTenantScopedCacheEntries` so identical list requests from different tenants cannot reuse a cached page.
 
 ### In Progress
 
-- Phase 1 implementation: use the now-verified deterministic Keycloak/BFF-cookie helper to activate the skipped authenticated critical flows incrementally.
+- Phase 1 implementation: continue activating the remaining authenticated critical flows incrementally; tenant isolation is now active and passing at the API tenant boundary.
 
 ### Blockers
 
-- Remaining Phase 1 work: tenant isolation, authorization enforcement, BFF token-forwarding, and registration critical-flow scaffolds still need to be unskipped one at a time using the verified Keycloak/BFF-cookie helper.
+- Remaining Phase 1 work: authorization enforcement, BFF token-forwarding, and registration critical-flow scaffolds still need to be unskipped one at a time using the verified Keycloak/BFF-cookie helper.
 - Oracle review note resolved for current E2E reset callers: classes that call `ResetDatabaseAsync()` now use `[NotInParallel("E2EAppHostDb")]`; keep this lock on future shared-AppHost DB tests unless they use an isolated database.
 
 ## Key Verified Files
@@ -142,6 +146,7 @@ Last Updated: 2026-05-05
 12. **Shared E2E database reset callers use `E2EAppHostDb`.** This follows existing repo lock names like `RealRuntimeDb`, `StressDb`, and `PersistenceDb` while keeping browser parallelism separate.
 13. **E2E Keycloak auth uses real browser OIDC, not token injection.** The helper drives Keycloak UI login, verifies the BFF HttpOnly cookie, and scans browser storage for token-shaped values.
 14. **E2E Blazor clears Infisical bootstrap credentials.** This prevents local/real `/keycloak` secrets from overriding the deterministic test realm secret.
+15. **Tenant-sensitive query caches must include tenant identity.** The tenant-isolation E2E exposed that `events:list` cache entries were shared across tenants until `ITenantContext.TenantId` was added to the cache key.
 
 ## Phase 0 Verification Results
 
@@ -171,6 +176,10 @@ Last Updated: 2026-05-05
 - `timeout 180s dotnet test --no-build --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity normal --treenode-filter "/*/*/SmokeTests/AuthStatus_KeycloakLogin_ReturnsAuthenticatedWithServerCookieOnly"` — passed, 1 total / 1 succeeded / 0 failed / 0 skipped, `EXIT:0`.
 - `timeout 300s dotnet test --no-build --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet --treenode-filter "/*/*/SmokeTests/*"` — passed, 3 total / 3 succeeded / 0 failed / 0 skipped, `EXIT:0`.
 - Verified no Keycloak or PostgreSQL Testcontainers remain running after the passing smoke lane.
+- `lsp_diagnostics` on `Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs`, `Event.Application.UnitTests/Features/Events/Queries/GetEventListRequestHandlerTests.cs`, and tenant E2E files — no diagnostics.
+- `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet --treenode-filter "/*/*/GetEventListRequestHandlerTests/*"` — passed, 10 total / 10 succeeded / 0 failed / 0 skipped.
+- `dotnet build Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet` after tenant cache fix — passed, 12 projects / 0 errors; pre-existing warnings only.
+- `timeout 360s dotnet test --no-build --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet --treenode-filter "/*/*/TenantIsolationFlowTests/*"` — passed, 1 total / 1 succeeded / 0 failed / 0 skipped, `EXIT:0`.
 
 ## Constraints
 
@@ -242,6 +251,6 @@ Last Updated: 2026-05-05
 
 1. Read `dev/active/testing-coverage-improvement/testing-coverage-improvement-plan.md`.
 2. Continue with Phase 1 in `testing-coverage-improvement-tasks.md`.
-3. Next implementation step: use the verified Keycloak/BFF-cookie helper to unskip the critical E2E flows incrementally, starting with tenant isolation or BFF token-forwarding. Keep `[NotInParallel("E2EAppHostDb")]` on any shared database reset callers.
+3. Next implementation step: continue Phase 1 by unskipping authorization enforcement or BFF token-forwarding with the verified Keycloak/BFF-cookie helper. Tenant isolation is already active at the API boundary; keep `[NotInParallel("E2EAppHostDb")]` on any shared database reset callers.
 4. Update this context file after each implementation session.
 5. Run only project-level verification commands from `docs/TESTING.md` and the plan.

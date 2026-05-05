@@ -5,7 +5,7 @@
 
 # API Contract Action Inventory
 
-**Generated:** 2026-05-05 16:33:33Z (UTC)
+**Generated:** 2026-05-05 22:16:11Z (UTC)
 **Source:** `/openapi/event-api.json`
 **Governed by:** [docs/GOVERNANCE.md#api-contract-rules](../../../docs/GOVERNANCE.md#api-contract-rules)
 

@@ -1,5 +1,5 @@
-// ABOUTME: Playwright critical flow for tenant isolation through the Blazor BFF proxy.
-// ABOUTME: Documents that path-routed tenant A event data is hidden from tenant B API context.
+// ABOUTME: Playwright critical flow for API tenant isolation in the full Aspire stack.
+// ABOUTME: Documents that tenant A event data is hidden from tenant B API context.
 
 using Explore.Blazor.Client.E2ETests.Fixtures;
 using Explore.Blazor.Client.E2ETests.Seeds;
@@ -44,7 +44,15 @@ public class TenantIsolationFlowTests(
 
     private async Task<string> GetTenantEventsPayloadAsync(IPage page, string tenantSlug)
     {
-        var response = await page.Context.APIRequest.GetAsync($"{appHost.BlazorBaseUrl}/t/{tenantSlug}/api/Event");
+        var response = await page.Context.APIRequest.GetAsync(
+            $"{appHost.ApiBaseUrl}/api/Event",
+            new APIRequestContextOptions
+            {
+                Headers = new Dictionary<string, string>
+                {
+                    ["X-Tenant-Slug"] = tenantSlug
+                }
+            });
         await Assert.That(response).IsNotNull();
         await Assert.That(response.Status).IsEqualTo((int)HttpStatusCode.OK);
 

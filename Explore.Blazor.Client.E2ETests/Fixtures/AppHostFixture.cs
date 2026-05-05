@@ -21,6 +21,9 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
     public string BlazorBaseUrl => _app?.GetEndpoint("explore-blazor", "https")?.ToString().TrimEnd('/')
         ?? throw new InvalidOperationException("Blazor app not started");
 
+    public string ApiBaseUrl => _app?.GetEndpoint("explore-api", "https")?.ToString().TrimEnd('/')
+        ?? throw new InvalidOperationException("API app not started");
+
     public Task ResetDatabaseAsync() => _database.ResetAsync();
 
     public ExploreDbContext CreateDbContext() => _database.CreateDbContext();
@@ -43,6 +46,10 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         var resourceNotificationService = _app.Services.GetRequiredService<ResourceNotificationService>();
 
         await _app.StartAsync();
+
+        await resourceNotificationService.WaitForResourceHealthyAsync(
+            "explore-api",
+            new CancellationTokenSource(TimeSpan.FromMinutes(3)).Token);
 
         await resourceNotificationService.WaitForResourceHealthyAsync(
             "explore-blazor",
