@@ -12,6 +12,7 @@ using Explore.Application.Features.EventSessionCustomProperties.Requests.Command
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -22,6 +23,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
     private readonly IEventSessionCustomPropertyRepository _sessionCustomPropertyRepository;
     private readonly IEventSessionCustomPropertyProjectionUpdater _projectionUpdater;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
@@ -31,6 +33,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
         IEventSessionCustomPropertyRepository sessionCustomPropertyRepository,
         IEventSessionCustomPropertyProjectionUpdater projectionUpdater,
         ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
+        ICustomPropertyQuotaResolver quotaResolver,
         ICurrentUserService currentUserService,
         IMapper mapper,
         HybridCache cache,
@@ -39,6 +42,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
         _sessionCustomPropertyRepository = sessionCustomPropertyRepository;
         _projectionUpdater = projectionUpdater;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
+        _quotaResolver = quotaResolver;
         _currentUserService = currentUserService;
         _mapper = mapper;
         _cache = cache;
@@ -94,6 +98,18 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
             response.Success = false;
             response.Message = "Event session custom property definition update failed.";
             response.Errors = ["A custom property definition with the same Namespace + Key already exists for this session."];
+            return response;
+        }
+
+        var maxOptions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+            definition.TenantId,
+            cancellationToken);
+        if (request.DefinitionDto.Options.Count > maxOptions)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property definition update failed.";
+            response.Errors = [$"quota_exceeded: Custom-property option limit of {maxOptions} has been exceeded for this definition."];
             return response;
         }
 

@@ -16,7 +16,10 @@ public interface IEventCustomPropertyProjectionUpdater
 
     Task RefreshForEventAsync(Guid eventId, CancellationToken cancellationToken);
 
-    Task<ProjectionRebuildResult> RebuildForTenantAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<ProjectionRebuildResult> RebuildForTenantAsync(
+        Guid tenantId,
+        int? batchSize,
+        CancellationToken cancellationToken);
 
     Task<int> DrainDirtyScopesForTenantAsync(Guid tenantId, CancellationToken cancellationToken);
 }

@@ -7,6 +7,7 @@ using Explore.Application.DTOs.CustomPropertyProjection.Validators;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 
 namespace Explore.Application.Features.EventCustomPropertyProjections.Handlers.Commands;
@@ -15,13 +16,16 @@ public class RebuildEventCustomPropertyProjectionCommandHandler
     : IRequestHandler<RebuildEventCustomPropertyProjectionCommand, BaseCommandResponse<RebuildProjectionResponseDto>>
 {
     private readonly IEventCustomPropertyProjectionUpdater _projectionUpdater;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ProjectionMetrics _metrics;
 
     public RebuildEventCustomPropertyProjectionCommandHandler(
         IEventCustomPropertyProjectionUpdater projectionUpdater,
+        ICustomPropertyQuotaResolver quotaResolver,
         ProjectionMetrics metrics)
     {
         _projectionUpdater = projectionUpdater;
+        _quotaResolver = quotaResolver;
         _metrics = metrics;
     }
 
@@ -41,9 +45,26 @@ public class RebuildEventCustomPropertyProjectionCommandHandler
             return response;
         }
 
+        if (request.RequestDto.BatchSize.HasValue)
+        {
+            var maxBatchSize = await _quotaResolver.GetIntAsync(
+                CustomPropertyQuotaSettingDefinitions.ProjectionRebuildBatchSize.Key,
+                request.RequestDto.TenantId,
+                cancellationToken);
+
+            if (request.RequestDto.BatchSize.Value > maxBatchSize)
+            {
+                response.Success = false;
+                response.Message = "Projection rebuild request validation failed.";
+                response.Errors = [$"quota_exceeded: Projection rebuild batch size limit of {maxBatchSize} has been exceeded."];
+                return response;
+            }
+        }
+
         var startedAt = DateTimeOffset.UtcNow;
         var result = await _projectionUpdater.RebuildForTenantAsync(
             request.RequestDto.TenantId,
+            request.RequestDto.BatchSize,
             cancellationToken);
         var completedAt = DateTimeOffset.UtcNow;
         var durationSeconds = (completedAt - startedAt).TotalSeconds;

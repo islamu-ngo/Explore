@@ -10,6 +10,7 @@ using Explore.Application.Features.CustomProperties;
 using Explore.Application.Features.EventCustomProperties.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 
 namespace Explore.Application.Features.EventCustomProperties.Handlers.Commands;
@@ -18,6 +19,7 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
 {
     private readonly IEventCustomPropertyRepository _eventCustomPropertyRepository;
     private readonly IEventCustomPropertyProjectionUpdater _projectionUpdater;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -26,6 +28,7 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
     public SetEventCustomPropertyMultiValuesCommandHandler(
         IEventCustomPropertyRepository eventCustomPropertyRepository,
         IEventCustomPropertyProjectionUpdater projectionUpdater,
+        ICustomPropertyQuotaResolver quotaResolver,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IMapper mapper,
@@ -33,6 +36,7 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
     {
         _eventCustomPropertyRepository = eventCustomPropertyRepository;
         _projectionUpdater = projectionUpdater;
+        _quotaResolver = quotaResolver;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -68,6 +72,19 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
             response.Success = false;
             response.Message = "Event custom property multi-value set failed.";
             response.Errors = ["Event custom property definition was not found for the requested event."];
+            return response;
+        }
+
+        var maxRows = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxMultiValueRowsPerValue.Key,
+            definition.TenantId,
+            cancellationToken);
+
+        if (request.Values.Count > maxRows)
+        {
+            response.Success = false;
+            response.Message = "Event custom property multi-value set failed.";
+            response.Errors = [$"quota_exceeded: Multi-value custom-property row limit of {maxRows} has been exceeded for this definition."];
             return response;
         }
 

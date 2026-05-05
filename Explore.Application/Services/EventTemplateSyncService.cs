@@ -10,7 +10,6 @@ using Explore.Application.DTOs.EventTemplateSync.Validators;
 using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Constants;
-using Explore.Domain.Enums;
 using Explore.Domain.Settings.Definitions;
 using FluentValidation.Results;
 
@@ -87,6 +86,18 @@ public class EventTemplateSyncService : IEventTemplateSyncService
         {
             throw new ValidationException(new ValidationResult([
                 new ValidationFailure(nameof(TemplateSyncPlanDto), $"quota_exceeded: sync plan exceeds tenant quota of {quota} changes.")
+            ]));
+        }
+
+        var maxPayloadBytes = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key,
+            @event.TenantId,
+            cancellationToken);
+
+        if (JsonSerializer.SerializeToUtf8Bytes(plan).Length > maxPayloadBytes)
+        {
+            throw new ValidationException(new ValidationResult([
+                new ValidationFailure(nameof(TemplateSyncPlanDto), $"quota_exceeded: sync plan payload exceeds tenant quota of {maxPayloadBytes} bytes.")
             ]));
         }
 

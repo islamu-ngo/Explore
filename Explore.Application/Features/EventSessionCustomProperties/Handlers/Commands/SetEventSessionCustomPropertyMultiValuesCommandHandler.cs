@@ -10,6 +10,7 @@ using Explore.Application.Features.CustomProperties;
 using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessionCustomProperties.Handlers.Commands;
@@ -18,6 +19,7 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandler : IRequestHa
 {
     private readonly IEventSessionCustomPropertyRepository _sessionCustomPropertyRepository;
     private readonly IEventSessionCustomPropertyProjectionUpdater _projectionUpdater;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -26,6 +28,7 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandler : IRequestHa
     public SetEventSessionCustomPropertyMultiValuesCommandHandler(
         IEventSessionCustomPropertyRepository sessionCustomPropertyRepository,
         IEventSessionCustomPropertyProjectionUpdater projectionUpdater,
+        ICustomPropertyQuotaResolver quotaResolver,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IMapper mapper,
@@ -33,6 +36,7 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandler : IRequestHa
     {
         _sessionCustomPropertyRepository = sessionCustomPropertyRepository;
         _projectionUpdater = projectionUpdater;
+        _quotaResolver = quotaResolver;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -68,6 +72,19 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandler : IRequestHa
             response.Success = false;
             response.Message = "Event session custom property multi-value set failed.";
             response.Errors = ["Event session custom property definition was not found for the requested session."];
+            return response;
+        }
+
+        var maxRows = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxMultiValueRowsPerValue.Key,
+            definition.TenantId,
+            cancellationToken);
+
+        if (request.Values.Count > maxRows)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property multi-value set failed.";
+            response.Errors = [$"quota_exceeded: Multi-value custom-property row limit of {maxRows} has been exceeded for this definition."];
             return response;
         }
 

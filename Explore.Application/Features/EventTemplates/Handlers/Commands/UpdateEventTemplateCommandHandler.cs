@@ -11,6 +11,7 @@ using Explore.Application.Features.EventTemplates.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -20,6 +21,7 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
 {
     private readonly IEventTemplateRepository _eventTemplateRepository;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
@@ -28,6 +30,7 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
     public UpdateEventTemplateCommandHandler(
         IEventTemplateRepository eventTemplateRepository,
         ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
+        ICustomPropertyQuotaResolver quotaResolver,
         ICurrentUserService currentUserService,
         IMapper mapper,
         HybridCache cache,
@@ -35,6 +38,7 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
     {
         _eventTemplateRepository = eventTemplateRepository;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
+        _quotaResolver = quotaResolver;
         _currentUserService = currentUserService;
         _mapper = mapper;
         _cache = cache;
@@ -72,6 +76,18 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
             response.Success = false;
             response.Message = "Event template update failed.";
             response.Errors = ["A template with the same TemplateKey and Version already exists for this tenant."];
+            return response;
+        }
+
+        var maxDefinitions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+            template.TenantId,
+            cancellationToken);
+        if (request.TemplateDto.Definitions.Count > maxDefinitions)
+        {
+            response.Success = false;
+            response.Message = "Event template update failed.";
+            response.Errors = [$"quota_exceeded: Event template definition limit of {maxDefinitions} has been exceeded for this template."];
             return response;
         }
 

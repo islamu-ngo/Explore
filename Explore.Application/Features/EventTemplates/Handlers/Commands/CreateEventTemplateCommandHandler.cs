@@ -11,6 +11,7 @@ using Explore.Application.Features.EventTemplates.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -20,6 +21,7 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
 {
     private readonly IEventTemplateRepository _eventTemplateRepository;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -29,6 +31,7 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
     public CreateEventTemplateCommandHandler(
         IEventTemplateRepository eventTemplateRepository,
         ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
+        ICustomPropertyQuotaResolver quotaResolver,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IMapper mapper,
@@ -37,6 +40,7 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
     {
         _eventTemplateRepository = eventTemplateRepository;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
+        _quotaResolver = quotaResolver;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -66,6 +70,18 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
             response.Success = false;
             response.Message = "Event template creation failed.";
             response.Errors = ["A template with the same TemplateKey and Version already exists for this tenant."];
+            return response;
+        }
+
+        var maxDefinitions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+            _tenantContext.TenantId,
+            cancellationToken);
+        if (request.TemplateDto.Definitions.Count > maxDefinitions)
+        {
+            response.Success = false;
+            response.Message = "Event template creation failed.";
+            response.Errors = [$"quota_exceeded: Event template definition limit of {maxDefinitions} has been exceeded for this template."];
             return response;
         }
 

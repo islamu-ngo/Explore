@@ -10,6 +10,7 @@ using Explore.Application.Features.CustomPropertyDefinitions.Handlers.Commands;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Definitions;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -21,6 +22,7 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
 {
     private readonly ICustomPropertyDefinitionRepository _customPropertyDefinitionRepository;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -32,6 +34,7 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
     {
         _customPropertyDefinitionRepository = Substitute.For<ICustomPropertyDefinitionRepository>();
         _customPropertyGovernancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
+        _quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _currentUserService = Substitute.For<ICurrentUserService>();
         _mapper = Substitute.For<IMapper>();
@@ -50,11 +53,14 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
         _handler = new CreateCustomPropertyDefinitionCommandHandler(
             _customPropertyDefinitionRepository,
             _customPropertyGovernancePolicy,
+            _quotaResolver,
             _tenantContext,
             _currentUserService,
             _mapper,
             _cache,
             _unitOfWork);
+
+        _quotaResolver.GetIntAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(500);
     }
 
     [Test]
@@ -160,6 +166,68 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
                 && options.Any(option => option.Namespace == "tenant.community" && option.Key == "onsite" && option.IsDefault)),
             Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenDefinitionQuotaReached_ReturnsQuotaFailure()
+    {
+        var tenantId = Guid.NewGuid();
+        var command = new CreateCustomPropertyDefinitionCommand
+        {
+            DefinitionDto = CreateValidDto()
+        };
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _customPropertyGovernancePolicy.EvaluateDefinition(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(new CustomPropertyGovernanceEvaluation
+            {
+                NormalizedNamespace = "tenant.community",
+                NormalizedKey = "prayer_notes",
+            });
+        _customPropertyDefinitionRepository.ExistsScopedMachineKey(tenantId, EntityTypeName.Organization, "tenant.community", "prayer_notes")
+            .Returns(false);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTenantPerEntityScope.Key, tenantId, Arg.Any<CancellationToken>())
+            .Returns(2);
+        _customPropertyDefinitionRepository.CountDefinitionsForScope(tenantId, EntityTypeName.Organization, Arg.Any<CancellationToken>())
+            .Returns(2);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors.Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        await _customPropertyDefinitionRepository.DidNotReceiveWithAnyArgs().CreateWithOptions(default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task Handle_WhenOptionQuotaExceeded_ReturnsQuotaFailure()
+    {
+        var tenantId = Guid.NewGuid();
+        var command = new CreateCustomPropertyDefinitionCommand
+        {
+            DefinitionDto = CreateValidDto()
+        };
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _customPropertyGovernancePolicy.EvaluateDefinition(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(new CustomPropertyGovernanceEvaluation
+            {
+                NormalizedNamespace = "tenant.community",
+                NormalizedKey = "prayer_notes",
+            });
+        _customPropertyDefinitionRepository.ExistsScopedMachineKey(tenantId, EntityTypeName.Organization, "tenant.community", "prayer_notes")
+            .Returns(false);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTenantPerEntityScope.Key, tenantId, Arg.Any<CancellationToken>())
+            .Returns(10);
+        _customPropertyDefinitionRepository.CountDefinitionsForScope(tenantId, EntityTypeName.Organization, Arg.Any<CancellationToken>())
+            .Returns(0);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key, tenantId, Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors.Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        await _customPropertyDefinitionRepository.DidNotReceiveWithAnyArgs().CreateWithOptions(default!, default!, default, default);
     }
 
     private static CreateCustomPropertyDefinitionDto CreateValidDto()

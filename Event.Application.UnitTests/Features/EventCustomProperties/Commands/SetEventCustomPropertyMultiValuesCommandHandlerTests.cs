@@ -10,6 +10,7 @@ using Explore.Application.Features.EventCustomProperties.Handlers.Commands;
 using Explore.Application.Features.EventCustomProperties.Requests.Commands;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Definitions;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.EventCustomProperties.Commands;
@@ -18,6 +19,7 @@ public class SetEventCustomPropertyMultiValuesCommandHandlerTests
 {
     private readonly IEventCustomPropertyRepository _repository = Substitute.For<IEventCustomPropertyRepository>();
     private readonly IEventCustomPropertyProjectionUpdater _projectionUpdater = Substitute.For<IEventCustomPropertyProjectionUpdater>();
+    private readonly ICustomPropertyQuotaResolver _quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IMapper _mapper = Substitute.For<IMapper>();
@@ -32,6 +34,8 @@ public class SetEventCustomPropertyMultiValuesCommandHandlerTests
     {
         _tenantContext.TenantId.Returns(_tenantId);
         _currentUserService.UserId.Returns(_userId);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxMultiValueRowsPerValue.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(20);
         _unitOfWork
             .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
@@ -116,9 +120,24 @@ public class SetEventCustomPropertyMultiValuesCommandHandlerTests
         await _repository.DidNotReceiveWithAnyArgs().SetMultiValues(default, default, default!, default);
     }
 
+    [Test]
+    public async Task Handle_WhenMultiValueRowQuotaExceeded_ReturnsFailure()
+    {
+        _repository.GetDefinitionWithDetails(_definitionId).Returns(CreateDefinition(isMulti: true));
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxMultiValueRowsPerValue.Key, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(2);
+
+        var result = await CreateSut().Handle(CreateCommand("alpha", "beta", "gamma"), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That((result.Errors ?? []).Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        await _repository.DidNotReceiveWithAnyArgs().SetMultiValues(default, default, default!, default);
+    }
+
     private SetEventCustomPropertyMultiValuesCommandHandler CreateSut() => new(
         _repository,
         _projectionUpdater,
+        _quotaResolver,
         _tenantContext,
         _currentUserService,
         _mapper,

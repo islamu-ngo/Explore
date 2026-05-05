@@ -89,6 +89,18 @@ public class EventSessionTemplateSyncService : IEventSessionTemplateSyncService
             ]));
         }
 
+        var maxPayloadBytes = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key,
+            eventSession.TenantId,
+            cancellationToken);
+
+        if (JsonSerializer.SerializeToUtf8Bytes(plan).Length > maxPayloadBytes)
+        {
+            throw new ValidationException(new ValidationResult([
+                new ValidationFailure(nameof(TemplateSyncPlanDto), $"quota_exceeded: sync plan payload exceeds tenant quota of {maxPayloadBytes} bytes.")
+            ]));
+        }
+
         var templateKey = eventSession.SourceTemplateKey;
         if (string.IsNullOrWhiteSpace(templateKey) || !eventSession.SourceTemplateId.HasValue)
         {

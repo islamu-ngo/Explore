@@ -11,6 +11,7 @@ using Explore.Application.Features.CustomPropertyDefinitions.Handlers.Commands;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Definitions;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -22,6 +23,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
 {
     private readonly ICustomPropertyDefinitionRepository _customPropertyDefinitionRepository;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
@@ -32,6 +34,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
     {
         _customPropertyDefinitionRepository = Substitute.For<ICustomPropertyDefinitionRepository>();
         _customPropertyGovernancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
+        _quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         _currentUserService = Substitute.For<ICurrentUserService>();
         _mapper = Substitute.For<IMapper>();
         _cache = Substitute.For<HybridCache>();
@@ -49,10 +52,13 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         _handler = new UpdateCustomPropertyDefinitionCommandHandler(
             _customPropertyDefinitionRepository,
             _customPropertyGovernancePolicy,
+            _quotaResolver,
             _currentUserService,
             _mapper,
             _cache,
             _unitOfWork);
+
+        _quotaResolver.GetIntAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(500);
     }
 
     [Test]
@@ -227,6 +233,39 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
                 options.Count == 2
                 && options.Any(option => option.Key == "onsite" && option.IsDefault)
                 && options.Any(option => option.Key == "stream")),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenOptionQuotaExceeded_ReturnsQuotaFailure()
+    {
+        var tenantId = Guid.NewGuid();
+        var existing = CreateExistingDefinition(tenantId);
+        var command = new UpdateCustomPropertyDefinitionCommand
+        {
+            DefinitionDto = CreateDto(existing.Id)
+        };
+
+        _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        _customPropertyGovernancePolicy.EvaluateDefinition(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(new CustomPropertyGovernanceEvaluation
+            {
+                NormalizedNamespace = "tenant.community",
+                NormalizedKey = "prayer_notes",
+            });
+        _customPropertyDefinitionRepository.ExistsScopedMachineKey(tenantId, EntityTypeName.Organization, "tenant.community", "prayer_notes", existing.Id)
+            .Returns(false);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key, tenantId, Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors.Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        await _customPropertyDefinitionRepository.DidNotReceive().UpdateWithOptions(
+            Arg.Any<CustomPropertyDefinition>(),
+            Arg.Any<IReadOnlyCollection<CustomPropertyOption>>(),
             Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
     }

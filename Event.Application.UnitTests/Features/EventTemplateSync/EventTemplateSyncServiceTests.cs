@@ -33,6 +33,8 @@ public class EventTemplateSyncServiceTests
     {
         _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(10);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(262_144);
         _currentUserService.UserId.Returns(Guid.NewGuid());
         _unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -90,6 +92,20 @@ public class EventTemplateSyncServiceTests
 
         await Assert.ThrowsAsync<ValidationException>(async () =>
             await CreateSut().ApplySyncAsync(_eventId, CreatePlan(addedDefinitionKeys: ["tenant.sync/field"]), 1, CancellationToken.None));
+    }
+
+    [Test]
+    public async Task ApplySyncAsync_WhenPayloadQuotaExceeded_ThrowsValidationException()
+    {
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(1);
+        _eventRepository.GetById(_eventId).Returns(CreateEvent());
+        _diffService.ComputeDiffAsync(_eventId, 2, Arg.Any<CancellationToken>()).Returns(new TemplateDiffDto(2, 1, [], [], [], [], [], [], []));
+
+        await Assert.ThrowsAsync<ValidationException>(async () =>
+            await CreateSut().ApplySyncAsync(_eventId, CreatePlan(addedDefinitionKeys: ["tenant.sync/field"]), 1, CancellationToken.None));
+
+        await _templateRepository.DidNotReceiveWithAnyArgs().GetPublishedTemplateVersion(default, default!, default, default);
     }
 
     [Test]

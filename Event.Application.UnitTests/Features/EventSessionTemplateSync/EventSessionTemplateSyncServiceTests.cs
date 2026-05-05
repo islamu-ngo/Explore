@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionTemplateSync;
+using Explore.Application.Exceptions;
 using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -41,6 +42,34 @@ public class EventSessionTemplateSyncServiceTests
     }
 
     [Test]
+    public async Task ApplySyncAsync_WhenPayloadQuotaExceeded_ThrowsValidationException()
+    {
+        var eventSessionRepository = Substitute.For<IEventSessionRepository>();
+        var templateRepository = Substitute.For<IEventSessionTemplateRepository>();
+        var runtimeRepository = Substitute.For<IEventSessionCustomPropertyRepository>();
+        var diffService = Substitute.For<IEventSessionTemplateDiffService>();
+        var projectionUpdater = Substitute.For<IEventSessionCustomPropertyProjectionUpdater>();
+        var auditRepository = Substitute.For<IAuditLogRepository>();
+        var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
+        var currentUser = Substitute.For<ICurrentUserService>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+
+        var sessionId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key, tenantId, Arg.Any<CancellationToken>()).Returns(10);
+        quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
+        eventSessionRepository.GetById(sessionId).Returns(new EventSession { Id = sessionId, Event = null!, Tenant = null!, TenantId = tenantId, SourceTemplateId = Guid.NewGuid(), SourceTemplateKey = "session-template", SourceTemplateVersion = 1 });
+        diffService.ComputeDiffAsync(sessionId, 2, Arg.Any<CancellationToken>()).Returns(new TemplateDiffDto(2, 1, [], [], [], [], [], [], []));
+
+        var service = new EventSessionTemplateSyncService(eventSessionRepository, templateRepository, runtimeRepository, diffService, projectionUpdater, auditRepository, quotaResolver, currentUser, unitOfWork);
+
+        await Assert.ThrowsAsync<ValidationException>(async () =>
+            await service.ApplySyncAsync(sessionId, new TemplateSyncPlanDto { TargetTemplateVersion = 2, BaseProvenanceVersion = 1, AddedDefinitionKeys = ["tenant.sync/session"] }, 1, CancellationToken.None));
+
+        await templateRepository.DidNotReceiveWithAnyArgs().GetPublishedSessionTemplateVersion(default, default!, default, default);
+    }
+
+    [Test]
     public async Task ApplySyncAsync_WhenModificationSucceeds_RefreshesProjection()
     {
         var eventSessionRepository = Substitute.For<IEventSessionRepository>();
@@ -54,6 +83,7 @@ public class EventSessionTemplateSyncServiceTests
         var unitOfWork = Substitute.For<IUnitOfWork>();
 
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(10);
+        quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(262_144);
         currentUser.UserId.Returns(Guid.NewGuid());
         unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -98,6 +128,7 @@ public class EventSessionTemplateSyncServiceTests
         var unitOfWork = Substitute.For<IUnitOfWork>();
 
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(10);
+        quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(262_144);
         currentUser.UserId.Returns(Guid.NewGuid());
         unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>(), Arg.Any<CancellationToken>())
             .Returns(call =>

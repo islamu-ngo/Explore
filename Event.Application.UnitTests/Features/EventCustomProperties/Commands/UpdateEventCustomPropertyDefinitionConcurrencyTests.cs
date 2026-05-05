@@ -24,6 +24,7 @@ public class UpdateEventCustomPropertyDefinitionConcurrencyTests
         var repository = Substitute.For<IEventCustomPropertyRepository>();
         var projectionUpdater = Substitute.For<IEventCustomPropertyProjectionUpdater>();
         var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
+        var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         var currentUserService = Substitute.For<ICurrentUserService>();
         var mapper = Substitute.For<IMapper>();
         var cache = Substitute.For<HybridCache>();
@@ -32,6 +33,7 @@ public class UpdateEventCustomPropertyDefinitionConcurrencyTests
             repository,
             projectionUpdater,
             governancePolicy,
+            quotaResolver,
             currentUserService,
             mapper,
             cache,

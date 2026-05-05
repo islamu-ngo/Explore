@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Definitions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Projections;
@@ -133,12 +134,15 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<ProjectionRebuildResult> RebuildForTenantAsync(Guid tenantId, CancellationToken cancellationToken)
+    public async Task<ProjectionRebuildResult> RebuildForTenantAsync(
+        Guid tenantId,
+        int? batchSize,
+        CancellationToken cancellationToken)
     {
         // D1 baseline: single transaction with xact-scoped advisory lock. D2 may introduce
         // session-scoped locks + per-batch commits + live "Rebuilding" status visibility.
-        var batchSize = await _quotaResolver.GetIntAsync(
-            "custom_properties.projection_rebuild_batch_size",
+        var effectiveBatchSize = batchSize ?? await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.ProjectionRebuildBatchSize.Key,
             tenantId,
             cancellationToken);
 
@@ -160,7 +164,7 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
             .Select(e => e.Id)
             .ToListAsync(cancellationToken);
 
-        foreach (var chunk in ProjectionInfrastructure.Chunk(eventIds, batchSize))
+        foreach (var chunk in ProjectionInfrastructure.Chunk(eventIds, effectiveBatchSize))
         {
             foreach (var eventId in chunk)
             {
@@ -176,7 +180,7 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
             }
         }
 
-        var drained = await DrainPendingScopesAsync(tenantId, batchSize, cancellationToken);
+        var drained = await DrainPendingScopesAsync(tenantId, effectiveBatchSize, cancellationToken);
 
         await _statusRepository.UpsertAsync(new CustomPropertyProjectionStatus
         {
@@ -202,7 +206,7 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
     public async Task<int> DrainDirtyScopesForTenantAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         var batchSize = await _quotaResolver.GetIntAsync(
-            "custom_properties.projection_rebuild_batch_size",
+            CustomPropertyQuotaSettingDefinitions.ProjectionRebuildBatchSize.Key,
             tenantId,
             cancellationToken);
 
@@ -304,7 +308,7 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
             cancellationToken);
 
         var quota = await _quotaResolver.GetIntAsync(
-            "custom_properties.max_dirty_scope_pending_per_tenant",
+            CustomPropertyQuotaSettingDefinitions.MaxDirtyScopePendingPerTenant.Key,
             tenantId,
             cancellationToken);
 

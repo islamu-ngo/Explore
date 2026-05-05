@@ -138,7 +138,7 @@ public class EventSessionCustomPropertyProjectionUpdaterTests
         context.EventSessionCustomPropertyValues.Add(value);
         await context.SaveChangesAsync();
 
-        var result = await updater.RebuildForTenantAsync(scope.TenantId, CancellationToken.None);
+        var result = await updater.RebuildForTenantAsync(scope.TenantId, batchSize: null, CancellationToken.None);
 
         await Assert.That(result.LockAcquired).IsTrue();
         await Assert.That(result.RowsProcessed).IsGreaterThanOrEqualTo(1);
