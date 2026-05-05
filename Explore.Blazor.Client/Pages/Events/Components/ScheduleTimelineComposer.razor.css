@@ -1,0 +1,75 @@
+/* ABOUTME: Scoped styles for the Create Event schedule timeline composer. */
+/* ABOUTME: Uses BEM classes and logical properties for accessible responsive layout. */
+
+.schedule-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-4);
+}
+
+.schedule-timeline__day {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md);
+    background: var(--mud-palette-surface);
+    overflow: hidden;
+}
+
+.schedule-timeline__day-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-3) var(--isl-space-4);
+    background: var(--mud-palette-background-gray);
+}
+
+.schedule-timeline__items {
+    display: flex;
+    flex-direction: column;
+}
+
+.schedule-timeline__item {
+    display: grid;
+    grid-template-columns: minmax(4.75rem, auto) 1fr auto;
+    align-items: center;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-3) var(--isl-space-4);
+    border-block-start: 1px solid var(--mud-palette-lines-default);
+}
+
+.schedule-timeline__time {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.schedule-timeline__content {
+    min-width: 0;
+}
+
+.schedule-timeline__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-1);
+}
+
+.schedule-timeline__footer {
+    padding-block-start: var(--isl-space-1);
+}
+
+@media (max-width: 37.4375em) {
+    .schedule-timeline__day-header,
+    .schedule-timeline__item {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .schedule-timeline__item {
+        display: flex;
+    }
+
+    .schedule-timeline__actions {
+        justify-content: flex-start;
+    }
+}

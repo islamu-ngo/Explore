@@ -2,6 +2,7 @@
 // ABOUTME: Verifies stable UX state transitions with Virtualize-backed API paging.
 
 using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Services.Docking;
 using Microsoft.AspNetCore.Components.Web.Virtualization;
 using System.Reflection;
@@ -20,6 +21,7 @@ public class EventListTests : IDisposable
     private readonly IEventRegistrationService _registrationService;
     private readonly IPublicExperienceService _publicExperienceService;
     private readonly DockLayoutState _dockLayoutState;
+    private readonly IDockLayoutPersistence _dockLayoutPersistence;
 
     public EventListTests()
     {
@@ -33,6 +35,13 @@ public class EventListTests : IDisposable
         _registrationService = Substitute.For<IEventRegistrationService>();
         _publicExperienceService = Substitute.For<IPublicExperienceService>();
         _dockLayoutState = new DockLayoutState();
+        _dockLayoutPersistence = Substitute.For<IDockLayoutPersistence>();
+        _dockLayoutPersistence.LoadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DockLayoutSnapshot?>(null));
+        _dockLayoutPersistence.SaveAsync(Arg.Any<DockLayoutSnapshot>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(true));
+        _dockLayoutPersistence.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(true));
 
         _ctx.Services.AddSingleton(_eventService);
         _ctx.Services.AddSingleton(_categoryService);
@@ -42,6 +51,7 @@ public class EventListTests : IDisposable
         _ctx.Services.AddSingleton(_registrationService);
         _ctx.Services.AddSingleton(_publicExperienceService);
         _ctx.Services.AddSingleton(_dockLayoutState);
+        _ctx.Services.AddSingleton(_dockLayoutPersistence);
 
         _ctx.Services.AddSingleton(Substitute.For<IUserService>());
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
@@ -92,6 +102,46 @@ public class EventListTests : IDisposable
             PageSize = pageSize,
             TotalCount = items.Count
         };
+    }
+
+    private static DockLayoutSnapshot CreateWorkspaceSnapshot(bool customizeOpen, int customizeWidth)
+    {
+        return new DockLayoutSnapshot(
+            "events",
+            [
+                new DockPanelState(EventDockPanels.CustomizeViewId, customizeOpen, DockMode.Docked, customizeWidth, Order: 10, IsActive: customizeOpen),
+                new DockPanelState(EventDockPanels.EventPreviewId, true, DockMode.Inspector, Width: 440, Order: 20, IsActive: true)
+            ],
+            DateTimeOffset.UtcNow);
+    }
+
+    private static bool IsExpectedAutosaveSnapshot(DockLayoutSnapshot? snapshot)
+    {
+        return snapshot is not null
+            && snapshot.LayoutKey == "events"
+            && snapshot.Panels.Count == 1
+            && snapshot.Panels.Any(panel => panel.Id == EventDockPanels.CustomizeViewId && panel.IsOpen)
+            && snapshot.Panels.All(panel => panel.Id != EventDockPanels.EventPreviewId)
+            && snapshot.Panels.All(panel => panel.Id != ShellDockPanels.LeftNavId)
+            && snapshot.Panels.All(panel => panel.Id != ShellDockPanels.AiAssistantId);
+    }
+
+    private static DockPanelDescriptor CreateShellPersistentDescriptor(DockPanelId id, DockSide side)
+    {
+        return new DockPanelDescriptor(
+            id,
+            DockScope.Shell,
+            side,
+            DockMode.Docked,
+            Title: "Shell panel",
+            AriaLabel: "Shell panel",
+            DefaultWidth: 320,
+            MinWidth: 280,
+            MaxWidth: 520,
+            Order: 10,
+            IsResizable: true,
+            CanClose: true,
+            PersistState: true);
     }
 
     private void SetupPagedResult(Task<PaginatedResult<EventListDto>> resultTask)
@@ -322,7 +372,90 @@ public class EventListTests : IDisposable
         await Assert.That(customizePanel!.Descriptor).IsEqualTo(EventDockPanels.CustomizeView);
         await Assert.That(previewPanel).IsNotNull();
         await Assert.That(previewPanel!.Descriptor).IsEqualTo(EventDockPanels.EventPreview);
-        await Assert.That(cut.FindAll("[data-testid='workspace-right-sidebar']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindAll("[data-testid='event-list-workspace-dock-host'][data-dock-scope='workspace']").Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task FirstRender_HydratesWorkspaceDockLayoutAfterDescriptorsRegister()
+    {
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        _dockLayoutPersistence.LoadAsync("events", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DockLayoutSnapshot?>(CreateWorkspaceSnapshot(customizeOpen: true, customizeWidth: 360)));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var customizePanel = _dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId);
+            if (customizePanel?.State is not { IsOpen: true, Width: 360 })
+                throw new InvalidOperationException("Expected workspace snapshot to restore Customize View state.");
+
+            var previewPanel = _dockLayoutState.GetPanel(EventDockPanels.EventPreviewId);
+            if (previewPanel?.State.IsOpen == true)
+                throw new InvalidOperationException("Expected non-persistent Event Preview state to be ignored during restore.");
+        });
+
+        await _dockLayoutPersistence.Received(1).LoadAsync("events", Arg.Any<CancellationToken>());
+        await _dockLayoutPersistence.DidNotReceive().SaveAsync(Arg.Any<DockLayoutSnapshot>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task WorkspaceDockChange_AfterHydration_DebouncesAutosaveWithEventsKey()
+    {
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        cut.WaitForAssertion(() =>
+            _dockLayoutPersistence.Received(1).LoadAsync("events", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
+
+        await InvokePrivateVoidAsync(cut, "OpenCustomizationDrawer");
+        await Task.Delay(TimeSpan.FromMilliseconds(650));
+
+        await _dockLayoutPersistence.Received(1).SaveAsync(
+            Arg.Is<DockLayoutSnapshot>(snapshot => IsExpectedAutosaveSnapshot(snapshot)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ShellDockChange_AfterWorkspaceHydration_DoesNotAutosaveEventsLayout()
+    {
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        cut.WaitForAssertion(() =>
+            _dockLayoutPersistence.Received(1).LoadAsync("events", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
+
+        _dockLayoutState.Register(CreateShellPersistentDescriptor(ShellDockPanels.LeftNavId, DockSide.Start), _ => { });
+        _dockLayoutPersistence.ClearReceivedCalls();
+
+        await cut.InvokeAsync(() => _dockLayoutState.Open(ShellDockPanels.LeftNavId));
+        await Task.Delay(TimeSpan.FromMilliseconds(650));
+
+        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
+            Arg.Any<DockLayoutSnapshot>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task NonPersistentPreviewChange_AfterWorkspaceHydration_DoesNotAutosaveEventsLayout()
+    {
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        cut.WaitForAssertion(() =>
+            _dockLayoutPersistence.Received(1).LoadAsync("events", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
+
+        _dockLayoutPersistence.ClearReceivedCalls();
+
+        await cut.InvokeAsync(() => _dockLayoutState.Open(EventDockPanels.EventPreviewId));
+        await Task.Delay(TimeSpan.FromMilliseconds(650));
+
+        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
+            Arg.Any<DockLayoutSnapshot>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -388,7 +521,6 @@ public class EventListTests : IDisposable
         {
             Assert.That(cut.FindAll("[data-testid='dock-panel-host'][data-dock-panel-id='events.customize-view']").Count).IsEqualTo(1);
             Assert.That(cut.Markup).Contains("Customize View");
-            Assert.That(cut.FindAll("[data-testid='workspace-right-sidebar']").Count).IsEqualTo(0);
         });
 
         var panel = _dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId);

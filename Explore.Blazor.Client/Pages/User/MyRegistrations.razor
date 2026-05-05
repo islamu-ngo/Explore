@@ -2,6 +2,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Helpers
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web.Virtualization
 @using Microsoft.AspNetCore.Authorization
@@ -74,8 +75,8 @@
                 <ItemContent>
                     <MudItem xs="12" sm="6" md="4">
                         <AppCard Class="h-100 d-flex flex-column">
-                            <MudCardMedia Image="@(string.IsNullOrEmpty(reg.FeaturedImageUri) ? $"https://placehold.co/600x400?text={Uri.EscapeDataString(reg.EventTitle ?? "Event")}" : reg.FeaturedImageUri)" 
-                                          Height="200" />
+                            <MudCardMedia Image="@ImageHelper.GetEventImageUrl(reg.FeaturedImageUri, reg.EventTitle ?? "Event")"
+                                           Height="200" />
                             <MudCardContent Class="flex-grow-1">
                                 <MudText Typo="Typo.button" Color="@(reg.StatusId == 2 ? Color.Success : (reg.StatusId == 3 ? Color.Error : Color.Warning))" Class="mb-1">
                                     @(reg.Status ?? "Pending")

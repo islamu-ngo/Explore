@@ -1,0 +1,87 @@
+/* ABOUTME: Scoped CSS for compact event option summary rows. */
+/* ABOUTME: Avoids tables/accordions and keeps controls responsive with logical spacing. */
+
+.event-option-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(11rem, auto);
+    align-items: center;
+    gap: var(--isl-space-3);
+    padding-block: var(--isl-space-3);
+    padding-inline: var(--isl-space-4);
+    min-block-size: 4.5rem;
+    border-block-end: 1px solid var(--mud-palette-lines-default);
+}
+
+.event-option-row:last-child {
+    border-block-end: 0;
+}
+
+.event-option-row--disabled {
+    opacity: 0.72;
+}
+
+.event-option-row__summary {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--isl-space-3);
+    min-inline-size: 0;
+}
+
+.event-option-row__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--isl-space-8);
+    block-size: var(--isl-space-8);
+    border-radius: var(--isl-radius-pill);
+    background: var(--mud-palette-background-gray);
+    flex: 0 0 auto;
+}
+
+.event-option-row__text {
+    min-inline-size: 0;
+}
+
+.event-option-row__title-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+}
+
+.event-option-row__title {
+    font-weight: 600;
+}
+
+.event-option-row__value,
+.event-option-row__description {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.event-option-row__description {
+    margin-block-start: var(--isl-space-1);
+}
+
+.event-option-row__badge {
+    flex: 0 0 auto;
+}
+
+.event-option-row__editor {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--isl-space-2);
+    min-inline-size: 0;
+}
+
+@media (max-width: 37.4375em) {
+    .event-option-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .event-option-row__editor {
+        justify-content: flex-start;
+    }
+}

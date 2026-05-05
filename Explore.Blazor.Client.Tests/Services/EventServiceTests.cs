@@ -336,6 +336,81 @@ public class EventServiceTests
 
     #endregion
 
+    #region GetEventPublishReadinessAsync Tests
+
+    [Test]
+    public async Task GetEventPublishReadinessAsync_ReturnsReadiness_WhenApiSucceeds()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var readiness = new EventPublishReadinessDto
+        {
+            EventId = eventId,
+            IsReady = false,
+            Errors =
+            [
+                new EventPublishReadinessErrorDto
+                {
+                    Code = "schedule_session_required",
+                    FieldPath = "schedule.sessions",
+                    Message = "At least one scheduled session is required before publishing.",
+                    Severity = "error"
+                }
+            ]
+        };
+
+        _apiClient.GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(readiness);
+
+        // Act
+        var result = await _service.GetEventPublishReadinessAsync(eventId);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.IsReady).IsFalse();
+        await Assert.That(result.EventId).IsEqualTo(eventId);
+        await Assert.That(result.Errors?.Count).IsEqualTo(1);
+        await Assert.That(result.Errors?.First().FieldPath).IsEqualTo("schedule.sessions");
+    }
+
+    [Test]
+    public async Task GetEventPublishReadinessAsync_ReturnsNull_WhenApiThrowsException()
+    {
+        // Arrange
+        _apiClient.GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Not Found", 404));
+
+        // Act
+        var result = await _service.GetEventPublishReadinessAsync(Guid.NewGuid());
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetEventPublishReadinessAsync_PassesCancellationToken()
+    {
+        // Arrange
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var eventId = Guid.NewGuid();
+        var readiness = new EventPublishReadinessDto { EventId = eventId, IsReady = true };
+
+        _apiClient.GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(readiness);
+
+        // Act
+        await _service.GetEventPublishReadinessAsync(eventId, cancellationTokenSource.Token);
+
+        // Assert
+        await _apiClient.Received(1).GetEventPublishReadinessAsync(
+            eventId,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            cancellationTokenSource.Token);
+    }
+
+    #endregion
+
     #region CreateEventAsync Tests
 
     [Test]
@@ -387,6 +462,147 @@ public class EventServiceTests
 
         // Assert
         await _apiClient.Received(1).CreateEventAsync(createDto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    #endregion
+
+    #region PublishEventAsync Tests
+
+    [Test]
+    public async Task PublishEventAsync_ReturnsSuccess_WhenApiSucceeds()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
+
+        _apiClient.PublishEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<PublishEventRequestDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
+
+        // Act
+        var result = await _service.PublishEventAsync(eventId, concurrencyStamp);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(eventId);
+    }
+
+    [Test]
+    public async Task PublishEventAsync_SendsExpectedConcurrencyStamp()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
+
+        _apiClient.PublishEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<PublishEventRequestDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
+
+        // Act
+        await _service.PublishEventAsync(eventId, concurrencyStamp);
+
+        // Assert
+        await _apiClient.Received(1).PublishEventAsync(
+            eventId,
+            Arg.Is<PublishEventRequestDto>(request => request.ExpectedConcurrencyStamp == concurrencyStamp),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PublishEventAsync_ReturnsCommandResponse_WhenApiRejectsPublish()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        var rejectedResponse = new BaseCommandResponseOfGuid
+        {
+            Success = false,
+            Id = eventId,
+            FailureCode = "event_publish_concurrency_conflict",
+            Errors = ["Refresh the event and try publishing again."]
+        };
+
+        _apiClient.PublishEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<PublishEventRequestDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException<BaseCommandResponseOfGuid>(
+                "Conflict",
+                409,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                rejectedResponse,
+                null));
+
+        // Act
+        var result = await _service.PublishEventAsync(eventId, concurrencyStamp);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_publish_concurrency_conflict");
+    }
+
+    [Test]
+    public async Task PublishEventAsync_ReturnsNull_WhenApiThrowsUnexpectedException()
+    {
+        // Arrange
+        _apiClient.PublishEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<PublishEventRequestDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Server Error", 500));
+
+        // Act
+        var result = await _service.PublishEventAsync(Guid.NewGuid(), Guid.NewGuid());
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task PublishEventAsync_PassesCancellationToken()
+    {
+        // Arrange
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var eventId = Guid.NewGuid();
+        var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
+
+        _apiClient.PublishEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<PublishEventRequestDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
+
+        // Act
+        await _service.PublishEventAsync(eventId, Guid.NewGuid(), cancellationTokenSource.Token);
+
+        // Assert
+        await _apiClient.Received(1).PublishEventAsync(
+            eventId,
+            Arg.Any<PublishEventRequestDto>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            cancellationTokenSource.Token);
     }
 
     #endregion

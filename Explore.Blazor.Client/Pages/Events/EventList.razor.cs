@@ -20,6 +20,9 @@ namespace Explore.Blazor.Client.Pages.Events;
 
 public partial class EventList : ComponentBase, IAsyncDisposable
 {
+    private const string WorkspaceDockLayoutKey = "events";
+    private static readonly TimeSpan DockLayoutAutosaveDelay = TimeSpan.FromMilliseconds(500);
+
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected IEventService EventService { get; set; } = null!;
     [Inject] protected ICategoryService CategoryService { get; set; } = null!;
@@ -37,6 +40,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     [Inject] private IUserSettingsService UserSettingsService { get; set; } = default!;
     [Inject] private FeatureStateContainer FeatureState { get; set; } = default!;
     [Inject] private DockLayoutState DockLayoutState { get; set; } = default!;
+    [Inject] private IDockLayoutPersistence DockLayoutPersistence { get; set; } = default!;
 
     [PersistentState]
     public EventListState? PersistedState { get; set; }
@@ -88,6 +92,10 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private readonly Dictionary<string, string> _pendingChanges = new();
     private readonly object _pendingChangesLock = new();
     private bool _isSaving;
+    private bool _workspaceDockLayoutHydrated;
+    private bool _suppressWorkspaceDockLayoutAutosave;
+    private DockLayoutSnapshot? _lastPersistedWorkspaceDockLayoutSnapshot;
+    private CancellationTokenSource? _workspaceDockLayoutAutosaveCts;
 
     private Virtualize<EventListDto>? _virtualize;
     private int _totalCount;
@@ -309,6 +317,11 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         Logger.LogWarning("OnAfterRenderAsync: firstRender={First}, _dataLoaded={Data}, _virtualize={Virt}, _virtualizeRefreshed={Refreshed}, _eventsLoaded={Events}",
             firstRender, _dataLoaded, _virtualize != null, _virtualizeRefreshed, _eventsLoaded);
+
+        if (firstRender)
+        {
+            await HydrateWorkspaceDockLayoutAsync();
+        }
 
         // Virtualize's IntersectionObserver may not fire when it first appears
         // in a conditional render block inside MudGrid. Force the initial load.
@@ -982,6 +995,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         var customizeOpen = DockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen == true;
         var previewOpen = DockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen == true;
 
+        if (!_customizationDrawerOpen && customizeOpen)
+        {
+            _customizationDrawerOpen = true;
+            shouldRender = true;
+        }
+
         if (_customizationDrawerOpen && !customizeOpen)
         {
             _customizationDrawerOpen = false;
@@ -999,6 +1018,138 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         {
             _ = InvokeAsync(StateHasChanged);
         }
+
+        if (ShouldAutosaveWorkspaceDockLayout())
+        {
+            ScheduleWorkspaceDockLayoutAutosave();
+        }
+    }
+
+    private bool ShouldAutosaveWorkspaceDockLayout()
+    {
+        return DockLayoutState.LastChangeReason is DockLayoutChangeReason.UserAction or DockLayoutChangeReason.Reset;
+    }
+
+    private async Task HydrateWorkspaceDockLayoutAsync()
+    {
+        _suppressWorkspaceDockLayoutAutosave = true;
+
+        try
+        {
+            var snapshot = await DockLayoutPersistence.LoadAsync(WorkspaceDockLayoutKey);
+            if (snapshot is not null)
+            {
+                DockLayoutState.RestoreSnapshot(snapshot, WorkspaceDockLayoutKey, DockScope.Workspace);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to hydrate event workspace dock layout.");
+        }
+        finally
+        {
+            _lastPersistedWorkspaceDockLayoutSnapshot = CreateWorkspaceDockLayoutSnapshot();
+            _workspaceDockLayoutHydrated = true;
+            _suppressWorkspaceDockLayoutAutosave = false;
+        }
+    }
+
+    private void ScheduleWorkspaceDockLayoutAutosave()
+    {
+        if (!_workspaceDockLayoutHydrated || _suppressWorkspaceDockLayoutAutosave || !HasWorkspaceDockLayoutChanged())
+        {
+            return;
+        }
+
+        _workspaceDockLayoutAutosaveCts?.Cancel();
+        _workspaceDockLayoutAutosaveCts?.Dispose();
+
+        var autosaveCts = new CancellationTokenSource();
+        _workspaceDockLayoutAutosaveCts = autosaveCts;
+        _ = PersistWorkspaceDockLayoutAfterDelayAsync(autosaveCts);
+    }
+
+    private async Task PersistWorkspaceDockLayoutAfterDelayAsync(CancellationTokenSource autosaveCts)
+    {
+        try
+        {
+            await Task.Delay(DockLayoutAutosaveDelay, autosaveCts.Token);
+            var snapshot = CreateWorkspaceDockLayoutSnapshot();
+            if (SnapshotPanelsEqual(_lastPersistedWorkspaceDockLayoutSnapshot, snapshot))
+            {
+                return;
+            }
+
+            await DockLayoutPersistence.SaveAsync(snapshot, autosaveCts.Token);
+            _lastPersistedWorkspaceDockLayoutSnapshot = snapshot;
+        }
+        catch (OperationCanceledException) when (autosaveCts.IsCancellationRequested)
+        {
+            // A newer dock layout change superseded this pending autosave.
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to save event workspace dock layout.");
+        }
+    }
+
+    private async Task ResetWorkspaceDockLayoutAsync()
+    {
+        _suppressWorkspaceDockLayoutAutosave = true;
+
+        try
+        {
+            ResetWorkspacePanelToDefaults(EventDockPanels.CustomizeView);
+            await DockLayoutPersistence.DeleteAsync(WorkspaceDockLayoutKey);
+            _lastPersistedWorkspaceDockLayoutSnapshot = CreateWorkspaceDockLayoutSnapshot();
+            _customizationDrawerOpen = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to reset event workspace dock layout.");
+        }
+        finally
+        {
+            _suppressWorkspaceDockLayoutAutosave = false;
+            _workspaceDockLayoutHydrated = true;
+        }
+    }
+
+    private void ResetWorkspacePanelToDefaults(DockPanelDescriptor descriptor)
+    {
+        var entry = DockLayoutState.GetPanel(descriptor.Id);
+        if (entry is null)
+        {
+            return;
+        }
+
+        if (entry.State.IsOpen && descriptor.CanClose)
+        {
+            DockLayoutState.Close(descriptor.Id);
+        }
+
+        DockLayoutState.SetMode(descriptor.Id, descriptor.DefaultMode);
+
+        if (descriptor.IsResizable)
+        {
+            DockLayoutState.Resize(descriptor.Id, descriptor.DefaultWidth);
+        }
+    }
+
+    private DockLayoutSnapshot CreateWorkspaceDockLayoutSnapshot()
+    {
+        return DockLayoutState.CreateSnapshot(WorkspaceDockLayoutKey, DockScope.Workspace);
+    }
+
+    private bool HasWorkspaceDockLayoutChanged()
+    {
+        return !SnapshotPanelsEqual(_lastPersistedWorkspaceDockLayoutSnapshot, CreateWorkspaceDockLayoutSnapshot());
+    }
+
+    private static bool SnapshotPanelsEqual(DockLayoutSnapshot? previous, DockLayoutSnapshot current)
+    {
+        return previous is not null && previous.Panels.SequenceEqual(current.Panels);
     }
 
     private RenderFragment RenderCustomizeViewPanel => builder =>
@@ -1618,9 +1769,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             };
             if (_regShareEmail && consentText != null)
             {
-                dto.AdditionalProperties["shareEmailWithOrganizer"] = true;
-                dto.AdditionalProperties["consentTextAcknowledged"] = consentText;
-                dto.AdditionalProperties["consentUiVersion"] = "v1";
+                dto.ShareEmailWithOrganizer = true;
+                dto.ConsentTextAcknowledged = consentText;
+                dto.ConsentUiVersion = "v1";
             }
 
             bool allSucceeded = true;
@@ -1732,6 +1883,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _workspaceDockLayoutAutosaveCts?.Cancel();
+        _workspaceDockLayoutAutosaveCts?.Dispose();
         DockLayoutState.Changed -= OnDockLayoutChanged;
         DockLayoutState.Unregister(EventDockPanels.CustomizeViewId);
         DockLayoutState.Unregister(EventDockPanels.EventPreviewId);

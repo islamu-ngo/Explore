@@ -27,6 +27,7 @@ public class CreateEventTests : IDisposable
     private readonly ILocationService _locationService;
     private readonly IImageStorageService _imageStorageService;
     private readonly IEventTemplateService _eventTemplateService;
+    private readonly IDialogService _dialogService;
 
     public CreateEventTests()
     {
@@ -43,6 +44,7 @@ public class CreateEventTests : IDisposable
         _locationService = Substitute.For<ILocationService>();
         _imageStorageService = Substitute.For<IImageStorageService>();
         _eventTemplateService = Substitute.For<IEventTemplateService>();
+        _dialogService = Substitute.For<IDialogService>();
 
         // Register services
         _ctx.Services.AddSingleton(_eventService);
@@ -58,7 +60,7 @@ public class CreateEventTests : IDisposable
         // RouterStateService from Blazouter - register the real service
         _ctx.Services.AddScoped<RouterStateService>();
 
-        _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
+        _ctx.Services.AddSingleton(_dialogService);
         _ctx.Services.AddSingleton(Substitute.For<ISnackbar>());
         _ctx.Services.AddSingleton(Substitute.For<ILogger<CreateEvent>>());
         _ctx.Services.AddSingleton(MockServiceFactory.CreateNotificationService());
@@ -137,11 +139,38 @@ public class CreateEventTests : IDisposable
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
 
         // Event service defaults
+        var createdEventId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
         _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
-            Id = Guid.NewGuid()
+            Id = createdEventId
         });
+        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
+        {
+            EventId = createdEventId,
+            IsReady = true,
+            Errors = new List<EventPublishReadinessErrorDto>()
+        });
+        _eventService.GetEventByIdAsync(createdEventId).Returns(new EventDto
+        {
+            Id = createdEventId,
+            Title = "Template Event",
+            ConcurrencyStamp = concurrencyStamp
+        });
+        _eventService.PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = createdEventId
+        });
+        _dialogService.ShowMessageBoxAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<DialogOptions>())
+            .Returns(true);
         _eventService.GetEventCreationContextAsync(Arg.Any<CancellationToken>()).Returns(new EventCreationContextDto
         {
             CanCreate = true,
@@ -561,6 +590,160 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
+    public async Task CreateEvent_WhenReviewPublishFindsReadinessErrors_SavesDraftAndShowsErrors()
+    {
+        // Arrange
+        var createdEventId = Guid.NewGuid();
+        _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = createdEventId
+        });
+        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
+        {
+            EventId = createdEventId,
+            IsReady = false,
+            Errors = new List<EventPublishReadinessErrorDto>
+            {
+                new()
+                {
+                    Code = "schedule_session_required",
+                    FieldPath = "schedule.sessions",
+                    Message = "At least one scheduled session is required before publishing.",
+                    Severity = "error"
+                }
+            }
+        });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+        PrepareValidSubmitState(cut.Instance);
+
+        // Act
+        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+
+        // Assert
+        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(request => request.EventStatusId == 1));
+        await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
+        await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var error = GetPrivateField<string>(cut.Instance, "errorMessage");
+        var readinessErrors = GetPrivateField<IReadOnlyList<EventPublishReadinessErrorDto>>(cut.Instance, "_publishReadinessErrors");
+        await Assert.That(error).Contains("not ready to publish");
+        await Assert.That(readinessErrors.Count).IsEqualTo(1);
+        await Assert.That(readinessErrors[0].FieldPath).IsEqualTo("schedule.sessions");
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_isScheduleExpanded")).IsTrue();
+    }
+
+    [Test]
+    public async Task CreateEvent_WhenReviewPublishIsReady_PublishesDraftWithConcurrencyStamp()
+    {
+        // Arrange
+        var createdEventId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = createdEventId
+        });
+        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
+        {
+            EventId = createdEventId,
+            IsReady = true,
+            Errors = new List<EventPublishReadinessErrorDto>()
+        });
+        _eventService.GetEventByIdAsync(createdEventId).Returns(new EventDto
+        {
+            Id = createdEventId,
+            Title = "Template Event",
+            ConcurrencyStamp = concurrencyStamp
+        });
+        _eventService.PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = createdEventId
+        });
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+        PrepareValidSubmitState(cut.Instance);
+
+        // Act
+        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+
+        // Assert
+        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(request => request.EventStatusId == 1));
+        await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
+        await _eventService.Received(1).GetEventByIdAsync(createdEventId);
+        await _dialogService.Received(1).ShowMessageBoxAsync(
+            "Review and publish",
+            Arg.Is<string>(message => message.Contains("Publish 'Template Event' now?", StringComparison.OrdinalIgnoreCase)
+                && message.Contains("Schedule:", StringComparison.OrdinalIgnoreCase)
+                && message.Contains("Timezone:", StringComparison.OrdinalIgnoreCase)),
+            "Publish event",
+            Arg.Any<string>(),
+            "Keep draft",
+            Arg.Any<DialogOptions>());
+        await _eventService.Received(1).PublishEventAsync(createdEventId, concurrencyStamp, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CreateEvent_WhenReviewPublishConfirmationIsCanceled_KeepsDraftWithoutPublishing()
+    {
+        // Arrange
+        var createdEventId = Guid.NewGuid();
+        var concurrencyStamp = Guid.NewGuid();
+        _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = createdEventId
+        });
+        _eventService.GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>()).Returns(new EventPublishReadinessDto
+        {
+            EventId = createdEventId,
+            IsReady = true,
+            Errors = new List<EventPublishReadinessErrorDto>()
+        });
+        _eventService.GetEventByIdAsync(createdEventId).Returns(new EventDto
+        {
+            Id = createdEventId,
+            Title = "Template Event",
+            ConcurrencyStamp = concurrencyStamp
+        });
+        _dialogService.ShowMessageBoxAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<DialogOptions>())
+            .Returns(false);
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+        PrepareValidSubmitState(cut.Instance);
+
+        // Act
+        await InvokePrivateAsync(cut.Instance, "HandleSubmit");
+
+        // Assert
+        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(request => request.EventStatusId == 1));
+        await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
+        await _eventService.Received(1).GetEventByIdAsync(createdEventId);
+        await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var error = GetPrivateField<string>(cut.Instance, "errorMessage");
+        await Assert.That(error).Contains("draft was saved");
+    }
+
+    [Test]
     public async Task CreateEvent_RendersPublicationContextSelector()
     {
         // Arrange
@@ -616,10 +799,120 @@ public class CreateEventTests : IDisposable
         cut.WaitForAssertion(() =>
         {
             if (!cut.Markup.Contains("Schedule", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Add sessions, day labels, rooms, or agenda", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("More options", StringComparison.OrdinalIgnoreCase))
+                || !cut.Markup.Contains("Open schedule timeline", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Event settings", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Template and custom fields", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Progressive disclosure sections were not rendered.");
+            }
+
+            if (cut.Markup.Contains("Add sessions, day labels, rooms, or agenda", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Legacy schedule toggle copy was rendered.");
+            }
+        }, TimeSpan.FromSeconds(3));
+    }
+
+    [Test]
+    public async Task CreateEvent_RendersThemeQuickBarUnderImageBeforeSettings()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var eventImageIndex = cut.Markup.IndexOf("Event Image", StringComparison.OrdinalIgnoreCase);
+            var moreOptionsIndex = cut.Markup.IndexOf("More options", StringComparison.OrdinalIgnoreCase);
+            var eventSettingsIndex = cut.Markup.IndexOf("Event settings", StringComparison.OrdinalIgnoreCase);
+            var themeIndex = cut.Markup.IndexOf("Theme", StringComparison.OrdinalIgnoreCase);
+            var advancedThemeIndex = cut.Markup.IndexOf("Advanced theme options", StringComparison.OrdinalIgnoreCase);
+
+            if (eventImageIndex < 0 || eventSettingsIndex < 0 || moreOptionsIndex < 0 || themeIndex < 0 || advancedThemeIndex < 0)
+            {
+                throw new InvalidOperationException("Expected event image, theme quick controls, event settings, and more options to render.");
+            }
+
+            if (themeIndex < eventImageIndex || themeIndex > eventSettingsIndex || themeIndex > moreOptionsIndex)
+            {
+                throw new InvalidOperationException("Theme quick controls should render under the image before Event settings and More options.");
+            }
+
+            if (cut.Markup.Contains("Event Appearance", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Rejected Event Appearance accordion copy was rendered.");
+            }
+
+            if (!cut.Markup.Contains("Visibility, audience, registration, classification, categories, and tags.", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Template and custom fields.", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Revised Event settings and narrow More options copy was not rendered.");
+            }
+        }, TimeSpan.FromSeconds(3));
+    }
+
+    [Test]
+    public async Task CreateEvent_OpensThemeStudioTrayFromQuickBar()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Advanced theme options", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Theme quick bar advanced action was not rendered.");
+            }
+        }, TimeSpan.FromSeconds(3));
+
+        var advancedButton = cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Advanced theme options", StringComparison.OrdinalIgnoreCase));
+        advancedButton.Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Theme studio", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Presets gallery", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("More styling controls", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Theme studio tray was not rendered after opening from the quick bar.");
+            }
+
+            if (cut.Markup.Contains("Background Image URL", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Create Event must not render unsupported raw background image URL controls.");
+            }
+        }, TimeSpan.FromSeconds(3));
+    }
+
+    [Test]
+    public async Task CreateEvent_RendersScheduleTimelineComposerWithoutLegacyToggles()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Schedule timeline composer", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Add to this day", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Add another session", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Schedule timeline composer was not rendered.");
+            }
+
+            var forbiddenCopies = new[]
+            {
+                "Multiple sessions",
+                "Day labels",
+                "Room setup",
+                "Agenda builder"
+            };
+
+            if (forbiddenCopies.Any(copy => cut.Markup.Contains(copy, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException("Legacy schedule toggle UI was rendered.");
             }
         }, TimeSpan.FromSeconds(3));
     }

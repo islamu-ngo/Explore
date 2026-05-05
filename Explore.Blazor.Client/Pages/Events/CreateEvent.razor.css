@@ -3,6 +3,15 @@
 
 /* ===== Block: create-event ===== */
 
+::deep .create-event__readiness-list {
+    margin: 0;
+    padding-inline-start: var(--isl-space-5);
+}
+
+::deep .create-event__readiness-list li + li {
+    margin-top: var(--isl-space-1);
+}
+
 /* --- Image Area --- */
 ::deep .create-event__image-area {
     position: relative;
@@ -35,7 +44,7 @@
 ::deep .create-event__upload-trigger {
     position: absolute !important;
     bottom: var(--isl-space-3);
-    right: var(--isl-space-3);
+    inset-inline-end: var(--isl-space-3);
     z-index: 1;
 }
 
@@ -135,7 +144,7 @@
 ::deep .create-event__datetime-line {
     width: 0;
     height: 1.25rem;
-    border-left: 0.125rem dotted var(--mud-palette-lines-default);
+    border-inline-start: 0.125rem dotted var(--mud-palette-lines-default);
 }
 
 ::deep .create-event__datetime-label {
@@ -157,9 +166,8 @@
 }
 
 ::deep .create-event__timezone-btn {
-    position: absolute !important;
-    top: var(--isl-space-2);
-    right: var(--isl-space-2);
+    position: static !important;
+    margin-bottom: var(--isl-space-2);
     text-transform: none !important;
     font-size: 0.75rem !important;
     padding: 0.125rem var(--isl-space-2) !important;
@@ -225,12 +233,39 @@
 
 ::deep .create-event__option-select {
     max-width: 11.25rem;
-    text-align: right;
+    text-align: end;
 }
 
 ::deep .create-event__option-select .mud-input-slot {
     font-size: 0.875rem;
-    text-align: right;
+    text-align: end;
+}
+
+::deep .create-event__option-editor-group,
+::deep .create-event__option-chip-editor {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--isl-space-2);
+    flex-wrap: wrap;
+    min-inline-size: 0;
+}
+
+::deep .create-event__option-chip-editor {
+    max-inline-size: 18rem;
+}
+
+::deep .create-event__option-group {
+    padding: var(--isl-space-4);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+::deep .create-event__option-group:last-child {
+    border-bottom: none;
+}
+
+::deep .create-event__option-group-header {
+    margin-bottom: var(--isl-space-3);
 }
 
 ::deep .create-event__template-select {
@@ -302,12 +337,11 @@
     }
 
     ::deep .create-event__image-area {
+        aspect-ratio: 3 / 4;
         border-radius: var(--isl-radius-md);
     }
 
     ::deep .create-event__timezone-btn {
-        position: static !important;
-        margin-top: var(--isl-space-2);
         width: fit-content;
     }
 
@@ -333,7 +367,14 @@
     ::deep .create-event__option-select {
         max-width: unset;
         width: 100%;
-        text-align: left;
+        text-align: start;
+    }
+
+    ::deep .create-event__option-editor-group,
+    ::deep .create-event__option-chip-editor {
+        justify-content: flex-start;
+        inline-size: 100%;
+        max-inline-size: none;
     }
 
     ::deep .create-event__template-select {

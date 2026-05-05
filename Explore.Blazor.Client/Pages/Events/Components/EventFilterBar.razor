@@ -252,11 +252,11 @@
                       Immediate="true"
                       Class="filter-bar__search-field" />
 
-        @* ── Desktop: text button with expand/collapse ── *@
+        @* ── Desktop: filled button with expand/collapse ── *@
         @if (!_isMobile)
         {
-            <AppButton Variant="Variant.Outlined"
-                       Color="@(_filtersExpanded ? Color.Primary : Color.Default)"
+            <AppButton Variant="Variant.Filled"
+                       Color="Color.Primary"
                        EndIcon="@(_filtersExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
                        OnClick="ToggleFilters"
                        Size="Size.Medium"

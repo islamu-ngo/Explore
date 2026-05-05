@@ -208,10 +208,7 @@ public partial class MyEvents : ComponentBase
 
     private static string GetEventImageUrl(EventListDto evt)
     {
-        if (!string.IsNullOrEmpty(evt.FeaturedImageUri)) return evt.FeaturedImageUri;
-        var encodedTitle = Uri.EscapeDataString(evt.Title.Length > 30 ? evt.Title.Substring(0, 30) + "..." : evt.Title);
-        var color = GetEventColorCode(evt);
-        return $"https://placehold.co/600x400/{color}/ffffff?text={encodedTitle}";
+        return ImageHelper.GetEventImageUrl(evt.FeaturedImageUri, evt.Title, GetEventColorCode(evt));
     }
 
     private string GetSelectedOrganizationName()

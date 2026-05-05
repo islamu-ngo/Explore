@@ -1,0 +1,108 @@
+@* ABOUTME: Always-visible quick theme controls for the Create Event media column. *@
+@* ABOUTME: Keeps common visual choices calm and immediate while advanced styling lives in the theme tray. *@
+
+@using MudBlazor
+
+<div class="theme-quick-bar" aria-label="Event theme quick controls">
+    <div class="theme-quick-bar__header">
+        <div>
+            <MudText Typo="Typo.subtitle2">Theme</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Quick visual style</MudText>
+        </div>
+        <AppButton Variant="Variant.Text"
+                   Size="Size.Small"
+                   Color="Color.Primary"
+                   Class="create-event__theme-advanced-button theme-quick-bar__advanced"
+                   OnClick="@(_ => OnAdvancedRequested.InvokeAsync())">
+            Advanced theme options
+        </AppButton>
+    </div>
+
+    <div class="theme-quick-bar__presets" aria-label="Theme presets">
+        @foreach (var preset in Presets)
+        {
+            <button type="button"
+                    class="@GetPresetClass(preset)"
+                    style="--theme-quick-color: @preset.Color;"
+                    aria-pressed="@(IsPresetSelected(preset).ToString().ToLowerInvariant())"
+                    @onclick="@(() => SelectPresetAsync(preset))">
+                <span class="theme-quick-bar__swatch" aria-hidden="true"></span>
+                <span>@preset.Name</span>
+            </button>
+        }
+    </div>
+
+    <div class="theme-quick-bar__effects" aria-label="Theme effects">
+        @foreach (var effect in Effects)
+        {
+            <button type="button"
+                    class="@GetEffectClass(effect)"
+                    aria-pressed="@(string.Equals(BackgroundEffect, effect.Value, StringComparison.OrdinalIgnoreCase).ToString().ToLowerInvariant())"
+                    @onclick="@(() => SelectEffectAsync(effect.Value))">
+                @effect.Name
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly IReadOnlyList<ThemePreset> Presets =
+    [
+        new("Minimal", string.Empty),
+        new("Sage", "#5D7661"),
+        new("Clay", "#A86D4F"),
+        new("Night", "#1E293B")
+    ];
+
+    private static readonly IReadOnlyList<ThemeEffect> Effects =
+    [
+        new("Clean", "None"),
+        new("Soft", "SoftOverlay"),
+        new("Bold", "StrongOverlay")
+    ];
+
+    [Parameter] public string BackgroundColor { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> BackgroundColorChanged { get; set; }
+    [Parameter] public string BackgroundEffect { get; set; } = "None";
+    [Parameter] public EventCallback<string> BackgroundEffectChanged { get; set; }
+    [Parameter] public EventCallback OnAdvancedRequested { get; set; }
+
+    private string GetPresetClass(ThemePreset preset)
+    {
+        return string.Join(' ', new[]
+        {
+            "theme-quick-bar__preset",
+            IsPresetSelected(preset) ? "theme-quick-bar__preset--selected" : null
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private string GetEffectClass(ThemeEffect effect)
+    {
+        return string.Join(' ', new[]
+        {
+            "theme-quick-bar__effect",
+            string.Equals(BackgroundEffect, effect.Value, StringComparison.OrdinalIgnoreCase) ? "theme-quick-bar__effect--selected" : null
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private bool IsPresetSelected(ThemePreset preset)
+    {
+        return string.Equals(NormalizeColor(BackgroundColor), NormalizeColor(preset.Color), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task SelectPresetAsync(ThemePreset preset)
+    {
+        await BackgroundColorChanged.InvokeAsync(preset.Color);
+    }
+
+    private async Task SelectEffectAsync(string effect)
+    {
+        await BackgroundEffectChanged.InvokeAsync(effect);
+    }
+
+    private static string NormalizeColor(string? color) => color?.Trim() ?? string.Empty;
+
+    private sealed record ThemePreset(string Name, string Color);
+
+    private sealed record ThemeEffect(string Name, string Value);
+}

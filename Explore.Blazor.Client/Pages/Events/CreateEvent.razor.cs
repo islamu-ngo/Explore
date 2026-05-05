@@ -32,6 +32,7 @@ public partial class CreateEvent
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected ILogger<CreateEvent> Logger { get; set; } = null!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
+    [Inject] private IAccessibilityAnnouncerService AccessibilityAnnouncerService { get; set; } = default!;
     [Inject] private IEventRegistrationPolicyService RegistrationPolicyService { get; set; } = default!;
 
     // Sentinel Guid values for "Create Organization" / "Create Group" dropdown items
@@ -87,6 +88,7 @@ public partial class CreateEvent
     private bool _dataLoaded = false;
     private int? selectedMadhabId = null;
     private string errorMessage = string.Empty;
+    private IReadOnlyList<EventPublishReadinessErrorDto> _publishReadinessErrors = Array.Empty<EventPublishReadinessErrorDto>();
 
     // Image upload state
     private string? imagePreviewUrl;
@@ -139,6 +141,7 @@ public partial class CreateEvent
     private bool _isAgendaEnabled;
     private bool _isScheduleExpanded;
     private bool _isMoreOptionsExpanded;
+    private bool _isThemeStudioOpen;
     private string _schedulingAnnouncement = string.Empty;
     private bool IsMultiSessionActive => _isMultiSessionEnabled || sessions.Count > 1;
     private bool CanUseRoomSetup => sessions.Count > 0
@@ -146,6 +149,23 @@ public partial class CreateEvent
         && (createDto.EventFormatId is 1 or 3);
     private string ScheduleSummary => BuildScheduleSummary();
     private string MoreOptionsSummary => BuildMoreOptionsSummary();
+    private bool AreEventOptionsDisabled => _creationContext is not null && _creationContext.CanCreate != true;
+    private string? EventOptionsPolicyNote => BuildEventOptionsPolicyNote();
+    private string VisibilitySummary => GetLookupName(visibilityTypes, createDto.VisibilityTypeId) ?? "Select visibility";
+    private string AudienceSummary => BuildAudienceSummary();
+    private string RegistrationSummary => BuildRegistrationSummary();
+    private string EventTypeSummary => GetLookupName(eventTypes, createDto.EventTypeId) ?? "Select event type";
+    private List<string> SelectedCategoryNames => GetSelectedNames(allCategories, selectedCategoryIds);
+    private List<string> SelectedTagNames => GetSelectedNames(allTags, selectedTagIds);
+    private string CategoriesSummary => SelectedCategoryNames.Count == 0 ? "No categories selected" : string.Join(", ", SelectedCategoryNames);
+    private string TagsSummary => SelectedTagNames.Count == 0 ? "No tags selected" : string.Join(", ", SelectedTagNames);
+    private bool HasLanguageOptions => languages?.Any(language => language.Id.HasValue) == true;
+    private IReadOnlyCollection<int> FirstSessionLanguageIds => sessions.Count > 0 ? sessions[0].LanguageIds : Array.Empty<int>();
+    private List<string> SelectedLanguageNames => languages?
+        .Where(language => language.Id.HasValue && FirstSessionLanguageIds.Contains(language.Id.Value))
+        .Select(language => language.FullName)
+        .ToList() ?? [];
+    private string LanguagesSummary => SelectedLanguageNames.Count == 0 ? "No language preference" : string.Join(", ", SelectedLanguageNames);
 
     // Timezone
     private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Local;
@@ -180,29 +200,112 @@ public partial class CreateEvent
     private string BuildMoreOptionsSummary()
     {
         var selectedCount = 0;
-        if (createDto.EventTypeId.HasValue)
-        {
-            selectedCount++;
-        }
-
         if (createDto.TemplateId.HasValue)
         {
             selectedCount++;
         }
 
-        if (selectedCategoryIds.Any())
-        {
-            selectedCount++;
-        }
-
-        if (selectedTagIds.Any())
-        {
-            selectedCount++;
-        }
-
         return selectedCount == 0
-            ? "Defaults are ready. Open this section for audience, template, registration, categories, and tags."
-            : $"{selectedCount} optional setting{(selectedCount == 1 ? string.Empty : "s")} selected.";
+            ? "Template and custom fields are optional."
+            : $"{selectedCount} advanced setting{(selectedCount == 1 ? string.Empty : "s")} selected.";
+    }
+
+    private string? BuildEventOptionsPolicyNote()
+    {
+        if (_creationContext is null)
+        {
+            return null;
+        }
+
+        if (_creationContext.CanCreate != true)
+        {
+            return _creationContext.UnavailableReason ?? "Creation is currently unavailable for your account.";
+        }
+
+        return _creationContext.RequiresApproval == true
+            ? "This publisher requires approval before the event becomes public. Required settings remain visible so review blockers are clear."
+            : null;
+    }
+
+    private string BuildAudienceSummary()
+    {
+        var gender = GetLookupName(audienceGenders, createDto.AudienceGenderId) ?? "Any gender";
+        var age = GetLookupName(audienceAges, createDto.AudienceAgeId) ?? "Any age";
+        return $"{gender} · {age}";
+    }
+
+    private string BuildRegistrationSummary()
+    {
+        var policy = GetLookupName(registrationPolicies, createDto.RegistrationPolicyId) ?? "Default open registration";
+        var capacity = sessions.FirstOrDefault()?.MaxAudienceAttendees;
+        return capacity.HasValue && capacity.Value > 0
+            ? $"{policy} · {capacity.Value} seats"
+            : $"{policy} · No capacity limit set";
+    }
+
+    private static string? GetLookupName(IEnumerable<VisibilityTypeListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static string? GetLookupName(IEnumerable<AudienceGenderListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static string? GetLookupName(IEnumerable<AudienceAgeListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static string? GetLookupName(IEnumerable<EventRegistrationPolicyListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static string? GetLookupName(IEnumerable<EventTypeListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static List<string> GetSelectedNames(IEnumerable<CategoryListDto>? items, IReadOnlyCollection<Guid> selectedIds) =>
+        items?
+            .Where(item => item.Id.HasValue && selectedIds.Contains(item.Id.Value))
+            .Select(item => item.FullName)
+            .ToList() ?? [];
+
+    private static List<string> GetSelectedNames(IEnumerable<TagListDto>? items, IReadOnlyCollection<Guid> selectedIds) =>
+        items?
+            .Where(item => item.Id.HasValue && selectedIds.Contains(item.Id.Value))
+            .Select(item => item.FullName)
+            .ToList() ?? [];
+
+    private void OpenCategoryManager()
+    {
+        if (AreEventOptionsDisabled)
+        {
+            return;
+        }
+
+        _createTagCatMode = TagCategoryMode.Categories;
+        _createTagCatInitialIds = selectedCategoryIds.ToList().AsReadOnly();
+        _showCreateTagCatPopup = true;
+    }
+
+    private void OpenTagManager()
+    {
+        if (AreEventOptionsDisabled)
+        {
+            return;
+        }
+
+        _createTagCatMode = TagCategoryMode.Tags;
+        _createTagCatInitialIds = selectedTagIds.ToList().AsReadOnly();
+        _showCreateTagCatPopup = true;
+    }
+
+    private async Task OpenThemeStudioAsync()
+    {
+        await AccessibilityFocusService.SaveFocusAsync();
+        _isThemeStudioOpen = true;
+        await AccessibilityAnnouncerService.AnnouncePoliteAsync("Theme studio opened.");
+    }
+
+    private async Task CloseThemeStudioAsync()
+    {
+        _isThemeStudioOpen = false;
+        await AccessibilityFocusService.RestoreFocusAsync(".create-event__theme-advanced-button");
+        await AccessibilityAnnouncerService.AnnouncePoliteAsync("Theme studio closed.");
     }
 
     protected override async Task OnInitializedAsync()
@@ -1081,7 +1184,9 @@ public partial class CreateEvent
         return GetPublisherOption("group", groupId)?.CanPublish == true;
     }
 
-    private async Task HandleSubmit()
+    private async Task HandleSubmit() => await SubmitEventAsync(CreateEventSubmitIntent.ReviewAndPublish);
+
+    private async Task SubmitEventAsync(CreateEventSubmitIntent intent)
     {
         if (!ValidateForm())
         {
@@ -1103,6 +1208,7 @@ public partial class CreateEvent
         if (isProcessing) return;
         isProcessing = true;
         errorMessage = string.Empty;
+        _publishReadinessErrors = Array.Empty<EventPublishReadinessErrorDto>();
 
         try
         {
@@ -1118,7 +1224,7 @@ public partial class CreateEvent
             createDto.FeaturedImageId = featuredImageId;
             createDto.MadhabId = selectedMadhabId;
             createDto.IsRegistrationRequired = sessions.Any(s => s.RegistrationModeId is > 0);
-            createDto.EventStatusId ??= 2; // Default: Published
+            createDto.EventStatusId = 1; // Draft is the only create state; publish is a separate server action.
             createDto.VisibilityTypeId ??= 1;
             createDto.EventFormatId ??= 1;
             createDto.Timezone = _selectedTimezone.Id;
@@ -1139,10 +1245,13 @@ public partial class CreateEvent
                 createdEventId = response.Id.Value;
                 Logger.LogInformation("Event created with ID: {EventId}", createdEventId);
 
-                var destination = createDto.EventStatusId == 1
-                    ? $"/events/{createdEventId}/edit"
-                    : $"/events/{createdEventId}";
-                Navigation.NavigateTo(destination);
+                if (intent == CreateEventSubmitIntent.SaveDraft)
+                {
+                    Navigation.NavigateTo($"/events/{createdEventId}/edit");
+                    return;
+                }
+
+                await ReviewAndPublishDraftAsync(createdEventId);
             }
             else
             {
@@ -1167,8 +1276,110 @@ public partial class CreateEvent
 
     private async Task SaveAsDraftAsync()
     {
-        createDto.EventStatusId = 1; // Draft
-        await HandleSubmit();
+        await SubmitEventAsync(CreateEventSubmitIntent.SaveDraft);
+    }
+
+    private async Task ReviewAndPublishDraftAsync(Guid eventId)
+    {
+        var readiness = await EventService.GetEventPublishReadinessAsync(eventId);
+        if (readiness is null)
+        {
+            errorMessage = "The draft was saved, but publish readiness could not be checked. Open the draft to continue.";
+            return;
+        }
+
+        _publishReadinessErrors = readiness.Errors?.ToList() ?? new List<EventPublishReadinessErrorDto>();
+        if (readiness.IsReady != true)
+        {
+            await ShowPublishReadinessErrorsAsync();
+            errorMessage = "The draft was saved, but it is not ready to publish yet.";
+            return;
+        }
+
+        var draft = await EventService.GetEventByIdAsync(eventId);
+        var concurrencyStamp = draft?.ConcurrencyStamp;
+        if (concurrencyStamp is null || concurrencyStamp == Guid.Empty)
+        {
+            errorMessage = "The draft was saved, but its publish token could not be loaded. Open the draft to continue.";
+            return;
+        }
+
+        var confirmed = await ConfirmPublishDraftAsync(draft);
+        if (confirmed != true)
+        {
+            errorMessage = "The draft was saved. Review it again when you're ready to publish.";
+            return;
+        }
+
+        var publishResponse = await EventService.PublishEventAsync(eventId, concurrencyStamp.Value);
+        if (publishResponse?.Success == true)
+        {
+            Navigation.NavigateTo($"/events/{eventId}");
+            return;
+        }
+
+        errorMessage = publishResponse?.Message ?? "The draft was saved, but publishing failed.";
+        if (publishResponse?.Errors?.Any() == true)
+        {
+            errorMessage += " Errors: " + string.Join(", ", publishResponse.Errors);
+        }
+    }
+
+    private async Task<bool?> ConfirmPublishDraftAsync(EventDto? draft)
+    {
+        var title = string.IsNullOrWhiteSpace(draft?.Title) ? createDto.Title : draft.Title;
+        var message = string.Join(Environment.NewLine, new[]
+        {
+            $"Publish '{title}' now?",
+            GetPublisherDescription(),
+            $"Schedule: {ScheduleSummary}",
+            $"Timezone: {_selectedTimezoneDisplay}",
+            _creationContext?.RequiresApproval == true
+                ? "This publisher requires approval before the event goes live."
+                : "This event will become visible according to its visibility settings."
+        });
+
+        await AccessibilityFocusService.SaveFocusAsync();
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Review and publish",
+            message,
+            yesText: "Publish event",
+            cancelText: "Keep draft",
+            options: DialogOptionsFactory.Confirmation());
+        await AccessibilityFocusService.RestoreFocusAsync();
+
+        return confirmed;
+    }
+
+    private async Task ShowPublishReadinessErrorsAsync()
+    {
+        var firstFieldPath = _publishReadinessErrors.FirstOrDefault()?.FieldPath;
+        if (FieldPathBelongsToSchedule(firstFieldPath))
+        {
+            _isScheduleExpanded = true;
+        }
+        else if (!string.IsNullOrWhiteSpace(firstFieldPath))
+        {
+            _isMoreOptionsExpanded = true;
+        }
+
+        await InvokeAsync(StateHasChanged);
+        await AccessibilityFocusService.FocusByIdAsync("publish-readiness-errors");
+    }
+
+    private static bool FieldPathBelongsToSchedule(string? fieldPath) =>
+        !string.IsNullOrWhiteSpace(fieldPath)
+        && (fieldPath.StartsWith("schedule", StringComparison.OrdinalIgnoreCase)
+            || fieldPath.StartsWith("sessions", StringComparison.OrdinalIgnoreCase)
+            || fieldPath.Contains("time", StringComparison.OrdinalIgnoreCase)
+            || fieldPath.Contains("date", StringComparison.OrdinalIgnoreCase)
+            || fieldPath.Contains("room", StringComparison.OrdinalIgnoreCase)
+            || fieldPath.Contains("agenda", StringComparison.OrdinalIgnoreCase));
+
+    private enum CreateEventSubmitIntent
+    {
+        SaveDraft,
+        ReviewAndPublish
     }
 
     // ========== Helpers ==========
@@ -1324,13 +1535,32 @@ public partial class CreateEvent
         _newAgendaStartTime = null;
         _newAgendaEndTime = null;
         _newAgendaRoomIndex = null;
-        AnnounceSchedulingChange("Agenda row added.");
+        AnnounceSchedulingChange("Itinerary item added.");
+    }
+
+    private void PrepareItineraryForDay(DateTime day)
+    {
+        EnsureInlineDaysFromSessions();
+        _isAgendaEnabled = true;
+        _newAgendaDayDate = DateOnly.FromDateTime(day);
+
+        var sessionsForDay = sessions
+            .Where(session => session.StartTime.Date == day.Date)
+            .OrderBy(session => session.StartTime)
+            .ToList();
+        if (sessionsForDay.Count > 0)
+        {
+            _newAgendaStartTime ??= sessionsForDay[0].StartTime.TimeOfDay;
+            _newAgendaEndTime ??= sessionsForDay[0].EndTime.TimeOfDay;
+        }
+
+        AnnounceSchedulingChange($"Itinerary composer prepared for {day:dddd, MMMM d}.");
     }
 
     private void RemoveInlineAgendaItem(InlineAgendaItemModel item)
     {
         _inlineAgendaItems.Remove(item);
-        AnnounceSchedulingChange("Agenda row removed.");
+        AnnounceSchedulingChange("Itinerary item removed.");
     }
 
     private void EnsureInlineDaysFromSessions()

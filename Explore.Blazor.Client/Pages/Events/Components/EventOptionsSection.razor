@@ -1,0 +1,46 @@
+@* ABOUTME: Compact section wrapper for always-visible event creation option rows. *@
+@* ABOUTME: Keeps normal event settings out of hidden accordions while preserving progressive disclosure. *@
+
+@using MudBlazor
+
+<section class="event-options-section" aria-labelledby="@TitleId">
+    <div class="event-options-section__header">
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="event-options-section__title" id="@TitleId">
+            @Title
+        </MudText>
+        @if (!string.IsNullOrWhiteSpace(Summary))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="event-options-section__summary">
+                @Summary
+            </MudText>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(PolicyNote))
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="event-options-section__policy-note">
+            @PolicyNote
+        </MudAlert>
+    }
+
+    <div class="event-options-section__rows">
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string TitleId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Summary { get; set; }
+
+    [Parameter]
+    public string? PolicyNote { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

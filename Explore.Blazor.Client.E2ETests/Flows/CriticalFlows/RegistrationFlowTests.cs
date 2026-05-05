@@ -5,21 +5,20 @@ using Explore.Blazor.Client.E2ETests.Fixtures;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
-[ClassDataSource<AppHostFixture, PlaywrightFixture, PostgreSqlContainerFixture>(
-    Shared = [SharedType.PerTestSession, SharedType.PerTestSession, SharedType.PerTestSession])]
+[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
+[NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]
 public partial class RegistrationFlowTests(
     AppHostFixture appHost,
-    PlaywrightFixture playwright,
-    PostgreSqlContainerFixture database)
+    PlaywrightFixture playwright)
 {
     [Test]
-    [Skip("Infrastructure-gated critical flow: requires Docker, Aspire AppHost, Keycloak login seed, and AppHost PostgreSQL override wiring.")]
+    [Skip("Category: E2E. Removal: enable in the nightly lane when Docker, Aspire AppHost, Keycloak login seed, and AppHost PostgreSQL override wiring are deterministic.")]
     public async Task RegistrationFlowLoginBrowseRegisterConfirmationMyRegistrations()
     {
-        await database.ResetAsync();
+        await appHost.ResetDatabaseAsync();
 
-        var page = await playwright.CreatePageAsync();
+        var page = await playwright.CreatePageAsync(nameof(RegistrationFlowLoginBrowseRegisterConfirmationMyRegistrations));
         try
         {
             await BrowseEventsAsync(page);
@@ -31,7 +30,7 @@ public partial class RegistrationFlowTests(
         }
         finally
         {
-            await page.CloseAsync();
+            await playwright.ClosePageAsync(page, nameof(RegistrationFlowLoginBrowseRegisterConfirmationMyRegistrations));
         }
     }
 

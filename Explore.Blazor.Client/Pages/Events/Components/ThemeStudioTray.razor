@@ -1,0 +1,151 @@
+@* ABOUTME: Bottom theme studio tray for advanced Create Event visual styling. *@
+@* ABOUTME: Replaces the inline Event Appearance accordion with focused, dismissible composer chrome. *@
+
+@using Microsoft.AspNetCore.Components.Web
+@using MudBlazor
+
+@if (IsOpen)
+{
+    <div class="theme-studio-tray" role="dialog" aria-modal="true" aria-labelledby="theme-studio-title" tabindex="-1" @onkeydown="HandleKeyDownAsync">
+        <button type="button"
+                class="theme-studio-tray__backdrop"
+                aria-label="Close theme studio"
+                @onclick="CloseAsync"></button>
+        <MudFocusTrap DefaultFocus="DefaultFocus.FirstChild">
+            <section class="theme-studio-tray__panel">
+                <header class="theme-studio-tray__header">
+                    <div>
+                        <MudText Typo="Typo.h6" HtmlTag="h2" id="theme-studio-title">Theme studio</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Tune the event look without crowding the main composer.</MudText>
+                    </div>
+                    <AppIconButton Icon="@Icons.Material.Filled.Close"
+                                   aria-label="Close theme studio"
+                                   OnClick="CloseAsync" />
+                </header>
+
+                <div class="theme-studio-tray__body">
+                    <section class="theme-studio-tray__section" aria-labelledby="theme-studio-presets-title">
+                        <MudText Typo="Typo.subtitle2" HtmlTag="h3" id="theme-studio-presets-title">Presets gallery</MudText>
+                        <div class="theme-studio-tray__preset-grid">
+                            @foreach (var preset in Presets)
+                            {
+                                <button type="button"
+                                        class="@GetPresetClass(preset)"
+                                        style="--theme-studio-color: @preset.Color;"
+                                        aria-pressed="@(IsPresetSelected(preset).ToString().ToLowerInvariant())"
+                                        @onclick="@(() => SelectPresetAsync(preset))">
+                                    <span class="theme-studio-tray__preset-preview" aria-hidden="true"></span>
+                                    <span>@preset.Name</span>
+                                </button>
+                            }
+                        </div>
+                    </section>
+
+                    <section class="theme-studio-tray__section" aria-labelledby="theme-studio-effects-title">
+                        <MudText Typo="Typo.subtitle2" HtmlTag="h3" id="theme-studio-effects-title">Quick advanced controls</MudText>
+                        <div class="theme-studio-tray__effects">
+                            @foreach (var effect in Effects)
+                            {
+                                <button type="button"
+                                        class="@GetEffectClass(effect)"
+                                        aria-pressed="@(string.Equals(BackgroundEffect, effect.Value, StringComparison.OrdinalIgnoreCase).ToString().ToLowerInvariant())"
+                                        @onclick="@(() => SelectEffectAsync(effect.Value))">
+                                    @effect.Name
+                                </button>
+                            }
+                        </div>
+                    </section>
+
+                    <MudExpansionPanels Elevation="0" Class="theme-studio-tray__advanced-panel">
+                        <MudExpansionPanel Text="More styling controls" MaxHeight="760">
+                             <AppearanceEditor BackgroundColor="@BackgroundColor"
+                                               BackgroundColorChanged="BackgroundColorChanged"
+                                               BackgroundEffect="@BackgroundEffect"
+                                               BackgroundEffectChanged="BackgroundEffectChanged"
+                                               ShowImageField="false"
+                                               ShowPreview="true"
+                                               PreviewAdditionalCss="aspect-ratio: 16/9; position: relative" />
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                </div>
+            </section>
+        </MudFocusTrap>
+    </div>
+}
+
+@code {
+    private static readonly IReadOnlyList<ThemePreset> Presets =
+    [
+        new("Minimal", string.Empty),
+        new("Sage gathering", "#5D7661"),
+        new("Warm lecture", "#A86D4F"),
+        new("Night program", "#1E293B")
+    ];
+
+    private static readonly IReadOnlyList<ThemeEffect> Effects =
+    [
+        new("Clean", "None"),
+        new("Soft overlay", "SoftOverlay"),
+        new("Strong overlay", "StrongOverlay"),
+        new("Blurred image", "Blur")
+    ];
+
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public string BackgroundColor { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> BackgroundColorChanged { get; set; }
+    [Parameter] public string BackgroundEffect { get; set; } = "None";
+    [Parameter] public EventCallback<string> BackgroundEffectChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string GetPresetClass(ThemePreset preset)
+    {
+        return string.Join(' ', new[]
+        {
+            "theme-studio-tray__preset",
+            IsPresetSelected(preset) ? "theme-studio-tray__preset--selected" : null
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private string GetEffectClass(ThemeEffect effect)
+    {
+        return string.Join(' ', new[]
+        {
+            "theme-studio-tray__effect",
+            string.Equals(BackgroundEffect, effect.Value, StringComparison.OrdinalIgnoreCase) ? "theme-studio-tray__effect--selected" : null
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private bool IsPresetSelected(ThemePreset preset)
+    {
+        return string.Equals(NormalizeColor(BackgroundColor), NormalizeColor(preset.Color), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task SelectPresetAsync(ThemePreset preset)
+    {
+        await BackgroundColorChanged.InvokeAsync(preset.Color);
+    }
+
+    private async Task SelectEffectAsync(string effect)
+    {
+        await BackgroundEffectChanged.InvokeAsync(effect);
+    }
+
+    private async Task HandleKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await CloseAsync();
+        }
+    }
+
+    private Task CloseAsync()
+    {
+        return OnClose.InvokeAsync();
+    }
+
+    private static string NormalizeColor(string? color) => color?.Trim() ?? string.Empty;
+
+    private sealed record ThemePreset(string Name, string Color);
+
+    private sealed record ThemeEffect(string Name, string Value);
+}

@@ -1,0 +1,122 @@
+@* ABOUTME: User-facing schedule timeline composer for the Create Event page. *@
+@* ABOUTME: Groups sessions by derived local days and avoids exposing persistence-oriented day/room/agenda toggles. *@
+@using Explore.Blazor.Client.Pages.Events.Models
+@using MudBlazor
+
+<div class="schedule-timeline" aria-label="Schedule timeline composer">
+    @if (Sessions.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="schedule-timeline__empty rounded-lg">
+            Add a date and time above to start the schedule.
+        </MudAlert>
+    }
+    else
+    {
+        @foreach (var group in SessionDayGroups)
+        {
+            <section class="schedule-timeline__day" aria-labelledby="@GetDayHeadingId(group.Day)">
+                <div class="schedule-timeline__day-header">
+                    <div>
+                        <MudText Typo="Typo.subtitle2" id="@GetDayHeadingId(group.Day)">@group.Day.ToString("dddd, MMM d")</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @group.Sessions.Count session@(group.Sessions.Count == 1 ? string.Empty : "s") · @TimezoneDisplay
+                        </MudText>
+                    </div>
+                    <AppButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@(() => OnAddItineraryItem.InvokeAsync(group.Day))">
+                        Add to this day
+                    </AppButton>
+                </div>
+
+                <div class="schedule-timeline__items">
+                    @foreach (var entry in group.Sessions)
+                    {
+                        <article class="schedule-timeline__item" aria-label="@BuildSessionAriaLabel(entry.Session)">
+                            <div class="schedule-timeline__time">
+                                <MudText Typo="Typo.body2">@entry.Session.StartTime.ToString("h:mm tt")</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@entry.Session.EndTime.ToString("h:mm tt")</MudText>
+                            </div>
+                            <div class="schedule-timeline__content">
+                                <MudText Typo="Typo.body2">@GetSessionTitle(entry.Session, entry.Index)</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @BuildSessionSummary(entry.Session)
+                                </MudText>
+                            </div>
+                            <div class="schedule-timeline__actions">
+                                <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               aria-label="Edit session"
+                                               OnClick="@(() => OnEditSession.InvokeAsync(entry.Index))" />
+                                <AppIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Size="Size.Small"
+                                               aria-label="Duplicate session"
+                                               OnClick="@(() => OnDuplicateSession.InvokeAsync(entry.Index))" />
+                                <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               aria-label="Remove session"
+                                               OnClick="@(() => OnRemoveSession.InvokeAsync(entry.Index))" />
+                            </div>
+                        </article>
+                    }
+                </div>
+            </section>
+        }
+    }
+
+    <div class="schedule-timeline__footer">
+        <AppButton StartIcon="@Icons.Material.Filled.Add"
+                   Variant="Variant.Outlined"
+                   FullWidth="true"
+                   OnClick="@(() => OnAddSession.InvokeAsync())">
+            Add another session
+        </AppButton>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<SessionEditorModel> Sessions { get; set; } = Array.Empty<SessionEditorModel>();
+    [Parameter] public string TimezoneDisplay { get; set; } = string.Empty;
+    [Parameter] public bool CanUseRooms { get; set; }
+    [Parameter] public EventCallback OnAddSession { get; set; }
+    [Parameter] public EventCallback<DateTime> OnAddItineraryItem { get; set; }
+    [Parameter] public EventCallback<int> OnEditSession { get; set; }
+    [Parameter] public EventCallback<int> OnDuplicateSession { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveSession { get; set; }
+
+    private IReadOnlyList<SessionDayGroup> SessionDayGroups => Sessions
+        .Select((session, index) => new SessionEntry(index, session))
+        .GroupBy(entry => entry.Session.StartTime.Date)
+        .OrderBy(group => group.Key)
+        .Select(group => new SessionDayGroup(group.Key, group.OrderBy(entry => entry.Session.StartTime).ToList()))
+        .ToList();
+
+    private static string GetDayHeadingId(DateTime day) => $"schedule-day-{day:yyyyMMdd}";
+
+    private static string GetSessionTitle(SessionEditorModel session, int index) =>
+        string.IsNullOrWhiteSpace(session.Title) ? $"Session {index + 1}" : session.Title;
+
+    private string BuildSessionSummary(SessionEditorModel session)
+    {
+        var parts = new List<string>
+        {
+            session.LocationId.HasValue ? "Location selected" : "Uses event location",
+            session.MaxAudienceAttendees.HasValue ? $"Capacity {session.MaxAudienceAttendees}" : "Inherits capacity"
+        };
+
+        if (CanUseRooms)
+        {
+            parts.Add("Room assignment in session details");
+        }
+
+        return string.Join(" · ", parts);
+    }
+
+    private static string BuildSessionAriaLabel(SessionEditorModel session) =>
+        $"Session from {session.StartTime:h:mm tt} to {session.EndTime:h:mm tt}";
+
+    private sealed record SessionEntry(int Index, SessionEditorModel Session);
+    private sealed record SessionDayGroup(DateTime Day, IReadOnlyList<SessionEntry> Sessions);
+}

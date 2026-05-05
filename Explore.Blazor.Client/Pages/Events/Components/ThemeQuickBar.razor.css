@@ -1,0 +1,78 @@
+/* ABOUTME: Scoped styles for Create Event quick theme controls. */
+/* ABOUTME: Uses BEM, logical properties, and design tokens for calm media-column theming. */
+
+.theme-quick-bar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-3);
+    margin-top: var(--isl-space-3);
+    padding: var(--isl-space-3);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-lg);
+    background: var(--mud-palette-surface);
+}
+
+.theme-quick-bar__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--isl-space-2);
+}
+
+.theme-quick-bar__advanced {
+    white-space: nowrap;
+}
+
+.theme-quick-bar__presets,
+.theme-quick-bar__effects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2);
+}
+
+.theme-quick-bar__preset,
+.theme-quick-bar__effect {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+    min-height: var(--isl-target-min);
+    padding: var(--isl-space-1) var(--isl-space-2);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-pill);
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    font: inherit;
+    font-size: 0.8125rem;
+    cursor: pointer;
+}
+
+.theme-quick-bar__preset:hover,
+.theme-quick-bar__effect:hover,
+.theme-quick-bar__preset:focus-visible,
+.theme-quick-bar__effect:focus-visible {
+    border-color: var(--mud-palette-primary);
+}
+
+.theme-quick-bar__preset--selected,
+.theme-quick-bar__effect--selected {
+    border-color: var(--mud-palette-primary);
+    background: var(--mud-palette-primary-hover);
+}
+
+.theme-quick-bar__swatch {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 50%;
+    border: 1px solid var(--mud-palette-lines-default);
+    background: var(--theme-quick-color, var(--mud-palette-surface));
+}
+
+@media (max-width: 37.4375em) {
+    .theme-quick-bar__header {
+        flex-direction: column;
+    }
+
+    .theme-quick-bar__advanced {
+        width: 100%;
+    }
+}

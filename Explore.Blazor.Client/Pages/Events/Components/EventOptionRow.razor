@@ -1,0 +1,62 @@
+@* ABOUTME: Reusable summary row for normal event creation settings. *@
+@* ABOUTME: Shows the selected value first and keeps the edit control compact without table-like layout. *@
+
+@using MudBlazor
+
+<div class="@RowCssClass" aria-disabled="@(Disabled ? "true" : null)">
+    <div class="event-option-row__summary">
+        <div class="event-option-row__icon" aria-hidden="true">
+            <MudIcon Icon="@Icon" Size="Size.Small" Color="Color.Secondary" />
+        </div>
+        <div class="event-option-row__text">
+            <div class="event-option-row__title-line">
+                <MudText Typo="Typo.body2" Class="event-option-row__title">@Title</MudText>
+                @if (Required)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Class="event-option-row__badge">
+                        Required
+                    </MudChip>
+                }
+            </div>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="event-option-row__value">
+                @Summary
+            </MudText>
+            @if (!string.IsNullOrWhiteSpace(Description))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="event-option-row__description">
+                    @Description
+                </MudText>
+            }
+        </div>
+    </div>
+    <div class="event-option-row__editor">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Icon { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Summary { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string RowCssClass => Disabled
+        ? "event-option-row event-option-row--disabled"
+        : "event-option-row";
+}

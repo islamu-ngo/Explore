@@ -69,8 +69,8 @@ public class ApiClientNamingTests
             .Because("Generated client should expose at least one *Async method; zero methods indicates a generation failure.");
     }
 
-    // TODO (Phase 3): re-enable after stable operationIds land + NSwag client is regenerated. See dev/active/api-contract-stabilization/.
-    // [Test]
+    [Skip("Category: API contract. Removal: enable after stable operationIds land and the NSwag client is regenerated in dev/active/api-contract-stabilization Phase 3.")]
+    [Test]
     public async Task IEventApiClient_NoMethodUsesCollisionSuffixPattern()
     {
         var offenders = GetAsyncMethodNames()
@@ -103,8 +103,8 @@ public class ApiClientNamingTests
                 $"[{string.Join(", ", offenders)}].");
     }
 
-    // TODO (Phase 4): re-enable after NSwag client is regenerated against the stabilized swagger.json. See dev/active/api-contract-stabilization/.
-    // [Test]
+    [Skip("Category: API contract. Removal: enable after NSwag regenerates against the stabilized swagger.json in dev/active/api-contract-stabilization Phase 4.")]
+    [Test]
     public async Task IEventApiClient_AllMethodNamesMatchCleanOperationIdShape()
     {
         var offenders = GetAsyncMethodNames()

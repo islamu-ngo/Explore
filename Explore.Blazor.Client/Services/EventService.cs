@@ -58,9 +58,11 @@ public interface IEventService
     Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
     Task<EventDto?> GetEventByIdAsync(Guid eventId);
     Task<EventCreationContextDto?> GetEventCreationContextAsync(CancellationToken cancellationToken = default);
+    Task<EventPublishReadinessDto?> GetEventPublishReadinessAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<bool> DeleteEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto);
     Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventRequest request);
+    Task<BaseCommandResponseOfGuid?> PublishEventAsync(Guid eventId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
     Task<ICollection<EventTypeListDto>> GetEventTypesAsync();
     Task<ICollection<EventFormatListDto>> GetEventFormatsAsync();
     Task<ICollection<EventSessionListDto>> GetAllSessionsAsync();
@@ -310,6 +312,19 @@ public partial class EventService : IEventService
         }
     }
 
+    public async Task<EventPublishReadinessDto?> GetEventPublishReadinessAsync(Guid eventId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _apiClient.GetEventPublishReadinessAsync(eventId, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching event publish readiness {EventId}", eventId);
+            return null;
+        }
+    }
+
     public async Task<bool> DeleteEventAsync(Guid eventId)
     {
         try
@@ -365,6 +380,27 @@ public partial class EventService : IEventService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating event");
+            return null;
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> PublishEventAsync(Guid eventId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _apiClient.PublishEventAsync(
+                eventId,
+                new PublishEventRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp },
+                cancellationToken: cancellationToken);
+        }
+        catch (ApiException<BaseCommandResponseOfGuid> ex)
+        {
+            _logger.LogWarning(ex, "Event publish rejected for event {EventId}", eventId);
+            return ex.Result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error publishing event {EventId}", eventId);
             return null;
         }
     }
