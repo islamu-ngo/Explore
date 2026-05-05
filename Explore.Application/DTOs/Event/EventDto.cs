@@ -10,6 +10,7 @@ namespace Explore.Application.DTOs.Event;
 public class EventDto
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
     public required string Title { get; set; }
     public string? Subtitle { get; set; }
     public string? Description { get; set; }

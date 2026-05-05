@@ -77,6 +77,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         return await query.ToListAsync();
     }
 
+
     public async Task<(List<Event> Items, int TotalCount)> GetEventsWithDetailsPaged(int pageNumber, int pageSize)
     {
         var query = _dbContext.Events

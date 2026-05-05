@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.Features.Settings.Requests.Queries;
+using Explore.Application.Lookups;
 using Explore.Application.Settings;
 using Explore.Domain.Settings;
 using MediatR;
@@ -70,7 +71,9 @@ public class ResolveSettingGroupQueryHandler
             {
                 Key = definition.Key,
                 Value = setting.Value ?? definition.DefaultValue,
-                ValueType = setting.ValueType,
+                SettingValueTypeId = (int)setting.ValueType,
+                SettingValueTypeCode = NormalizedLookupMetadata.SettingValueType((int)setting.ValueType).Code,
+                SettingValueTypeName = NormalizedLookupMetadata.SettingValueType((int)setting.ValueType).Name,
                 Source = setting.Source,
                 IsLocked = setting.IsLocked,
                 CanEdit = canEdit,

@@ -88,6 +88,7 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
             .MustAsync(async (id, _) => !id.HasValue || await eventSeriesRepository.Exists(id.Value))
             .WithMessage("Event series does not exist.");
 
+
         RuleFor(p => p.RegistrationPolicyId)
             .MustAsync(async (id, _) => !id.HasValue || await eventRegistrationPolicyRepository.Exists(id.Value))
             .WithMessage("Registration policy does not exist.");
@@ -332,4 +333,5 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
             yield return (agendaItem.RoomId!.Value, agendaItem.LocationId!.Value);
         }
     }
+
 }

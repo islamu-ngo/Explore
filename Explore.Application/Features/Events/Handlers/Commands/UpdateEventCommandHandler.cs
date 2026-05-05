@@ -69,6 +69,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
 
         if (request.EventDto is not null)
         {
+            request.EventDto.Id = request.Id;
             var validator = new UpdateEventDtoValidator(
                 _audienceAgeRepository, _audienceGenderRepository,
                 _eventTypeRepository, _actorRepository, _storageObjectRepository,

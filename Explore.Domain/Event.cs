@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
@@ -47,6 +48,10 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     [ForeignKey("Tenant")]
     public Guid TenantId { get; set; }
     public required Tenant Tenant { get; set; }
+
+    public ICollection<EventSession> Sessions { get; set; } = new List<EventSession>();
+    public ICollection<EventSessionGroup> SessionGroups { get; set; } = new List<EventSessionGroup>();
+    public ICollection<EventAgendaItem> AgendaItems { get; set; } = new List<EventAgendaItem>();
 
     public string? Slug { get; set; }
 

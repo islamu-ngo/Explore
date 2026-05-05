@@ -21,7 +21,7 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
         builder.Property(e => e.Description).HasMaxLength(500);
 
         builder.HasOne(e => e.Event)
-            .WithMany()
+            .WithMany(e => e.Sessions)
             .HasForeignKey(e => e.EventId)
             .OnDelete(DeleteBehavior.Cascade);
 

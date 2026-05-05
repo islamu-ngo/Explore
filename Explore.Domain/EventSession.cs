@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 using Explore.Domain.Services.Scheduling;
@@ -84,6 +85,8 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
 
     // Concurrency control
     public Guid ConcurrencyStamp { get; set; }
+
+    public ICollection<EventSessionGroupSession> SessionGroups { get; set; } = new List<EventSessionGroupSession>();
 
     /// <summary>
     /// Re-projects cached local fields from the current UTC times and the supplied IANA timezone id.

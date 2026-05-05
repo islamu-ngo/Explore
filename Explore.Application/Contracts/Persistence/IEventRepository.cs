@@ -9,6 +9,7 @@ public interface IEventRepository : IGenericRepository<Event, Guid>
     Task<List<Event>> GetEventsWithDetails();
     Task<List<Event>> GetMyEventsWithDetails(string userId);
 
+
     /// <summary>
     /// Gets a paginated list of events with details.
     /// </summary>

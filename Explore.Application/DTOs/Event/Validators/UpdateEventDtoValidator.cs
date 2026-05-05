@@ -137,6 +137,7 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
             .When(p => p.EventSeriesId.HasValue)
             .WithMessage("Event series does not exist.");
 
+
         // RegistrationPolicyId is optional - if provided, validate it exists
         RuleFor(p => p.RegistrationPolicyId)
             .MustAsync(async (id, cancellation) =>
@@ -152,4 +153,5 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
             .When(p => p.SeriesOrder.HasValue)
             .WithMessage("{PropertyName} must be non-negative.");
     }
+
 }

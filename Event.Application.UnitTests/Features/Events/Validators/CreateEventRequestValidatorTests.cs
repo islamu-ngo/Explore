@@ -155,6 +155,7 @@ public class CreateEventRequestValidatorTests
         await Assert.That(result.Errors.Any(e => e.ErrorMessage.Contains("cannot both be provided"))).IsTrue();
     }
 
+
     private static CreateEventRequest CreateValidRequest() => new()
     {
         Title = "Valid Event",
@@ -171,4 +172,5 @@ public class CreateEventRequestValidatorTests
             }
         ]
     };
+
 }

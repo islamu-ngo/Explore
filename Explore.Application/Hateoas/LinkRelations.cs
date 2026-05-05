@@ -182,6 +182,11 @@ public static class LinkRelations
     public const string Children = "children";
 
     /// <summary>
+    /// Program sections, tracks, devrooms, or stages for an event.
+    /// </summary>
+    public const string SessionGroups = "session-groups";
+
+    /// <summary>
     /// Tag type that a tag belongs to.
     /// </summary>
     public const string TagType = "tag-type";
@@ -195,6 +200,11 @@ public static class LinkRelations
     /// Publish action for draft resources.
     /// </summary>
     public const string Publish = "publish";
+
+    /// <summary>
+    /// Readiness validation for publishing draft resources.
+    /// </summary>
+    public const string PublishReadiness = "publish-readiness";
 
     /// <summary>
     /// Cancel action for events or registrations.

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 namespace Explore.Application.DTOs.EventSession;
 
 public class EventSessionDto
@@ -62,6 +63,9 @@ public class EventSessionDto
 
     // Optional Islamic extension for this session
     public EventSessionIslamicAspectDto? IslamicAspect { get; set; }
+
+    // Program sections/tracks/devrooms this session belongs to
+    public List<EventSessionGroupAssignmentDto> SessionGroups { get; set; } = [];
 
     // Tenant
     public Guid TenantId { get; set; }

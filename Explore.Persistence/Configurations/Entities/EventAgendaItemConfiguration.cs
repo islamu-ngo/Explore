@@ -18,7 +18,7 @@ public class EventAgendaItemConfiguration : IEntityTypeConfiguration<EventAgenda
         builder.Property(e => e.Description).HasMaxLength(2000);
 
         builder.HasOne(e => e.Event)
-            .WithMany()
+            .WithMany(e => e.AgendaItems)
             .HasForeignKey(e => e.EventId)
             .OnDelete(DeleteBehavior.Cascade);
 

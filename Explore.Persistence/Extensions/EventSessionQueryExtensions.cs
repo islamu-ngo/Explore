@@ -17,6 +17,8 @@ internal static class EventSessionQueryExtensions
             .Include(s => s.RegistrationMode)
             .Include(s => s.Room)
             .Include(s => s.FeaturedImage)
-            .Include(s => s.IslamicAspect);
+            .Include(s => s.IslamicAspect)
+            .Include(s => s.SessionGroups)
+                .ThenInclude(assignment => assignment.EventSessionGroup);
     }
 }

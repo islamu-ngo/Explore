@@ -95,8 +95,8 @@ public class EmergencyFallbackPalettesTests
     {
         var palette = EmergencyFallbackPalettes.FallbackLight;
 
-        await Assert.That(palette.Primary).IsEqualTo("#0F62FE");
-        await Assert.That(palette.Background).IsEqualTo("#F1F5F9");
+        await Assert.That(palette.Primary).IsEqualTo("#18181B");
+        await Assert.That(palette.Background).IsEqualTo("#F5F5F7");
         await Assert.That(palette.Surface).IsEqualTo("#FFFFFF");
     }
 
@@ -105,8 +105,9 @@ public class EmergencyFallbackPalettesTests
     {
         var palette = EmergencyFallbackPalettes.FallbackDark;
 
-        await Assert.That(palette.Primary).IsEqualTo("#3B82F6");
-        await Assert.That(palette.Background).IsEqualTo("#0B0F19");
+        await Assert.That(palette.Primary).IsEqualTo("#FAFAFA");
+        await Assert.That(palette.PrimaryContrastText).IsEqualTo("#1A1A1A");
+        await Assert.That(palette.Background).IsEqualTo("#1A1A1A");
     }
 
     private static async Task AssertTokenNotEmpty(string token)
