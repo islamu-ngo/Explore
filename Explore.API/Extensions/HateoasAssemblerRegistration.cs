@@ -18,6 +18,7 @@ using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
+using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
@@ -62,6 +63,11 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EventSessionDto>, EventSessionDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventSessionListDto>, EventSessionCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EventSessionDto, EventSessionListDto>, EventSessionResourceAssembler>();
+
+        // EventSessionGroup (program sections/tracks/devrooms)
+        services.AddScoped<ILinkPolicy<EventSessionGroupDto>, EventSessionGroupDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventSessionGroupListDto>, EventSessionGroupCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventSessionGroupDto, EventSessionGroupListDto>, EventSessionGroupResourceAssembler>();
 
         // Template Sync helper resources
         services.AddScoped<ILinkPolicy<EventTemplateSyncResource>, EventTemplateSyncLinkPolicy>();

@@ -1,0 +1,15 @@
+// ABOUTME: Repository contract for event session groups such as tracks, devrooms, stages, and program sections.
+// ABOUTME: Keeps program-section reads entity-first and tenant-filtered through persistence.
+
+using Explore.Domain;
+
+namespace Explore.Application.Contracts.Persistence;
+
+public interface IEventSessionGroupRepository : IGenericRepository<EventSessionGroup, Guid>
+{
+    Task<EventSessionGroup?> GetWithDetailsAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<EventSessionGroup?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<List<EventSessionGroup>> GetByEventAsync(Guid eventId, CancellationToken cancellationToken);
+}

@@ -96,8 +96,8 @@ public class ContractInvariantsTests
             .Because($"Every (method, path) pair must appear exactly once. Duplicates: {string.Join("; ", duplicates.Take(5))}");
     }
 
-    // TODO (Phase 3): re-enable after stable operationIds are wired. See dev/active/api-contract-stabilization/.
-    // [Test]
+    [Skip("Category: API contract. Removal: enable after stable operationIds are wired in dev/active/api-contract-stabilization Phase 3.")]
+    [Test]
     public async Task OpenApiDocument_EveryOperationHasOperationId()
     {
         using var document = await GetOpenApiDocumentAsync();

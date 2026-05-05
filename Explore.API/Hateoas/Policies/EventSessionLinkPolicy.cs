@@ -58,6 +58,16 @@ public sealed class EventSessionDetailLinkPolicy : ILinkPolicy<EventSessionDto>
             "GET",
             "Session agenda");
 
+        foreach (var assignment in dto.SessionGroups)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.SessionGroups,
+                RouteNames.GetEventSessionGroupById,
+                new { id = assignment.EventSessionGroupId },
+                "GET",
+                assignment.Name);
+        }
+
         // Edit link - requires authentication
         yield return new LinkDefinition(
             LinkRelations.Edit,
@@ -113,6 +123,16 @@ public sealed class EventSessionCollectionLinkPolicy : ICollectionLinkPolicy<Eve
                 new { id = dto.LocationId },
                 "GET",
                 dto.LocationFullName);
+        }
+
+        foreach (var assignment in dto.SessionGroups)
+        {
+            yield return new LinkDefinition(
+                LinkRelations.SessionGroups,
+                RouteNames.GetEventSessionGroupById,
+                new { id = assignment.EventSessionGroupId },
+                "GET",
+                assignment.Name);
         }
     }
 

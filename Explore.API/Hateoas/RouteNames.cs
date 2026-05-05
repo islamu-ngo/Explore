@@ -33,7 +33,9 @@ public static class RouteNames
     public const string GetEventCalendar = "GetEventCalendar";
     public const string GetMyEvents = "GetMyEvents";
     public const string GetEventCreationContext = "GetEventCreationContext";
+    public const string GetEventPublishReadiness = "GetEventPublishReadiness";
     public const string CreateEvent = "CreateEvent";
+    public const string PublishEvent = "PublishEvent";
     public const string UpdateEvent = "UpdateEvent";
     public const string DeleteEvent = "DeleteEvent";
     public const string GetEventSessions = "GetEventSessions";
@@ -66,6 +68,15 @@ public static class RouteNames
     public const string GetEventSessionTemplateSyncDiff = "GetEventSessionTemplateSyncDiff";
     public const string ApplyEventSessionTemplateSync = "ApplyEventSessionTemplateSync";
     public const string GetEventSessionTemplateSyncHistory = "GetEventSessionTemplateSyncHistory";
+
+    public const string GetEventSessionGroupsByEvent = "GetEventSessionGroupsByEvent";
+    public const string GetEventSessionGroupById = "GetEventSessionGroupById";
+    public const string GetEventSessionGroupSessions = "GetEventSessionGroupSessions";
+    public const string CreateEventSessionGroup = "CreateEventSessionGroup";
+    public const string UpdateEventSessionGroup = "UpdateEventSessionGroup";
+    public const string DeleteEventSessionGroup = "DeleteEventSessionGroup";
+    public const string AssignEventSessionToGroup = "AssignEventSessionToGroup";
+    public const string UnassignEventSessionFromGroup = "UnassignEventSessionFromGroup";
 
     #endregion
 

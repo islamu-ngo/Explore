@@ -14,6 +14,7 @@ using Explore.Application.DTOs.EventFormat;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
+using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.DTOs.EventStatus;
@@ -79,9 +80,13 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(CreateCategoryDto))]
 [JsonSerializable(typeof(CreateEventCategoriesDto))]
 [JsonSerializable(typeof(CreateEventRequest))]
+[JsonSerializable(typeof(EventPublishReadinessDto))]
+[JsonSerializable(typeof(EventPublishReadinessErrorDto))]
+[JsonSerializable(typeof(PublishEventRequestDto))]
 [JsonSerializable(typeof(CreateEventRegistrationDto))]
 [JsonSerializable(typeof(CreateEventSessionAgendaItemDto))]
 [JsonSerializable(typeof(CreateEventSessionDto))]
+[JsonSerializable(typeof(CreateEventSessionGroupRequestDto))]
 [JsonSerializable(typeof(CreateEventSessionLanguageDto))]
 [JsonSerializable(typeof(CreateEventSessionSpeakerDto))]
 [JsonSerializable(typeof(CreateEventTagsDto))]
@@ -115,7 +120,10 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(EventRegistrationListDto))]
 [JsonSerializable(typeof(EventSessionAgendaItemDto))]
 [JsonSerializable(typeof(EventSessionAgendaItemListDto))]
+[JsonSerializable(typeof(EventSessionGroupAssignmentDto))]
 [JsonSerializable(typeof(EventSessionDto))]
+[JsonSerializable(typeof(EventSessionGroupDto))]
+[JsonSerializable(typeof(EventSessionGroupListDto))]
 [JsonSerializable(typeof(EventSessionLanguageDto))]
 [JsonSerializable(typeof(EventSessionLanguageListDto))]
 [JsonSerializable(typeof(EventSessionListDto))]
@@ -218,6 +226,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(UpdateEventRegistrationDto))]
 [JsonSerializable(typeof(UpdateEventSessionAgendaItemDto))]
 [JsonSerializable(typeof(UpdateEventSessionDto))]
+[JsonSerializable(typeof(UpdateEventSessionGroupRequestDto))]
+[JsonSerializable(typeof(AssignSessionToGroupRequestDto))]
 [JsonSerializable(typeof(UpdateEventSessionLanguageDto))]
 [JsonSerializable(typeof(UpdateEventSessionSpeakerDto))]
 [JsonSerializable(typeof(UpdateEventTagsDto))]

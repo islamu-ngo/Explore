@@ -36,6 +36,7 @@ public partial class ExploreDbContext
     public DbSet<User> Users { get; set; }
     public DbSet<UserPii> UserPii { get; set; }
     public DbSet<ExternalApiKey> ExternalApiKeys { get; set; }
+    public DbSet<ExternalApiKeyOwnerTypeLookup> ExternalApiKeyOwnerTypes { get; set; }
     public DbSet<ExternalApiKeyStatus> ExternalApiKeyStatuses { get; set; }
     public DbSet<ExternalApiKeyCreditPeriod> ExternalApiKeyCreditPeriods { get; set; }
     public DbSet<ExternalApiKeyQuota> ExternalApiKeyQuotas { get; set; }
@@ -44,6 +45,7 @@ public partial class ExploreDbContext
 
     // ===== Authorization (RBAC) =====
     public DbSet<Role> Roles { get; set; }
+    public DbSet<RoleScope> RoleScopes { get; set; }
     public DbSet<Permission> Permissions { get; set; }
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<EventRoleAssignment> EventRoleAssignments { get; set; }
@@ -85,6 +87,8 @@ public partial class ExploreDbContext
     // ===== Events =====
     public DbSet<Event> Events { get; set; }
     public DbSet<EventSession> EventSessions { get; set; }
+    public DbSet<EventSessionGroup> EventSessionGroups { get; set; }
+    public DbSet<EventSessionGroupSession> EventSessionGroupSessions { get; set; }
     public DbSet<EventSessionIslamicAspect> EventSessionIslamicAspects { get; set; }
     public DbSet<EventRegistration> EventRegistrations { get; set; }
     public DbSet<EventSessionLanguage> EventSessionLanguages { get; set; }
@@ -148,6 +152,8 @@ public partial class ExploreDbContext
 
     // ===== Settings =====
     public DbSet<SystemSetting> SystemSettings { get; set; }
+    public DbSet<SettingScopeLookup> SettingScopes { get; set; }
+    public DbSet<SettingValueTypeLookup> SettingValueTypes { get; set; }
     public DbSet<TenantSetting> TenantSettingOverrides { get; set; }
     public DbSet<OrganizationSetting> OrganizationSettingOverrides { get; set; }
     public DbSet<GroupSetting> GroupSettingOverrides { get; set; }
@@ -155,6 +161,8 @@ public partial class ExploreDbContext
     public DbSet<UserNotificationPreference> UserNotificationPreferences { get; set; }
     public DbSet<AppSetting> AppSettings { get; set; }
     public DbSet<SecretBinding> SecretBindings { get; set; }
+    public DbSet<SecretSourceTypeLookup> SecretSourceTypes { get; set; }
+    public DbSet<SecretValidationStatus> SecretValidationStatuses { get; set; }
     public DbSet<ConfigurationChangeLog> ConfigurationChangeLogs { get; set; }
     public DbSet<UiTheme> UiThemes { get; set; }
     public DbSet<UiThemePreset> UiThemePresets { get; set; }
@@ -167,6 +175,7 @@ public partial class ExploreDbContext
     public DbSet<NotificationType> NotificationTypes { get; set; }
     public DbSet<NotificationEntityType> NotificationEntityTypes { get; set; }
     public DbSet<NotificationReason> NotificationReasons { get; set; }
+    public DbSet<NotificationScopeType> NotificationScopeTypes { get; set; }
 
     // ===== Module Governance =====
     public DbSet<ModuleDefinition> ModuleDefinitions { get; set; }

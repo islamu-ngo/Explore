@@ -23,8 +23,8 @@ public sealed class RouteNameCoverageTests(ContractApiFixture fixture)
 {
     private readonly ContractApiFixture _fixture = fixture;
 
-    // TODO (Phase 3): re-enable after write actions are decorated with [HttpXxx(Name = RouteNames.X)]. See dev/active/api-contract-stabilization/.
-    // [Test]
+    [Skip("Category: API contract. Removal: enable after write actions are decorated with [HttpXxx(Name = RouteNames.X)] in dev/active/api-contract-stabilization Phase 3.")]
+    [Test]
     public async Task RouteNames_EveryConstantResolvesToExactlyOneEndpoint()
     {
         var constants = GetRouteNameConstants();
@@ -53,8 +53,8 @@ public sealed class RouteNameCoverageTests(ContractApiFixture fixture)
             .Because("A RouteNames constant matching multiple endpoints is an ambiguity LinkGenerator cannot resolve deterministically.");
     }
 
-    // TODO (Phase 3): re-enable after RouteNames constants are added for all endpoint route names (e.g. RelayAnalyticsEvent). See dev/active/api-contract-stabilization/.
-    // [Test]
+    [Skip("Category: API contract. Removal: enable after RouteNames constants are added for all endpoint route names in dev/active/api-contract-stabilization Phase 3.")]
+    [Test]
     public async Task EndpointRouteNames_EveryNamedEndpointHasMatchingConstant()
     {
         var constantSet = GetRouteNameConstants().ToHashSet(StringComparer.Ordinal);

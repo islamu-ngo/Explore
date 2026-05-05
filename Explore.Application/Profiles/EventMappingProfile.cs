@@ -9,6 +9,7 @@ using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventAspects;
 using Explore.Application.DTOs.EventCategories;
 using Explore.Application.DTOs.EventDay;
+using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventTags;
 using Explore.Application.DTOs.EventType;
 using Explore.Domain;
@@ -94,6 +95,16 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.EventSeriesTitle, opt => opt.MapFrom(src => src.EventSeries != null ? src.EventSeries.Title : null))
             .ForMember(dest => dest.RegistrationPolicyFullName, opt => opt.MapFrom(src => src.RegistrationPolicy != null ? src.RegistrationPolicy.FullName : null))
             .ForMember(dest => dest.IsPast, opt => opt.MapFrom(src => src.LastSessionStartUtc != null && src.LastSessionStartUtc <= DateTimeOffset.UtcNow));
+
+        // EventSessionGroup → DTOs (tracks/devrooms/program sections)
+        CreateMap<EventSessionGroup, EventSessionGroupDto>()
+            .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+            .ForMember(dest => dest.LocationName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null))
+            .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.Name : null));
+
+        CreateMap<EventSessionGroup, EventSessionGroupListDto>()
+            .ForMember(dest => dest.LocationName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null))
+            .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.Name : null));
 
         // Event Series
         CreateMap<EventSeries, EventSeriesNS.EventSeriesListDto>()

@@ -1,0 +1,43 @@
+// ABOUTME: Handles ordered read of sessions assigned to a published event session group.
+// ABOUTME: Returns session DTOs so program-section pages can render talks/workshops without leaking join entities.
+
+using AutoMapper;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventSession;
+using Explore.Application.Features.EventSessionGroups.Requests.Queries;
+using MediatR;
+
+namespace Explore.Application.Features.EventSessionGroups.Handlers.Queries;
+
+public class GetEventSessionGroupSessionsRequestHandler : IRequestHandler<GetEventSessionGroupSessionsRequest, List<EventSessionListDto>>
+{
+    private readonly IEventSessionGroupRepository _eventSessionGroupRepository;
+    private readonly IEventSessionGroupSessionRepository _assignmentRepository;
+    private readonly IMapper _mapper;
+
+    public GetEventSessionGroupSessionsRequestHandler(
+        IEventSessionGroupRepository eventSessionGroupRepository,
+        IEventSessionGroupSessionRepository assignmentRepository,
+        IMapper mapper)
+    {
+        _eventSessionGroupRepository = eventSessionGroupRepository;
+        _assignmentRepository = assignmentRepository;
+        _mapper = mapper;
+    }
+
+    public async Task<List<EventSessionListDto>> Handle(
+        GetEventSessionGroupSessionsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var group = await _eventSessionGroupRepository.GetWithDetailsAsync(request.EventSessionGroupId, cancellationToken);
+        if (group is null)
+        {
+            return [];
+        }
+
+        var assignments = await _assignmentRepository.GetByGroupAsync(request.EventSessionGroupId, cancellationToken);
+        var sessions = assignments.Select(assignment => assignment.EventSession).ToList();
+
+        return _mapper.Map<List<EventSessionListDto>>(sessions);
+    }
+}

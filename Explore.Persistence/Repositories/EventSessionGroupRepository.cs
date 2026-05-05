@@ -1,0 +1,49 @@
+// ABOUTME: EF repository for event session groups (tracks, devrooms, stages, program sections).
+// ABOUTME: Provides ordered event-scoped reads while relying on global tenant and soft-delete filters.
+
+using Explore.Application.Contracts.Persistence;
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+
+namespace Explore.Persistence.Repositories;
+
+public class EventSessionGroupRepository : GenericRepository<EventSessionGroup, Guid>, IEventSessionGroupRepository
+{
+    private readonly ExploreDbContext _dbContext;
+
+    public EventSessionGroupRepository(ExploreDbContext dbContext) : base(dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<EventSessionGroup?> GetWithDetailsAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventSessionGroups
+            .AsNoTrackingWithIdentityResolution()
+            .Include(group => group.Event)
+            .Include(group => group.Location)
+            .Include(group => group.Room)
+            .FirstOrDefaultAsync(group => group.Id == id && group.IsPublished, cancellationToken);
+    }
+
+    public async Task<EventSessionGroup?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventSessionGroups
+            .Include(group => group.Event)
+            .Include(group => group.Location)
+            .Include(group => group.Room)
+            .FirstOrDefaultAsync(group => group.Id == id, cancellationToken);
+    }
+
+    public async Task<List<EventSessionGroup>> GetByEventAsync(Guid eventId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventSessionGroups
+            .AsNoTrackingWithIdentityResolution()
+            .Include(group => group.Location)
+            .Include(group => group.Room)
+            .Where(group => group.EventId == eventId && group.IsPublished)
+            .OrderBy(group => group.SortOrder)
+            .ThenBy(group => group.Name)
+            .ToListAsync(cancellationToken);
+    }
+}
