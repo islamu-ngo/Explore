@@ -23,6 +23,7 @@ public class MainLayoutTests : IDisposable
     private readonly IUserService _userService;
     private readonly IPublicExperienceService _publicExperienceService;
     private readonly IAppearanceThemeService _appearanceThemeService;
+    private readonly IDockLayoutPersistence _dockLayoutPersistence;
 
     public MainLayoutTests()
     {
@@ -33,6 +34,15 @@ public class MainLayoutTests : IDisposable
         _ctx.Services.AddScoped<TenantNavLinksState>();
         _ctx.Services.AddScoped<DockLayoutState>();
         _ctx.Services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
+
+        _dockLayoutPersistence = Substitute.For<IDockLayoutPersistence>();
+        _dockLayoutPersistence.LoadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DockLayoutSnapshot?>(null));
+        _dockLayoutPersistence.SaveAsync(Arg.Any<DockLayoutSnapshot>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(true));
+        _dockLayoutPersistence.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(true));
+        _ctx.Services.AddSingleton(_dockLayoutPersistence);
 
         // Bulk NavMenu deps (IUserService, IPublicExperienceService, SidebarState, etc.)
         NavMenuTestServices.Register(_ctx);
@@ -68,6 +78,35 @@ public class MainLayoutTests : IDisposable
     {
         return _ctx.Render<MainLayout>(p =>
             p.Add(l => l.Body, (RenderFragment)(b => b.AddContent(0, "Test body content"))));
+    }
+
+    private static DockLayoutSnapshot CreateShellSnapshot(bool leftNavOpen, bool aiAssistantOpen)
+    {
+        return new DockLayoutSnapshot(
+            "shell",
+            [
+                new DockPanelState(ShellDockPanels.LeftNavId, leftNavOpen, DockMode.Docked, Width: 320, Order: 10, IsActive: leftNavOpen),
+                new DockPanelState(ShellDockPanels.AiAssistantId, aiAssistantOpen, DockMode.Docked, Width: 420, Order: 20, IsActive: aiAssistantOpen)
+            ],
+            DateTimeOffset.UtcNow);
+    }
+
+    private static DockPanelDescriptor CreateWorkspacePersistentDescriptor(DockPanelId id)
+    {
+        return new DockPanelDescriptor(
+            id,
+            DockScope.Workspace,
+            DockSide.End,
+            DockMode.Docked,
+            Title: "Workspace panel",
+            AriaLabel: "Workspace panel",
+            DefaultWidth: 320,
+            MinWidth: 280,
+            MaxWidth: 520,
+            Order: 10,
+            IsResizable: true,
+            CanClose: true,
+            PersistState: true);
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -293,10 +332,109 @@ public class MainLayoutTests : IDisposable
         var shellHost = cut.Find("[data-testid='dock-layout-host'][data-dock-scope='shell']");
         await Assert.That(shellHost.ClassList.Contains("dock-layout-host--has-start")).IsTrue();
         await Assert.That(cut.FindAll("[data-testid='dock-panel-host'][data-dock-panel-id='shell.left-nav']").Count).IsEqualTo(1);
-        await Assert.That(cut.FindAll("#sidebar-drawer").Count).IsEqualTo(0);
 
         var sidebarToggle = cut.Find(".navbar__sidebar-toggle");
         await Assert.That(sidebarToggle.GetAttribute("aria-controls")).IsNull();
+    }
+
+    [Test]
+    public async Task FirstRender_HydratesShellDockLayoutAfterDescriptorsRegister()
+    {
+        _dockLayoutPersistence.LoadAsync("shell", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DockLayoutSnapshot?>(CreateShellSnapshot(leftNavOpen: false, aiAssistantOpen: true)));
+
+        var cut = RenderLayout();
+        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen == true)
+                throw new InvalidOperationException("Expected shell snapshot to restore the left nav closed state.");
+
+            var aiAssistant = dockLayoutState.GetPanel(ShellDockPanels.AiAssistantId);
+            if (aiAssistant?.State is not { IsOpen: true, Width: 420 })
+                throw new InvalidOperationException("Expected shell snapshot to restore the AI assistant state.");
+        });
+
+        _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task ShellDockChange_AfterHydration_DebouncesAutosaveWithShellKey()
+    {
+        var cut = RenderLayout();
+        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
+        var workspacePanelId = new DockPanelId("events.customize-view");
+
+        cut.WaitForAssertion(() =>
+            _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
+        cut.WaitForAssertion(() =>
+            _publicExperienceService.Received().GetCachedSettingsAsync().GetAwaiter().GetResult());
+
+        _dockLayoutPersistence.ClearReceivedCalls();
+
+        dockLayoutState.Register(CreateWorkspacePersistentDescriptor(workspacePanelId), _ => { });
+        await cut.InvokeAsync(() => dockLayoutState.Open(workspacePanelId));
+        await cut.InvokeAsync(() => dockLayoutState.Resize(ShellDockPanels.LeftNavId, 340));
+        await Task.Delay(TimeSpan.FromMilliseconds(650));
+
+        await _dockLayoutPersistence.Received(1).SaveAsync(
+            Arg.Is<DockLayoutSnapshot>(snapshot => snapshot != null
+                && snapshot.LayoutKey == "shell"
+                && snapshot.Panels.Count == 2
+                && snapshot.Panels.All(panel => panel.Id == ShellDockPanels.LeftNavId || panel.Id == ShellDockPanels.AiAssistantId)
+                && snapshot.Panels.Any(panel => panel.Id == ShellDockPanels.LeftNavId && panel.Width == 340)
+                && snapshot.Panels.All(panel => panel.Id != workspacePanelId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task WorkspaceDockChange_AfterShellHydration_DoesNotAutosaveShellLayout()
+    {
+        var cut = RenderLayout();
+        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
+        var workspacePanelId = new DockPanelId("events.customize-view");
+
+        cut.WaitForAssertion(() =>
+            _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
+        cut.WaitForAssertion(() =>
+            _publicExperienceService.Received().GetCachedSettingsAsync().GetAwaiter().GetResult());
+
+        dockLayoutState.Register(CreateWorkspacePersistentDescriptor(workspacePanelId), _ => { });
+        _dockLayoutPersistence.ClearReceivedCalls();
+
+        await cut.InvokeAsync(() => dockLayoutState.Open(workspacePanelId));
+        await Task.Delay(TimeSpan.FromMilliseconds(650));
+
+        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
+            Arg.Any<DockLayoutSnapshot>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ResponsiveViewportPolicy_AfterHydration_DoesNotAutosaveProjectedShellState()
+    {
+        _dockLayoutPersistence.LoadAsync("shell", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DockLayoutSnapshot?>(CreateShellSnapshot(leftNavOpen: true, aiAssistantOpen: true)));
+
+        var cut = RenderLayout();
+        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (dockLayoutState.GetPanel(ShellDockPanels.LeftNavId)?.State.IsOpen != true)
+                throw new InvalidOperationException("Expected shell snapshot to open the left nav before viewport projection.");
+        });
+
+        _dockLayoutPersistence.ClearReceivedCalls();
+
+        await cut.InvokeAsync(() => dockLayoutState.UpdateViewport(390, isMobile: true));
+        await Task.Delay(TimeSpan.FromMilliseconds(650));
+
+        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
+            Arg.Any<DockLayoutSnapshot>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]

@@ -76,8 +76,7 @@ public class SharedComponentAccessibilityTests : IDisposable
     }
 
     [Test]
-    [Skip("Pre-existing: AppButton wrapper uses CaptureUnmatchedValues, OnClick passed as string " +
-          "instead of EventCallback<MouseEventArgs>. Blocked by MudBlazor v9 migration.")]
+    [Skip("Category: Component accessibility. Removal: enable after the AppButton wrapper handles OnClick as EventCallback<MouseEventArgs> under MudBlazor v9.")]
     public async Task ErrorState_RendersRetryButton_WhenOnRetryProvided()
     {
         // Arrange & Act

@@ -398,6 +398,22 @@ public sealed class DockHostTests : IDisposable
     }
 
     [Test]
+    public async Task DockOverlayHost_OpeningOverlay_RendersModalDialogSemantics()
+    {
+        var inspectorPanelId = new DockPanelId("workspace.inspector-modal-semantics");
+        _dockLayoutState.Register(CreateDescriptor(inspectorPanelId, DockScope.Workspace, DockSide.End, DockMode.Inspector, order: 10), CreateContent("Inspector modal semantics panel"));
+        _dockLayoutState.Open(inspectorPanelId);
+
+        var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace));
+        var panel = cut.Find("[data-testid='dock-panel-host'][data-dock-panel-id='workspace.inspector-modal-semantics']");
+
+        await Assert.That(panel.GetAttribute("role")).IsEqualTo("dialog");
+        await Assert.That(panel.GetAttribute("aria-modal")).IsEqualTo("true");
+        await Assert.That(panel.GetAttribute("aria-label")).IsEqualTo("Panel workspace.inspector-modal-semantics");
+    }
+
+    [Test]
     public async Task DockSideHost_DockedPanel_DoesNotRenderFocusTrap()
     {
         var dockedPanelId = new DockPanelId("workspace.docked-no-focus-trap");
@@ -409,6 +425,10 @@ public sealed class DockHostTests : IDisposable
             .Add(component => component.Side, DockSide.End));
 
         await Assert.That(cut.FindComponents<MudFocusTrap>().Count).IsEqualTo(0);
+        var panel = cut.Find("[data-testid='dock-panel-host'][data-dock-panel-id='workspace.docked-no-focus-trap']");
+
+        await Assert.That(panel.GetAttribute("role")).IsEqualTo("complementary");
+        await Assert.That(panel.HasAttribute("aria-modal")).IsFalse();
         await Assert.That(cut.Markup).Contains("Docked panel without focus trap");
     }
 

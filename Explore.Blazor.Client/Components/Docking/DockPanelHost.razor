@@ -13,7 +13,8 @@
            data-dock-mode="@ModeName"
            data-dock-side="@SideName"
            aria-label="@Entry.Descriptor.AriaLabel"
-           role="complementary">
+           aria-modal="@PanelAriaModal"
+           role="@PanelRole">
         @if (ShouldRenderResizeHandle)
         {
              <DockResizeHandle PanelId="@Entry.Descriptor.Id"
@@ -30,7 +31,9 @@
              class="dock-panel-host__body"
              role="@BodyRole"
              aria-labelledby="@BodyLabelledById">
-            @Entry.Content
+            <CascadingValue Value="Entry" IsFixed="true">
+                @Entry.Content
+            </CascadingValue>
         </div>
     </aside>
 }
@@ -39,6 +42,7 @@
     [Parameter, EditorRequired] public DockPanelEntry Entry { get; set; } = default!;
     [Parameter] public string DataTestId { get; set; } = "dock-panel-host";
     [Parameter] public string? Class { get; set; }
+    [Parameter] public bool IsModal { get; set; }
     [Parameter] public string? BodyRole { get; set; }
     [Parameter] public string? BodyLabelledById { get; set; }
 
@@ -46,6 +50,10 @@
     private string SideName => Entry.Descriptor.Side.ToString().ToLowerInvariant();
 
     private string PanelStyle => $"--dock-panel-width: {Entry.State.Width}px;";
+
+    private string PanelRole => IsModal ? "dialog" : "complementary";
+
+    private string? PanelAriaModal => IsModal ? "true" : null;
 
     private string PanelBodyId => DockElementIds.PanelBodyId(Entry.Descriptor.Id);
 

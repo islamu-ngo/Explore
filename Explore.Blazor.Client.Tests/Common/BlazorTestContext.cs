@@ -73,6 +73,14 @@ public class BlazorTestContext : BunitContext
         AddAuthorizationSubstrateMocks();
         AddAppearanceThemeMock();
         AddPublicExperienceMock();
+        var dockLayoutPersistence = Substitute.For<IDockLayoutPersistence>();
+        dockLayoutPersistence.LoadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DockLayoutSnapshot?>(null));
+        dockLayoutPersistence.SaveAsync(Arg.Any<DockLayoutSnapshot>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(true));
+        dockLayoutPersistence.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(true));
+        Services.AddSingleton(dockLayoutPersistence);
         Services.AddScoped(_ => Substitute.For<ILanguagePreferenceService>());
     }
 

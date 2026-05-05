@@ -3,7 +3,11 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using Explore.Blazor.Client.Services.Appearance;
 using MudBlazor;
+using MudBlazor.Utilities;
+using ClientResolvedAppearanceDto = Explore.Blazor.Client.Services.Appearance.ResolvedAppearanceDto;
+using ClientResolvedThemeDto = Explore.Blazor.Client.Services.Appearance.ResolvedThemeDto;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -93,7 +97,8 @@ public class AppearanceThemeServiceTests
         var palette = service.GeneratePalettePreview("#475569", "#3B82F6", false);
 
         await Assert.That(palette).IsNotNull();
-        await Assert.That(palette.Primary).IsEqualTo("#0F62FE");
+        await Assert.That(palette.Primary).IsEqualTo("#18181B");
+        await Assert.That(palette.PrimaryContrastText).IsEqualTo("#FFFFFF");
     }
 
     [Test]
@@ -104,7 +109,41 @@ public class AppearanceThemeServiceTests
         var palette = service.GeneratePalettePreview("#475569", "#3B82F6", true);
 
         await Assert.That(palette).IsNotNull();
-        await Assert.That(palette.Primary).IsEqualTo("#3B82F6");
+        await Assert.That(palette.Primary).IsEqualTo("#FAFAFA");
+        await Assert.That(palette.PrimaryContrastText).IsEqualTo("#1A1A1A");
+    }
+
+    [Test]
+    public async Task CreateTheme_PreservesCustomPaletteContrastText()
+    {
+        var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        service.Current.ResolvedAppearance = new ClientResolvedAppearanceDto
+        {
+            Theme = new ClientResolvedThemeDto
+            {
+                LightPalette = new ClientPaletteDto
+                {
+                    Primary = "#123456",
+                    PrimaryContrastText = "#FEDCBA",
+                    Secondary = "#654321",
+                    SecondaryContrastText = "#ABCDEF"
+                },
+                DarkPalette = new ClientPaletteDto
+                {
+                    Primary = "#FAFAFA",
+                    PrimaryContrastText = "#1A1A1A",
+                    Secondary = "#A1A1AA",
+                    SecondaryContrastText = "#101010"
+                }
+            }
+        };
+
+        var theme = service.CreateTheme("64px");
+
+        await Assert.That(theme.PaletteLight.PrimaryContrastText.ToString(MudColorOutputFormats.Hex).ToUpperInvariant()).IsEqualTo("#FEDCBA");
+        await Assert.That(theme.PaletteLight.SecondaryContrastText.ToString(MudColorOutputFormats.Hex).ToUpperInvariant()).IsEqualTo("#ABCDEF");
+        await Assert.That(theme.PaletteDark.PrimaryContrastText.ToString(MudColorOutputFormats.Hex).ToUpperInvariant()).IsEqualTo("#1A1A1A");
+        await Assert.That(theme.PaletteDark.SecondaryContrastText.ToString(MudColorOutputFormats.Hex).ToUpperInvariant()).IsEqualTo("#101010");
     }
 
     private static AppearanceThemeService CreateService(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)

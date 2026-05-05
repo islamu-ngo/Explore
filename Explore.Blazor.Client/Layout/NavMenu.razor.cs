@@ -427,11 +427,17 @@ public partial class NavMenu : IDisposable
         }
     }
 
-    private async Task OpenLoginPrompt(string? returnUrl)
+    private void StartLogin()
+    {
+        var returnUrl = new Uri(Nav.Uri).PathAndQuery;
+        Nav.NavigateTo($"/auth/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+    }
+
+    private async Task OpenLoginPrompt(string? returnUrl, string? message = null)
     {
         returnUrl ??= new Uri(Nav.Uri).PathAndQuery;
         await AccessibilityFocusService.SaveFocusAsync();
-        await LoginPromptDialog.ShowAsync(DialogService, returnUrl);
+        await LoginPromptDialog.ShowAsync(DialogService, returnUrl, message);
         await AccessibilityFocusService.RestoreFocusAsync();
     }
 

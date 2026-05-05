@@ -88,6 +88,30 @@ public sealed class DockLayoutStateTests
     }
 
     [Test]
+    public async Task LastChangeReason_ClassifiesPersistentAndNonPersistentChanges()
+    {
+        var state = new DockLayoutState();
+        state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
+        await Assert.That(state.LastChangeReason).IsEqualTo(DockLayoutChangeReason.Registration);
+
+        state.Open(ShellNavId);
+        await Assert.That(state.LastChangeReason).IsEqualTo(DockLayoutChangeReason.UserAction);
+
+        state.UpdateViewport(390, isMobile: true);
+        await Assert.That(state.LastChangeReason).IsEqualTo(DockLayoutChangeReason.ViewportPolicy);
+
+        state.Open(ShellNavId);
+        state.ResetToDefaults();
+        await Assert.That(state.LastChangeReason).IsEqualTo(DockLayoutChangeReason.Reset);
+
+        state.RestoreSnapshot(new DockLayoutSnapshot(
+            "shell",
+            [new DockPanelState(ShellNavId, true, DockMode.Docked, Width: 300, Order: 10, IsActive: true)],
+            DateTimeOffset.UtcNow), "shell", DockScope.Shell);
+        await Assert.That(state.LastChangeReason).IsEqualTo(DockLayoutChangeReason.SnapshotRestore);
+    }
+
+    [Test]
     public async Task Resize_NonResizablePanel_ThrowsAndPreservesWidth()
     {
         var state = new DockLayoutState();
@@ -192,6 +216,52 @@ public sealed class DockLayoutStateTests
 
         var nav = state.GetPanel(ShellNavId)!;
         await Assert.That(nav.State.IsOpen).IsTrue();
+        await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(nav)).IsFalse();
+    }
+
+    [Test]
+    public async Task ResponsivePolicy_DesktopGeometryEvidence_AllowsLeftAndSingleRightAtDocumentedWidths()
+    {
+        var state = new DockLayoutState();
+        var workspaceCustomizeId = new DockPanelId("events.customize-view");
+        state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
+        state.Register(CreateDescriptor(workspaceCustomizeId, DockScope.Workspace, DockSide.End, defaultWidth: 320), _ => { });
+
+        state.UpdateViewport(1280, isMobile: false);
+        state.Open(ShellNavId);
+        state.Open(workspaceCustomizeId);
+
+        var navAt1280 = state.GetPanel(ShellNavId)!;
+        await Assert.That(navAt1280.State.IsOpen).IsTrue();
+        await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(navAt1280)).IsFalse();
+
+        state.UpdateViewport(1000, isMobile: false);
+
+        var navAt1000 = state.GetPanel(ShellNavId)!;
+        await Assert.That(navAt1000.State.IsOpen).IsTrue();
+        await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(navAt1000)).IsFalse();
+    }
+
+    [Test]
+    public async Task ResponsivePolicy_WideDesktopGeometryEvidence_AllowsLeftAiAndCustomizeDocked()
+    {
+        var state = new DockLayoutState();
+        var workspaceCustomizeId = new DockPanelId("events.customize-view");
+        state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
+        state.Register(CreateDescriptor(ShellAiId, DockScope.Shell, DockSide.End, defaultWidth: 360), _ => { });
+        state.Register(CreateDescriptor(workspaceCustomizeId, DockScope.Workspace, DockSide.End, defaultWidth: 320), _ => { });
+        state.UpdateViewport(1760, isMobile: false);
+
+        state.Open(ShellNavId);
+        state.Open(ShellAiId);
+        state.Open(workspaceCustomizeId);
+
+        var nav = state.GetPanel(ShellNavId)!;
+        await Assert.That(nav.State.IsOpen).IsTrue();
+        await Assert.That(state.GetPanel(ShellAiId)?.State.IsOpen).IsTrue();
         await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
         await Assert.That(state.ShouldRenderDockedPanelAsOverlay(nav)).IsFalse();
     }
@@ -318,17 +388,69 @@ public sealed class DockLayoutStateTests
         state.Resize(persistentId, 410);
         state.Open(transientId);
 
-        var snapshot = state.CreateSnapshot("events");
+        var snapshot = state.CreateSnapshot("events", DockScope.Workspace);
         state.Close(persistentId);
         state.Resize(persistentId, 280);
         state.Close(transientId);
-        state.RestoreSnapshot(snapshot);
+        state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
 
         await Assert.That(snapshot.LayoutKey).IsEqualTo("events");
         await Assert.That(snapshot.Panels.Count).IsEqualTo(1);
         await Assert.That(state.GetPanel(persistentId)?.State.IsOpen).IsTrue();
         await Assert.That(state.GetPanel(persistentId)?.State.Width).IsEqualTo(410);
         await Assert.That(state.GetPanel(transientId)?.State.IsOpen).IsFalse();
+    }
+
+    [Test]
+    public async Task Snapshot_CreatesScopeOwnedPanelStateOnly()
+    {
+        var state = new DockLayoutState();
+        var shellId = new DockPanelId("shell.left-nav");
+        var workspaceId = new DockPanelId("events.customize-view");
+
+        state.Register(CreateDescriptor(shellId, DockScope.Shell, DockSide.Start, persistState: true), _ => { });
+        state.Register(CreateDescriptor(workspaceId, DockScope.Workspace, DockSide.End, persistState: true), _ => { });
+        state.Open(shellId);
+        state.Open(workspaceId);
+
+        var shellSnapshot = state.CreateSnapshot("shell", DockScope.Shell);
+        var workspaceSnapshot = state.CreateSnapshot("events", DockScope.Workspace);
+
+        await Assert.That(shellSnapshot.Panels).HasSingleItem();
+        await Assert.That(shellSnapshot.Panels[0].Id).IsEqualTo(shellId);
+        await Assert.That(workspaceSnapshot.Panels).HasSingleItem();
+        await Assert.That(workspaceSnapshot.Panels[0].Id).IsEqualTo(workspaceId);
+    }
+
+    [Test]
+    public async Task RestoreSnapshot_IgnoresWrongLayoutKeyAndForeignScopePanels()
+    {
+        var state = new DockLayoutState();
+        var shellId = new DockPanelId("shell.left-nav");
+        var workspaceId = new DockPanelId("events.customize-view");
+
+        state.Register(CreateDescriptor(shellId, DockScope.Shell, DockSide.Start, persistState: true), _ => { });
+        state.Register(CreateDescriptor(workspaceId, DockScope.Workspace, DockSide.End, persistState: true), _ => { });
+
+        var wrongKeySnapshot = new DockLayoutSnapshot(
+            "shell",
+            [new DockPanelState(workspaceId, IsOpen: true, Mode: DockMode.Docked, Width: 360, Order: 10, IsActive: true)],
+            DateTimeOffset.UtcNow);
+        state.RestoreSnapshot(wrongKeySnapshot, "events", DockScope.Workspace);
+
+        await Assert.That(state.GetPanel(workspaceId)?.State.IsOpen).IsFalse();
+
+        var mixedScopeSnapshot = new DockLayoutSnapshot(
+            "events",
+            [
+                new DockPanelState(shellId, IsOpen: true, Mode: DockMode.Docked, Width: 300, Order: 10, IsActive: true),
+                new DockPanelState(workspaceId, IsOpen: true, Mode: DockMode.Docked, Width: 360, Order: 10, IsActive: true)
+            ],
+            DateTimeOffset.UtcNow);
+        state.RestoreSnapshot(mixedScopeSnapshot, "events", DockScope.Workspace);
+
+        await Assert.That(state.GetPanel(shellId)?.State.IsOpen).IsFalse();
+        await Assert.That(state.GetPanel(workspaceId)?.State.IsOpen).IsTrue();
     }
 
     [Test]
@@ -348,7 +470,7 @@ public sealed class DockLayoutStateTests
             ],
             DateTimeOffset.UtcNow);
 
-        state.RestoreSnapshot(snapshot);
+        state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
 
         var activePanels = state.GetPanels(DockScope.Workspace, DockSide.End)
             .Count(panel => panel.State.IsActive);
@@ -375,7 +497,7 @@ public sealed class DockLayoutStateTests
             ],
             DateTimeOffset.UtcNow);
 
-        state.RestoreSnapshot(snapshot);
+        state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
 
         var activePanels = state.GetPanels(DockScope.Workspace, DockSide.End)
             .Count(panel => panel.State.IsActive);
@@ -406,7 +528,7 @@ public sealed class DockLayoutStateTests
             [new DockPanelState(pinnedId, IsOpen: false, Mode: DockMode.Docked, Width: 640, Order: 0, IsActive: false)],
             DateTimeOffset.UtcNow);
 
-        state.RestoreSnapshot(snapshot);
+        state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
 
         var restored = state.GetPanel(pinnedId)?.State;
         await Assert.That(restored?.IsOpen).IsTrue();
@@ -430,7 +552,7 @@ public sealed class DockLayoutStateTests
             ],
             DateTimeOffset.UtcNow);
 
-        state.RestoreSnapshot(snapshot);
+        state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
 
         await Assert.That(state.GetPanel(unknownId)).IsNull();
         await Assert.That(state.GetPanel(knownId)?.State.IsOpen).IsTrue();

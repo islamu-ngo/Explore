@@ -2,7 +2,7 @@
    ABOUTME: Two-column grid with brand left and all link groups combined on the right. */
 
 /* Desktop: two-column grid (brand left, links right) */
-::deep .footer-std2__grid {
+.footer-std2__grid {
     display: grid;
     grid-template-columns: 1.5fr 1fr;
     gap: var(--isl-space-10);
@@ -15,9 +15,40 @@
     gap: var(--isl-space-8);
 }
 
-/* Tablet (<=960px): single column, brand centered on top */
-@media (max-width: 59.999em) {
-    ::deep .footer-std2__grid {
+/* Tablet and narrow desktop (<=1024px): single column, brand centered on top */
+@media (max-width: 63.999em) {
+    ::deep .footer-std2__brand-col {
+        text-align: center;
+    }
+
+    ::deep .footer-std2__brand-col .site-footer__brand {
+        justify-content: center;
+    }
+
+    ::deep .footer-std2__brand-col .site-footer__description {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    ::deep .footer-std2__links-col {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+        gap: var(--isl-space-8) clamp(var(--isl-space-8), 8vw, var(--isl-space-12, 3rem));
+    }
+
+    ::deep .footer-std2__links-col .site-footer__section {
+        min-width: 10rem;
+    }
+
+    ::deep .footer-std2__links-col .site-footer__link {
+        margin-inline: auto;
+    }
+}
+
+@container (max-width: 68.999em) {
+    .footer-std2__grid {
         grid-template-columns: 1fr;
         gap: var(--isl-space-8);
     }
@@ -39,7 +70,16 @@
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: center;
-        gap: var(--isl-space-8) var(--isl-space-16);
+        text-align: center;
+        gap: var(--isl-space-8) clamp(var(--isl-space-8), 8cqw, var(--isl-space-12, 3rem));
+    }
+
+    ::deep .footer-std2__links-col .site-footer__section {
+        min-width: 10rem;
+    }
+
+    ::deep .footer-std2__links-col .site-footer__link {
+        margin-inline: auto;
     }
 }
 

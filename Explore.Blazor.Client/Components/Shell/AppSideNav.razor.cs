@@ -1,5 +1,6 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Docking;
 using Microsoft.AspNetCore.Components;
 
 namespace Explore.Blazor.Client.Components.Shell;
@@ -12,11 +13,20 @@ public partial class AppSideNav : ComponentBase, IDisposable
     [Parameter] public string AriaLabel { get; set; } = "Sidebar navigation";
     [Parameter] public string DataTestId { get; set; } = "app-side-nav";
     [Parameter] public EventCallback OnCloseRequested { get; set; }
+    [CascadingParameter] public DockPanelEntry? DockPanelEntry { get; set; }
+
     [Parameter]
     public string? BrandDisplayName
     {
         get => _parameterBrandDisplayName;
         set => _parameterBrandDisplayName = value;
+    }
+
+    [Parameter]
+    public string? BrandLogoUrl
+    {
+        get => _parameterBrandLogoUrl;
+        set => _parameterBrandLogoUrl = value;
     }
 
     [Parameter]
@@ -34,17 +44,23 @@ public partial class AppSideNav : ComponentBase, IDisposable
     }
 
     private string? _brandDisplayName;
+    private string? _brandLogoUrl;
     private bool _showCommunityGuidelinesLink = true;
     private PublicExperienceShellModel? _shell;
     private string? _parameterBrandDisplayName;
+    private string? _parameterBrandLogoUrl;
     private bool? _parameterShowCommunityGuidelinesLink;
     private IReadOnlyList<TenantNavigationLinkDto>? _parameterTenantLinks;
 
     private string? ResolvedBrandDisplayName => _parameterBrandDisplayName ?? _brandDisplayName;
+    private string? ResolvedBrandLogoUrl => _parameterBrandLogoUrl ?? _brandLogoUrl;
     private bool ResolvedShowCommunityGuidelinesLink => _parameterShowCommunityGuidelinesLink ?? _showCommunityGuidelinesLink;
     private IReadOnlyList<TenantNavigationLinkDto> ResolvedTenantLinks => _parameterTenantLinks
         ?? BuildTenantLinks(_shell?.Navigation.Links)
         ?? TenantNavLinksState.Links;
+    private string ResolvedOverlayBrandAriaLabel => string.IsNullOrWhiteSpace(ResolvedBrandDisplayName)
+        ? "Home"
+        : ResolvedBrandDisplayName;
     private string ResolvedEventCatalogLabel => string.IsNullOrWhiteSpace(_shell?.EventCatalog.Label)
         ? "Events"
         : _shell.EventCatalog.Label;
@@ -53,6 +69,8 @@ public partial class AppSideNav : ComponentBase, IDisposable
         : _shell.EventCatalog.Url;
     private bool IsOrganizationCentric => _shell?.Mode.Equals("OrganizationCentric", StringComparison.OrdinalIgnoreCase) == true;
     private bool HasCloseAction => OnCloseRequested.HasDelegate;
+    private bool ShouldRenderOverlayHeader => HasCloseAction
+        && DockPanelEntry?.State.Mode is DockMode.Overlay or DockMode.Temporary or DockMode.Inspector;
 
     protected override async Task OnInitializedAsync()
     {
@@ -65,6 +83,11 @@ public partial class AppSideNav : ComponentBase, IDisposable
             if (!string.IsNullOrWhiteSpace(_shell?.Home.BrandDisplayName))
             {
                 _brandDisplayName = _shell.Home.BrandDisplayName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_shell?.Home.BrandLogoUrl))
+            {
+                _brandLogoUrl = _shell.Home.BrandLogoUrl;
             }
 
             var settingsTask = PublicExperienceService.GetCachedSettingsAsync();
@@ -80,6 +103,9 @@ public partial class AppSideNav : ComponentBase, IDisposable
             _brandDisplayName = string.IsNullOrWhiteSpace(_brandDisplayName)
                 ? settings.BrandDisplayName
                 : _brandDisplayName;
+            _brandLogoUrl = string.IsNullOrWhiteSpace(_brandLogoUrl)
+                ? settings.BrandLogoUrl
+                : _brandLogoUrl;
         }
         catch
         {

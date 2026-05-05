@@ -15,6 +15,8 @@ namespace Explore.Blazor.Client.Layout;
 
 public partial class MainLayout : LayoutComponentBase, IDisposable
 {
+    private const string ShellDockLayoutKey = "shell";
+    private static readonly TimeSpan DockLayoutAutosaveDelay = TimeSpan.FromMilliseconds(500);
     private const int NavbarHeightPx = 64;
     private const int AnnouncementBarHeightPx = 48;
 
@@ -26,7 +28,12 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private bool _hideChrome;
     private bool _showCommunityGuidelinesLink = true;
     private string _brandDisplayName = string.Empty;
+    private string _brandLogoUrl = string.Empty;
     private bool _syncingShellLegacyState;
+    private bool _shellDockLayoutHydrated;
+    private bool _suppressShellDockLayoutAutosave;
+    private DockLayoutSnapshot? _lastPersistedShellDockLayoutSnapshot;
+    private CancellationTokenSource? _shellDockLayoutAutosaveCts;
 
     [Inject]
     protected IUserService UserService { get; set; } = null!;
@@ -48,6 +55,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     [Inject]
     protected DockLayoutState DockLayoutState { get; set; } = null!;
+
+    [Inject]
+    protected IDockLayoutPersistence DockLayoutPersistence { get; set; } = null!;
 
     [Inject]
     protected TenantNavLinksState TenantNavLinksState { get; set; } = null!;
@@ -106,6 +116,8 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         if (firstRender)
         {
+            await HydrateShellDockLayoutAsync();
+
             var isAuthenticated = false;
 
             try
@@ -131,6 +143,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                         || settings.AllowOrganizationSubmittedEvents
                         || settings.AllowGroupSubmittedEvents;
                     _brandDisplayName = settings.BrandDisplayName;
+                    _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
                     AiAssistantState.SetPolicy(
                         settings.IsAiAssistantAvailable,
                         settings.AiAssistantAllowAnonymousAccess,
@@ -244,9 +257,10 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         builder.OpenComponent<AppSideNav>(0);
         builder.AddAttribute(1, "AriaLabel", "Sidebar navigation");
         builder.AddAttribute(2, "BrandDisplayName", _brandDisplayName);
-        builder.AddAttribute(3, "ShowCommunityGuidelinesLink", _showCommunityGuidelinesLink);
-        builder.AddAttribute(4, "TenantLinks", TenantNavLinksState.Links);
-        builder.AddAttribute(5, "OnCloseRequested", EventCallback.Factory.Create(this, CloseShellLeftNav));
+        builder.AddAttribute(3, "BrandLogoUrl", _brandLogoUrl);
+        builder.AddAttribute(4, "ShowCommunityGuidelinesLink", _showCommunityGuidelinesLink);
+        builder.AddAttribute(5, "TenantLinks", TenantNavLinksState.Links);
+        builder.AddAttribute(6, "OnCloseRequested", EventCallback.Factory.Create(this, CloseShellLeftNav));
         builder.CloseComponent();
     }
 
@@ -303,7 +317,138 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
             _syncingShellLegacyState = false;
         }
 
+        if (ShouldAutosaveShellDockLayout())
+        {
+            ScheduleShellDockLayoutAutosave();
+        }
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private bool ShouldAutosaveShellDockLayout()
+    {
+        return DockLayoutState.LastChangeReason is DockLayoutChangeReason.UserAction or DockLayoutChangeReason.Reset;
+    }
+
+    private async Task HydrateShellDockLayoutAsync()
+    {
+        _suppressShellDockLayoutAutosave = true;
+
+        try
+        {
+            var snapshot = await DockLayoutPersistence.LoadAsync(ShellDockLayoutKey);
+            if (snapshot is not null)
+            {
+                DockLayoutState.RestoreSnapshot(snapshot, ShellDockLayoutKey, DockScope.Shell);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to hydrate shell dock layout.");
+        }
+        finally
+        {
+            _lastPersistedShellDockLayoutSnapshot = CreateShellDockLayoutSnapshot();
+            _shellDockLayoutHydrated = true;
+            _suppressShellDockLayoutAutosave = false;
+        }
+    }
+
+    private void ScheduleShellDockLayoutAutosave()
+    {
+        if (!_shellDockLayoutHydrated || _suppressShellDockLayoutAutosave || !HasShellDockLayoutChanged())
+        {
+            return;
+        }
+
+        _shellDockLayoutAutosaveCts?.Cancel();
+        _shellDockLayoutAutosaveCts?.Dispose();
+
+        var autosaveCts = new CancellationTokenSource();
+        _shellDockLayoutAutosaveCts = autosaveCts;
+        _ = PersistShellDockLayoutAfterDelayAsync(autosaveCts);
+    }
+
+    private async Task PersistShellDockLayoutAfterDelayAsync(CancellationTokenSource autosaveCts)
+    {
+        try
+        {
+            await Task.Delay(DockLayoutAutosaveDelay, autosaveCts.Token);
+            var snapshot = CreateShellDockLayoutSnapshot();
+            if (SnapshotPanelsEqual(_lastPersistedShellDockLayoutSnapshot, snapshot))
+            {
+                return;
+            }
+
+            await DockLayoutPersistence.SaveAsync(snapshot, autosaveCts.Token);
+            _lastPersistedShellDockLayoutSnapshot = snapshot;
+        }
+        catch (OperationCanceledException) when (autosaveCts.IsCancellationRequested)
+        {
+            // A newer dock layout change superseded this pending autosave.
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to save shell dock layout.");
+        }
+    }
+
+    private async Task ResetShellDockLayoutAsync()
+    {
+        _suppressShellDockLayoutAutosave = true;
+
+        try
+        {
+            ResetShellPanelToDefaults(ShellDockPanels.LeftNav);
+            ResetShellPanelToDefaults(ShellDockPanels.AiAssistant);
+            await DockLayoutPersistence.DeleteAsync(ShellDockLayoutKey);
+            _lastPersistedShellDockLayoutSnapshot = CreateShellDockLayoutSnapshot();
+            SyncShellDockState();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to reset shell dock layout.");
+        }
+        finally
+        {
+            _suppressShellDockLayoutAutosave = false;
+            _shellDockLayoutHydrated = true;
+        }
+    }
+
+    private void ResetShellPanelToDefaults(DockPanelDescriptor descriptor)
+    {
+        var entry = DockLayoutState.GetPanel(descriptor.Id);
+        if (entry is null)
+        {
+            return;
+        }
+
+        if (entry.State.IsOpen && descriptor.CanClose)
+        {
+            DockLayoutState.Close(descriptor.Id);
+        }
+
+        DockLayoutState.SetMode(descriptor.Id, descriptor.DefaultMode);
+
+        if (descriptor.IsResizable)
+        {
+            DockLayoutState.Resize(descriptor.Id, descriptor.DefaultWidth);
+        }
+    }
+
+    private DockLayoutSnapshot CreateShellDockLayoutSnapshot()
+    {
+        return DockLayoutState.CreateSnapshot(ShellDockLayoutKey, DockScope.Shell);
+    }
+
+    private bool HasShellDockLayoutChanged()
+    {
+        return !SnapshotPanelsEqual(_lastPersistedShellDockLayoutSnapshot, CreateShellDockLayoutSnapshot());
+    }
+
+    private static bool SnapshotPanelsEqual(DockLayoutSnapshot? previous, DockLayoutSnapshot current)
+    {
+        return previous is not null && previous.Panels.SequenceEqual(current.Panels);
     }
 
     private void CloseShellLeftNav()
@@ -359,6 +504,8 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     public void Dispose()
     {
+        _shellDockLayoutAutosaveCts?.Cancel();
+        _shellDockLayoutAutosaveCts?.Dispose();
         NavigationManager.LocationChanged -= OnLocationChanged;
         SidebarState.OnChange -= OnLegacySidebarStateChanged;
         AiAssistantState.OnChange -= OnLegacyAiAssistantStateChanged;

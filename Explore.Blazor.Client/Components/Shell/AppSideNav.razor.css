@@ -5,17 +5,76 @@
     display: block;
 }
 
+.app-side-nav__overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--isl-space-8, 2rem);
+    padding: var(--isl-space-4, 1rem) var(--isl-space-3, 0.75rem) var(--isl-space-4, 1rem);
+}
+
+.app-side-nav__overlay-header ::deep .mud-icon-button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+}
+
+.app-side-nav__overlay-header ::deep .mud-icon-root {
+    font-size: 1.625rem;
+}
+
+.app-side-nav__overlay-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+    gap: var(--isl-space-2, 0.5rem);
+    color: var(--mud-palette-text-primary);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    font-size: 1.125rem;
+}
+
+::deep .app-side-nav__overlay-brand-logo {
+    border-radius: var(--isl-radius-sm, 0.375rem);
+    object-fit: contain;
+}
+
+::deep .app-side-nav__overlay-brand-icon {
+    flex: 0 0 auto;
+}
+
+.app-side-nav__overlay-brand-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+::deep .app-side-nav__menu .mud-nav-link {
+    min-height: 2.75rem;
+    padding-block: var(--isl-space-2, 0.5rem);
+}
+
+::deep .app-side-nav__menu .mud-nav-link .mud-icon-root {
+    font-size: 1.45rem;
+}
+
+::deep .app-side-nav__menu .mud-nav-link-text {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
 .app-side-nav__header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: var(--isl-space-2, 0.5rem);
     padding-inline-end: var(--isl-space-2, 0.5rem);
 }
 
 .app-side-nav__title {
     padding-inline: var(--isl-space-4, 1rem);
-    padding-block-start: var(--isl-space-2, 0.5rem);
+    padding-block-start: var(--isl-space-3, 0.75rem);
     padding-block-end: var(--isl-space-1, 0.25rem);
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -24,8 +83,11 @@
 .app-side-nav__brand-label,
 .app-side-nav__tenant-links-label {
     padding-inline: var(--isl-space-4, 1rem);
+    padding-block-start: var(--isl-space-3, 0.75rem);
     padding-block-end: var(--isl-space-1, 0.25rem);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: var(--mud-palette-text-secondary);
+    font-size: 1.125rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--mud-palette-text-primary);
+    text-transform: uppercase;
 }

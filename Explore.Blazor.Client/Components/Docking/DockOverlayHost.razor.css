@@ -232,7 +232,7 @@
 
 @media (prefers-reduced-motion: reduce) {
     .dock-overlay-host__backdrop,
-    .dock-overlay-host__slot > .dock-panel-host {
+    .dock-overlay-host__slot ::deep .dock-panel-host {
         animation-duration: 1ms;
     }
 }

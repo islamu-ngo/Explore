@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace Explore.Blazor.Client.Layout;
 
-public partial class AnnouncementBar
+public partial class AnnouncementBar : IDisposable
 {
     private const string UserPreferenceCategory = "PublicExperiencePreferences";
     private const string DismissedRevisionKey = "public_experience_preferences.announcement_bar.dismissed_revision";
@@ -43,7 +43,29 @@ public partial class AnnouncementBar
 
     protected override async Task OnInitializedAsync()
     {
+        PublicExperienceService.SettingsChanged += OnPublicExperienceSettingsChanged;
+
+        await LoadSettingsAsync();
+    }
+
+    public void Dispose()
+    {
+        PublicExperienceService.SettingsChanged -= OnPublicExperienceSettingsChanged;
+    }
+
+    private void OnPublicExperienceSettingsChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadSettingsAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadSettingsAsync()
+    {
         var settings = await PublicExperienceService.GetCachedSettingsAsync();
+        var wasVisible = _isVisible;
 
         _message = settings?.AnnouncementBarMessage?.Trim() ?? string.Empty;
         _linkText = settings?.AnnouncementBarLinkText?.Trim() ?? string.Empty;
@@ -55,9 +77,9 @@ public partial class AnnouncementBar
             && !string.IsNullOrWhiteSpace(_message)
             && dismissedRevision < _announcementRevision;
 
-        if (_isVisible)
+        if (_isVisible != wasVisible)
         {
-            await OnVisibilityChanged.InvokeAsync(true);
+            await OnVisibilityChanged.InvokeAsync(_isVisible);
         }
     }
 
@@ -73,6 +95,10 @@ public partial class AnnouncementBar
 
     private async Task<int> GetDismissedRevisionAsync()
     {
+        // This must be fresh: authenticated users read their DB-backed user preference,
+        // while anonymous users fall back to localStorage through IUserSettingsService.
+        UserSettingsService.InvalidateCache(UserPreferenceCategory);
+
         var preferences = await UserSettingsService.GetSettingsAsync(UserPreferenceCategory);
         var dismissedRevision = preferences?.Settings
             .FirstOrDefault(setting => setting.Key == DismissedRevisionKey);

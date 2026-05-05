@@ -316,13 +316,13 @@
                         <AppButton StartIcon="@Icons.Material.Filled.Add"
                                    Size="Size.Small"
                                    Class="navbar__create-event-btn"
-                                   OnClick="@(() => OpenLoginPrompt("/events/create"))">
+                                   OnClick="@(() => OpenLoginPrompt("/events/create", "Sign in to add an event. After you sign in, we will bring you back to the event form."))">
                             Add Event
                         </AppButton>
                     }
                     <AppButton Class="navbar__login-btn"
-                               StartIcon="@Icons.Material.Filled.Login"
-                               OnClick="@(() => OpenLoginPrompt(null))">
+                                StartIcon="@Icons.Material.Filled.Login"
+                                OnClick="StartLogin">
                         Login
                     </AppButton>
                 </NotAuthorized>

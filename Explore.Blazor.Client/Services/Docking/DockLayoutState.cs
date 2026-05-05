@@ -15,6 +15,8 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
     public event Action? Changed;
 
+    public DockLayoutChangeReason LastChangeReason { get; private set; } = DockLayoutChangeReason.None;
+
     public void Register(DockPanelDescriptor descriptor, RenderFragment content)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
@@ -36,14 +38,14 @@ public sealed class DockLayoutState : IDockPanelRegistry
             IsActive: false);
 
         _entries.Add(descriptor.Id, new DockPanelEntry(descriptor, content, state));
-        NotifyChanged();
+        NotifyChanged(DockLayoutChangeReason.Registration);
     }
 
     public void Unregister(DockPanelId id)
     {
         if (_entries.Remove(id))
         {
-            NotifyChanged();
+            NotifyChanged(DockLayoutChangeReason.Registration);
         }
     }
 
@@ -91,7 +93,7 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
     public void Refresh()
     {
-        NotifyChanged();
+        NotifyChanged(DockLayoutChangeReason.Refresh);
     }
 
     public void Open(DockPanelId id)
@@ -128,7 +130,7 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
         if (changed)
         {
-            NotifyChanged();
+            NotifyChanged(DockLayoutChangeReason.UserAction);
         }
     }
 
@@ -144,7 +146,7 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
         if (viewportChanged || stateChanged)
         {
-            NotifyChanged();
+            NotifyChanged(DockLayoutChangeReason.ViewportPolicy);
         }
     }
 
@@ -219,16 +221,16 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
         if (changed)
         {
-            NotifyChanged();
+            NotifyChanged(DockLayoutChangeReason.UserAction);
         }
     }
 
-    public DockLayoutSnapshot CreateSnapshot(string layoutKey)
+    public DockLayoutSnapshot CreateSnapshot(string layoutKey, DockScope scope)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(layoutKey);
 
         var panels = _entries.Values
-            .Where(entry => entry.Descriptor.PersistState)
+            .Where(entry => entry.Descriptor.Scope == scope && entry.Descriptor.PersistState)
             .OrderBy(entry => entry.Descriptor.Scope)
             .ThenBy(entry => entry.Descriptor.Side)
             .ThenBy(entry => entry.State.Order)
@@ -257,20 +259,28 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
         if (changed)
         {
-            NotifyChanged();
+            NotifyChanged(DockLayoutChangeReason.Reset);
         }
     }
 
-    public void RestoreSnapshot(DockLayoutSnapshot snapshot)
+    public void RestoreSnapshot(DockLayoutSnapshot snapshot, string layoutKey, DockScope scope)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(layoutKey);
+
+        if (!string.Equals(snapshot.LayoutKey, layoutKey, StringComparison.Ordinal))
+        {
+            return;
+        }
 
         var restoredAny = false;
         var nextStates = _entries.ToDictionary(entry => entry.Key, entry => entry.Value.State);
 
         foreach (var panelState in snapshot.Panels)
         {
-            if (!_entries.TryGetValue(panelState.Id, out var entry) || !entry.Descriptor.PersistState)
+            if (!_entries.TryGetValue(panelState.Id, out var entry)
+                || entry.Descriptor.Scope != scope
+                || !entry.Descriptor.PersistState)
             {
                 continue;
             }
@@ -314,7 +324,7 @@ public sealed class DockLayoutState : IDockPanelRegistry
 
         if (changed)
         {
-            NotifyChanged();
+            NotifyChanged(DockLayoutChangeReason.SnapshotRestore);
         }
     }
 
@@ -468,7 +478,7 @@ public sealed class DockLayoutState : IDockPanelRegistry
         }
 
         SetEntryState(id, nextState);
-        NotifyChanged();
+        NotifyChanged(DockLayoutChangeReason.UserAction);
     }
 
     private void SetEntryState(DockPanelId id, DockPanelState state)
@@ -488,5 +498,9 @@ public sealed class DockLayoutState : IDockPanelRegistry
             IsActive: false);
     }
 
-    private void NotifyChanged() => Changed?.Invoke();
+    private void NotifyChanged(DockLayoutChangeReason reason)
+    {
+        LastChangeReason = reason;
+        Changed?.Invoke();
+    }
 }

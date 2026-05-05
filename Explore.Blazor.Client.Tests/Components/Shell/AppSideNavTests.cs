@@ -2,6 +2,7 @@
 // ABOUTME: Protects legacy MainLayout drawer links before dock host migration.
 
 using Explore.Blazor.Client.Components.Shell;
+using Explore.Blazor.Client.Services.Docking;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Components.Shell;
@@ -151,15 +152,54 @@ public sealed class AppSideNavTests : IDisposable
     }
 
     [Test]
-    public async Task Render_WithCloseCallback_ShowsAccessibleCloseButtonAndInvokesCallback()
+    public async Task Render_WithCloseCallbackInDockedMode_HidesCloseButton()
+    {
+        var cut = _ctx.RenderMudComponent<CascadingValue<DockPanelEntry>>(parameters => parameters
+            .Add(component => component.Value, CreateDockPanelEntry(DockMode.Docked))
+            .AddChildContent<AppSideNav>(childParameters => childParameters
+                .Add(component => component.OnCloseRequested, EventCallback.Factory.Create(this, () => { }))));
+
+        await Assert.That(cut.FindAll("[aria-label='Close sidebar navigation']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task Render_WithCloseCallbackInOverlayMode_ShowsAccessibleCloseButtonAndInvokesCallback()
     {
         var closed = false;
-        var cut = _ctx.RenderMudComponent<AppSideNav>(parameters => parameters
-            .Add(component => component.OnCloseRequested, EventCallback.Factory.Create(this, () => closed = true)));
+        var cut = _ctx.RenderMudComponent<CascadingValue<DockPanelEntry>>(parameters => parameters
+            .Add(component => component.Value, CreateDockPanelEntry(DockMode.Temporary))
+            .AddChildContent<AppSideNav>(childParameters => childParameters
+                .Add(component => component.BrandDisplayName, "Community Hub")
+                .Add(component => component.BrandLogoUrl, "/brand.svg")
+                .Add(component => component.OnCloseRequested, EventCallback.Factory.Create(this, () => closed = true))));
 
         var closeButton = cut.Find("[aria-label='Close sidebar navigation']");
         await closeButton.ClickAsync(new MouseEventArgs());
 
+        await Assert.That(cut.Markup).Contains("Community Hub");
+        await Assert.That(cut.Markup).Contains("/brand.svg");
         await Assert.That(closed).IsTrue();
+    }
+
+    private static DockPanelEntry CreateDockPanelEntry(DockMode mode)
+    {
+        var id = new DockPanelId("test-sidebar");
+        return new DockPanelEntry(
+            new DockPanelDescriptor(
+                id,
+                DockScope.Shell,
+                DockSide.Start,
+                DockMode.Docked,
+                "Navigation",
+                "Sidebar navigation",
+                280,
+                240,
+                360,
+                0,
+                false,
+                true,
+                true),
+            _ => { },
+            new DockPanelState(id, true, mode, 280, 0, true));
     }
 }

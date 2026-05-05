@@ -2,20 +2,44 @@
 @* ABOUTME: Keeps existing MainLayout drawer links reusable without changing rendering behavior. *@
 
 <nav class="app-side-nav" aria-label="@AriaLabel" data-testid="@DataTestId">
-    <MudNavMenu Dense="true" Class="px-2 pt-2">
+    <MudNavMenu Dense="false" Class="app-side-nav__menu px-2 pt-2">
+        @if (ShouldRenderOverlayHeader)
+        {
+            <div class="app-side-nav__overlay-header">
+                <AppIconButton Icon="@Icons.Material.Filled.Menu"
+                               Color="Color.Inherit"
+                               Size="Size.Medium"
+                               OnClick="OnCloseRequested"
+                               Title="Close sidebar navigation"
+                               aria-label="Close sidebar navigation" />
+                <a href="/" class="app-side-nav__overlay-brand" aria-label="@ResolvedOverlayBrandAriaLabel">
+                    @if (!string.IsNullOrWhiteSpace(ResolvedBrandLogoUrl))
+                    {
+                        <MudImage Src="@ResolvedBrandLogoUrl"
+                                  Alt="@ResolvedBrandDisplayName"
+                                  Class="app-side-nav__overlay-brand-logo"
+                                  Width="32"
+                                  Height="32" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Explore"
+                                 Color="Color.Primary"
+                                 Size="Size.Large"
+                                 Class="app-side-nav__overlay-brand-icon" />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(ResolvedBrandDisplayName))
+                    {
+                        <span class="app-side-nav__overlay-brand-text">@ResolvedBrandDisplayName</span>
+                    }
+                </a>
+            </div>
+        }
+
         <div class="app-side-nav__header">
             <MudText Typo="Typo.h6" Class="app-side-nav__title">
                 @ResolvedEventCatalogLabel
             </MudText>
-            @if (HasCloseAction)
-            {
-                <AppIconButton Icon="@Icons.Material.Filled.Close"
-                               Color="Color.Inherit"
-                               Size="Size.Small"
-                               OnClick="OnCloseRequested"
-                               Title="Close sidebar navigation"
-                               aria-label="Close sidebar navigation" />
-            }
         </div>
         @if (IsOrganizationCentric)
         {
@@ -46,7 +70,7 @@
 
         @if (!string.IsNullOrWhiteSpace(ResolvedBrandDisplayName))
         {
-            <MudText Typo="Typo.overline" Class="app-side-nav__brand-label">
+            <MudText Typo="Typo.h6" Class="app-side-nav__brand-label">
                 @ResolvedBrandDisplayName
             </MudText>
         }
@@ -69,7 +93,7 @@
         @if (ResolvedTenantLinks.Count > 0)
         {
             <MudDivider Class="my-2" />
-            <MudText Typo="Typo.overline" Class="app-side-nav__tenant-links-label">
+            <MudText Typo="Typo.h6" Class="app-side-nav__tenant-links-label">
                 Quick Links
             </MudText>
             @foreach (var link in ResolvedTenantLinks.OrderBy(link => link.Order))

@@ -46,7 +46,18 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: var(--isl-space-8) var(--isl-space-16);
+    text-align: center;
+    gap: var(--isl-space-8) clamp(var(--isl-space-8), 8vw, var(--isl-space-12, 3rem));
+}
+
+@container (max-width: 63.999em) {
+    ::deep .footer-community__links-row {
+        gap: var(--isl-space-8) clamp(var(--isl-space-8), 8cqw, var(--isl-space-12, 3rem));
+    }
+}
+
+::deep .footer-community__links-row .site-footer__link {
+    margin-inline: auto;
 }
 
 /* Bottom bar — centered column layout */

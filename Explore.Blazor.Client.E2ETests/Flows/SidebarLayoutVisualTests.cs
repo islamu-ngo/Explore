@@ -7,10 +7,12 @@ namespace Explore.Blazor.Client.E2ETests.Flows;
 
 [ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
 [ParallelLimiter<BrowserParallelLimit>]
-public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture playwright)
+public class SidebarLayoutVisualTests(
+    AppHostFixture appHost,
+    PlaywrightFixture playwright)
 {
     [Test]
-    [Skip("Infrastructure-gated visual baseline: requires Aspire, seeded event data, and approved screenshot storage.")]
+    [Skip("Category: Manual visual. Removal: enable when Aspire, seeded event data, and approved screenshot storage are available for the visual baseline lane.")]
     public async Task Desktop_LeftNavOpen_AiClosed_CapturesBaseline()
     {
         var page = await CreateDesktopPageAsync();
@@ -23,12 +25,12 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
         }
         finally
         {
-            await page.CloseAsync();
+            await playwright.ClosePageAsync(page, nameof(Desktop_LeftNavOpen_AiClosed_CapturesBaseline));
         }
     }
 
     [Test]
-    [Skip("Infrastructure-gated visual baseline: requires Aspire, seeded event data, and approved screenshot storage.")]
+    [Skip("Category: Manual visual. Removal: enable when Aspire, seeded event data, and approved screenshot storage are available for the visual baseline lane.")]
     public async Task Desktop_LeftNavOpen_AiOpen_CapturesBaseline()
     {
         var page = await CreateDesktopPageAsync();
@@ -41,12 +43,12 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
         }
         finally
         {
-            await page.CloseAsync();
+            await playwright.ClosePageAsync(page, nameof(Desktop_LeftNavOpen_AiOpen_CapturesBaseline));
         }
     }
 
     [Test]
-    [Skip("Infrastructure-gated visual baseline: requires Aspire, seeded event data, and approved screenshot storage.")]
+    [Skip("Category: Manual visual. Removal: enable when Aspire, seeded event data, and approved screenshot storage are available for the visual baseline lane.")]
     public async Task Desktop_CustomizePanelOpen_AiOpen_CapturesBaseline()
     {
         var page = await CreateDesktopPageAsync();
@@ -61,12 +63,12 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
         }
         finally
         {
-            await page.CloseAsync();
+            await playwright.ClosePageAsync(page, nameof(Desktop_CustomizePanelOpen_AiOpen_CapturesBaseline));
         }
     }
 
     [Test]
-    [Skip("Infrastructure-gated visual baseline: requires Aspire, seeded event data, and approved screenshot storage.")]
+    [Skip("Category: Manual visual. Removal: enable when Aspire, seeded event data, and approved screenshot storage are available for the visual baseline lane.")]
     public async Task Desktop_EventDetailPreviewOpen_CapturesBaseline()
     {
         var page = await CreateDesktopPageAsync();
@@ -79,12 +81,12 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
         }
         finally
         {
-            await page.CloseAsync();
+            await playwright.ClosePageAsync(page, nameof(Desktop_EventDetailPreviewOpen_CapturesBaseline));
         }
     }
 
     [Test]
-    [Skip("Infrastructure-gated visual baseline: requires Aspire, seeded event data, and approved screenshot storage.")]
+    [Skip("Category: Manual visual. Removal: enable when Aspire, seeded event data, and approved screenshot storage are available for the visual baseline lane.")]
     public async Task Mobile_LeftNavOpen_CapturesBaseline()
     {
         var page = await CreateMobilePageAsync();
@@ -97,12 +99,12 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
         }
         finally
         {
-            await page.CloseAsync();
+            await playwright.ClosePageAsync(page, nameof(Mobile_LeftNavOpen_CapturesBaseline));
         }
     }
 
     [Test]
-    [Skip("Infrastructure-gated visual baseline: requires Aspire, seeded event data, and approved screenshot storage.")]
+    [Skip("Category: Manual visual. Removal: enable when Aspire, seeded event data, and approved screenshot storage are available for the visual baseline lane.")]
     public async Task Mobile_CustomizePanelOpen_CapturesBaseline()
     {
         var page = await CreateMobilePageAsync();
@@ -115,12 +117,12 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
         }
         finally
         {
-            await page.CloseAsync();
+            await playwright.ClosePageAsync(page, nameof(Mobile_CustomizePanelOpen_CapturesBaseline));
         }
     }
 
     [Test]
-    [Skip("Infrastructure-gated visual baseline: requires Aspire, seeded event data, and approved screenshot storage.")]
+    [Skip("Category: Manual visual. Removal: enable when Aspire, seeded event data, and approved screenshot storage are available for the visual baseline lane.")]
     public async Task Mobile_EventDetailPreviewOpen_CapturesBaseline()
     {
         var page = await CreateMobilePageAsync();
@@ -133,20 +135,20 @@ public class SidebarLayoutVisualTests(AppHostFixture appHost, PlaywrightFixture 
         }
         finally
         {
-            await page.CloseAsync();
+            await playwright.ClosePageAsync(page, nameof(Mobile_EventDetailPreviewOpen_CapturesBaseline));
         }
     }
 
     private async Task<IPage> CreateDesktopPageAsync()
     {
-        var page = await playwright.CreatePageAsync();
+        var page = await playwright.CreatePageAsync(nameof(CreateDesktopPageAsync));
         await page.SetViewportSizeAsync(1440, 1000);
         return page;
     }
 
     private async Task<IPage> CreateMobilePageAsync()
     {
-        var page = await playwright.CreatePageAsync();
+        var page = await playwright.CreatePageAsync(nameof(CreateMobilePageAsync));
         await page.SetViewportSizeAsync(390, 844);
         return page;
     }

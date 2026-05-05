@@ -27,7 +27,7 @@
             @foreach (var entry in RenderedEntries)
             {
                 <div @key="entry.Descriptor.Id" class="@GetSlotClass(entry)" data-dock-overlay-side="@entry.Descriptor.Side.ToString().ToLowerInvariant()">
-                    <DockPanelHost Entry="@entry" />
+                    <DockPanelHost Entry="@entry" IsModal="true" />
                 </div>
             }
         </MudFocusTrap>
