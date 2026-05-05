@@ -1,0 +1,150 @@
+// ABOUTME: Quota regression tests for event template definition cardinality limits.
+// ABOUTME: Verifies create and update handlers fail before governance, mapping, or persistence when templates exceed tenant quotas.
+
+using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.EventTemplate;
+using Explore.Application.Features.EventTemplates.Handlers.Commands;
+using Explore.Application.Features.EventTemplates.Requests.Commands;
+using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Domain.Settings.Definitions;
+using Microsoft.Extensions.Caching.Hybrid;
+using NSubstitute;
+
+namespace Event.Application.UnitTests.Features.EventTemplates.Commands;
+
+public class EventTemplateDefinitionQuotaTests
+{
+    [Test]
+    public async Task CreateHandle_WhenDefinitionQuotaExceeded_ReturnsQuotaFailure()
+    {
+        var tenantId = Guid.NewGuid();
+        var repository = Substitute.For<IEventTemplateRepository>();
+        var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
+        var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
+        var handler = CreateCreateHandler(repository, quotaResolver, governancePolicy, tenantId);
+
+        repository.ExistsTemplateKey(tenantId, "ramadan-program", 1).Returns(false);
+        quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
+
+        var result = await handler.Handle(
+            new CreateEventTemplateCommand { TemplateDto = CreateTemplateDto(definitionCount: 2) },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors!.Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        governancePolicy.DidNotReceiveWithAnyArgs().EvaluateDefinition(default!, default!);
+        await repository.DidNotReceiveWithAnyArgs().CreateWithDefinitions(default!, default!, default);
+    }
+
+    [Test]
+    public async Task UpdateHandle_WhenDefinitionQuotaExceeded_ReturnsQuotaFailure()
+    {
+        var tenantId = Guid.NewGuid();
+        var templateId = Guid.NewGuid();
+        var repository = Substitute.For<IEventTemplateRepository>();
+        var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
+        var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
+        var handler = CreateUpdateHandler(repository, quotaResolver, governancePolicy);
+
+        repository.GetTrackedTemplateWithDefinitions(templateId, Arg.Any<CancellationToken>())
+            .Returns(new EventTemplate
+            {
+                Id = templateId,
+                TenantId = tenantId,
+                TemplateKey = "ramadan-program",
+                DisplayName = "Ramadan Program",
+                Version = 1,
+                IsActive = true,
+            });
+        repository.ExistsTemplateKey(tenantId, "ramadan-program", 1, templateId).Returns(false);
+        quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
+
+        var result = await handler.Handle(
+            new UpdateEventTemplateCommand { TemplateDto = CreateUpdateTemplateDto(templateId, definitionCount: 2) },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors!.Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        governancePolicy.DidNotReceiveWithAnyArgs().EvaluateDefinition(default!, default!);
+        await repository.DidNotReceiveWithAnyArgs().UpdateWithDefinitions(default!, default!, default);
+    }
+
+    private static CreateEventTemplateCommandHandler CreateCreateHandler(
+        IEventTemplateRepository repository,
+        ICustomPropertyQuotaResolver quotaResolver,
+        ICustomPropertyGovernancePolicy governancePolicy,
+        Guid tenantId)
+    {
+        var tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(tenantId);
+
+        return new CreateEventTemplateCommandHandler(
+            repository,
+            governancePolicy,
+            quotaResolver,
+            tenantContext,
+            Substitute.For<ICurrentUserService>(),
+            Substitute.For<IMapper>(),
+            Substitute.For<HybridCache>(),
+            Substitute.For<IUnitOfWork>());
+    }
+
+    private static UpdateEventTemplateCommandHandler CreateUpdateHandler(
+        IEventTemplateRepository repository,
+        ICustomPropertyQuotaResolver quotaResolver,
+        ICustomPropertyGovernancePolicy governancePolicy)
+    {
+        return new UpdateEventTemplateCommandHandler(
+            repository,
+            governancePolicy,
+            quotaResolver,
+            Substitute.For<ICurrentUserService>(),
+            Substitute.For<IMapper>(),
+            Substitute.For<HybridCache>(),
+            Substitute.For<IUnitOfWork>());
+    }
+
+    private static CreateEventTemplateDto CreateTemplateDto(int definitionCount)
+    {
+        return new CreateEventTemplateDto
+        {
+            TemplateKey = "ramadan-program",
+            DisplayName = "Ramadan Program",
+            Version = 1,
+            IsActive = true,
+            Definitions = CreateDefinitionDtos(definitionCount),
+        };
+    }
+
+    private static UpdateEventTemplateDto CreateUpdateTemplateDto(Guid templateId, int definitionCount)
+    {
+        return new UpdateEventTemplateDto
+        {
+            Id = templateId,
+            TemplateKey = "ramadan-program",
+            DisplayName = "Ramadan Program",
+            Version = 1,
+            IsActive = true,
+            Definitions = CreateDefinitionDtos(definitionCount),
+        };
+    }
+
+    private static List<CreateEventTemplateDefinitionDto> CreateDefinitionDtos(int count)
+    {
+        return Enumerable.Range(1, count)
+            .Select(index => new CreateEventTemplateDefinitionDto
+            {
+                Namespace = "tenant.community",
+                Key = $"template_field_{index}",
+                DisplayName = $"Template Field {index}",
+                PropertyType = PropertyType.Text,
+                ExposureLevel = ExposureLevel.OrganizerOnly,
+                IsActive = true,
+            })
+            .ToList();
+    }
+}
