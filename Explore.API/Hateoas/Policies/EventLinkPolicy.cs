@@ -71,11 +71,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             "POST",
             "Add session",
             RequiresAuth: true)
-            .RequirePermission(
-                AuthorizationActions.Create,
-                typeof(EventSessionDto),
-                dto.Id.ToString(),
-                eventScopedResourceAttributes);
+            .RequirePermission(AuthorizationActions.Create, typeof(EventSessionDto), dto.Id.ToString(), eventScopedResourceAttributes);
 
         yield return new LinkDefinition(
             LinkRelations.AddSessionGroup,
@@ -84,11 +80,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             "POST",
             "Add program section",
             RequiresAuth: true)
-            .RequirePermission(
-                AuthorizationActions.Create,
-                typeof(EventSessionGroupDto),
-                dto.Id.ToString(),
-                eventScopedResourceAttributes);
+            .RequirePermission(AuthorizationActions.Create, typeof(EventSessionGroupDto), dto.Id.ToString(), eventScopedResourceAttributes);
 
 
         // Categories link
