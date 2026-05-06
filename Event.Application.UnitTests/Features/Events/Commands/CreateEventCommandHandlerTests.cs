@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -165,6 +166,7 @@ public class CreateEventCommandHandlerTests
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
         var command = new CreateEventCommand
         {
             Request = new CreateEventRequest
@@ -180,6 +182,7 @@ public class CreateEventCommandHandlerTests
         };
 
         _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
         _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
             .Returns(EventActorResult.Success(actorId, isUserReported: true));
 
@@ -193,6 +196,7 @@ public class CreateEventCommandHandlerTests
         await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
         await _eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
         await _eventSessionRepository.Received(1).Create(Arg.Any<EventSession>());
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(tenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]

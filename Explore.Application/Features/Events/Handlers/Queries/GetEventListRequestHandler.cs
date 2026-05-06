@@ -1,6 +1,7 @@
 // ABOUTME: Query handler returning a paginated, filtered list of events.
 // ABOUTME: Applies EventFilter specification and maps to EventListDto.
 using AutoMapper;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -78,6 +79,7 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
                 Expiration = TimeSpan.FromMinutes(5),
                 LocalCacheExpiration = TimeSpan.FromMinutes(1)
             },
+            tags: [CacheTags.EventListByTenant(_tenantContext.TenantId)],
             cancellationToken: cancellationToken);
 
         // Resolve presigned URLs for images

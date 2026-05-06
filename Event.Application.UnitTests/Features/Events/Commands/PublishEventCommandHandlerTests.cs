@@ -1,3 +1,4 @@
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
@@ -61,6 +62,7 @@ public class PublishEventCommandHandlerTests
             && message.EventType == "EventPublished"
             && message.Status == OutboxMessageStatus.Pending
             && message.Payload != null));
+        await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), Arg.Any<CancellationToken>());
     }
 
     [Test]

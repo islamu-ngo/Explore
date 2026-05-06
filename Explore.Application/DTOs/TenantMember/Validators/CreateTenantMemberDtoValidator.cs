@@ -17,11 +17,13 @@ public class CreateTenantMemberDtoValidator : AbstractValidator<CreateTenantMemb
         _roleRepository = roleRepository;
 
         RuleFor(x => x.UserId)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage("User ID is required")
             .MustAsync(UserExists)
             .WithMessage("User does not exist");
 
         RuleFor(x => x.RoleId)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage("Role ID is required")
             .MustAsync(RoleExists)
             .WithMessage("Role does not exist");

@@ -11,6 +11,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAspects;
 using Explore.Application.DTOs.EventCategories;
 using Explore.Application.DTOs.EventFormat;
+using Explore.Application.DTOs.EventProgram;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
@@ -116,11 +117,22 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(EventCreationPublisherOptionDto))]
 [JsonSerializable(typeof(EventIslamicAspectDto))]
 [JsonSerializable(typeof(EventListDto))]
+[JsonSerializable(typeof(EventProgramDayGroupDto))]
+[JsonSerializable(typeof(EventProgramItemDto))]
+[JsonSerializable(typeof(EventProgramReadinessWarningDto))]
+[JsonSerializable(typeof(EventProgramSectionDto))]
+[JsonSerializable(typeof(EventProgramSessionGroupSectionDto))]
+[JsonSerializable(typeof(EventProgramSummaryDto))]
 [JsonSerializable(typeof(EventRegistrationDto))]
 [JsonSerializable(typeof(EventRegistrationListDto))]
 [JsonSerializable(typeof(EventSessionAgendaItemDto))]
 [JsonSerializable(typeof(EventSessionAgendaItemListDto))]
 [JsonSerializable(typeof(EventSessionGroupAssignmentDto))]
+[JsonSerializable(typeof(EventSessionCreateContextDto))]
+[JsonSerializable(typeof(EventSessionCreateDefaultsDto))]
+[JsonSerializable(typeof(EventSessionCreateGroupOptionDto))]
+[JsonSerializable(typeof(EventSessionCreateLocationOptionDto))]
+[JsonSerializable(typeof(EventSessionCreateRoomOptionDto))]
 [JsonSerializable(typeof(EventSessionDto))]
 [JsonSerializable(typeof(EventSessionGroupDto))]
 [JsonSerializable(typeof(EventSessionGroupListDto))]

@@ -117,9 +117,24 @@ public static class LinkRelations
     public const string Program = "program";
 
     /// <summary>
+    /// Server-backed program summary for an event.
+    /// </summary>
+    public const string ProgramSummary = "program-summary";
+
+    /// <summary>
     /// Action link for adding a session to an event program.
     /// </summary>
     public const string AddSession = "add-session";
+
+    /// <summary>
+    /// Server-owned defaults and option lists for adding a session to an event program.
+    /// </summary>
+    public const string SessionCreateContext = "session-create-context";
+
+    /// <summary>
+    /// Action link for assigning sessions to a program section, track, devroom, or stage.
+    /// </summary>
+    public const string AssignSession = "assign-session";
 
     /// <summary>
     /// Action link for adding a program section, track, devroom, or stage to an event.

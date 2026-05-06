@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -196,7 +197,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
             _metrics.RecordEventCreated(_tenantContext.TenantId.ToString());
             await _cache.RemoveAsync($"event:detail:{eventId}", cancellationToken);
-            await _cache.RemoveAsync("events:list:1:20", cancellationToken);
+            await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(_tenantContext.TenantId), cancellationToken);
         }
         catch (RoomScheduleConflictException ex)
         {

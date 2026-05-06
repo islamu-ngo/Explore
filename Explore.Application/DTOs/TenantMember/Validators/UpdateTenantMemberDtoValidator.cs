@@ -20,11 +20,13 @@ public class UpdateTenantMemberDtoValidator : AbstractValidator<UpdateTenantMemb
             .NotEmpty().WithMessage("Tenant Member ID is required");
 
         RuleFor(x => x.UserId)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage("User ID is required")
             .MustAsync(UserExists)
             .WithMessage("User does not exist");
 
         RuleFor(x => x.RoleId)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage("Role ID is required")
             .MustAsync(async (roleId, cancellation) =>
             {

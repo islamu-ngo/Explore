@@ -4,6 +4,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Requests.Commands;
@@ -123,7 +124,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
             userId.Value);
 
         await _cache.RemoveAsync($"event:detail:{request.Id}", cancellationToken);
-        await _cache.RemoveAsync("events:list:1:20", cancellationToken);
+        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), cancellationToken);
 
         return true;
     }

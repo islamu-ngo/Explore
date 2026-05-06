@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for public event list query filtering and ownership scoping.
 // ABOUTME: Verifies actor-backed organization/group filters without coupling tests to persistence.
 using AutoMapper;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -21,7 +22,7 @@ public class GetEventListRequestHandlerTests
     private readonly IMapper _mapper;
     private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetEventListRequestHandler> _logger;
-    private readonly HybridCache _cache;
+    private readonly TestHybridCache _cache;
     private readonly IModuleService _moduleService;
     private readonly ITenantContext _tenantContext;
     private readonly ICustomPropertyQuotaResolver _quotaResolver;
@@ -177,6 +178,39 @@ public class GetEventListRequestHandlerTests
             Arg.Any<EventQuerySpecification>());
     }
 
+    [Test]
+    public async Task Handle_TagsEventListCacheEntryWithCurrentTenant()
+    {
+        _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
+            .Returns((new List<Explore.Domain.Event>(), 0));
+
+        await _handler.Handle(new GetEventListRequest(), CancellationToken.None);
+
+        await Assert.That(_cache.TagsByKey.Values.Single()).Contains(CacheTags.EventListByTenant(_tenantId));
+    }
+
+    [Test]
+    public async Task Handle_AfterTenantListTagInvalidation_RequeriesRepository()
+    {
+        _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
+            .Returns(
+                (new List<Explore.Domain.Event> { CreateEventProbe(Guid.NewGuid(), "Initial", _tenantId) }, 1),
+                (new List<Explore.Domain.Event> { CreateEventProbe(Guid.NewGuid(), "After invalidation", _tenantId) }, 1));
+        _mapper.Map<List<EventListDto>>(Arg.Any<List<Explore.Domain.Event>>())
+            .Returns(call => ((List<Explore.Domain.Event>)call[0]!).Select(CreateEventListDto).ToList());
+
+        var initial = await _handler.Handle(new GetEventListRequest(), CancellationToken.None);
+        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(_tenantId));
+        var afterInvalidation = await _handler.Handle(new GetEventListRequest(), CancellationToken.None);
+
+        await Assert.That(initial.Items.Single().Title).IsEqualTo("Initial");
+        await Assert.That(afterInvalidation.Items.Single().Title).IsEqualTo("After invalidation");
+        await _eventRepository.Received(2).GetEventsWithDetailsPaged(
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<EventQuerySpecification>());
+    }
+
     private static bool HasActorFilter(EventQuerySpecification specification, Guid actorId)
     {
         var probe = CreateEventProbe(actorId);
@@ -217,6 +251,11 @@ public class GetEventListRequestHandlerTests
     private sealed class TestHybridCache : HybridCache
     {
         private readonly Dictionary<string, object?> _values = new();
+        private readonly Dictionary<string, List<string>> _tagsByKey = new();
+
+        public IReadOnlyDictionary<string, IReadOnlyList<string>> TagsByKey => _tagsByKey.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<string>)pair.Value);
 
         public override async ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, HybridCacheEntryOptions? options = null, IEnumerable<string>? tags = null, CancellationToken cancellationToken = default)
         {
@@ -227,20 +266,37 @@ public class GetEventListRequestHandlerTests
 
             var created = await factory(state, cancellationToken);
             _values[key] = created;
+            _tagsByKey[key] = tags?.ToList() ?? [];
             return created;
         }
 
         public override ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
         {
             _values.Remove(key);
+            _tagsByKey.Remove(key);
             return ValueTask.CompletedTask;
         }
 
-        public override ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+        public override ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+        {
+            var matchingKeys = _tagsByKey
+                .Where(pair => pair.Value.Contains(tag))
+                .Select(pair => pair.Key)
+                .ToList();
+
+            foreach (var key in matchingKeys)
+            {
+                _values.Remove(key);
+                _tagsByKey.Remove(key);
+            }
+
+            return ValueTask.CompletedTask;
+        }
 
         public override ValueTask SetAsync<T>(string key, T value, HybridCacheEntryOptions? options = null, IEnumerable<string>? tags = null, CancellationToken cancellationToken = default)
         {
             _values[key] = value;
+            _tagsByKey[key] = tags?.ToList() ?? [];
             return ValueTask.CompletedTask;
         }
     }

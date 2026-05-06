@@ -1,0 +1,260 @@
+// ABOUTME: Unit tests for server-backed event program summary assembly.
+// ABOUTME: Protects local-day grouping, section assignment, and readiness warnings.
+
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.EventPrograms.Handlers.Queries;
+using Explore.Application.Features.EventPrograms.Requests.Queries;
+using Explore.Domain;
+using NSubstitute;
+using TUnit.Assertions;
+using TUnit.Core;
+
+namespace Event.Application.UnitTests.Features.EventPrograms.Queries;
+
+public sealed class GetEventProgramSummaryRequestHandlerTests
+{
+    private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
+    private readonly IEventSessionRepository _eventSessionRepository = Substitute.For<IEventSessionRepository>();
+    private readonly IEventSessionGroupRepository _eventSessionGroupRepository = Substitute.For<IEventSessionGroupRepository>();
+
+    [Test]
+    public async Task Handle_WhenEventHasGroupedSessions_ReturnsSectionsDaysItemsAndMetadata()
+    {
+        var eventId = Guid.NewGuid();
+        var tenant = CreateTenant(Guid.NewGuid());
+        var eventEntity = CreateEvent(eventId, tenant);
+        var location = CreateLocation(Guid.NewGuid(), tenant, "Main Hall");
+        var room = CreateRoom(Guid.NewGuid(), location, "Auditorium");
+        var group = CreateGroup(Guid.NewGuid(), eventEntity, tenant, location, room);
+        var session = CreateSession(
+            Guid.NewGuid(),
+            eventEntity,
+            tenant,
+            location,
+            room,
+            new DateTimeOffset(2026, 6, 1, 7, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 6, 1, 8, 15, 0, TimeSpan.Zero));
+        session.SessionGroups.Add(CreateAssignment(group, session, eventEntity, tenant, isPrimary: true, sortOrder: 4));
+
+        _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([session]);
+        _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
+
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.EventId).IsEqualTo(eventId);
+        await Assert.That(result.TimeZoneId).IsEqualTo("Europe/Brussels");
+        await Assert.That(result.Sections.Count).IsEqualTo(1);
+        await Assert.That(result.Sections[0].Title).IsEqualTo("Main track");
+        await Assert.That(result.Sections[0].SessionGroups.Single().Days.Single().DisplayLabel).IsEqualTo("Mon 1 Jun");
+
+        var item = result.Sections[0].SessionGroups.Single().Days.Single().Items.Single();
+        await Assert.That(item.Title).IsEqualTo("Opening talk");
+        await Assert.That(item.LocalStartTime).IsEqualTo(new TimeOnly(9, 0));
+        await Assert.That(item.LocalEndTime).IsEqualTo(new TimeOnly(10, 15));
+        await Assert.That(item.RoomName).IsEqualTo("Auditorium");
+        await Assert.That(item.Capacity).IsEqualTo(120);
+        await Assert.That(item.RegistrationModeName).IsEqualTo("Open");
+        await Assert.That(result.ReadinessWarnings).IsEmpty();
+    }
+
+    [Test]
+    public async Task Handle_WhenEventIsMissing_ReturnsNull()
+    {
+        var eventId = Guid.NewGuid();
+        _eventRepository.GetEventWithDetails(eventId).Returns((Explore.Domain.Event?)null);
+
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await _eventSessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
+    }
+
+    [Test]
+    public async Task Handle_WhenProgramSetupIsIncomplete_ReturnsUnassignedSectionAndWarnings()
+    {
+        var eventId = Guid.NewGuid();
+        var tenant = CreateTenant(Guid.NewGuid());
+        var eventEntity = CreateEvent(eventId, tenant);
+        eventEntity.EventTimeZoneId = null;
+        eventEntity.Timezone = null;
+        eventEntity.FirstSessionDate = null;
+        eventEntity.LastSessionDate = null;
+        var session = CreateSession(
+            Guid.NewGuid(),
+            eventEntity,
+            tenant,
+            location: null,
+            room: null,
+            new DateTimeOffset(2026, 6, 1, 7, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 6, 1, 8, 0, 0, TimeSpan.Zero));
+        session.Title = null;
+        session.MaxAudienceAttendees = null;
+        session.RegistrationModeId = null;
+        session.RegistrationMode = null;
+
+        _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([session]);
+        _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Sections.Single().SectionKey).IsEqualTo("unassigned");
+        await Assert.That(result.Sections.Single().Title).IsEqualTo("Unassigned program items");
+        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "event/timezone")).IsTrue();
+        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "event/program-sections")).IsTrue();
+        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path.Contains("/title", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path.Contains("/location", StringComparison.Ordinal))).IsTrue();
+    }
+
+    private GetEventProgramSummaryRequestHandler CreateHandler()
+    {
+        return new GetEventProgramSummaryRequestHandler(
+            _eventRepository,
+            _eventSessionRepository,
+            _eventSessionGroupRepository);
+    }
+
+    private static Tenant CreateTenant(Guid tenantId)
+    {
+        return new Tenant
+        {
+            Id = tenantId,
+            FullName = "Tenant",
+            Slug = "tenant",
+            TenantStatus = null!
+        };
+    }
+
+    private static Explore.Domain.Event CreateEvent(Guid eventId, Tenant tenant)
+    {
+        return new Explore.Domain.Event
+        {
+            Id = eventId,
+            Title = "Program launch",
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            Actor = null!,
+            VisibilityType = null!,
+            EventStatus = null!,
+            EventFormat = null!,
+            FirstSessionDate = new DateOnly(2026, 6, 1),
+            LastSessionDate = new DateOnly(2026, 6, 2),
+            Timezone = "Europe/Brussels",
+            EventTimeZoneId = "Europe/Brussels"
+        };
+    }
+
+    private static Location CreateLocation(Guid locationId, Tenant tenant, string fullName)
+    {
+        return new Location
+        {
+            Id = locationId,
+            FullName = fullName,
+            City = "Brussels",
+            Country = "Belgium",
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            Pii = new LocationPii
+            {
+                LocationId = locationId,
+                Address = "Rue Test 1",
+                Postcode = "1000"
+            }
+        };
+    }
+
+    private static LocationRoom CreateRoom(Guid roomId, Location location, string name)
+    {
+        return new LocationRoom
+        {
+            Id = roomId,
+            LocationId = location.Id,
+            Location = location,
+            Name = name,
+            Capacity = 120,
+            TenantId = location.TenantId,
+            Tenant = location.Tenant
+        };
+    }
+
+    private static EventSessionGroup CreateGroup(Guid groupId, Explore.Domain.Event eventEntity, Tenant tenant, Location location, LocationRoom room)
+    {
+        return new EventSessionGroup
+        {
+            Id = groupId,
+            EventId = eventEntity.Id,
+            Event = eventEntity,
+            Name = "Main track",
+            LocationId = location.Id,
+            Location = location,
+            RoomId = room.Id,
+            Room = room,
+            SortOrder = 1,
+            IsPublished = true,
+            TenantId = tenant.Id,
+            Tenant = tenant
+        };
+    }
+
+    private static EventSession CreateSession(
+        Guid sessionId,
+        Explore.Domain.Event eventEntity,
+        Tenant tenant,
+        Location? location,
+        LocationRoom? room,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime)
+    {
+        return new EventSession
+        {
+            Id = sessionId,
+            EventId = eventEntity.Id,
+            Event = eventEntity,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            Title = "Opening talk",
+            StartTime = startTime,
+            EndTime = endTime,
+            SortOrder = 2,
+            LocationId = location?.Id,
+            Location = location,
+            RoomId = room?.Id,
+            Room = room,
+            MaxAudienceAttendees = 120,
+            RegistrationModeId = 1,
+            RegistrationMode = new RegistrationMode
+            {
+                Id = 1,
+                FullName = "Open",
+                MasterCode = "OPEN"
+            }
+        };
+    }
+
+    private static EventSessionGroupSession CreateAssignment(
+        EventSessionGroup group,
+        EventSession session,
+        Explore.Domain.Event eventEntity,
+        Tenant tenant,
+        bool isPrimary,
+        int sortOrder)
+    {
+        return new EventSessionGroupSession
+        {
+            Id = Guid.NewGuid(),
+            EventSessionGroupId = group.Id,
+            EventSessionGroup = group,
+            EventSessionId = session.Id,
+            EventSession = session,
+            EventId = eventEntity.Id,
+            Event = eventEntity,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            IsPrimary = isPrimary,
+            SortOrder = sortOrder
+        };
+    }
+}

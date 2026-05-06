@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
@@ -110,7 +111,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         response.Message = "Event updated successfully.";
 
         await _cache.RemoveAsync($"event:detail:{@event.Id}", cancellationToken);
-        await _cache.RemoveAsync("events:list:1:20", cancellationToken);
+        await _cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), cancellationToken);
 
         return response;
     }

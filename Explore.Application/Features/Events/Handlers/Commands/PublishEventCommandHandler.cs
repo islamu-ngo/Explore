@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
@@ -59,7 +60,7 @@ public class PublishEventCommandHandler(
             await outboxRepository.Create(CreatePublishedOutboxMessage(@event));
 
             await cache.RemoveAsync($"event:detail:{@event.Id}", token);
-            await cache.RemoveAsync("events:list:1:20", token);
+            await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
 
             return Success(@event.Id, "Event published successfully.");
         }, cancellationToken);

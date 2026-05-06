@@ -19,6 +19,7 @@ public static class CacheTags
     public const string OrganizationDetails = "organizations:detail";
 
     public static string Event(Guid eventId) => $"event:{eventId}";
+    public static string EventListByTenant(Guid tenantId) => $"events:list:tenant:{tenantId:N}";
     public static string Group(Guid groupId) => $"group:{groupId}";
     public static string Organization(Guid organizationId) => $"organization:{organizationId}";
 }
