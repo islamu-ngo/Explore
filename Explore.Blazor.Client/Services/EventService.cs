@@ -64,7 +64,7 @@ public interface IEventService
     Task<EventPublishReadinessDto?> GetEventPublishReadinessAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<bool> DeleteEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto);
-    Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventRequest request);
+    Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDraftRequestDto request);
     Task<BaseCommandResponseOfGuid?> PublishEventAsync(Guid eventId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
     Task<ICollection<EventTypeListDto>> GetEventTypesAsync();
     Task<ICollection<EventFormatListDto>> GetEventFormatsAsync();
@@ -406,7 +406,7 @@ public partial class EventService : IEventService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventRequest request)
+    public async Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDraftRequestDto request)
     {
         try
         {

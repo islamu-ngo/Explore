@@ -71,6 +71,12 @@
           "Microsoft.AspNetCore.Components.Web": "10.0.7"
         }
       },
+      "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
+        "type": "Direct",
+        "requested": "[10.0.203, )",
+        "resolved": "10.0.203",
+        "contentHash": "OFnGv+vIMJdTX9U1gTIwOeE3isTt5MSy+hFpRvXceYZ2TBadvxWunKL1FHMBtY/fRXbJTtBKhByybknDQwhwgw=="
+      },
       "Microsoft.Extensions.ApiDescription.Client": {
         "type": "Direct",
         "requested": "[10.0.7, )",
