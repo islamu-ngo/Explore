@@ -33,6 +33,8 @@ public static class RouteNames
     public const string GetEventCalendar = "GetEventCalendar";
     public const string GetMyEvents = "GetMyEvents";
     public const string GetEventCreationContext = "GetEventCreationContext";
+    public const string GetEventSessionCreateContext = "GetEventSessionCreateContext";
+    public const string GetEventProgramSummary = "GetEventProgramSummary";
     public const string GetEventPublishReadiness = "GetEventPublishReadiness";
     public const string CreateEvent = "CreateEvent";
     public const string PublishEvent = "PublishEvent";

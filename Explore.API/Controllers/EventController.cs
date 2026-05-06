@@ -8,8 +8,12 @@ using Explore.API.Models;
 using Explore.API.Services.Calendar;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAspects;
+using Explore.Application.DTOs.EventProgram;
+using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventAspects.Requests.Commands;
 using Explore.Application.Features.EventAspects.Requests.Queries;
+using Explore.Application.Features.EventPrograms.Requests.Queries;
+using Explore.Application.Features.EventSessions.Requests.Queries;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Hateoas;
@@ -186,6 +190,46 @@ public class EventController : ExploreControllerBase
     {
         var context = await _mediator.Send(new GetEventCreationContextRequest(), cancellationToken);
         return Ok(context);
+    }
+
+    /// <summary>
+    /// Get server-owned defaults and selector options for adding a program item to an event.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("{id:guid}/session-create-context", Name = RouteNames.GetEventSessionCreateContext)]
+    [EndpointSummary("Get Event Session Create Context")]
+    [EndpointDescription("Returns inherited event defaults, location options, room options, and program sections for the dedicated program item composer.")]
+    [ProducesResponseType(typeof(EventSessionCreateContextDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EventSessionCreateContextDto>> GetSessionCreateContext(Guid id, CancellationToken cancellationToken = default)
+    {
+        var context = await _mediator.Send(new GetEventSessionCreateContextRequest { EventId = id }, cancellationToken);
+        if (context is null)
+            return NotFound();
+
+        return Ok(context);
+    }
+
+    /// <summary>
+    /// Get the server-backed program summary for an event.
+    /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("{id:guid}/program-summary", Name = RouteNames.GetEventProgramSummary)]
+    [EndpointSummary("Get Event Program Summary")]
+    [EndpointDescription("Returns program sections, local-day groupings, program items, and server-generated readiness warnings for the event program.")]
+    [ProducesResponseType(typeof(EventProgramSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [OutputCache(PolicyName = "DetailData")]
+    public async Task<ActionResult<EventProgramSummaryDto>> GetProgramSummary(Guid id, CancellationToken cancellationToken = default)
+    {
+        var summary = await _mediator.Send(new GetEventProgramSummaryRequest { EventId = id }, cancellationToken);
+        if (summary is null)
+            return NotFound();
+
+        return Ok(summary);
     }
 
     /// <summary>

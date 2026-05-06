@@ -5,7 +5,6 @@ using Explore.Persistence;
 using Explore.Persistence.Seed;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using System.Threading.Channels;
 using Testcontainers.PostgreSql;
@@ -83,11 +82,9 @@ public abstract class PostgreSqlApiFixtureBase : IAsyncInitializer, IAsyncDispos
         var factory = Factory ?? throw new InvalidOperationException("PostgreSQL API test host was not recreated.");
 
         await using var scope = factory.Services.CreateAsyncScope();
-        var cache = scope.ServiceProvider.GetRequiredService<HybridCache>();
         var outputCacheStore = scope.ServiceProvider.GetRequiredService<IOutputCacheStore>();
 
-        // Defensive cleanup for caches that also exist inside the recreated host.
-        await cache.RemoveAsync("events:list:1:20:none");
+        // Defensive cleanup for output-cache entries that also exist inside the recreated host.
         await outputCacheStore.EvictByTagAsync("list-data", default);
         await outputCacheStore.EvictByTagAsync("detail-data", default);
     }

@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:34617/"
+      "url": "https://localhost:33157/"
     }
   ],
   "paths": {
@@ -5679,6 +5679,167 @@
           }
         },
         "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/event/{id}/session-create-context": {
+      "get": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Get Event Session Create Context",
+        "description": "Returns inherited event defaults, location options, room options, and program sections for the dedicated program item composer.",
+        "operationId": "GetEventSessionCreateContext",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSessionCreateContextDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSessionCreateContextDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/event/{id}/program-summary": {
+      "get": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Get Event Program Summary",
+        "description": "Returns program sections, local-day groupings, program items, and server-generated readiness warnings for the event program.",
+        "operationId": "GetEventProgramSummary",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventProgramSummaryDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventProgramSummaryDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
       }
     },
     "/api/event/{id}": {
@@ -38702,6 +38863,220 @@
           }
         }
       },
+      "EventProgramDayGroupDto": {
+        "type": "object",
+        "properties": {
+          "localDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "displayLabel": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventProgramItemDto"
+            }
+          }
+        }
+      },
+      "EventProgramItemDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startsAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "localDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "localStartTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "localEndTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sessionGroupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "locationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roomName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "capacity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "registrationModeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "readinessWarnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventProgramReadinessWarningDto"
+            }
+          }
+        }
+      },
+      "EventProgramReadinessWarningDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "EventProgramSectionDto": {
+        "type": "object",
+        "properties": {
+          "sectionKey": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sessionGroups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventProgramSessionGroupSectionDto"
+            }
+          }
+        }
+      },
+      "EventProgramSessionGroupSectionDto": {
+        "type": "object",
+        "properties": {
+          "sessionGroupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roomName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventProgramDayGroupDto"
+            }
+          }
+        }
+      },
+      "EventProgramSummaryDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventTitle": {
+            "type": "string"
+          },
+          "timeZoneId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventProgramSectionDto"
+            }
+          },
+          "readinessWarnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventProgramReadinessWarningDto"
+            }
+          }
+        }
+      },
       "EventPublishReadinessDto": {
         "type": "object",
         "properties": {
@@ -39196,6 +39571,212 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "EventSessionCreateContextDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventTitle": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "timeZoneId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "eventStartDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "eventEndDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "defaults": {
+            "$ref": "#/components/schemas/EventSessionCreateDefaultsDto"
+          },
+          "locations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventSessionCreateLocationOptionDto"
+            }
+          },
+          "rooms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventSessionCreateRoomOptionDto"
+            }
+          },
+          "sessionGroups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventSessionCreateGroupOptionDto"
+            }
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EventSessionCreateDefaultsDto": {
+        "type": "object",
+        "properties": {
+          "sessionDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "startTime": {
+            "pattern": "^-?(\\d\u002B\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "endTime": {
+            "pattern": "^-?(\\d\u002B\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "registrationModeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "EventSessionCreateGroupOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "locationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "locationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roomId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "roomName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "color": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "EventSessionCreateLocationOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "timeZoneId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "EventSessionCreateRoomOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "capacity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

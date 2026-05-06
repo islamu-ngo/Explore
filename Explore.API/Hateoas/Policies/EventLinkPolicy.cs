@@ -52,6 +52,13 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             "Event program");
 
         yield return new LinkDefinition(
+            LinkRelations.ProgramSummary,
+            RouteNames.GetEventProgramSummary,
+            new { id = dto.Id },
+            "GET",
+            "Program summary");
+
+        yield return new LinkDefinition(
             LinkRelations.SessionGroups,
             RouteNames.GetEventSessionGroupsByEvent,
             new { eventId = dto.Id },
@@ -70,6 +77,15 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             null,
             "POST",
             "Add session",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Create, typeof(EventSessionDto), dto.Id.ToString(), eventScopedResourceAttributes);
+
+        yield return new LinkDefinition(
+            LinkRelations.SessionCreateContext,
+            RouteNames.GetEventSessionCreateContext,
+            new { id = dto.Id },
+            "GET",
+            "Program item defaults",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Create, typeof(EventSessionDto), dto.Id.ToString(), eventScopedResourceAttributes);
 

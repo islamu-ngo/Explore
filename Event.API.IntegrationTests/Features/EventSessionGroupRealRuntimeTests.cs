@@ -1,0 +1,299 @@
+// ABOUTME: Real-runtime endpoint tests for event program section write paths.
+// ABOUTME: Verifies authenticated session-group create, update, and delete persist through PostgreSQL.
+
+using System.Net;
+using System.Net.Http.Json;
+
+using Event.Api.IntegrationTests.Fixtures;
+using Event.Api.IntegrationTests.Seeds;
+
+using Explore.Application.DTOs.EventSessionGroup;
+using Explore.Application.Responses;
+using Explore.Domain;
+using Explore.Persistence;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Event.Api.IntegrationTests.Features;
+
+[ClassDataSource<RealRuntimeApiFixture>(Shared = SharedType.PerAssembly)]
+[NotInParallel("RealRuntimeDb")]
+public class EventSessionGroupRealRuntimeTests(RealRuntimeApiFixture fixture)
+{
+    private const string BaseUrl = "/api/eventsessiongroup";
+
+    private readonly RealRuntimeApiFixture _fixture = fixture;
+
+    [Test]
+    public async Task Create_WithAuthenticatedRequest_ReturnsCreatedAndPersistsProgramSection()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        var scenario = await SeedEventAsync("Session Group Create Event");
+        var createDto = new CreateEventSessionGroupRequestDto
+        {
+            EventId = scenario.EventId,
+            Name = "Main stage",
+            Slug = "main-stage",
+            Description = "Primary program section",
+            Color = "#27563a",
+            SortOrder = 10,
+            IsPublished = true
+        };
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, BaseUrl, scenario.UserId);
+        request.Content = JsonContent.Create(createDto);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body.Id).IsNotEqualTo(Guid.Empty);
+        await Assert.That(response.Headers.Location?.ToString()).Contains(body.Id.ToString());
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var persisted = await context.EventSessionGroups
+            .IgnoreQueryFilters()
+            .SingleAsync(group => group.Id == body.Id);
+
+        await Assert.That(persisted.EventId).IsEqualTo(scenario.EventId);
+        await Assert.That(persisted.TenantId).IsEqualTo(scenario.TenantId);
+        await Assert.That(persisted.Name).IsEqualTo(createDto.Name);
+        await Assert.That(persisted.Slug).IsEqualTo(createDto.Slug);
+        await Assert.That(persisted.SortOrder).IsEqualTo(createDto.SortOrder);
+        await Assert.That(persisted.IsPublished).IsTrue();
+    }
+
+    [Test]
+    public async Task Update_WithAuthenticatedRequest_ReturnsOkAndPersistsProgramSectionChanges()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        var scenario = await SeedEventAsync("Session Group Update Event");
+        var sectionId = await SeedProgramSectionAsync(scenario.EventId, scenario.TenantId, "Workshop rooms");
+        var updateDto = new UpdateEventSessionGroupRequestDto
+        {
+            Id = sectionId,
+            EventId = scenario.EventId,
+            Name = "Workshop track",
+            Slug = "workshop-track",
+            Description = "Hands-on sessions",
+            Color = "#915f2d",
+            SortOrder = 25,
+            IsPublished = true
+        };
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"{BaseUrl}/{sectionId}", scenario.UserId);
+        request.Content = JsonContent.Create(updateDto);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body.Id).IsEqualTo(sectionId);
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var persisted = await context.EventSessionGroups
+            .IgnoreQueryFilters()
+            .SingleAsync(group => group.Id == sectionId);
+
+        await Assert.That(persisted.Name).IsEqualTo(updateDto.Name);
+        await Assert.That(persisted.Slug).IsEqualTo(updateDto.Slug);
+        await Assert.That(persisted.Description).IsEqualTo(updateDto.Description);
+        await Assert.That(persisted.Color).IsEqualTo(updateDto.Color);
+        await Assert.That(persisted.SortOrder).IsEqualTo(updateDto.SortOrder);
+        await Assert.That(persisted.IsPublished).IsTrue();
+    }
+
+    [Test]
+    public async Task Delete_WithAuthenticatedRequest_ReturnsNoContentAndSoftDeletesProgramSection()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        var scenario = await SeedEventAsync("Session Group Delete Event");
+        var sectionId = await SeedProgramSectionAsync(scenario.EventId, scenario.TenantId, "Temporary section");
+        using var request = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Delete,
+            $"{BaseUrl}/{sectionId}?eventId={scenario.EventId}",
+            scenario.UserId);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var persisted = await context.EventSessionGroups
+            .IgnoreQueryFilters()
+            .SingleAsync(group => group.Id == sectionId);
+
+        await Assert.That(persisted.IsDeleted).IsTrue();
+        await Assert.That(persisted.DeletedAt).IsNotNull();
+    }
+
+    [Test]
+    public async Task AssignSession_WithAuthenticatedRequest_ReturnsOkAndPersistsProgramSectionAssignment()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        var scenario = await SeedEventAsync("Session Group Assign Event");
+        var sectionId = await SeedProgramSectionAsync(scenario.EventId, scenario.TenantId, "Assignment section");
+        var sessionId = await SeedSessionAsync(scenario.EventId, scenario.TenantId, "Assignment talk");
+        var assignDto = new AssignSessionToGroupRequestDto
+        {
+            EventId = scenario.EventId,
+            EventSessionGroupId = sectionId,
+            EventSessionId = sessionId,
+            IsPrimary = true,
+            SortOrder = 7
+        };
+        using var request = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"{BaseUrl}/{sectionId}/sessions",
+            scenario.UserId);
+        request.Content = JsonContent.Create(assignDto);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body.Id).IsNotEqualTo(Guid.Empty);
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var persisted = await context.EventSessionGroupSessions
+            .IgnoreQueryFilters()
+            .SingleAsync(assignment => assignment.EventSessionGroupId == sectionId
+                && assignment.EventSessionId == sessionId);
+
+        await Assert.That(persisted.EventId).IsEqualTo(scenario.EventId);
+        await Assert.That(persisted.TenantId).IsEqualTo(scenario.TenantId);
+        await Assert.That(persisted.IsPrimary).IsTrue();
+        await Assert.That(persisted.SortOrder).IsEqualTo(assignDto.SortOrder);
+        await Assert.That(persisted.IsDeleted).IsFalse();
+    }
+
+    [Test]
+    public async Task UnassignSession_WithAuthenticatedRequest_ReturnsNoContentAndSoftDeletesProgramSectionAssignment()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        var scenario = await SeedEventAsync("Session Group Unassign Event");
+        var sectionId = await SeedProgramSectionAsync(scenario.EventId, scenario.TenantId, "Unassign section");
+        var sessionId = await SeedSessionAsync(scenario.EventId, scenario.TenantId, "Unassign talk");
+        await SeedAssignmentAsync(scenario.EventId, scenario.TenantId, sectionId, sessionId, isPrimary: true, sortOrder: 3);
+        using var request = _fixture.CreateAuthenticatedRequest(
+            HttpMethod.Delete,
+            $"{BaseUrl}/{sectionId}/sessions/{sessionId}?eventId={scenario.EventId}",
+            scenario.UserId);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var persisted = await context.EventSessionGroupSessions
+            .IgnoreQueryFilters()
+            .SingleAsync(assignment => assignment.EventSessionGroupId == sectionId
+                && assignment.EventSessionId == sessionId);
+
+        await Assert.That(persisted.IsDeleted).IsTrue();
+        await Assert.That(persisted.DeletedAt).IsNotNull();
+    }
+
+    private async Task<SessionGroupScenario> SeedEventAsync(string eventTitle)
+    {
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var tenant = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(context);
+        var @event = await EventScenarioSeed.SeedPublishedEventAsync(
+            context,
+            tenant.ActorId,
+            tenant.TenantId,
+            eventTitle);
+
+        return new SessionGroupScenario(tenant.TenantId, tenant.UserId, @event.EventId);
+    }
+
+    private async Task<Guid> SeedProgramSectionAsync(Guid eventId, Guid tenantId, string name)
+    {
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var group = new EventSessionGroup
+        {
+            EventId = eventId,
+            Event = null!,
+            Name = name,
+            Slug = name.ToLowerInvariant().Replace(' ', '-'),
+            SortOrder = 5,
+            IsPublished = true,
+            TenantId = tenantId,
+            Tenant = null!,
+            ConcurrencyStamp = Guid.NewGuid()
+        };
+
+        context.EventSessionGroups.Add(group);
+        await context.SaveChangesAsync();
+        return group.Id;
+    }
+
+    private async Task<Guid> SeedSessionAsync(Guid eventId, Guid tenantId, string title)
+    {
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var session = new EventSession
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Event = null!,
+            TenantId = tenantId,
+            Tenant = null!,
+            Title = title,
+            StartTime = DateTimeOffset.UtcNow,
+            EndTime = DateTimeOffset.UtcNow.AddHours(1),
+            ConcurrencyStamp = Guid.NewGuid()
+        };
+
+        context.EventSessions.Add(session);
+        await context.SaveChangesAsync();
+        return session.Id;
+    }
+
+    private async Task SeedAssignmentAsync(
+        Guid eventId,
+        Guid tenantId,
+        Guid sectionId,
+        Guid sessionId,
+        bool isPrimary,
+        int sortOrder)
+    {
+        await using var scope = _fixture.Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var assignment = new EventSessionGroupSession
+        {
+            EventId = eventId,
+            Event = null!,
+            EventSessionGroupId = sectionId,
+            EventSessionGroup = null!,
+            EventSessionId = sessionId,
+            EventSession = null!,
+            IsPrimary = isPrimary,
+            SortOrder = sortOrder,
+            TenantId = tenantId,
+            Tenant = null!
+        };
+
+        context.EventSessionGroupSessions.Add(assignment);
+        await context.SaveChangesAsync();
+    }
+
+    private sealed record SessionGroupScenario(Guid TenantId, Guid UserId, Guid EventId);
+}

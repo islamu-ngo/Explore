@@ -65,7 +65,7 @@ public sealed class EventSessionGroupDetailLinkPolicy : ILinkPolicy<EventSession
             .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.EventSessionGroup, dto);
 
         yield return new LinkDefinition(
-            "assign-session",
+            LinkRelations.AssignSession,
             RouteNames.AssignEventSessionToGroup,
             new { id = dto.Id },
             "POST",
@@ -110,6 +110,24 @@ public sealed class EventSessionGroupCollectionLinkPolicy : ICollectionLinkPolic
             new { id = dto.Id },
             "PUT",
             "Update program section",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionGroupList, dto);
+
+        yield return new LinkDefinition(
+            LinkRelations.Delete,
+            RouteNames.DeleteEventSessionGroup,
+            new { id = dto.Id, eventId = dto.EventId },
+            "DELETE",
+            "Delete program section",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.EventSessionGroupList, dto);
+
+        yield return new LinkDefinition(
+            LinkRelations.AssignSession,
+            RouteNames.AssignEventSessionToGroup,
+            new { id = dto.Id },
+            "POST",
+            "Assign sessions to this program section",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionGroupList, dto);
     }
