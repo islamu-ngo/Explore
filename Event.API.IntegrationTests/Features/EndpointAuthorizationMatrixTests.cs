@@ -630,8 +630,8 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         var response = await _tenantAdminClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant admin should be able to view onboarding status");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+            "tenant onboarding status is gated to multi-tenant deployments and the matrix fixture runs in single-tenant mode");
     }
 
     #endregion

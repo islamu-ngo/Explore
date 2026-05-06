@@ -258,6 +258,11 @@ var app = builder.Build();
 var appLifetime = app.Lifetime;
 var appLogger = app.Logger;
 
+// WebApplicationFactory can spin multiple in-process hosts inside the same test run.
+// Reset the static shutdown flag on each fresh host so liveness checks do not inherit
+// a prior host's termination state.
+isShuttingDown = false;
+
 // Register graceful shutdown handlers for zero-downtime deployments
 // SIGTERM: Start graceful shutdown with 25 second grace period
 // SIGINT (Ctrl+C): Immediate shutdown

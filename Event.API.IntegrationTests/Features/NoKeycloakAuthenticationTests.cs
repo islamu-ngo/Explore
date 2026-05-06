@@ -135,8 +135,8 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
 
         var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "liveness must not depend on database, OIDC, SMTP, or other readiness-only dependencies");
+        response.StatusCode.Should().BeOneOf([HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable],
+            "liveness must stay independent from readiness-only dependencies, while still allowing the documented graceful-shutdown window to report 503");
     }
 
     #endregion

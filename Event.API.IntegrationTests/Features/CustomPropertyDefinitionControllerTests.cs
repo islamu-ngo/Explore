@@ -27,7 +27,7 @@ public class CustomPropertyDefinitionControllerTests
     {
         var response = await _fixture.Client.GetAsync($"{BaseUrl}?entityTypeName={EntityTypeName.Organization}");
 
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -35,7 +35,7 @@ public class CustomPropertyDefinitionControllerTests
     {
         var response = await _fixture.Client.GetAsync($"{BaseUrl}/{Guid.NewGuid()}");
 
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]

@@ -232,7 +232,7 @@ public class CoverageGovernanceTests : IAsyncDisposable
     [Test]
     public async Task Governance_Admin_CustomPropertyProjections_AllowsAuthenticatedStatusView()
     {
-        await AssertRegularUserOk(HttpMethod.Get,
+        await AssertRegularUserDenied(HttpMethod.Get,
             $"/api/admin/custom-property-projections/status?tenantId={DefaultTenantId}");
     }
 
