@@ -1,13 +1,11 @@
 <!-- ABOUTME: Task checklist for corrected Event Creation Composer program/session direction. -->
-<!-- ABOUTME: Replaces child-event subevent planning with EventSessionGroup and EventSession program management. -->
+<!-- ABOUTME: Tracks completed backend/UI slices and remaining draft/program/session work. -->
 
 # Event Creation Progressive Disclosure Tasks
 
-Last Updated: 2026-05-05 14:05 CEST
+Last Updated: 2026-05-07 00:05 CEST
 
 ## Current Handoff Status
-
-The plan has been corrected. “Subevent” in the prior discussion means **session/program item**, not child `Event`.
 
 The active model is:
 
@@ -15,58 +13,52 @@ The active model is:
 Event -> EventSessionGroup / Track / Devroom / Program section -> EventSession / Program item
 ```
 
-`Event.ParentEventId` is not the default program model. It must be rolled back if it was only introduced for program parts; do not retain it without an approved true-event-hierarchy use case.
+`Event.ParentEventId` and child-event program modeling are rejected for talks/workshops/program items. The implementation has moved the product toward dedicated session composer pages and away from the giant Create/Edit Event shell composer.
 
-## Phase 0 — Stop Wrong Direction
+## Phase 0 — Stop Wrong Direction ✅
 
-- [ ] Inventory all `ParentEventId` code, migration, DTOs, handlers, routes, HAL links, tests, and docs.
-- [ ] Roll back `ParentEventId` unless a concrete true-event-hierarchy use case is approved before rollback starts.
-- [ ] Remove the migration/code/routes/DTO fields introduced only for program parts.
-- [ ] If an approved true hierarchy use case appears later, create a separate ADR/plan and reintroduce cleanly.
-- [ ] Remove active UX targets: `old parent-event selector`, `old add-child-event action`, `old child-event context banner`, `old child-event program item`.
-- [ ] Remove active API targets: parent candidates for program, child-event program summary, `add-subevent` link.
-- [ ] Confirm `EventSession` is no longer described as obsolete/legacy for talks/workshops.
-- [ ] Update `docs/ARCHITECTURE.md` if it currently says child `Event` records are the program model.
-- [ ] Acceptance: grep finds no active “old child-event interpretation for talks/workshops” direction.
+- [x] Inventory `ParentEventId` / child-event code, migration, DTOs, handlers, routes, HAL links, tests, and docs.
+- [x] Roll back program-only `ParentEventId` artifacts from active server source and generated contracts.
+- [x] Remove active UX targets: old parent-event selector, old add-child-event action, child-event context/banner/program item.
+- [x] Remove active API targets: parent candidates for program, child-event program summary, `add-subevent` link.
+- [x] Confirm `EventSession` is not described as obsolete/legacy for talks/workshops.
+- [x] Add automated rollback regression for no `Event.ParentEventId` / rejected route names.
+- [x] Acceptance: active implementation uses `EventSession` and `EventSessionGroup`, not child events.
 
-## Phase 1 — Add Program Group Model
+## Phase 1 — Add Program Group Model ✅
 
 ### Domain
 
-- [ ] Add `EventSessionGroup` entity.
-- [ ] Add `EventSessionGroupSession` explicit join entity.
-- [ ] Add `Event.Sessions`, `Event.SessionGroups`, and `Event.AgendaItems` navigations only if consistent with existing domain style.
-- [ ] Never name `EventSession` collections `ChildEvents`.
-- [ ] Add group assignment collection navigation on `EventSession` if useful.
-- [ ] Use `LocationRoom? Room`, not a new `Room` abstraction.
-- [ ] Include tenant, audit, soft-delete, and concurrency fields per project conventions.
-- [ ] Keep Domain free of EF/API/Blazor/MediatR references.
+- [x] Add `EventSessionGroup` entity.
+- [x] Add `EventSessionGroupSession` explicit join entity.
+- [x] Add/use `Event.Sessions`, `Event.SessionGroups`, and `Event.AgendaItems` navigations.
+- [x] Never name `EventSession` collections `ChildEvents`.
+- [x] Add group assignment collection navigation on `EventSession`.
+- [x] Use `LocationRoom? Room`, not a new `Room` abstraction.
+- [x] Include tenant, audit, soft-delete, and concurrency fields per project conventions.
+- [x] Keep Domain free of EF/API/Blazor/MediatR references.
 
 ### Persistence
 
-- [ ] Add DbSets for `EventSessionGroup` and `EventSessionGroupSession`.
-- [ ] Add EF configurations.
-- [ ] Configure `(tenant_id, event_id, slug)` unique active index for groups.
-- [ ] Configure `(tenant_id, event_id, sort_order)` group sort index.
-- [ ] Configure `(tenant_id, event_session_group_id, event_session_id)` unique join index.
-- [ ] Configure `(tenant_id, event_session_group_id, sort_order)` join sort index.
-- [ ] Enforce `Group.EventId == Session.EventId == Join.EventId`.
-- [ ] Enforce `Group.TenantId == Session.TenantId == Join.TenantId`.
-- [ ] Configure restrictive/explicit delete behavior so groups do not accidentally delete sessions.
-- [ ] Generate focused migration.
-- [ ] Update model snapshot through EF tooling.
+- [x] Add DbSets for `EventSessionGroup` and `EventSessionGroupSession`.
+- [x] Add EF configurations.
+- [x] Configure `(tenant_id, event_id, slug)` unique active index for groups.
+- [x] Configure `(tenant_id, event_id, sort_order)` group sort index.
+- [x] Configure membership and primary assignment indexes with active-row filters so soft-deleted joins do not block reassignment.
+- [x] Enforce group/session/join consistency in Application handlers.
+- [x] Configure delete behavior so groups do not delete sessions.
+- [x] Generate focused migration and update model snapshot.
+- [x] Add persistence tests for soft-deleted membership reuse and primary reassignment.
 
 ### Application
 
-- [ ] Add group DTOs.
-- [ ] Add group assignment DTOs.
-- [ ] Add `GetEventSessionGroupsQuery`.
-- [ ] Add `CreateEventSessionGroupCommand`.
-- [ ] Add `UpdateEventSessionGroupCommand`.
-- [ ] Add `AssignSessionToGroupCommand`.
-- [ ] Add `ReorderEventSessionGroupSessionsCommand`.
-- [ ] Validate same tenant and same event for every group/session assignment.
-- [ ] Validate slug uniqueness within event.
+- [x] Add group DTOs and assignment DTOs.
+- [x] Add `GetEventSessionGroupsQuery` / detail / sessions-by-group read handlers.
+- [x] Add create/update/delete group commands and handlers.
+- [x] Add assign/unassign session-group commands and handlers.
+- [ ] Add reorder group/session command if needed by future UI.
+- [x] Validate same tenant/event for group/session assignments.
+- [ ] Add slug uniqueness validator coverage for group create/update if not already covered by persistence/DB behavior.
 
 ## Phase 2 — Application/API Program Contracts
 
@@ -77,124 +69,128 @@ Event -> EventSessionGroup / Track / Devroom / Program section -> EventSession /
 - [ ] Remove client-controlled `EventStatusId` from draft creation path.
 - [ ] Add idempotency key for draft create.
 - [ ] Add concurrency handling for draft update.
-- [ ] Keep publish readiness separate from draft persistence.
+- [x] Keep publish readiness separate from draft persistence in current bridge flow.
 
 ### Session contracts
 
-- [ ] Add `GetEventSessionCreateContextQuery`.
-- [ ] Add `CreateEventSessionRequest` or `CreateEventSessionDraftRequest`.
-- [ ] Add `UpdateEventSessionRequest`.
-- [ ] Add `GetEventProgramSummaryQuery`.
+- [x] Add `GetEventSessionCreateContextQuery`.
+- [ ] Add `CreateEventSessionRequest` or `CreateEventSessionDraftRequest` that replaces direct generated DTO use in Blazor.
+- [ ] Add `UpdateEventSessionRequest` tuned for dedicated composer.
+- [x] Add `GetEventProgramSummaryQuery` with server-owned sections, groups, local-day item grouping, and readiness warnings.
 - [ ] Add `EventSessionKind` lookup and seed values: Talk, Workshop, Panel, Lecture, Class, Activity, Keynote, LightningTalk, BOF, Demo, QAndA, Other.
-- [ ] Ensure session create context includes inherited event defaults.
-- [ ] Include available groups/tracks/devrooms in session create context.
+- [x] Ensure session create context includes inherited event defaults.
+- [x] Include available groups/tracks/devrooms in session create context.
 - [ ] Include room/location/language/speaker/category/tag/template/custom-field options.
 - [ ] Validate session time inside event window or map readiness warning if policy allows exceptions.
 - [ ] Validate speaker/room conflicts where supported.
 
 ### API/HAL
 
-- [ ] Add/verify event HAL links: `program`, `sessions`, `add-session`, `session-groups`, `add-session-group`.
-- [ ] Add/verify session HAL links: `self`, `event`, `edit`, `delete`, `speakers`, `languages`, `groups`.
-- [ ] Add group endpoints.
-- [ ] Add program summary endpoint.
-- [ ] Add session create context endpoint.
-- [ ] Ensure Blazor uses HAL links instead of role checks.
+- [x] Add/verify event HAL links: `program`, `sessions`, `add-session`, `session-groups`, `add-session-group`.
+- [x] Add/verify session HAL links used by dedicated composer: `self`, `event`, `edit`, `delete`, `session-groups`/group assignment data.
+- [x] Add group endpoints and assignment endpoints.
+- [x] Add program summary endpoint (`GET /api/event/{id}/program-summary`) and `program-summary` HAL affordance.
+- [x] Add session create context endpoint.
+- [x] Ensure current Blazor flows use HAL links instead of role checks.
 
-## Phase 3 — Create Event Action Bar
+## Phase 3 — Create Event Action Bar ✅
 
-- [ ] Replace `old add-child-event flow` with `Add session`.
-- [ ] If event is unsaved, `Add session` creates a draft first.
-- [ ] If event is dirty, `Add session` updates the draft first.
-- [ ] Navigate to `/events/{eventId}/sessions/create`.
-- [ ] Use server session create context for inherited defaults.
-- [ ] Return to Event composer after save/cancel.
-- [ ] Refresh Program summary after returning.
-- [ ] Announce navigation/save state for assistive tech.
+- [x] Replace old child-event flow with Add session.
+- [x] If event is unsaved, Add session creates a draft first.
+- [ ] If event is dirty after initial save, Add session should update the existing draft before navigating. Current Create Event path is create-only; complete with draft update contracts.
+- [x] Navigate to `/events/{eventId}/sessions/create` after successful draft create.
+- [x] Use server session create context for inherited defaults.
+- [x] Return to Event composer after session save/cancel.
+- [ ] Refresh server-backed Program summary after returning.
+- [x] Announce save/navigation state for assistive tech.
 
 ## Phase 4 — Dedicated Session Create/Edit Page
 
-- [ ] Add route `/events/{eventId}/sessions/create`.
-- [ ] Add route `/events/{eventId}/sessions/{sessionId}/edit`.
-- [ ] Page title defaults to `Add program item`.
+- [x] Add route `/events/{eventId}/sessions/create`.
+- [x] Add route `/events/{eventId}/sessions/{sessionId}/edit`.
+- [x] Page title defaults to `Add program item` / `Edit program item`; default form labels and validation copy use program-item vocabulary.
 - [ ] Support contextual labels: talk/workshop/panel/activity/session.
-- [ ] Add fields for type, title, description, date/start/end/timezone.
-- [ ] Add location and room selection.
-- [ ] Add program section/track/devroom picker.
+- [x] Add fields for title, description, date/start/end.
+- [ ] Add explicit timezone field/context. Create page now shows server timezone/date-window context via `SessionCreateContextBanner`; edit page and timezone-aware conversion remain pending.
+- [x] Add location and room selection with stale room clearing.
+- [x] Add program section/track/devroom picker.
 - [ ] Add speaker picker/management affordance.
 - [ ] Add language picker.
-- [ ] Add capacity/registration mode fields.
+- [x] Add capacity field.
+- [x] Add registration mode picker. Create uses server-owned default from session create context; create/edit pages can change the existing `RegistrationModeId` via lookup values.
 - [ ] Add category/tag/custom-property/template fields.
 - [ ] Add image support if contract-backed.
-- [ ] Save creates/updates `EventSession`.
-- [ ] No right sidebar session editor as primary create UX.
+- [x] Save creates/updates `EventSession`.
+- [x] Assign/unassign selected program section after session save/update.
+- [x] Prevent duplicate session creation when group assignment fails after session creation.
+- [x] No right sidebar session editor as primary create UX.
 
 ## Phase 5 — Program Summary UI
 
-- [ ] Replace final nested schedule composer target with `ProgramSection`.
-- [ ] Add `ProgramDayGroup`.
-- [ ] Add `ProgramItem`.
-- [ ] Add `SessionGroupSection`.
-- [ ] Add `SessionGroupPicker` where needed.
-- [ ] Add `AddSessionAction`.
-- [ ] Add `SessionCreateContextBanner`.
-- [ ] Saved empty event state shows `[Add session]` and `[Add section/track]`.
-- [ ] Unsaved event state shows `[Save draft and add session]`.
-- [ ] Group sessions by program section and local day.
-- [ ] Show time, room/location, speakers, language, capacity/registration, readiness warnings.
-- [ ] Editing a program item navigates to dedicated session edit page.
+- [x] Replace final nested schedule composer target with lightweight Program Summary in Create Event.
+- [x] Add server-backed `ProgramSection` / `SessionGroupSection` contract. UI component extraction remains future work.
+- [x] Add server-backed `ProgramDayGroup` contract grouped by event-local day.
+- [x] Add server-backed `ProgramItem` contract with time, location/room, capacity, registration, and readiness warning metadata.
+- [ ] Add reusable `SessionGroupPicker` if dedicated composer group select grows beyond simple `MudSelect`.
+- [x] Add Session action in Create/EventEdit shells routes to dedicated composer.
+- [x] Add `SessionCreateContextBanner` from server context.
+- [x] Saved empty event state shows `[Add session]` and `[Add section/track]`; Event Edit now opens a HAL-gated program sections dialog for list/create/edit/delete and one-section session assignment/unassignment using existing session-group APIs, including optional default location/room metadata.
+- [x] Unsaved event state shows a save-draft-and-add-session flow.
+- [x] Group sessions by program section and local day in the server-backed Program Summary contract and render the grouped Event Edit Program Summary view from that contract.
+- [ ] Show time, room/location, speakers, language, capacity/registration, readiness warnings. Event Edit now renders server-backed time, room/location, capacity/registration, and readiness warning metadata; speakers and language remain contract-backed follow-up work.
+- [x] Editing a program item navigates to dedicated session edit page.
 - [ ] Include `EventAgendaItem` logistics in summary where useful.
 
 ## Phase 6 — Theme And Core UX Cleanup
 
-- [ ] Event name remains the only bare editorial input.
-- [ ] Other fields remain structured accessible controls.
-- [ ] Theme quick bar updates page-level CSS variables.
-- [ ] Theme tray contains advanced-only controls.
-- [ ] Remove duplicated quick controls from tray.
-- [ ] More Options contains rare fields only.
-- [ ] Mobile order: event basics, theme, options summary, Program summary, actions.
+- [x] Event name remains the only bare editorial input in Create Event.
+- [x] Other event-shell fields are structured accessible controls.
+- [x] Theme quick bar remains page-level.
+- [x] Theme tray advanced-only cleanup reviewed: tray now contains precise styling controls and explanatory copy only.
+- [x] Remove duplicated quick controls from tray if still present; presets/effect chips remain in the page-level quick bar.
+- [x] More Options contains rare fields only.
+- [x] Mobile order is closer to target: event basics, theme, options summary, Program summary, actions.
 
 ## Phase 7 — Lifecycle, Permissions, And Hardening
 
 - [ ] Plan future session lifecycle states: Draft, Submitted, InReview, Accepted, Rejected, Published, Cancelled.
-- [ ] Add/plan event-scoped permissions: `event.program.view`, `event.program.manage`, `event.session.create`, `event.session.update`, `event.session.delete`, `event.session.review`, `event.session.assign_speaker`, `event.session.assign_group`, `event.session.publish`, `event.session_group.create`, `event.session_group.update`, `event.session_group.delete`, `event.session_group.reorder`.
-- [ ] Add readiness paths for `program.sessions[*]`.
-- [ ] Add readiness paths for `program.groups[*]`.
-- [ ] Add readiness paths for `program.agenda[*]`.
-- [ ] Add audit for group/session assignment.
+- [ ] Add/plan event-scoped permissions: `event.program.view`, `event.program.manage`, `event.session.create`, `event.session.update`, `event.session.delete`, `event.session.review`, `event.session.assign_speaker`, `event.session.assign_group`, `event.session.publish`, `event.session_group.create`, `event.session_group.update`, `event.session_group.delete`, `event_session_group.reorder`.
+- [ ] Add readiness paths for `program.sessions[*]`, `program.groups[*]`, and `program.agenda[*]`.
+- [x] Add audit-backed group/session assignment command paths.
 - [ ] Add audit for reorder.
-- [ ] Add ProblemDetails for program validation failures.
-- [ ] Add architecture tests for new layers.
-- [ ] Add Application unit tests for validators/handlers.
-- [ ] Add Persistence integration tests for group lifecycle and assignments.
-- [ ] Add API integration tests for HAL links and endpoints.
-- [ ] Add Blazor/component tests for Add session flow.
-- [ ] Add accessibility verification for keyboard/focus/announcements.
+- [ ] Add ProblemDetails for program validation failures beyond current command response behavior.
+- [x] Add architecture tests for rollback and HAL conventions touched by this work.
+- [x] Add Application unit tests for session-group handlers.
+- [x] Add Persistence integration tests for group assignment lifecycle.
+- [x] Add API integration tests for session-group write HAL links/endpoints. HAL policy coverage protects collection-item delete and assign-session route/permission metadata; endpoint-level API tests cover anonymous create/update/delete/assign/unassign write route authentication and authenticated PostgreSQL-backed create/update/delete/assign/unassign persistence; Blazor covers the Event Edit permission gate, direct group-list section count behavior, program section create location/room DTO mapping, HAL-gated delete behavior, and one-section assign/unassign service mapping.
+- [x] Add Blazor component tests for Add session flow and dedicated composers.
+- [ ] Add accessibility verification for keyboard/focus/announcements in browser/E2E.
 
-## Obsolete / Demoted Primary-Create Targets
+## Obsolete / Demoted Primary-Create Targets ✅
 
-Do not build these as the primary program path:
+Do not rebuild these as the primary program path:
 
-- [ ] `ScheduleComposer` as a giant nested session composer.
-- [ ] right-sidebar `SessionEditorPanel` for initial talk/workshop creation.
-- [ ] `SessionInlineEditor` for talks/workshops.
-- [ ] `AddScheduleItemMenu` as the primary way to add talks/workshops.
-- [ ] `old parent-event selector` for program parts.
-- [ ] `old add-child-event action`.
-- [ ] `old child-event context banner`.
-- [ ] `old child-event program item`.
-- [ ] child-event Program summary.
-- [ ] `PopulateSchedulingOnRequest()` as long-term graph-shaped create mapping.
+- [x] `ScheduleComposer` / `ScheduleTimelineComposer` as a giant nested session composer in Create/Edit Event shells.
+- [x] Right-sidebar `SessionEditorPanel` for initial talk/workshop creation.
+- [x] `SessionInlineEditor` / `EventSessionEditor` for talks/workshops.
+- [x] `AddScheduleItemMenu` as primary way to add talks/workshops.
+- [x] Old parent-event selector for program parts.
+- [x] Old add-child-event action.
+- [x] Old child-event context banner.
+- [x] Old child-event program item.
+- [x] Child-event Program summary.
+- [x] `PopulateSchedulingOnRequest()` as long-term graph-shaped create mapping.
 
 Keep `EventSession`; it is the central program item.
 
-## Verification Checklist
+## Current Verification Checklist
 
-- [ ] `git diff --check -- dev/active/event-creation-progressive-disclosure/*.md`
-- [ ] `rg -n "child-event Program summary|parent candidate lookup as a required program feature|child-event program interpretation" dev/active/event-creation-progressive-disclosure`
-- [ ] Confirm matches, if any, are rollback-only or approved true-hierarchy context.
-- [ ] Confirm docs name `EventSessionGroup` and `EventSessionGroupSession` as the next model.
-- [ ] Confirm docs require rollback of program-only `ParentEventId`.
-- [ ] Confirm docs contain no `ChildEvents` session naming.
-- [ ] Confirm docs say no giant nested session form and no primary right-sidebar session editor.
+- [x] `rtk dotnet build "Explore.Blazor.Client/Explore.Blazor.Client.csproj" --configuration Release --verbosity minimal`
+- [x] `rtk dotnet build "Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj" --configuration Release --verbosity minimal`
+- [x] `rtk dotnet test --project "Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj" --configuration Release --no-build --verbosity minimal`
+- [x] `rtk dotnet build "Event.API.IntegrationTests" --configuration Release --verbosity quiet`
+- [x] `rtk dotnet test --project "Event.API.IntegrationTests" --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EventSessionGroupHateoasTests/*" --minimum-expected-tests 1 --no-progress`
+- [x] `rtk dotnet test --project "Event.Architecture.Tests/Event.Architecture.Tests.csproj" --configuration Release --no-build --verbosity minimal`
+- [x] `rtk git diff --check -- dev/active/event-creation-progressive-disclosure/*.md` and touched HAL/test files
+- [x] `rg -n "child-event Program summary|parent candidate lookup as a required program feature|child-event program interpretation" dev/active/event-creation-progressive-disclosure` — expected matches remain only in this checklist and historical plan rejection notes.
+- [x] Confirm active Create/Edit Event shell files no longer reference `SessionEditorPanel`, `SessionEditorWorkflow`, `ScheduleTimelineComposer`, or `PopulateSchedulingOnRequest`.

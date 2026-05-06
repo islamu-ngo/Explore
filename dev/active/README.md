@@ -212,10 +212,11 @@ To continue:
 
 1. **Refer to plan** for overall strategy
 2. **Update context.md** frequently:
-   - Mark completed work
-   - Note decisions made
-   - Add blockers
+    - Mark completed work
+    - Note decisions made
+    - Add blockers
 3. **Check off tasks** in tasks.md as you complete them
+4. **Add a handoff** before pausing, transferring work, or approaching a context reset. Use [`../HANDOFF_TEMPLATE.md`](../HANDOFF_TEMPLATE.md) when a short standalone handoff is enough, or paste the same sections into the active context file.
 
 ### After Context Reset
 
@@ -258,6 +259,17 @@ No need to explain what you were doing - it's all documented!
 - Captures current state
 
 **Use when:** Approaching context limits or ending session
+
+### Handoffs
+
+Create or update a handoff when:
+
+- work spans multiple sessions;
+- another contributor or AI agent needs to continue;
+- validation is incomplete or blockers remain;
+- the working tree contains unrelated dirty files that the next contributor must not touch.
+
+Use [`../HANDOFF_TEMPLATE.md`](../HANDOFF_TEMPLATE.md) for the canonical short format. A good handoff includes current state, next action, blockers, modified files, validation, docs impact, and risks.
 
 ---
 
@@ -363,6 +375,7 @@ If scope changes:
 - Mark tasks complete immediately
 - Update SESSION PROGRESS after significant work
 - Add new tasks as discovered
+- Add or refresh handoff notes before stopping work or handing off to another agent
 
 ---
 
