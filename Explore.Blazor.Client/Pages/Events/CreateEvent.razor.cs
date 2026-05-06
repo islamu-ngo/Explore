@@ -56,7 +56,7 @@ public partial class CreateEvent
 
     // Form state
     private Guid? _currentUserId;
-    private CreateEventRequest createDto = new();
+private CreateEventDraftRequestDto createDto = new();
     private ICollection<EventTypeListDto>? eventTypes;
     private ICollection<AudienceGenderListDto>? audienceGenders;
     private ICollection<AudienceAgeListDto>? audienceAges;
@@ -104,7 +104,7 @@ public partial class CreateEvent
     private TagCategoryMode _createTagCatMode;
     private IReadOnlyCollection<Guid> _createTagCatInitialIds = Array.Empty<Guid>();
 
-    // Sessions
+    // Draft program state. Sessions are created after the event draft is saved.
     private List<SessionEditorModel> sessions = new();
     private string _bgColor = string.Empty;
     private string _bgEffect = "None";
@@ -289,24 +289,6 @@ public partial class CreateEvent
         Logger.LogInformation("OnInitializedAsync starting");
         await LoadFormData();
 
-        if (!sessions.Any())
-        {
-            AddDefaultFirstSession();
-        }
-    }
-
-    private void AddDefaultFirstSession()
-    {
-        var defaultStart = DateTime.Today.AddDays(1).AddHours(9);
-        var defaultEnd = DateTime.Today.AddDays(1).AddHours(10);
-
-        sessions.Add(new SessionEditorModel
-        {
-            StartTime = defaultStart,
-            EndTime = defaultEnd,
-            RegistrationModeId = 1,
-            UseEventImage = true
-        });
     }
 
     // ========== Publisher Methods ==========
@@ -884,11 +866,6 @@ public partial class CreateEvent
         {
             createDto.VisibilityTypeId = visibilityTypes.First().Id;
         }
-        if (createDto.EventStatusId is null or <= 0)
-        {
-            createDto.EventStatusId = 1;
-        }
-
         if (!createDto.IsRegistrationRequired.HasValue)
         {
             createDto.IsRegistrationRequired = true;
@@ -949,12 +926,6 @@ public partial class CreateEvent
                 errorMessage = "You cannot publish events for the selected group.";
                 return false;
             }
-        }
-
-        if (sessions == null || !sessions.Any())
-        {
-            errorMessage = "You must add at least one session.";
-            return false;
         }
 
         return true;
@@ -1114,8 +1085,7 @@ public partial class CreateEvent
             createDto.GroupId = _publisherMode == "group" ? _selectedGroupId : null;
             createDto.FeaturedImageId = featuredImageId;
             createDto.MadhabId = selectedMadhabId;
-            createDto.IsRegistrationRequired = sessions.Any(s => s.RegistrationModeId is > 0);
-            createDto.EventStatusId = 1; // Draft is the only create state; publish is a separate server action.
+            createDto.IsRegistrationRequired = createDto.RegistrationPolicyId.HasValue;
             createDto.VisibilityTypeId ??= 1;
             createDto.EventFormatId ??= 1;
             createDto.Timezone = _selectedTimezone.Id;
@@ -1327,60 +1297,6 @@ public partial class CreateEvent
         _showTimezoneSelector = false;
     }
 
-    private void OnSessionStartDateChanged(DateTime? date)
-    {
-        if (!date.HasValue || sessions.Count == 0)
-        {
-            return;
-        }
-
-        var session = sessions[0];
-        var startTime = session.StartTime.TimeOfDay;
-        var endTime = session.EndTime.TimeOfDay;
-        session.StartTime = date.Value.Date.Add(startTime);
-        session.EndTime = date.Value.Date.Add(endTime);
-    }
-
-    private void OnSessionStartTimeChanged(TimeSpan? time)
-    {
-        if (!time.HasValue || sessions.Count == 0)
-        {
-            return;
-        }
-
-        var session = sessions[0];
-        session.StartTime = session.StartTime.Date.Add(time.Value);
-        if (session.EndTime <= session.StartTime)
-        {
-            session.EndTime = session.StartTime.AddHours(1);
-        }
-    }
-
-    private void OnSessionEndTimeChanged(TimeSpan? time)
-    {
-        if (!time.HasValue || sessions.Count == 0)
-        {
-            return;
-        }
-
-        var session = sessions[0];
-        session.EndTime = session.EndTime.Date.Add(time.Value);
-        if (session.EndTime <= session.StartTime)
-        {
-            session.EndTime = session.StartTime.AddHours(1);
-        }
-    }
-
-    private void OnFirstSessionLocationChanged(Guid? locationId)
-    {
-        if (sessions.Count == 0)
-        {
-            return;
-        }
-
-        sessions[0].LocationId = locationId;
-    }
-
     private static string FormatTimezoneShort(TimeZoneInfo tz)
     {
         var offset = tz.BaseUtcOffset;
@@ -1403,25 +1319,5 @@ public partial class CreateEvent
     {
         createDto.CategoryIds = selectedCategoryIds.ToList();
         createDto.TagIds = selectedTagIds.ToList();
-
-        createDto.Sessions = sessions.Select((session, index) => new CreateEventSessionRequest
-        {
-            TempKey = $"session-{index}",
-            StartTime = DateTimeHelper.ConvertLocalToUtc(session.StartTime),
-            EndTime = DateTimeHelper.ConvertLocalToUtc(session.EndTime),
-            LocationId = session.LocationId,
-            FeaturedImageId = session.UseEventImage ? null : session.FeaturedImageId,
-            SortOrder = index,
-            Title = string.IsNullOrWhiteSpace(session.Title) ? createDto.Title : session.Title,
-            Description = session.Description,
-            MaxAudienceAttendees = session.MaxAudienceAttendees,
-            RegistrationModeId = session.RegistrationModeId,
-            SessionTemplateId = session.SessionTemplateId,
-            LanguageIds = session.LanguageIds.ToList()
-        }).ToList();
-
-        createDto.Days = new List<CreateEventDayRequest>();
-        createDto.Rooms = new List<CreateEventRoomRequest>();
-        createDto.AgendaItems = new List<CreateEventAgendaItemRequest>();
     }
 }

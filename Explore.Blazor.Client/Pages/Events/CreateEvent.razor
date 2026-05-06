@@ -251,58 +251,6 @@
                                           Class="mb-2" />
                     }
 
-                    @* --- Minimum required first session timing: detailed program editing happens in the session composer. --- *@
-                    @if (sessions.Count > 0)
-                    {
-                        <MudPaper Class="create-event__seed-session mb-3" Elevation="0">
-                            <MudText Typo="Typo.subtitle2" HtmlTag="h2" Class="mb-1">Initial session timing</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
-                                Set the first program item date and time before saving or publishing. More session details move to the dedicated composer.
-                            </MudText>
-
-                            <MudDatePicker Label="Session date"
-                                           Date="@((DateTime?)sessions[0].StartTime.Date)"
-                                           DateChanged="OnSessionStartDateChanged"
-                                           Required="true"
-                                           Variant="Variant.Outlined"
-                                           Class="mb-2" />
-
-                            <div class="create-event__seed-session-times">
-                                <MudTimePicker Label="Start time"
-                                               Time="@((TimeSpan?)sessions[0].StartTime.TimeOfDay)"
-                                               TimeChanged="OnSessionStartTimeChanged"
-                                               Required="true"
-                                               Variant="Variant.Outlined" />
-                                <MudTimePicker Label="End time"
-                                               Time="@((TimeSpan?)sessions[0].EndTime.TimeOfDay)"
-                                               TimeChanged="OnSessionEndTimeChanged"
-                                               Required="true"
-                                               Variant="Variant.Outlined" />
-                            </div>
-
-                            @if (createDto.EventFormatId is 1 or 3)
-                            {
-                                <MudSelect T="Guid?"
-                                           Label="Session location"
-                                           Value="@sessions[0].LocationId"
-                                           ValueChanged="OnFirstSessionLocationChanged"
-                                           Variant="Variant.Outlined"
-                                           Margin="Margin.Dense"
-                                           Clearable="true"
-                                           Class="mt-3"
-                                           aria-label="Session location">
-                                    @if (locations != null)
-                                    {
-                                        @foreach (var loc in locations)
-                                        {
-                                            <MudSelectItem T="Guid?" Value="@((Guid?)loc.Id)">@loc.FullName</MudSelectItem>
-                                        }
-                                    }
-                                </MudSelect>
-                            }
-                        </MudPaper>
-                    }
-
                     @* --- Event Format: In-person / Online / Hybrid --- *@
                     <MudToggleGroup T="int?"
                                     @bind-Value="createDto.EventFormatId"
