@@ -137,6 +137,17 @@ dotnet test --project <ProjectPath> --configuration Release -- --report-trx --re
 | **Authorization Parity** | Every resource kind has a Cerbos policy and fallback case |
 | **ABOUTME Headers** | All C# files start with `ABOUTME:` comments |
 | **Test Suite Governance** | Disabled tests use explicit skip metadata, never commented-out `[Test]` markers |
+| **Documentation Quality** | Canonical docs include metadata/source anchors, stale placeholders are blocked in new operator docs, and unsupported TUnit filter commands are rejected |
+
+### Documentation Quality Tests
+
+Run documentation quality checks through the architecture test project:
+
+```bash
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+```
+
+These checks intentionally run as part of the whole project because this repository uses TUnit. Do not use VSTest-style `--filter` for docs checks.
 
 ### Accessibility Convention Tests
 
@@ -215,6 +226,7 @@ Rate limiting is automatically disabled in the `Testing` environment — all rat
 - [ACCESSIBILITY.md](ACCESSIBILITY.md) — WCAG requirements tested by convention tests
 - [CONTRIBUTING.md](CONTRIBUTING.md) — PR validation checklist
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) — constraints tested by architecture tests
+- [DOCUMENTATION_ARCHITECTURE.md](DOCUMENTATION_ARCHITECTURE.md) — documentation metadata, source anchors, and quality gates
 
 ## API Integration Test Host Profiles
 

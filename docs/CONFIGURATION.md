@@ -52,6 +52,13 @@ Important behavior:
 
 - mapping uses `TrySet`: existing canonical keys are not overwritten.
 
+Storage naming rules:
+
+- runtime .NET settings use `S3Settings:*`;
+- Compose/environment overrides use `S3Settings__*`;
+- Infisical/domain secret definitions use the `STORAGE_S3_*` key family under storage paths;
+- do not document new `Storage__*` keys unless source code is changed to bind them.
+
 ## Blazor Server Compatibility Mapping
 
 `Explore.Blazor.Extensions.ConfigurationExtensions` maps Keycloak and API base URL keys similarly.

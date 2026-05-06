@@ -77,9 +77,14 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | Infisical Path + Key | .NET Configuration Key |
 |---|---|
 | `/keycloak/REALM_NAME` | `Keycloak:RealmName` |
-| `/database/CONNECTION_STRING` | `Database:ConnectionString` |
+| `/postgresql/POSTGRESQL_HOST` | PostgreSQL bootstrap host |
+| `/postgresql/POSTGRESQL_PORT` | PostgreSQL bootstrap port |
+| `/postgresql/POSTGRESQL_DATABASE` | PostgreSQL bootstrap database |
+| `/postgresql/POSTGRESQL_USERNAME` | PostgreSQL bootstrap username |
+| `/postgresql/POSTGRESQL_PASSWORD` | PostgreSQL bootstrap password |
+| storage path + `STORAGE_S3_*` | `S3Settings:*` |
 
-Environment variable format uses double-underscore separators: `DATABASE__CONNECTIONSTRING`.
+Environment variable format uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string.
 
 ## ISecretProvider Interface
 

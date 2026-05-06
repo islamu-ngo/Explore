@@ -286,12 +286,14 @@ Skip-to-content link. Automatically present in MainLayout. No page-level action 
 ### Running Accessibility Tests
 
 ```bash
-# bUnit accessibility tests
-dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --filter "FullyQualifiedName~Accessibility" --configuration Release
+# bUnit accessibility and component tests
+dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 
-# Architecture convention tests
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --filter "FullyQualifiedName~Accessibility" --configuration Release
+# Architecture convention tests, including accessibility guardrails
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 ```
+
+Use TUnit `--treenode-filter` only for locally verified focused runs. Do not use VSTest-style `--filter` examples for TUnit projects.
 
 ### Manual Testing Checklist
 

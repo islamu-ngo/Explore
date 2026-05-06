@@ -3,6 +3,12 @@ ABOUTME: Includes architecture test requirements, CSS rules, DTO sync flow, and 
 
 # Contributing
 
+> **Audience:** Contributors | AI agents
+> **Status:** Implemented
+> **Owner:** Contributor Experience
+> **Last Verified:** 2026-05-06
+> **Source Anchors:** `docs/FIRST_CONTRIBUTION.md`, `docs/TESTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/`, `dev/HANDOFF_TEMPLATE.md`
+
 ## Prerequisites
 
 | Tool | Version | Purpose |
@@ -12,6 +18,20 @@ ABOUTME: Includes architecture test requirements, CSS rules, DTO sync flow, and 
 | .NET Aspire workload | Latest | Service orchestration |
 
 See [GETTING_STARTED.md](GETTING_STARTED.md) for complete setup instructions.
+
+## Starting Point
+
+If this is your first contribution, start with [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md). It gives the shortest safe path for docs-only and small-bug PRs without duplicating this full workflow.
+
+Use the GitHub templates to keep requests and reviews actionable:
+
+| Template | Use For |
+|---|---|
+| [Bug report](../.github/ISSUE_TEMPLATE/bug_report.yml) | Reproducible defects, validation gaps, and regressions. |
+| [Feature request](../.github/ISSUE_TEMPLATE/feature_request.yml) | New behavior with explicit problem, proposal, and non-goals. |
+| [Documentation issue](../.github/ISSUE_TEMPLATE/documentation.yml) | Stale, missing, confusing, or incorrect docs with source anchors. |
+| [AI agent task](../.github/ISSUE_TEMPLATE/ai_agent_task.yml) | Work packages that need context, scoped files, validation, and handoff expectations. |
+| [Pull request template](../.github/PULL_REQUEST_TEMPLATE.md) | PR summary, docs impact, validation evidence, UI screenshots, release/operator notes, and agent handoff. |
 
 ## Branch And Commit
 
@@ -79,6 +99,22 @@ Architecture tests are CI gates — not optional. They enforce:
 - **ABOUTME headers** — all C# files start with `ABOUTME:` comments
 
 See [TESTING.md](TESTING.md) for the full list of architecture convention tests.
+
+### Step 4: Record Documentation Impact
+
+Every non-trivial PR must record one documentation impact outcome:
+
+| Outcome | Use When |
+|---|---|
+| Updated | Behavior, commands, configuration, API contracts, operator flows, or release notes changed and docs were updated in the same PR. |
+| Not needed | The change is internal and does not alter documented behavior. |
+| Deferred | Docs impact exists but is intentionally split; include owner, follow-up path, and reason. |
+
+Run documentation quality checks through the architecture test project:
+
+```bash
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+```
 
 ## Code Standards
 
@@ -158,12 +194,16 @@ TDD is the default unless explicitly allowed to skip.
 Before submitting:
 
 - [ ] Scope is focused and independently testable (target ≤ 4 hours of work)
+- [ ] Pull request template is completed with summary, linked context, docs impact, validation, and risk notes
 - [ ] Build succeeds: `dotnet build --configuration Release --verbosity quiet`
-- [ ] All 8 standard test projects pass individually
+- [ ] All 8 standard PR test projects pass individually (`Explore.Blazor.Client.E2ETests` is the ninth project and remains manual/nightly)
 - [ ] Architecture tests pass (layer deps, naming, accessibility, auth parity)
+- [ ] Documentation impact is recorded: `Updated`, `Not needed`, or `Deferred` with reason
 - [ ] New C# files have `ABOUTME:` headers
 - [ ] New CSS follows layer architecture and uses design tokens
 - [ ] API contract changes include docs updates (`docs/API.md`, `docs/API_CHANGELOG.md`)
+- [ ] Operator/release changes update `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, or `docs/RELEASE_CHECKLIST.md` when applicable
+- [ ] Multi-session work includes active dev docs or a handoff using [../dev/HANDOFF_TEMPLATE.md](../dev/HANDOFF_TEMPLATE.md)
 - [ ] Breaking changes are explicitly documented
 - [ ] No type error suppression (`as any`, `@ts-ignore`)
 - [ ] No empty catch blocks or deleted failing tests
@@ -178,7 +218,9 @@ Before submitting:
 ## Related
 
 - [GETTING_STARTED.md](GETTING_STARTED.md) — setup and first run
+- [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md) — shortest safe path for first-time contributors
 - [TESTING.md](TESTING.md) — test framework and project roles
+- [DOCUMENTATION_ARCHITECTURE.md](DOCUMENTATION_ARCHITECTURE.md) — docs metadata, source anchors, and docs impact contract
 - [ARCHITECTURE.md](ARCHITECTURE.md) — layer boundaries
 - [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) — CSS architecture and component wrappers
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) — hard constraints

@@ -1,250 +1,180 @@
 ABOUTME: Production self-hosting guide covering Docker Compose stack, configuration, and operations.
-ABOUTME: Covers all infrastructure services, environment variables, TLS, health checks, and upgrades.
+ABOUTME: Covers infrastructure services, setup secret, migrations, health checks, backups, and upgrades.
 
 # Self-Hosting
 
-This guide covers deploying the ISLAMU Event platform outside of the development Aspire environment.
+> **Audience:** Operators
+> **Status:** Implemented
+> **Owner:** Platform/Ops
+> **Last Verified:** 2026-05-06
+> **Source Anchors:** `docker-compose.yml`, `Explore.AppHost/AppHost.cs`, `Event.MigrationService/`, `Explore.API/Program.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`
 
-## Architecture Overview
+This guide covers running ISLAMU Event outside the Aspire developer loop. The repository `docker-compose.yml` is the current self-hosting source of truth.
 
-The production stack consists of:
+## Runtime Topology
 
-| Service | Purpose | Required |
-|---------|---------|----------|
-| Event API | REST API with CQRS/MediatR | Yes |
-| Explore Blazor BFF | Blazor Server + YARP proxy to API | Yes |
-| PostgreSQL | Primary database | Yes |
-| Keycloak | OIDC identity provider | Yes |
-| MinIO / S3 | Object storage for images and files | Yes |
-| Reverse proxy | TLS termination, routing | Recommended |
+| Service | Required | Compose Name | Purpose | Public Port |
+|---|---:|---|---|---|
+| PostgreSQL | Yes | `postgres` | Application database | internal |
+| Redis | Yes | `redis` | Distributed cache when configured | internal |
+| Keycloak DB | Yes | `keycloak-db` | Keycloak PostgreSQL database | internal |
+| Keycloak | Yes | `keycloak` | OIDC identity provider and realm import | `8080:8080` |
+| API | Yes | `explore-api` | REST API, migrations, health, metrics | `7039:8080` |
+| Blazor BFF | Yes | `explore-blazor` | Server host and YARP proxy to API | `7002:8080` |
+| MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile | `9005:9000`, `9006:9001` |
+| Cerbos | Optional | `cerbos` | External authorization PDP profile | `3592:3592`, `3593:3593` |
 
-## Docker Compose Stack
+Profiles:
 
-A minimal production `docker-compose.yml`:
+- `storage` starts MinIO and creates the configured bucket.
+- `authz` starts Cerbos for deployments that select Cerbos authorization.
 
-```yaml
-services:
-  postgres:
-    image: postgres:17
-    environment:
-      POSTGRES_DB: islamu_event
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+## Start The Stack
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:latest
-    command: start
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: ${DB_USER}
-      KC_DB_PASSWORD: ${DB_PASSWORD}
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME}
-      KC_PROXY_HEADERS: xforwarded
-      KEYCLOAK_ADMIN: ${KC_ADMIN_USER}
-      KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
-    depends_on:
-      postgres:
-        condition: service_healthy
+1. Create an environment file with secrets required by `docker-compose.yml`.
+2. Start the required stack:
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
-    volumes:
-      - miniodata:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+   ```bash
+   docker compose up -d postgres redis keycloak-db keycloak explore-api explore-blazor
+   ```
 
-  api:
-    image: ghcr.io/islamu/event-api:latest
-    environment:
-      - Database__ConnectionString=Host=postgres;Database=islamu_event;Username=${DB_USER};Password=${DB_PASSWORD}
-      - Keycloak__Authority=https://${KEYCLOAK_HOSTNAME}/realms/islamu
-      - Storage__Endpoint=http://minio:9000
-      - Storage__AccessKey=${MINIO_USER}
-      - Storage__SecretKey=${MINIO_PASSWORD}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      keycloak:
-        condition: service_started
+3. Add optional storage when local S3/MinIO is needed:
 
-  blazor:
-    image: ghcr.io/islamu/event-blazor:latest
-    environment:
-      - BFF__ApiBaseUrl=http://api:7039
-      - Authentication__Authority=https://${KEYCLOAK_HOSTNAME}/realms/islamu
-    depends_on:
-      - api
-    ports:
-      - "443:8443"
+   ```bash
+   docker compose --profile storage up -d
+   ```
 
-volumes:
-  pgdata:
-  miniodata:
-```
+4. Add optional Cerbos when using the Cerbos provider:
 
-## Environment Variables
+   ```bash
+   docker compose --profile authz up -d
+   ```
 
-### Database
+5. Open Blazor at `http://localhost:7002` and API at `http://localhost:7039`.
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `Database__ConnectionString` | PostgreSQL connection string | `Host=postgres;Database=islamu_event;Username=app;Password=secret` |
+## Required Environment Keys
 
-### Authentication (Keycloak)
+Use the key names consumed by the Compose file and source code. Do not invent generic aliases.
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `Keycloak__Authority` | OIDC authority URL | `https://auth.example.com/realms/islamu` |
-| `Keycloak__ClientId` | OIDC client ID | `islamu-event` |
-| `Keycloak__ClientSecret` | OIDC client secret (set via `KEYCLOAK_BLAZOR_CLIENT_SECRET` in Infisical) | (from Keycloak) |
+### Application Database Bootstrap
 
-### Storage (MinIO / S3)
+`Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs` expects discrete PostgreSQL values. Do not provide only a URL-form database secret.
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `Storage__Endpoint` | S3 endpoint URL | `http://minio:9000` |
-| `Storage__AccessKey` | S3 access key | `minioadmin` |
-| `Storage__SecretKey` | S3 secret key | (secret) |
-| `Storage__BucketName` | Default bucket | `islamu-event` |
+| Key | Purpose |
+|---|---|
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Container bootstrap for `postgres`. |
+| `POSTGRESQL_HOST` | Application DB host, normally `postgres`. |
+| `POSTGRESQL_PORT` | Application DB port, normally `5432`. |
+| `POSTGRESQL_DATABASE` | Application DB name. |
+| `POSTGRESQL_USERNAME` | Application DB username. |
+| `POSTGRESQL_PASSWORD` | Application DB password. |
 
-### Secret Provider (Optional)
+### Keycloak
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SecretProvider__Provider` | Provider type: `None`, `Infisical` | `None` |
-| `SecretProvider__FailFast` | Fail startup if secrets unavailable | `false` |
-| `SecretProvider__Infisical__Url` | Infisical server URL | — |
-| `SecretProvider__Infisical__ProjectId` | Infisical project ID | — |
-| `SecretProvider__Infisical__ClientId` | Universal Auth client ID | — |
-| `SecretProvider__Infisical__ClientSecret` | Universal Auth client secret | — |
+| Key | Purpose |
+|---|---|
+| `KC_DB`, `KC_DB_URL`, `KC_DB_USERNAME`, `KC_DB_PASSWORD` | Keycloak database configuration. |
+| `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | Initial Keycloak admin account. |
+| `KEYCLOAK_ENDPOINT` | Base Keycloak endpoint used to derive API/Blazor authority values. |
+| `KEYCLOAK_REALM` | Realm name. |
+| `KEYCLOAK_BLAZOR_CLIENT_SECRET` | Blazor confidential client secret. |
 
-See [SECRETS.md](SECRETS.md) for full provider configuration and [CONFIGURATION.md](CONFIGURATION.md) for all application settings.
+### Storage
 
-### Outbox Processor
+Runtime storage settings bind to `S3Settings:*`.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OutboxProcessor__Enabled` | Enable background outbox processing | `true` |
-| `OutboxProcessor__PollingIntervalSeconds` | Poll frequency | `5` |
-| `OutboxProcessor__BatchSize` | Messages per batch | `100` |
-| `OutboxProcessor__MaxRetryCount` | Max retries before dead-letter | `5` |
+| Compose/API Key | Canonical .NET Key |
+|---|---|
+| `S3Settings__Endpoint` | `S3Settings:Endpoint` |
+| `S3Settings__PublicEndpoint` | `S3Settings:PublicEndpoint` |
+| `S3Settings__Region` | `S3Settings:Region` |
+| `S3Settings__BucketName` | `S3Settings:BucketName` |
+| `S3Settings__AccessKeyId` | `S3Settings:AccessKeyId` |
+| `S3Settings__SecretAccessKey` | `S3Settings:SecretAccessKey` |
 
-### Multi-Tenancy
+Infisical/domain secret definitions use the `STORAGE_S3_*` family under storage paths. Keep docs and secret-provider values aligned with `S3Settings:*`; do not use stale `Storage__*` keys.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DEPLOYMENT_MODE` | Set to `multi_tenant` in the API environment/Infisical `/api` folder to start onboarding in multi-tenant mode. Omit for single-tenant onboarding. | *(unset = single tenant)* |
-| `Deployment__DefaultTenantId` | Default tenant UUID | `018e4e5c-7f00-7000-8000-000000000001` |
+### API And Blazor
 
-Most self-hosted installs should leave `DEPLOYMENT_MODE` unset. The first-run flow then launches a single-tenant site, hides tenant mechanics, and creates the internal default tenant during completion. Set `DEPLOYMENT_MODE=multi_tenant` only before first launch when the deployment is intentionally hosting multiple tenants.
+| Key | Host | Purpose |
+|---|---|---|
+| `DEPLOYMENT_MODE` | API | Optional first-run mode; omit for single-tenant, set `multi_tenant` before first launch for multi-tenant. |
+| `SETUP_SECRET` | API | Optional fixed setup secret. If absent, API generates and logs a temporary secret. |
+| `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
 
-During first-run onboarding, complete the flow in this order: enter the setup secret, authenticate the initial administrator, fill the Site Profile, review Preflight, then Launch. Preflight blocks missing critical launch requirements such as auth provider and canonical host configuration, and warns about operational maturity items such as SMTP, object storage, backups, observability, and public exposure policy.
+`docker-compose.yml` currently sets Blazor `API_ENDPOINT` with a default of `http://eventapi:8080/`. Because the Compose service is `explore-api`, operators should set `API_ENDPOINT=http://explore-api:8080/` until the Compose default is reconciled.
 
-## Keycloak Realm Setup
+## First-Run Setup Secret
 
-1. Create a realm named `islamu`
-2. Create a client with:
-   - Client ID: `islamu-event`
-   - Client authentication: ON (confidential)
-   - Valid redirect URIs: `https://your-domain.com/*`
-   - Web origins: `https://your-domain.com`
-3. Enable the following scopes: `openid`, `profile`, `email`
-4. Create roles: `admin`, `organizer`, `moderator`
-5. Map roles to the `realm_access.roles` claim
+If `SETUP_SECRET` is unset and setup mode is active, the API generates a 32-character setup secret, logs it at startup, and accepts it for 60 minutes. Use that secret to complete the setup flow:
 
-The API extracts user ID from JWT claims with fallback order: `sub` → `nameidentifier` → `sid`.
+1. Setup Secret
+2. Admin Auth
+3. Site Profile
+4. Preflight
+5. Launch
 
-## Database Migrations
+The validation endpoint is `POST /api/InstanceOnboarding/validate-secret`. The setup-secret rate-limit policy allows only a small number of attempts per minute; repeated failures should be treated as operator or credential errors, not retried blindly.
 
-Migrations run automatically on startup via `MigrationService`. For manual control:
+If the generated secret expires before launch, restart `explore-api` and use the newly logged secret.
 
-```bash
-dotnet ef database update --project Event.Persistence --startup-project Event.API
-```
+## Keycloak Realm
 
-The migration service is idempotent — safe to run on every deployment.
+The Compose file imports `./docker/keycloak/realm-export.json` into Keycloak. For production, verify:
+
+- realm name matches `KEYCLOAK_REALM`;
+- Blazor client ID matches the configured client (`islamu-event-blazor` in Compose);
+- redirect URIs and web origins match the public reverse-proxy host;
+- API audience and metadata address match the Keycloak endpoint exposed to the API.
+
+## Migrations
+
+There are two migration paths:
+
+| Path | Applies To | Behavior |
+|---|---|---|
+| `Event.MigrationService` | Aspire/local-dev orchestration | Applies `ExploreDbContext` and data-protection migrations, seeds, then exits before API/Blazor start. |
+| `Explore.API` startup | Docker Compose and direct API hosting | Runs EF migrations and database seeding on startup outside `Testing`. |
+
+The production Compose file does not currently start `Event.MigrationService` as a separate container. Do not document Compose as if the migration service runs there unless the Compose file is changed with it.
 
 ## Reverse Proxy
 
-Place a reverse proxy (nginx, Caddy, Traefik) in front of the Blazor BFF for TLS termination:
+Place TLS termination in front of `explore-blazor` and route browser traffic to port `8080` inside the container. The Blazor BFF proxies API calls; browsers should not need direct API access.
 
-```nginx
-server {
-    listen 443 ssl;
-    server_name your-domain.com;
+Minimum proxy requirements:
 
-    ssl_certificate /etc/ssl/certs/your-cert.pem;
-    ssl_certificate_key /etc/ssl/private/your-key.pem;
-
-    location / {
-        proxy_pass http://blazor:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-The Blazor BFF proxies API requests via YARP — clients never access the API directly.
+- preserve `Host`;
+- forward `X-Forwarded-For` and `X-Forwarded-Proto`;
+- configure `ForwardedHeadersTrust` in the API before relying on forwarded host/IP values;
+- use the same public origin in Keycloak redirect URIs and web origins.
 
 ## Health Checks
 
-The API exposes health endpoints:
+| Endpoint | Host | Purpose |
+|---|---|---|
+| `/alive` | API, Blazor | Liveness probe. |
+| `/health` | API, Blazor | Readiness probe for dependencies and shutdown state. |
+| `/metrics` | API | Prometheus metrics endpoint. |
 
-| Endpoint | Purpose |
-|----------|---------|
-| `/health` | Readiness probe for `ready`-tag checks (database, cache, OIDC when configured, SMTP, conditional Cerbos, secrets) |
-| `/alive` | Liveness probe for `live`-tag checks |
-| `/metrics` | Prometheus metrics endpoint |
+Treat `Unhealthy` as non-deployable. Treat `Degraded` as acceptable only when the response identifies an optional dependency that is intentionally disabled.
 
-Health check components:
+## Backup And Upgrade
 
-| Check | Tag | What It Verifies |
-|-------|-----|-----------------|
-| PostgreSQL | `db` | Database connectivity |
-| Keycloak | `auth` | OIDC provider reachable |
-| MinIO | `storage` | Object storage accessible |
-| Secret Provider | `secrets` | Secret management healthy (if configured) |
+Before every upgrade:
 
-## Monitoring
+1. Back up application PostgreSQL data.
+2. Back up Keycloak PostgreSQL data.
+3. Back up object storage if `storage` is enabled.
+4. Record image tags, commit SHA, enabled Compose profiles, and secret-provider key names.
+5. Read release notes for migrations, config changes, rollback constraints, and docs impact.
 
-The application emits:
-- **Structured logs** — JSON format compatible with Loki, ELK, or any log aggregator
-- **Metrics** — Prometheus-compatible via OpenTelemetry (business metrics, secret refresh, outbox processing)
-- **Traces** — OpenTelemetry distributed traces
-
-See [OPERATIONS.md](OPERATIONS.md) for full observability configuration.
-
-## Upgrade Procedure
-
-1. **Backup database** — `pg_dump` before any upgrade
-2. **Pull new images** — `docker compose pull`
-3. **Stop services** — `docker compose down` (graceful shutdown waits for in-flight requests)
-4. **Start services** — `docker compose up -d`
-5. **Verify** — check `/health` is `Healthy` or intentionally `Degraded`, and `/alive` returns healthy
-6. **Monitor** — watch logs for migration completion and startup errors
-
-Migrations apply automatically. Rollback requires restoring the database backup and reverting to previous images.
+Use [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for the full runbook and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before tagging or deploying a release.
 
 ## Related
 
-- [GETTING_STARTED.md](GETTING_STARTED.md) — development setup
-- [CONFIGURATION.md](CONFIGURATION.md) — all application settings
-- [SECRETS.md](SECRETS.md) — secret provider configuration
-- [OPERATIONS.md](OPERATIONS.md) — monitoring and observability
-- [SECURITY.md](SECURITY.md) — authentication and authorization architecture
+- [CONFIGURATION.md](CONFIGURATION.md) — runtime configuration sources and key mappings.
+- [SECRETS.md](SECRETS.md) — secret provider behavior and key mapping.
+- [OPERATIONS.md](OPERATIONS.md) — health, startup, shutdown, and runtime safeguards.
+- [SECURITY.md](SECURITY.md) — authentication and authorization architecture.
+- [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) — backup, restore, upgrade, rollback.

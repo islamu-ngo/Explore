@@ -3,6 +3,25 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 
 # Troubleshooting
 
+> **Audience:** Operators | Contributors | Admins
+> **Status:** Implemented
+> **Owner:** Platform/Ops
+> **Last Verified:** 2026-05-06
+> **Source Anchors:** `Explore.API/Program.cs`, `Explore.Blazor/`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
+
+Use this page when you have a symptom. For planned work, installation, backup, restore, upgrade, or rollback procedures, use the linked runbooks instead of copying procedures into this file.
+
+## Related Runbooks
+
+| Need | Go To |
+|---|---|
+| Install, Compose topology, setup secret, Keycloak, MinIO, Cerbos, reverse proxy | [SELF_HOSTING.md](SELF_HOSTING.md) |
+| Back up, restore, upgrade, roll back, or validate release safety | [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) |
+| Runtime health, rate limiting, request timeouts, metrics, graceful shutdown | [OPERATIONS.md](OPERATIONS.md) |
+| Configuration keys and environment-variable mapping | [CONFIGURATION.md](CONFIGURATION.md) |
+| Secret-provider setup and secret naming | [SECRETS.md](SECRETS.md) |
+| Auth/authz trust boundaries | [SECURITY.md](SECURITY.md) |
+
 ## Quick Triage Order
 
 1. Check `https://localhost:7039/health` and `/alive`.
@@ -10,6 +29,7 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 3. Verify deployment mode and tenant resolution behavior.
 4. Verify auth session (`/auth/status`) and token forwarding through BFF.
 5. Check rate limiting (`429`) and request timeout (`504`) before deeper debugging.
+6. If the issue followed an upgrade or restore, stop and verify [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) rollback and validation steps before changing data.
 
 ## Build And Test Failures
 
@@ -53,6 +73,7 @@ Cause:
 Check:
 - proxy sends `X-Forwarded-Proto` and `X-Forwarded-Host`.
 - forwarded headers middleware is active in Blazor server pipeline.
+- API forwarded-header trust is configured for the reverse proxy; see [CONFIGURATION.md](CONFIGURATION.md) and [SELF_HOSTING.md](SELF_HOSTING.md).
 
 ## Setup Secret Failures
 
@@ -69,6 +90,7 @@ Checks:
 4. auto-generated setup secrets expire after 60 minutes from API startup.
 5. if the setup page reports `Environment`, use the configured `SETUP_SECRET` value; if it reports `Generated`, use the API startup log secret; if it reports `Expired`, restart the API to reopen setup mode.
 6. use `GET /api/System/onboarding-preflight` to inspect non-sensitive launch blockers and operational warnings before retrying completion.
+7. for first-run Compose setup, confirm the operator used the service names and ports from [SELF_HOSTING.md](SELF_HOSTING.md), not older `api`/`blazor` examples.
 
 ## Tenant Resolution Problems
 
@@ -146,11 +168,26 @@ Checks:
 
 Checks:
 1. Check `SecretProvider:Provider` config value — `None` uses env vars, `Infisical` uses Infisical API.
-2. If `FailFast` is `true`, missing required secrets will crash at startup. Check logs for `RequiredSecretsValidator` errors.
+2. Provider configuration is validated at startup. Check logs for `SecretProviderOptionsValidator` errors before changing secret values.
 3. For Infisical: verify `ClientId`, `ClientSecret`, `ProjectId`, and `Environment` are set.
-4. Check health endpoint: `/health` includes `secret_provider` check — `Degraded` after 1-2 failures, `Unhealthy` after 3+.
+4. Check health endpoint: `/health` includes the `secret_provider` check — `Degraded` after 1-2 failures, `Unhealthy` after 3+.
 5. If refresh is enabled, check `secrets_refresh_failures_total` Prometheus metric for recurring failures.
-6. Key mapping: Infisical uses `SCREAMING_SNAKE_CASE` (e.g., `DATABASE__CONNECTIONSTRING` → `Database:ConnectionString`).
+6. Key mapping: Infisical/domain secret names use `SCREAMING_SNAKE_CASE`, while .NET environment overrides use double-underscore keys such as `S3Settings__Endpoint`. PostgreSQL bootstrap values are discrete `POSTGRESQL_*` values, not a single URL-form connection string; see [SECRETS.md](SECRETS.md).
+
+## Upgrade Or Restore Regressions
+
+Symptoms:
+- API starts but data is missing or from the wrong environment.
+- Keycloak login works but users or clients are missing.
+- Object downloads fail after a restore.
+- Migrations ran during startup and rollback is being considered.
+
+Checks:
+1. Stop write traffic before repeated restore attempts.
+2. Compare the release manifest, database dump timestamp, object storage snapshot, and secret/config snapshot from [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).
+3. Verify application PostgreSQL and Keycloak PostgreSQL were restored from the intended snapshots.
+4. Verify `S3Settings:*` values point to the restored bucket or compatible object store.
+5. If migrations already ran, do not manually edit migration history tables; decide rollback vs corrective migration using the rollback matrix in [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).
 
 ## Local URLs
 

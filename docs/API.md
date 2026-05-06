@@ -3,8 +3,16 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 
 # API Architecture
 
+> **Audience:** Integrators | Contributors | AI agents
+> **Status:** Implemented
+> **Owner:** API
+> **Last Verified:** 2026-05-06
+> **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`
+
 ## Scope
 This document describes the full API behavior in `Explore.API`: the middleware pipeline, rate limiting, request timeouts, caching strategy, HATEOAS implementation, specification pattern, error handling, content negotiation, and client-generation flow.
+
+For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Generated OpenAPI/Scalar output remains the endpoint and DTO source of truth.
 
 ## Runtime Endpoints
 ### Development
@@ -512,8 +520,10 @@ Authorization decisions are also traced via `ActivitySource` named `Explore.Auth
 
 Write operations support the `Idempotency-Key` HTTP header for safe retries:
 - Client sends `Idempotency-Key: <UUID>` on POST/PUT/PATCH/DELETE requests.
-- Server caches the response by `(Key, TenantId)` in PostgreSQL.
-- Duplicate requests within 24 hours replay the cached response with original status code.
+- Server caches eligible responses by `(Key, TenantId)` in PostgreSQL.
+- Duplicate requests within 24 hours replay the cached response with original status code when the original response was persisted.
+- Persisted responses must have status `200` through `499`, body size at or below 1 MB, and blank, `application/json`, or `application/problem+json` content type.
+- `5xx`, large, or non-JSON responses are not persisted for replay.
 - Keys expire after 24 hours via background cleanup.
 - Entity: `IdempotencyRecord` with `Key`, `TenantId`, `StatusCode`, `ResponseBody`, `CreatedAt`, `ExpiresAt`.
 
@@ -536,8 +546,6 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - API-key requests may carry a requested tenant hint through pre-auth middleware and are finalized by `ApiTenantPostAuthenticationMiddleware`, which can return `404 Tenant mismatch` or `401 API key authentication failed`.
 3. EF query filters enforce tenant scoping in persistence.
 4. **Hierarchical Settings**: Governance settings follow a 5-tier resolution cascade: User → Group → Organization → Tenant → Instance. Resolution is performed in batch via `HierarchicalSettingsResolver` with support for instance-level locks and single-tenant bypass.
-
-## Key Endpoint Groups
 
 ## Key Endpoint Groups
 

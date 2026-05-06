@@ -384,7 +384,7 @@ Callers passing `CancellationToken` must use a **named argument** (`cancellation
 1. Add `[HttpGet(Name = "X_Y")]` (or equivalent verb attribute) with a stable name.
 2. Add `[ProducesResponseType]` for every possible response shape, including 400/401/403/404.
 3. Pick an **Endpoint Classification** and apply the matching authorization attribute(s).
-4. Confirm the OpenAPI doc still round-trips cleanly (`dotnet test --project Event.API.IntegrationTests --filter ContractInvariants`).
+4. Confirm API contract tests still pass (`dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`).
 5. If the generated client needs regeneration, open a separate contract PR — do not mix contract and feature work.
 
 ---

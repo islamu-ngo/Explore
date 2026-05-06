@@ -3,6 +3,23 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 
 # Operations
 
+> **Audience:** Operators | Contributors | AI agents
+> **Status:** Mixed
+> **Owner:** Platform/Ops
+> **Last Verified:** 2026-05-06
+> **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
+
+This page is the operational reference for implemented runtime behavior. Task procedures should live in dedicated runbooks and be linked from here.
+
+## Operational Runbooks
+
+| Task | Runbook | Use When |
+|---|---|---|
+| Install or update a self-hosted stack | [SELF_HOSTING.md](SELF_HOSTING.md) | You need Compose topology, ports, setup secret behavior, Keycloak, MinIO, Cerbos, or reverse-proxy boundaries. |
+| Back up, restore, upgrade, or roll back | [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) | You are preparing a release, recovering an environment, or testing disaster recovery. |
+| Diagnose repeated symptoms | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | You have a concrete failure such as `401`, `429`, `504`, unhealthy readiness, setup-secret errors, or secret-provider failures. |
+| Validate release readiness | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | A change affects migrations, configuration, secrets, security, upgrade paths, or operator docs. |
+
 ## Local Startup Topology (Aspire)
 
 `Explore.AppHost/AppHost.cs` starts services in this order:
@@ -11,7 +28,7 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 2. `Explore.API` (waits for migration completion)
 3. `Explore.Blazor` (waits for migration completion and API readiness)
 
-The Blazor app receives `ExploreAPI__BaseUrl=https://localhost:7039/` from AppHost for local orchestration.
+The Blazor app resolves the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Do not hardcode the Compose/API host port into AppHost documentation.
 
 ## API Startup Behavior
 
@@ -46,7 +63,7 @@ Readiness interpretation:
 | `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
 | `explore-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
-| `secret_provider` / `secret-resolver` | API, Blazor | Secret backend/resolution path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
+| `secret_provider` | API, Blazor | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
 
 Operational rules:
 
@@ -445,91 +462,14 @@ Admin settings management:
 5. Check setup-secret mode if onboarding is blocked.
 6. Check `islamu_tms_fallback_activated_total` if localization is degraded — flip force-offline if needed.
 
-## Verification Policy (Execution Baseline)
+## AI Agent Operational Context
 
-Every session **must** start with a green build before making changes. Every PR **must** leave the build and its declared minimum tests green.
-
-**Shortcut:** the `/check` slash command runs the build + per-project tests in one go.
-
-### Full Project Test List
-
-Run each test project individually (no solution-level `dotnet test`):
-
-```bash
-dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
-```
-
-`Explore.Blazor.Client.E2ETests` requires running infrastructure (Aspire AppHost) and is not included in standard test runs.
-
-## AI Agent Operational Rules
-
-### Subagent Delegation
-
-- **Prefer subagents over direct work** when a domain match exists. Index: [`.claude/agents/`](.claude/agents/) and [`.claude/agents/README.md`](.claude/agents/README.md).
-- Every `task()` call **must** include `load_skills=[...]` and `run_in_background=<bool>`.
-- Store every returned `session_id` — continuing the same subagent saves 70%+ tokens.
-
-### MCP Tool Use
-
-| MCP Server | Use For |
-|---|---|
-| Context7 | Library docs, configuration references, pinned API versions |
-| Tavily | Web research, scraping, extraction |
-| Sequential Thinking | Multi-step architecture / debugging / tradeoff analysis |
-| At-Explore | ATProto / ActivityPub integration & debugging |
-| Playwriter | Blazor UI testing & visual inspection |
-| Chrome-DevTools | Frontend / network / performance inspection |
-| GitKraken | Branches, commits, PRs, stashing |
-| Aspire | Distributed-app orchestration |
-
-### Session Memory
-
-- **Short-term** (this session's plan + tasks): `dev/active/<task-name>/` — see [`dev/active/README.md`](dev/active/README.md).
-- **Durable** (findings, patterns, decisions): [`dev/_journal/journal.md`](dev/_journal/journal.md), [`dev/_journal/MAJOR_DECISIONS.md`](dev/_journal/MAJOR_DECISIONS.md).
-
-### Todo Discipline
-
-- Create todos IMMEDIATELY for any multi-step task (2+ steps). Use the `todowrite` tool.
-- Mark exactly ONE todo `in_progress` at a time.
-- Mark `completed` as soon as done — do not batch.
+AI-agent workflow rules are not runtime operations. Keep them in [../AGENTS.md](../AGENTS.md), [../CLAUDE.md](../CLAUDE.md), and [../dev/active/README.md](../dev/active/README.md) so operators do not have to scan agent tooling while diagnosing production behavior.
 
 
-## Partitioning Strategy — Planned
+## Planned Capacity Work
 
-**Status:** Not yet implemented. Strategy documented for post-v1.0 when table sizes warrant it.
-
-**Candidate tables (high-growth, multi-tenant):**
-
-| Table | Growth Pattern | Partitioning Strategy |
-|---|---|---|
-| `events` | Per tenant, unbounded | Hash by `tenant_id` (16-64 partitions) |
-| `event_sessions` | Per event, high fan-out | Hash by `tenant_id` |
-| `event_registrations` | Per session × users | Hash by `tenant_id` |
-| `pds_sync_outbox` | Transactional, time-ordered | Range by `created_at` (monthly) |
-| `audit_logs` | Append-only, all writes | Range by `created_at` (monthly) |
-| `notifications` | Per user, high volume | Hash by `tenant_id` |
-| `configuration_change_logs` | Append-only audit | Range by `timestamp` (monthly) |
-
-**PostgreSQL declarative partitioning approach:**
-1. **Tenant-scoped tables** → Hash partition by `tenant_id`. This distributes tenants across partitions and allows partition pruning when `tenant_id` is in the WHERE clause (it always is due to query filters).
-2. **Time-series tables** (outbox, audit, change logs) → Range partition by creation timestamp with monthly boundaries. Old partitions can be detached and archived without affecting active data.
-3. **Hybrid** (notifications) → Could use composite partitioning (hash by tenant, then range by date) if volume justifies complexity.
-
-**Prerequisites before implementing:**
-- Table sizes must exceed ~10M rows to justify partitioning overhead.
-- All queries on partitioned tables must include the partition key in WHERE clause (tenant_id or created_at). Current EF query filters already ensure this for tenant_id.
-- Unique indexes must include the partition key. Current unique constraints already include tenant_id where applicable.
-- Foreign keys referencing partitioned tables have limitations in PostgreSQL — plan migration carefully.
-
-**Estimated trigger point:** When any single table exceeds 50M rows or query latency degrades despite proper indexing.
+Partitioning is not implemented. Treat partitioning notes as future capacity planning only; do not document partitioned-table behavior as a current operator contract. Revisit this when tenant-scoped or append-only tables approach sizes where normal indexing and query-filter pruning no longer meet SLOs.
 
 ---
 
