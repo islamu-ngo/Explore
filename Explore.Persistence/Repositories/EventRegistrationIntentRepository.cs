@@ -39,21 +39,20 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
         IReadOnlyList<EventRegistration> children,
         CancellationToken cancellationToken)
     {
-        await using var tx = await _dbContext.Database
-            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-
-        await _dbContext.EventRegistrationIntents.AddAsync(intent, cancellationToken);
-
-        foreach (var child in children)
+        return await ExecuteInSerializableTransactionAsync(async () =>
         {
-            child.EventRegistrationIntentId = intent.Id;
-            await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
-        }
+            await _dbContext.EventRegistrationIntents.AddAsync(intent, cancellationToken);
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await tx.CommitAsync(cancellationToken);
+            foreach (var child in children)
+            {
+                child.EventRegistrationIntentId = intent.Id;
+                await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
+            }
 
-        return intent;
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return intent;
+        }, cancellationToken);
     }
 
     public async Task<EventRegistrationIntentCreationResult> CreateWithChildrenAndCapacityAsync(
@@ -63,38 +62,66 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
         int waitlistedStatusId,
         CancellationToken cancellationToken)
     {
-        await using var tx = await _dbContext.Database
-            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-
-        var waitlistedSessionIds = new List<Guid>();
-
-        foreach (var child in children)
+        return await ExecuteInSerializableTransactionAsync(async () =>
         {
-            var reserved = await TryReserveSessionCapacityAsync(child.EventSessionId, cancellationToken);
-            child.ApprovalStatusId = reserved ? approvedStatusId : waitlistedStatusId;
+            var waitlistedSessionIds = new List<Guid>();
 
-            if (!reserved)
+            foreach (var child in children)
             {
-                waitlistedSessionIds.Add(child.EventSessionId);
+                var reserved = await TryReserveSessionCapacityAsync(child.EventSessionId, cancellationToken);
+                child.ApprovalStatusId = reserved ? approvedStatusId : waitlistedStatusId;
+
+                if (!reserved)
+                {
+                    waitlistedSessionIds.Add(child.EventSessionId);
+                }
             }
-        }
 
-        intent.ApprovalStatusId = waitlistedSessionIds.Count == 0
-            ? approvedStatusId
-            : waitlistedStatusId;
+            intent.ApprovalStatusId = waitlistedSessionIds.Count == 0
+                ? approvedStatusId
+                : waitlistedStatusId;
 
-        await _dbContext.EventRegistrationIntents.AddAsync(intent, cancellationToken);
+            await _dbContext.EventRegistrationIntents.AddAsync(intent, cancellationToken);
 
-        foreach (var child in children)
+            foreach (var child in children)
+            {
+                child.EventRegistrationIntentId = intent.Id;
+                await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return new EventRegistrationIntentCreationResult(intent, waitlistedSessionIds);
+        }, cancellationToken);
+    }
+
+    private async Task<T> ExecuteInSerializableTransactionAsync<T>(
+        Func<Task<T>> operation,
+        CancellationToken cancellationToken)
+    {
+        if (_dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
         {
-            child.EventRegistrationIntentId = intent.Id;
-            await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
+            return await operation();
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await tx.CommitAsync(cancellationToken);
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _dbContext.Database
+                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
-        return new EventRegistrationIntentCreationResult(intent, waitlistedSessionIds);
+            try
+            {
+                var result = await operation();
+                await tx.CommitAsync(cancellationToken);
+                return result;
+            }
+            catch
+            {
+                await tx.RollbackAsync(cancellationToken);
+                throw;
+            }
+        });
     }
 
     private async Task<bool> TryReserveSessionCapacityAsync(Guid sessionId, CancellationToken cancellationToken)
