@@ -95,7 +95,7 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
     }
 
     [Test]
-    public async Task Create_WithSingleSessionRequest_ReturnsCreatedAndPersistsEvent()
+    public async Task Create_WithDraftRequest_ReturnsCreatedAndPersistsEvent()
     {
         await _fixture.ResetDatabaseAsync();
 
@@ -103,7 +103,14 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var tenantResult = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(context);
 
-        var createRequest = CreateValidEventRequest("Single Submit Integration Event");
+        var createRequest = new CreateEventDraftRequestDto
+        {
+            Title = "Draft Submit Integration Event",
+            Description = "Created by the draft API integration test.",
+            VisibilityTypeId = 1,
+            EventFormatId = 1,
+            Timezone = "UTC"
+        };
         using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/event", tenantResult.UserId);
         request.Content = JsonContent.Create(createRequest);
 
@@ -117,15 +124,15 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         await Assert.That(body.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(response.Headers.Location?.ToString()).Contains(body.Id.ToString());
 
-        var detailResponse = await _fixture.Client.GetAsync($"/api/event/{body.Id}");
-        var detailContent = await detailResponse.Content.ReadAsStringAsync();
+        using var verifyScope = _fixture.Factory.Services.CreateScope();
+        var verifyContext = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var eventEntity = await verifyContext.Events.IgnoreQueryFilters().SingleAsync(x => x.Id == body.Id);
 
-        await Assert.That(detailResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(detailContent).Contains(createRequest.Title);
+        await Assert.That(eventEntity.Title).IsEqualTo(createRequest.Title);
     }
 
     [Test]
-    public async Task Create_WithInvalidTempKey_ReturnsBadRequest()
+    public async Task Create_WithDraftWithoutSessions_ReturnsCreatedAndPersistsEmptyProgramDraft()
     {
         await _fixture.ResetDatabaseAsync();
 
@@ -133,15 +140,55 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var tenantResult = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(context);
 
-        var createRequest = CreateValidEventRequest("Invalid Temp Key Event");
-        createRequest.AgendaItems.Add(new CreateEventAgendaItemRequest
+        var createRequest = new CreateEventDraftRequestDto
         {
-            Title = "Opening",
-            DayTempKey = "missing-day",
-            StartTime = createRequest.Sessions[0].StartTime,
-            EndTime = createRequest.Sessions[0].StartTime.AddMinutes(30),
-            SortOrder = 0
-        });
+            Title = "Draft Without Sessions Integration Event",
+            Description = "Created before any program items exist.",
+            VisibilityTypeId = 1,
+            EventFormatId = 1,
+            Timezone = "UTC"
+        };
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/event", tenantResult.UserId);
+        request.Content = JsonContent.Create(createRequest);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+
+        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body!.Success).IsTrue();
+        await Assert.That(body.Id).IsNotEqualTo(Guid.Empty);
+
+        using var verifyScope = _fixture.Factory.Services.CreateScope();
+        var verifyContext = verifyScope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var eventEntity = await verifyContext.Events.IgnoreQueryFilters().SingleAsync(x => x.Id == body.Id);
+        var sessionCount = await verifyContext.EventSessions.IgnoreQueryFilters().CountAsync(x => x.EventId == body.Id);
+
+        await Assert.That(eventEntity.SessionCount).IsEqualTo(0);
+        await Assert.That(eventEntity.FirstSessionDate).IsNull();
+        await Assert.That(eventEntity.LastSessionDate).IsNull();
+        await Assert.That(eventEntity.FirstSessionStartUtc).IsNull();
+        await Assert.That(eventEntity.LastSessionStartUtc).IsNull();
+        await Assert.That(sessionCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Create_WithBlankTitle_ReturnsBadRequest()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        using var scope = _fixture.Factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var tenantResult = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(context);
+
+        var createRequest = new CreateEventDraftRequestDto
+        {
+            Title = string.Empty,
+            VisibilityTypeId = 1,
+            EventFormatId = 1,
+            Timezone = "UTC"
+        };
 
         using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/event", tenantResult.UserId);
         request.Content = JsonContent.Create(createRequest);
@@ -150,34 +197,19 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         var content = await response.Content.ReadAsStringAsync();
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        await Assert.That(content).Contains("temp-key references are invalid");
+        await Assert.That(content).Contains("Title");
     }
 
     [Test]
-    public async Task Create_WithMultiSessionRoomsAndAgenda_PersistsSubmittedGraph()
+    public async Task Create_WithDraftContract_DoesNotPersistProgramGraphRows()
     {
         await _fixture.ResetDatabaseAsync();
 
-        Guid locationId;
         using (var scope = _fixture.Factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
             var tenantResult = await TenantScenarioSeed.SeedActiveTenantWithUserAsync(context);
-            var tenant = await context.Tenants.FindAsync(tenantResult.TenantId);
-            var location = new Location
-            {
-                FullName = "Single Submit Conference Center",
-                Country = "BE",
-                City = "Brussels",
-                TenantId = tenantResult.TenantId,
-                Tenant = tenant!,
-                Timezone = "UTC",
-                Pii = new LocationPii { Address = "1 Test Street", Postcode = "1000" }
-            };
-
-            context.Locations.Add(location);
             await context.SaveChangesAsync();
-            locationId = location.Id;
         }
 
         Guid userId;
@@ -188,83 +220,13 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
             userId = seededUser.Id;
         }
 
-        var start = DateTimeOffset.UtcNow.AddDays(21).AddHours(2);
-        var secondStart = start.AddDays(1);
-        var requestDto = new CreateEventRequest
+        var requestDto = new CreateEventDraftRequestDto
         {
-            Title = "Advanced Single Submit Integration Event",
-            Description = "Creates sessions, days, room, and event-level agenda in one API call.",
-            EventStatusId = 2,
+            Title = "Draft Contract Integration Event",
+            Description = "Creates only the event draft; program rows are added through dedicated endpoints.",
             VisibilityTypeId = 1,
             EventFormatId = 1,
-            Timezone = "UTC",
-            Days =
-            [
-                new CreateEventDayRequest
-                {
-                    TempKey = "day-1",
-                    LocalDate = DateOnly.FromDateTime(start.UtcDateTime),
-                    Label = "Opening Day",
-                    SortOrder = 0
-                },
-                new CreateEventDayRequest
-                {
-                    TempKey = "day-2",
-                    LocalDate = DateOnly.FromDateTime(secondStart.UtcDateTime),
-                    Label = "Workshop Day",
-                    SortOrder = 1
-                }
-            ],
-            Rooms =
-            [
-                new CreateEventRoomRequest
-                {
-                    TempKey = "room-main",
-                    LocationId = locationId,
-                    Name = "Main Hall",
-                    Capacity = 120,
-                    SortOrder = 0
-                }
-            ],
-            Sessions =
-            [
-                new CreateEventSessionRequest
-                {
-                    TempKey = "session-1",
-                    DayTempKey = "day-1",
-                    RoomTempKey = "room-main",
-                    Title = "Opening Session",
-                    StartTime = start,
-                    EndTime = start.AddHours(2),
-                    LocationId = locationId,
-                    SortOrder = 0
-                },
-                new CreateEventSessionRequest
-                {
-                    TempKey = "session-2",
-                    DayTempKey = "day-2",
-                    RoomTempKey = "room-main",
-                    Title = "Workshop Session",
-                    StartTime = secondStart,
-                    EndTime = secondStart.AddHours(2),
-                    LocationId = locationId,
-                    SortOrder = 1
-                }
-            ],
-            AgendaItems =
-            [
-                new CreateEventAgendaItemRequest
-                {
-                    TempKey = "agenda-1",
-                    DayTempKey = "day-1",
-                    RoomTempKey = "room-main",
-                    Title = "Welcome",
-                    StartTime = start,
-                    EndTime = start.AddMinutes(30),
-                    LocationId = locationId,
-                    SortOrder = 0
-                }
-            ]
+            Timezone = "UTC"
         };
 
         using var createRequest = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/event", userId);
@@ -284,13 +246,10 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         var sessionCount = await verifyContext.EventSessions.IgnoreQueryFilters().CountAsync(x => x.EventId == eventId);
         var dayCount = await verifyContext.EventDays.IgnoreQueryFilters().CountAsync(x => x.EventId == eventId);
         var agendaCount = await verifyContext.EventAgendaItems.IgnoreQueryFilters().CountAsync(x => x.EventId == eventId);
-        var roomExists = await verifyContext.LocationRooms.IgnoreQueryFilters()
-            .AnyAsync(x => x.LocationId == locationId && x.Name == "Main Hall");
 
-        await Assert.That(sessionCount).IsEqualTo(2);
-        await Assert.That(dayCount).IsEqualTo(2);
-        await Assert.That(agendaCount).IsEqualTo(1);
-        await Assert.That(roomExists).IsTrue();
+        await Assert.That(sessionCount).IsEqualTo(0);
+        await Assert.That(dayCount).IsEqualTo(0);
+        await Assert.That(agendaCount).IsEqualTo(0);
     }
 
     [Test]
@@ -340,29 +299,4 @@ public class EventControllerRealRuntimeTests(RealRuntimeApiFixture fixture)
         await Assert.That(content).DoesNotContain("Ephemeral Event");
     }
 
-    private static CreateEventRequest CreateValidEventRequest(string title)
-    {
-        var start = DateTimeOffset.UtcNow.AddDays(14).AddHours(2);
-
-        return new CreateEventRequest
-        {
-            Title = title,
-            Description = "Created by the single-submit API integration test.",
-            EventStatusId = 2,
-            VisibilityTypeId = 1,
-            EventFormatId = 2,
-            Timezone = "UTC",
-            Sessions =
-            [
-                new CreateEventSessionRequest
-                {
-                    TempKey = "session-0",
-                    Title = title,
-                    StartTime = start,
-                    EndTime = start.AddHours(2),
-                    SortOrder = 0
-                }
-            ]
-        };
-    }
 }

@@ -298,9 +298,9 @@ public class EventController : ExploreControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventRequest @event, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventDraftRequestDto draft, CancellationToken cancellationToken = default)
     {
-        var command = new CreateEventCommand { Request = @event };
+        var command = new CreateEventCommand { Request = draft.ToCreateEventRequest() };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
@@ -363,26 +363,54 @@ public class EventController : ExploreControllerBase
     }
 
     /// <summary>
-    /// Update an existing event. Supports full update (EventDto) or targeted field updates (e.g., EventStatusDto).
-    /// Supply only the DTO(s) to update; null properties are ignored.
+    /// Update an existing event draft's scalar shell fields.
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEvent)]
-    [EndpointSummary("Update Event")]
-    [EndpointDescription("Update an existing event. Supports full update via EventDto or targeted updates via specific DTOs (e.g., EventStatusDto). Null DTOs are ignored.")]
+    [EndpointSummary("Update Event Draft")]
+    [EndpointDescription("Update scalar event draft fields. Lifecycle status and session-derived program projection fields are server-owned and are not accepted by this contract.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventRequestDto dto, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDraftRequestDto draft, CancellationToken cancellationToken = default)
+    {
+        var command = new UpdateEventDraftCommand
+        {
+            Id = id,
+            Draft = draft
+        };
+        var response = await _mediator.Send(command, cancellationToken);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Update an event lifecycle status through an explicit status contract.
+    /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("{id:guid}/status", Name = RouteNames.UpdateEventStatus)]
+    [EndpointSummary("Update Event Status")]
+    [EndpointDescription("Update an event lifecycle status through a dedicated contract. Draft metadata updates must use the scalar draft update endpoint.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateStatus(Guid id, [FromBody] UpdateEventStatusDto dto, CancellationToken cancellationToken = default)
     {
         var command = new UpdateEventCommand
         {
             Id = id,
-            EventDto = dto.EventDto,
-            EventStatusDto = dto.EventStatusDto
+            EventStatusDto = dto
         };
         var response = await _mediator.Send(command, cancellationToken);
 

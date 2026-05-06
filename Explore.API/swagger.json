@@ -1,4 +1,4 @@
-{
+﻿{
   "openapi": "3.1.1",
   "info": {
     "title": "Event API",
@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:33157/"
+      "url": "http://localhost/"
     }
   ],
   "paths": {
@@ -5462,12 +5462,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/CreateEventRequest"
+                "$ref": "#/components/schemas/CreateEventDraftRequestDto"
               }
             },
             "application/*\u002Bjson; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/CreateEventRequest"
+                "$ref": "#/components/schemas/CreateEventDraftRequestDto"
               }
             }
           },
@@ -32389,19 +32389,6 @@
         },
         "x-endpoint-class": "Public"
       }
-    },
-    "/admin/migrate": {
-      "post": {
-        "tags": [
-          "Explore.API"
-        ],
-        "operationId": "ApplyDatabaseMigrations",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
     }
   },
   "components": {
@@ -34679,80 +34666,6 @@
           }
         }
       },
-      "CreateEventAgendaItemRequest": {
-        "required": [
-          "title"
-        ],
-        "type": "object",
-        "properties": {
-          "tempKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "dayTempKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "roomTempKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "title": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "startTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "endTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "locationId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "roomId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "kindId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          }
-        }
-      },
       "CreateEventCustomPropertyDefinitionDto": {
         "type": "object",
         "properties": {
@@ -35010,120 +34923,7 @@
           }
         }
       },
-      "CreateEventDayRequest": {
-        "type": "object",
-        "properties": {
-          "tempKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "localDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "label": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "bannerText": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "bannerImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "isPublished": {
-            "type": "boolean"
-          },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "allowsDayScopeRegistration": {
-            "type": "boolean"
-          }
-        }
-      },
-      "CreateEventRegistrationDto": {
-        "type": "object",
-        "properties": {
-          "eventId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "registrationScopeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "selectedEventDayId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "selectedSessionIds": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "approvalStatusId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "shareEmailWithOrganizer": {
-            "type": "boolean"
-          },
-          "consentTextAcknowledged": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "consentUiVersion": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
-      "CreateEventRequest": {
+      "CreateEventDraftRequestDto": {
         "required": [
           "title"
         ],
@@ -35221,14 +35021,6 @@
               "null",
               "string"
             ]
-          },
-          "eventStatusId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
           },
           "visibilityTypeId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -35337,63 +35129,43 @@
               "type": "string",
               "format": "uuid"
             }
-          },
-          "sessions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateEventSessionRequest"
-            }
-          },
-          "days": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateEventDayRequest"
-            }
-          },
-          "rooms": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateEventRoomRequest"
-            }
-          },
-          "agendaItems": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateEventAgendaItemRequest"
-            }
           }
         }
       },
-      "CreateEventRoomRequest": {
-        "required": [
-          "tempKey",
-          "name"
-        ],
+      "CreateEventRegistrationDto": {
         "type": "object",
         "properties": {
-          "tempKey": {
-            "type": "string"
-          },
-          "locationId": {
+          "eventId": {
             "type": "string",
             "format": "uuid"
           },
-          "name": {
-            "type": "string"
+          "userId": {
+            "type": "string",
+            "format": "uuid"
           },
-          "slug": {
+          "registrationScopeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "selectedEventDayId": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "format": "uuid"
           },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
+          "selectedSessionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
-          "capacity": {
+          "approvalStatusId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
@@ -35402,13 +35174,20 @@
             ],
             "format": "int32"
           },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
+          "shareEmailWithOrganizer": {
+            "type": "boolean"
+          },
+          "consentTextAcknowledged": {
             "type": [
-              "integer",
+              "null",
               "string"
-            ],
-            "format": "int32"
+            ]
+          },
+          "consentUiVersion": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -35867,145 +35646,6 @@
           },
           "isPublished": {
             "type": "boolean"
-          }
-        }
-      },
-      "CreateEventSessionRequest": {
-        "type": "object",
-        "properties": {
-          "tempKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "dayTempKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "roomTempKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "startTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "endTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "locationId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "roomId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "featuredImageId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "sortOrder": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "title": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "description": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "slug": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "maxAudienceAttendees": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "registrationModeId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "price": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currencyCode": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "sessionTemplateId": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "islamicAspect": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
-              }
-            ]
-          },
-          "languageIds": {
-            "type": "array",
-            "items": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
           }
         }
       },
@@ -51950,9 +51590,6 @@
     },
     {
       "name": "VisibilityType"
-    },
-    {
-      "name": "Explore.API"
     }
   ]
 }
