@@ -55,6 +55,16 @@ public class RoutesConfigurationTests
         await Assert.That(routesContent).Contains("typeof(MultiTenantOnboardingRouteGuard)");
     }
 
+    [Test]
+    public async Task OrganizationProfileRoutes_ShouldRemain_Public()
+    {
+        var routesFilePath = FindRoutesFilePath();
+        var routesContent = await File.ReadAllTextAsync(routesFilePath);
+
+        await Assert.That(routesContent).Contains("Path = \"/organization/profile/:id\", Component = typeof(OrganizationProfile), Transition = RouteTransition.Fade }");
+        await Assert.That(routesContent).Contains("Path = \"/organization/reviews/:id\", Component = typeof(OrganizationReviews), Transition = RouteTransition.Fade }");
+    }
+
     private static string FindRoutesFilePath()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

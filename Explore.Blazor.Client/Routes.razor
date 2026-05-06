@@ -93,8 +93,8 @@
             new RouteConfig { Path = "/organizations/create", Component = typeof(CreateOrganization), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/organization/success", Component = typeof(OrganizationSuccess), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             new RouteConfig { Path = "/organization/:id/members", Component = typeof(OrganizationMembers), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
-            new RouteConfig { Path = "/organization/profile/:id", Component = typeof(OrganizationProfile), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
-            new RouteConfig { Path = "/organization/reviews/:id", Component = typeof(OrganizationReviews), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
+            new RouteConfig { Path = "/organization/profile/:id", Component = typeof(OrganizationProfile), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/organization/reviews/:id", Component = typeof(OrganizationReviews), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/organization/:id", Component = typeof(OrganizationDetails), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
 
             // Group routes
