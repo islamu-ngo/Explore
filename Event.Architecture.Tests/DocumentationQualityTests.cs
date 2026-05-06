@@ -14,6 +14,7 @@ public class DocumentationQualityTests
         RepoPath("docs", "DOCUMENTATION_STYLE_GUIDE.md"),
         RepoPath("docs", "index.md"),
         RepoPath("docs", "API.md"),
+        RepoPath("docs", "BLAZOR.md"),
         RepoPath("docs", "API_COOKBOOK.md"),
         RepoPath("docs", "ADMIN_GUIDE.md"),
         RepoPath("docs", "STORAGE.md"),

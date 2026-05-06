@@ -253,7 +253,9 @@ Current iteration:
 - Phase 7 existing docs cleanup started on 2026-05-06.
 - `README.md` is now a concise landing page with product positioning, pre-1.0 maturity warning, Compose/Aspire quick starts, role-based canonical docs links, implemented capability boundaries, and no stale badge block.
 - `docs/GETTING_STARTED.md` is now a short runnable local onboarding path with metadata/source anchors, Aspire and Compose options, verified command shapes, canonical validation guidance, and deeper links instead of duplicating the full test matrix.
-- Next iteration should continue Phase 7 existing docs cleanup with `docs/API.md`, `docs/BLAZOR.md`, and configuration/security/federation cleanup after this slice remains green.
+- `docs/API.md` now keeps canonical API conventions while tightening OpenAPI source-of-truth wording, Development/Testing endpoint availability, Production Compose caveats, notification filter naming, and generated-client export instructions.
+- `docs/BLAZOR.md` now has metadata/source anchors and is a concise contributor guide for BFF endpoints, proxy/token forwarding, setup-secret trust boundaries, API client generation, render-policy consumption, and service/state patterns without duplicating design/accessibility/localization docs.
+- Next iteration should continue Phase 7 existing docs cleanup with configuration/security/federation cleanup after this slice remains green.
 
 ## Validation Notes
 

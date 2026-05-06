@@ -455,18 +455,18 @@ Last Updated: 2026-05-06
     - [x] Commands verified.
     - [x] Links deeper docs instead of duplicating them.
 
-- [ ] Update `docs/API.md`.
+- [x] Update `docs/API.md`.
   - Acceptance:
-    - [ ] Canonical API conventions remain.
-    - [ ] Links `API_COOKBOOK.md`.
-    - [ ] Generated reference instructions are accurate.
-    - [ ] Duplicate sections removed.
+    - [x] Canonical API conventions remain.
+    - [x] Links `API_COOKBOOK.md`.
+    - [x] Generated reference instructions are accurate.
+    - [x] Duplicate sections removed.
 
-- [ ] Update `docs/BLAZOR.md`.
+- [x] Update `docs/BLAZOR.md`.
   - Acceptance:
-    - [ ] Contributor-useful service/state/render guidance.
-    - [ ] BFF security boundaries are clear.
-    - [ ] Does not duplicate all design/accessibility docs.
+    - [x] Contributor-useful service/state/render guidance.
+    - [x] BFF security boundaries are clear.
+    - [x] Does not duplicate all design/accessibility docs.
 
 - [ ] Update `docs/CONFIGURATION.md`.
   - Acceptance:

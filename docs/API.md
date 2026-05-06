@@ -7,15 +7,15 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Status:** Implemented
 > **Owner:** API
 > **Last Verified:** 2026-05-06
-> **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`
+> **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Services/OpenApiExportService.cs`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/SwaggerJsonExportTests.cs`
 
 ## Scope
 This document describes the full API behavior in `Explore.API`: the middleware pipeline, rate limiting, request timeouts, caching strategy, HATEOAS implementation, specification pattern, error handling, content negotiation, and client-generation flow.
 
-For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Generated OpenAPI/Scalar output remains the endpoint and DTO source of truth.
+For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Generated OpenAPI output remains the endpoint and DTO reference; Scalar is a development/testing UI over that contract.
 
 ## Runtime Endpoints
-### Development
+### Development And Testing
 - API: `https://localhost:7039`
 - Swagger UI: `https://localhost:7039/swagger`
 - Scalar: `https://localhost:7039/scalar/v1`
@@ -23,6 +23,7 @@ For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Gen
 
 ### Docker Compose
 - API: `http://localhost:7039`
+- Compose runs the API with `ASPNETCORE_ENVIRONMENT=Production`, so Swagger UI, Scalar, and `/openapi/event-api.json` are not exposed there unless the environment is intentionally changed.
 
 ---
 
@@ -566,7 +567,7 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `/api/atproto/*` — AT Protocol record management
    - `/api/indexeddid/*` — DID indexing
 6. Notifications (all `[Authorize]`):
-   - `GET /api/notification` — paginated list with `?isRead=` and `?type=` filters
+    - `GET /api/notification` — paginated list with `?isRead=` and `?notificationTypeId=` filters
    - `GET /api/notification/{id}` — detail
    - `GET /api/notification/unread-count` — unread count (partial index optimized)
    - `PATCH /api/notification/{id}/read` — mark single as read (idempotent)
@@ -591,10 +592,11 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 
 ## OpenAPI Export And Client Generation
 
-1. In Development, API startup exports OpenAPI to `Explore.API/swagger.json`.
-2. `HalSchemaTransformer` transforms OpenAPI schemas to show HAL structure.
-3. Blazor client build uses this file as NSwag input and regenerates `Clients/EventApiClient.g.cs` before compile.
-4. DTO changes should follow API-first regeneration workflow (see `docs/CONTRIBUTING.md`).
+1. In Development, `OpenApiExportService` fetches `/openapi/event-api.json` after API startup and writes `Explore.API/swagger.json`.
+2. Integration tests can refresh the same file from the runtime OpenAPI endpoint when contract assertions need the generated document.
+3. HAL schema transformers shape OpenAPI schemas so generated clients preserve HAL extension data.
+4. `Explore.Blazor.Client/Explore.Blazor.Client.csproj` uses `Explore.API/swagger.json` as NSwag input and regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` before `CoreCompile`.
+5. DTO changes should follow API-first regeneration workflow (see `docs/CONTRIBUTING.md`).
 
 ---
 
