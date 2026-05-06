@@ -225,12 +225,17 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _instanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationModel>())
             .Returns(new InstanceCommandResponseModel { Success = true });
         _instanceOnboardingService.RefreshAuthSchemesAsync().Returns(Task.CompletedTask);
+        _instanceOnboardingService.RefreshAuthSessionAsync().Returns(true);
         _instanceOnboardingService.GetAnalyticsGovernanceSettingsAsync()
             .Returns(new Explore.Blazor.Client.Models.Analytics.AnalyticsGovernanceSettingsModel());
         _instanceOnboardingService.GetFooterGovernanceSettingsAsync().Returns(new FooterGovernanceSettingsModel());
         _instanceOnboardingService.GetActiveTenantCountAsync().Returns(1);
 
         _tenantOnboardingService.GetSettingsAsync().Returns(new TenantPolicySettingsModel());
+        _publicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(
+                Arg.Any<TenantPolicySettingsModel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new TenantPublicExperienceAdminModel());
         _organizationService.GetOrganizationsPagedAsync(Arg.Any<int>(), Arg.Any<int>())

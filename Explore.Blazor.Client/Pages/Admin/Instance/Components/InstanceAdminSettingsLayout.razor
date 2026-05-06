@@ -375,6 +375,12 @@
         _isSaving = true;
         _errorMessage = null;
 
+        if (!await EnsureFreshAuthSessionAsync())
+        {
+            _isSaving = false;
+            return;
+        }
+
         // Save the currently visible section's data
         var tasks = new List<Task<InstanceCommandResponseModel>>();
 
@@ -479,7 +485,7 @@
         }
 
         _isSaving = false;
-        await RefreshShellExperienceAsync();
+        await RefreshShellExperienceAsync(openAiAssistantIfAvailable: ShouldOpenAiAssistantAfterSave());
 
         var successMessage = _currentSection == "announcement-bar"
             ? GetAnnouncementSaveMessage(_lastAnnouncementSaveStartedWithExistingBar, forceAnnouncementBarRedisplay)
@@ -498,6 +504,12 @@
 
         _isSaving = true;
         _errorMessage = null;
+
+        if (!await EnsureFreshAuthSessionAsync())
+        {
+            _isSaving = false;
+            return;
+        }
 
         PublicExperienceAdminSaveResult response = await TenantPublicExperienceAdminService.SaveAnnouncementBarAsync(
             _tenantModel,
@@ -542,6 +554,12 @@
 
         _isSaving = true;
         _errorMessage = null;
+
+        if (!await EnsureFreshAuthSessionAsync())
+        {
+            _isSaving = false;
+            return;
+        }
 
         PublicExperienceAdminSaveResult response = await TenantPublicExperienceAdminService.SaveAsync(_publicExperienceModel);
         _isSaving = false;
@@ -614,7 +632,23 @@
         _showMobileMenu = true;
     }
 
-    private async Task RefreshShellExperienceAsync()
+    private async Task<bool> EnsureFreshAuthSessionAsync()
+    {
+        if (await InstanceOnboardingService.RefreshAuthSessionAsync())
+        {
+            return true;
+        }
+
+        _errorMessage = "Your admin session needs to be refreshed before saving. Please reload the page and try again.";
+        return false;
+    }
+
+    private bool ShouldOpenAiAssistantAfterSave() =>
+        _currentSection == "policies"
+        && IsSingleTenantMode
+        && _tenantModel.AiAssistantEnabled;
+
+    private async Task RefreshShellExperienceAsync(bool openAiAssistantIfAvailable = false)
     {
         PublicExperienceService.ResetCache();
 
@@ -625,6 +659,11 @@
                 settings.IsAiAssistantAvailable,
                 settings.AiAssistantAllowAnonymousAccess,
                 isAuthenticated: true);
+
+            if (openAiAssistantIfAvailable && settings.IsAiAssistantAvailable)
+            {
+                AiAssistantState.Open();
+            }
         }
     }
 
