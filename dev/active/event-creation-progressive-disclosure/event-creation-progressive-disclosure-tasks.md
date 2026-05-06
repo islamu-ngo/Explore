@@ -64,9 +64,10 @@ Event -> EventSessionGroup / Track / Devroom / Program section -> EventSession /
 
 ### Event draft contracts
 
-- [ ] Add/finish `CreateEventDraftRequest`.
+- [x] Add/finish `CreateEventDraftRequestDto`. Public API/OpenAPI/Blazor generated client now use scalar `CreateEventDraftRequestDto`; the backend maps it into the internal graph-shaped `CreateEventRequest` with empty session/day/room/agenda collections.
+- [x] Remove Create Event seed-session bridge: backend create validation/handler now allow zero sessions, Create Event no longer renders `Initial session timing`, and authenticated API runtime coverage verifies an empty-program draft persists without session rows.
 - [ ] Add/finish `UpdateEventDraftRequest`.
-- [ ] Remove client-controlled `EventStatusId` from draft creation path.
+- [x] Remove client-controlled `EventStatusId` from draft creation path. `CreateEventDraftRequestDto` no longer exposes status; Application maps draft create to internal `EventStatusId = 1` server-side.
 - [ ] Add idempotency key for draft create.
 - [ ] Add concurrency handling for draft update.
 - [x] Keep publish readiness separate from draft persistence in current bridge flow.
@@ -97,7 +98,7 @@ Event -> EventSessionGroup / Track / Devroom / Program section -> EventSession /
 
 - [x] Replace old child-event flow with Add session.
 - [x] If event is unsaved, Add session creates a draft first.
-- [ ] If event is dirty after initial save, Add session should update the existing draft before navigating. Current Create Event path is create-only; complete with draft update contracts.
+- [x] If event is dirty after initial save, Add session should update the existing draft before navigating. Event Edit now reuses the event update path before routing to the dedicated session composer; true Create Event draft-update contracts remain a separate backend contract task.
 - [x] Navigate to `/events/{eventId}/sessions/create` after successful draft create.
 - [x] Use server session create context for inherited defaults.
 - [x] Return to Event composer after session save/cancel.

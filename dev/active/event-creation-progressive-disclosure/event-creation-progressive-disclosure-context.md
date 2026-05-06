@@ -3,7 +3,7 @@
 
 # Event Creation Progressive Disclosure Context
 
-Last Updated: 2026-05-07 01:10 CEST
+Last Updated: 2026-05-07 02:25 CEST
 
 ## Current Source Of Truth
 
@@ -31,13 +31,14 @@ The Create/Edit Event shells are now event-draft shells only. They no longer hos
 - Event HAL detail links now expose `program`, `program-summary`, `sessions`, `session-groups`, `add-session`, `session-create-context`, and `add-session-group` with event/tenant-scoped authorization metadata where required.
 - `CreateEvent.razor` Add Session saves a draft and navigates to `/events/{eventId}/sessions/create`.
 - `EventEdit.razor` Add Session navigates to `/events/{eventId}/sessions/create`; session edit navigates to `/events/{eventId}/sessions/{sessionId}/edit`.
+- `EventEdit.razor` Add Session now saves the current event draft through the existing event update path before navigating, so dirty shell edits are not dropped when routing to the dedicated session composer.
 - Create/Edit Event program summaries now expose the saved-empty-state affordances `[Add session]` and `[Add section/track]`; Event Edit opens a HAL-gated program sections dialog for list/create/edit/delete and one-section session assignment/unassignment using existing session-group APIs, including optional default location/room metadata.
 - Event Edit program summaries now surface the saved session's time window, room/location, capacity, and registration mode from existing session data; speaker, language, and readiness details remain deferred until their contracts are available.
 - Event Edit now asks `IEventService.GetEventProgramSummaryAsync(EventId)` for the server-backed Program Summary and renders grouped sections, session groups, local-day buckets, program items, and readiness guidance when available, falling back to local session data only when the endpoint is unavailable.
 - Create Event keeps common presets/effects in the page-level `ThemeQuickBar`; `ThemeStudioTray` is now advanced-only and no longer duplicates quick preset/effect controls.
 - Create/Edit Event shells no longer use `SessionEditorPanel`, `SessionEditorWorkflow`, `SessionImageUploadWorkflow`, `CreateSessionDialog`, `EditSessionDialog`, or `EventSessionEditor`; obsolete drawer-era files and stale tests were deleted.
 - Create/Edit Event shells no longer render inline schedule logistics (`ScheduleTimelineComposer`, day/room/agenda managers, agenda grid/miller columns) as primary creation/editing UI.
-- Create Event retains only minimal first-session date/start/end/location fields because the current backend create contract still requires at least one session. This is a bridge, not the final draft contract.
+- Create Event no longer renders the temporary first-session seed fields. Public API/OpenAPI/Blazor generated client create now uses scalar `CreateEventDraftRequestDto`; the backend maps it into the internal graph-shaped `CreateEventRequest` with empty session/day/room/agenda collections, forces `EventStatusId = 1` server-side, and persists a draft event with an empty program.
 
 ### Completed dedicated session composer work
 
@@ -62,7 +63,7 @@ The Create/Edit Event shells are now event-draft shells only. They no longer hos
 
 1. **Dedicated session routes are the canonical session workflow.** Event shells can summarize and route, but cannot be the primary place for talk/workshop editing.
 2. **Event shell schedule logistics are intentionally removed.** Day labels, rooms, agenda grids, and logistics belong in later program/agenda surfaces, not in the initial event draft shell.
-3. **Minimal first-session fields remain temporarily.** They exist only because the current backend `CreateEventRequest` still requires at least one session. Replace them when `CreateEventDraftRequest`/`UpdateEventDraftRequest` exists.
+3. **Draft creation is scalar and server-owned at the public boundary.** `CreateEventDraftRequestDto` is the create endpoint/client contract; it excludes program graph fields and client-controlled `EventStatusId`. The older graph-shaped `CreateEventRequest` remains an internal Application bridge for handler/import-style graph creation until follow-up refactoring removes or renames it.
 4. **Program section assignment is optional but explicit.** Dedicated session pages load groups and assign/unassign after session save/update. Partial failures are surfaced without creating duplicates.
 5. **Session create context is server-owned.** Create receives inherited defaults and selector options from `GetEventSessionCreateContextRequest`; richer option families such as speakers, languages, categories, tags, templates, and custom fields remain deferred.
 6. **Program summary is server-owned.** Event shells consume `GetEventProgramSummaryRequest` for section/group/day/item metadata and readiness warnings instead of inferring the canonical program structure locally.
@@ -75,7 +76,8 @@ The Create/Edit Event shells are now event-draft shells only. They no longer hos
 
 - `Explore.Blazor.Client/Pages/Events/CreateEvent.razor`, `.razor.cs`, `.razor.css`
   - Removed drawer/session-editor and schedule-logistics shell UI.
-  - Kept minimal seed-session inputs.
+  - Removed the temporary seed-session inputs; draft creation now submits an empty program unless a future contract-backed flow explicitly adds sessions.
+  - Uses generated `CreateEventDraftRequestDto` for public draft create instead of the graph-shaped create request; create status is server-owned and no longer part of the form DTO.
   - Program summary shows Add Session and Add section/track affordances; Add Session saves draft and routes to dedicated session create page.
   - Theme quick bar remains page-level while the theme tray contains only advanced styling controls.
 - `Explore.Blazor.Client/Pages/Events/EventEdit.razor`, `.razor.cs`, `.razor.css`
@@ -83,6 +85,7 @@ The Create/Edit Event shells are now event-draft shells only. They no longer hos
   - Program summary shows saved program item and section/track affordances without reintroducing child-event language.
   - Saved program item summaries prefer the server-backed Program Summary and include section/group/day/item metadata, time, location, capacity, registration mode, and readiness warning metadata when available.
   - Add section/track opens a program sections dialog when the event HAL exposes `add-session-group`; missing HAL shows a permission message.
+  - Add Session reuses the event update path before navigating to `/events/{eventId}/sessions/create`; failed updates keep the user on Event Edit and surface the server message.
   - Session edit routes to dedicated edit page.
   - Shell update no longer creates/updates sessions.
   - Fixed `RegistrationPolicyId` preservation during populate/save.
@@ -99,6 +102,7 @@ The Create/Edit Event shells are now event-draft shells only. They no longer hos
   - Dedicated edit composer with HAL-gated save, relationship validation, location/room/program section/registration mode support, and unassignment.
 - `Explore.Blazor.Client/Services/EventService.cs`
   - Added program summary, session create context, and session-group list/create/update/assign/unassign wrappers.
+  - `CreateEventAsync` now accepts generated `CreateEventDraftRequestDto` for public draft creation.
 - `Explore.Blazor.Client/Helpers/HalResourceExtensions.cs`
   - Added `EventSessionDto.HasHalLink(...)`, `EventSessionGroupListModel.HasHalLink(...)`, and session-group HAL collection deserialization.
 - `Explore.Blazor.Client/Models/EventSessionGroups/EventSessionGroupListModel.cs`
@@ -127,7 +131,11 @@ The Create/Edit Event shells are now event-draft shells only. They no longer hos
 - `Explore.Blazor.Client.Tests/Components/Event/EventProgramSummaryViewTests.cs`
   - Verifies grouped Program Summary rendering, item metadata, readiness guidance, and empty state copy.
 - `Explore.Blazor.Client.Tests/Pages/Event/CreateEventTests.cs`
-  - Verifies Program Summary, removed schedule/drawer UI, Add Session draft navigation, and publish dialog wording.
+  - Verifies Program Summary, removed schedule/drawer/seed-session UI, Add Session draft navigation with zero sessions, and publish dialog wording.
+- `Event.Application.UnitTests/Features/Events/Validators/CreateEventRequestValidatorTests.cs`
+  - Verifies `CreateEventRequest` validation allows zero-session event drafts while still validating optional program graph items when present.
+- `Event.Application.UnitTests/Features/Events/Commands/CreateEventCommandHandlerTests.cs`
+  - Verifies zero-session event drafts create the event aggregate without creating `EventSession` rows or first/last session projections.
 - `Explore.Blazor.Client.Tests/Models/SessionEditorModelTests.cs`
   - Reduced to summary mapping tests after drawer-era helper methods were removed.
 - `Event.Application.UnitTests/Features/EventSessions/Queries/GetEventSessionCreateContextRequestHandlerTests.cs`
@@ -140,6 +148,8 @@ The Create/Edit Event shells are now event-draft shells only. They no longer hos
   - Verifies session-group write endpoints require authentication for create, update, delete, assign, and unassign routes.
 - `Event.API.IntegrationTests/Features/EventSessionGroupRealRuntimeTests.cs`
   - Verifies authenticated session-group create, update, delete, assign, and unassign routes against PostgreSQL-backed API runtime and persisted state.
+- `Event.API.IntegrationTests/Features/EventControllerRealRuntimeTests.cs`
+  - Verifies authenticated public draft create uses `CreateEventDraftRequestDto`, persists an event with no session rows or first/last session projections, rejects blank titles, omits client-controlled status, and does not persist graph rows from the draft contract.
 
 ## Verification Completed In This Session
 
@@ -171,6 +181,32 @@ rtk dotnet test --project "Event.API.IntegrationTests" --configuration Release -
 rtk dotnet test --project "Event.API.IntegrationTests" --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EventSessionGroupRealRuntimeTests/*" --minimum-expected-tests 1 --no-progress
 ```
 
+Additional verification after removing the Create Event seed-session bridge:
+
+```bash
+rtk dotnet build "Explore.Application" --configuration Release --verbosity quiet
+rtk dotnet build "Event.Application.UnitTests" --configuration Release --verbosity quiet
+rtk dotnet build "Explore.Blazor.Client" --configuration Release --verbosity quiet
+rtk dotnet build "Explore.Blazor.Client.Tests" --configuration Release --verbosity quiet
+rtk dotnet build "Event.API.IntegrationTests" --configuration Release --verbosity quiet
+rtk dotnet test --project "Event.Application.UnitTests" --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/CreateEventRequestValidatorTests/*" --minimum-expected-tests 1 --no-progress
+rtk dotnet test --project "Event.Application.UnitTests" --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/CreateEventCommandHandlerTests/*" --minimum-expected-tests 1 --no-progress
+rtk dotnet test --project "Explore.Blazor.Client.Tests" --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/CreateEventTests/*" --minimum-expected-tests 1 --no-progress
+rtk dotnet test --project "Event.API.IntegrationTests" --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EventControllerRealRuntimeTests/*" --minimum-expected-tests 1 --no-progress
+```
+
+Additional verification after switching the public create API/client contract to scalar `CreateEventDraftRequestDto`:
+
+```bash
+rtk dotnet build "Explore.Blazor.Client" --configuration Release --verbosity quiet
+rtk dotnet build "Explore.Blazor.Client.Tests" --configuration Release --verbosity quiet
+rtk dotnet build "Event.API.IntegrationTests" --configuration Release --verbosity quiet
+rtk dotnet test --project "Explore.Blazor.Client.Tests" --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/CreateEventTests/*" --minimum-expected-tests 1 --no-progress
+rtk dotnet test --project "Explore.Blazor.Client.Tests" --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EventServiceTests/*" --minimum-expected-tests 1 --no-progress
+rtk dotnet test --project "Event.API.IntegrationTests" --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/EventControllerRealRuntimeTests/*" --minimum-expected-tests 1 --no-progress
+rtk dotnet test --project "Event.Architecture.Tests" --configuration Release --no-build --verbosity quiet
+```
+
 Additional earlier targeted verification passed for backend/session-group work:
 
 ```bash
@@ -189,7 +225,7 @@ Notes:
 
 ## Known Issues / Blockers / Deferred Work
 
-- **Draft contracts still needed.** Replace the bridge over old graph-shaped `CreateEventRequest` with `CreateEventDraftRequest` and `UpdateEventDraftRequest`. This removes the temporary first-session requirement from Create Event.
+- **Draft contracts are partially complete.** `CreateEventDraftRequestDto` is now the public API/OpenAPI/Blazor client create contract and no longer exposes session/day/room/agenda graph fields or client-controlled status. `UpdateEventDraftRequest`, idempotency key, and concurrency semantics remain pending; the internal graph-shaped `CreateEventRequest` still exists as an Application bridge for handler/import-style graph creation.
 - **Session create context is partial.** It now centralizes inherited event defaults, timezone context, locations, rooms, and program sections. Language, speaker, category, tag, template, custom-field options, and readiness rules still need contract-backed expansion.
 - **Program summary UI is partially server-backed.** Event Edit now renders grouped server-backed sections/groups/days/items, but agenda/logistics plus speaker/language-specific rendering remain pending.
 - **Session group management UI is partial.** Event Edit now supports HAL-gated list/create/edit/delete and one-section session assignment/unassignment for program sections/tracks with optional default location/room metadata. HAL policy coverage protects collection delete and assign-session affordances, and endpoint-level API tests cover write-route authentication plus authenticated PostgreSQL-backed create/update/delete/assign/unassign persistence. Reorder, bulk assignment management, and multi-group workflows remain pending.
@@ -199,7 +235,7 @@ Notes:
 
 ## Next Immediate Steps
 
-1. Replace Create Event’s minimal seed-session bridge with true event draft contracts.
+1. Add explicit `UpdateEventDraftRequest` and decide idempotency/concurrency semantics for draft persistence.
 2. Extend program section/track management with reorder, bulk/multi-group assignment workflows, and richer validation feedback using existing session-group APIs.
 3. Expand session create context with language, speaker, category, tag, template, custom-field options, and readiness rules.
 4. Add richer dedicated session fields: program item type/kind, language picker, speaker management, categories/tags/custom fields/template/image, and readiness warnings.

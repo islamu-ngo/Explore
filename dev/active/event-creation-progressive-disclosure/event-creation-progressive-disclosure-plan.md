@@ -180,7 +180,7 @@ Future lookup, not required for Phase 1: `SessionGroupType` (`Track`, `Devroom`,
 
 Create/reshape draft endpoints before UI hardening:
 
-- `CreateEventDraftRequest`
+- `CreateEventDraftRequestDto`
 - `UpdateEventDraftRequest`
 - no client-controlled `EventStatusId`
 - idempotency key for draft creation
