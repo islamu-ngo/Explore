@@ -141,7 +141,7 @@ public class CreateEventTests : IDisposable
         // Event service defaults
         var createdEventId = Guid.NewGuid();
         var concurrencyStamp = Guid.NewGuid();
-        _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = createdEventId
@@ -229,6 +229,24 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
+    public async Task CreateEvent_RendersDraftShellWithoutSeedSessionFields()
+    {
+        // Arrange
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        // Act
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+        cut.WaitForState(() => cut.Markup.Contains("mud-alert", StringComparison.OrdinalIgnoreCase)
+                              || cut.Markup.Contains("mud-input", StringComparison.OrdinalIgnoreCase),
+            TimeSpan.FromSeconds(3));
+
+        // Assert
+        await Assert.That(cut.Markup).DoesNotContain("Initial session timing");
+        await Assert.That(cut.Markup).DoesNotContain("Session date");
+        await Assert.That(cut.Markup).DoesNotContain("Session location");
+    }
+
+    [Test]
     public async Task CreateEvent_ShowsErrorOrForm_WhenRendered()
     {
         // Arrange
@@ -313,7 +331,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "OnEventTypeChanged", 2);
 
         // Assert
-        var dto = GetPrivateField<CreateEventRequest>(cut.Instance, "createDto");
+        var dto = GetPrivateField<CreateEventDraftRequestDto>(cut.Instance, "createDto");
         var templates = GetPrivateField<IReadOnlyList<EventTemplateListModel>>(cut.Instance, "eventTemplates");
         var selectedDetail = GetPrivateField<EventTemplateDetailModel?>(cut.Instance, "_selectedEventTemplate");
 
@@ -343,7 +361,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "OnEventTemplateChanged", missingTemplateId);
 
         // Assert
-        var dto = GetPrivateField<CreateEventRequest>(cut.Instance, "createDto");
+        var dto = GetPrivateField<CreateEventDraftRequestDto>(cut.Instance, "createDto");
         var error = GetPrivateField<string?>(cut.Instance, "_templateLoadError");
 
         await Assert.That(dto.TemplateId).IsNull();
@@ -377,7 +395,7 @@ public class CreateEventTests : IDisposable
         await slowRequest;
 
         // Assert
-        var dto = GetPrivateField<CreateEventRequest>(cut.Instance, "createDto");
+        var dto = GetPrivateField<CreateEventDraftRequestDto>(cut.Instance, "createDto");
         var selectedDetail = GetPrivateField<EventTemplateDetailModel?>(cut.Instance, "_selectedEventTemplate");
 
         await Assert.That(dto.TemplateId).IsEqualTo(fastTemplateId);
@@ -410,7 +428,7 @@ public class CreateEventTests : IDisposable
         await slowRequest;
 
         // Assert
-        var dto = GetPrivateField<CreateEventRequest>(cut.Instance, "createDto");
+        var dto = GetPrivateField<CreateEventDraftRequestDto>(cut.Instance, "createDto");
         var templates = GetPrivateField<IReadOnlyList<EventTemplateListModel>>(cut.Instance, "eventTemplates");
 
         await Assert.That(dto.EventTypeId).IsEqualTo(2);
@@ -440,7 +458,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         // Assert
-        await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventRequest>());
+        await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
         var error = GetPrivateField<string>(cut.Instance, "errorMessage");
         await Assert.That(error).Contains("template preview");
 
@@ -469,7 +487,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         // Assert
-        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(dto => dto != null && dto.TemplateId == templateId));
+        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventDraftRequestDto>(dto => dto != null && dto.TemplateId == templateId));
     }
 
     [Test]
@@ -488,7 +506,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         // Assert
-        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(dto => dto != null && dto.TemplateId == null));
+        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventDraftRequestDto>(dto => dto != null && dto.TemplateId == null));
     }
 
     [Test]
@@ -529,7 +547,7 @@ public class CreateEventTests : IDisposable
         // Assert
         await Assert.That(sessions.All(session => session.SessionTemplateId is null)).IsTrue();
         await _eventService.Received(1).CreateEventAsync(
-            Arg.Is<CreateEventRequest>(request => request.Sessions != null && request.Sessions.All(session => session.SessionTemplateId == null)));
+            Arg.Is<CreateEventDraftRequestDto>(request => request.TemplateId == newParentTemplateId));
     }
 
     [Test]
@@ -584,7 +602,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         // Assert
-        await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventRequest>());
+        await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
         var error = GetPrivateField<string>(cut.Instance, "errorMessage");
         await Assert.That(error).Contains("No available publisher");
     }
@@ -594,7 +612,7 @@ public class CreateEventTests : IDisposable
     {
         // Arrange
         var createdEventId = Guid.NewGuid();
-        _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = createdEventId
@@ -626,7 +644,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         // Assert
-        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(request => request.EventStatusId == 1));
+        await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
         await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
         await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         var error = GetPrivateField<string>(cut.Instance, "errorMessage");
@@ -642,7 +660,7 @@ public class CreateEventTests : IDisposable
     {
         // Arrange
         var createdEventId = Guid.NewGuid();
-        _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = createdEventId
@@ -659,7 +677,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "AddSessionAsync");
 
         // Assert
-        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(request => request.EventStatusId == 1));
+        await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
         await _eventService.DidNotReceive().GetEventPublishReadinessAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
         await Assert.That(navigation.Uri).EndsWith($"/events/{createdEventId}/sessions/create");
@@ -671,7 +689,7 @@ public class CreateEventTests : IDisposable
         // Arrange
         var createdEventId = Guid.NewGuid();
         var concurrencyStamp = Guid.NewGuid();
-        _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = createdEventId
@@ -705,7 +723,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         // Assert
-        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(request => request.EventStatusId == 1));
+        await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
         await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
         await _eventService.Received(1).GetEventByIdAsync(createdEventId);
         await _dialogService.Received(1).ShowMessageBoxAsync(
@@ -726,7 +744,7 @@ public class CreateEventTests : IDisposable
         // Arrange
         var createdEventId = Guid.NewGuid();
         var concurrencyStamp = Guid.NewGuid();
-        _eventService.CreateEventAsync(Arg.Any<CreateEventRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = createdEventId
@@ -763,7 +781,7 @@ public class CreateEventTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "HandleSubmit");
 
         // Assert
-        await _eventService.Received(1).CreateEventAsync(Arg.Is<CreateEventRequest>(request => request.EventStatusId == 1));
+        await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
         await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
         await _eventService.Received(1).GetEventByIdAsync(createdEventId);
         await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -1064,22 +1082,13 @@ public class CreateEventTests : IDisposable
 
     private static void PrepareValidSubmitState(CreateEvent component)
     {
-        var dto = GetPrivateField<CreateEventRequest>(component, "createDto");
+        var dto = GetPrivateField<CreateEventDraftRequestDto>(component, "createDto");
         dto.Title = "Template Event";
         dto.EventTypeId = 1;
         dto.EventFormatId = 1;
         dto.VisibilityTypeId = 1;
-        dto.EventStatusId = 2;
+        dto.VisibilityTypeId = 2;
 
-        SetPrivateField(component, "sessions", new List<SessionEditorModel>
-        {
-            new()
-            {
-                Title = "Opening Session",
-                StartTime = DateTime.Today.AddHours(9),
-                EndTime = DateTime.Today.AddHours(10),
-                RegistrationModeId = 1
-            }
-        });
+        SetPrivateField(component, "sessions", new List<SessionEditorModel>());
     }
 }

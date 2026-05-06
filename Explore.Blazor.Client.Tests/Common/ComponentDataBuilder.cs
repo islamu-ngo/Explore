@@ -130,9 +130,9 @@ public static class ComponentDataBuilder
         .RuleFor(e => e.ActorDisplayName, f => f.Company.CompanyName());
 
     /// <summary>
-    /// Generates fake CreateEventRequest for form testing.
+    /// Generates fake CreateEventDraftRequestDto for form testing.
     /// </summary>
-    public static Faker<CreateEventRequest> CreateEventRequest => new Faker<CreateEventRequest>()
+    public static Faker<CreateEventDraftRequestDto> CreateEventRequest => new Faker<CreateEventDraftRequestDto>()
         .RuleFor(e => e.Title, f => f.Lorem.Sentence(3, 5))
         .RuleFor(e => e.Subtitle, f => f.Lorem.Sentence(5, 10))
         .RuleFor(e => e.Description, f => f.Lorem.Paragraph())
@@ -140,7 +140,6 @@ public static class ComponentDataBuilder
         .RuleFor(e => e.AudienceGenderId, f => f.Random.Int(1, 4))
         .RuleFor(e => e.AudienceAgeId, f => f.Random.Int(1, 5))
         .RuleFor(e => e.VisibilityTypeId, f => f.Random.Int(1, 3))
-        .RuleFor(e => e.EventStatusId, f => 1) // Draft
         .RuleFor(e => e.EventFormatId, f => f.Random.Int(1, 3))
         .RuleFor(e => e.IsRegistrationRequired, f => f.Random.Bool());
 
