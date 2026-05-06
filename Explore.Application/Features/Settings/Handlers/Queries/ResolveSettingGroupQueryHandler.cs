@@ -50,8 +50,11 @@ public class ResolveSettingGroupQueryHandler
             };
         }
 
+        Guid? resolvedUserId = await SettingCommandHelper.ResolveCurrentUserIdAsync(
+            _adminContext, _currentUserService, cancellationToken);
+
         var context = SettingCommandHelper.BuildSettingContext(
-            request.Scope, _tenantContext, _currentUserService);
+            request.Scope, _tenantContext, resolvedUserId);
 
         var keys = definitions.Select(d => d.Key);
         var resolved = await _resolver.ResolveBatchAsync(keys, context, cancellationToken);
@@ -118,12 +121,46 @@ public class ResolveSettingGroupQueryHandler
     private async Task<bool> CheckScopeAuthorizationAsync(
         SettingScope scope, CancellationToken ct)
     {
+        if (scope == SettingScope.User)
+        {
+            return _currentUserService.IsAuthenticated
+                && await SettingCommandHelper.ResolveCurrentUserIdAsync(_adminContext, _currentUserService, ct) is not null;
+        }
+
+        if (scope == SettingScope.Tenant)
+        {
+            if (await _adminContext.IsTenantAdminAsync(_tenantContext.TenantId, ct)
+                || await _adminContext.IsInstanceAdminAsync(ct))
+            {
+                return true;
+            }
+
+            Guid? userId = await SettingCommandHelper.ResolveCurrentUserIdAsync(
+                _adminContext, _currentUserService, ct);
+            if (userId is null)
+            {
+                return false;
+            }
+
+            IReadOnlyList<Guid> adminTenantIds = await _adminContext.GetAdminTenantIdsAsync(userId.Value, ct);
+            return adminTenantIds.Contains(_tenantContext.TenantId)
+                || await _adminContext.IsInstanceAdminAsync(userId.Value, ct);
+        }
+
+        if (scope == SettingScope.Instance)
+        {
+            if (await _adminContext.IsInstanceAdminAsync(ct))
+            {
+                return true;
+            }
+
+            Guid? userId = await SettingCommandHelper.ResolveCurrentUserIdAsync(
+                _adminContext, _currentUserService, ct);
+            return userId is not null && await _adminContext.IsInstanceAdminAsync(userId.Value, ct);
+        }
+
         return scope switch
         {
-            SettingScope.User => _currentUserService.IsAuthenticated,
-            SettingScope.Tenant => await _adminContext.IsTenantAdminAsync(_tenantContext.TenantId, ct)
-                                   || await _adminContext.IsInstanceAdminAsync(ct),
-            SettingScope.Instance => await _adminContext.IsInstanceAdminAsync(ct),
             _ => false
         };
     }

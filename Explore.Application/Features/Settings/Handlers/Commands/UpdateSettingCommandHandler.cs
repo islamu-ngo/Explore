@@ -77,6 +77,16 @@ public class UpdateSettingCommandHandler
             return response;
         }
 
+        Guid? resolvedUserId = await SettingCommandHelper.ResolveCurrentUserIdAsync(
+            _adminContext, _currentUserService, cancellationToken);
+
+        if (request.Scope == SettingScope.User && resolvedUserId is null)
+        {
+            response.Success = false;
+            response.Message = "Unable to resolve authenticated user.";
+            return response;
+        }
+
         // Validate and serialize value
         var (isValid, serializedValue, validationError) =
             SettingCommandHelper.ValidateAndSerialize(request.Value, definition);
@@ -89,7 +99,7 @@ public class UpdateSettingCommandHandler
 
         // Check lock state
         var context = SettingCommandHelper.BuildSettingContext(
-            request.Scope, _tenantContext, _currentUserService);
+            request.Scope, _tenantContext, resolvedUserId);
         var resolved = await _resolver.ResolveWithMetadataAsync(request.Key, context, cancellationToken);
 
         if (resolved is not null)
@@ -105,7 +115,7 @@ public class UpdateSettingCommandHandler
 
         var oldValue = resolved?.Value;
         var (scopeId, actorId) = SettingCommandHelper.GetScopeAndActorIds(
-            request.Scope, _tenantContext, _currentUserService);
+            request.Scope, _tenantContext, resolvedUserId);
 
         // Write
         if (request.Scope == SettingScope.User)

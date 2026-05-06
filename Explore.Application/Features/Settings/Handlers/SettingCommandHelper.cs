@@ -81,11 +81,20 @@ internal static class SettingCommandHelper
     internal static SettingContext BuildSettingContext(
         SettingScope scope, ITenantContext tenantContext, ICurrentUserService currentUserService)
     {
+        return BuildSettingContext(scope, tenantContext, currentUserService.UserId);
+    }
+
+    /// <summary>
+    /// Builds a SettingContext with an already-resolved internal user ID.
+    /// </summary>
+    internal static SettingContext BuildSettingContext(
+        SettingScope scope, ITenantContext tenantContext, Guid? userId)
+    {
         return scope switch
         {
             SettingScope.Instance => new SettingContext(null, null, null, null),
             SettingScope.Tenant => new SettingContext(tenantContext.TenantId, null, null, null),
-            SettingScope.User => new SettingContext(tenantContext.TenantId, null, null, currentUserService.UserId),
+            SettingScope.User => new SettingContext(tenantContext.TenantId, null, null, userId),
             _ => new SettingContext(tenantContext.TenantId, null, null, null)
         };
     }
@@ -96,7 +105,16 @@ internal static class SettingCommandHelper
     internal static (Guid ScopeId, Guid ActorId) GetScopeAndActorIds(
         SettingScope scope, ITenantContext tenantContext, ICurrentUserService currentUserService)
     {
-        var userId = currentUserService.UserId ?? Guid.Empty;
+        return GetScopeAndActorIds(scope, tenantContext, currentUserService.UserId);
+    }
+
+    /// <summary>
+    /// Determines scope entity ID and actor ID using an already-resolved internal user ID.
+    /// </summary>
+    internal static (Guid ScopeId, Guid ActorId) GetScopeAndActorIds(
+        SettingScope scope, ITenantContext tenantContext, Guid? resolvedUserId)
+    {
+        var userId = resolvedUserId ?? Guid.Empty;
         return scope switch
         {
             SettingScope.User => (userId, userId),
@@ -104,6 +122,14 @@ internal static class SettingCommandHelper
             SettingScope.Instance => (Guid.Empty, userId),
             _ => (Guid.Empty, userId)
         };
+    }
+
+    internal static async Task<Guid?> ResolveCurrentUserIdAsync(
+        IAdminContext adminContext,
+        ICurrentUserService currentUserService,
+        CancellationToken ct)
+    {
+        return currentUserService.UserId ?? await adminContext.ResolveUserIdAsync(ct);
     }
 
     /// <summary>
@@ -121,18 +147,40 @@ internal static class SettingCommandHelper
             case SettingScope.User:
                 if (!currentUserService.IsAuthenticated)
                     return (false, "Authentication required to update user preferences.");
+                if (await ResolveCurrentUserIdAsync(adminContext, currentUserService, ct) is null)
+                    return (false, "Unable to resolve authenticated user.");
                 return (true, null);
 
             case SettingScope.Tenant:
                 var isTenantAdmin = await adminContext.IsTenantAdminAsync(tenantContext.TenantId, ct);
-                if (!isTenantAdmin && !await adminContext.IsInstanceAdminAsync(ct))
-                    return (false, "Only tenant or instance administrators can update tenant settings.");
-                return (true, null);
+                if (isTenantAdmin || await adminContext.IsInstanceAdminAsync(ct))
+                    return (true, null);
+
+                var tenantUserId = await ResolveCurrentUserIdAsync(adminContext, currentUserService, ct);
+                if (tenantUserId is not null)
+                {
+                    var adminTenantIds = await adminContext.GetAdminTenantIdsAsync(tenantUserId.Value, ct);
+                    if (adminTenantIds.Contains(tenantContext.TenantId)
+                        || await adminContext.IsInstanceAdminAsync(tenantUserId.Value, ct))
+                    {
+                        return (true, null);
+                    }
+                }
+
+                return (false, "Only tenant or instance administrators can update tenant settings.");
 
             case SettingScope.Instance:
-                if (!await adminContext.IsInstanceAdminAsync(ct))
-                    return (false, "Only instance administrators can update instance settings.");
-                return (true, null);
+                if (await adminContext.IsInstanceAdminAsync(ct))
+                    return (true, null);
+
+                var instanceUserId = await ResolveCurrentUserIdAsync(adminContext, currentUserService, ct);
+                if (instanceUserId is not null
+                    && await adminContext.IsInstanceAdminAsync(instanceUserId.Value, ct))
+                {
+                    return (true, null);
+                }
+
+                return (false, "Only instance administrators can update instance settings.");
 
             default:
                 return (false, $"Scope '{scope}' is not supported for setting operations.");

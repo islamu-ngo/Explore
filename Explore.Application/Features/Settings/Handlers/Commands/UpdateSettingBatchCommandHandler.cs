@@ -72,9 +72,29 @@ public class UpdateSettingBatchCommandHandler
             };
         }
 
+        Guid? resolvedUserId = await SettingCommandHelper.ResolveCurrentUserIdAsync(
+            _adminContext, _currentUserService, cancellationToken);
+
+        if (request.Scope == SettingScope.User && resolvedUserId is null)
+        {
+            return new BatchUpdateResponseDto
+            {
+                Success = false,
+                Results = request.Values.Keys
+                    .Select(k => new SettingUpdateResultDto
+                    {
+                        Key = k,
+                        Applied = false,
+                        SkipReason = "Unable to resolve authenticated user."
+                    })
+                    .ToList(),
+                Message = "Unable to resolve authenticated user."
+            };
+        }
+
         // Phase 1: Validate all keys
         var context = SettingCommandHelper.BuildSettingContext(
-            request.Scope, _tenantContext, _currentUserService);
+            request.Scope, _tenantContext, resolvedUserId);
         var allKeys = request.Values.Keys.ToList();
         var resolved = await _resolver.ResolveBatchAsync(allKeys, context, cancellationToken);
 
@@ -166,7 +186,7 @@ public class UpdateSettingBatchCommandHandler
 
         // Phase 2: Apply valid updates
         var (scopeId, actorId) = SettingCommandHelper.GetScopeAndActorIds(
-            request.Scope, _tenantContext, _currentUserService);
+            request.Scope, _tenantContext, resolvedUserId);
         var results = new List<SettingUpdateResultDto>(validationResults.Count);
         var appliedCount = 0;
 
