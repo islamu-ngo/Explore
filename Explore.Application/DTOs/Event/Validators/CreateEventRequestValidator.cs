@@ -93,9 +93,6 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
             .MustAsync(async (id, _) => !id.HasValue || await eventRegistrationPolicyRepository.Exists(id.Value))
             .WithMessage("Registration policy does not exist.");
 
-        RuleFor(p => p.Sessions)
-            .NotEmpty().WithMessage("At least one session is required.");
-
         RuleForEach(p => p.Sessions).ChildRules(session =>
         {
             session.RuleFor(s => s.Title).MaximumLength(500).When(s => !string.IsNullOrWhiteSpace(s.Title));

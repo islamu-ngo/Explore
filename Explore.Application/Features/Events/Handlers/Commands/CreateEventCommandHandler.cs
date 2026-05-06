@@ -240,10 +240,14 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
     private Event BuildEventEntity(CreateEventRequest dto, EventActorResult actorResult, string timezoneId)
     {
-        var firstSessionStart = dto.Sessions.Min(s => s.StartTime);
-        var lastSessionStart = dto.Sessions.Max(s => s.StartTime);
-        var firstSessionLocal = _scheduleProjectionCalculator.Project(firstSessionStart, dto.Sessions.MinBy(s => s.StartTime)!.EndTime, timezoneId).LocalStartDate;
-        var lastSessionLocal = _scheduleProjectionCalculator.Project(lastSessionStart, dto.Sessions.MaxBy(s => s.StartTime)!.EndTime, timezoneId).LocalStartDate;
+        var firstSession = dto.Sessions.MinBy(s => s.StartTime);
+        var lastSession = dto.Sessions.MaxBy(s => s.StartTime);
+        var firstSessionLocal = firstSession is null
+            ? (DateOnly?)null
+            : _scheduleProjectionCalculator.Project(firstSession.StartTime, firstSession.EndTime, timezoneId).LocalStartDate;
+        var lastSessionLocal = lastSession is null
+            ? (DateOnly?)null
+            : _scheduleProjectionCalculator.Project(lastSession.StartTime, lastSession.EndTime, timezoneId).LocalStartDate;
 
         return new Event
         {
@@ -274,8 +278,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             RegistrationPolicyId = dto.RegistrationPolicyId,
             FirstSessionDate = firstSessionLocal,
             LastSessionDate = lastSessionLocal,
-            FirstSessionStartUtc = firstSessionStart,
-            LastSessionStartUtc = lastSessionStart,
+            FirstSessionStartUtc = firstSession?.StartTime,
+            LastSessionStartUtc = lastSession?.StartTime,
             SessionCount = dto.Sessions.Count,
             ActorId = actorResult.ActorId,
             Actor = null!,

@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for the canonical single-submit CreateEventRequest validator.
-// ABOUTME: Covers visible create-page field validation and graph collection requirements.
+// ABOUTME: Unit tests for the canonical draft-friendly CreateEventRequest validator.
+// ABOUTME: Covers visible create-page field validation and optional program graph validation.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
@@ -81,19 +81,11 @@ public class CreateEventRequestValidatorTests
     }
 
     [Test]
-    public async Task Validate_WithMinimalImportShapedRequest_ReturnsTrue()
+    public async Task Validate_WithMinimalDraftRequest_ReturnsTrue()
     {
         var request = new CreateEventRequest
         {
-            Title = "Imported program",
-            Sessions =
-            [
-                new CreateEventSessionRequest
-                {
-                    StartTime = DateTimeOffset.UtcNow.AddDays(1),
-                    EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(2)
-                }
-            ]
+            Title = "Imported program"
         };
 
         var result = await _validator.ValidateAsync(request);
@@ -107,15 +99,18 @@ public class CreateEventRequestValidatorTests
     }
 
     [Test]
-    public async Task Validate_WithNoSessions_ReturnsError()
+    public async Task Validate_WithNoSessions_ReturnsTrue()
     {
-        var request = CreateValidRequest();
-        request.Sessions = [];
+        var request = new CreateEventRequest
+        {
+            Title = "Draft without sessions",
+            Sessions = []
+        };
 
         var result = await _validator.ValidateAsync(request);
 
-        await Assert.That(result.IsValid).IsFalse();
-        await Assert.That(result.Errors.Any(e => e.PropertyName == "Sessions")).IsTrue();
+        await Assert.That(result.IsValid).IsTrue();
+        await Assert.That(result.Errors.Any(e => e.PropertyName == "Sessions")).IsFalse();
     }
 
     [Test]

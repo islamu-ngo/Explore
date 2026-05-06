@@ -261,6 +261,39 @@ public class CreateEventCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WithDraftWithoutSessions_ReturnsSuccessWithoutCreatingSessions()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Draft without program items",
+                Sessions = []
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
+        await _eventRepository.Received(1).Create(Arg.Is<Explore.Domain.Event>(entity =>
+            entity.SessionCount == 0
+            && entity.FirstSessionDate == null
+            && entity.LastSessionDate == null
+            && entity.FirstSessionStartUtc == null
+            && entity.LastSessionStartUtc == null));
+        await _eventSessionRepository.DidNotReceive().Create(Arg.Any<EventSession>());
+    }
+
+    [Test]
     public async Task Handle_WhenOrganizationAdminCheckFails_ReturnsFailedResponse()
     {
         var userId = Guid.NewGuid();
