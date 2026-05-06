@@ -39,6 +39,7 @@ public static class RouteNames
     public const string CreateEvent = "CreateEvent";
     public const string PublishEvent = "PublishEvent";
     public const string UpdateEvent = "UpdateEvent";
+    public const string UpdateEventStatus = "UpdateEventStatus";
     public const string DeleteEvent = "DeleteEvent";
     public const string GetEventSessions = "GetEventSessions";
     public const string GetEventCategories = "GetEventCategories";
