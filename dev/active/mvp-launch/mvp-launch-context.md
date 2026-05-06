@@ -3,7 +3,19 @@ ABOUTME: Read this before resuming implementation; pair it with mvp-launch-plan.
 
 # MVP Launch — Context
 
+Last Updated: 2026-05-06 Europe/Brussels
+
 ## Session Progress
+
+### Completed 2026-05-06 WP-18/WP-19/WP-25 Implementation Slices
+
+- Implemented source-complete launch health checks: readiness/liveness separation, distributed-cache fallback visibility, OIDC discovery, SMTP, Blazor downstream API readiness, conditional Cerbos readiness, and operator-facing health documentation.
+- Implemented BFF security headers at the Blazor boundary with CSP, frame denial, nosniff, and strict referrer policy; runtime browser asset smoke remains blocked by unrelated Blazor publish-flow compile work.
+- Removed the obsolete HATEOAS HTTP-method permission fallback; permission-bound links without explicit `AuthorizationActions` now fail closed, and `AuthorizationParityTests` protects link policies from reintroducing inferred actions.
+- Removed production `placehold.co` dependencies by routing event and organization placeholders through local SVG data URI fallbacks in `ImageHelper`.
+- Replaced the landing-page hardcoded member count with `IEventApiClient.GetActorsAsync(...).TotalCount` and added success/failure tests.
+- Updated `mvp-launch-plan.md` and `mvp-launch-tasks.md` with completed evidence, remaining runtime smoke needs, and explicit deferrals for API/client-generation-dependent TODOs.
+- Targeted verification passed for API health/no-Keycloak tests, architecture HAL parity tests, `ImageHelperTests`, and `LandingPageServiceTests`; full Blazor/Application verification remains blocked by unrelated dirty work listed below.
 
 ### Completed 2026-05-03 Rebaseline
 
@@ -50,9 +62,10 @@ ABOUTME: Read this before resuming implementation; pair it with mvp-launch-plan.
 
 ### Next Work
 
-- Phase 0 evidence baseline: reconcile source/task status, run build and available project tests, and record Docker blocker separately from product work.
-- Phase 1 runtime verification for already implemented foundations: WP-1, WP-6, WP-14, WP-15, WP-16, WP-17, and WP-18 runtime dependency states.
-- Next implementation slice should be WP-19 audit hardening, WP-25 placeholder/TODO cleanup, or WP-3 registration email/consent, depending on whether publish-flow dirty files are still in-flight.
+- Reconcile unrelated dirty publish-flow/client work before touching WP-9 or re-checking `CreateEvent` price/currency/TODO state.
+- Continue with WP-19 audit hardening outside CSP, especially PII reads, admin changes, preference changes, authorization denials, and remaining setup-secret validation paths.
+- Continue with WP-20 JSON-LD/OG or WP-23 accessibility if avoiding dirty API/Application work is still necessary.
+- Complete runtime smoke in a healthy Docker/Aspire environment for WP-1, WP-6, WP-14, WP-15, WP-16, WP-17, WP-18, CSP headers, local SVG fallbacks, and landing-page stats.
 
 ### Blockers
 

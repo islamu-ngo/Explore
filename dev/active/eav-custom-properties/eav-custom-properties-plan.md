@@ -3,7 +3,7 @@ ABOUTME: Treats EAV as the Layer 3 extension system only, with governed semantic
 
 # EAV Custom Properties - Implementation Plan
 
-**Last Updated: 2026-05-03 (Phase 12.7 projection quota completion updated)**
+**Last Updated: 2026-05-06 (dev-docs-update handoff refreshed)**
 
 ---
 
@@ -168,6 +168,7 @@ Current verified baseline from Phase 12 local work:
 - `Event.Application.UnitTests` targeted projection rebuild quota run passed 6/6 tests; earlier Phase 12.7 quota run passed 1110/1110 tests.
 - `Explore.API` Release build passed for the latest Phase 12.7 projection quota slice.
 - `Event.Architecture.Tests` passed 143/143 for the latest Phase 12.7 projection quota slice.
+- `git diff --check` passed for the latest projection quota slice and canonical EAV docs.
 - Prior Phase 12 slices passed targeted projection filter, projection authorization, persistence option/delete lifecycle, Blazor client build, Blazor client tests, API build, architecture tests, and `git diff --check` where noted in the task/context files.
 
 Current priority order:

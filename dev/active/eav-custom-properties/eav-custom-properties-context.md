@@ -3,7 +3,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 # EAV Custom Properties - Context
 
-**Last Updated: 2026-05-03 (Phase 12.7 projection quota completion updated)**
+**Last Updated: 2026-05-06 (dev-docs-update handoff refreshed)**
 
 ---
 
@@ -59,6 +59,13 @@ This context replaces the deleted execution log. The active folder now intention
 3. Decide explicit audited purge workflow/policy.
 4. Decide Phase 12.9 product boundary: custom fields only on existing resources, or a separate runtime schema engine plan for user-defined entities/relationships.
 
+### Restart Handoff Notes
+
+- No EAV code change is currently half-edited; the latest projection rebuild quota slice was implemented, verified, documented, and whitespace-checked.
+- Resume with Phase 12.7.2/12.7.3 unless the user reprioritizes: add quota boundary tests and normalize `quota_exceeded` error handling.
+- Keep Docker/Testcontainers work separate because local availability has been inconsistent across this plan.
+- The worktree is intentionally dirty with unrelated pre-existing changes; only touch files needed for the active EAV slice.
+
 ### Verification Commands To Re-run
 
 - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal` (latest targeted projection quota run: 6/6; earlier Phase 12.7 quota run: 1110/1110)
@@ -66,6 +73,7 @@ This context replaces the deleted execution log. The active folder now intention
 - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal` when Docker/Testcontainers are available.
 - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal` (latest Phase 12.7 projection quota run: 143/143)
 - `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --verbosity quiet` and `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet -- --no-progress --output Normal` after NSwag regeneration/client updates.
+- `git diff --check -- dev/active/eav-custom-properties/eav-custom-properties-plan.md dev/active/eav-custom-properties/eav-custom-properties-tasks.md dev/active/eav-custom-properties/eav-custom-properties-context.md` before handing off documentation-only updates.
 
 ---
 

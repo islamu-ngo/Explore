@@ -365,6 +365,24 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 150 total, 150 succeeded, 0 failed, 0 skipped
 ```
 
+Phase 7 API/Blazor validation on 2026-05-06 passed after tightening `docs/API.md`, rewriting `docs/BLAZOR.md` as a concise BFF contributor guide, and adding `docs/BLAZOR.md` to metadata validation:
+
+```text
+Focused docs-quality tests: 4 total, 4 succeeded, 0 failed, 0 skipped
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+150 total, 150 succeeded, 0 failed, 0 skipped
+```
+
+Oracle review for the Phase 7 API/Blazor slice completed on 2026-05-06. Blocking findings were fixed by removing the ungrounded Scalar `/scalar/v1` path, correcting API-key hashing to SHA256 plus fixed-time verification, documenting eight output-cache policies, aligning ProblemDetails RFC links with the source implementation, tightening business metric names/tags, correcting `/bff/me` ownership to `BffPreferenceEndpoints.cs`, and clarifying setup-secret proxy forwarding source order.
+
+Post-Oracle Phase 7 API/Blazor validation on 2026-05-06 passed after applying the source-grounding fixes:
+
+```text
+Focused docs-quality tests: 4 total, 4 succeeded, 0 failed, 0 skipped
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+150 total, 150 succeeded, 0 failed, 0 skipped
+```
+
 Minimum validation after documentation architecture changes:
 
 ```bash

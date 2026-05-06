@@ -3,7 +3,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 # EAV Custom Properties - Task Checklist
 
-**Last Updated: 2026-05-03 (Phase 12.7 projection quota completion updated)**
+**Last Updated: 2026-05-06 (dev-docs-update handoff refreshed)**
 
 ---
 
@@ -29,7 +29,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 - Phase 12.6 — Delete lifecycle hardening: 🟡 PARTIAL (normal shared/event/session definition deletes now retire and soft-delete definitions, options, and values through tracked EF deletes; explicit audited purge workflow remains a product/ops decision)
 - Phase 12.7 — Quota sweep: 🟡 PARTIAL (configured local quota keys now have enforcing code paths: shared/event/session definition-count quotas, `MaxOptionsPerDefinition`, `MaxMultiValueRowsPerValue`, `MaxDefinitionsPerTemplate`, `SyncApplyMaxPayloadBytes`, `ProjectionRebuildBatchSize`, and `MaxDirtyScopePendingPerTenant`; full boundary matrix and normalized error shape still need sweep completion)
 
-**Build state**: Phase 12.1/12.2/12.3/12.4/12.5/12.6 API Release build ✅ and architecture tests ✅ on 2026-05-02. Phase 12.7 projection quota completion API Release build ✅, targeted Application projection quota tests ✅ 6/6, and `Event.Architecture.Tests` ✅ 143/143 on 2026-05-03; earlier Phase 12.7 quota run passed ✅ 1110/1110. Phase 12.5 targeted concurrency/application tests ✅ 1089/1089, `Explore.Blazor.Client` Release build ✅, and `Explore.Blazor.Client.Tests` ✅ 968 total / 967 passed / 1 known skipped on 2026-05-02. Phase 12.4 projection authorization metadata tests ✅ 5/5 on 2026-05-02. Phase 12.2 projection filter unit/application test run ✅ 1078/1078 on 2026-05-02. Phase 12.3/12.6 targeted persistence option/delete lifecycle tests ✅ 6/6 on 2026-05-02. Phase 9.11 generated-client build ✅ on 2026-04-30. Phase 8.5.13 persistence integration test project Release build ✅ on 2026-05-02. Full-solution Release build currently fails outside these slices on unrelated existing analyzer/package issues plus a transient locked client PDB during static-web-assets fingerprinting.
+**Build state**: Phase 12.1/12.2/12.3/12.4/12.5/12.6 API Release build ✅ and architecture tests ✅ on 2026-05-02. Phase 12.7 projection quota completion API Release build ✅, targeted Application projection quota tests ✅ 6/6, `Event.Architecture.Tests` ✅ 143/143, and `git diff --check` ✅ for touched quota/docs files on 2026-05-03; earlier Phase 12.7 quota run passed ✅ 1110/1110. Phase 12.5 targeted concurrency/application tests ✅ 1089/1089, `Explore.Blazor.Client` Release build ✅, and `Explore.Blazor.Client.Tests` ✅ 968 total / 967 passed / 1 known skipped on 2026-05-02. Phase 12.4 projection authorization metadata tests ✅ 5/5 on 2026-05-02. Phase 12.2 projection filter unit/application test run ✅ 1078/1078 on 2026-05-02. Phase 12.3/12.6 targeted persistence option/delete lifecycle tests ✅ 6/6 on 2026-05-02. Phase 9.11 generated-client build ✅ on 2026-04-30. Phase 8.5.13 persistence integration test project Release build ✅ on 2026-05-02. Full-solution Release build currently fails outside these slices on unrelated existing analyzer/package issues plus a transient locked client PDB during static-web-assets fingerprinting.
 
 **Client test state**: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped on 2026-04-30.
 
