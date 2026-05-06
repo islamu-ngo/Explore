@@ -8,7 +8,6 @@ using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.EventTemplates;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Models;
-using Explore.Blazor.Client.Pages.Events.Workflows;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -107,47 +106,19 @@ public partial class CreateEvent
 
     // Sessions
     private List<SessionEditorModel> sessions = new();
-    private readonly SessionEditorWorkflow _sessionWorkflow = new();
     private string _bgColor = string.Empty;
     private string _bgEffect = "None";
     private string _bgImageUri = string.Empty;
 
-    // Inline scheduling state (sent with create request)
-    private List<InlineDayModel> _inlineDays = new();
-    private List<InlineRoomModel> _inlineRooms = new();
-    private List<InlineAgendaItemModel> _inlineAgendaItems = new();
-
-    // Day add form
-    private DateTime? _newDayDate;
-    private string? _newDayLabel;
-
-    // Room add form
-    private string? _newRoomName;
-    private int? _newRoomCapacity;
-
-    // Agenda item add form
-    private string? _newAgendaTitle;
-    private DateOnly? _newAgendaDayDate;
-    private TimeSpan? _newAgendaStartTime;
-    private TimeSpan? _newAgendaEndTime;
-    private int? _newAgendaRoomIndex;
-
     // UI toggles
-    private bool _showFirstSessionLocation = false;
     private bool _showTimezoneSelector = false;
-    private bool _isMultiSessionEnabled;
-    private bool _isMultiDayEnabled;
-    private bool _isRoomsEnabled;
-    private bool _isAgendaEnabled;
-    private bool _isScheduleExpanded;
     private bool _isMoreOptionsExpanded;
     private bool _isThemeStudioOpen;
-    private string _schedulingAnnouncement = string.Empty;
-    private bool IsMultiSessionActive => _isMultiSessionEnabled || sessions.Count > 1;
-    private bool CanUseRoomSetup => sessions.Count > 0
-        && sessions[0].LocationId.HasValue
-        && (createDto.EventFormatId is 1 or 3);
-    private string ScheduleSummary => BuildScheduleSummary();
+    private string _programAnnouncement = string.Empty;
+    private string ProgramSummary => BuildProgramSummary();
+    private string ProgramItemsSummary => BuildProgramItemsSummary();
+    private string ProgramLogisticsSummary => BuildProgramLogisticsSummary();
+    private string ProgramDefaultsSummary => BuildProgramDefaultsSummary();
     private string MoreOptionsSummary => BuildMoreOptionsSummary();
     private bool AreEventOptionsDisabled => _creationContext is not null && _creationContext.CanCreate != true;
     private string? EventOptionsPolicyNote => BuildEventOptionsPolicyNote();
@@ -159,14 +130,6 @@ public partial class CreateEvent
     private List<string> SelectedTagNames => GetSelectedNames(allTags, selectedTagIds);
     private string CategoriesSummary => SelectedCategoryNames.Count == 0 ? "No categories selected" : string.Join(", ", SelectedCategoryNames);
     private string TagsSummary => SelectedTagNames.Count == 0 ? "No tags selected" : string.Join(", ", SelectedTagNames);
-    private bool HasLanguageOptions => languages?.Any(language => language.Id.HasValue) == true;
-    private IReadOnlyCollection<int> FirstSessionLanguageIds => sessions.Count > 0 ? sessions[0].LanguageIds : Array.Empty<int>();
-    private List<string> SelectedLanguageNames => languages?
-        .Where(language => language.Id.HasValue && FirstSessionLanguageIds.Contains(language.Id.Value))
-        .Select(language => language.FullName)
-        .ToList() ?? [];
-    private string LanguagesSummary => SelectedLanguageNames.Count == 0 ? "No language preference" : string.Join(", ", SelectedLanguageNames);
-
     // Timezone
     private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Local;
     private string _selectedTimezoneDisplay => FormatTimezoneShort(_selectedTimezone);
@@ -174,27 +137,43 @@ public partial class CreateEvent
     private bool isProcessing = false;
     private Guid createdEventId = Guid.Empty;
 
-    private string BuildScheduleSummary()
+    private string BuildProgramSummary()
+    {
+        var sessionLabel = sessions.Count switch
+        {
+            0 => "No sessions prepared yet",
+            1 => "1 session prepared",
+            _ => $"{sessions.Count} sessions prepared"
+        };
+
+        return $"{sessionLabel}; logistics are managed after the draft is saved.";
+    }
+
+    private string BuildProgramItemsSummary()
     {
         if (sessions.Count == 0)
         {
-            return "Use the main date and time above; add detailed scheduling only if needed.";
+            return "Add talks, workshops, panels, classes, or activities as sessions.";
         }
 
-        var first = sessions[0];
-        var summary = $"{first.StartTime:ddd, MMM d} from {first.StartTime:h:mm tt} to {first.EndTime:h:mm tt}";
-        if (sessions.Count > 1)
-        {
-            summary += $" - {sessions.Count} sessions";
-        }
+        var firstTitle = sessions.First().Title?.Trim();
+        var firstSession = string.IsNullOrWhiteSpace(firstTitle)
+            ? "first session"
+            : firstTitle;
 
-        var detailCount = _inlineDays.Count + _inlineRooms.Count + _inlineAgendaItems.Count;
-        if (detailCount > 0)
-        {
-            summary += $" - {detailCount} schedule detail{(detailCount == 1 ? string.Empty : "s")}";
-        }
+        return sessions.Count == 1
+            ? $"1 session prepared: {firstSession}"
+            : $"{sessions.Count} sessions prepared, starting with {firstSession}";
+    }
 
-        return summary;
+    private string BuildProgramLogisticsSummary()
+    {
+        return "Breaks, rooms, meals, prayer times, and day details are managed after the draft is saved.";
+    }
+
+    private string BuildProgramDefaultsSummary()
+    {
+        return $"{RegistrationSummary} · Session-specific defaults move to the session composer";
     }
 
     private string BuildMoreOptionsSummary()
@@ -237,10 +216,7 @@ public partial class CreateEvent
     private string BuildRegistrationSummary()
     {
         var policy = GetLookupName(registrationPolicies, createDto.RegistrationPolicyId) ?? "Default open registration";
-        var capacity = sessions.FirstOrDefault()?.MaxAudienceAttendees;
-        return capacity.HasValue && capacity.Value > 0
-            ? $"{policy} · {capacity.Value} seats"
-            : $"{policy} · No capacity limit set";
+        return $"{policy} · Capacity set per session";
     }
 
     private static string? GetLookupName(IEnumerable<VisibilityTypeListDto>? items, int? selectedId) =>
@@ -601,10 +577,6 @@ public partial class CreateEvent
             session.SessionTemplateId = null;
         }
 
-        if (_sessionWorkflow.DrawerModel is not null)
-        {
-            _sessionWorkflow.DrawerModel.SessionTemplateId = null;
-        }
     }
 
     // ========== Image Upload ==========
@@ -699,100 +671,33 @@ public partial class CreateEvent
         }
     }
 
-    // ========== Session Date/Time Handlers ==========
-
-    private void OnSessionStartDateChanged(int index, DateTime? date)
-    {
-        if (date.HasValue && index >= 0 && index < sessions.Count)
-        {
-            sessions[index].StartTime = date.Value.Date + sessions[index].StartTime.TimeOfDay;
-        }
-    }
-
-    private void OnSessionStartTimeChanged(int index, TimeSpan? time)
-    {
-        if (time.HasValue && index >= 0 && index < sessions.Count)
-        {
-            sessions[index].StartTime = sessions[index].StartTime.Date + time.Value;
-        }
-    }
-
-    private void OnSessionEndDateChanged(int index, DateTime? date)
-    {
-        if (date.HasValue && index >= 0 && index < sessions.Count)
-        {
-            sessions[index].EndTime = date.Value.Date + sessions[index].EndTime.TimeOfDay;
-        }
-    }
-
-    private void OnSessionEndTimeChanged(int index, TimeSpan? time)
-    {
-        if (time.HasValue && index >= 0 && index < sessions.Count)
-        {
-            sessions[index].EndTime = sessions[index].EndTime.Date + time.Value;
-        }
-    }
-
     // ========== Session Management ==========
 
     private async Task AddSessionAsync()
     {
-        _isMultiSessionEnabled = true;
-        AnnounceSchedulingChange("Saving this event as a draft before opening the dedicated session composer.");
+        AnnounceProgramChange("Saving this event as a draft before opening session management.");
         await SubmitEventAsync(CreateEventSubmitIntent.SaveDraftAndAddSession);
     }
 
-    private void ToggleMultiSession()
+    private async Task OpenDedicatedSessionComposerAsync(int _)
     {
-        _isMultiSessionEnabled = !_isMultiSessionEnabled;
-        AnnounceSchedulingChange(_isMultiSessionEnabled
-            ? "Multiple sessions enabled."
-            : "Multiple sessions hidden. Existing session details are preserved.");
+        AnnounceProgramChange("Saving this event as a draft before opening the dedicated session composer.");
+        await SubmitEventAsync(CreateEventSubmitIntent.SaveDraftAndAddSession);
     }
 
-    private void ToggleMultiDay()
+    private void ShowDuplicateSessionUnavailable(int _)
     {
-        _isMultiDayEnabled = !_isMultiDayEnabled;
-        if (_isMultiDayEnabled)
-        {
-            EnsureInlineDaysFromSessions();
-        }
-
-        AnnounceSchedulingChange(_isMultiDayEnabled
-            ? "Day details enabled. Days were prepared from the current sessions."
-            : "Day details hidden. Existing day details are preserved.");
+        AnnounceProgramChange("Duplicate session will be available from the dedicated session composer.");
     }
 
-    private void ToggleRooms()
+    private void ShowProgramSectionUnavailable()
     {
-        if (!CanUseRoomSetup)
-        {
-            AnnounceSchedulingChange("Select an in-person or hybrid location before adding rooms.");
-            return;
-        }
-
-        _isRoomsEnabled = !_isRoomsEnabled;
-        AnnounceSchedulingChange(_isRoomsEnabled
-            ? "Room setup enabled."
-            : "Room setup hidden. Existing rooms are preserved.");
+        AnnounceProgramChange("Section and track setup will open from the saved event program manager.");
     }
 
-    private void ToggleAgenda()
+    private void AnnounceProgramChange(string message)
     {
-        _isAgendaEnabled = !_isAgendaEnabled;
-        if (_isAgendaEnabled)
-        {
-            EnsureInlineDaysFromSessions();
-        }
-
-        AnnounceSchedulingChange(_isAgendaEnabled
-            ? "Agenda enabled. Agenda rows can be linked to day details and rooms."
-            : "Agenda hidden. Existing agenda rows are preserved.");
-    }
-
-    private void AnnounceSchedulingChange(string message)
-    {
-        _schedulingAnnouncement = message;
+        _programAnnouncement = message;
     }
 
     private async void RemoveSession(int index)
@@ -833,20 +738,6 @@ public partial class CreateEvent
             {
                 sessions.RemoveAt(index);
             }
-        }
-    }
-
-    private void HandleSessionSave(SessionEditorModel model)
-    {
-        _sessionWorkflow.SaveSession(sessions, model);
-        StateHasChanged();
-    }
-
-    private void OnFirstSessionLanguagesChanged(IEnumerable<int> selectedLanguageIds)
-    {
-        if (sessions.Count > 0)
-        {
-            sessions[0].LanguageIds = new HashSet<int>(selectedLanguageIds);
         }
     }
 
@@ -1231,7 +1122,7 @@ public partial class CreateEvent
             createDto.BackgroundColor = string.IsNullOrWhiteSpace(_bgColor) ? null : _bgColor;
             createDto.BackgroundEffect = string.IsNullOrWhiteSpace(_bgEffect) || _bgEffect == "None" ? null : _bgEffect;
 
-            PopulateSchedulingOnRequest();
+            PopulateCreateRequest();
 
             Logger.LogInformation(
                 "Creating event (publisherMode={Mode}, organizationId={OrgId}, groupId={GroupId})",
@@ -1240,7 +1131,7 @@ public partial class CreateEvent
                 createDto.GroupId);
             var response = await EventService.CreateEventAsync(createDto);
 
-            if (response?.Success == true && response.Id.HasValue && response.Id != Guid.Empty)
+        if (response?.Success == true && response.Id.HasValue && response.Id != Guid.Empty)
             {
                 createdEventId = response.Id.Value;
                 Logger.LogInformation("Event created with ID: {EventId}", createdEventId);
@@ -1251,11 +1142,11 @@ public partial class CreateEvent
                     return;
                 }
 
-                if (intent == CreateEventSubmitIntent.SaveDraftAndAddSession)
-                {
-                    Navigation.NavigateTo($"/events/{createdEventId}/sessions/create");
-                    return;
-                }
+        if (intent == CreateEventSubmitIntent.SaveDraftAndAddSession)
+        {
+            Navigation.NavigateTo($"/events/{createdEventId}/sessions/create");
+            return;
+        }
 
                 await ReviewAndPublishDraftAsync(createdEventId);
             }
@@ -1338,7 +1229,7 @@ public partial class CreateEvent
         {
             $"Publish '{title}' now?",
             GetPublisherDescription(),
-            $"Schedule: {ScheduleSummary}",
+            $"Program: {ProgramSummary}",
             $"Timezone: {_selectedTimezoneDisplay}",
             _creationContext?.RequiresApproval == true
                 ? "This publisher requires approval before the event goes live."
@@ -1360,11 +1251,7 @@ public partial class CreateEvent
     private async Task ShowPublishReadinessErrorsAsync()
     {
         var firstFieldPath = _publishReadinessErrors.FirstOrDefault()?.FieldPath;
-        if (FieldPathBelongsToSchedule(firstFieldPath))
-        {
-            _isScheduleExpanded = true;
-        }
-        else if (!string.IsNullOrWhiteSpace(firstFieldPath))
+        if (!string.IsNullOrWhiteSpace(firstFieldPath))
         {
             _isMoreOptionsExpanded = true;
         }
@@ -1372,15 +1259,6 @@ public partial class CreateEvent
         await InvokeAsync(StateHasChanged);
         await AccessibilityFocusService.FocusByIdAsync("publish-readiness-errors");
     }
-
-    private static bool FieldPathBelongsToSchedule(string? fieldPath) =>
-        !string.IsNullOrWhiteSpace(fieldPath)
-        && (fieldPath.StartsWith("schedule", StringComparison.OrdinalIgnoreCase)
-            || fieldPath.StartsWith("sessions", StringComparison.OrdinalIgnoreCase)
-            || fieldPath.Contains("time", StringComparison.OrdinalIgnoreCase)
-            || fieldPath.Contains("date", StringComparison.OrdinalIgnoreCase)
-            || fieldPath.Contains("room", StringComparison.OrdinalIgnoreCase)
-            || fieldPath.Contains("agenda", StringComparison.OrdinalIgnoreCase));
 
     private enum CreateEventSubmitIntent
     {
@@ -1449,6 +1327,60 @@ public partial class CreateEvent
         _showTimezoneSelector = false;
     }
 
+    private void OnSessionStartDateChanged(DateTime? date)
+    {
+        if (!date.HasValue || sessions.Count == 0)
+        {
+            return;
+        }
+
+        var session = sessions[0];
+        var startTime = session.StartTime.TimeOfDay;
+        var endTime = session.EndTime.TimeOfDay;
+        session.StartTime = date.Value.Date.Add(startTime);
+        session.EndTime = date.Value.Date.Add(endTime);
+    }
+
+    private void OnSessionStartTimeChanged(TimeSpan? time)
+    {
+        if (!time.HasValue || sessions.Count == 0)
+        {
+            return;
+        }
+
+        var session = sessions[0];
+        session.StartTime = session.StartTime.Date.Add(time.Value);
+        if (session.EndTime <= session.StartTime)
+        {
+            session.EndTime = session.StartTime.AddHours(1);
+        }
+    }
+
+    private void OnSessionEndTimeChanged(TimeSpan? time)
+    {
+        if (!time.HasValue || sessions.Count == 0)
+        {
+            return;
+        }
+
+        var session = sessions[0];
+        session.EndTime = session.EndTime.Date.Add(time.Value);
+        if (session.EndTime <= session.StartTime)
+        {
+            session.EndTime = session.StartTime.AddHours(1);
+        }
+    }
+
+    private void OnFirstSessionLocationChanged(Guid? locationId)
+    {
+        if (sessions.Count == 0)
+        {
+            return;
+        }
+
+        sessions[0].LocationId = locationId;
+    }
+
     private static string FormatTimezoneShort(TimeZoneInfo tz)
     {
         var offset = tz.BaseUtcOffset;
@@ -1467,132 +1399,7 @@ public partial class CreateEvent
         StateHasChanged();
     }
 
-    // ========== Inline Scheduling Methods ==========
-
-    private void AddInlineDay()
-    {
-        if (!_newDayDate.HasValue) return;
-
-        var localDate = DateOnly.FromDateTime(_newDayDate.Value);
-        if (_inlineDays.Any(d => d.LocalDate == localDate)) return;
-
-        _inlineDays.Add(new InlineDayModel
-        {
-            LocalDate = localDate,
-            Label = _newDayLabel,
-            SortOrder = _inlineDays.Count
-        });
-
-        _newDayDate = null;
-        _newDayLabel = null;
-        AnnounceSchedulingChange("Day detail added.");
-    }
-
-    private void RemoveInlineDay(InlineDayModel day)
-    {
-        _inlineDays.Remove(day);
-        AnnounceSchedulingChange("Day detail removed.");
-    }
-
-    private void AddInlineRoom()
-    {
-        if (string.IsNullOrWhiteSpace(_newRoomName)) return;
-
-        _inlineRooms.Add(new InlineRoomModel
-        {
-            Name = _newRoomName.Trim(),
-            Capacity = _newRoomCapacity,
-            SortOrder = _inlineRooms.Count
-        });
-
-        _newRoomName = null;
-        _newRoomCapacity = null;
-        AnnounceSchedulingChange("Room added.");
-    }
-
-    private void RemoveInlineRoom(InlineRoomModel room)
-    {
-        _inlineRooms.Remove(room);
-        AnnounceSchedulingChange("Room removed.");
-    }
-
-    private void AddInlineAgendaItem()
-    {
-        if (string.IsNullOrWhiteSpace(_newAgendaTitle) || !_newAgendaDayDate.HasValue
-            || !_newAgendaStartTime.HasValue || !_newAgendaEndTime.HasValue) return;
-
-        var dayDate = _newAgendaDayDate.Value;
-        var startDateTime = dayDate.ToDateTime(TimeOnly.FromTimeSpan(_newAgendaStartTime.Value));
-        var endDateTime = dayDate.ToDateTime(TimeOnly.FromTimeSpan(_newAgendaEndTime.Value));
-
-        var startOffset = new DateTimeOffset(startDateTime, _selectedTimezone.GetUtcOffset(startDateTime));
-        var endOffset = new DateTimeOffset(endDateTime, _selectedTimezone.GetUtcOffset(endDateTime));
-
-        _inlineAgendaItems.Add(new InlineAgendaItemModel
-        {
-            Title = _newAgendaTitle.Trim(),
-            StartTime = startOffset,
-            EndTime = endOffset,
-            RoomIndex = _newAgendaRoomIndex,
-            SortOrder = _inlineAgendaItems.Count
-        });
-
-        _newAgendaTitle = null;
-        _newAgendaDayDate = null;
-        _newAgendaStartTime = null;
-        _newAgendaEndTime = null;
-        _newAgendaRoomIndex = null;
-        AnnounceSchedulingChange("Itinerary item added.");
-    }
-
-    private void PrepareItineraryForDay(DateTime day)
-    {
-        EnsureInlineDaysFromSessions();
-        _isAgendaEnabled = true;
-        _newAgendaDayDate = DateOnly.FromDateTime(day);
-
-        var sessionsForDay = sessions
-            .Where(session => session.StartTime.Date == day.Date)
-            .OrderBy(session => session.StartTime)
-            .ToList();
-        if (sessionsForDay.Count > 0)
-        {
-            _newAgendaStartTime ??= sessionsForDay[0].StartTime.TimeOfDay;
-            _newAgendaEndTime ??= sessionsForDay[0].EndTime.TimeOfDay;
-        }
-
-        AnnounceSchedulingChange($"Itinerary composer prepared for {day:dddd, MMMM d}.");
-    }
-
-    private void RemoveInlineAgendaItem(InlineAgendaItemModel item)
-    {
-        _inlineAgendaItems.Remove(item);
-        AnnounceSchedulingChange("Itinerary item removed.");
-    }
-
-    private void EnsureInlineDaysFromSessions()
-    {
-        foreach (var localDate in sessions
-            .Select(session => DateOnly.FromDateTime(session.StartTime))
-            .Distinct()
-            .OrderBy(date => date))
-        {
-            if (_inlineDays.Any(day => day.LocalDate == localDate))
-            {
-                continue;
-            }
-
-            _inlineDays.Add(new InlineDayModel
-            {
-                LocalDate = localDate,
-                SortOrder = _inlineDays.Count
-            });
-        }
-
-        _newAgendaDayDate ??= _inlineDays.FirstOrDefault()?.LocalDate;
-    }
-
-    private void PopulateSchedulingOnRequest()
+    private void PopulateCreateRequest()
     {
         createDto.CategoryIds = selectedCategoryIds.ToList();
         createDto.TagIds = selectedTagIds.ToList();
@@ -1613,82 +1420,8 @@ public partial class CreateEvent
             LanguageIds = session.LanguageIds.ToList()
         }).ToList();
 
-        if (_inlineDays.Count > 0)
-        {
-            createDto.Days = _inlineDays.Select(d => new CreateEventDayRequest
-            {
-                TempKey = GetDayTempKey(d.LocalDate),
-                LocalDate = new DateTimeOffset(d.LocalDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
-                Label = d.Label,
-                IsPublished = true,
-                SortOrder = d.SortOrder,
-                AllowsDayScopeRegistration = true
-            }).ToList();
-        }
-        else
-        {
-            createDto.Days = new List<CreateEventDayRequest>();
-        }
-
-        if (_inlineRooms.Count > 0 && sessions.Count > 0 && sessions[0].LocationId.HasValue)
-        {
-            createDto.Rooms = _inlineRooms.Select((r, index) => new CreateEventRoomRequest
-            {
-                TempKey = GetRoomTempKey(index),
-                LocationId = sessions[0].LocationId!.Value,
-                Name = r.Name,
-                Capacity = r.Capacity,
-                SortOrder = r.SortOrder
-            }).ToList();
-        }
-        else
-        {
-            createDto.Rooms = new List<CreateEventRoomRequest>();
-        }
-
-        if (_inlineAgendaItems.Count > 0)
-        {
-            createDto.AgendaItems = _inlineAgendaItems.Select(a => new CreateEventAgendaItemRequest
-            {
-                Title = a.Title,
-                StartTime = a.StartTime,
-                EndTime = a.EndTime,
-                DayTempKey = GetDayTempKey(DateOnly.FromDateTime(a.StartTime.LocalDateTime)),
-                RoomTempKey = a.RoomIndex.HasValue ? GetRoomTempKey(a.RoomIndex.Value) : null,
-                KindId = null,
-                SortOrder = a.SortOrder
-            }).ToList();
-        }
-        else
-        {
-            createDto.AgendaItems = new List<CreateEventAgendaItemRequest>();
-        }
-    }
-
-    private static string GetDayTempKey(DateOnly localDate) => $"day-{localDate:yyyyMMdd}";
-
-    private static string GetRoomTempKey(int index) => $"room-{index}";
-
-    private sealed class InlineDayModel
-    {
-        public DateOnly LocalDate { get; set; }
-        public string? Label { get; set; }
-        public int SortOrder { get; set; }
-    }
-
-    private sealed class InlineRoomModel
-    {
-        public string Name { get; set; } = string.Empty;
-        public int? Capacity { get; set; }
-        public int SortOrder { get; set; }
-    }
-
-    private sealed class InlineAgendaItemModel
-    {
-        public string Title { get; set; } = string.Empty;
-        public DateTimeOffset StartTime { get; set; }
-        public DateTimeOffset EndTime { get; set; }
-        public int? RoomIndex { get; set; }
-        public int SortOrder { get; set; }
+        createDto.Days = new List<CreateEventDayRequest>();
+        createDto.Rooms = new List<CreateEventRoomRequest>();
+        createDto.AgendaItems = new List<CreateEventAgendaItemRequest>();
     }
 }

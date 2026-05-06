@@ -61,6 +61,15 @@
                         </MudText>
                     </div>
                 }
+                @if (!string.IsNullOrWhiteSpace(RegistrationModeName))
+                {
+                    <div class="d-flex align-center gap-1">
+                        <MudIcon Icon="@Icons.Material.Filled.HowToReg" Size="Size.Small" Color="Color.Secondary" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @RegistrationModeName
+                        </MudText>
+                    </div>
+                }
             </div>
             @if (HasValidationErrors)
             {
@@ -110,6 +119,9 @@
     /// </summary>
     [Parameter]
     public string? ImageUrl { get; set; }
+
+    [Parameter]
+    public string? RegistrationModeName { get; set; }
 
     [Parameter]
     public bool HasValidationErrors { get; set; }

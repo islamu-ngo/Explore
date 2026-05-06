@@ -1,5 +1,6 @@
 using Explore.Blazor.Client.Pages.Events.Sessions;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models.EventSessionGroups;
 using System.Reflection;
 using System.Text.Json;
 
@@ -9,12 +10,67 @@ public sealed class CreateSessionTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IEventService _eventService;
+    private readonly IAdminService _adminService;
+    private readonly ILocationService _locationService;
+    private readonly ILocationRoomService _locationRoomService;
 
     public CreateSessionTests()
     {
         _ctx = new BlazorTestContext();
         _eventService = Substitute.For<IEventService>();
+        _adminService = Substitute.For<IAdminService>();
+        _locationService = Substitute.For<ILocationService>();
+        _locationRoomService = Substitute.For<ILocationRoomService>();
         _ctx.Services.AddSingleton(_eventService);
+        _ctx.Services.AddSingleton(_adminService);
+        _ctx.Services.AddSingleton(_locationService);
+        _ctx.Services.AddSingleton(_locationRoomService);
+        _adminService.GetRegistrationModesAsync().Returns(CreateRegistrationModes());
+        _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
+        _locationRoomService.GetRoomsByLocationAsync(Arg.Any<Guid>()).Returns(new List<LocationRoomListDto>());
+        _eventService.GetSessionGroupsByEventAsync(Arg.Any<Guid>()).Returns(new List<EventSessionGroupListModel>());
+        _eventService.GetEventSessionCreateContextAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => CreateSessionContext(call.ArgAt<Guid>(0), Guid.NewGuid()));
+        _eventService.AssignSessionToGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+    }
+
+    [Test]
+    public async Task Render_UsesProgramItemDefaultCopy()
+    {
+        var eventId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
+
+        var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
+        cut.WaitForState(() => cut.Markup.Contains("Add program item", StringComparison.Ordinal));
+
+        await Assert.That(cut.Markup).Contains("Add a talk, workshop, panel, class, or activity");
+        await Assert.That(cut.Markup).Contains("Program item title");
+        await Assert.That(cut.Markup).Contains("Program item date");
+        await Assert.That(cut.Markup).Contains("Registration mode");
+        await Assert.That(cut.Markup).Contains("Open");
+        await Assert.That(cut.Markup).Contains("Program item context");
+        await Assert.That(cut.Markup).Contains("Event timezone");
+        await Assert.That(cut.Markup).Contains("Europe/Brussels");
+        await Assert.That(cut.Markup).Contains("Save program item");
+        await Assert.That(cut.Markup).DoesNotContain("Add session");
+    }
+
+    [Test]
+    public async Task Render_WhenContextHasNotices_ShowsSetupGuidance()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
+        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+            eventId,
+            tenantId,
+            notices: ["Add at least one program section before assigning this item."]));
+
+        var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
+        cut.WaitForState(() => cut.Markup.Contains("Program item context", StringComparison.Ordinal));
+
+        await Assert.That(cut.Markup).Contains("Add at least one program section before assigning this item.");
     }
 
     [Test]
@@ -23,7 +79,21 @@ public sealed class CreateSessionTests : IDisposable
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        var roomId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
+        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+            eventId,
+            tenantId,
+            locations:
+            [
+                new EventSessionCreateLocationOptionDto { Id = locationId, FullName = "Main Hall", City = "Brussels", Country = "Belgium" }
+            ],
+            rooms:
+            [
+                new EventSessionCreateRoomOptionDto { Id = roomId, LocationId = locationId, Name = "Auditorium", Capacity = 120 }
+            ]));
+
         _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
@@ -34,6 +104,9 @@ public sealed class CreateSessionTests : IDisposable
         var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
         session.Title = "Opening talk";
         session.Description = "A focused opening session.";
+        session.LocationId = locationId;
+        session.RoomId = roomId;
+        session.RegistrationModeId = 2;
         SetPrivateField(cut.Instance, "_sessionDate", new DateTime(2026, 6, 1));
         SetPrivateField(cut.Instance, "_startTime", new TimeSpan(9, 30, 0));
         SetPrivateField(cut.Instance, "_endTime", new TimeSpan(10, 30, 0));
@@ -45,10 +118,82 @@ public sealed class CreateSessionTests : IDisposable
             && dto.TenantId == tenantId
             && dto.Title == "Opening talk"
             && dto.Description == "A focused opening session."
+            && dto.LocationId == locationId
+            && dto.RoomId == roomId
+            && dto.RegistrationModeId == 2
             && dto.StartTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 9, 30, 0))
             && dto.EndTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 10, 30, 0))
             && dto.StartTime.Value.Offset == TimeSpan.Zero
             && dto.EndTime.Value.Offset == TimeSpan.Zero));
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WhenProgramSectionSelected_AssignsSessionToGroupBeforeReturning()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
+        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+            eventId,
+            tenantId,
+            groups: [new EventSessionCreateGroupOptionDto { Id = groupId, Name = "Main track", SortOrder = 1 }]));
+        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = sessionId
+        });
+        _eventService.AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = Guid.NewGuid()
+        });
+
+        var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
+        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        session.Title = "Opening talk";
+        SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)groupId);
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await _eventService.Received(1).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WhenProgramAssignmentFails_DoesNotCreateDuplicateOnRetry()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
+        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+            eventId,
+            tenantId,
+            groups: [new EventSessionCreateGroupOptionDto { Id = groupId, Name = "Main track", SortOrder = 1 }]));
+        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = sessionId
+        });
+        _eventService.AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0)
+            .Returns(
+                new BaseCommandResponseOfGuid { Success = false, Message = "Group assignment failed." },
+                new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+
+        var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
+        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        session.Title = "Opening talk";
+        SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)groupId);
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await _eventService.Received(1).CreateSessionAsync(Arg.Any<CreateEventSessionDto>());
+        await _eventService.Received(2).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
     }
 
@@ -107,7 +252,50 @@ public sealed class CreateSessionTests : IDisposable
 
         await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionDto>());
         var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
-        await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to add sessions to this event draft.");
+        await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to add program items to this event draft.");
+    }
+
+    [Test]
+    public async Task OnLocationChangedAsync_WhenLocationClears_ClearsRoomsAndSelectedRoom()
+    {
+        var eventId = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        var roomId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
+        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+            eventId,
+            Guid.NewGuid(),
+            locations: [new EventSessionCreateLocationOptionDto { Id = locationId, FullName = "Main Hall", City = "Brussels", Country = "Belgium" }],
+            rooms: [new EventSessionCreateRoomOptionDto { Id = roomId, LocationId = locationId, Name = "Auditorium" }]));
+
+        var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
+        await InvokePrivateAsync(cut.Instance, "OnLocationChangedAsync", locationId);
+        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        session.RoomId = roomId;
+
+        await InvokePrivateAsync(cut.Instance, "OnLocationChangedAsync", new object?[] { null });
+
+        await Assert.That(session.LocationId).IsNull();
+        await Assert.That(session.RoomId).IsNull();
+        await Assert.That(GetPrivateField<ICollection<EventSessionCreateRoomOptionDto>>(cut.Instance, "_rooms")).IsEmpty();
+    }
+
+    [Test]
+    public async Task OnInitializedAsync_AppliesServerOwnedRegistrationModeDefault()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
+        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+            eventId,
+            tenantId,
+            registrationModeId: 3));
+
+        var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
+        cut.WaitForState(() => !cut.Markup.Contains("Loading event draft", StringComparison.Ordinal));
+
+        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        await Assert.That(session.RegistrationModeId).IsEqualTo(3);
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -140,6 +328,42 @@ public sealed class CreateSessionTests : IDisposable
         return dto;
     }
 
+    private static EventSessionCreateContextDto CreateSessionContext(
+        Guid eventId,
+        Guid tenantId,
+        IReadOnlyCollection<EventSessionCreateLocationOptionDto>? locations = null,
+        IReadOnlyCollection<EventSessionCreateRoomOptionDto>? rooms = null,
+        IReadOnlyCollection<EventSessionCreateGroupOptionDto>? groups = null,
+        IReadOnlyCollection<string>? notices = null,
+        int registrationModeId = 1)
+    {
+        return new EventSessionCreateContextDto
+        {
+            EventId = eventId,
+            EventTitle = "Program launch",
+            TenantId = tenantId,
+            TimeZoneId = "Europe/Brussels",
+            EventStartDate = new DateTimeOffset(2026, 6, 1, 0, 0, 0, TimeSpan.Zero),
+            EventEndDate = new DateTimeOffset(2026, 6, 2, 0, 0, 0, TimeSpan.Zero),
+            Defaults = new EventSessionCreateDefaultsDto
+            {
+                RegistrationModeId = registrationModeId
+            },
+            Locations = locations?.ToList() ?? [],
+            Rooms = rooms?.ToList() ?? [],
+            SessionGroups = groups?.ToList() ?? [],
+            Notices = notices?.ToList() ?? []
+        };
+    }
+
+    private static ICollection<RegistrationModeListDto> CreateRegistrationModes()
+        =>
+        [
+            new() { Id = 1, MasterCode = "OPEN", FullName = "Open", Description = "Anyone can register." },
+            new() { Id = 2, MasterCode = "APPROVAL_REQUIRED", FullName = "Approval required", Description = "Review requests before confirming." },
+            new() { Id = 3, MasterCode = "INVITE_ONLY", FullName = "Invite only" }
+        ];
+
     private static T GetPrivateField<T>(object instance, string fieldName)
     {
         var field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
@@ -154,11 +378,11 @@ public sealed class CreateSessionTests : IDisposable
         field.SetValue(instance, value);
     }
 
-    private static async Task InvokePrivateAsync(object instance, string methodName)
+    private static async Task InvokePrivateAsync(object instance, string methodName, params object?[] arguments)
     {
         var method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException($"Method {methodName} was not found.");
-        if (method.Invoke(instance, null) is Task task)
+        if (method.Invoke(instance, arguments is null || arguments.Length == 0 ? null : arguments) is Task task)
         {
             await task;
         }

@@ -1,0 +1,227 @@
+@* ABOUTME: Server-backed grouped Program Summary for Event Edit. *@
+@* ABOUTME: Renders program sections, groups, local days, items, and readiness warnings from EventProgramSummaryDto. *@
+
+@using System.Globalization
+@using Explore.Blazor.Client.Clients
+@using MudBlazor
+
+@if (Summary is not null)
+{
+    <section class="event-program-summary" aria-labelledby="event-program-summary-title">
+        <div class="event-program-summary__header">
+            <div>
+                <h2 id="event-program-summary-title" class="event-program-summary__title">
+                    Program schedule
+                </h2>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Server-backed view grouped by program section, track, and event-local day.
+                </MudText>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Summary.TimeZoneId))
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                    @Summary.TimeZoneId
+                </MudChip>
+            }
+        </div>
+
+        @if (GetWarnings(Summary).Any())
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="event-program-summary__warnings">
+                <MudText Typo="Typo.caption" HtmlTag="p" Class="mb-1">
+                    Program readiness guidance
+                </MudText>
+                <ul class="event-program-summary__warning-list">
+                    @foreach (var warning in GetWarnings(Summary))
+                    {
+                        <li>@warning.Message</li>
+                    }
+                </ul>
+            </MudAlert>
+        }
+
+        @if (!GetSections(Summary).Any())
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+                No program items are available yet. Add a session to start building the event program.
+            </MudAlert>
+        }
+        else
+        {
+            <div class="event-program-summary__sections">
+                @foreach (var section in GetSections(Summary))
+                {
+                    var sectionId = GetSectionHeadingId(section);
+                    <article class="event-program-summary__section" aria-labelledby="@sectionId">
+                        <h3 id="@sectionId" class="event-program-summary__section-title">
+                            @GetTitle(section.Title, "Program section")
+                        </h3>
+
+                        @foreach (var sessionGroup in GetSessionGroups(section))
+                        {
+                            var groupId = GetGroupHeadingId(section, sessionGroup);
+                            <section class="event-program-summary__group" aria-labelledby="@groupId">
+                                <div class="event-program-summary__group-header">
+                                    <h4 id="@groupId" class="event-program-summary__group-title">
+                                        @GetTitle(sessionGroup.Title, "Unassigned program items")
+                                    </h4>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @GetGroupMetadata(sessionGroup)
+                                    </MudText>
+                                </div>
+
+                                @foreach (var day in GetDays(sessionGroup))
+                                {
+                                    <section class="event-program-summary__day" aria-label="@GetDayLabel(day)">
+                                        <h5 class="event-program-summary__day-title">
+                                            @GetDayLabel(day)
+                                        </h5>
+
+                                        <ul class="event-program-summary__items">
+                                            @foreach (var item in GetItems(day))
+                                            {
+                                                <li class="event-program-summary__item">
+                                                    <div class="event-program-summary__item-main">
+                                                        <MudText Typo="Typo.body2" HtmlTag="p" Class="event-program-summary__item-title">
+                                                            @GetTitle(item.Title, "Untitled program item")
+                                                        </MudText>
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                            @FormatItemMetadata(item)
+                                                        </MudText>
+                                                    </div>
+
+                                                    @if (GetWarnings(item).Any())
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">
+                                                            @GetWarnings(item).Count() warning@(GetWarnings(item).Count() == 1 ? string.Empty : "s")
+                                                        </MudChip>
+                                                    }
+                                                </li>
+                                            }
+                                        </ul>
+                                    </section>
+                                }
+                            </section>
+                        }
+                    </article>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public EventProgramSummaryDto? Summary { get; set; }
+
+    private static IEnumerable<EventProgramSectionDto> GetSections(EventProgramSummaryDto summary)
+    {
+        return summary.Sections is null
+            ? Enumerable.Empty<EventProgramSectionDto>()
+            : summary.Sections
+                .OrderBy(section => section.SortOrder ?? 0)
+                .ThenBy(section => section.Title, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<EventProgramSessionGroupSectionDto> GetSessionGroups(EventProgramSectionDto section)
+    {
+        return section.SessionGroups is null
+            ? Enumerable.Empty<EventProgramSessionGroupSectionDto>()
+            : section.SessionGroups
+                .OrderBy(group => group.SortOrder ?? 0)
+                .ThenBy(group => group.Title, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<EventProgramDayGroupDto> GetDays(EventProgramSessionGroupSectionDto sessionGroup)
+    {
+        return sessionGroup.Days is null
+            ? Enumerable.Empty<EventProgramDayGroupDto>()
+            : sessionGroup.Days.OrderBy(day => day.LocalDate);
+    }
+
+    private static IEnumerable<EventProgramItemDto> GetItems(EventProgramDayGroupDto day)
+    {
+        return day.Items is null
+            ? Enumerable.Empty<EventProgramItemDto>()
+            : day.Items
+                .OrderBy(item => item.SortOrder ?? 0)
+                .ThenBy(item => item.LocalStartTime)
+                .ThenBy(item => item.Title, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<EventProgramReadinessWarningDto> GetWarnings(EventProgramSummaryDto summary)
+    {
+        return summary.ReadinessWarnings?.Where(warning => !string.IsNullOrWhiteSpace(warning.Message)) ?? [];
+    }
+
+    private static IEnumerable<EventProgramReadinessWarningDto> GetWarnings(EventProgramItemDto item)
+    {
+        return item.ReadinessWarnings?.Where(warning => !string.IsNullOrWhiteSpace(warning.Message)) ?? [];
+    }
+
+    private static string GetTitle(string? value, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(value) ? fallback : value;
+    }
+
+    private static string GetDayLabel(EventProgramDayGroupDto day)
+    {
+        if (!string.IsNullOrWhiteSpace(day.DisplayLabel))
+        {
+            return day.DisplayLabel;
+        }
+
+        return day.LocalDate?.ToString("ddd d MMM", CultureInfo.InvariantCulture) ?? "Unscheduled day";
+    }
+
+    private static string GetGroupMetadata(EventProgramSessionGroupSectionDto sessionGroup)
+    {
+        var details = new[] { sessionGroup.RoomName, sessionGroup.LocationName }
+            .Where(value => !string.IsNullOrWhiteSpace(value));
+
+        return string.Join(" · ", details.DefaultIfEmpty("No room or location set"));
+    }
+
+    private static string FormatItemMetadata(EventProgramItemDto item)
+    {
+        var details = new List<string>
+        {
+            FormatItemTimeRange(item),
+            item.RoomName ?? item.LocationName ?? "Location not set",
+            item.Capacity.HasValue ? $"{item.Capacity.Value} seats" : "Capacity not set",
+            item.RegistrationModeName ?? "Registration mode not set"
+        };
+
+        return string.Join(" · ", details);
+    }
+
+    private static string FormatItemTimeRange(EventProgramItemDto item)
+    {
+        var date = item.LocalDate?.ToString("ddd d MMM", CultureInfo.InvariantCulture) ?? "Date not set";
+        var start = item.LocalStartTime?.ToString(@"hh\:mm", CultureInfo.InvariantCulture) ?? "--:--";
+        var end = item.LocalEndTime?.ToString(@"hh\:mm", CultureInfo.InvariantCulture) ?? "--:--";
+
+        return $"{date}, {start}–{end}";
+    }
+
+    private static string GetSectionHeadingId(EventProgramSectionDto section)
+    {
+        return $"program-section-{SanitizeId(section.SectionKey ?? section.Title ?? "section")}";
+    }
+
+    private static string GetGroupHeadingId(EventProgramSectionDto section, EventProgramSessionGroupSectionDto sessionGroup)
+    {
+        return $"{GetSectionHeadingId(section)}-group-{SanitizeId(sessionGroup.SessionGroupId?.ToString() ?? sessionGroup.Title ?? "group")}";
+    }
+
+    private static string SanitizeId(string value)
+    {
+        var chars = value
+            .ToLowerInvariant()
+            .Select(character => char.IsLetterOrDigit(character) ? character : '-')
+            .ToArray();
+
+        return new string(chars).Trim('-');
+    }
+}

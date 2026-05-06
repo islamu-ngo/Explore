@@ -1,0 +1,65 @@
+@* ABOUTME: Server-context banner for dedicated program item creation. *@
+@* ABOUTME: Makes event timezone/date defaults explicit without moving save semantics into the UI. *@
+
+@using MudBlazor
+
+<section class="session-create-context-banner" aria-labelledby="session-create-context-title">
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="session-create-context-banner__alert">
+        <div class="session-create-context-banner__content">
+            <MudText Typo="Typo.subtitle2" HtmlTag="h2" id="session-create-context-title" Class="session-create-context-banner__title">
+                Program item context
+            </MudText>
+            <MudText Typo="Typo.body2" Class="session-create-context-banner__summary">
+                This dedicated composer keeps the event shell separate from program items.
+            </MudText>
+
+            <dl class="session-create-context-banner__facts">
+                <div class="session-create-context-banner__fact">
+                    <dt>Event timezone</dt>
+                    <dd>@TimeZoneDisplay</dd>
+                </div>
+                <div class="session-create-context-banner__fact">
+                    <dt>Event date window</dt>
+                    <dd>@DateWindowDisplay</dd>
+                </div>
+            </dl>
+
+            @if (Notices?.Any() == true)
+            {
+                <ul class="session-create-context-banner__notices" aria-label="Program item setup notices">
+                    @foreach (var notice in Notices)
+                    {
+                        <li>@notice</li>
+                    }
+                </ul>
+            }
+        </div>
+    </MudAlert>
+</section>
+
+@code {
+    [Parameter]
+    public string? TimeZoneId { get; set; }
+
+    [Parameter]
+    public DateTimeOffset? EventStartDate { get; set; }
+
+    [Parameter]
+    public DateTimeOffset? EventEndDate { get; set; }
+
+    [Parameter]
+    public ICollection<string>? Notices { get; set; }
+
+    private string TimeZoneDisplay => string.IsNullOrWhiteSpace(TimeZoneId)
+        ? "Not set yet"
+        : TimeZoneId;
+
+    private string DateWindowDisplay => (EventStartDate, EventEndDate) switch
+    {
+        ({ } start, { } end) when start.Date == end.Date => start.ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture),
+        ({ } start, { } end) => $"{start.ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)} – {end.ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)}",
+        ({ } start, null) => $"Starts {start.ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)}",
+        (null, { } end) => $"Ends {end.ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)}",
+        _ => "Not set yet"
+    };
+}

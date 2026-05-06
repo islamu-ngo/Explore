@@ -1,0 +1,666 @@
+@* ABOUTME: Dialog for managing event program sections, tracks, devrooms, and stages. *@
+@* ABOUTME: Uses EventService wrappers so Blazor never calls the generated API client directly. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Models.EventSessionGroups
+@using Explore.Blazor.Client.Services
+@using MudBlazor
+
+@inject IEventService EventService
+@inject ILocationService LocationService
+@inject ILocationRoomService LocationRoomService
+@inject IDialogService DialogService
+@inject ILogger<ProgramSectionsDialog> Logger
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.AccountTree" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Program sections</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="program-sections-dialog">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Create tracks, devrooms, stages, or neutral program sections. Assign saved sessions to one section at a time.
+            </MudText>
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">@_errorMessage</MudAlert>
+            }
+
+            @if (_sections.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                    No sections or tracks yet. Add one to organize saved program items.
+                </MudAlert>
+            }
+            else
+            {
+                <ul class="program-sections-dialog__list" aria-label="Existing program sections">
+                    @foreach (var programSection in _sections.OrderBy(programSection => programSection.SortOrder).ThenBy(programSection => programSection.Name))
+                    {
+                        <li class="program-sections-dialog__item">
+                            <div class="program-sections-dialog__item-main">
+                                <span class="program-sections-dialog__name">@programSection.Name</span>
+                                <span class="program-sections-dialog__meta">@FormatSectionMeta(programSection)</span>
+                            </div>
+                            <div class="program-sections-dialog__item-actions">
+                                <AppButton Variant="Variant.Text"
+                                           Color="Color.Primary"
+                                           Disabled="@(!programSection.HasHalLink("edit") || _isSaving)"
+                                           OnClick="@(() => EditSectionAsync(programSection))">
+                                    Edit
+                                </AppButton>
+                                 @if (programSection.HasHalLink("delete"))
+                                 {
+                                     <AppButton Variant="Variant.Text"
+                                               Color="Color.Error"
+                                               Disabled="@_isSaving"
+                                               OnClick="@(() => DeleteSectionAsync(programSection))">
+                                         Delete
+                                     </AppButton>
+                                 }
+                                 <AppButton Variant="Variant.Text"
+                                            Color="Color.Secondary"
+                                            Disabled="@(!programSection.HasHalLink(AssignSessionLinkRel) || _isSaving)"
+                                            OnClick="@(() => SelectAssignmentSectionAsync(programSection))">
+                                     Assign sessions
+                                 </AppButton>
+                             </div>
+                         </li>
+                     }
+                 </ul>
+             }
+
+            @if (_assignmentSection is not null)
+            {
+                <section class="program-sections-dialog__assignments" aria-labelledby="program-section-assignments-title">
+                    <div class="program-sections-dialog__assignment-header">
+                        <div>
+                            <h3 id="program-section-assignments-title" class="program-sections-dialog__form-title">
+                                Assign sessions to @_assignmentSection.Name
+                            </h3>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Assignment changes save immediately and refresh from the server.
+                            </MudText>
+                        </div>
+                        <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="ClearAssignmentSection" Disabled="@_isAssignmentSaving">
+                            Close assignments
+                        </AppButton>
+                    </div>
+
+                    @if (!CanManageAssignments(_assignmentSection))
+                    {
+                        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                            You do not currently have permission to manage session assignments for this program section.
+                        </MudAlert>
+                    }
+                    else if (_sessions.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                            No saved sessions are available yet. Add a program item before assigning it to a section.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <ul class="program-sections-dialog__assignment-list" aria-label="Saved sessions for assignment">
+                            @foreach (var session in _sessions.OrderBy(session => session.StartTime).ThenBy(session => session.Title))
+                            {
+                                var isAssigned = IsAssignedToSelectedSection(session);
+                                <li class="program-sections-dialog__assignment-item">
+                                    <div class="program-sections-dialog__item-main">
+                                        <span class="program-sections-dialog__name">@FormatSessionTitle(session)</span>
+                                        <span class="program-sections-dialog__meta">@FormatSessionAssignmentMeta(session)</span>
+                                    </div>
+                                    @if (isAssigned)
+                                    {
+                                        <AppButton Variant="Variant.Text"
+                                                   Color="Color.Error"
+                                                   Disabled="@_isAssignmentSaving"
+                                                   OnClick="@(() => UnassignSessionAsync(session))">
+                                            Remove
+                                        </AppButton>
+                                    }
+                                    else
+                                    {
+                                        <AppButton Variant="Variant.Text"
+                                                   Color="Color.Primary"
+                                                   Disabled="@_isAssignmentSaving"
+                                                   OnClick="@(() => AssignSessionAsync(session))">
+                                            Assign
+                                        </AppButton>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                </section>
+            }
+
+            <MudDivider />
+
+            <section class="program-sections-dialog__form" aria-labelledby="program-section-form-title">
+                <h3 id="program-section-form-title" class="program-sections-dialog__form-title">
+                    @(_editingSectionId is null ? "Add section or track" : "Edit section or track")
+                </h3>
+
+                <MudTextField T="string"
+                              Label="Section or track name"
+                              Value="@_name"
+                              ValueChanged="@(value => _name = value ?? string.Empty)"
+                              Required="true"
+                              Variant="Variant.Outlined"
+                              Placeholder="Main stage, Workshops, Devroom A" />
+
+                <MudTextField T="string"
+                              Label="Description"
+                              Value="@_description"
+                              ValueChanged="@(value => _description = value)"
+                              Lines="3"
+                              Variant="Variant.Outlined" />
+
+                <div class="program-sections-dialog__compact-grid">
+                    <MudSelect T="Guid?"
+                               Label="Default location"
+                               Value="@_locationId"
+                               ValueChanged="OnLocationChangedAsync"
+                               Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter">
+                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">No location yet</MudSelectItem>
+                        @foreach (var location in _locations.Where(location => location.Id.HasValue).OrderBy(FormatLocation))
+                        {
+                            <MudSelectItem T="Guid?" Value="@location.Id">@FormatLocation(location)</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect T="Guid?"
+                               Label="Default room"
+                               Value="@_roomId"
+                               ValueChanged="@(value => _roomId = value)"
+                               Variant="Variant.Outlined"
+                               Disabled="@(!_locationId.HasValue || !_rooms.Any())"
+                               AnchorOrigin="Origin.BottomCenter">
+                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">No room yet</MudSelectItem>
+                        @foreach (var room in _rooms.OrderBy(room => room.SortOrder).ThenBy(room => room.Name))
+                        {
+                            <MudSelectItem T="Guid?" Value="@room.Id">@FormatRoom(room)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="program-sections-dialog__compact-grid">
+                    <MudTextField T="string"
+                                  Label="Color"
+                                  Value="@_color"
+                                  ValueChanged="@(value => _color = value)"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="#4263eb" />
+
+                    <MudNumericField T="int?"
+                                     Label="Sort order"
+                                     Value="@_sortOrder"
+                                     ValueChanged="@(value => _sortOrder = value)"
+                                     Min="0"
+                                     Variant="Variant.Outlined" />
+                </div>
+
+                <MudCheckBox T="bool"
+                             Label="Visible in program"
+                             Value="@_isPublished"
+                             ValueChanged="@(value => _isPublished = value)"
+                             Color="Color.Primary" />
+            </section>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        @if (_editingSectionId is not null)
+        {
+            <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="ResetForm" Disabled="@_isSaving">Cancel edit</AppButton>
+        }
+        <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="Close" Disabled="@_isSaving">Close</AppButton>
+        <AppButton OnClick="SaveAsync" Disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Saving...</span>
+            }
+            else
+            {
+                <span>@(_editingSectionId is null ? "Add section" : "Save section")</span>
+            }
+        </AppButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    [Parameter]
+    public ICollection<EventSessionGroupListModel>? InitialSections { get; set; }
+
+    private List<EventSessionGroupListModel> _sections = [];
+    private Guid? _editingSectionId;
+    private string _name = string.Empty;
+    private string? _description;
+    private string? _color;
+    private Guid? _locationId;
+    private Guid? _roomId;
+    private int? _sortOrder;
+    private bool _isPublished = true;
+    private ICollection<LocationListDto> _locations = new List<LocationListDto>();
+    private ICollection<LocationRoomListDto> _rooms = new List<LocationRoomListDto>();
+    private List<EventSessionListDto> _sessions = [];
+    private EventSessionGroupListModel? _assignmentSection;
+    private bool _isAssignmentSaving;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private bool _hasChanges;
+    private const string AssignSessionLinkRel = "assign-session";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sections = InitialSections?.OrderBy(section => section.SortOrder).ThenBy(section => section.Name).ToList() ?? [];
+        _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(section => section.SortOrder) + 10;
+        _locations = await LocationService.GetAllLocationsAsync();
+    }
+
+    private async Task EditSectionAsync(EventSessionGroupListModel section)
+    {
+        if (!section.HasHalLink("edit"))
+        {
+            _errorMessage = "You do not currently have permission to edit this program section.";
+            return;
+        }
+
+        _editingSectionId = section.Id;
+        _name = section.Name;
+        _description = null;
+        _color = section.Color;
+        _locationId = section.LocationId;
+        _roomId = section.RoomId;
+        _sortOrder = section.SortOrder;
+        _isPublished = section.IsPublished;
+        _errorMessage = null;
+        await LoadRoomsForLocationAsync(_locationId);
+    }
+
+    private async Task OnLocationChangedAsync(Guid? locationId)
+    {
+        _locationId = locationId;
+        _roomId = null;
+        await LoadRoomsForLocationAsync(locationId);
+    }
+
+    private async Task LoadRoomsForLocationAsync(Guid? locationId)
+    {
+        if (!locationId.HasValue || locationId.Value == Guid.Empty)
+        {
+            _rooms = new List<LocationRoomListDto>();
+            _roomId = null;
+            return;
+        }
+
+        _rooms = await LocationRoomService.GetRoomsByLocationAsync(locationId.Value);
+        if (_roomId.HasValue && _rooms.All(room => room.Id != _roomId.Value))
+        {
+            _roomId = null;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _errorMessage = null;
+
+        if (EventId == Guid.Empty)
+        {
+            _errorMessage = "Save the event before adding program sections.";
+            return;
+        }
+
+        var trimmedName = _name.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedName))
+        {
+            _errorMessage = "Section or track name is required.";
+            return;
+        }
+
+        _isSaving = true;
+
+        try
+        {
+            BaseCommandResponseOfGuid response = _editingSectionId is null
+                ? await EventService.CreateSessionGroupAsync(new CreateEventSessionGroupRequestDto
+                {
+                    EventId = EventId,
+                    Name = trimmedName,
+                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+                    LocationId = _locationId,
+                    RoomId = _roomId,
+                    Color = string.IsNullOrWhiteSpace(_color) ? null : _color.Trim(),
+                    SortOrder = _sortOrder ?? 0,
+                    IsPublished = _isPublished
+                })
+                : await EventService.UpdateSessionGroupAsync(new UpdateEventSessionGroupRequestDto
+                {
+                    Id = _editingSectionId,
+                    EventId = EventId,
+                    Name = trimmedName,
+                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+                    LocationId = _locationId,
+                    RoomId = _roomId,
+                    Color = string.IsNullOrWhiteSpace(_color) ? null : _color.Trim(),
+                    SortOrder = _sortOrder ?? 0,
+                    IsPublished = _isPublished
+                });
+
+            if (response.Success != true)
+            {
+                _errorMessage = response.Message ?? "Program section could not be saved.";
+                return;
+            }
+
+            _sections = (await EventService.GetSessionGroupsByEventAsync(EventId))
+                .OrderBy(section => section.SortOrder)
+                .ThenBy(section => section.Name)
+                .ToList();
+            _hasChanges = true;
+            ResetForm();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Program section save failed for event {EventId}", EventId);
+            _errorMessage = $"Program section could not be saved: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteSectionAsync(EventSessionGroupListModel section)
+    {
+        _errorMessage = null;
+
+        if (!section.HasHalLink("delete"))
+        {
+            _errorMessage = "You do not currently have permission to delete this program section.";
+            return;
+        }
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete program section?",
+            $"Delete {section.Name}? Sessions stay saved, but this section and its assignments will be removed.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        _isSaving = true;
+
+        try
+        {
+            bool deleted = await EventService.DeleteSessionGroupAsync(EventId, section.Id);
+            if (!deleted)
+            {
+                _errorMessage = "Program section could not be deleted.";
+                return;
+            }
+
+            _sections = (await EventService.GetSessionGroupsByEventAsync(EventId))
+                .OrderBy(programSection => programSection.SortOrder)
+                .ThenBy(programSection => programSection.Name)
+                .ToList();
+            _hasChanges = true;
+
+            if (_editingSectionId == section.Id)
+            {
+                ResetForm();
+            }
+            else
+            {
+                _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(programSection => programSection.SortOrder) + 10;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Program section delete failed for event {EventId}", EventId);
+            _errorMessage = $"Program section could not be deleted: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SelectAssignmentSectionAsync(EventSessionGroupListModel section)
+    {
+        _errorMessage = null;
+        _assignmentSection = section;
+
+        if (!CanManageAssignments(section))
+        {
+            _errorMessage = "You do not currently have permission to manage session assignments for this program section.";
+            return;
+        }
+
+        await LoadSessionsAsync();
+    }
+
+    private void ClearAssignmentSection()
+    {
+        _assignmentSection = null;
+        _errorMessage = null;
+    }
+
+    private async Task AssignSessionAsync(EventSessionListDto session)
+    {
+        if (!TryGetAssignmentContext(session, out var sectionId, out var sessionId))
+        {
+            return;
+        }
+
+        _isAssignmentSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            int sortOrder = GetNextAssignmentSortOrder(sectionId);
+            BaseCommandResponseOfGuid response = await EventService.AssignSessionToGroupAsync(
+                EventId,
+                sectionId,
+                sessionId,
+                isPrimary: true,
+                sortOrder: sortOrder);
+
+            if (response.Success != true)
+            {
+                _errorMessage = response.Message ?? "Session could not be assigned to the selected program section.";
+                return;
+            }
+
+            await LoadSessionsAsync();
+            _hasChanges = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Session assignment failed for event {EventId}", EventId);
+            _errorMessage = $"Session could not be assigned: {ex.Message}";
+        }
+        finally
+        {
+            _isAssignmentSaving = false;
+        }
+    }
+
+    private async Task UnassignSessionAsync(EventSessionListDto session)
+    {
+        if (!TryGetAssignmentContext(session, out var sectionId, out var sessionId))
+        {
+            return;
+        }
+
+        _isAssignmentSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            BaseCommandResponseOfGuid response = await EventService.UnassignSessionFromGroupAsync(EventId, sectionId, sessionId);
+            if (response.Success != true)
+            {
+                _errorMessage = response.Message ?? "Session could not be removed from the selected program section.";
+                return;
+            }
+
+            await LoadSessionsAsync();
+            _hasChanges = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Session unassignment failed for event {EventId}", EventId);
+            _errorMessage = $"Session could not be removed: {ex.Message}";
+        }
+        finally
+        {
+            _isAssignmentSaving = false;
+        }
+    }
+
+    private async Task LoadSessionsAsync()
+    {
+        _sessions = (await EventService.GetSessionsByEventAsync(EventId))
+            .OrderBy(session => session.StartTime)
+            .ThenBy(session => session.Title)
+            .ToList();
+    }
+
+    private bool TryGetAssignmentContext(EventSessionListDto session, out Guid sectionId, out Guid sessionId)
+    {
+        sectionId = _assignmentSection?.Id ?? Guid.Empty;
+        sessionId = session.Id ?? Guid.Empty;
+
+        if (_assignmentSection is null || sectionId == Guid.Empty || sessionId == Guid.Empty)
+        {
+            _errorMessage = "Select a program section and saved session before changing assignments.";
+            return false;
+        }
+
+        if (!CanManageAssignments(_assignmentSection))
+        {
+            _errorMessage = "You do not currently have permission to manage session assignments for this program section.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool CanManageAssignments(EventSessionGroupListModel section)
+    {
+        return section.HasHalLink(AssignSessionLinkRel);
+    }
+
+    private bool IsAssignedToSelectedSection(EventSessionListDto session)
+    {
+        var sectionId = _assignmentSection?.Id;
+        return sectionId.HasValue && session.SessionGroups?.Any(group => group.EventSessionGroupId == sectionId.Value) == true;
+    }
+
+    private int GetNextAssignmentSortOrder(Guid sectionId)
+    {
+        var maxSortOrder = _sessions
+            .SelectMany(session => session.SessionGroups ?? Enumerable.Empty<SessionGroups2>())
+            .Where(group => group.EventSessionGroupId == sectionId)
+            .Select(group => group.SortOrder ?? 0)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return maxSortOrder + 10;
+    }
+
+    private void ResetForm()
+    {
+        _editingSectionId = null;
+        _name = string.Empty;
+        _description = null;
+        _color = null;
+        _locationId = null;
+        _roomId = null;
+        _rooms = new List<LocationRoomListDto>();
+        _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(section => section.SortOrder) + 10;
+        _isPublished = true;
+        _errorMessage = null;
+    }
+
+    private void Close() => MudDialog.Close(DialogResult.Ok(_hasChanges));
+
+    private static string FormatSectionMeta(EventSessionGroupListModel section)
+    {
+        var details = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(section.RoomName))
+            details.Add(section.RoomName);
+        else if (!string.IsNullOrWhiteSpace(section.LocationName))
+            details.Add(section.LocationName);
+
+        details.Add(section.IsPublished ? "Visible" : "Hidden");
+        details.Add($"Sort {section.SortOrder}");
+
+        return string.Join(" · ", details);
+    }
+
+    private static string FormatLocation(LocationListDto location)
+    {
+        var fullName = location.FullName ?? string.Empty;
+        return string.IsNullOrWhiteSpace(location.City) ? fullName : $"{fullName} · {location.City}";
+    }
+
+    private static string FormatRoom(LocationRoomListDto room)
+    {
+        return room.Capacity.HasValue ? $"{room.Name} ({room.Capacity} seats)" : room.Name ?? string.Empty;
+    }
+
+    private static string FormatSessionTitle(EventSessionListDto session)
+    {
+        return string.IsNullOrWhiteSpace(session.Title) ? "Untitled program item" : session.Title;
+    }
+
+    private string FormatSessionAssignmentMeta(EventSessionListDto session)
+    {
+        var details = new List<string>();
+
+        if (session.StartTime.HasValue)
+        {
+            details.Add(session.StartTime.Value.ToLocalTime().ToString("ddd d MMM, HH:mm", System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.RoomName))
+            details.Add(session.RoomName);
+        else if (!string.IsNullOrWhiteSpace(session.LocationFullName))
+            details.Add(session.LocationFullName);
+
+        if (IsAssignedToSelectedSection(session))
+        {
+            details.Add("Assigned here");
+        }
+        else if (session.SessionGroups?.Any() == true)
+        {
+            details.Add("Assigned elsewhere");
+        }
+        else
+        {
+            details.Add("Unassigned");
+        }
+
+        return string.Join(" · ", details);
+    }
+}

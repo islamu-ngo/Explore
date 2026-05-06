@@ -2,6 +2,7 @@
 // ABOUTME: Loads existing event data, pre-fills the form, handles session management, image upload, and event update.
 
 using System.Linq;
+using System.Globalization;
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
@@ -9,10 +10,11 @@ using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Models.CustomProperties;
 using Explore.Blazor.Client.Pages.Events.Components;
+using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Pages.Events.Models;
-using Explore.Blazor.Client.Pages.Events.Workflows;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -35,12 +37,183 @@ public partial class EventEdit
     [Inject] protected ILogger<EventEdit> Logger { get; set; } = null!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
     [Inject] private IEventRegistrationPolicyService RegistrationPolicyService { get; set; } = default!;
-    [Inject] private IEventDayService EventDayService { get; set; } = default!;
-    [Inject] private IEventAgendaItemService EventAgendaItemService { get; set; } = default!;
-    [Inject] private ILocationRoomService LocationRoomService { get; set; } = default!;
     [Inject] private ICustomPropertyDefinitionService CustomPropertyDefinitionService { get; set; } = default!;
 
     private Guid EventId { get; set; }
+
+    private bool CanAddSession => currentEvent?.HasHalLink("add-session") == true;
+
+    private bool CanManageProgramSections => currentEvent?.HasHalLink("add-session-group") == true;
+
+    private string ProgramSummary
+    {
+        get
+        {
+            if (_programSummary is not null)
+            {
+                var itemCount = GetProgramItems(_programSummary).Count();
+                var sectionCount = _programSummary.Sections?.Count ?? 0;
+
+                return itemCount switch
+                {
+                    0 => "No program items yet; start by adding a session or section/track.",
+                    1 => sectionCount == 0
+                        ? "1 program item saved; add a section or track when you are ready to organize it."
+                        : $"1 program item saved across {sectionCount} program section{(sectionCount == 1 ? string.Empty : "s")}.",
+                    _ => sectionCount == 0
+                        ? $"{itemCount} program items saved; add sections or tracks when you are ready to organize them."
+                        : $"{itemCount} program items saved across {sectionCount} program section{(sectionCount == 1 ? string.Empty : "s")}."
+                };
+            }
+
+            return sessions.Count switch
+            {
+                0 => "No program items yet; start by adding a session or section/track.",
+                1 => "1 program item saved; sections can organize it later.",
+                _ => $"{sessions.Count} program items saved; sections can organize them later."
+            };
+        }
+    }
+
+    private string ProgramItemsSummary
+    {
+        get
+        {
+            if (_programSummary is not null)
+            {
+                var itemCount = GetProgramItems(_programSummary).Count();
+                return itemCount switch
+                {
+                    0 => "No program items yet",
+                    1 => "1 session saved",
+                    _ => $"{itemCount} sessions saved"
+                };
+            }
+
+            return sessions.Count switch
+            {
+                0 => "No program items yet",
+                1 => "1 session saved",
+                _ => $"{sessions.Count} sessions saved"
+            };
+        }
+    }
+
+    private string ProgramItemsDescription
+    {
+        get
+        {
+            if (_programSummary is not null)
+            {
+                var firstItem = GetProgramItems(_programSummary).FirstOrDefault();
+                return firstItem is null
+                    ? "Open the dedicated session composer for talks, workshops, panels, classes, and activities."
+                    : BuildProgramItemMetadata(firstItem);
+            }
+
+            return sessions.Count == 0
+                ? "Open the dedicated session composer for talks, workshops, panels, classes, and activities."
+                : BuildProgramItemMetadata(sessions[0]);
+        }
+    }
+
+    private string ProgramSectionsSummary
+    {
+        get
+        {
+            if (_programSummary is not null)
+            {
+                var assignedSections = _programSummary.Sections?
+                    .Where(section => !string.Equals(section.SectionKey, "unassigned", StringComparison.OrdinalIgnoreCase))
+                    .Count() ?? 0;
+
+                if (_programSections.Count > assignedSections)
+                    assignedSections = _programSections.Count;
+
+                return assignedSections switch
+                {
+                    0 => "No sections or tracks yet",
+                    1 => "1 section or track",
+                    _ => $"{assignedSections} sections or tracks"
+                };
+            }
+
+            return "No sections or tracks yet";
+        }
+    }
+
+    private string BuildProgramItemMetadata(SessionEditorModel session)
+    {
+        var details = new List<string>
+        {
+            FormatSessionTimeRange(session),
+            GetLocationName(session.LocationId) ?? "Location not set",
+            FormatCapacity(session.MaxAudienceAttendees),
+            GetRegistrationModeName(session.RegistrationModeId) ?? "Registration mode not set"
+        };
+
+        return string.Join(" · ", details);
+    }
+
+    private static string BuildProgramItemMetadata(EventProgramItemDto item)
+    {
+        var details = new List<string>
+        {
+            FormatProgramItemTimeRange(item),
+            item.RoomName ?? item.LocationName ?? "Location not set",
+            FormatCapacity(item.Capacity),
+            item.RegistrationModeName ?? "Registration mode not set"
+        };
+
+        return string.Join(" · ", details);
+    }
+
+    private static IEnumerable<EventProgramItemDto> GetProgramItems(EventProgramSummaryDto summary)
+    {
+        return summary.Sections?
+            .SelectMany(section => section.SessionGroups ?? [])
+            .SelectMany(group => group.Days ?? [])
+            .SelectMany(day => day.Items ?? [])
+            ?? [];
+    }
+
+    private static string FormatProgramItemTimeRange(EventProgramItemDto item)
+    {
+        var localStart = item.LocalStartTime?.ToString(@"hh\:mm", CultureInfo.InvariantCulture) ?? "--:--";
+        var localEnd = item.LocalEndTime?.ToString(@"hh\:mm", CultureInfo.InvariantCulture) ?? "--:--";
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{item.LocalDate:ddd d MMM}, {localStart}–{localEnd}");
+    }
+
+    private static string FormatSessionTimeRange(SessionEditorModel session)
+    {
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{session.StartTime:ddd d MMM, HH:mm}–{session.EndTime:HH:mm}");
+    }
+
+    private string? GetLocationName(Guid? locationId)
+    {
+        return locationId is null
+            ? null
+            : locations?.FirstOrDefault(location => location.Id == locationId)?.FullName;
+    }
+
+    private string? GetRegistrationModeName(int? registrationModeId)
+    {
+        return registrationModeId is null
+            ? null
+            : registrationModes?.FirstOrDefault(mode => mode.Id == registrationModeId)?.FullName;
+    }
+
+    private static string FormatCapacity(int? capacity)
+    {
+        return capacity.HasValue
+            ? $"{capacity.Value} seats"
+            : "Capacity not set";
+    }
 
     // Event data
     private EventDto? currentEvent;
@@ -80,21 +253,16 @@ public partial class EventEdit
 
     // Sessions
     private List<SessionEditorModel> sessions = new();
-    private readonly SessionEditorWorkflow _sessionWorkflow = new();
+    private EventProgramSummaryDto? _programSummary;
+    private List<EventSessionGroupListModel> _programSections = new();
     private AppearanceSettings _appearance = new();
 
-    // Scheduling state
-    private List<EventDayListDto> _eventDays = new();
-    private List<LocationRoomListDto> _locationRooms = new();
-    private List<EventAgendaItemListDto> _agendaItems = new();
-    private ToggleView _agendaViewMode = ToggleView.Grid;
     private IReadOnlyList<CustomPropertyDefinitionDetailModel> _eventCustomPropertyDefinitions = Array.Empty<CustomPropertyDefinitionDetailModel>();
     private Dictionary<Guid, IReadOnlyList<CustomPropertyDefinitionDetailModel>> _sessionCustomPropertyDefinitions = new();
     private Dictionary<Guid, string> _sessionCustomPropertyDefinitionLoadErrors = new();
     private string? _customPropertyDefinitionLoadError;
 
     // UI toggles
-    private bool _showFirstSessionLocation = false;
     private bool _showTimezoneSelector = false;
 
     // Timezone
@@ -162,17 +330,16 @@ public partial class EventEdit
             {
                 PopulateFormFromEvent();
 
+                var programSummaryTask = EventService.GetEventProgramSummaryAsync(EventId);
+                var sessionGroupsTask = EventService.GetSessionGroupsByEventAsync(EventId);
                 var eventSessions = await EventService.GetSessionsByEventAsync(EventId);
                 sessions = eventSessions?.Select(s => SessionEditorModel.FromDto(s)).ToList()
                            ?? new List<SessionEditorModel>();
+                _programSections = (await sessionGroupsTask).ToList();
+                _programSummary = await programSummaryTask;
 
                 await LoadCustomPropertyDefinitionsAsync();
 
-                // Show location selector if first session has a location
-                if (sessions.Count > 0 && sessions[0].LocationId.HasValue)
-                {
-                    _showFirstSessionLocation = true;
-                }
             }
             else
             {
@@ -207,6 +374,7 @@ public partial class EventEdit
             CurrencyCode = currentEvent.CurrencyCode,
             FeaturedImageId = currentEvent.FeaturedImageId,
             IsRegistrationRequired = currentEvent.IsRegistrationRequired,
+            RegistrationPolicyId = currentEvent.RegistrationPolicyId,
             ExternalRegistrationUrl = currentEvent.EventUrl,
             EventTypeId = currentEvent.EventTypeId,
             EventFormatId = currentEvent.EventFormatId,
@@ -333,45 +501,73 @@ public partial class EventEdit
         }
     }
 
-    // ========== Session Date/Time Handlers ==========
-
-    private void OnSessionStartDateChanged(int index, DateTime? date)
-    {
-        if (date.HasValue && index >= 0 && index < sessions.Count)
-        {
-            sessions[index].StartTime = date.Value.Date + sessions[index].StartTime.TimeOfDay;
-        }
-    }
-
-    private void OnSessionStartTimeChanged(int index, TimeSpan? time)
-    {
-        if (time.HasValue && index >= 0 && index < sessions.Count)
-        {
-            sessions[index].StartTime = sessions[index].StartTime.Date + time.Value;
-        }
-    }
-
-    private void OnSessionEndDateChanged(int index, DateTime? date)
-    {
-        if (date.HasValue && index >= 0 && index < sessions.Count)
-        {
-            sessions[index].EndTime = date.Value.Date + sessions[index].EndTime.TimeOfDay;
-        }
-    }
-
-    private void OnSessionEndTimeChanged(int index, TimeSpan? time)
-    {
-        if (time.HasValue && index >= 0 && index < sessions.Count)
-        {
-            sessions[index].EndTime = sessions[index].EndTime.Date + time.Value;
-        }
-    }
-
     // ========== Session Management ==========
 
-    private void AddSession()
+    private async Task AddSession()
     {
-        _sessionWorkflow.OpenForCreate(sessions, imagePreviewUrl);
+        if (!CanAddSession || EventId == Guid.Empty)
+        {
+            errorMessage = "You do not currently have permission to add sessions to this event.";
+            return;
+        }
+
+        await SaveEventAsync($"/events/{EventId}/sessions/create");
+    }
+
+    private void EditSession(int index)
+    {
+        if (index < 0 || index >= sessions.Count || sessions[index].Id is not { } sessionId || sessionId == Guid.Empty)
+        {
+            errorMessage = "Save the session before editing it in the dedicated composer.";
+            return;
+        }
+
+        Navigation.NavigateTo($"/events/{EventId}/sessions/{sessionId}/edit");
+    }
+
+    private void ShowDuplicateUnavailable()
+    {
+        errorMessage = "Duplicate session will be available from the dedicated session composer.";
+    }
+
+    private void ShowProgramSectionUnavailable()
+    {
+        errorMessage = "Section and track setup will be available from the saved event program manager.";
+    }
+
+    private async Task OpenProgramSectionsDialogAsync()
+    {
+        if (!CanManageProgramSections || EventId == Guid.Empty)
+        {
+            errorMessage = "You do not currently have permission to manage program sections for this event.";
+            return;
+        }
+
+        var parameters = new DialogParameters<ProgramSectionsDialog>
+        {
+            { x => x.EventId, EventId },
+            { x => x.InitialSections, _programSections }
+        };
+
+        await AccessibilityFocusService.SaveFocusAsync();
+        var dialog = await ProgramSectionsDialog.ShowAsync(
+            DialogService,
+            "Program sections",
+            parameters,
+            DialogOptionsFactory.Medium());
+        var result = await dialog.Result;
+        await AccessibilityFocusService.RestoreFocusAsync();
+
+        if (result is null || result.Canceled || result.Data is not true)
+            return;
+
+        await RefreshProgramSectionsAsync();
+    }
+
+    private async Task RefreshProgramSectionsAsync()
+    {
+        _programSections = (await EventService.GetSessionGroupsByEventAsync(EventId)).ToList();
+        _programSummary = await EventService.GetEventProgramSummaryAsync(EventId);
     }
 
     private async void RemoveSession(int index)
@@ -413,12 +609,6 @@ public partial class EventEdit
                 sessions.RemoveAt(index);
             }
         }
-    }
-
-    private void HandleSessionSave(SessionEditorModel model)
-    {
-        _sessionWorkflow.SaveSession(sessions, model);
-        StateHasChanged();
     }
 
     private async Task LoadCustomPropertyDefinitionsAsync()
@@ -499,21 +689,20 @@ public partial class EventEdit
 
     private async Task HandleSubmit()
     {
-        if (updateDto == null) return;
+        await SaveEventAsync($"/events/{EventId}");
+    }
+
+    private async Task<bool> SaveEventAsync(string? navigateToOnSuccess)
+    {
+        if (updateDto == null) return false;
 
         if (_isUploadingImage)
         {
             errorMessage = "Please wait for the image upload to complete.";
-            return;
+            return false;
         }
 
-        if (sessions == null || !sessions.Any())
-        {
-            errorMessage = "You must have at least one session.";
-            return;
-        }
-
-        if (isProcessing) return;
+        if (isProcessing) return false;
         isProcessing = true;
         errorMessage = string.Empty;
 
@@ -528,41 +717,32 @@ public partial class EventEdit
             updateDto.BackgroundColor = _appearance.BackgroundColor;
             updateDto.BackgroundEffect = _appearance.BackgroundEffect;
 
-            var earliestStart = sessions.Min(s => DateTimeHelper.ConvertLocalToUtc(s.StartTime));
-            var latestEnd = sessions.Max(s => DateTimeHelper.ConvertLocalToUtc(s.EndTime));
-            updateDto.FirstSessionDate = earliestStart;
-            updateDto.LastSessionDate = latestEnd;
-            updateDto.FirstSessionStartUtc = earliestStart;
-            updateDto.LastSessionStartUtc = latestEnd;
+            if (sessions.Count > 0)
+            {
+                var earliestStart = sessions.Min(s => DateTimeHelper.ConvertLocalToUtc(s.StartTime));
+                var latestEnd = sessions.Max(s => DateTimeHelper.ConvertLocalToUtc(s.EndTime));
+                updateDto.FirstSessionDate = earliestStart;
+                updateDto.LastSessionDate = latestEnd;
+                updateDto.FirstSessionStartUtc = earliestStart;
+                updateDto.LastSessionStartUtc = latestEnd;
+            }
 
             if (!updateDto.Id.HasValue)
             {
                 errorMessage = "Event ID is missing";
-                return;
+                return false;
             }
 
             var response = await EventService.UpdateEventAsync(updateDto.Id.Value, updateDto);
 
             if (response?.Success == true)
             {
-                // Update existing sessions and create new ones
-                var tenantId = Constants.TenantConstants.DefaultTenantId;
-
-                foreach (var session in sessions)
+                if (!string.IsNullOrWhiteSpace(navigateToOnSuccess))
                 {
-                    if (session.Id.HasValue && session.Id != Guid.Empty)
-                    {
-                        var sessionUpdateDto = session.ToUpdateDto(EventId);
-                        await EventService.UpdateSessionAsync(sessionUpdateDto);
-                    }
-                    else
-                    {
-                        var createSessionDto = session.ToCreateDto(EventId, tenantId);
-                        await EventService.CreateSessionAsync(createSessionDto);
-                    }
+                    Navigation.NavigateTo(navigateToOnSuccess);
                 }
 
-                Navigation.NavigateTo($"/events/{EventId}");
+                return true;
             }
             else
             {
@@ -572,12 +752,14 @@ public partial class EventEdit
                     errorMsg += " Errors: " + string.Join(", ", response.Errors);
                 }
                 errorMessage = errorMsg;
+                return false;
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Exception during event update");
             errorMessage = $"Error updating event: {ex.Message}";
+            return false;
         }
         finally
         {
@@ -630,34 +812,4 @@ public partial class EventEdit
         StateHasChanged();
     }
 
-    private async Task LoadSchedulingDataAsync()
-    {
-        try
-        {
-            var daysTask = EventDayService.GetDaysByEventAsync(EventId);
-            var itemsTask = EventAgendaItemService.GetAgendaItemsByEventAsync(EventId);
-
-            await Task.WhenAll(daysTask, itemsTask);
-
-            _eventDays = daysTask.Result?.ToList() ?? new();
-            _agendaItems = itemsTask.Result?.ToList() ?? new();
-
-            if (sessions.Count > 0 && sessions[0].LocationId.HasValue)
-            {
-                _locationRooms = (await LocationRoomService.GetRoomsByLocationAsync(sessions[0].LocationId.Value))?.ToList() ?? new();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to load scheduling data for event {EventId}", EventId);
-        }
-
-        StateHasChanged();
-    }
-}
-
-public enum ToggleView
-{
-    Grid,
-    Miller
 }

@@ -135,136 +135,48 @@
                                   Immediate="true"
                                   Class="edit-event__title-input mb-1" />
 
-                    @* --- First Session: Luma-style Date/Time Block --- *@
+                    <AppButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               Color="Color.Default"
+                               OnClick="@(() => _showTimezoneSelector = !_showTimezoneSelector)"
+                               Class="edit-event__timezone-btn mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" />
+                        @_selectedTimezoneDisplay
+                        <MudIcon Icon="@(_showTimezoneSelector ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" Size="Size.Small" />
+                    </AppButton>
+                    @if (_showTimezoneSelector)
+                    {
+                        <MudAutocomplete T="TimeZoneInfo"
+                                         Value="_selectedTimezone"
+                                         ValueChanged="OnTimezoneChanged"
+                                         SearchFunc="SearchTimezones"
+                                         ToStringFunc="@(tz => tz?.DisplayName ?? "")"
+                                         Label="Search timezone"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         Dense="true"
+                                         Immediate="true"
+                                         Class="edit-event__timezone-autocomplete mb-3" />
+                    }
+
                     @if (sessions.Count > 0)
                     {
-                        <div class="edit-event__datetime-block">
-                            <div class="edit-event__datetime-row">
-                                <div class="edit-event__datetime-indicator">
-                                    <div class="edit-event__datetime-dot edit-event__datetime-dot--start"></div>
-                                    <div class="edit-event__datetime-line"></div>
-                                </div>
-                                <MudText Typo="Typo.body2" Class="edit-event__datetime-label">Start</MudText>
-                                <MudDatePicker Date="@sessions[0].StartTime.Date"
-                                               DateChanged="@(d => OnSessionStartDateChanged(0, d))"
-                                               Variant="Variant.Text"
-                                               Margin="Margin.Dense"
-                                               DisableToolbar="true"
-                                               Class="edit-event__datetime-picker" />
-                                <MudTimePicker Time="@sessions[0].StartTime.TimeOfDay"
-                                               TimeChanged="@(t => OnSessionStartTimeChanged(0, t))"
-                                               Variant="Variant.Text"
-                                               Margin="Margin.Dense"
-                                               Class="edit-event__datetime-picker" />
-                            </div>
-                            <div class="edit-event__datetime-row">
-                                <div class="edit-event__datetime-indicator">
-                                    <div class="edit-event__datetime-dot edit-event__datetime-dot--end"></div>
-                                </div>
-                                <MudText Typo="Typo.body2" Class="edit-event__datetime-label">End</MudText>
-                                <MudDatePicker Date="@sessions[0].EndTime.Date"
-                                               DateChanged="@(d => OnSessionEndDateChanged(0, d))"
-                                               Variant="Variant.Text"
-                                               Margin="Margin.Dense"
-                                               DisableToolbar="true"
-                                               Class="edit-event__datetime-picker" />
-                                <MudTimePicker Time="@sessions[0].EndTime.TimeOfDay"
-                                               TimeChanged="@(t => OnSessionEndTimeChanged(0, t))"
-                                               Variant="Variant.Text"
-                                               Margin="Margin.Dense"
-                                               Class="edit-event__datetime-picker" />
-                            </div>
-                            <AppButton Variant="Variant.Text"
-                                       Size="Size.Small"
-                                       Color="Color.Default"
-                                       OnClick="@(() => _showTimezoneSelector = !_showTimezoneSelector)"
-                                       Class="edit-event__timezone-btn">
-                                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" />
-                                @_selectedTimezoneDisplay
-                                <MudIcon Icon="@(_showTimezoneSelector ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" Size="Size.Small" />
-                            </AppButton>
-                            @if (_showTimezoneSelector)
-                            {
-                                <MudAutocomplete T="TimeZoneInfo"
-                                                 Value="_selectedTimezone"
-                                                 ValueChanged="OnTimezoneChanged"
-                                                 SearchFunc="SearchTimezones"
-                                                 ToStringFunc="@(tz => tz?.DisplayName ?? "")"
-                                                 Label="Search timezone"
-                                                 Variant="Variant.Outlined"
-                                                 Margin="Margin.Dense"
-                                                 Dense="true"
-                                                 Immediate="true"
-                                                 Class="edit-event__timezone-autocomplete" />
-                            }
-                        </div>
+                        var primarySession = sessions.First();
+                        var primaryLocationName = locations?.FirstOrDefault(l => l.Id == primarySession.LocationId)?.FullName;
+                        var primaryImageUrl = primarySession.UseEventImage ? imagePreviewUrl : primarySession.FeaturedImagePreviewUrl;
 
-                        @* First session location *@
-                        <AppButton StartIcon="@Icons.Material.Filled.LocationOn"
-                                   Variant="Variant.Text"
-                                   Color="Color.Default"
-                                   FullWidth="true"
-                                   Class="edit-event__action-button justify-start"
-                                   OnClick="@(() => _showFirstSessionLocation = !_showFirstSessionLocation)">
-                            @if (sessions[0].LocationId.HasValue && locations != null)
-                            {
-                                var loc = locations.FirstOrDefault(l => (Guid?)l.Id == sessions[0].LocationId);
-                                <span>@(loc?.FullName ?? "Change location")</span>
-                            }
-                            else
-                            {
-                                <span>Add event location</span>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">Physical or virtual link</MudText>
-                            }
-                        </AppButton>
-
-                        @if (_showFirstSessionLocation && locations != null)
-                        {
-                            <MudSelect T="Guid?"
-                                       @bind-Value="sessions[0].LocationId"
-                                       Label="Location"
-                                       Variant="Variant.Outlined"
-                                       FullWidth="true"
-                                       Clearable="true"
-                                       Margin="Margin.Dense"
-                                       Class="mb-3">
-                                @foreach (var location in locations)
-                                {
-                                    <MudSelectItem T="Guid?" Value="@((Guid?)location.Id)">
-                                        @location.FullName @(!string.IsNullOrEmpty(location.City) ? $" - {location.City}" : "")
-                                    </MudSelectItem>
-                                }
-                            </MudSelect>
-                        }
-
-                        @* First session: compact registration & capacity row *@
-                        <MudGrid Spacing="2" Class="mb-2">
-                            <MudItem xs="6">
-                                <MudSelect T="int?"
-                                           @bind-Value="sessions[0].RegistrationModeId"
-                                           Label="Registration"
-                                           Variant="Variant.Outlined"
-                                           Margin="Margin.Dense"
-                                           FullWidth="true">
-                                    @if (registrationModes != null)
-                                    {
-                                        @foreach (var mode in registrationModes)
-                                        {
-                                            <MudSelectItem T="int?" Value="@((int?)mode.Id)">@mode.FullName</MudSelectItem>
-                                        }
-                                    }
-                                </MudSelect>
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudNumericField T="int?"
-                                                 @bind-Value="sessions[0].MaxAudienceAttendees"
-                                                 Label="Capacity"
-                                                 Variant="Variant.Outlined"
-                                                 Margin="Margin.Dense"
-                                                 Placeholder="Unlimited"
-                                                 Min="0" />
-                            </MudItem>
-                        </MudGrid>
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-4 mb-2">Program items</MudText>
+                        <SessionSummaryCard Session="primarySession"
+                                            Index="0"
+                                            LocationName="@primaryLocationName"
+                                            RegistrationModeName="@GetRegistrationModeName(primarySession.RegistrationModeId)"
+                                            ImageUrl="@primaryImageUrl"
+                                            OnEdit="@(() => EditSession(0))"
+                                            OnDuplicate="@(() => ShowDuplicateUnavailable())"
+                                            OnDelete="@(() => RemoveSession(0))" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mt-2 mb-3">
+                            Session date, location, registration, capacity, and language details are edited in the dedicated session composer.
+                        </MudText>
                     }
 
                     @* --- Add Description Button (Luma-style popup) --- *@
@@ -284,7 +196,44 @@
                         }
                     </AppButton>
 
-                    @* --- Additional Sessions (2+) --- *@
+                    @* --- Program Summary: sessions stay as program items, sections stay in the program manager. --- *@
+                    <EventOptionsSection Title="Program summary"
+                                         TitleId="program-summary-title"
+                                         Summary="@ProgramSummary"
+                                         PolicyNote="Talks, workshops, panels, classes, and activities are saved as sessions. Tracks, devrooms, and sections organize those sessions.">
+                        <EventOptionRow Title="Program items"
+                                        Icon="@Icons.Material.Filled.EventNote"
+                                        Summary="@ProgramItemsSummary"
+                                        Description="@ProgramItemsDescription">
+                            <AppButton StartIcon="@Icons.Material.Filled.Add"
+                                       Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       OnClick="AddSession"
+                                       Disabled="@(!CanAddSession || isProcessing)">
+                                Add session
+                            </AppButton>
+                        </EventOptionRow>
+
+                     <EventOptionRow Title="Program sections"
+                                     Icon="@Icons.Material.Filled.AccountTree"
+                                     Summary="@ProgramSectionsSummary"
+                                     Description="Use sections, tracks, devrooms, or stages to organize saved program items without changing the event hierarchy.">
+                             <AppButton StartIcon="@Icons.Material.Filled.AccountTree"
+                                        Variant="Variant.Text"
+                                        Color="Color.Default"
+                                        OnClick="OpenProgramSectionsDialogAsync"
+                                        Disabled="@(!CanManageProgramSections || isProcessing)">
+                              Add section/track
+                          </AppButton>
+                     </EventOptionRow>
+                 </EventOptionsSection>
+
+                    @if (_programSummary is not null)
+                    {
+                        <EventProgramSummaryView Summary="_programSummary" />
+                    }
+
+                 @* --- Additional Sessions (2+) --- *@
                     @if (sessions.Count > 1)
                     {
                         <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-4 mb-2">Additional Sessions</MudText>
@@ -299,70 +248,14 @@
                                 <SessionSummaryCard Session="session"
                                                     Index="idx"
                                                     LocationName="@locationName"
-                                                    ImageUrl="@imageUrl"
-                                                    OnEdit="@(() => _sessionWorkflow.OpenForEdit(sessions, idx))"
-                                                    OnDuplicate="@(() => _sessionWorkflow.DuplicateSession(sessions, idx))"
-                                                    OnDelete="@(() => RemoveSession(idx))" />
+                                                    RegistrationModeName="@GetRegistrationModeName(session.RegistrationModeId)"
+                                                      ImageUrl="@imageUrl"
+                                                      OnEdit="@(() => EditSession(idx))"
+                                                     OnDuplicate="@(() => ShowDuplicateUnavailable())"
+                                                     OnDelete="@(() => RemoveSession(idx))" />
                             }
                         </div>
                     }
-
-                    <AppButton StartIcon="@Icons.Material.Filled.Add"
-                               Variant="Variant.Outlined"
-                               FullWidth="true"
-                               OnClick="@(() => _sessionWorkflow.OpenForCreate(sessions, imagePreviewUrl))"
-                               Class="mt-2 mb-4 rounded-lg">
-                        Add Session
-                    </AppButton>
-
-                    @* --- Scheduling: Days, Rooms, Agenda --- *@
-                    <MudExpansionPanels Class="mb-4" Elevation="0">
-                        <MudExpansionPanel MaxHeight="1200"
-                                           Class="rounded-lg border-solid border-1 mud-border-lines-default">
-                            <TitleContent>
-                                <div class="d-flex align-center gap-2 w-100">
-                                    <MudText Typo="Typo.body1" Style="font-weight: 600;">Scheduling (Days, Rooms & Agenda)</MudText>
-                                    <MudSpacer />
-                                    <MudToggleGroup T="ToggleView" @bind-SelectedValue="_agendaViewMode"
-                                                               Size="Size.Small" Color="Color.Primary" Rounded="true"
-                                                               Class="mr-8">
-                                        <MudToggleItem Value="ToggleView.Grid" Icon="@Icons.Material.Outlined.ViewAgenda" />
-                                        <MudToggleItem Value="ToggleView.Miller" Icon="@Icons.Material.Outlined.ViewSidebar" />
-                                    </MudToggleGroup>
-                                </div>
-                            </TitleContent>
-                            <ChildContent>
-                                @if (_agendaViewMode == ToggleView.Grid)
-                                {
-                                    <MudStack Spacing="4">
-                                        <EventDayManager EventId="EventId"
-                                                         CanManage="true"
-                                                         OnDaysChanged="@(days => _eventDays = days)" />
-
-                                        @if (sessions.Count > 0 && sessions[0].LocationId.HasValue)
-                                        {
-                                            <LocationRoomManager LocationId="sessions[0].LocationId.Value"
-                                                                 CanManage="true"
-                                                                 OnRoomsChanged="@(rooms => _locationRooms = rooms)" />
-                                        }
-
-                                        <EventAgendaGrid EventId="EventId"
-                                                         Days="_eventDays"
-                                                         Rooms="_locationRooms"
-                                                         CanManage="true" />
-                                    </MudStack>
-                                }
-                                else
-                                {
-                                    <AgendaMillerColumns EventId="EventId"
-                                                         Days="_eventDays"
-                                                         AgendaItems="_agendaItems"
-                                                         CanManage="true"
-                                                         OnDataChanged="LoadSchedulingDataAsync" />
-                                }
-                            </ChildContent>
-                        </MudExpansionPanel>
-                    </MudExpansionPanels>
 
                     @* --- Event Options (Luma-style rows) --- *@
                     <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Event Options</MudText>
@@ -628,51 +521,6 @@
         </EditForm>
         </div>
 
-        @* ===== SESSION EDITOR DRAWER ===== *@
-        <MudDrawer @bind-Open="_sessionWorkflow.IsDrawerOpen"
-                   Anchor="Anchor.End"
-                   Variant="DrawerVariant.Temporary"
-                   Width="400px"
-                   Elevation="1"
-                   Class="edit-event__session-drawer">
-            <MudDrawerHeader Class="pa-4 border-b">
-                <div class="d-flex align-center justify-space-between w-100">
-                    <MudText Typo="Typo.h6">@(_sessionWorkflow.IsNewSession ? "Add Session" : "Edit Session")</MudText>
-                    <div class="d-flex align-center gap-1">
-                        <AppIconButton Icon="@Icons.Material.Filled.NavigateBefore"
-                                       Size="Size.Small"
-                                       Disabled="@(!_sessionWorkflow.CanNavigatePrevious(sessions))"
-                                       OnClick="@(() => _sessionWorkflow.NavigatePrevious(sessions, imagePreviewUrl))" />
-                        <AppIconButton Icon="@Icons.Material.Filled.NavigateNext"
-                                       Size="Size.Small"
-                                       Disabled="@(!_sessionWorkflow.CanNavigateNext(sessions))"
-                                       OnClick="@(() => _sessionWorkflow.NavigateNext(sessions, imagePreviewUrl))" />
-                        <AppIconButton Icon="@Icons.Material.Filled.Add"
-                                       Size="Size.Small"
-                                       Color="Color.Primary"
-                                       OnClick="@(() => _sessionWorkflow.AddFromDrawer(sessions, imagePreviewUrl))" />
-                        <AppIconButton Icon="@Icons.Material.Filled.Close"
-                                       Size="Size.Small"
-                                       OnClick="@(() => _sessionWorkflow.Close())" />
-                    </div>
-                </div>
-            </MudDrawerHeader>
-            <div class="pa-4">
-                @if (_sessionWorkflow.DrawerModel != null)
-                {
-                    <SessionEditorPanel Session="_sessionWorkflow.DrawerModel"
-                                        IsNew="_sessionWorkflow.IsNewSession"
-                                        EventImageUrl="@imagePreviewUrl"
-                                        Locations="locations"
-                                        RegistrationModes="registrationModes"
-                                        Languages="languages"
-                                        CustomPropertyDefinitions="@GetSessionCustomPropertyDefinitions(_sessionWorkflow.DrawerModel.Id)"
-                                        CustomPropertyDefinitionLoadError="@GetSessionCustomPropertyDefinitionLoadError(_sessionWorkflow.DrawerModel.Id)"
-                                        OnSave="HandleSessionSave"
-                                        OnCancel="@(() => _sessionWorkflow.Close())" />
-                }
-            </div>
-        </MudDrawer>
     }
 
     <TagCategoryManagerPopup

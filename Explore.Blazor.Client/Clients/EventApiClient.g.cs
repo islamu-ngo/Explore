@@ -666,6 +666,28 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get Event Session Create Context
+        /// </summary>
+        /// <remarks>
+        /// Returns inherited event defaults, location options, room options, and program sections for the dedicated program item composer.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<EventSessionCreateContextDto> GetEventSessionCreateContextAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Event Program Summary
+        /// </summary>
+        /// <remarks>
+        /// Returns program sections, local-day groupings, program items, and server-generated readiness warnings for the event program.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<EventProgramSummaryDto> GetEventProgramSummaryAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get Event Details
         /// </summary>
         /// <remarks>
@@ -10759,6 +10781,218 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Event Session Create Context
+        /// </summary>
+        /// <remarks>
+        /// Returns inherited event defaults, location options, room options, and program sections for the dedicated program item composer.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<EventSessionCreateContextDto> GetEventSessionCreateContextAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/event/{id}/session-create-context"
+                    urlBuilder_.Append("api/event/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/session-create-context");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<EventSessionCreateContextDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Event Program Summary
+        /// </summary>
+        /// <remarks>
+        /// Returns program sections, local-day groupings, program items, and server-generated readiness warnings for the event program.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<EventProgramSummaryDto> GetEventProgramSummaryAsync(System.Guid id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (id == null)
+                throw new System.ArgumentNullException("id");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/event/{id}/program-summary"
+                    urlBuilder_.Append("api/event/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/program-summary");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<EventProgramSummaryDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         {
@@ -49087,6 +49321,210 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventProgramDayGroupDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("localDate")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? LocalDate { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayLabel")]
+        public string? DisplayLabel { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("items")]
+        public System.Collections.Generic.ICollection<EventProgramItemDto>? Items { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventProgramItemDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        public System.Guid? SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public string? Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("startsAtUtc")]
+        public System.DateTimeOffset? StartsAtUtc { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endsAtUtc")]
+        public System.DateTimeOffset? EndsAtUtc { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("localDate")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? LocalDate { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("localStartTime")]
+        public System.TimeSpan? LocalStartTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("localEndTime")]
+        public System.TimeSpan? LocalEndTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SortOrder { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionGroupId")]
+        public System.Guid? SessionGroupId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locationName")]
+        public string? LocationName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("roomName")]
+        public string? RoomName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("capacity")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Capacity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationModeName")]
+        public string? RegistrationModeName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("readinessWarnings")]
+        public System.Collections.Generic.ICollection<EventProgramReadinessWarningDto>? ReadinessWarnings { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventProgramReadinessWarningDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("path")]
+        public string? Path { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("severity")]
+        public string? Severity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+        public string? Message { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventProgramSectionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sectionKey")]
+        public string? SectionKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public string? Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SortOrder { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionGroups")]
+        public System.Collections.Generic.ICollection<EventProgramSessionGroupSectionDto>? SessionGroups { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventProgramSessionGroupSectionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionGroupId")]
+        public System.Guid? SessionGroupId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        public string? Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SortOrder { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("color")]
+        public string? Color { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locationName")]
+        public string? LocationName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("roomName")]
+        public string? RoomName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("days")]
+        public System.Collections.Generic.ICollection<EventProgramDayGroupDto>? Days { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventProgramSummaryDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventTitle")]
+        public string? EventTitle { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeZoneId")]
+        public string? TimeZoneId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sections")]
+        public System.Collections.Generic.ICollection<EventProgramSectionDto>? Sections { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("readinessWarnings")]
+        public System.Collections.Generic.ICollection<EventProgramReadinessWarningDto>? ReadinessWarnings { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class EventPublishReadinessDto
     {
 
@@ -49472,6 +49910,189 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("locationFullName")]
         public string? LocationFullName { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventSessionCreateContextDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventId")]
+        public System.Guid? EventId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventTitle")]
+        public string? EventTitle { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeZoneId")]
+        public string? TimeZoneId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventStartDate")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? EventStartDate { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventEndDate")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? EventEndDate { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("defaults")]
+        public EventSessionCreateDefaultsDto? Defaults { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locations")]
+        public System.Collections.Generic.ICollection<EventSessionCreateLocationOptionDto>? Locations { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("rooms")]
+        public System.Collections.Generic.ICollection<EventSessionCreateRoomOptionDto>? Rooms { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionGroups")]
+        public System.Collections.Generic.ICollection<EventSessionCreateGroupOptionDto>? SessionGroups { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("notices")]
+        public System.Collections.Generic.ICollection<string>? Notices { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventSessionCreateDefaultsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionDate")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? SessionDate { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("startTime")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(\d+\.)?\d{2}:\d{2}:\d{2}(\.\d{1,7})?$")]
+        public string? StartTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endTime")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(\d+\.)?\d{2}:\d{2}:\d{2}(\.\d{1,7})?$")]
+        public string? EndTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("registrationModeId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? RegistrationModeId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventSessionCreateGroupOptionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string? Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locationId")]
+        public System.Guid? LocationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locationName")]
+        public string? LocationName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("roomId")]
+        public System.Guid? RoomId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("roomName")]
+        public string? RoomName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("color")]
+        public string? Color { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SortOrder { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventSessionCreateLocationOptionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fullName")]
+        public string? FullName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("city")]
+        public string? City { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("country")]
+        public string? Country { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeZoneId")]
+        public string? TimeZoneId { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class EventSessionCreateRoomOptionDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("locationId")]
+        public System.Guid? LocationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string? Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("capacity")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Capacity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SortOrder { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

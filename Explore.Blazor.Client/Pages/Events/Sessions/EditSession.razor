@@ -1,30 +1,31 @@
-@page "/events/{EventId:guid}/sessions/create"
+@page "/events/{EventId:guid}/sessions/{SessionId:guid}/edit"
 @rendermode InteractiveServer
 @attribute [Authorize]
 
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Models.EventSessionGroups
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Authorization
 @using MudBlazor
 
-<PageTitle>Add program item</PageTitle>
+<PageTitle>Edit program item</PageTitle>
 
-<main class="create-session" aria-labelledby="create-session-title">
+<main class="edit-session" aria-labelledby="edit-session-title">
     <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
-        <MudPaper Class="create-session__surface pa-6" Elevation="0">
-            <MudText Typo="Typo.h4" HtmlTag="h1" id="create-session-title" Class="mb-2">Add program item</MudText>
+        <MudPaper Class="edit-session__surface pa-6" Elevation="0">
+            <MudText Typo="Typo.h4" HtmlTag="h1" id="edit-session-title" Class="mb-2">Edit program item</MudText>
             @if (_isLoading)
             {
-                <div class="create-session__loading" role="status" aria-live="polite">
+                <div class="edit-session__loading" role="status" aria-live="polite">
                     <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Loading event draft...</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Loading session...</MudText>
                 </div>
             }
-            else if (_event is null)
+            else if (_event is null || _sourceSession is null)
             {
                 <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
-                    @(_errorMessage ?? "The event draft could not be loaded. Return to the draft and try again.")
+                    @(_errorMessage ?? "The program item could not be loaded. Return to the event draft and try again.")
                 </MudAlert>
 
                 <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToEventDraft">
@@ -34,7 +35,7 @@
             else
             {
                 <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
-                    Add a talk, workshop, panel, class, or activity to <strong>@_event.Title</strong>. Program items are sessions, not child events.
+                    Update <strong>@_sourceSession.Title</strong> for <strong>@_event.Title</strong>. Program items are sessions, not child events.
                 </MudText>
 
                 @if (!string.IsNullOrWhiteSpace(_errorMessage))
@@ -51,22 +52,21 @@
                     </MudAlert>
                 }
 
-                <SessionCreateContextBanner TimeZoneId="@_createContext?.TimeZoneId"
-                                            EventStartDate="@_createContext?.EventStartDate"
-                                            EventEndDate="@_createContext?.EventEndDate"
-                                            Notices="@_createContext?.Notices" />
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+                    This dedicated composer edits the saved program item without reopening the event shell drawer.
+                </MudAlert>
 
-                @if (!_canAddSession)
+                @if (!_canEditSession)
                 {
                     <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-4">
-                        You do not currently have permission to add program items to this event draft.
+                        You do not currently have permission to edit this program item.
                     </MudAlert>
                 }
 
                 <EditForm Model="_session" OnValidSubmit="SaveSessionAsync">
                     <DataAnnotationsValidator />
 
-                    <div class="create-session__form-grid">
+                    <div class="edit-session__form-grid">
                         <AppTextField T="string"
                                       Value="@_session.Title"
                                       ValueChanged="@(value => _session.Title = value)"
@@ -91,7 +91,7 @@
                                        Required="true"
                                        Variant="Variant.Outlined" />
 
-                        <div class="create-session__time-grid">
+                        <div class="edit-session__time-grid">
                             <MudTimePicker Label="Start time"
                                            Time="@_startTime"
                                            TimeChanged="@(value => _startTime = value)"
@@ -111,7 +111,7 @@
                                    Variant="Variant.Outlined"
                                    AnchorOrigin="Origin.BottomCenter">
                             <MudSelectItem T="Guid?" Value="@((Guid?)null)">No location yet</MudSelectItem>
-                            @foreach (var location in _locations)
+                            @foreach (var location in _locations.Where(location => location.Id.HasValue))
                             {
                                 <MudSelectItem T="Guid?" Value="@location.Id">@FormatLocation(location)</MudSelectItem>
                             }
@@ -167,12 +167,12 @@
                         </MudSelect>
                     </div>
 
-                    <div class="create-session__actions">
+                    <div class="edit-session__actions">
                         <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToEventDraft" Disabled="@_isSaving">
                             Back to event draft
                         </AppButton>
-                        <AppButton ButtonType="ButtonType.Submit" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isSaving || !_canAddSession)">
-                            @(_isSaving ? "Saving..." : "Save program item")
+                        <AppButton ButtonType="ButtonType.Submit" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isSaving || !_canEditSession)">
+                            @(_isSaving ? "Saving..." : "Save changes")
                         </AppButton>
                     </div>
                 </EditForm>
@@ -183,122 +183,114 @@
 
 @code {
     [Parameter] public Guid EventId { get; set; }
+    [Parameter] public Guid SessionId { get; set; }
 
     [Inject] private IEventService EventService { get; set; } = default!;
     [Inject] private IAdminService AdminService { get; set; } = default!;
+    [Inject] private ILocationService LocationService { get; set; } = default!;
+    [Inject] private ILocationRoomService LocationRoomService { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
-    private const int FallbackRegistrationModeId = 1;
-
     private EventDto? _event;
-    private EventSessionCreateContextDto? _createContext;
-    private ICollection<EventSessionCreateLocationOptionDto> _locations = new List<EventSessionCreateLocationOptionDto>();
-    private ICollection<EventSessionCreateRoomOptionDto> _rooms = new List<EventSessionCreateRoomOptionDto>();
-    private ICollection<EventSessionCreateGroupOptionDto> _sessionGroups = new List<EventSessionCreateGroupOptionDto>();
+    private EventSessionDto? _sourceSession;
+    private ICollection<LocationListDto> _locations = new List<LocationListDto>();
+    private ICollection<LocationRoomListDto> _rooms = new List<LocationRoomListDto>();
+    private ICollection<EventSessionGroupListModel> _sessionGroups = new List<EventSessionGroupListModel>();
     private ICollection<RegistrationModeListDto> _registrationModes = new List<RegistrationModeListDto>();
-    private readonly CreateEventSessionDto _session = new()
-    {
-        RegistrationModeId = FallbackRegistrationModeId,
-        Title = string.Empty
-    };
-    private DateTime? _sessionDate = DateTime.Today.AddDays(1);
-    private TimeSpan? _startTime = new(9, 0, 0);
-    private TimeSpan? _endTime = new(10, 0, 0);
+    private readonly UpdateEventSessionDto _session = new();
+    private DateTime? _sessionDate;
+    private TimeSpan? _startTime;
+    private TimeSpan? _endTime;
     private bool _isLoading = true;
     private bool _isSaving;
-    private bool _canAddSession;
+    private bool _canEditSession;
     private Guid? _selectedSessionGroupId;
-    private Guid? _savedSessionId;
+    private Guid? _initialSessionGroupId;
     private string? _errorMessage;
     private string? _successMessage;
 
     protected override async Task OnInitializedAsync()
     {
         var eventTask = EventService.GetEventByIdAsync(EventId);
-        var createContextTask = EventService.GetEventSessionCreateContextAsync(EventId);
+        var sessionTask = EventService.GetSessionByIdAsync(SessionId);
+        var locationsTask = LocationService.GetAllLocationsAsync();
+        var sessionGroupsTask = EventService.GetSessionGroupsByEventAsync(EventId);
         var registrationModesTask = AdminService.GetRegistrationModesAsync();
 
         _event = await eventTask;
-        _createContext = await createContextTask;
+        _sourceSession = await sessionTask;
+        _locations = await locationsTask;
+        _sessionGroups = await sessionGroupsTask;
         _registrationModes = await registrationModesTask;
+
         if (_event is null)
         {
             _errorMessage = "The event draft could not be loaded.";
         }
+        else if (_sourceSession is null)
+        {
+            _errorMessage = "The session could not be loaded.";
+        }
+        else if (_sourceSession.EventId != EventId)
+        {
+            _errorMessage = "This session does not belong to the selected event draft.";
+            _sourceSession = null;
+        }
         else
         {
-            _canAddSession = _event.HasHalLink("add-session");
-            if (_createContext is null)
-            {
-                _errorMessage = "Program item context could not be loaded. You can still save basic details, but inherited defaults and selector options are unavailable.";
-            }
-            else
-            {
-                ApplyCreateContext(_createContext);
-            }
+            _canEditSession = _sourceSession.HasHalLink("edit");
+            PopulateSession(_sourceSession);
+            _selectedSessionGroupId = GetPrimarySessionGroupId(_sourceSession);
+            _initialSessionGroupId = _selectedSessionGroupId;
+            await LoadRoomsForLocationAsync(_session.LocationId);
         }
 
         _isLoading = false;
     }
 
-    private void ApplyCreateContext(EventSessionCreateContextDto context)
-    {
-        _locations = context.Locations ?? new List<EventSessionCreateLocationOptionDto>();
-        _sessionGroups = context.SessionGroups ?? new List<EventSessionCreateGroupOptionDto>();
-        _session.RegistrationModeId = context.Defaults?.RegistrationModeId > 0
-            ? context.Defaults.RegistrationModeId
-            : FallbackRegistrationModeId;
-
-        if (context.Defaults?.SessionDate is { } sessionDate)
-        {
-            _sessionDate = sessionDate.DateTime;
-        }
-
-        if (TryParseDefaultTime(context.Defaults?.StartTime, out var startTime))
-        {
-            _startTime = startTime;
-        }
-
-        if (TryParseDefaultTime(context.Defaults?.EndTime, out var endTime))
-        {
-            _endTime = endTime;
-        }
-    }
-
-    private static bool TryParseDefaultTime(string? value, out TimeSpan time)
-    {
-        return TimeSpan.TryParse(
-            value,
-            System.Globalization.CultureInfo.InvariantCulture,
-            out time);
-    }
-
-    private Task OnLocationChangedAsync(Guid? locationId)
+    private async Task OnLocationChangedAsync(Guid? locationId)
     {
         _session.LocationId = locationId;
         _session.RoomId = null;
-        LoadRoomsForLocation(locationId);
-        return Task.CompletedTask;
+        await LoadRoomsForLocationAsync(locationId);
     }
 
-    private void LoadRoomsForLocation(Guid? locationId)
+    private async Task LoadRoomsForLocationAsync(Guid? locationId)
     {
         if (!locationId.HasValue || locationId.Value == Guid.Empty)
         {
-            _rooms = new List<EventSessionCreateRoomOptionDto>();
+            _rooms = new List<LocationRoomListDto>();
             _session.RoomId = null;
             return;
         }
 
-        _rooms = (_createContext?.Rooms ?? new List<EventSessionCreateRoomOptionDto>())
-            .Where(room => room.LocationId == locationId.Value)
-            .OrderBy(room => room.SortOrder)
-            .ThenBy(room => room.Name)
-            .ToList();
+        _rooms = await LocationRoomService.GetRoomsByLocationAsync(locationId.Value);
         if (_session.RoomId.HasValue && _rooms.All(room => room.Id != _session.RoomId.Value))
         {
             _session.RoomId = null;
         }
+    }
+
+    private void PopulateSession(EventSessionDto session)
+    {
+        _session.Id = session.Id;
+        _session.EventId = EventId;
+        _session.Title = session.Title ?? string.Empty;
+        _session.Description = session.Description;
+        _session.LocationId = session.LocationId;
+        _session.RoomId = session.RoomId;
+        _session.SortOrder = session.SortOrder;
+        _session.FeaturedImageId = session.FeaturedImageId;
+        _session.MaxAudienceAttendees = session.MaxAudienceAttendees;
+        _session.RegistrationModeId = session.RegistrationModeId;
+        _session.Price = session.Price;
+        _session.CurrencyCode = session.CurrencyCode;
+
+        var localStart = DateTimeHelper.ConvertUtcToLocal(session.StartTime);
+        var localEnd = DateTimeHelper.ConvertUtcToLocal(session.EndTime);
+        _sessionDate = localStart?.Date ?? DateTime.Today;
+        _startTime = localStart?.TimeOfDay ?? new TimeSpan(9, 0, 0);
+        _endTime = localEnd?.TimeOfDay ?? new TimeSpan(10, 0, 0);
     }
 
     private async Task SaveSessionAsync()
@@ -315,23 +307,20 @@
         _isSaving = true;
         try
         {
-            if (!_savedSessionId.HasValue || _savedSessionId.Value == Guid.Empty)
+            var result = await EventService.UpdateSessionAsync(_session);
+            if (result.Success == true)
             {
-                var result = await EventService.CreateSessionAsync(_session);
-                if (result.Success != true || !result.Id.HasValue || result.Id.Value == Guid.Empty)
+                if (!await AssignSelectedProgramSectionAsync(SessionId))
                 {
-                    _errorMessage = result.Message ?? "Program item could not be saved. Check the details and try again.";
                     return;
                 }
 
-                _savedSessionId = result.Id.Value;
+                _successMessage = "Program item saved. Returning to the event draft.";
+                Navigation.NavigateTo($"/events/{EventId}/edit");
+                return;
             }
 
-            if (!await AssignSelectedProgramSectionAsync(_savedSessionId.Value))
-                return;
-
-            _successMessage = "Program item saved. Returning to the event draft.";
-            Navigation.NavigateTo($"/events/{EventId}/edit");
+            _errorMessage = result.Message ?? "Program item could not be saved. Check the details and try again.";
         }
         catch (Exception ex)
         {
@@ -346,15 +335,15 @@
     private bool TryPrepareSession(out string? validationError)
     {
         validationError = null;
-        if (_event?.TenantId is null || _event.TenantId == Guid.Empty)
+        if (!_canEditSession)
         {
-            validationError = "The event draft is missing tenant context. Return to the draft and try again.";
+            validationError = "You do not currently have permission to edit this program item.";
             return false;
         }
 
-        if (!_canAddSession)
+        if (_session.Id is null || _session.Id == Guid.Empty || _session.Id != SessionId)
         {
-            validationError = "You do not currently have permission to add program items to this event draft.";
+            validationError = "The session context is invalid. Return to the event draft and try again.";
             return false;
         }
 
@@ -379,7 +368,6 @@
         }
 
         _session.EventId = EventId;
-        _session.TenantId = _event.TenantId;
         _session.Title = _session.Title.Trim();
         _session.MaxAudienceAttendees = _session.MaxAudienceAttendees > 0 ? _session.MaxAudienceAttendees : null;
         _session.StartTime = DateTimeHelper.ConvertLocalToUtc(start);
@@ -390,6 +378,22 @@
     private async Task<bool> AssignSelectedProgramSectionAsync(Guid sessionId)
     {
         if (!_selectedSessionGroupId.HasValue || _selectedSessionGroupId.Value == Guid.Empty)
+        {
+            if (!_initialSessionGroupId.HasValue || _initialSessionGroupId.Value == Guid.Empty)
+                return true;
+
+            var unassignResult = await EventService.UnassignSessionFromGroupAsync(
+                EventId,
+                _initialSessionGroupId.Value,
+                sessionId);
+            if (unassignResult.Success == true)
+                return true;
+
+            _errorMessage = unassignResult.Message ?? "Session was saved, but it could not be removed from the previous program section.";
+            return false;
+        }
+
+        if (_selectedSessionGroupId == _initialSessionGroupId)
             return true;
 
         var result = await EventService.AssignSessionToGroupAsync(
@@ -403,7 +407,14 @@
         return false;
     }
 
-    private static string FormatLocation(EventSessionCreateLocationOptionDto location)
+    private static Guid? GetPrimarySessionGroupId(EventSessionDto session)
+        => session.SessionGroups?
+            .OrderByDescending(group => group.IsPrimary ?? false)
+            .ThenBy(group => group.SortOrder ?? int.MaxValue)
+            .Select(group => group.EventSessionGroupId)
+            .FirstOrDefault(groupId => groupId.HasValue && groupId.Value != Guid.Empty);
+
+    private static string FormatLocation(LocationListDto location)
     {
         if (!string.IsNullOrWhiteSpace(location.City) && !string.IsNullOrWhiteSpace(location.Country))
         {
@@ -413,11 +424,11 @@
         return location.FullName;
     }
 
-    private static string FormatRoom(EventSessionCreateRoomOptionDto room) => room.Capacity.HasValue
+    private static string FormatRoom(LocationRoomListDto room) => room.Capacity.HasValue
         ? $"{room.Name} · {room.Capacity.Value} seats"
         : room.Name;
 
-    private static string FormatSessionGroup(EventSessionCreateGroupOptionDto group)
+    private static string FormatSessionGroup(EventSessionGroupListModel group)
     {
         if (!string.IsNullOrWhiteSpace(group.RoomName))
             return $"{group.Name} · {group.RoomName}";

@@ -100,71 +100,6 @@
     opacity: 0.5;
 }
 
-/* --- Date/Time Block (Luma-style timeline) --- */
-::deep .create-event__datetime-block {
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: var(--isl-radius-md);
-    padding: var(--isl-space-3) var(--isl-space-4);
-    margin-bottom: var(--isl-space-3);
-    position: relative;
-}
-
-::deep .create-event__datetime-row {
-    display: flex;
-    align-items: center;
-    gap: var(--isl-space-2);
-    min-height: var(--isl-space-10);
-}
-
-::deep .create-event__datetime-indicator {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: var(--isl-space-4);
-    flex-shrink: 0;
-}
-
-::deep .create-event__datetime-dot {
-    width: 0.625rem;
-    height: 0.625rem;
-    border-radius: 50%;
-    flex-shrink: 0;
-
-    &.create-event__datetime-dot--start {
-        background: var(--mud-palette-primary);
-    }
-
-    &.create-event__datetime-dot--end {
-        border: 0.125rem solid var(--mud-palette-text-secondary);
-        background: transparent;
-        box-sizing: border-box;
-    }
-}
-
-::deep .create-event__datetime-line {
-    width: 0;
-    height: 1.25rem;
-    border-inline-start: 0.125rem dotted var(--mud-palette-lines-default);
-}
-
-::deep .create-event__datetime-label {
-    width: 2.25rem;
-    font-weight: 600;
-    color: var(--mud-palette-text-secondary);
-    flex-shrink: 0;
-    font-size: 0.85rem;
-}
-
-::deep .create-event__datetime-picker {
-    flex: 1;
-    max-width: 10rem;
-}
-
-::deep .create-event__datetime-picker .mud-input-slot {
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
 ::deep .create-event__timezone-btn {
     position: static !important;
     margin-bottom: var(--isl-space-2);
@@ -180,6 +115,25 @@
 
 ::deep .create-event__timezone-autocomplete {
     margin-top: var(--isl-space-2);
+}
+
+::deep .create-event__seed-session {
+    padding: var(--isl-space-4);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md);
+    background: var(--mud-palette-surface);
+}
+
+::deep .create-event__seed-session-times {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-3);
+}
+
+@media (max-width: 48em) {
+    ::deep .create-event__seed-session-times {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* --- Action Buttons (Add Description, Add Location) --- */
@@ -343,14 +297,6 @@
 
     ::deep .create-event__timezone-btn {
         width: fit-content;
-    }
-
-    ::deep .create-event__datetime-row {
-        flex-wrap: wrap;
-    }
-
-    ::deep .create-event__datetime-picker {
-        max-width: 8.125rem;
     }
 
     ::deep .create-event__inline-add-row {

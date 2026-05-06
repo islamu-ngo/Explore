@@ -3,6 +3,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
+using Explore.Blazor.Client.Models.EventSessionGroups;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -58,6 +59,8 @@ public interface IEventService
     Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
     Task<EventDto?> GetEventByIdAsync(Guid eventId);
     Task<EventCreationContextDto?> GetEventCreationContextAsync(CancellationToken cancellationToken = default);
+    Task<EventSessionCreateContextDto?> GetEventSessionCreateContextAsync(Guid eventId, CancellationToken cancellationToken = default);
+    Task<EventProgramSummaryDto?> GetEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<EventPublishReadinessDto?> GetEventPublishReadinessAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<bool> DeleteEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto);
@@ -70,6 +73,12 @@ public interface IEventService
     Task<BaseCommandResponseOfGuid> CreateSessionAsync(CreateEventSessionDto session);
     Task<BaseCommandResponseOfGuid> UpdateSessionAsync(UpdateEventSessionDto session);
     Task<bool> DeleteSessionAsync(Guid sessionId);
+    Task<ICollection<EventSessionGroupListModel>> GetSessionGroupsByEventAsync(Guid eventId);
+    Task<BaseCommandResponseOfGuid> CreateSessionGroupAsync(CreateEventSessionGroupRequestDto group);
+    Task<BaseCommandResponseOfGuid> UpdateSessionGroupAsync(UpdateEventSessionGroupRequestDto group);
+    Task<bool> DeleteSessionGroupAsync(Guid eventId, Guid sessionGroupId);
+    Task<BaseCommandResponseOfGuid> AssignSessionToGroupAsync(Guid eventId, Guid eventSessionGroupId, Guid eventSessionId, bool isPrimary = true, int sortOrder = 0);
+    Task<BaseCommandResponseOfGuid> UnassignSessionFromGroupAsync(Guid eventId, Guid eventSessionGroupId, Guid eventSessionId);
     Task<BaseCommandResponseOfGuid> RegisterForEventSessionAsync(CreateEventRegistrationDto registration);
     Task<ICollection<EventRegistrationListDto>> GetRegistrationsForSessionAsync(Guid sessionId);
     Task<ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(Guid userId);
@@ -312,6 +321,32 @@ public partial class EventService : IEventService
         }
     }
 
+    public async Task<EventSessionCreateContextDto?> GetEventSessionCreateContextAsync(Guid eventId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _apiClient.GetEventSessionCreateContextAsync(eventId, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching event session create context {EventId}", eventId);
+            return null;
+        }
+    }
+
+    public async Task<EventProgramSummaryDto?> GetEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _apiClient.GetEventProgramSummaryAsync(eventId, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching event program summary {EventId}", eventId);
+            return null;
+        }
+    }
+
     public async Task<EventPublishReadinessDto?> GetEventPublishReadinessAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
         try
@@ -428,6 +463,146 @@ public partial class EventService : IEventService
     public async Task<bool> DeleteSessionAsync(Guid sessionId)
     {
         try { await _apiClient.DeleteEventSessionAsync(sessionId); return true; } catch { return false; }
+    }
+
+    public async Task<ICollection<EventSessionGroupListModel>> GetSessionGroupsByEventAsync(Guid eventId)
+    {
+        try
+        {
+            var result = await _apiClient.GetEventSessionGroupsByEventAsync(eventId);
+            return result?.GetItems() ?? new List<EventSessionGroupListModel>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching session groups for event {EventId}", eventId);
+            return new List<EventSessionGroupListModel>();
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid> CreateSessionGroupAsync(CreateEventSessionGroupRequestDto group)
+    {
+        try
+        {
+            return await _apiClient.CreateEventSessionGroupAsync(group);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating program section for event {EventId}", group.EventId);
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = "Program section could not be created."
+            };
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid> UpdateSessionGroupAsync(UpdateEventSessionGroupRequestDto group)
+    {
+        try
+        {
+            return await _apiClient.UpdateEventSessionGroupAsync(group.Id ?? Guid.Empty, group);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error updating program section {SessionGroupId} for event {EventId}",
+                group.Id,
+                group.EventId);
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = "Program section could not be updated."
+            };
+        }
+    }
+
+    public async Task<bool> DeleteSessionGroupAsync(Guid eventId, Guid sessionGroupId)
+    {
+        try
+        {
+            await _apiClient.DeleteEventSessionGroupAsync(sessionGroupId, eventId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error deleting program section {SessionGroupId} for event {EventId}",
+                sessionGroupId,
+                eventId);
+            return false;
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid> AssignSessionToGroupAsync(
+        Guid eventId,
+        Guid eventSessionGroupId,
+        Guid eventSessionId,
+        bool isPrimary = true,
+        int sortOrder = 0)
+    {
+        try
+        {
+            return await _apiClient.AssignEventSessionToGroupAsync(
+                eventSessionGroupId,
+                new AssignSessionToGroupRequestDto
+                {
+                    EventId = eventId,
+                    EventSessionGroupId = eventSessionGroupId,
+                    EventSessionId = eventSessionId,
+                    IsPrimary = isPrimary,
+                    SortOrder = sortOrder
+                });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error assigning session {SessionId} to program section {SessionGroupId} for event {EventId}",
+                eventSessionId,
+                eventSessionGroupId,
+                eventId);
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = "Session could not be assigned to the selected program section."
+            };
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid> UnassignSessionFromGroupAsync(
+        Guid eventId,
+        Guid eventSessionGroupId,
+        Guid eventSessionId)
+    {
+        try
+        {
+            await _apiClient.UnassignEventSessionFromGroupAsync(
+                eventSessionGroupId,
+                eventSessionId,
+                eventId);
+            return new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Id = eventSessionId,
+                Message = "Session was removed from the selected program section."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error removing session {SessionId} from program section {SessionGroupId} for event {EventId}",
+                eventSessionId,
+                eventSessionGroupId,
+                eventId);
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = "Session could not be removed from the selected program section."
+            };
+        }
     }
 
     public Task<BaseCommandResponseOfGuid> RegisterForEventSessionAsync(CreateEventRegistrationDto registration) => _apiClient.CreateEventRegistrationAsync(body: registration);

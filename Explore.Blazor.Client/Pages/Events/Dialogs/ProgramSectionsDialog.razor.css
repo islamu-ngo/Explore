@@ -1,0 +1,81 @@
+/* ABOUTME: Scoped styles for the program sections management dialog. */
+/* ABOUTME: Uses BEM naming and design tokens for accessible grouped section editing. */
+
+.program-sections-dialog {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.program-sections-dialog__list {
+    display: grid;
+    gap: var(--isl-space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.program-sections-dialog__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-3);
+    border: 1px solid var(--isl-color-border);
+    border-radius: var(--isl-radius-lg);
+    background: var(--isl-color-surface-subtle);
+}
+
+.program-sections-dialog__item-main {
+    display: grid;
+    gap: var(--isl-space-1);
+    min-width: 0;
+}
+
+.program-sections-dialog__item-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+}
+
+.program-sections-dialog__name {
+    font-weight: 650;
+    color: var(--isl-color-text-primary);
+}
+
+.program-sections-dialog__meta {
+    color: var(--isl-color-text-secondary);
+    font-size: var(--isl-font-size-sm);
+}
+
+.program-sections-dialog__form {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.program-sections-dialog__form-title {
+    margin: 0;
+    color: var(--isl-color-text-primary);
+    font-size: var(--isl-font-size-lg);
+    font-weight: 650;
+}
+
+.program-sections-dialog__compact-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-3);
+}
+
+@media (max-width: 37.5em) {
+    .program-sections-dialog__item {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .program-sections-dialog__item-actions {
+        flex-wrap: wrap;
+    }
+
+    .program-sections-dialog__compact-grid {
+        grid-template-columns: 1fr;
+    }
+}

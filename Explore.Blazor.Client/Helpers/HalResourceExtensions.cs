@@ -5,6 +5,7 @@ using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
+using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Models.EventSessionTemplates;
 
 namespace Explore.Blazor.Client.Helpers;
@@ -66,6 +67,19 @@ public static class HalResourceExtensions
     {
         var json = JsonSerializer.Serialize(halResource, JsonOptions);
         return JsonSerializer.Deserialize<EventSessionDto>(json, JsonOptions) ?? new EventSessionDto();
+    }
+
+    // ========== EventSessionGroup Extensions ==========
+
+    /// <summary>
+    /// Gets typed event program section/track/devroom items from a HAL collection.
+    /// </summary>
+    public static ICollection<EventSessionGroupListModel> GetItems(this HalCollectionResourceOfEventSessionGroupListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<EventSessionGroupListModel>();
+
+        return DeserializeItems<EventSessionGroupListModel>(collection._embedded.Items);
     }
 
     // ========== Category Extensions ==========
@@ -638,6 +652,12 @@ public static class HalResourceExtensions
         => dto._links?.ContainsKey(linkRel) == true;
 
     public static bool HasHalLink(this EventDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasHalLink(this EventSessionDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasHalLink(this EventSessionGroupListModel dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
     // ========== Organization HAL Link Helpers ==========

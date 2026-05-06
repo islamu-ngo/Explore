@@ -1,0 +1,352 @@
+using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models.EventSessionGroups;
+using Explore.Blazor.Client.Pages.Events.Sessions;
+using System.Reflection;
+using System.Text.Json;
+
+namespace Explore.Blazor.Client.Tests.Pages.Event;
+
+public sealed class EditSessionTests : IDisposable
+{
+    private readonly BlazorTestContext _ctx;
+    private readonly IEventService _eventService;
+    private readonly IAdminService _adminService;
+    private readonly ILocationService _locationService;
+    private readonly ILocationRoomService _locationRoomService;
+
+    public EditSessionTests()
+    {
+        _ctx = new BlazorTestContext();
+        _eventService = Substitute.For<IEventService>();
+        _adminService = Substitute.For<IAdminService>();
+        _locationService = Substitute.For<ILocationService>();
+        _locationRoomService = Substitute.For<ILocationRoomService>();
+        _ctx.Services.AddSingleton(_eventService);
+        _ctx.Services.AddSingleton(_adminService);
+        _ctx.Services.AddSingleton(_locationService);
+        _ctx.Services.AddSingleton(_locationRoomService);
+        _adminService.GetRegistrationModesAsync().Returns(CreateRegistrationModes());
+        _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
+        _locationRoomService.GetRoomsByLocationAsync(Arg.Any<Guid>()).Returns(new List<LocationRoomListDto>());
+        _eventService.GetSessionGroupsByEventAsync(Arg.Any<Guid>()).Returns(new List<EventSessionGroupListModel>());
+        _eventService.AssignSessionToGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+        _eventService.UnassignSessionFromGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
+    }
+
+    [Test]
+    public async Task Render_UsesProgramItemDefaultCopy()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
+
+        var cut = _ctx.Render<EditSession>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+        cut.WaitForState(() => cut.Markup.Contains("Edit program item", StringComparison.Ordinal));
+
+        await Assert.That(cut.Markup).Contains("Program item title");
+        await Assert.That(cut.Markup).Contains("Program item date");
+        await Assert.That(cut.Markup).Contains("Registration mode");
+        await Assert.That(cut.Markup).Contains("Open");
+        await Assert.That(cut.Markup).Contains("Program items are sessions, not child events.");
+        await Assert.That(cut.Markup).DoesNotContain("Edit session");
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_UpdatesSessionAndReturnsToDraft()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        var roomId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>
+        {
+            new() { Id = locationId, FullName = "Workshop Room", City = "Antwerp", Country = "Belgium" }
+        });
+        _locationRoomService.GetRoomsByLocationAsync(locationId).Returns(new List<LocationRoomListDto>
+        {
+            new() { Id = roomId, LocationId = locationId, Name = "Breakout A", Capacity = 50 }
+        });
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true, locationId: locationId, roomId: roomId));
+        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = sessionId
+        });
+
+        var cut = _ctx.Render<EditSession>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        session.Title = "Updated workshop";
+        session.Description = "Updated practical session.";
+        session.LocationId = locationId;
+        session.RoomId = roomId;
+        session.MaxAudienceAttendees = 50;
+        session.RegistrationModeId = 2;
+        SetPrivateField(cut.Instance, "_sessionDate", new DateTime(2026, 7, 3));
+        SetPrivateField(cut.Instance, "_startTime", new TimeSpan(14, 0, 0));
+        SetPrivateField(cut.Instance, "_endTime", new TimeSpan(15, 30, 0));
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await _eventService.Received(1).UpdateSessionAsync(Arg.Is<UpdateEventSessionDto>(dto =>
+            dto.Id == sessionId
+            && dto.EventId == eventId
+            && dto.Title == "Updated workshop"
+            && dto.Description == "Updated practical session."
+            && dto.LocationId == locationId
+            && dto.RoomId == roomId
+            && dto.MaxAudienceAttendees == 50
+            && dto.RegistrationModeId == 2
+            && dto.StartTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 14, 0, 0))
+            && dto.EndTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 15, 30, 0))
+            && dto.StartTime.Value.Offset == TimeSpan.Zero
+            && dto.EndTime.Value.Offset == TimeSpan.Zero));
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WhenProgramSectionChanges_AssignsSessionToSelectedGroup()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
+        _eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<EventSessionGroupListModel>
+        {
+            new() { Id = groupId, EventId = eventId, Name = "Workshop track", SortOrder = 1, TenantId = Guid.NewGuid() }
+        });
+        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = sessionId
+        });
+        _eventService.AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = Guid.NewGuid()
+        });
+
+        var cut = _ctx.Render<EditSession>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        session.Title = "Updated workshop";
+        SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)groupId);
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await _eventService.Received(1).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WhenProgramSectionCleared_UnassignsExistingGroup()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true, primaryGroupId: groupId));
+        _eventService.GetSessionGroupsByEventAsync(eventId).Returns(new List<EventSessionGroupListModel>
+        {
+            new() { Id = groupId, EventId = eventId, Name = "Workshop track", SortOrder = 1, TenantId = Guid.NewGuid() }
+        });
+        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = sessionId
+        });
+        _eventService.UnassignSessionFromGroupAsync(eventId, groupId, sessionId).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = sessionId
+        });
+
+        var cut = _ctx.Render<EditSession>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        session.Title = "Updated workshop";
+        SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)null);
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await _eventService.Received(1).UnassignSessionFromGroupAsync(eventId, groupId, sessionId);
+        await _eventService.DidNotReceive().AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WhenEditLinkIsMissing_DoesNotCallApi()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: false));
+
+        var cut = _ctx.Render<EditSession>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>());
+        var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
+        await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to edit this program item.");
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WhenSessionBelongsToDifferentEvent_DoesNotCallApi()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(Guid.NewGuid(), sessionId, canEdit: true));
+
+        var cut = _ctx.Render<EditSession>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>());
+        var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
+        await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to edit this program item.");
+    }
+
+    [Test]
+    public async Task OnLocationChangedAsync_WhenLocationChanges_ClearsStaleRoom()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var originalLocationId = Guid.NewGuid();
+        var originalRoomId = Guid.NewGuid();
+        var newLocationId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true, originalLocationId, originalRoomId));
+        _locationRoomService.GetRoomsByLocationAsync(originalLocationId).Returns(new List<LocationRoomListDto>
+        {
+            new() { Id = originalRoomId, LocationId = originalLocationId, Name = "Room A" }
+        });
+        _locationRoomService.GetRoomsByLocationAsync(newLocationId).Returns(new List<LocationRoomListDto>
+        {
+            new() { Id = Guid.NewGuid(), LocationId = newLocationId, Name = "Room B" }
+        });
+
+        var cut = _ctx.Render<EditSession>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        await Assert.That(session.RoomId).IsEqualTo(originalRoomId);
+
+        await InvokePrivateAsync(cut.Instance, "OnLocationChangedAsync", newLocationId);
+
+        await Assert.That(session.LocationId).IsEqualTo(newLocationId);
+        await Assert.That(session.RoomId).IsNull();
+    }
+
+    public void Dispose() => _ctx.Dispose();
+
+    private static EventDto CreateDraftEvent(Guid eventId) => new()
+    {
+        Id = eventId,
+        TenantId = Guid.NewGuid(),
+        Title = "Program launch",
+        ActorDisplayName = "ISLAMU",
+        ActorTypeFullName = "Organization",
+        EventStatusFullName = "Draft",
+        EventStatusMasterCode = "DRAFT",
+        VisibilityTypeFullName = "Public",
+        VisibilityTypeMasterCode = "PUBLIC",
+        EventFormatFullName = "In person",
+        EventFormatMasterCode = "IN_PERSON",
+        AdditionalProperties = new Dictionary<string, object>()
+    };
+
+    private static EventSessionDto CreateSession(
+        Guid eventId,
+        Guid sessionId,
+        bool canEdit,
+        Guid? locationId = null,
+        Guid? roomId = null,
+        Guid? primaryGroupId = null)
+    {
+        var dto = new EventSessionDto
+        {
+            Id = sessionId,
+            EventId = eventId,
+            EventTitle = "Program launch",
+            Title = "Original session",
+            Description = "Original description.",
+            StartTime = DateTimeOffset.Parse("2026-07-03T09:00:00+00:00"),
+            EndTime = DateTimeOffset.Parse("2026-07-03T10:00:00+00:00"),
+            LocationId = locationId,
+            RoomId = roomId,
+            MaxAudienceAttendees = 25,
+            RegistrationModeId = 1,
+            TenantId = Guid.NewGuid(),
+            SessionGroups = primaryGroupId.HasValue
+                ? new List<SessionGroups>
+                {
+                    new()
+                    {
+                        EventSessionGroupId = primaryGroupId,
+                        Name = "Workshop track",
+                        IsPrimary = true,
+                        SortOrder = 0
+                    }
+                }
+                : null,
+            AdditionalProperties = new Dictionary<string, object>()
+        };
+
+        if (canEdit)
+        {
+            using var doc = JsonDocument.Parse(
+                "{\"self\":{\"href\":\"/api/event-session/1\"},\"edit\":{\"href\":\"/api/event-session/1\",\"method\":\"PUT\"}}");
+            dto.AdditionalProperties["_links"] = doc.RootElement.Clone();
+        }
+
+        return dto;
+    }
+
+    private static ICollection<RegistrationModeListDto> CreateRegistrationModes()
+        =>
+        [
+            new() { Id = 1, MasterCode = "OPEN", FullName = "Open", Description = "Anyone can register." },
+            new() { Id = 2, MasterCode = "APPROVAL_REQUIRED", FullName = "Approval required", Description = "Review requests before confirming." },
+            new() { Id = 3, MasterCode = "INVITE_ONLY", FullName = "Invite only" }
+        ];
+
+    private static T GetPrivateField<T>(object instance, string fieldName)
+    {
+        var field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Field {fieldName} was not found.");
+        return (T)(field.GetValue(instance) ?? throw new InvalidOperationException($"Field {fieldName} was null."));
+    }
+
+    private static void SetPrivateField<T>(object instance, string fieldName, T value)
+    {
+        var field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Field {fieldName} was not found.");
+        field.SetValue(instance, value);
+    }
+
+    private static async Task InvokePrivateAsync(object instance, string methodName, params object?[] arguments)
+    {
+        var method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Method {methodName} was not found.");
+        if (method.Invoke(instance, arguments is null || arguments.Length == 0 ? null : arguments) is Task task)
+        {
+            await task;
+        }
+    }
+}

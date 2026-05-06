@@ -634,7 +634,7 @@ public class CreateEventTests : IDisposable
         await Assert.That(error).Contains("not ready to publish");
         await Assert.That(readinessErrors.Count).IsEqualTo(1);
         await Assert.That(readinessErrors[0].FieldPath).IsEqualTo("schedule.sessions");
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_isScheduleExpanded")).IsTrue();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_isMoreOptionsExpanded")).IsTrue();
     }
 
     [Test]
@@ -711,7 +711,7 @@ public class CreateEventTests : IDisposable
         await _dialogService.Received(1).ShowMessageBoxAsync(
             "Review and publish",
             Arg.Is<string>(message => message.Contains("Publish 'Template Event' now?", StringComparison.OrdinalIgnoreCase)
-                && message.Contains("Schedule:", StringComparison.OrdinalIgnoreCase)
+                && message.Contains("Program:", StringComparison.OrdinalIgnoreCase)
                 && message.Contains("Timezone:", StringComparison.OrdinalIgnoreCase)),
             "Publish event",
             Arg.Any<string>(),
@@ -826,15 +826,16 @@ public class CreateEventTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Schedule", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Open schedule timeline", StringComparison.OrdinalIgnoreCase)
+            if (!cut.Markup.Contains("Program summary", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Program items", StringComparison.OrdinalIgnoreCase)
                 || !cut.Markup.Contains("Event settings", StringComparison.OrdinalIgnoreCase)
                 || !cut.Markup.Contains("Template and custom fields", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Progressive disclosure sections were not rendered.");
             }
 
-            if (cut.Markup.Contains("Add sessions, day labels, rooms, or agenda", StringComparison.OrdinalIgnoreCase))
+            if (cut.Markup.Contains("Open schedule timeline", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Add sessions, day labels, rooms, or agenda", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Legacy schedule toggle copy was rendered.");
             }
@@ -901,21 +902,23 @@ public class CreateEventTests : IDisposable
         cut.WaitForAssertion(() =>
         {
             if (!cut.Markup.Contains("Theme studio", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Presets gallery", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("More styling controls", StringComparison.OrdinalIgnoreCase))
+                || !cut.Markup.Contains("Advanced styling controls", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Use this tray for precise styling", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Theme studio tray was not rendered after opening from the quick bar.");
             }
 
-            if (cut.Markup.Contains("Background Image URL", StringComparison.OrdinalIgnoreCase))
+            if (cut.Markup.Contains("Presets gallery", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Quick advanced controls", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("Background Image URL", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Create Event must not render unsupported raw background image URL controls.");
+                throw new InvalidOperationException("Create Event must not duplicate quick controls or render unsupported raw background image URL controls in the tray.");
             }
         }, TimeSpan.FromSeconds(3));
     }
 
     [Test]
-    public async Task CreateEvent_RendersScheduleTimelineComposerWithoutLegacyToggles()
+    public async Task CreateEvent_RendersProgramSummaryBeforeEventSettings()
     {
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
 
@@ -923,26 +926,67 @@ public class CreateEventTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Schedule timeline composer", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Add to this day", StringComparison.OrdinalIgnoreCase)
-                || !cut.Markup.Contains("Add another session", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Program summary", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Program items", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Talks, workshops, panels, classes, and activities are saved as sessions", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Breaks, rooms, and day details stay in logistics", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Add session", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Add section/track", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Schedule timeline composer was not rendered.");
+                throw new InvalidOperationException("Program Summary section was not rendered with the expected session-first guidance.");
+            }
+
+            if (cut.Markup.Contains("child event", StringComparison.OrdinalIgnoreCase)
+                || cut.Markup.Contains("subevent", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Program Summary must not reintroduce child-event language.");
+            }
+        }, TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup.IndexOf("Program summary", StringComparison.OrdinalIgnoreCase))
+            .IsLessThan(cut.Markup.IndexOf("Event settings", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Test]
+    public async Task CreateEvent_DoesNotRenderScheduleLogisticsComposerInEventShell()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Program summary", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Add session", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Program summary was not rendered after removing the schedule composer.");
             }
 
             var forbiddenCopies = new[]
             {
+                "Schedule timeline composer",
+                "Open schedule timeline",
+                "Add to this day",
+                "Add another session",
+                "Scheduling (Days, Rooms & Agenda)",
                 "Multiple sessions",
                 "Day labels",
                 "Room setup",
-                "Agenda builder"
+                "Agenda builder",
+                "create-event__session-drawer",
+                "Edit previous session",
+                "Edit next session",
+                "Add event location",
+                "Event languages"
             };
 
             if (forbiddenCopies.Any(copy => cut.Markup.Contains(copy, StringComparison.OrdinalIgnoreCase)))
             {
-                throw new InvalidOperationException("Legacy schedule toggle UI was rendered.");
+                throw new InvalidOperationException("Legacy schedule logistics UI was rendered in the event shell.");
             }
         }, TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup.Contains("Schedule timeline composer", StringComparison.OrdinalIgnoreCase)).IsFalse();
     }
 
     #endregion

@@ -63,75 +63,7 @@
     opacity: 0.5;
 }
 
-/* --- Date/Time Block (Luma-style timeline) --- */
-::deep .edit-event__datetime-block {
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: var(--isl-radius-md);
-    padding: var(--isl-space-3) var(--isl-space-4);
-    margin-bottom: var(--isl-space-3);
-    position: relative;
-}
-
-::deep .edit-event__datetime-row {
-    display: flex;
-    align-items: center;
-    gap: var(--isl-space-2);
-    min-height: var(--isl-space-10);
-}
-
-::deep .edit-event__datetime-indicator {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: var(--isl-space-4);
-    flex-shrink: 0;
-}
-
-::deep .edit-event__datetime-dot {
-    width: 0.625rem;
-    height: 0.625rem;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-::deep .edit-event__datetime-dot--start {
-    background: var(--mud-palette-primary);
-}
-
-::deep .edit-event__datetime-dot--end {
-    border: 0.125rem solid var(--mud-palette-text-secondary);
-    background: transparent;
-    box-sizing: border-box;
-}
-
-::deep .edit-event__datetime-line {
-    width: 0;
-    height: 1.25rem;
-    border-left: 0.125rem dotted var(--mud-palette-lines-default);
-}
-
-::deep .edit-event__datetime-label {
-    width: 2.25rem;
-    font-weight: 600;
-    color: var(--mud-palette-text-secondary);
-    flex-shrink: 0;
-    font-size: 0.85rem;
-}
-
-::deep .edit-event__datetime-picker {
-    flex: 1;
-    max-width: 10rem;
-}
-
-::deep .edit-event__datetime-picker .mud-input-slot {
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
 ::deep .edit-event__timezone-btn {
-    position: absolute !important;
-    top: var(--isl-space-2);
-    right: var(--isl-space-2);
     text-transform: none !important;
     font-size: 0.75rem !important;
     padding: 0.125rem var(--isl-space-2) !important;
@@ -214,20 +146,6 @@
 
     ::deep .edit-event__image-area {
         border-radius: var(--isl-radius-md);
-    }
-
-    ::deep .edit-event__timezone-btn {
-        position: static !important;
-        margin-top: var(--isl-space-2);
-        width: fit-content;
-    }
-
-    ::deep .edit-event__datetime-row {
-        flex-wrap: wrap;
-    }
-
-    ::deep .edit-event__datetime-picker {
-        max-width: 8.125rem;
     }
 
     ::deep .edit-event__option-row {
