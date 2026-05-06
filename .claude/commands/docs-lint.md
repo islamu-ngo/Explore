@@ -1,44 +1,50 @@
 ---
 name: docs-lint
-description: Verify that every link inside .claude/**/*.md, AGENTS.md, CLAUDE.md, and docs/index.md resolves. Mirrors the AgentContextLinkTests CI check so you catch broken links before pushing.
+description: Verify documentation link and quality checks through the Event.Architecture.Tests project. Mirrors the agent-context CI check so you catch broken docs before pushing.
 type: verification
 priority: high
 ---
 <!-- ABOUTME: Documentation link lint command. Mirrors Event.Architecture.Tests.AgentContextLinkTests. -->
 <!-- ABOUTME: Run before opening a PR to catch broken cross-references between docs, rules, skills, and agents. -->
 
-# /docs-lint — Documentation Link Integrity
+# /docs-lint — Documentation Quality
 
-> **Enforced by:** `Event.Architecture.Tests.AgentContextLinkTests` (in CI).
+> **Enforced by:** `Event.Architecture.Tests` documentation and agent-context tests (in CI).
 > **This command:** a local pre-flight that catches the same class of failures before you push.
 
 ## When to Run
 
 - After editing any `.claude/**/*.md` file.
-- After editing `AGENTS.md`, `CLAUDE.md`, or `docs/index.md`.
+- After editing `AGENTS.md`, `CLAUDE.md`, `docs/index.md`, or canonical docs.
 - Before opening a PR (`/review-pr` runs this implicitly).
 
 ## What It Checks
 
-The check treats the following files as link graph roots:
+The link checks treat the following files as link graph roots:
 
-1. `AGENTS.md`
-2. `CLAUDE.md`
+1. `CLAUDE.md`
+2. `.github/copilot-instructions.md`
 3. `docs/index.md`
-4. Every `.claude/**/*.md`
-5. Every `docs/**/*.md`
+4. `.claude/contract/**/*.md`
+5. `.claude/rules/**/*.md`
+6. `.claude/agents/**/*.md`
+7. migrated `.claude/skills/*/SKILL.md`
+8. selected custom `.claude/commands/*.md`
+9. journal/benchmark index files
 
-For every Markdown link (bracketed text followed by a parenthesized relative target) and every relative reference, the check asserts the target exists on disk.
+For every Markdown link (bracketed text followed by a parenthesized relative target), the check asserts the target exists on disk.
+
+The documentation quality checks also validate metadata/source anchors for newly canonical docs and block stale VSTest-style filter examples in root docs and custom commands.
 
 ## How to Run It
 
 ### Option A — Authoritative (uses the CI check)
 
 ```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter "FullyQualifiedName~AgentContextLinkTests"
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 ```
 
-This is the truth. If this passes, your links are valid.
+This is the truth. If this passes, your documentation links and docs quality checks are valid for the current CI gate.
 
 ### Option B — Quick local grep (not authoritative)
 
@@ -82,7 +88,8 @@ Update each occurrence, then rerun the link test.
 - ❌ Adding a link to a file that does not yet exist "it's coming in the next PR" — split or land together.
 - ❌ Using absolute repo-root paths like `/docs/X.md` in markdown (use relative paths).
 - ❌ Updating only one reference after a rename.
-- ❌ Running solution-level `dotnet test` to filter for this check — use `--project` + `--filter`.
+- ❌ Running solution-level `dotnet test` for this check — use the architecture test project command above.
+- ❌ Using VSTest-style `--filter` with TUnit projects — use whole-project runs or TUnit `--treenode-filter` only when locally verified.
 
 ## Related
 

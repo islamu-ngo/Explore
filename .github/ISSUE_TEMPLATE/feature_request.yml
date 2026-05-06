@@ -1,0 +1,61 @@
+name: Feature request
+description: Propose a user-facing, operator, integrator, or contributor improvement.
+title: "feat: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for new behavior or meaningful enhancements. Keep the problem and non-goals explicit so implementation stays focused.
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Who needs this, and what problem are they trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-behavior
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful behavior change.
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: What should this request explicitly not include?
+      placeholder: Out of scope, deferred behavior, or things that must remain unchanged.
+    validations:
+      required: true
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Primary audience
+      multiple: true
+      options:
+        - Operators
+        - Admins
+        - Integrators
+        - Contributors
+        - AI agents
+        - End users
+    validations:
+      required: true
+  - type: textarea
+    id: affected-paths
+    attributes:
+      label: Affected docs or code paths
+      description: List known source anchors, routes, APIs, UI pages, configuration keys, or docs.
+  - type: textarea
+    id: operator-impact
+    attributes:
+      label: Self-hosting, operator, or release impact
+      description: Note migrations, configuration, secrets, deployment, backup/restore, or release-checklist impact. Write "Not applicable" if none.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation expectations
+      description: Which tests, docs checks, manual verification, or acceptance criteria should prove this change?

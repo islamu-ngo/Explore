@@ -20,10 +20,7 @@
   },
   "ignore": {
     "customPatterns": [
-      "docs/semantic_versioning/**/*",
-      "docs/docs-website/**/*",
       ".claude/hooks/**/*",
-      ".repomix/*.md",
       "**/*.log",
       ".env*",
       ".mcp.json",

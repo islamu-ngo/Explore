@@ -1,24 +1,24 @@
 ---
 name: gitkraken-cli
-description: Git operations via GitKraken CLI MCP tools. Covers branching, commits, PRs, stashing, and issue workflows with conventional-commit formatting.
+description: How to use GitKraken CLI MCP tools for git, issue, and PR operations. Commit composition and message policy live in the conventional-commit skill.
 type: workflow
 enforcement: guide
 priority: high
 ---
 
 ABOUTME: GitKraken CLI MCP tool usage patterns for git operations.
-ABOUTME: Always loads conventional-commit skill for commit message formatting.
+ABOUTME: Tool mechanics only; commit policy is delegated to conventional-commit.
 
 # GitKraken CLI MCP Tools
 
 > **Git Operations via MCP**
 >
 > Use GitKraken MCP tools instead of raw `git` CLI commands.
-> Commit messages follow the `conventional-commit` skill format.
+> Commit composition and messages follow the `conventional-commit` skill.
 
 ## Purpose
 
-Provide structured git workflows using the GitKraken CLI MCP server. These tools offer richer integration than raw git commands — branch management, PR creation, issue linking, and intelligent commit composition.
+Provide structured git workflows using the GitKraken CLI MCP server. These tools offer richer integration than raw git commands — branch management, PR creation, issue linking, worktrees, stashing, and repository status/history inspection.
 
 ## When This Skill Activates
 
@@ -27,9 +27,9 @@ Provide structured git workflows using the GitKraken CLI MCP server. These tools
 - Issue lookup or linking
 - Keywords: commit, branch, push, pull, PR, merge, stash, blame, worktree
 
-## Prerequisite
+## Prerequisite for Commits
 
-**Always load the `conventional-commit` skill** when this skill is active. Commit messages must follow the conventional-commit format defined there.
+**Always load the `conventional-commit` skill** before staging or committing. This skill explains which GitKraken tool to call; `conventional-commit` decides how changes are split and how messages are written.
 
 ## Available Tools
 
@@ -53,7 +53,7 @@ Provide structured git workflows using the GitKraken CLI MCP server. These tools
 
 | Tool | Purpose | When to Use |
 |---|---|---|
-| `gitlens_commit_composer` | AI-assisted commit organization | Large changesets that need splitting into logical commits |
+| `gitlens_commit_composer` | AI-assisted commit organization | Large changesets that need proposed commit groups; verify against `conventional-commit` before accepting |
 | `gitlens_launchpad` | Prioritized PR dashboard | Checking open PRs, finding what needs attention |
 | `gitlens_start_review` | PR review in dedicated worktree | Code review workflows |
 | `gitlens_start_work` | Branch from issue with linking | Starting work on a tracked issue |
@@ -81,11 +81,11 @@ Provide structured git workflows using the GitKraken CLI MCP server. These tools
 1. **`directory` is always required** — use the workspace root: `/home/amir/ISLAMU/Github/Event`.
 2. **`provider` defaults to `"github"`** — always pass it explicitly for clarity.
 3. **Repository coordinates**: `repository_organization` = `"IslamuOrg"`, `repository_name` = `"Event"`.
-4. **Commit messages follow `conventional-commit` skill** — load it and apply format.
+4. **Commit composition and messages follow `conventional-commit` skill** — load it before staging or committing.
 5. **Always `git_status` before committing** — verify what will be staged.
 6. **Never `git_push --force`** unless user explicitly requests it.
 7. **`git_add_or_commit` with `action: "add"`** stages files; `action: "commit"` creates the commit from staged changes.
-8. **Prefer `gitlens_commit_composer`** for multi-file changes — it organizes changes into logical commits automatically.
+8. **`gitlens_commit_composer` is advisory** — review its proposed groups against `conventional-commit`; do not accept oversized or partially related commits.
 9. **Prefer `gitlens_start_work`** when starting from a GitHub issue — it creates the branch and links the issue.
 10. **Branch naming**: use `type/scope-description` matching conventional-commit types (e.g., `feat/api-taxonomy-crud`, `fix/persistence-soft-delete`).
 
@@ -94,10 +94,13 @@ Provide structured git workflows using the GitKraken CLI MCP server. These tools
 ### Commit Workflow
 
 ```
-1. git_status(directory=...) → review changes
-2. git_add_or_commit(directory=..., action="add", files=[...]) → stage specific files
-3. git_add_or_commit(directory=..., action="commit", message="feat(api/taxonomy): implement category CRUD endpoints")
+1. Load conventional-commit → decide the next atomic file group and message
+2. git_status(directory=...) → review changes
+3. git_add_or_commit(directory=..., action="add", files=[...]) → stage that specific file group
+4. git_add_or_commit(directory=..., action="commit", message="feat(api/taxonomy): implement category CRUD endpoints")
 ```
+
+For large changesets, call `gitlens_commit_composer(directory=...)` to propose groups, then accept only groups that satisfy `conventional-commit` atomicity rules.
 
 ### PR Workflow
 
@@ -142,7 +145,7 @@ Provide structured git workflows using the GitKraken CLI MCP server. These tools
 
 ## Related Documentation
 
-- `.claude/skills/conventional-commit/SKILL.md` — commit message format (MUST load)
+- `.claude/skills/conventional-commit/SKILL.md` — commit composition and message policy (MUST load before commits)
 - `docs/CONTRIBUTING.md` — contributor workflow
 
 **Enforcement Level**: GUIDE

@@ -1,0 +1,54 @@
+name: Documentation issue
+description: Report stale, missing, confusing, or incorrect documentation.
+title: "docs: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Documentation should stay source-grounded. If you know the code, config, workflow, or command that proves the correction, include it as a source anchor.
+  - type: input
+    id: doc-path
+    attributes:
+      label: Stale or incorrect doc path
+      placeholder: docs/CONTRIBUTING.md
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is wrong or missing?
+      description: Describe the stale claim, missing step, confusing wording, or broken command.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-correction
+    attributes:
+      label: Expected correction
+      description: What should the doc say instead?
+    validations:
+      required: true
+  - type: textarea
+    id: source-anchor
+    attributes:
+      label: Source anchor if known
+      description: Link or name the code/config/test/workflow/doc that proves the correction.
+      placeholder: Explore.API/Program.cs, docker-compose.yml, docs/TESTING.md
+  - type: dropdown
+    id: affected-audience
+    attributes:
+      label: Affected audience
+      multiple: true
+      options:
+        - Operators
+        - Admins
+        - Integrators
+        - Contributors
+        - AI agents
+        - End users
+    validations:
+      required: true
+  - type: textarea
+    id: docs-impact
+    attributes:
+      label: Related docs impact
+      description: List other docs that may need the same correction, or write "Unknown".
