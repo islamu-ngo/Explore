@@ -10,6 +10,7 @@ using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
@@ -499,7 +500,7 @@ public partial class EventDetail : ComponentBase
 
     /// <summary>
     /// Returns the profile page URL for the organizer actor, or null if no public profile exists for that actor type.
-    /// Organization (ActorTypeId=2) → /organization/profile/{id}.
+    /// Organization (ActorTypeId=2) → /organization/profile/{id}; Group (ActorTypeId=4) → /group/profile/{id}.
     /// </summary>
     private string? GetOrganizerProfileUrl()
     {
@@ -507,6 +508,7 @@ public partial class EventDetail : ComponentBase
         return _eventDetails.ActorTypeId.Value switch
         {
             2 => $"/organization/profile/{_eventDetails.ActorId.Value}",  // Organization
+            4 => $"/group/profile/{_eventDetails.ActorId.Value}",          // Group
             _ => null
         };
     }
@@ -536,7 +538,12 @@ public partial class EventDetail : ComponentBase
 
         if (!_isAuthenticated)
         {
-            Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(Navigation.Uri)}");
+            await AccessibilityFocusService.SaveFocusAsync();
+            await LoginPromptDialog.ShowAsync(
+                DialogService,
+                new Uri(Navigation.Uri).PathAndQuery,
+                "Sign in to register for this event. After you sign in, we will bring you back here to finish registration.");
+            await AccessibilityFocusService.RestoreFocusAsync();
             return;
         }
 

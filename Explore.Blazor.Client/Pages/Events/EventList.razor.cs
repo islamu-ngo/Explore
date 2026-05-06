@@ -10,6 +10,7 @@ using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web.Virtualization;
 using Microsoft.JSInterop;
@@ -1667,6 +1668,18 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private async Task OpenInlineRegistration()
     {
         if (_selectedEvent?.Id == null || _selectedEventDetail == null) return;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated != true)
+        {
+            await AccessibilityFocusService.SaveFocusAsync();
+            await LoginPromptDialog.ShowAsync(
+                DialogService,
+                $"/events/{_selectedEvent.Id.Value}",
+                "Sign in to register for this event. After you sign in, we will bring you back here to finish registration.");
+            await AccessibilityFocusService.RestoreFocusAsync();
+            return;
+        }
 
         _showInlineRegistration = true;
         _regIsLoading = true;
