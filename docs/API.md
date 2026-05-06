@@ -18,7 +18,7 @@ For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Gen
 ### Development And Testing
 - API: `https://localhost:7039`
 - Swagger UI: `https://localhost:7039/swagger`
-- Scalar: `https://localhost:7039/scalar/v1`
+- Scalar API reference: mapped by `MapScalarApiReference()` in Development and Testing.
 - OpenAPI document: `https://localhost:7039/openapi/event-api.json`
 
 ### Docker Compose
@@ -34,7 +34,7 @@ The middleware pipeline in `Program.cs` is ordered precisely. Changing order wil
 1. **API Exception Handling** — `UseApiExceptionHandling()`. ProblemDetails-based chained `IExceptionHandler` (Validation → Global).
 2. **Forwarded Headers** — `UseForwardedHeaders()`. Applies trusted `X-Forwarded-*` values before host-derived tenant resolution.
 3. **Security Headers** — `UseSecurityHeaders()`. Adds defensive headers to every response.
-4. **Correlation ID** — `UseCorrelationId()`. Reads `X-Correlation-ID` or `X-Request-ID`, generates UUID if absent, pushes to Serilog `LogContext`.
+4. **Correlation ID** — `UseCorrelationId()`. Reads `X-Correlation-ID` or `X-Request-ID`, uses `HttpContext.TraceIdentifier` when absent, pushes to Serilog `LogContext`.
 5. **Request Logging** — `UseRequestLogging()`. Structured Serilog logging: method, path, status, duration, userId, tenantId, correlationId.
 6. **Response Compression** — `UseResponseCompression()`. Brotli + Gzip at `CompressionLevel.Fastest`. Enabled for HTTPS. Additional MIME types: `application/json`, `application/hal+json`.
 7. **HTTPS Redirection** — `UseHttpsRedirection()`.
@@ -49,7 +49,7 @@ The middleware pipeline in `Program.cs` is ordered precisely. Changing order wil
 16. **Idempotency** — `UseMiddleware<IdempotencyMiddleware>()`. Implements `Idempotency-Key` header for write operations (POST/PUT/PATCH/DELETE). Caches responses by (Key, TenantId) and replays on duplicate requests within 24-hour window.
 17. **Rate Limiter** — `UseRateLimiter()`. Five tiered policies (see below).
 18. **Authorization** — `UseAuthorization()`.
-19. **Output Cache** — `UseOutputCache()`. Five cache policies (see below).
+19. **Output Cache** — `UseOutputCache()`. Eight cache policies (see below).
 20. **ETag** — `UseETag()`. SHA256-based weak ETags, 304 Not Modified support.
 
 ---
@@ -148,6 +148,9 @@ Applied via `[OutputCache(PolicyName = "...")]` on controller endpoints.
 | `ListData` | 30 seconds | `X-Tenant-Slug`, `Host`, `Authorization`, query: `pageNumber`, `pageSize` | Collection listings |
 | `DetailData` | 60 seconds | `X-Tenant-Slug`, `Host`, `Authorization`, route: `id` | Single-entity detail views |
 | `TenantNav` | 5 minutes | `X-Tenant-Slug`, `Host` | Tenant navigation/config endpoints |
+| `PublicExperienceShell` | 30 seconds | `X-Tenant-Slug`, `Host` | Public shell and experience settings |
+| `SystemConfig` | 10 seconds | `Host` | System configuration checks |
+| `SitemapData` | 30 minutes | `X-Tenant-Slug`, `Host` | Sitemap output |
 
 ### Layer 2: HybridCache (Application Level — L1 + L2)
 Injected into MediatR handlers, not controllers. Provides in-memory L1 + distributed L2 caching with stampede protection.
@@ -231,7 +234,7 @@ Non-interactive callers authenticate with long-lived `X-API-Key` credentials in 
 **Authentication Flow**:
 1. `ApiKeyAuthenticationHandler` parses the `X-API-Key` header, splits `{keyId}.{secret}`.
 2. Repository lookup via `IgnoreTenantFilter` (auth path only) returns the stored key.
-3. Secret is HMAC-SHA256 verified in constant time against `SecretHash`.
+3. Secret is SHA256-hashed and verified with fixed-time comparison against `SecretHash`.
 4. `ApiTenantPostAuthenticationMiddleware` asserts the API-key `TenantId` matches the resolved request tenant (skipped for `InstanceAdmin` keys where `TenantId` is null).
 5. Principal is materialized with claims `explore:api-key:id`, `explore:tenant:id` (absent for InstanceAdmin), `explore:api-key:owner:type`, `explore:api-key:owner:id`, and repeated `explore:api-key:scope` claims.
 6. `TouchUsageMetadata` updates `LastUsedAt`/`LastUsedIp` (5-minute throttle per key).
@@ -425,7 +428,7 @@ All responses use **RFC 7807 ProblemDetails** with extensions:
 - `timestamp` — UTC ISO 8601
 - `correlationId` — from `X-Correlation-ID` / `X-Request-ID` header or generated UUID
 
-The `type` field uses IANA RFC 9110 standard URIs (e.g., `https://www.rfc-editor.org/rfc/rfc9110#section-15.5.5` for 404) instead of httpstatuses.com.
+The `type` field uses IANA RFC 9110 standard URIs (e.g., `https://tools.ietf.org/html/rfc9110#section-15.5.5` for 404) instead of httpstatuses.com.
 
 Current implementation detail: `ExceptionHandlingExtensions` writes `traceId` from `HttpContext.TraceIdentifier`.
 
@@ -474,15 +477,22 @@ Gates onboarding endpoints behind the setup secret:
 
 ## Business Metrics (OpenTelemetry)
 
-Meter name: `Explore.Business`. All counters tagged with `tenant_id` and `resource_type` dimensions.
+Meter name: `Explore.Business`. Tags vary by counter and include dimensions such as `tenant_id`, `event_type`, `resource`, `action`, `result`, and `owner_type` where those dimensions apply.
 
 | Counter | Description |
 |---|---|
-| `events.created` | Events created |
-| `events.published` | Events published |
-| `registrations.created` | Event registrations |
-| `organizations.created` | Organizations created |
-| `authorization.decisions` | Authorization check outcomes |
+| `explore.events.created` | Events created |
+| `explore.events.published` | Events published |
+| `explore.registrations.created` | Event registrations |
+| `explore.organizations.created` | Organizations created |
+| `explore.authorization.decisions` | Authorization check outcomes |
+| `explore.external_api_keys.created` | External API keys created |
+| `explore.external_api_keys.revoked` | External API keys revoked |
+| `explore.external_api_keys.authentication_attempts` | External API-key authentication attempts |
+| `explore.external_api_keys.throttled` | External API-key throttling events |
+| `explore.external_api_keys.policy_updated` | External API-key policy updates |
+| `explore.external_api_keys.rotated` | External API-key rotations |
+| `event_role_assignment.changed` | Event role assignment changes |
 
 Authorization decisions are also traced via `ActivitySource` named `Explore.Authorization` with `resource.kind`, `resource.action`, and `request.type` tags.
 

@@ -42,7 +42,7 @@ BFF endpoints are split by concern in `Explore.Blazor/Extensions/` and wired thr
 |---|---|---|
 | Authentication | `/auth/challenge`, `/auth/login`, `/auth/signout`, `/auth/status`, `/auth/providers`, `/auth/debug` | `BffAuthEndpoints.cs` |
 | Auth refresh support | `/bff/auth/refresh-schemes`, `/bff/auth/refresh-session`, `/bff/auth/refresh-session/internal` | `BffAuthEndpoints.cs` |
-| User/session view | `/bff/me` | `BffAuthEndpoints.cs` |
+| User/session view | `/bff/me` | `BffPreferenceEndpoints.cs` |
 | Preferences and appearance | `/bff/theme`, `/bff/language`, `/bff/direction`, `/bff/ui-themes`, `/bff/appearance/*` | `BffPreferenceEndpoints.cs` |
 | Setup secret | `GET/POST/DELETE /bff/setup-secret`, `/bff/setup-secret/sync` | `BffSetupSecretEndpoints.cs` |
 | Storage upload proxy | `/bff/storage/upload-proxy` | `BffStorageEndpoints.cs` |
@@ -56,7 +56,7 @@ There are two related but separate transport paths:
 1. **Browser-to-API proxy path** — `YarpProxyExtensions.cs` proxies `/api/*` calls and applies security-sensitive transforms:
    - forwards the server-side access token as `Authorization: Bearer ...`,
    - forwards trusted tenant context when route context is available,
-   - strips incoming `X-Setup-Secret` first, then rehydrates setup-secret forwarding only from trusted BFF sources.
+   - removes the outgoing proxied `X-Setup-Secret` first, then resolves the setup secret in source order from request header, setup-secret cookie, or authenticated server-side session.
 2. **Server-side typed client path** — `HttpClientExtensions.cs` registers outgoing clients with separate handlers:
    - `AccessTokenForwardingHandler`,
    - `TenantHeaderForwardingHandler`,
