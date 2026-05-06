@@ -179,7 +179,15 @@ public class BlazorTestContext : BunitContext
         Services.AddScoped<DockLayoutState>();
         Services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
         Services.AddSingleton(MockServiceFactory.CreateNotificationService());
-        Services.AddSingleton(Substitute.For<IPublicExperienceService>());
+
+        var publicExperienceService = Substitute.For<IPublicExperienceService>();
+        publicExperienceService.GetSettingsAsync().Returns(Task.FromResult<PublicExperienceSettingsModel?>(null));
+        Services.AddSingleton(publicExperienceService);
+
+        var userSettingsService = Substitute.For<IUserSettingsService>();
+        userSettingsService.GetSettingsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SettingGroupResponseDto?>(null));
+        Services.AddSingleton(userSettingsService);
     }
 
     /// <summary>

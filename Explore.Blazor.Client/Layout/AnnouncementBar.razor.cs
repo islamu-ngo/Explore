@@ -85,9 +85,12 @@ public partial class AnnouncementBar : IDisposable
 
     private async Task CloseBar()
     {
-        await UserSettingsService.UpdateSettingAsync(
-            DismissedRevisionKey,
-            _announcementRevision.ToString(CultureInfo.InvariantCulture));
+        await UserSettingsService.UpdateSettingsBatchAsync(
+            UserPreferenceCategory,
+            new Dictionary<string, string>
+            {
+                [DismissedRevisionKey] = _announcementRevision.ToString(CultureInfo.InvariantCulture)
+            });
 
         _isVisible = false;
         await OnVisibilityChanged.InvokeAsync(false);
