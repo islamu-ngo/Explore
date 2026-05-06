@@ -41,6 +41,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 
         ConfigureDatabase(builder, _database.ConnectionString);
         ConfigureKeycloak(builder, _keycloak);
+        ConfigureApiEndpoint(builder);
 
         _app = await builder.BuildAsync();
         var resourceNotificationService = _app.Services.GetRequiredService<ResourceNotificationService>();
@@ -92,6 +93,8 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 
         if (includeClientCredentials)
         {
+            resource.WithEnvironment("API_ENDPOINT", string.Empty);
+            resource.WithEnvironment("ExploreApi__BaseUrl", string.Empty);
             resource.WithEnvironment("Infisical__ProjectId", string.Empty);
             resource.WithEnvironment("Infisical__ClientId", string.Empty);
             resource.WithEnvironment("Infisical__ClientSecret", string.Empty);
@@ -135,6 +138,16 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         {
             resource.WithEnvironment("ConnectionStrings__EventMigrationService", connectionString);
         }
+    }
+
+    private static void ConfigureApiEndpoint(IDistributedApplicationTestingBuilder builder)
+    {
+        var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
+        var blazor = builder.CreateResourceBuilder<ProjectResource>("explore-blazor");
+        var apiEndpoint = api.GetEndpoint("https");
+
+        blazor.WithEnvironment("API_ENDPOINT", apiEndpoint);
+        blazor.WithEnvironment("ExploreApi__BaseUrl", apiEndpoint);
     }
 
     private async Task PreconfigureTenantRoutingAsync()

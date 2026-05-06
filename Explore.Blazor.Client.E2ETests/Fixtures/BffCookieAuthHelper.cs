@@ -67,6 +67,11 @@ public static class BffCookieAuthHelper
         await Assert.That(authCookie).IsNotNull();
         await Assert.That(authCookie!.HttpOnly).IsTrue();
 
+        await AssertBrowserStorageDoesNotContainTokensAsync(page);
+    }
+
+    public static async Task AssertBrowserStorageDoesNotContainTokensAsync(IPage page)
+    {
         var browserStorageContainsToken = await page.EvaluateAsync<bool>(
             """
             (tokenTerms) => {
@@ -92,7 +97,7 @@ public static class BffCookieAuthHelper
         await Assert.That(browserStorageContainsToken).IsFalse();
     }
 
-    private static async Task AddSetupSecretBypassCookieAsync(IBrowserContext context, string blazorBaseUrl)
+    public static async Task AddSetupSecretBypassCookieAsync(IBrowserContext context, string blazorBaseUrl)
     {
         // This cookie only bypasses the onboarding gate around auth-entry endpoints;
         // it is not an authentication credential and must never contain a token.

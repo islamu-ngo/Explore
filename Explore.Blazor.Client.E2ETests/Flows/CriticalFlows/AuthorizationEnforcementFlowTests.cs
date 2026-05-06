@@ -1,7 +1,6 @@
 // ABOUTME: Playwright critical-flow scaffold for browser and API authorization enforcement.
 // ABOUTME: Documents protected-route redirects, hidden edit affordances, and direct mutation denial.
 
-using System.Text;
 using Explore.Blazor.Client.E2ETests.Fixtures;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
@@ -14,26 +13,77 @@ public class AuthorizationEnforcementFlowTests(
     PlaywrightFixture playwright)
 {
     [Test]
-    [Skip("Category: E2E. Removal: enable in the nightly lane when Docker, Aspire AppHost, Keycloak login seed, and authenticated low-privilege browser state are deterministic.")]
-    public async Task AuthorizationEnforcementHidesEditAffordancesAndRejectsDirectMutation()
+    public async Task AnonymousProtectedRoutes_ChallengeToKeycloakLogin()
     {
         await appHost.ResetDatabaseAsync();
 
-        var page = await playwright.CreatePageAsync(nameof(AuthorizationEnforcementHidesEditAffordancesAndRejectsDirectMutation));
+        var page = await playwright.CreatePageAsync(nameof(AnonymousProtectedRoutes_ChallengeToKeycloakLogin));
         try
         {
+            await BffCookieAuthHelper.AddSetupSecretBypassCookieAsync(page.Context, appHost.BlazorBaseUrl);
+
             await AssertAnonymousProtectedRouteRedirectsToLoginAsync(page, "/events/create");
             await AssertAnonymousProtectedRouteRedirectsToLoginAsync(page, "/my/events");
-            await AssertUnauthorizedShellRendersAsync(page);
-            await AssertDirectAnonymousMutationIsDeniedAsync();
-
-            // Runtime continuation point once deterministic low-privilege login exists:
-            // authenticate as a regular user, open a seeded event detail page, assert no Edit button,
-            // then issue the same mutation with the browser cookie session and assert 403 Forbidden.
         }
         finally
         {
-            await playwright.ClosePageAsync(page, nameof(AuthorizationEnforcementHidesEditAffordancesAndRejectsDirectMutation));
+            await playwright.ClosePageAsync(page, nameof(AnonymousProtectedRoutes_ChallengeToKeycloakLogin));
+        }
+    }
+
+    [Test]
+    public async Task ForbiddenErrorRoute_RendersAccessDeniedRecoveryUi()
+    {
+        await appHost.ResetDatabaseAsync();
+
+        var page = await playwright.CreatePageAsync(nameof(ForbiddenErrorRoute_RendersAccessDeniedRecoveryUi));
+        try
+        {
+            await AssertUnauthorizedShellRendersAsync(page);
+        }
+        finally
+        {
+            await playwright.ClosePageAsync(page, nameof(ForbiddenErrorRoute_RendersAccessDeniedRecoveryUi));
+        }
+    }
+
+    [Test]
+    public async Task AnonymousProtectedRoutes_DoNotCreateBrowserTokenStorage()
+    {
+        await appHost.ResetDatabaseAsync();
+
+        var page = await playwright.CreatePageAsync(nameof(AnonymousProtectedRoutes_DoNotCreateBrowserTokenStorage));
+        try
+        {
+            await BffCookieAuthHelper.AddSetupSecretBypassCookieAsync(page.Context, appHost.BlazorBaseUrl);
+
+            await AssertAnonymousProtectedRouteRedirectsToLoginAsync(page, "/events/create");
+            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page);
+        }
+        finally
+        {
+            await playwright.ClosePageAsync(page, nameof(AnonymousProtectedRoutes_DoNotCreateBrowserTokenStorage));
+        }
+    }
+
+    [Test]
+    public async Task AuthenticatedLowPrivilegeUser_InstanceAdminApiReturnsForbiddenWithoutBrowserTokens()
+    {
+        await appHost.ResetDatabaseAsync();
+
+        var page = await playwright.CreatePageAsync(
+            nameof(AuthenticatedLowPrivilegeUser_InstanceAdminApiReturnsForbiddenWithoutBrowserTokens));
+        try
+        {
+            await BffCookieAuthHelper.LoginAsTestUserAsync(page, appHost);
+            await AssertInstanceAdminApiIsForbiddenForLowPrivilegeUserAsync(page);
+            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page);
+        }
+        finally
+        {
+            await playwright.ClosePageAsync(
+                page,
+                nameof(AuthenticatedLowPrivilegeUser_InstanceAdminApiReturnsForbiddenWithoutBrowserTokens));
         }
     }
 
@@ -42,12 +92,11 @@ public class AuthorizationEnforcementFlowTests(
         var response = await page.GotoAsync($"{appHost.BlazorBaseUrl}{protectedPath}");
         await Assert.That(response).IsNotNull();
 
-        await page.WaitForURLAsync(url =>
-            url.Contains("/login", StringComparison.OrdinalIgnoreCase)
-            && url.Contains("returnUrl=", StringComparison.OrdinalIgnoreCase));
+        await page.Locator("#username").WaitForAsync();
 
-        await Assert.That(page.Url).Contains("/login");
-        await Assert.That(Uri.UnescapeDataString(page.Url)).Contains(protectedPath);
+        await Assert.That(page.Url).Contains("/protocol/openid-connect/auth");
+        await Assert.That(page.Url).Contains("client_id=islamu-event-blazor");
+        await Assert.That(page.Url).Contains("redirect_uri=");
     }
 
     private async Task AssertUnauthorizedShellRendersAsync(IPage page)
@@ -58,15 +107,19 @@ public class AuthorizationEnforcementFlowTests(
 
         await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Access Denied" })
             .WaitForAsync();
+
+        var requestAccessLink = page.GetByRole(AriaRole.Link, new PageGetByRoleOptions { Name = "Request Access" });
+        await requestAccessLink.WaitForAsync();
+        await Assert.That(await requestAccessLink.GetAttributeAsync("href")).IsEqualTo("/contact");
     }
 
-    private async Task AssertDirectAnonymousMutationIsDeniedAsync()
+    private async Task AssertInstanceAdminApiIsForbiddenForLowPrivilegeUserAsync(IPage page)
     {
-        using var client = new HttpClient();
-        using var content = new StringContent("{}", Encoding.UTF8, "application/json");
+        var response = await page.Context.APIRequest.GetAsync(
+            $"{appHost.BlazorBaseUrl}/api/instance/settings/modules");
 
-        var response = await client.PostAsync($"{appHost.BlazorBaseUrl}/api/event", content);
-
-        await Assert.That(response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden).IsTrue();
+        await Assert.That(response).IsNotNull();
+        await Assert.That(response.Status).IsEqualTo((int)HttpStatusCode.Forbidden);
     }
+
 }

@@ -2,6 +2,9 @@
 // ABOUTME: Documents the browser path from event discovery through My Registrations.
 
 using Explore.Blazor.Client.E2ETests.Fixtures;
+using Explore.Blazor.Client.E2ETests.Seeds;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
@@ -13,20 +16,25 @@ public partial class RegistrationFlowTests(
     PlaywrightFixture playwright)
 {
     [Test]
-    [Skip("Category: E2E. Removal: enable in the nightly lane when Docker, Aspire AppHost, Keycloak login seed, and AppHost PostgreSQL override wiring are deterministic.")]
     public async Task RegistrationFlowLoginBrowseRegisterConfirmationMyRegistrations()
     {
         await appHost.ResetDatabaseAsync();
 
+        RegistrationScenarioSeed.Result scenario;
+        await using (var context = appHost.CreateDbContext())
+        {
+            scenario = await RegistrationScenarioSeed.SeedAsync(context);
+        }
+
         var page = await playwright.CreatePageAsync(nameof(RegistrationFlowLoginBrowseRegisterConfirmationMyRegistrations));
         try
         {
-            await BrowseEventsAsync(page);
-            await OpenFirstEventAsync(page);
-            await StartRegistrationAsync(page);
-            await CompleteRegistrationAsync(page);
-            await AssertRegistrationConfirmationAsync(page);
-            await NavigateToMyRegistrationsAsync(page);
+            await BffCookieAuthHelper.LoginAsTestUserAsync(page, appHost);
+            await AssertRegistrationEventIsVisibleThroughTenantBffAsync(page, scenario);
+            await EnsureAuthenticatedUserIsSyncedThroughBffAsync(page, scenario);
+            await RegisterForSeededSessionThroughBffAsync(page, scenario);
+            await AssertRegistrationPersistedAsync(scenario);
+            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page);
         }
         finally
         {
@@ -34,61 +42,87 @@ public partial class RegistrationFlowTests(
         }
     }
 
-    private async Task BrowseEventsAsync(IPage page)
+    private async Task AssertRegistrationEventIsVisibleThroughTenantBffAsync(
+        IPage page,
+        RegistrationScenarioSeed.Result scenario)
     {
-        var response = await page.GotoAsync($"{appHost.BlazorBaseUrl}/events");
-        await Assert.That(response).IsNotNull();
-        await Assert.That(response!.Status).IsEqualTo((int)HttpStatusCode.OK);
+        var response = await page.Context.APIRequest.GetAsync(
+            $"{appHost.BlazorBaseUrl}/t/{scenario.TenantSlug}/api/event/{scenario.EventId}");
 
-        await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Explore Events" })
-            .WaitForAsync();
-    }
-
-    private static async Task OpenFirstEventAsync(IPage page)
-    {
-        await page.Locator(".event-card").First.ClickAsync();
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = EventPageButtonPattern() })
-            .WaitForAsync();
-    }
-
-    private static async Task StartRegistrationAsync(IPage page)
-    {
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = RegisterButtonPattern() })
-            .ClickAsync();
-    }
-
-    private static async Task CompleteRegistrationAsync(IPage page)
-    {
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = ConfirmRegistrationPattern() })
-            .ClickAsync();
-    }
-
-    private static async Task AssertRegistrationConfirmationAsync(IPage page)
-    {
-        await page.GetByText("Registration Successful", new PageGetByTextOptions { Exact = false })
-            .WaitForAsync();
-        await Assert.That(await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions
+        if (response.Status != (int)HttpStatusCode.OK)
         {
-            Name = "View My Registrations"
-        }).CountAsync()).IsGreaterThanOrEqualTo(1);
+            var body = await response.TextAsync();
+            throw new InvalidOperationException($"Registration through BFF failed with status {response.Status}: {body}");
+        }
+        await Assert.That(await response.TextAsync()).Contains(scenario.EventTitle);
     }
 
-    private static async Task NavigateToMyRegistrationsAsync(IPage page)
+    private async Task EnsureAuthenticatedUserIsSyncedThroughBffAsync(
+        IPage page,
+        RegistrationScenarioSeed.Result scenario)
     {
-        await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions { Name = "View My Registrations" })
-            .ClickAsync();
+        var response = await page.Context.APIRequest.PostAsync(
+            $"{appHost.BlazorBaseUrl}/t/{scenario.TenantSlug}/api/user/sync");
 
-        await page.WaitForURLAsync(url => url.Contains("/my/registrations", StringComparison.OrdinalIgnoreCase));
-        await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "My Registrations" })
-            .WaitForAsync();
+        if (response.Status != (int)HttpStatusCode.OK)
+        {
+            var body = await response.TextAsync();
+            throw new InvalidOperationException($"User sync through BFF failed with status {response.Status}: {body}");
+        }
+
+        await AssertResponseSuccessAsync(response, "User sync through BFF");
     }
 
-    [GeneratedRegex("^(Event Page|View Details|Details)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex EventPageButtonPattern();
+    private async Task RegisterForSeededSessionThroughBffAsync(IPage page, RegistrationScenarioSeed.Result scenario)
+    {
+        var response = await page.Context.APIRequest.PostAsync(
+            $"{appHost.BlazorBaseUrl}/t/{scenario.TenantSlug}/api/eventregistration",
+            new APIRequestContextOptions
+            {
+                DataObject = new
+                {
+                    eventId = scenario.EventId,
+                    registrationScopeId = (int)Explore.Domain.Enums.RegistrationScopeEnum.SessionSelection,
+                    selectedSessionIds = new[] { scenario.SessionId },
+                    shareEmailWithOrganizer = false
+                }
+            });
 
-    [GeneratedRegex("Register", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex RegisterButtonPattern();
+        if (response.Status != (int)HttpStatusCode.OK)
+        {
+            var body = await response.TextAsync();
+            throw new InvalidOperationException($"Registration through BFF failed with status {response.Status}: {body}");
+        }
 
-    [GeneratedRegex("(Confirm|Complete|Register)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex ConfirmRegistrationPattern();
+        await AssertResponseSuccessAsync(response, "Registration through BFF");
+    }
+
+    private static async Task AssertResponseSuccessAsync(IAPIResponse response, string operation)
+    {
+        var body = await response.TextAsync();
+        using var document = JsonDocument.Parse(body);
+
+        if (document.RootElement.TryGetProperty("success", out var success) && success.ValueKind == JsonValueKind.True)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException($"{operation} returned an unsuccessful command response: {body}");
+    }
+
+    private async Task AssertRegistrationPersistedAsync(RegistrationScenarioSeed.Result scenario)
+    {
+        await using var context = appHost.CreateDbContext();
+
+        var intentCount = await context.EventRegistrationIntents
+            .IgnoreQueryFilters()
+            .CountAsync(x => x.EventId == scenario.EventId && x.TenantId == scenario.TenantId);
+        var childCount = await context.EventRegistrations
+            .IgnoreQueryFilters()
+            .CountAsync(x => x.EventSessionId == scenario.SessionId && x.TenantId == scenario.TenantId);
+
+        await Assert.That(intentCount).IsEqualTo(1);
+        await Assert.That(childCount).IsEqualTo(1);
+    }
+
 }

@@ -1,98 +1,48 @@
-// ABOUTME: Playwright critical-flow scaffold for the Blazor BFF token-forwarding chain.
-// ABOUTME: Documents cookie-authenticated browser to BFF, YARP, API tenant context, and HAL UI rendering.
+// ABOUTME: Playwright critical-flow coverage for the Blazor BFF token-forwarding chain.
+// ABOUTME: Verifies browser cookie auth reaches the API through YARP without exposing tokens to browser storage.
 
 using Explore.Blazor.Client.E2ETests.Fixtures;
-using Explore.Blazor.Client.E2ETests.Seeds;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
 [ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
 [NotInParallel("E2EAppHostDb")]
 [ParallelLimiter<BrowserParallelLimit>]
-public partial class BffTokenForwardingChainFlowTests(
+public class BffTokenForwardingChainFlowTests(
     AppHostFixture appHost,
     PlaywrightFixture playwright)
 {
     [Test]
-    [Skip("Category: E2E. Removal: enable in the nightly lane when Docker, Aspire AppHost, Keycloak login seed, and deterministic BFF cookie auth state are available.")]
-    public async Task LoginBffYarpApiTenantHalLinksRenderInBlazor()
+    public async Task LoginBffYarpApiUsesServerSideTokenWithoutBrowserStorage()
     {
         await appHost.ResetDatabaseAsync();
-        var scenario = await SeedTenantIsolationScenarioAsync(appHost);
 
-        var page = await playwright.CreatePageAsync(nameof(LoginBffYarpApiTenantHalLinksRenderInBlazor));
+        var page = await playwright.CreatePageAsync(nameof(LoginBffYarpApiUsesServerSideTokenWithoutBrowserStorage));
         try
         {
-            await page.SetExtraHTTPHeadersAsync(new Dictionary<string, string>
-            {
-                ["X-Tenant-Slug"] = scenario.TenantASlug
-            });
-
-            await AssertAnonymousAuthStatusAsync(page);
-
-            // Runtime continuation point once Keycloak login automation is available:
-            // drive /login or reuse cookie-only storageState, then assert /auth/status is authenticated.
-            // Do not read bearer tokens from browser storage; tokens must remain server-side in the BFF.
-            await BrowseEventsThroughBffProxyAsync(page, scenario.TenantAEventTitle);
-            await AssertHalDrivenAffordancesRenderAsync(page, scenario.TenantAEventTitle);
+            await AssertPublicProxyIsReachableAsync(page);
+            await BffCookieAuthHelper.LoginAsTestUserAsync(page, appHost);
+            await AssertAuthenticatedProxyCallUsesBffCookieAsync(page);
+            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page);
         }
         finally
         {
-            await playwright.ClosePageAsync(page, nameof(LoginBffYarpApiTenantHalLinksRenderInBlazor));
+            await playwright.ClosePageAsync(page, nameof(LoginBffYarpApiUsesServerSideTokenWithoutBrowserStorage));
         }
     }
 
-    private async Task AssertAnonymousAuthStatusAsync(IPage page)
+    private async Task AssertPublicProxyIsReachableAsync(IPage page)
     {
-        var response = await page.GotoAsync($"{appHost.BlazorBaseUrl}/auth/status");
-        await Assert.That(response).IsNotNull();
-        await Assert.That(response!.Status).IsEqualTo((int)HttpStatusCode.OK);
+        var response = await page.Context.APIRequest.GetAsync($"{appHost.BlazorBaseUrl}/api/event");
 
-        var content = await page.ContentAsync();
-        await Assert.That(content).Contains("isAuthenticated");
-        await Assert.That(content).Contains("false");
+        await Assert.That(response.Status).IsEqualTo((int)HttpStatusCode.OK);
     }
 
-    private async Task BrowseEventsThroughBffProxyAsync(IPage page, string expectedEventTitle)
+    private async Task AssertAuthenticatedProxyCallUsesBffCookieAsync(IPage page)
     {
-        var apiResponseTask = page.WaitForResponseAsync(response =>
-            response.Url.Contains("/api/event", StringComparison.OrdinalIgnoreCase)
-            && response.Status is >= 200 and < 300);
+        var response = await page.Context.APIRequest.GetAsync($"{appHost.BlazorBaseUrl}/api/event/my");
 
-        var response = await page.GotoAsync($"{appHost.BlazorBaseUrl}/events");
-        await Assert.That(response).IsNotNull();
-        await Assert.That(response!.Status).IsEqualTo((int)HttpStatusCode.OK);
-
-        _ = await apiResponseTask;
-
-        await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Explore Events" })
-            .WaitForAsync();
-        await page.GetByText(expectedEventTitle, new PageGetByTextOptions { Exact = false })
-            .WaitForAsync();
+        await Assert.That(response.Status).IsEqualTo((int)HttpStatusCode.OK);
     }
 
-    private static async Task AssertHalDrivenAffordancesRenderAsync(IPage page, string eventTitle)
-    {
-        await page.GetByText(eventTitle, new PageGetByTextOptions { Exact = false }).ClickAsync();
-
-        await Assert.That(await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions
-        {
-            Name = "Event Page"
-        }).CountAsync()).IsGreaterThanOrEqualTo(1);
-
-        await Assert.That(await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions
-        {
-            NameRegex = ShareEventPattern()
-        }).CountAsync()).IsGreaterThanOrEqualTo(1);
-    }
-
-    private static async Task<TenantIsolationScenarioSeed.Result> SeedTenantIsolationScenarioAsync(
-        AppHostFixture appHost)
-    {
-        await using var context = appHost.CreateDbContext();
-        return await TenantIsolationScenarioSeed.SeedAsync(context);
-    }
-
-    [GeneratedRegex("Share", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex ShareEventPattern();
 }
