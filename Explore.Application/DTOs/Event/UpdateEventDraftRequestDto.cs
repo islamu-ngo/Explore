@@ -1,0 +1,45 @@
+// ABOUTME: Public draft-event update contract for scalar event-shell fields only.
+// ABOUTME: Excludes lifecycle status and session-derived program projection fields.
+
+using System;
+
+namespace Explore.Application.DTOs.Event;
+
+public sealed class UpdateEventDraftRequestDto
+{
+    public required string Title { get; set; }
+    public string? Subtitle { get; set; }
+    public string? Description { get; set; }
+    public string? Slug { get; set; }
+
+    public int? EventTypeId { get; set; }
+    public int? AudienceGenderId { get; set; }
+    public int? AudienceAgeId { get; set; }
+
+    public Guid? OrganizationId { get; set; }
+    public Guid? GroupId { get; set; }
+
+    public decimal? Price { get; set; }
+    public string? CurrencyCode { get; set; }
+    public Guid? FeaturedImageId { get; set; }
+
+    public bool IsRegistrationRequired { get; set; }
+    public string? ExternalRegistrationUrl { get; set; }
+
+    public int VisibilityTypeId { get; set; } = 1;
+    public int EventFormatId { get; set; } = 1;
+    public int? MadhabId { get; set; }
+
+    public string? Timezone { get; set; }
+    public string? EventTimeZoneId { get; set; }
+    public string? EventUrl { get; set; }
+
+    public string? BackgroundColor { get; set; }
+    public string? BackgroundEffect { get; set; }
+    public Guid? BackgroundImageId { get; set; }
+
+    public Guid? TemplateId { get; set; }
+    public Guid? EventSeriesId { get; set; }
+    public int? SeriesOrder { get; set; }
+    public int? RegistrationPolicyId { get; set; }
+}
