@@ -8,14 +8,16 @@ public class TenantPublicExperienceAdminServiceTests
     private const string Category = "PublicExperience";
 
     private readonly IEventApiClient _apiClient;
+    private readonly IPublicExperienceService _publicExperienceService;
     private readonly ILogger<TenantPublicExperienceAdminService> _logger;
     private readonly TenantPublicExperienceAdminService _service;
 
     public TenantPublicExperienceAdminServiceTests()
     {
         _apiClient = Substitute.For<IEventApiClient>();
+        _publicExperienceService = Substitute.For<IPublicExperienceService>();
         _logger = Substitute.For<ILogger<TenantPublicExperienceAdminService>>();
-        _service = new TenantPublicExperienceAdminService(_apiClient, _logger);
+        _service = new TenantPublicExperienceAdminService(_apiClient, _publicExperienceService, _logger);
     }
 
     [Test]

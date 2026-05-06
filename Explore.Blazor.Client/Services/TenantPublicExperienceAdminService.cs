@@ -18,6 +18,7 @@ public interface ITenantPublicExperienceAdminService
 
 public sealed class TenantPublicExperienceAdminService(
     IEventApiClient apiClient,
+    IPublicExperienceService publicExperienceService,
     ILogger<TenantPublicExperienceAdminService> logger) : ITenantPublicExperienceAdminService
 {
     private const string Category = "PublicExperience";
@@ -110,11 +111,35 @@ public sealed class TenantPublicExperienceAdminService(
             model.AnnouncementBarLinkText = GetString(settings, AnnouncementBarLinkTextKey, string.Empty);
             model.AnnouncementBarLinkUrl = GetString(settings, AnnouncementBarLinkUrlKey, string.Empty);
             model.AnnouncementBarRevision = GetInteger(settings, AnnouncementBarRevisionKey, 0);
+
+            await ApplyPublicAnnouncementFallbackAsync(model);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load tenant announcement bar settings.");
+            await ApplyPublicAnnouncementFallbackAsync(model);
         }
+    }
+
+    private async Task ApplyPublicAnnouncementFallbackAsync(TenantPolicySettingsModel model)
+    {
+        if (model.AnnouncementBarEnabled || !string.IsNullOrWhiteSpace(model.AnnouncementBarMessage))
+        {
+            return;
+        }
+
+        PublicExperienceSettingsModel? settings = await publicExperienceService.GetSettingsAsync();
+        if (settings?.AnnouncementBarEnabled != true
+            || string.IsNullOrWhiteSpace(settings.AnnouncementBarMessage))
+        {
+            return;
+        }
+
+        model.AnnouncementBarEnabled = true;
+        model.AnnouncementBarMessage = settings.AnnouncementBarMessage.Trim();
+        model.AnnouncementBarLinkText = settings.AnnouncementBarLinkText?.Trim() ?? string.Empty;
+        model.AnnouncementBarLinkUrl = settings.AnnouncementBarLinkUrl?.Trim() ?? string.Empty;
+        model.AnnouncementBarRevision = settings.AnnouncementBarRevision;
     }
 
     public async Task<PublicExperienceAdminSaveResult> SaveAsync(
