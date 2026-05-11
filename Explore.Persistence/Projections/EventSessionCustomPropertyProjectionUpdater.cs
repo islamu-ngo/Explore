@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Exceptions;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -311,8 +312,14 @@ public class EventSessionCustomPropertyProjectionUpdater : IEventSessionCustomPr
 
         if (pendingCount >= quota)
         {
-            throw new InvalidOperationException(
-                $"Custom-property projection dirty-scope backlog exceeded tenant quota ({quota}). Run rebuild or drain before retrying.");
+            throw new QuotaExceededException(
+                "Session custom-property projection dirty-scope backlog exceeded the tenant quota. Run rebuild or drain before retrying.",
+                CustomPropertyQuotaSettingDefinitions.MaxDirtyScopePendingPerTenant.Key,
+                quota,
+                pendingCount,
+                pendingCount + 1,
+                "event_session_custom_property_projection_dirty_scope",
+                tenantId);
         }
 
         await _dirtyScopeRepository.UpsertAsync(
