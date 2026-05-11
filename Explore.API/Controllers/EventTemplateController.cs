@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.Features.EventTemplates.Requests.Commands;
@@ -105,6 +106,7 @@ public class EventTemplateController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventTemplateDto eventTemplate, CancellationToken cancellationToken = default)
     {
@@ -117,7 +119,7 @@ public class EventTemplateController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToQuotaProblemOrBadRequest(response);
         }
 
         return CreatedAtRoute(
@@ -137,6 +139,7 @@ public class EventTemplateController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(
@@ -157,7 +160,7 @@ public class EventTemplateController : ControllerBase
 
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToQuotaProblemOrBadRequest(result);
         }
 
         return Ok(result);

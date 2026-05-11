@@ -20,6 +20,13 @@ internal static class ServiceCollectionExtensions
 
             // Add schema filter for HAL wrapper types to properly expose inner DTOs
             options.SchemaFilter<HalSchemaFilter>();
+            options.SchemaFilter<OpenApiStringEnumSchemaFilter>();
+            options.DocumentFilter<HalSchemaDocumentFilter>();
+
+            // Swashbuckle remains as a transition baseline until native OpenAPI parity is proven.
+            // Mirror the native document's media-type version aliases so both documents describe
+            // the same public content negotiation contract.
+            options.OperationFilter<OpenApiVersionedContentTypesOperationFilter>();
 
             // Register the Keycloak OAuth2 security definition only when the authorization URL
             // is configured. In test/dev environments where Keycloak is not wired up, we skip this

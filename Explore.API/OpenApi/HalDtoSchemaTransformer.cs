@@ -14,56 +14,12 @@ namespace Explore.API.OpenApi;
 /// </summary>
 public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
 {
-    // DTOs that need to be explicitly registered because they're only used inside HAL wrappers
-    private static readonly Type[] DtoTypes = new[]
-    {
-        // Event DTOs
-        typeof(Explore.Application.DTOs.Event.EventDto),
-        typeof(Explore.Application.DTOs.Event.EventListDto),
-
-        // EventSession DTOs
-        typeof(Explore.Application.DTOs.EventSession.EventSessionDto),
-        typeof(Explore.Application.DTOs.EventSession.EventSessionListDto),
-
-        // Category DTOs
-        typeof(Explore.Application.DTOs.Category.CategoryDto),
-        typeof(Explore.Application.DTOs.Category.CategoryListDto),
-
-        // Tag DTOs
-        typeof(Explore.Application.DTOs.Tag.TagDto),
-        typeof(Explore.Application.DTOs.Tag.TagListDto),
-
-        // Location DTOs
-        typeof(Explore.Application.DTOs.Location.LocationDto),
-        typeof(Explore.Application.DTOs.Location.LocationListDto),
-
-        // Organization DTOs
-        typeof(Explore.Application.DTOs.Organization.OrganizationDto),
-        typeof(Explore.Application.DTOs.Organization.OrganizationListDto),
-
-        // Actor DTOs
-        typeof(Explore.Application.DTOs.Actor.ActorDto),
-        typeof(Explore.Application.DTOs.Actor.ActorListDto),
-
-        // EventSessionSpeaker DTOs
-        typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerDto),
-        typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerListDto),
-
-        // EventSessionLanguage DTOs
-        typeof(Explore.Application.DTOs.EventSessionLanguage.EventSessionLanguageDto),
-        typeof(Explore.Application.DTOs.EventSessionLanguage.EventSessionLanguageListDto),
-
-        // EventAspects DTOs
-        typeof(Explore.Application.DTOs.EventAspects.EventIslamicAspectDto),
-        typeof(Explore.Application.DTOs.EventAspects.EventTechAspectDto),
-    };
-
     public async Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
         document.Components ??= new OpenApiComponents();
         document.Components.Schemas ??= new Dictionary<string, IOpenApiSchema>();
 
-        foreach (var dtoType in DtoTypes)
+        foreach (var dtoType in HalOpenApiSchemaCatalog.RegisteredDtoTypes)
         {
             var schemaName = dtoType.Name;
 
@@ -82,6 +38,9 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
         // Also populate the empty HAL wrapper schemas with flattened DTO properties + HAL links
         await PopulateHalResourceSchemas(document, context, cancellationToken);
 
+        // Type the HAL collection embedded items as HAL resource references instead of object arrays.
+        PopulateHalCollectionEmbeddedSchemas(document);
+
         // Fix inline array item schemas that should be $ref references to component schemas.
         // GetOrCreateSchemaAsync inlines nested DTO types (e.g., EventDto.Tags = List<TagListDto>)
         // which causes NSwag to generate duplicate types with conflicting names.
@@ -90,67 +49,46 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
 
     private async Task PopulateHalResourceSchemas(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
-        var halResourceMappings = new Dictionary<string, Type>
-        {
-            ["HalResourceOfEventDto"] = typeof(Explore.Application.DTOs.Event.EventDto),
-            ["HalResourceOfEventSessionDto"] = typeof(Explore.Application.DTOs.EventSession.EventSessionDto),
-            ["HalResourceOfCategoryDto"] = typeof(Explore.Application.DTOs.Category.CategoryDto),
-            ["HalResourceOfTagDto"] = typeof(Explore.Application.DTOs.Tag.TagDto),
-            ["HalResourceOfLocationDto"] = typeof(Explore.Application.DTOs.Location.LocationDto),
-            ["HalResourceOfOrganizationDto"] = typeof(Explore.Application.DTOs.Organization.OrganizationDto),
-            ["HalResourceOfActorDto"] = typeof(Explore.Application.DTOs.Actor.ActorDto),
-        };
+        var schemas = document.Components?.Schemas;
+        if (schemas == null)
+            return;
 
-        foreach (var (halSchemaName, dtoType) in halResourceMappings)
+        foreach (var (halSchemaName, dtoType) in HalOpenApiSchemaCatalog.DetailResourceMappings)
         {
-            if (!document.Components.Schemas.TryGetValue(halSchemaName, out var halSchemaInterface))
-                continue;
+            if (!schemas.TryGetValue(halSchemaName, out var halSchemaInterface))
+            {
+                halSchemaInterface = new OpenApiSchema();
+                schemas[halSchemaName] = halSchemaInterface;
+            }
 
             // Cast to concrete type for mutation (OpenApi 2.x pattern)
             if (halSchemaInterface is not OpenApiSchema halSchema)
                 continue;
 
-            // Only process if the schema is empty (no properties defined)
-            if (halSchema.Properties != null && halSchema.Properties.Count > 0)
-                continue;
-
             // Get or create schema for the inner DTO
             var dtoSchema = await context.GetOrCreateSchemaAsync(dtoType, cancellationToken: cancellationToken);
 
-            // Initialize the HAL schema as an object
-            halSchema.Type = JsonSchemaType.Object;
-            halSchema.Properties ??= new Dictionary<string, IOpenApiSchema>();
+            HalOpenApiSchemaMutator.FlattenDtoIntoHalResource(halSchema, dtoSchema);
+        }
+    }
 
-            // Copy properties from DTO to HAL resource (flattening behavior)
-            // dtoSchema is OpenApiSchema, so we can access Properties directly
-            if (dtoSchema.Properties != null)
-            {
-                foreach (var prop in dtoSchema.Properties)
-                {
-                    if (!halSchema.Properties.ContainsKey(prop.Key))
-                    {
-                        halSchema.Properties[prop.Key] = prop.Value;
-                    }
-                }
-            }
+    private static void PopulateHalCollectionEmbeddedSchemas(OpenApiDocument document)
+    {
+        var schemas = document.Components?.Schemas;
+        if (schemas == null)
+            return;
 
-            // Add HAL _links property
-            if (!halSchema.Properties.ContainsKey("_links"))
-            {
-                halSchema.Properties["_links"] = CreateHalLinksSchema();
-            }
+        foreach (var (embeddedSchemaName, itemResourceSchemaName) in HalOpenApiSchemaCatalog.CollectionEmbeddedItemResourceMappings)
+        {
+            if (!schemas.TryGetValue(embeddedSchemaName, out var embeddedSchemaInterface))
+                continue;
 
-            // Add HAL _embedded property
-            if (!halSchema.Properties.ContainsKey("_embedded"))
-            {
-                halSchema.Properties["_embedded"] = new OpenApiSchema
-                {
-                    // OpenApi 2.x: Use Type flags for nullable
-                    Type = JsonSchemaType.Object | JsonSchemaType.Null,
-                    Description = "Embedded related resources",
-                    AdditionalPropertiesAllowed = true
-                };
-            }
+            if (embeddedSchemaInterface is not OpenApiSchema embeddedSchema)
+                continue;
+
+            HalOpenApiSchemaMutator.EnsureEmbeddedItemsArrayType(
+                embeddedSchema,
+                new OpenApiSchemaReference(itemResourceSchemaName, document));
         }
     }
 
@@ -164,59 +102,68 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
     /// </summary>
     private void ReplaceInlineArrayItemsWithReferences(OpenApiDocument document)
     {
-        var registeredDtoNames = new HashSet<string>(DtoTypes.Select(t => t.Name));
+        var registeredDtoNames = new HashSet<string>(HalOpenApiSchemaCatalog.RegisteredDtoTypes.Select(t => t.Name));
 
-        foreach (var dtoType in DtoTypes)
+        foreach (var dtoType in HalOpenApiSchemaCatalog.RegisteredDtoTypes)
         {
             foreach (var prop in dtoType.GetProperties())
             {
-                if (!prop.PropertyType.IsGenericType)
+                if (!TryGetCollectionItemType(prop.PropertyType, out var itemType))
                     continue;
-                if (prop.PropertyType.GetGenericTypeDefinition() != typeof(List<>))
-                    continue;
-
-                var itemType = prop.PropertyType.GetGenericArguments()[0];
                 if (!registeredDtoNames.Contains(itemType.Name))
                     continue;
 
-                // Found a List<KnownDto> property — fix all schemas containing this property
+                // Found a collection of a known DTO — fix only the owning DTO schema and its cataloged HAL wrapper.
                 var camelCase = char.ToLowerInvariant(prop.Name[0]) + prop.Name[1..];
 
-                foreach (var (_, schemaI) in document.Components.Schemas)
+                ReplaceInlineArrayItemsWithReference(document, dtoType.Name, camelCase, itemType.Name);
+
+                foreach (var halSchemaName in HalOpenApiSchemaCatalog.DetailResourceMappings
+                    .Where(mapping => mapping.Value == dtoType)
+                    .Select(mapping => mapping.Key))
                 {
-                    if (schemaI is not OpenApiSchema schema || schema.Properties == null)
-                        continue;
-                    if (!schema.Properties.TryGetValue(camelCase, out var arraySchemaI))
-                        continue;
-                    if (arraySchemaI is OpenApiSchema arraySchema
-                        && arraySchema.Items != null
-                        && arraySchema.Items is not OpenApiSchemaReference)
-                    {
-                        arraySchema.Items = new OpenApiSchemaReference(itemType.Name, document);
-                    }
+                    ReplaceInlineArrayItemsWithReference(document, halSchemaName, camelCase, itemType.Name);
                 }
             }
         }
     }
 
-    private OpenApiSchema CreateHalLinksSchema()
+    private static bool TryGetCollectionItemType(Type propertyType, out Type itemType)
     {
-        return new OpenApiSchema
+        itemType = typeof(object);
+
+        if (!propertyType.IsGenericType)
+            return false;
+
+        var genericDefinition = propertyType.GetGenericTypeDefinition();
+        if (genericDefinition != typeof(List<>)
+            && genericDefinition != typeof(IReadOnlyList<>)
+            && genericDefinition != typeof(IList<>))
         {
-            Type = JsonSchemaType.Object,
-            AdditionalPropertiesAllowed = true,
-            Description = "HAL hypermedia links",
-            AdditionalProperties = new OpenApiSchema
-            {
-                Type = JsonSchemaType.Object,
-                Properties = new Dictionary<string, IOpenApiSchema>
-                {
-                    ["href"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "Link URL" },
-                    ["method"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "HTTP method" },
-                    // OpenApi 2.x: Use Type flags for nullable instead of Nullable property
-                    ["title"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null, Description = "Link title" }
-                }
-            }
-        };
+            return false;
+        }
+
+        itemType = propertyType.GetGenericArguments()[0];
+        return true;
     }
+
+    private static void ReplaceInlineArrayItemsWithReference(OpenApiDocument document, string schemaName, string propertyName, string itemSchemaName)
+    {
+        if (document.Components?.Schemas?.TryGetValue(schemaName, out var schemaI) != true)
+            return;
+
+        if (schemaI is not OpenApiSchema schema || schema.Properties == null)
+            return;
+
+        if (!schema.Properties.TryGetValue(propertyName, out var arraySchemaI))
+            return;
+
+        if (arraySchemaI is OpenApiSchema arraySchema
+            && arraySchema.Items != null
+            && arraySchema.Items is not OpenApiSchemaReference)
+        {
+            arraySchema.Items = new OpenApiSchemaReference(itemSchemaName, document);
+        }
+    }
+
 }

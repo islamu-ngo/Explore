@@ -6,9 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>event-shared-secrets</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-	<OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)\obj</OpenApiDocumentsDirectory>
-	<OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
-	<OpenApiDefaultDocumentName>event-api</OpenApiDefaultDocumentName>
+    <OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
+    <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--document-name event-api --file-name swagger</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,6 +33,10 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http.Polly" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />
@@ -67,5 +72,14 @@
   <ItemGroup>
     <None Include="swagger.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('swagger.json')" />
   </ItemGroup>
+
+  <Target Name="InvalidateOpenApiDocumentCacheWhenCanonicalDocumentIsMissing" BeforeTargets="GenerateOpenApiDocuments" Condition="!Exists('$(MSBuildProjectDirectory)/swagger.json') And Exists('$(BaseIntermediateOutputPath)$(MSBuildProjectName).OpenApiFiles.cache')">
+    <Delete Files="$(BaseIntermediateOutputPath)$(MSBuildProjectName).OpenApiFiles.cache" />
+  </Target>
+
+  <Target Name="NormalizeGeneratedOpenApiDocument" AfterTargets="GenerateOpenApiDocuments" Condition="Exists('$(MSBuildProjectDirectory)/swagger_event-api.json')">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/swagger_event-api.json" DestinationFiles="$(MSBuildProjectDirectory)/swagger.json" SkipUnchangedFiles="true" />
+    <Delete Files="$(MSBuildProjectDirectory)/swagger_event-api.json" />
+  </Target>
 
 </Project>

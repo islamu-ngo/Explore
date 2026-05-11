@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
@@ -106,6 +107,7 @@ public class CustomPropertyDefinitionController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateCustomPropertyDefinitionDto customPropertyDefinition, CancellationToken cancellationToken = default)
     {
@@ -118,7 +120,7 @@ public class CustomPropertyDefinitionController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToQuotaProblemOrBadRequest(response);
         }
 
         return CreatedAtRoute(
@@ -138,6 +140,7 @@ public class CustomPropertyDefinitionController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -159,7 +162,7 @@ public class CustomPropertyDefinitionController : ControllerBase
 
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToQuotaProblemOrBadRequest(result);
         }
 
         return Ok(result);

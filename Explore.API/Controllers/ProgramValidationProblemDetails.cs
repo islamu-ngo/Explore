@@ -1,0 +1,39 @@
+// ABOUTME: Controller helper for program/session command validation failures.
+// ABOUTME: Converts existing command responses into RFC 7807 validation payloads without changing handlers.
+
+using Explore.Application.Responses;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Explore.API.Controllers;
+
+internal static class ProgramValidationProblemDetails
+{
+    public static ActionResult ToProgramValidationProblem<TKey>(
+        this ControllerBase controller,
+        BaseCommandResponse<TKey> response,
+        string fallbackMessage)
+    {
+        var errors = response.Errors is { Count: > 0 }
+            ? response.Errors
+            : [response.Message ?? fallbackMessage];
+
+        var problemDetails = new ValidationProblemDetails(new Dictionary<string, string[]>
+        {
+            ["program"] = errors.ToArray()
+        })
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Program validation failed",
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+            Detail = response.Message ?? fallbackMessage,
+            Instance = controller.HttpContext.Request.Path
+        };
+
+        if (!string.IsNullOrWhiteSpace(response.FailureCode))
+        {
+            problemDetails.Extensions["code"] = response.FailureCode;
+        }
+
+        return controller.BadRequest(problemDetails);
+    }
+}

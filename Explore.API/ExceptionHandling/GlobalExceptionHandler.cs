@@ -54,6 +54,10 @@ internal sealed class GlobalExceptionHandler(
                 StatusCodes.Status409Conflict,
                 "Concurrency conflict",
                 concurrencyConflictException.Message),
+            QuotaExceededException quotaExceededException => (
+                QuotaProblemDetailsFactory.StatusCode,
+                QuotaProblemDetailsFactory.Title,
+                quotaExceededException.Message),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "Internal server error",
@@ -71,7 +75,9 @@ internal sealed class GlobalExceptionHandler(
 
         httpContext.Response.StatusCode = statusCode;
 
-        var typeUri = exception is ConcurrencyConflictException concurrencyConflictExceptionForType
+        var typeUri = exception is QuotaExceededException
+            ? QuotaProblemDetailsFactory.Type
+            : exception is ConcurrencyConflictException concurrencyConflictExceptionForType
             ? concurrencyConflictExceptionForType.Code switch
             {
                 ConcurrencyConflictException.StaleSyncBase => "/problems/stale_sync_base",
@@ -104,6 +110,11 @@ internal sealed class GlobalExceptionHandler(
             {
                 problemDetails.Extensions["entityId"] = concurrencyConflict.EntityId;
             }
+        }
+
+        if (exception is QuotaExceededException quotaExceeded)
+        {
+            QuotaProblemDetailsFactory.AddExtensions(problemDetails, quotaExceeded.Details);
         }
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext

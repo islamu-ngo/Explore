@@ -4,7 +4,6 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.ContactShareConsent;
 using Explore.Application.Features.ContactShareConsents.Requests.Commands;
@@ -25,20 +24,17 @@ public class ContactShareConsentController : ExploreControllerBase
     private readonly IMediator _mediator;
     private readonly ITenantContext _tenantContext;
     private readonly IContactShareConsentService _consentService;
-    private readonly IActorRepository _actorRepository;
     private readonly ILogger<ContactShareConsentController> _logger;
 
     public ContactShareConsentController(
         IMediator mediator,
         ITenantContext tenantContext,
         IContactShareConsentService consentService,
-        IActorRepository actorRepository,
         ILogger<ContactShareConsentController> logger)
     {
         _mediator = mediator;
         _tenantContext = tenantContext;
         _consentService = consentService;
-        _actorRepository = actorRepository;
         _logger = logger;
     }
 
@@ -175,8 +171,7 @@ public class ContactShareConsentController : ExploreControllerBase
 
     private async Task<Guid?> ResolveOrganizationId(Guid recipientActorId)
     {
-        var actor = await _actorRepository.GetById(recipientActorId);
-        return actor?.OrganizationId;
+        return await _consentService.ResolveRecipientOrganizationId(recipientActorId);
     }
 
 }

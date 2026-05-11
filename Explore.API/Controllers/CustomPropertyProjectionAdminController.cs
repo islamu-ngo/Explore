@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.CustomPropertyGovernance;
@@ -64,6 +65,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<RebuildProjectionResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<BaseCommandResponse<RebuildProjectionResponseDto>>> RebuildProjection(
         [FromBody] RebuildProjectionRequestDto requestDto,
         CancellationToken cancellationToken = default)
@@ -72,7 +74,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new RebuildEventCustomPropertyProjectionCommand { RequestDto = requestDto },
             cancellationToken);
 
-        return result.Success ? Ok(result) : BadRequest(result);
+        return result.Success ? Ok(result) : this.ToQuotaProblemOrBadRequest(result);
     }
 
     /// <summary>
@@ -193,6 +195,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<RebuildProjectionResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<BaseCommandResponse<RebuildProjectionResponseDto>>> RebuildSessionProjection(
         [FromBody] RebuildProjectionRequestDto requestDto,
         CancellationToken cancellationToken = default)
@@ -201,7 +204,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new RebuildEventSessionCustomPropertyProjectionCommand { RequestDto = requestDto },
             cancellationToken);
 
-        return result.Success ? Ok(result) : BadRequest(result);
+        return result.Success ? Ok(result) : this.ToQuotaProblemOrBadRequest(result);
     }
 
     /// <summary>

@@ -1,6 +1,6 @@
 // ABOUTME: Swashbuckle schema filter that properly exposes DTOs from generic HAL wrapper types.
-// NOTE: This is for Swashbuckle (AddSwaggerGen). For native ASP.NET Core OpenAPI (AddOpenApi),
-// use HalSchemaTransformer instead which implements IOpenApiSchemaTransformer.
+// NOTE: This is for Swashbuckle (AddSwaggerGen). Native ASP.NET Core OpenAPI (AddOpenApi)
+// uses HalDtoSchemaTransformer with the same catalog and mutation helpers.
 
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -13,8 +13,8 @@ namespace Explore.API.OpenApi;
 /// but Swagger doesn't understand this. This filter adds T's properties to the schema.
 ///
 /// <para>
-/// <b>NOTE:</b> This is the Swashbuckle (ISchemaFilter) version. For ASP.NET Core native OpenAPI,
-/// use <see cref="HalSchemaTransformer"/> which implements IOpenApiSchemaTransformer.
+/// <b>NOTE:</b> This is the Swashbuckle (ISchemaFilter) adapter. ASP.NET Core native OpenAPI
+/// uses <see cref="HalDtoSchemaTransformer"/> with the same catalog and mutation helpers.
 /// </para>
 /// </summary>
 public class HalSchemaFilter : ISchemaFilter
@@ -34,19 +34,20 @@ public class HalSchemaFilter : ISchemaFilter
             var innerType = type.GetGenericArguments().FirstOrDefault();
             if (innerType != null)
             {
-                // Ensure schema is properly initialized as an object
-                // OpenAPI 3.1 uses JsonSchemaType enum instead of strings
-                openApiSchema.Type = JsonSchemaType.Object;
-                openApiSchema.Properties ??= new Dictionary<string, IOpenApiSchema>();
-                openApiSchema.Required ??= new HashSet<string>();
+                if (!HalOpenApiSchemaCatalog.IsRegisteredDto(innerType))
+                {
+                    return;
+                }
 
                 // First, ensure the inner DTO is registered in the schema repository
                 var dtoSchema = context.SchemaGenerator.GenerateSchema(innerType, context.SchemaRepository);
 
                 // Add the DTO properties to the HAL resource schema
-                AddDtoPropertiesToSchema(openApiSchema, innerType, dtoSchema, context);
-                AddHalLinksProperty(openApiSchema);
-                AddHalEmbeddedProperty(openApiSchema);
+                var resolvedSchema = ResolveSchema(dtoSchema, context);
+                if (resolvedSchema is not null)
+                {
+                    HalOpenApiSchemaMutator.FlattenDtoIntoHalResource(openApiSchema, resolvedSchema);
+                }
             }
         }
 
@@ -56,14 +57,20 @@ public class HalSchemaFilter : ISchemaFilter
             var innerType = type.GetGenericArguments().FirstOrDefault();
             if (innerType != null)
             {
-                openApiSchema.Type = JsonSchemaType.Object;
-                openApiSchema.Properties ??= new Dictionary<string, IOpenApiSchema>();
-                EnsureEmbeddedItemsArrayType(openApiSchema, innerType, context);
+                if (!HalOpenApiSchemaCatalog.IsRegisteredDto(innerType))
+                {
+                    return;
+                }
+
+                // Generate schema reference for the item type wrapped in HalResource<T>
+                var halResourceType = typeof(Explore.Application.Hateoas.HalResource<>).MakeGenericType(innerType);
+                var itemSchema = context.SchemaGenerator.GenerateSchema(halResourceType, context.SchemaRepository);
+                HalOpenApiSchemaMutator.EnsureEmbeddedItemsArrayType(openApiSchema, itemSchema);
             }
         }
     }
 
-    private void AddDtoPropertiesToSchema(OpenApiSchema schema, Type dtoType, IOpenApiSchema dtoSchema, SchemaFilterContext context)
+    private static OpenApiSchema? ResolveSchema(IOpenApiSchema dtoSchema, SchemaFilterContext context)
     {
         // If the DTO schema is a reference, resolve it to get the actual properties
         OpenApiSchema? resolvedSchema = dtoSchema as OpenApiSchema;
@@ -78,85 +85,63 @@ public class HalSchemaFilter : ISchemaFilter
             }
         }
 
-        if (resolvedSchema == null)
+        return resolvedSchema;
+    }
+}
+
+/// <summary>
+/// Final Swashbuckle document pass that normalizes public HAL resource component schemas.
+/// Some generic HAL wrapper components are materialized before <see cref="HalSchemaFilter" /> can
+/// resolve their DTO component, so this pass uses the explicit API catalog against the completed
+/// component dictionary.
+/// </summary>
+public sealed class HalSchemaDocumentFilter : IDocumentFilter
+{
+    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    {
+        if (swaggerDoc.Components?.Schemas is null)
+        {
             return;
+        }
 
-        // Ensure properties dictionary exists
-        schema.Properties ??= new Dictionary<string, IOpenApiSchema>();
-
-        // Copy all properties from the DTO to the HAL resource schema
-        if (resolvedSchema.Properties != null)
+        foreach (var (schemaName, schemaInterface) in swaggerDoc.Components.Schemas)
         {
-            foreach (var property in resolvedSchema.Properties)
+            if (schemaInterface is not OpenApiSchema halSchema)
             {
-                if (!schema.Properties.ContainsKey(property.Key))
-                {
-                    schema.Properties[property.Key] = property.Value;
-                }
+                continue;
             }
-        }
 
-        // Copy required fields
-        schema.Required ??= new HashSet<string>();
-        if (resolvedSchema.Required != null)
-        {
-            foreach (var required in resolvedSchema.Required)
+            var dtoType = ResolveHalResourceDtoType(schemaName);
+            if (dtoType is null)
             {
-                if (!schema.Required.Contains(required))
-                {
-                    schema.Required.Add(required);
-                }
+                continue;
             }
-        }
-    }
 
-    private void AddHalLinksProperty(OpenApiSchema schema)
-    {
-        if (!schema.Properties.ContainsKey("_links"))
-        {
-            schema.Properties["_links"] = new OpenApiSchema
+            if (!TryGetSchema(swaggerDoc, dtoType.FullName!, out var dtoSchema))
             {
-                Type = JsonSchemaType.Object,
-                AdditionalPropertiesAllowed = true,
-                Description = "HAL hypermedia links",
-                AdditionalProperties = new OpenApiSchema
-                {
-                    Type = JsonSchemaType.Object,
-                    Properties = new Dictionary<string, IOpenApiSchema>
-                    {
-                        ["href"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "Link URL" },
-                        ["method"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "HTTP method" },
-                        ["title"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null, Description = "Link title" }
-                    }
-                }
-            };
+                continue;
+            }
+
+            HalOpenApiSchemaMutator.FlattenDtoIntoHalResource(halSchema, dtoSchema);
         }
     }
 
-    private void AddHalEmbeddedProperty(OpenApiSchema schema)
-    {
-        if (!schema.Properties.ContainsKey("_embedded"))
-        {
-            schema.Properties["_embedded"] = new OpenApiSchema
-            {
-                Type = JsonSchemaType.Object | JsonSchemaType.Null,
-                Description = "Embedded related resources",
-                AdditionalPropertiesAllowed = true
-            };
-        }
-    }
+    private static Type? ResolveHalResourceDtoType(string schemaName)
+        => HalOpenApiSchemaCatalog.DetailResourceMappings
+            .Select(mapping => mapping.Value)
+            .FirstOrDefault(dtoType => schemaName.Contains("HalResource`1", StringComparison.Ordinal)
+                && schemaName.Contains(dtoType.FullName!, StringComparison.Ordinal));
 
-    private void EnsureEmbeddedItemsArrayType(OpenApiSchema schema, Type itemType, SchemaFilterContext context)
+    private static bool TryGetSchema(OpenApiDocument document, string schemaName, out OpenApiSchema schema)
     {
-        // Generate schema reference for the item type wrapped in HalResource<T>
-        var halResourceType = typeof(Explore.Application.Hateoas.HalResource<>).MakeGenericType(itemType);
-        var itemSchema = context.SchemaGenerator.GenerateSchema(halResourceType, context.SchemaRepository);
-
-        if (schema.Properties.TryGetValue("items", out var itemsProperty) && itemsProperty is OpenApiSchema itemsProp)
+        schema = new OpenApiSchema();
+        if (document.Components?.Schemas?.TryGetValue(schemaName.Replace('+', '-'), out var schemaInterface) != true
+            || schemaInterface is not OpenApiSchema openApiSchema)
         {
-            // Ensure items is typed as an array with proper item reference
-            itemsProp.Type = JsonSchemaType.Array;
-            itemsProp.Items = itemSchema;
+            return false;
         }
+
+        schema = openApiSchema;
+        return true;
     }
 }

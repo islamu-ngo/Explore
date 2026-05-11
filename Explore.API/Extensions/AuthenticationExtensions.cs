@@ -21,7 +21,8 @@ public static class AuthenticationExtensions
     public static IServiceCollection AddApiAuthentication(
         this IServiceCollection services,
         IConfiguration configuration,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        bool skipAuthorityWarmup = false)
     {
         // Dynamic JWT authority: Authority / MetadataAddress / ValidIssuer are applied
         // by DynamicJwtBearerPostConfigureOptions from env + DB (IAuthProviderConfigurationService).
@@ -36,7 +37,10 @@ public static class AuthenticationExtensions
         services.AddSingleton<IJwtAuthorityRefreshNotifier>(sp =>
             sp.GetRequiredService<DynamicJwtConfigurationService>());
         services.AddSingleton<IPostConfigureOptions<JwtBearerOptions>, DynamicJwtBearerPostConfigureOptions>();
-        services.AddHostedService<JwtAuthorityWarmupHostedService>();
+        if (!skipAuthorityWarmup)
+        {
+            services.AddHostedService<JwtAuthorityWarmupHostedService>();
+        }
 
         services.AddAuthentication(options =>
             {

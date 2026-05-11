@@ -1,13 +1,13 @@
 // ABOUTME: ASP.NET Core native OpenAPI schema transformer for HAL wrapper types.
 // Ensures OpenAPI schema generation includes the inner DTO properties for HalResource<T> and HalCollectionResource<T>.
 //
-// STATUS: DISABLED - Requires .NET 10 Preview 4+ for GetOrCreateSchemaAsync API.
-// This file is excluded from compilation. When .NET 10 Preview 4+ is available:
+// STATUS: DISABLED - historical native schema-transformer experiment kept for reference only.
+// This file is excluded from compilation. If this approach is revived:
 // 1. Remove the #if false / #endif directives
 // 2. Register with: options.AddSchemaTransformer<HalSchemaTransformer>() in AddOpenApi()
-// 3. Switch OpenApiExportService back to native endpoint: /openapi/explore-api.json
+// 3. Keep the document name aligned with the active native endpoint: /openapi/event-api.json
 //
-// Until then, we use HalSchemaFilter with Swashbuckle (see OpenApiExportService.cs)
+// The active native path is HalDtoSchemaTransformer; Swashbuckle uses HalSchemaFilter.
 
 #if false // Disabled until .NET 10 Preview 4+ is available
 

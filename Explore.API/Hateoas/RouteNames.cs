@@ -65,6 +65,9 @@ public static class RouteNames
     public const string CreateEventSession = "CreateEventSession";
     public const string UpdateEventSession = "UpdateEventSession";
     public const string DeleteEventSession = "DeleteEventSession";
+    public const string GetEventSessionLanguages = "GetEventSessionLanguages";
+    public const string CreateEventSessionLanguage = "CreateEventSessionLanguage";
+    public const string DeleteEventSessionLanguage = "DeleteEventSessionLanguage";
     public const string GetEventSessionSpeakers = "GetEventSessionSpeakers";
     public const string GetEventSessionAgendaItems = "GetEventSessionAgendaItems";
     public const string GetEventRegistrations = "GetEventRegistrations";
@@ -182,6 +185,7 @@ public static class RouteNames
     public const string GetRegistrationModes = "GetRegistrationModes";
     public const string GetRegistrationModeById = "GetRegistrationModeById";
     public const string GetRegistrationScopes = "GetRegistrationScopes";
+    public const string GetEventSessionKinds = "GetEventSessionKinds";
     public const string GetScheduleItemKinds = "GetScheduleItemKinds";
     public const string GetVisibilityTypes = "GetVisibilityTypes";
     public const string GetVisibilityTypeById = "GetVisibilityTypeById";

@@ -136,7 +136,7 @@ public class EventSessionController : ControllerBase
     [EndpointDescription("Create a new event session. Must be associated with an existing event.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionDto session, CancellationToken cancellationToken = default)
     {
@@ -149,7 +149,7 @@ public class EventSessionController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToProgramValidationProblem(response, "Event session creation failed.");
         }
 
         return CreatedAtRoute(
@@ -168,14 +168,18 @@ public class EventSessionController : ControllerBase
     [EndpointDescription("Update an existing event session.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSessionDto session, CancellationToken cancellationToken = default)
     {
         if (id != session.Id)
         {
-            return BadRequest(new { error = "Event session ID mismatch" });
+            return this.ToProgramValidationProblem(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Event session ID mismatch."
+            }, "Event session update failed.");
         }
 
         var command = new UpdateEventSessionCommand { EventSessionDto = session };
@@ -183,7 +187,7 @@ public class EventSessionController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToProgramValidationProblem(response, "Event session update failed.");
         }
 
         return Ok(response);

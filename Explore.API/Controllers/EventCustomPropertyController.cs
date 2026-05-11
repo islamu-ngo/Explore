@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.Features.EventCustomProperties.Requests.Commands;
@@ -107,6 +108,7 @@ public class EventCustomPropertyController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventCustomPropertyDefinitionDto definition, CancellationToken cancellationToken = default)
     {
@@ -119,7 +121,7 @@ public class EventCustomPropertyController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToQuotaProblemOrBadRequest(response);
         }
 
         return CreatedAtRoute(
@@ -140,6 +142,7 @@ public class EventCustomPropertyController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -161,7 +164,7 @@ public class EventCustomPropertyController : ControllerBase
 
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToQuotaProblemOrBadRequest(result);
         }
 
         return Ok(result);
@@ -217,6 +220,7 @@ public class EventCustomPropertyController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SetValue(
         [FromBody] SetEventCustomPropertyValueDto valueDto, CancellationToken cancellationToken = default)
@@ -230,7 +234,7 @@ public class EventCustomPropertyController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToQuotaProblemOrBadRequest(response);
         }
 
         return Ok(response);
@@ -248,6 +252,7 @@ public class EventCustomPropertyController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SetMultiValues(
         [FromBody] SetEventCustomPropertyMultiValuesDto multiValuesDto, CancellationToken cancellationToken = default)
@@ -263,7 +268,7 @@ public class EventCustomPropertyController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToQuotaProblemOrBadRequest(response);
         }
 
         return Ok(response);

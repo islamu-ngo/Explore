@@ -5,7 +5,7 @@ using Explore.API.Configuration;
 using Explore.API.Extensions;
 using Explore.API.HealthChecks;
 using Explore.API.Middleware;
-using Explore.API.Services;
+using Explore.API.OpenApi;
 using Explore.API.Services.Calendar;
 using Explore.Application;
 using Explore.Application.Contracts.Infrastructure;
@@ -35,6 +35,7 @@ var shutdownCts = new CancellationTokenSource();
 const int GracefulShutdownSeconds = 25;
 
 var builder = WebApplication.CreateBuilder(args);
+var isOpenApiGeneration = OpenApiGenerationMode.IsBuildTimeGeneration;
 
 // Configure shutdown timeout for graceful termination
 builder.WebHost.ConfigureKestrel(options =>
@@ -56,7 +57,10 @@ builder.Configuration.AddInfisicalCompatibility();
 
 // Add secret management services (refresh service, health checks, metrics, audit logging)
 // This adds observability and background refresh for secrets loaded via AddInfisicalCompatibility
-builder.Services.AddSecretManagement(builder.Configuration);
+builder.Services.AddSecretManagement(
+    builder.Configuration,
+    enableAuditing: true,
+    enableRefreshService: !isOpenApiGeneration);
 
 builder.Services.AddHttpContextAccessor();
 
@@ -102,9 +106,13 @@ builder.Services.AddRouting(options =>
 builder.Services.ConfigureApplicationServices();
 builder.Services.ConfigureInfrastructureServices(builder.Configuration);
 
-// Skip DbContext registration if running in Testing environment (Integration tests register their own)
-var skipDbContext = builder.Environment.IsEnvironment("Testing");
-builder.Services.ConfigurePersistenceServices(builder.Configuration, skipDbContextRegistration: skipDbContext);
+// Skip DbContext registration if running in Testing environment (integration tests register their own)
+// or build-time OpenAPI generation (the endpoint graph is needed, not live persistence).
+var skipDbContext = builder.Environment.IsEnvironment("Testing") || isOpenApiGeneration;
+builder.Services.ConfigurePersistenceServices(
+    builder.Configuration,
+    skipDbContextRegistration: skipDbContext,
+    skipLookupCacheInitializer: isOpenApiGeneration);
 
 // Register shared tenant context; API middleware is authoritative for normal tenant resolution.
 builder.Services.AddScoped<ITenantResolverService, Explore.Infrastructure.Services.TenantResolverService>();
@@ -175,22 +183,24 @@ builder.Services.AddOpenApi("event-api", options =>
         document.Info.Version = "v0.1";
         return Task.CompletedTask;
     });
+    options.AddDocumentTransformer<Explore.API.OpenApi.KeycloakOpenApiSecurityTransformer>();
+    options.AddDocumentTransformer<Explore.API.OpenApi.OpenApiStringEnumDocumentTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
     options.AddDocumentTransformer<Explore.API.OpenApi.OperationIdInvariantTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.EndpointClassificationTransformer>();
 });
 
-// Add HttpClient for OpenAPI export service
-builder.Services.AddHttpClient();
-
-// Register OpenAPI export service (exports swagger.json at startup in Development)
-builder.Services.AddHostedService<OpenApiExportService>();
-
 // Register PDS sync background worker for AT Protocol federation
-builder.Services.AddHostedService<PdsSyncWorker>();
+if (!isOpenApiGeneration)
+{
+    builder.Services.AddHostedService<PdsSyncWorker>();
+}
 
 // Register generic outbox processor for reliable side-effect delivery
-builder.Services.AddHostedService<OutboxProcessor>();
+if (!isOpenApiGeneration)
+{
+    builder.Services.AddHostedService<OutboxProcessor>();
+}
 
 builder.Services.AddApiCors(builder.Configuration);
 
@@ -200,7 +210,10 @@ builder.Host.UseSerilog((ctx, services, lc) =>
       .Enrich.FromLogContext(),
     writeToProviders: true);
 
-builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);
+builder.Services.AddApiAuthentication(
+    builder.Configuration,
+    builder.Environment,
+    skipAuthorityWarmup: isOpenApiGeneration);
 
 builder.Services.AddHsts(options =>
 {
@@ -298,7 +311,7 @@ Console.CancelKeyPress += (sender, e) =>
 // Apply database migrations before starting the application
 // EF Core 9+ has built-in locking for concurrent migration protection (safe for multiple replicas)
 // Migrations run before API accepts traffic - if they fail, the container doesn't start
-if (!builder.Environment.IsEnvironment("Testing"))
+if (!builder.Environment.IsEnvironment("Testing") && !isOpenApiGeneration)
 {
     using var scope = app.Services.CreateScope();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
@@ -333,30 +346,33 @@ if (!builder.Environment.IsEnvironment("Testing"))
 // Setup secret bootstrap logging — resolve provider and log the secret for first-run setup.
 // Console.WriteLine guarantees visibility in all environments (bypasses Serilog log-level filters).
 // Matches established Infisical bootstrap pattern (InfisicalConfigurationProvider.cs).
-var setupSecretProvider = app.Services.GetRequiredService<Explore.Application.Contracts.Services.ISetupSecretProvider>();
-await setupSecretProvider.InitializeAsync();
 string? setupSecretForStartupReminder = null;
-if (setupSecretProvider.IsSetupModeActive)
+if (!isOpenApiGeneration)
 {
-    if (setupSecretProvider.IsFromEnvironmentVariable)
+    var setupSecretProvider = app.Services.GetRequiredService<Explore.Application.Contracts.Services.ISetupSecretProvider>();
+    await setupSecretProvider.InitializeAsync();
+    if (setupSecretProvider.IsSetupModeActive)
     {
-        app.Logger.LogInformation("[SetupSecret] SETUP_SECRET loaded from environment variable.");
+        if (setupSecretProvider.IsFromEnvironmentVariable)
+        {
+            app.Logger.LogInformation("[SetupSecret] SETUP_SECRET loaded from environment variable.");
+        }
+        else
+        {
+            var secretForLog = setupSecretProvider.GetSecretForLogging();
+            setupSecretForStartupReminder = secretForLog;
+            app.Logger.LogWarning(
+                "[SetupMode] Instance is unclaimed. Auto-generated setup secret active. " +
+                "Visit /setup to claim. Secret: {SetupSecret}",
+                secretForLog);
+            // Console output for terminal visibility when SSH'd into a container
+            Console.WriteLine($"[SetupMode] Setup secret: {secretForLog}");
+        }
     }
     else
     {
-        var secretForLog = setupSecretProvider.GetSecretForLogging();
-        setupSecretForStartupReminder = secretForLog;
-        app.Logger.LogWarning(
-            "[SetupMode] Instance is unclaimed. Auto-generated setup secret active. " +
-            "Visit /setup to claim. Secret: {SetupSecret}",
-            secretForLog);
-        // Console output for terminal visibility when SSH'd into a container
-        Console.WriteLine($"[SetupMode] Setup secret: {secretForLog}");
+        app.Logger.LogInformation("[SetupSecret] Instance onboarding already completed. Setup mode inactive.");
     }
-}
-else
-{
-    app.Logger.LogInformation("[SetupSecret] Instance onboarding already completed. Setup mode inactive.");
 }
 
 if (!string.IsNullOrWhiteSpace(setupSecretForStartupReminder))
@@ -370,7 +386,7 @@ if (!string.IsNullOrWhiteSpace(setupSecretForStartupReminder))
 // Configure the HTTP request pipeline.
 // OpenAPI/Swagger surface is exposed in Development AND Testing so contract-invariant
 // integration tests (Event.API.IntegrationTests) can fetch /openapi/event-api.json.
-if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing") || isOpenApiGeneration)
 {
     app.MapOpenApi();
     app.UseSwagger();
