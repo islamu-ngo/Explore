@@ -67,7 +67,14 @@
       "jsonLibrary": "SystemTextJson",
       "generateDefaultValues": true,
       "generateDataAnnotations": true,
-      "excludedTypeNames": [],
+      "excludedTypeNames": [
+        "EventAgendaItemDto",
+        "EventAgendaItemListDto",
+        "EventDayDto",
+        "EventDayListDto",
+        "LocationRoomDto",
+        "LocationRoomListDto"
+      ],
       "excludedParameterNames": [],
       "handleReferences": false,
       "generateImmutableArrayProperties": false,

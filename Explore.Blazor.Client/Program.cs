@@ -21,6 +21,13 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddMudServices(config =>
 {
     config.PopoverOptions.Duration = TimeSpan.FromMilliseconds(300);
+    config.SnackbarConfiguration.PositionClass = MudBlazor.Defaults.Classes.Position.BottomCenter;
+    config.SnackbarConfiguration.PreventDuplicates = true;
+    config.SnackbarConfiguration.NewestOnTop = true;
+    config.SnackbarConfiguration.ShowCloseIcon = true;
+    config.SnackbarConfiguration.VisibleStateDuration = 5000;
+    config.SnackbarConfiguration.HideTransitionDuration = 200;
+    config.SnackbarConfiguration.ShowTransitionDuration = 200;
 });
 builder.Services.AddBlazouter();
 builder.Services.AddScoped<AuthenticatedRouteGuard>();

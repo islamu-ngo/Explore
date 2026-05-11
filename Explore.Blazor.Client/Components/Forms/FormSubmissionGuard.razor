@@ -1,0 +1,31 @@
+@using MudBlazor
+
+<div class="form-submission-guard @Class" style="@Style" @attributes="AdditionalAttributes">
+    @if (State != null && State.HasError)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">
+            @State.ErrorMessage
+        </MudAlert>
+    }
+    
+    <fieldset disabled="@(State?.IsSubmitting ?? false)" style="border: none; padding: 0; margin: 0; min-width: 0;">
+        @ChildContent
+    </fieldset>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public FormSubmitState? State { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public string? Style { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

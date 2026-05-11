@@ -1,0 +1,37 @@
+@implements IDisposable
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+
+@if (EditContext != null && EditContext.GetValidationMessages().Any())
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" aria-live="assertive">
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Please fix the following errors:</MudText>
+        <ul class="pl-4 m-0">
+            @foreach (var message in EditContext.GetValidationMessages())
+            {
+                <li>@message</li>
+            }
+        </ul>
+    </MudAlert>
+}
+
+@code {
+    [CascadingParameter]
+    public EditContext? EditContext { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (EditContext != null)
+        {
+            EditContext.OnValidationStateChanged += (s, e) => StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        if (EditContext != null)
+        {
+            EditContext.OnValidationStateChanged -= (s, e) => StateHasChanged();
+        }
+    }
+}

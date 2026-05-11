@@ -1,0 +1,96 @@
+// ABOUTME: Unit tests for EventSessionLanguageService diff-based synchronization.
+// ABOUTME: Verifies composer language selections are translated into generated API calls.
+
+namespace Explore.Blazor.Client.Tests.Services;
+
+public class EventSessionLanguageServiceTests
+{
+    private readonly IEventApiClient _apiClient;
+    private readonly EventSessionLanguageService _service;
+
+    public EventSessionLanguageServiceTests()
+    {
+        _apiClient = Substitute.For<IEventApiClient>();
+        _service = new EventSessionLanguageService(_apiClient);
+    }
+
+    [Test]
+    public async Task GetLanguagesBySessionAsync_ForwardsSessionId()
+    {
+        var sessionId = Guid.NewGuid();
+        var languages = new List<EventSessionLanguageListDto>
+        {
+            new() { Id = 7, EventSessionId = sessionId, LanguageId = 1, LanguageFullName = "English" }
+        };
+        _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(languages);
+
+        var result = await _service.GetLanguagesBySessionAsync(sessionId);
+
+        await Assert.That(result).IsEquivalentTo(languages);
+        await _apiClient.Received(1).GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SyncLanguagesForSessionAsync_CreatesMissingAndDeletesRemovedLanguages()
+    {
+        var sessionId = Guid.NewGuid();
+        _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new List<EventSessionLanguageListDto>
+            {
+                new() { Id = 10, EventSessionId = sessionId, LanguageId = 1 },
+                new() { Id = 11, EventSessionId = sessionId, LanguageId = 3 }
+            });
+        _apiClient.CreateEventSessionLanguageAsync(
+                Arg.Any<CreateEventSessionLanguageDto>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfint { Success = true, Id = 12 });
+
+        var result = await _service.SyncLanguagesForSessionAsync(sessionId, [1, 2]);
+
+        await Assert.That(result).IsTrue();
+        await _apiClient.Received(1).CreateEventSessionLanguageAsync(
+            Arg.Is<CreateEventSessionLanguageDto>(dto => dto.EventSessionId == sessionId && dto.LanguageId == 2),
+            cancellationToken: Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).DeleteEventSessionLanguageAsync(11, cancellationToken: Arg.Any<CancellationToken>());
+        await _apiClient.DidNotReceive().DeleteEventSessionLanguageAsync(10, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SyncLanguagesForSessionAsync_ReturnsFalse_WhenCreateFails()
+    {
+        var sessionId = Guid.NewGuid();
+        _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new List<EventSessionLanguageListDto>());
+        _apiClient.CreateEventSessionLanguageAsync(
+                Arg.Any<CreateEventSessionLanguageDto>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfint { Success = false, Message = "Nope" });
+
+        var result = await _service.SyncLanguagesForSessionAsync(sessionId, [2]);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task SyncLanguagesForSessionAsync_ReturnsFalse_WhenDeleteApiFails()
+    {
+        var sessionId = Guid.NewGuid();
+        _apiClient.GetEventSessionLanguagesAsync(sessionId, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new List<EventSessionLanguageListDto>
+            {
+                new() { Id = 11, EventSessionId = sessionId, LanguageId = 3 }
+            });
+        _apiClient.DeleteEventSessionLanguageAsync(11, cancellationToken: Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException(
+                "Not found",
+                404,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                null));
+
+        var result = await _service.SyncLanguagesForSessionAsync(sessionId, []);
+
+        await Assert.That(result).IsFalse();
+    }
+}

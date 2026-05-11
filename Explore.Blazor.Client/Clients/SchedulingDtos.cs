@@ -1,5 +1,5 @@
 // ABOUTME: Client-side DTO classes for scheduling entities (EventDay, EventAgendaItem, LocationRoom).
-// ABOUTME: These mirror API response shapes; NSwag failed to generate standalone types for these entities.
+// ABOUTME: These mirror API response shapes while NSwag excludes these names to avoid duplicate generated types.
 
 using System.Text.Json.Serialization;
 

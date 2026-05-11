@@ -41,7 +41,7 @@
     OpenAPI Client Generation (NSwag)
     ==================================
     WORKFLOW:
-    1. Start Aspire → API starts and exports swagger.json (via OpenApiExportService)
+    1. Build Explore.API → ASP.NET Core build-time OpenAPI regenerates swagger.json
     2. Build Blazor.Client → NSwag regenerates EventApiClient.g.cs BEFORE compilation
 
     KEY DESIGN: Generation happens BEFORE CoreCompile, so:
@@ -49,7 +49,7 @@
     - Then compiler sees the fresh generated code
     - You can regenerate even if your other code has build errors
 
-    The swagger.json is checked into source control for CI/CD builds.
+    The swagger.json is checked into source control for CI/CD builds and is not written by API runtime startup.
 
     To manually regenerate (bypasses build):
       dotnet nswag run nswag.json
@@ -84,7 +84,7 @@
   </UsingTask>
 
   <!-- NSwag Client Generation - Runs BEFORE compilation -->
-  <Target Name="GenerateApiClient" BeforeTargets="CoreCompile" Inputs="..\Explore.API\swagger.json" Outputs="Clients\EventApiClient.g.cs" Condition="Exists('..\Explore.API\swagger.json')">
+  <Target Name="GenerateApiClient" BeforeTargets="CoreCompile" Inputs="..\Explore.API\swagger.json;nswag.json" Outputs="Clients\EventApiClient.g.cs" Condition="Exists('..\Explore.API\swagger.json')">
     <Message Importance="high" Text="NSwag: Regenerating API client from swagger.json..." />
     <Exec Command="dotnet nswag run nswag.json" WorkingDirectory="$(ProjectDir)" ConsoleToMSBuild="true" />
     <!-- Fix NSwag bug: 'return default(void)!;' is invalid C# for void methods (204 No Content responses) -->

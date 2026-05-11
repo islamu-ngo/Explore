@@ -62,6 +62,7 @@ public static class ServiceCollectionExtensions
 
         // Event-specific services
         services.AddScoped<IEventRegistrationService, EventRegistrationService>();
+        services.AddScoped<IEventSessionLanguageService, EventSessionLanguageService>();
         services.AddScoped<IEventSessionSpeakerService, EventSessionSpeakerService>();
         services.AddScoped<IEventSessionAgendaItemService, EventSessionAgendaItemService>();
         services.AddScoped<IEventDayService, EventDayService>();
