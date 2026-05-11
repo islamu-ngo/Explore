@@ -4,6 +4,7 @@ using Explore.Blazor;
 using Explore.Blazor.Components;
 using Explore.Blazor.Extensions;
 using Explore.Blazor.HealthChecks;
+using Explore.Blazor.Services;
 using Explore.Persistence;
 using Explore.Secrets.Extensions;
 using Microsoft.AspNetCore.Mvc;
@@ -53,6 +54,13 @@ builder.Services.AddSecretManagement(builder.Configuration);
 builder.Services.AddMudServices(config =>
 {
     config.PopoverOptions.Duration = TimeSpan.FromMilliseconds(300);
+    config.SnackbarConfiguration.PositionClass = MudBlazor.Defaults.Classes.Position.BottomCenter;
+    config.SnackbarConfiguration.PreventDuplicates = true;
+    config.SnackbarConfiguration.NewestOnTop = true;
+    config.SnackbarConfiguration.ShowCloseIcon = true;
+    config.SnackbarConfiguration.VisibleStateDuration = 5000;
+    config.SnackbarConfiguration.HideTransitionDuration = 200;
+    config.SnackbarConfiguration.ShowTransitionDuration = 200;
 });
 builder.Services.AddApplicationServices();
 builder.Services.AddServerOnlyServices(builder.Configuration);
@@ -61,7 +69,10 @@ builder.Services.AddApiHttpClients(builder.Configuration, builder.Environment);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents()
-    .AddAuthenticationStateSerialization(options => options.SerializeAllClaims = true);
+    .AddAuthenticationStateSerialization(options =>
+    {
+        options.SerializationCallback = AuthStateSerializationPolicy.SerializeDisplaySafeClaimsAsync;
+    });
 
 builder.Services.AddBlazouter();
 builder.Services.AddHttpContextAccessor();

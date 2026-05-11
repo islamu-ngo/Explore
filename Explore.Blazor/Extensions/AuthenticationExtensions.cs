@@ -70,6 +70,7 @@ public static class AuthenticationExtensions
 
         // DynamicAuthSchemeManager is a singleton — it holds the set of registered schemes
         // and uses IAuthenticationSchemeProvider + IOptionsMonitorCache for runtime registration.
+        services.AddSingleton<ISafeAuthDiagnosticsPolicy, SafeAuthDiagnosticsPolicy>();
         services.AddSingleton<IDynamicAuthSchemeManager, DynamicAuthSchemeManager>();
 
         return services;

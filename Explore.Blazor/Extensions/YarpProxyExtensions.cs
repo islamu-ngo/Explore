@@ -195,41 +195,19 @@ public static class YarpProxyExtensions
     }
 
     /// <summary>
-    /// Strips the incoming X-Setup-Secret header to prevent client injection,
-    /// then resolves the trusted value from header, cookie, or server-side session.
+    /// Strips any client-supplied X-Setup-Secret header and forwards only a BFF-resolved trusted value.
     /// </summary>
     private static async Task ForwardSetupSecretAsync(RequestTransformContext context)
     {
         var httpContext = context.HttpContext;
 
-        // Strip first to prevent injection
-        context.ProxyRequest.Headers.Remove("X-Setup-Secret");
+        _ = context.ProxyRequest.Headers.Remove("X-Setup-Secret");
 
-        var setupSecret = httpContext.Request.Headers["X-Setup-Secret"].FirstOrDefault();
-
-        if (string.IsNullOrWhiteSpace(setupSecret))
+        var resolver = httpContext.RequestServices.GetRequiredService<ISetupSecretResolver>();
+        var setupSecret = resolver.Resolve(httpContext);
+        if (setupSecret.Found && !string.IsNullOrWhiteSpace(setupSecret.Secret))
         {
-            setupSecret = httpContext.Request.Cookies["setup-secret"];
-        }
-
-        if (string.IsNullOrWhiteSpace(setupSecret) &&
-            httpContext.User.Identity?.IsAuthenticated == true)
-        {
-            var userId = httpContext.User.FindFirst("sub")?.Value
-                ?? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                ?? httpContext.User.FindFirst("sid")?.Value;
-
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                var sessionService = httpContext.RequestServices
-                    .GetRequiredService<ISetupSecretSessionService>();
-                setupSecret = sessionService.GetForUser(userId);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(setupSecret))
-        {
-            context.ProxyRequest.Headers.Add("X-Setup-Secret", setupSecret);
+            context.ProxyRequest.Headers.Add("X-Setup-Secret", setupSecret.Secret);
         }
     }
 }

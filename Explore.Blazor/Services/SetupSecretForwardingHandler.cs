@@ -1,8 +1,5 @@
-// ABOUTME: DelegatingHandler that forwards the setup secret header to onboarding API endpoints.
-// ABOUTME: Resolves the secret from cookies, session service, or Authorization header JWT (circuit context).
-
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
+// ABOUTME: DelegatingHandler that forwards trusted setup secret headers to onboarding API endpoints.
+// ABOUTME: Strips client-controlled setup headers and resolves secrets through the BFF resolver only.
 
 namespace Explore.Blazor.Services;
 
@@ -14,15 +11,11 @@ namespace Explore.Blazor.Services;
 /// </summary>
 public class SetupSecretForwardingHandler : DelegatingHandler
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly SetupSecretSessionService _setupSecretSessionService;
+    private readonly ISetupSecretResolver _setupSecretResolver;
 
-    public SetupSecretForwardingHandler(
-        IHttpContextAccessor httpContextAccessor,
-        SetupSecretSessionService setupSecretSessionService)
+    public SetupSecretForwardingHandler(ISetupSecretResolver setupSecretResolver)
     {
-        _httpContextAccessor = httpContextAccessor;
-        _setupSecretSessionService = setupSecretSessionService;
+        _setupSecretResolver = setupSecretResolver;
     }
 
     protected override Task<HttpResponseMessage> SendAsync(
@@ -36,69 +29,14 @@ public class SetupSecretForwardingHandler : DelegatingHandler
             return base.SendAsync(request, cancellationToken);
         }
 
-        if (request.Headers.Contains("X-Setup-Secret"))
+        _ = request.Headers.Remove("X-Setup-Secret");
+        var setupSecret = _setupSecretResolver.Resolve(outboundRequest: request);
+        if (setupSecret.Found && !string.IsNullOrWhiteSpace(setupSecret.Secret))
         {
-            return base.SendAsync(request, cancellationToken);
-        }
-
-        var httpContext = _httpContextAccessor.HttpContext;
-        var setupSecret = httpContext?.Request.Cookies["setup-secret"];
-
-        if (string.IsNullOrWhiteSpace(setupSecret))
-        {
-            var userId = httpContext?.User?.FindFirst("sub")?.Value
-                ?? httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? httpContext?.User?.FindFirst("sid")?.Value;
-
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                userId = ExtractUserIdFromAuthorizationHeader(request);
-            }
-
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                setupSecret = _setupSecretSessionService.GetForUser(userId);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(setupSecret))
-        {
-            request.Headers.Add("X-Setup-Secret", setupSecret);
+            request.Headers.Add("X-Setup-Secret", setupSecret.Secret);
         }
 
         return base.SendAsync(request, cancellationToken);
-    }
-
-    /// <summary>
-    /// Extracts the user ID from the Authorization Bearer token.
-    /// In Blazor circuit context HttpContext is null, but AccessTokenForwardingHandler
-    /// has already set the Authorization header from the circuit's stored token.
-    /// </summary>
-    private static string? ExtractUserIdFromAuthorizationHeader(HttpRequestMessage request)
-    {
-        var authHeader = request.Headers.Authorization;
-        if (authHeader?.Scheme != "Bearer" || string.IsNullOrEmpty(authHeader.Parameter))
-        {
-            return null;
-        }
-
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            if (!handler.CanReadToken(authHeader.Parameter))
-            {
-                return null;
-            }
-
-            var jwt = handler.ReadJwtToken(authHeader.Parameter);
-            return jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value
-                ?? jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
-                ?? jwt.Claims.FirstOrDefault(c => c.Type == "sid")?.Value;
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private static bool RequiresSetupSecret(string pathAndQuery)

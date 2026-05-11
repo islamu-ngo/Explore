@@ -14,15 +14,18 @@ public static class BffPreferenceEndpoints
     public static WebApplication MapPreferenceEndpoints(this WebApplication app)
     {
         app.MapPost("/bff/theme", HandleThemePreference)
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         app.MapGet("/bff/theme", HandleGetThemePreferenceAsync)
             .ExcludeFromDescription();
 
         app.MapPost("/bff/language", HandleLanguagePreference)
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         app.MapPost("/bff/direction", HandleDirectionPreference)
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         app.MapGet("/bff/ui-themes", HandleGetAvailableThemesAsync)
@@ -40,27 +43,34 @@ public static class BffPreferenceEndpoints
             .ExcludeFromDescription();
 
         app.MapPut("/bff/appearance/active-profile", HandleSetActiveProfileAsync)
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         app.MapPost("/bff/appearance/profiles/from-preset/{presetId:guid}", HandleClonePresetAsync)
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         app.MapPost("/bff/appearance/profiles", HandleCreateProfileAsync)
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         app.MapPut("/bff/appearance/profiles/{profileId:guid}", HandleUpdateProfileAsync)
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         app.MapPut("/bff/appearance/mode", HandleSetThemeModeAsync)
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         app.MapGet("/bff/appearance/generate-palette", HandleGeneratePaletteAsync)
             .ExcludeFromDescription();
 
         app.MapPut("/bff/appearance/profiles/{profileId:guid}/archive", HandleArchiveProfileAsync)
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         app.MapPost("/bff/appearance/profiles/{profileId:guid}/duplicate", HandleDuplicateProfileAsync)
+            .ValidateAntiforgery()
             .ExcludeFromDescription();
 
         return app;

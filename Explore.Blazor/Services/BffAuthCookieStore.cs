@@ -7,6 +7,7 @@ public interface IBffAuthCookieStore
 {
     string? CookieHeader { get; }
     void SetCookieHeader(string? cookieHeader);
+    void Clear();
     IDisposable BeginActivityScope();
 }
 
@@ -20,6 +21,12 @@ public sealed class BffAuthCookieStore : IBffAuthCookieStore
     public void SetCookieHeader(string? cookieHeader)
     {
         _cookieHeader = string.IsNullOrWhiteSpace(cookieHeader) ? null : cookieHeader;
+    }
+
+    public void Clear()
+    {
+        _cookieHeader = null;
+        _currentCookie.Value = null;
     }
 
     public IDisposable BeginActivityScope()

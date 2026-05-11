@@ -47,7 +47,8 @@ public static class BffSetupSecretEndpoints
     {
         var env = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
         var sessionService = (ISetupSecretSessionService)ctx.RequestServices.GetRequiredService<SetupSecretSessionService>();
-        var secret = ResolvePersistedSetupSecret(ctx, sessionService);
+        var secretResolver = ctx.RequestServices.GetRequiredService<ISetupSecretResolver>();
+        var secret = ResolvePersistedSetupSecret(ctx, secretResolver);
 
         if (string.IsNullOrWhiteSpace(secret))
         {
@@ -141,7 +142,8 @@ public static class BffSetupSecretEndpoints
         var secret = payload?.Secret?.Trim();
         if (string.IsNullOrWhiteSpace(secret))
         {
-            secret = ResolvePersistedSetupSecret(ctx, sessionService);
+            var secretResolver = ctx.RequestServices.GetRequiredService<ISetupSecretResolver>();
+            secret = ResolvePersistedSetupSecret(ctx, secretResolver);
         }
 
         if (string.IsNullOrWhiteSpace(secret))
@@ -206,21 +208,10 @@ public static class BffSetupSecretEndpoints
 
     private static string? ResolvePersistedSetupSecret(
         HttpContext ctx,
-        ISetupSecretSessionService sessionService)
+        ISetupSecretResolver setupSecretResolver)
     {
-        var setupSecret = ctx.Request.Cookies["setup-secret"];
-        if (!string.IsNullOrWhiteSpace(setupSecret))
-        {
-            return setupSecret.Trim();
-        }
-
-        var userId = ResolveUserId(ctx);
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            return null;
-        }
-
-        return GetPersistedSecretForUser(sessionService, userId)?.Trim();
+        var result = setupSecretResolver.Resolve(ctx);
+        return result.Found ? result.Secret?.Trim() : null;
     }
 
     private static async Task<SetupSecretValidationResult> ValidateSetupSecretAsync(
@@ -313,7 +304,8 @@ public static class BffSetupSecretEndpoints
         bool secureCookie,
         string? userId = null)
     {
-        ctx.Response.Cookies.Append("setup-secret", secret, new CookieOptions
+        var cookieProtector = ctx.RequestServices.GetRequiredService<ISetupSecretCookieProtector>();
+        ctx.Response.Cookies.Append("setup-secret", cookieProtector.Protect(secret), new CookieOptions
         {
             MaxAge = TimeSpan.FromMinutes(60),
             Path = "/",

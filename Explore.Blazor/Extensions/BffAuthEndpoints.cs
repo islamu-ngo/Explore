@@ -129,17 +129,18 @@ public static class BffAuthEndpoints
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "[AuthEndpoints] Error during {Provider} login challenge: {Error}",
-                schemeName, ex.InnerException?.Message ?? ex.Message);
+            var diagnostics = ctx.RequestServices.GetRequiredService<ISafeAuthDiagnosticsPolicy>();
+            var diagnostic = diagnostics.CreateDiagnostic("auth_challenge_failed", ex);
 
-            Console.Error.WriteLine(
-                $"[AuthEndpoints] Challenge FAILED: {ex.Message} | inner={ex.InnerException?.Message}");
+            logger.LogError(
+                "[AuthEndpoints] Error during {Provider} login challenge " +
+                "(errorCode={ErrorCode}, correlationId={CorrelationId}, failureCategory={FailureCategory})",
+                schemeName,
+                diagnostic.ErrorCode,
+                diagnostic.CorrelationId,
+                diagnostic.FailureCategory);
 
-            var errorDetail = Uri.EscapeDataString(
-                $"challenge:{ex.InnerException?.Message ?? ex.Message}");
-            var redirectUrl = BuildLoginRedirectUrl(returnUrl, provider, challengeError: true)
-                + $"&errorDetail={errorDetail}";
+            var redirectUrl = diagnostics.BuildLoginRedirectUrl(returnUrl, provider, diagnostic);
             ctx.Response.Redirect(redirectUrl);
         }
     }
@@ -228,6 +229,7 @@ public static class BffAuthEndpoints
             // Always clear the local BFF cookie session. Remote provider signout is best-effort,
             // but local cookie clearing is the security boundary and must not be reported as success
             // if it fails.
+            ClearCircuitTokenState(ctx, cookieAuthResult.Principal, logger, "signout");
             await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         }
         catch (Exception ex)
@@ -310,6 +312,7 @@ public static class BffAuthEndpoints
         var tokenAssessment = AssessAccessToken(accessToken);
         if (!tokenAssessment.IsUsable)
         {
+            ClearCircuitTokenState(ctx, authResult.Principal, logger, tokenAssessment.Reason);
             logger.LogWarning(
                 "[AuthEndpoints] Refresh session produced no API-usable bearer token | Reason={Reason} User={UserId}",
                 tokenAssessment.Reason,
@@ -348,6 +351,41 @@ public static class BffAuthEndpoints
             adminClaimsUpdated);
 
         return Results.Ok(new { refreshed = true, adminClaimsUpdated, token = tokenAssessment.Reason });
+    }
+
+    private static void ClearCircuitTokenState(
+        HttpContext ctx,
+        ClaimsPrincipal? principal,
+        ILogger logger,
+        string reason)
+    {
+        var tokenService = ctx.RequestServices.GetService<ICircuitAccessTokenService>();
+        tokenService?.ClearToken();
+
+        ctx.RequestServices.GetService<ICircuitUserContext>()?.Clear();
+        ctx.RequestServices.GetService<IBffAuthCookieStore>()?.Clear();
+
+        var userId = ResolveUserId(principal);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        var sessionId = principal?.FindFirst("sid")?.Value;
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            CircuitAccessTokenService.ClearTokensForUser(userId);
+        }
+        else
+        {
+            CircuitAccessTokenService.ClearTokenForUserSession(userId, sessionId);
+        }
+
+        logger.LogDebug(
+            "[AuthEndpoints] Cleared circuit token state for user {UserId} session {SessionId} because {Reason}",
+            userId,
+            sessionId ?? "(none)",
+            reason);
     }
 
     private static (bool IsUsable, string Reason) AssessAccessToken(string? accessToken)

@@ -4,6 +4,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -129,6 +130,7 @@ public sealed class TokenRefreshCookieEvents : CookieAuthenticationEvents
         // Security: stale/revoked refresh tokens (Keycloak 'invalid_grant', 'Token is not active')
         // leave the user with a broken session that loops on every request. Clear the cookie
         // and redirect HTML navigations to /login; let XHR/API callers see 401.
+        ClearCircuitTokenState(context, reason);
         context.RejectPrincipal();
 
         try
@@ -173,6 +175,38 @@ public sealed class TokenRefreshCookieEvents : CookieAuthenticationEvents
         var returnUrl = currentPath + context.HttpContext.Request.QueryString;
         var encoded = Uri.EscapeDataString(returnUrl);
         context.HttpContext.Response.Redirect($"/login?returnUrl={encoded}&session=expired&reason={reason}");
+    }
+
+    private static void ClearCircuitTokenState(CookieValidatePrincipalContext context, string reason)
+    {
+        var tokenService = context.HttpContext.RequestServices.GetService<ICircuitAccessTokenService>();
+        tokenService?.ClearToken();
+
+        context.HttpContext.RequestServices.GetService<ICircuitUserContext>()?.Clear();
+        context.HttpContext.RequestServices.GetService<IBffAuthCookieStore>()?.Clear();
+
+        var userId = ResolveUserId(context.Principal);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        var sessionId = context.Principal?.FindFirst("sid")?.Value;
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            CircuitAccessTokenService.ClearTokensForUser(userId);
+        }
+        else
+        {
+            CircuitAccessTokenService.ClearTokenForUserSession(userId, sessionId);
+        }
+    }
+
+    private static string? ResolveUserId(ClaimsPrincipal? principal)
+    {
+        return principal?.FindFirst("sub")?.Value
+            ?? principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? principal?.FindFirst("sid")?.Value;
     }
 
     private static bool IsHtmlNavigation(HttpRequest request)
@@ -277,8 +311,8 @@ public sealed class TokenRefreshCookieEvents : CookieAuthenticationEvents
             var body = await response.Content.ReadAsStringAsync();
             var reason = ParseOidcErrorCode(body) ?? $"status_{(int)response.StatusCode}";
             _logger.LogWarning(
-                "[TokenRefresh] Token endpoint returned {StatusCode} for scheme {Scheme} (error={Error}): {Body}",
-                response.StatusCode, schemeName, reason, body);
+                "[TokenRefresh] Token endpoint returned {StatusCode} for scheme {Scheme} (error={Error}, hasBody={HasBody})",
+                response.StatusCode, schemeName, reason, !string.IsNullOrWhiteSpace(body));
             return RefreshResult.Failure(reason);
         }
 
@@ -345,7 +379,7 @@ public sealed class TokenRefreshCookieEvents : CookieAuthenticationEvents
             using var doc = JsonDocument.Parse(body);
             if (doc.RootElement.TryGetProperty("error", out var errorElement))
             {
-                return errorElement.GetString();
+                return NormalizeOidcErrorCode(errorElement.GetString());
             }
         }
         catch (JsonException)
@@ -354,6 +388,21 @@ public sealed class TokenRefreshCookieEvents : CookieAuthenticationEvents
         }
 
         return null;
+    }
+
+    private static string? NormalizeOidcErrorCode(string? errorCode)
+    {
+        if (string.IsNullOrWhiteSpace(errorCode))
+        {
+            return null;
+        }
+
+        var normalized = new string(errorCode.Trim()
+            .Select(character => char.IsLetterOrDigit(character) || character is '_' or '-' ? character : '_')
+            .Take(64)
+            .ToArray());
+
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
     private readonly record struct RefreshResult(List<AuthenticationToken>? Tokens, string? FailureReason)

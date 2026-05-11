@@ -48,6 +48,7 @@ public class TokenCircuitHandler : CircuitHandler
             if (!string.IsNullOrEmpty(userId))
             {
                 _circuitUserContext.SetUserId(userId);
+                _circuitUserContext.SetSessionId(httpContext.User.FindFirst("sid")?.Value);
                 _logger.LogDebug("[TokenCircuitHandler] Captured userId {UserId} for circuit {CircuitId}",
                     userId, circuit.Id);
             }

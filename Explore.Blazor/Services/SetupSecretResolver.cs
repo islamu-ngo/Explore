@@ -1,0 +1,215 @@
+// ABOUTME: Resolves setup secrets from BFF-owned sources before forwarding privileged setup headers.
+// ABOUTME: Protects setup-secret cookies and prevents client-controlled X-Setup-Secret header trust.
+
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
+
+namespace Explore.Blazor.Services;
+
+public enum SetupSecretSource
+{
+    None = 0,
+    ServerSideSetupSession = 1,
+    ProtectedSetupCookie = 2,
+    DevelopmentConfiguration = 3
+}
+
+public sealed record SetupSecretResolutionResult(
+    bool Found,
+    SetupSecretSource Source,
+    string? Secret,
+    string? FailureCode)
+{
+    public static SetupSecretResolutionResult NotFound(string failureCode) =>
+        new(false, SetupSecretSource.None, null, failureCode);
+
+    public static SetupSecretResolutionResult FoundFrom(SetupSecretSource source, string secret) =>
+        new(true, source, secret, null);
+}
+
+public interface ISetupSecretCookieProtector
+{
+    string Protect(string secret);
+
+    bool TryUnprotect(string? protectedValue, out string? secret);
+}
+
+public sealed class SetupSecretCookieProtector(IDataProtectionProvider dataProtectionProvider)
+    : ISetupSecretCookieProtector
+{
+    private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector(
+        "Explore.Blazor.SetupSecretCookie.v1");
+
+    public string Protect(string secret) => _protector.Protect(secret.Trim());
+
+    public bool TryUnprotect(string? protectedValue, out string? secret)
+    {
+        secret = null;
+        if (string.IsNullOrWhiteSpace(protectedValue))
+        {
+            return false;
+        }
+
+        try
+        {
+            var unprotected = _protector.Unprotect(protectedValue.Trim());
+            if (string.IsNullOrWhiteSpace(unprotected))
+            {
+                return false;
+            }
+
+            secret = unprotected.Trim();
+            return true;
+        }
+        catch (CryptographicException)
+        {
+            return false;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+}
+
+public interface ISetupSecretResolver
+{
+    SetupSecretResolutionResult Resolve(
+        HttpContext? httpContext = null,
+        HttpRequestMessage? outboundRequest = null);
+}
+
+public sealed class SetupSecretResolverOptions
+{
+    public string? DevelopmentSecret { get; set; }
+}
+
+public sealed class SetupSecretResolver(
+    IHttpContextAccessor httpContextAccessor,
+    ISetupSecretSessionService setupSecretSessionService,
+    ISetupSecretCookieProtector cookieProtector,
+    IOptions<SetupSecretResolverOptions> options,
+    IHostEnvironment environment) : ISetupSecretResolver
+{
+    private const string SetupSecretCookieName = "setup-secret";
+
+    public SetupSecretResolutionResult Resolve(
+        HttpContext? httpContext = null,
+        HttpRequestMessage? outboundRequest = null)
+    {
+        var context = httpContext ?? httpContextAccessor.HttpContext;
+
+        var sessionSecret = ResolveSessionSecret(context, outboundRequest);
+        if (!string.IsNullOrWhiteSpace(sessionSecret))
+        {
+            return SetupSecretResolutionResult.FoundFrom(
+                SetupSecretSource.ServerSideSetupSession,
+                sessionSecret);
+        }
+
+        var cookieSecret = ResolveProtectedCookieSecret(context);
+        if (cookieSecret.Found)
+        {
+            return cookieSecret;
+        }
+
+        var configurationSecret = ResolveDevelopmentConfigurationSecret();
+        if (!string.IsNullOrWhiteSpace(configurationSecret))
+        {
+            return SetupSecretResolutionResult.FoundFrom(
+                SetupSecretSource.DevelopmentConfiguration,
+                configurationSecret);
+        }
+
+        return SetupSecretResolutionResult.NotFound(cookieSecret.FailureCode ?? "setup_secret_not_found");
+    }
+
+    private string? ResolveSessionSecret(HttpContext? httpContext, HttpRequestMessage? outboundRequest)
+    {
+        var userId = ResolveUserId(httpContext?.User);
+        if (string.IsNullOrWhiteSpace(userId) && outboundRequest is not null)
+        {
+            userId = ExtractUserIdFromAuthorizationHeader(outboundRequest);
+        }
+
+        return string.IsNullOrWhiteSpace(userId)
+            ? null
+            : setupSecretSessionService.GetForUser(userId)?.Trim();
+    }
+
+    private SetupSecretResolutionResult ResolveProtectedCookieSecret(HttpContext? httpContext)
+    {
+        var protectedCookie = httpContext?.Request.Cookies[SetupSecretCookieName];
+        if (string.IsNullOrWhiteSpace(protectedCookie))
+        {
+            return SetupSecretResolutionResult.NotFound("setup_secret_cookie_missing");
+        }
+
+        return cookieProtector.TryUnprotect(protectedCookie, out var secret)
+            ? SetupSecretResolutionResult.FoundFrom(SetupSecretSource.ProtectedSetupCookie, secret!)
+            : SetupSecretResolutionResult.NotFound("setup_secret_cookie_invalid");
+    }
+
+    private string? ResolveDevelopmentConfigurationSecret()
+    {
+        if (!IsLocalBootstrapEnvironment(environment.EnvironmentName))
+        {
+            return null;
+        }
+
+        return options.Value.DevelopmentSecret?.Trim();
+    }
+
+    private static bool IsLocalBootstrapEnvironment(string? environmentName)
+    {
+        return string.Equals(environmentName, Environments.Development, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(environmentName, "Testing", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(environmentName, "Local", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? ResolveUserId(ClaimsPrincipal? user)
+    {
+        return user?.FindFirst("sub")?.Value
+            ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? user?.FindFirst("sid")?.Value;
+    }
+
+    private static string? ExtractUserIdFromAuthorizationHeader(HttpRequestMessage request)
+    {
+        var authHeader = request.Headers.Authorization;
+        if (authHeader?.Scheme != "Bearer" || string.IsNullOrWhiteSpace(authHeader.Parameter))
+        {
+            return null;
+        }
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (!handler.CanReadToken(authHeader.Parameter))
+            {
+                return null;
+            }
+
+            var jwt = handler.ReadJwtToken(authHeader.Parameter);
+            return jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value
+                ?? jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+                ?? jwt.Claims.FirstOrDefault(c => c.Type == "sid")?.Value;
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+        catch (SecurityTokenException)
+        {
+            return null;
+        }
+    }
+}

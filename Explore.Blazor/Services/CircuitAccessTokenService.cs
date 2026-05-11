@@ -14,6 +14,7 @@ public interface ICircuitAccessTokenService
 {
     string? AccessToken { get; }
     void SetToken(string? token);
+    void ClearToken();
 }
 
 public interface ISetupSecretSessionService
@@ -82,18 +83,19 @@ public sealed class SetupSecretSessionService : ISetupSecretSessionService
 }
 
 /// <summary>
-/// Stores access tokens keyed by user identity.
-/// Tokens are only resolved for the current authenticated user.
+/// Stores access tokens keyed by user identity and auth-session identity.
+/// Tokens are only resolved for the current authenticated user session.
 /// </summary>
 public class CircuitAccessTokenService : ICircuitAccessTokenService
 {
-    // User-scoped token cache (keyed by user id).
+    // Same-node continuity cache keyed by user id + auth session id.
     private static readonly ConcurrentDictionary<string, TokenEntry> _tokenStore = new();
 
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<CircuitAccessTokenService> _logger;
     private string? _localToken;
     private string? _userId;
+    private string? _sessionId;
 
     public CircuitAccessTokenService(IHttpContextAccessor httpContextAccessor, ILogger<CircuitAccessTokenService> logger)
     {
@@ -111,9 +113,10 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
             {
                 if (!string.IsNullOrEmpty(_localToken) && !string.Equals(_localToken, storedToken, StringComparison.Ordinal))
                 {
-                    _logger.LogInformation(
-                        "[CircuitAccessTokenService] Shared token store is overriding a stale circuit-local token for user {UserId}",
-                        _userId ?? GetUserIdFromHttpContext() ?? "(unknown)");
+                        _logger.LogInformation(
+                        "[CircuitAccessTokenService] Shared token store is overriding a stale circuit-local token for user session {UserId}/{SessionId}",
+                        _userId ?? GetUserIdFromHttpContext() ?? "(unknown)",
+                        _sessionId ?? GetSessionIdFromHttpContext() ?? "(none)");
                 }
 
                 return storedToken;
@@ -133,8 +136,7 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
     {
         if (string.IsNullOrEmpty(token))
         {
-            _localToken = null;
-            _logger.LogWarning("[CircuitAccessTokenService] SetToken called with null/empty token");
+            ClearToken();
             return;
         }
 
@@ -149,21 +151,38 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
 
         // Extract userId from the JWT token itself (not from HttpContext)
         var userId = ExtractUserIdFromToken(token, _logger) ?? GetUserIdFromHttpContext();
+        var sessionId = ExtractSessionIdFromToken(token, _logger) ?? GetSessionIdFromHttpContext();
 
-        _logger.LogDebug("[CircuitAccessTokenService] SetToken called. Token length: {TokenLen}, UserId: {UserId}",
-            token.Length, userId ?? "(null)");
+        _logger.LogDebug("[CircuitAccessTokenService] SetToken called. Token length: {TokenLen}, UserId: {UserId}, SessionId: {SessionId}",
+            token.Length, userId ?? "(null)", sessionId ?? "(none)");
 
         if (!string.IsNullOrEmpty(userId))
         {
             _userId = userId;
-            _tokenStore[userId] = new TokenEntry(token, DateTime.UtcNow);
-            _logger.LogDebug("[CircuitAccessTokenService] Token stored for userId: {UserId}. Store has {Count} entries",
-                userId, _tokenStore.Count);
+            _sessionId = sessionId;
+            _tokenStore[BuildStoreKey(userId, sessionId)] = new TokenEntry(userId, sessionId, token, DateTime.UtcNow, GetTokenExpiryUtc(token));
+            _logger.LogDebug("[CircuitAccessTokenService] Token stored for userId/sessionId: {UserId}/{SessionId}. Store has {Count} entries",
+                userId, sessionId ?? "(none)", _tokenStore.Count);
             CleanupOldTokens();
         }
         else
         {
             _logger.LogWarning("[CircuitAccessTokenService] Could not extract userId from token - token not persisted to shared cache");
+        }
+    }
+
+    public void ClearToken()
+    {
+        var userId = _userId ?? GetUserIdFromHttpContext();
+        var sessionId = _sessionId ?? GetSessionIdFromHttpContext();
+
+        _localToken = null;
+        _userId = null;
+        _sessionId = null;
+
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            ClearTokenForUserSession(userId, sessionId);
         }
     }
 
@@ -191,6 +210,26 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
         return null;
     }
 
+    private static string? ExtractSessionIdFromToken(string token, ILogger logger)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (handler.CanReadToken(token))
+            {
+                var jwtToken = handler.ReadJwtToken(token);
+                var sessionId = TryResolveSessionId(jwtToken.Claims);
+                logger.LogDebug("[CircuitAccessTokenService] Extracted sessionId from JWT: {SessionId}", sessionId ?? "(none)");
+                return sessionId;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "[CircuitAccessTokenService] Failed to parse JWT session id");
+        }
+        return null;
+    }
+
     private string? GetUserIdFromHttpContext()
     {
         var userId = TryResolveUserId(_httpContextAccessor.HttpContext?.User);
@@ -198,17 +237,25 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
         return userId;
     }
 
+    private string? GetSessionIdFromHttpContext()
+    {
+        var sessionId = TryResolveSessionId(_httpContextAccessor.HttpContext?.User?.Claims);
+        _logger.LogDebug("[CircuitAccessTokenService] GetSessionIdFromHttpContext: {SessionId}", sessionId ?? "(none)");
+        return sessionId;
+    }
+
     private string? GetStoredToken()
     {
         var userId = _userId ?? GetUserIdFromHttpContext();
-        if (!string.IsNullOrEmpty(userId) && _tokenStore.TryGetValue(userId, out var entry))
+        var sessionId = _sessionId ?? GetSessionIdFromHttpContext();
+        if (!string.IsNullOrEmpty(userId) && _tokenStore.TryGetValue(BuildStoreKey(userId, sessionId), out var entry))
         {
             if (IsUsableAccessToken(entry.Token))
             {
                 return entry.Token;
             }
 
-            _tokenStore.TryRemove(userId, out _);
+            _tokenStore.TryRemove(BuildStoreKey(userId, sessionId), out _);
         }
         return null;
     }
@@ -225,30 +272,66 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
             ?? claims.FirstOrDefault(c => c.Type == "sid")?.Value;
     }
 
+    internal static string? TryResolveSessionId(IEnumerable<Claim>? claims)
+    {
+        return claims?.FirstOrDefault(c => c.Type == "sid")?.Value;
+    }
+
     /// <summary>
     /// Get token for a specific user ID.
     /// </summary>
     public static string? GetTokenForUser(string userId, ILogger? logger = null)
     {
-        logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUser] Looking for userId: {UserId}, Store has {Count} entries",
+        logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUser] Looking for no-session userId: {UserId}, Store has {Count} entries",
             userId, _tokenStore.Count);
 
-        if (_tokenStore.TryGetValue(userId, out var entry))
+        return GetTokenForUserSession(userId, sessionId: null, logger);
+    }
+
+    public static string? GetTokenForUserSession(string userId, string? sessionId, ILogger? logger = null)
+    {
+        logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUserSession] Looking for userId/sessionId: {UserId}/{SessionId}, Store has {Count} entries",
+            userId, sessionId ?? "(none)", _tokenStore.Count);
+
+        if (_tokenStore.TryGetValue(BuildStoreKey(userId, sessionId), out var entry))
         {
             if (IsUsableAccessToken(entry.Token))
             {
-                logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUser] Found valid token for {UserId} (length: {Len})",
-                    userId, entry.Token.Length);
+                logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUserSession] Found valid token for {UserId}/{SessionId} (length: {Len})",
+                    userId, sessionId ?? "(none)", entry.Token.Length);
                 return entry.Token;
             }
-            _tokenStore.TryRemove(userId, out _);
-            logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUser] Token for {UserId} is expired", userId);
+            _tokenStore.TryRemove(BuildStoreKey(userId, sessionId), out _);
+            logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUserSession] Token for {UserId}/{SessionId} is expired", userId, sessionId ?? "(none)");
         }
         else
         {
-            logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUser] No entry found for userId: {UserId}", userId);
+            logger?.LogDebug("[CircuitAccessTokenService.GetTokenForUserSession] No entry found for userId/sessionId: {UserId}/{SessionId}", userId, sessionId ?? "(none)");
         }
         return null;
+    }
+
+    public static void ClearTokenForUserSession(string userId, string? sessionId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        _tokenStore.TryRemove(BuildStoreKey(userId, sessionId), out _);
+    }
+
+    public static void ClearTokensForUser(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        foreach (var key in _tokenStore.Where(kvp => string.Equals(kvp.Value.UserId, userId, StringComparison.Ordinal)).Select(kvp => kvp.Key).ToList())
+        {
+            _tokenStore.TryRemove(key, out _);
+        }
     }
 
     private static void CleanupOldTokens()
@@ -293,7 +376,31 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
         }
     }
 
-    private record TokenEntry(string Token, DateTime CreatedAt);
+    private static string BuildStoreKey(string userId, string? sessionId)
+    {
+        return string.Concat(userId, "\u001f", sessionId ?? string.Empty);
+    }
+
+    private static DateTime? GetTokenExpiryUtc(string token)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (!handler.CanReadToken(token))
+            {
+                return null;
+            }
+
+            var jwt = handler.ReadJwtToken(token);
+            return jwt.ValidTo == DateTime.MinValue ? null : jwt.ValidTo;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private record TokenEntry(string UserId, string? SessionId, string Token, DateTime CreatedAt, DateTime? ExpiresAtUtc);
 }
 
 /// <summary>
@@ -371,7 +478,8 @@ public class AccessTokenForwardingHandler : DelegatingHandler
 
             if (!string.IsNullOrEmpty(userId))
             {
-                token = CircuitAccessTokenService.GetTokenForUser(userId, _logger);
+                var sessionId = CircuitAccessTokenService.TryResolveSessionId(httpContext?.User?.Claims);
+                token = CircuitAccessTokenService.GetTokenForUserSession(userId, sessionId, _logger);
                 if (!string.IsNullOrEmpty(token))
                 {
                     source = "TokenStore(userId)";
@@ -407,7 +515,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             var userId = _circuitUserContext.UserId;
             if (!string.IsNullOrEmpty(userId))
             {
-                token = CircuitAccessTokenService.GetTokenForUser(userId, _logger);
+                token = CircuitAccessTokenService.GetTokenForUserSession(userId, _circuitUserContext.SessionId, _logger);
                 if (!string.IsNullOrEmpty(token))
                 {
                     source = "CircuitUserContext";

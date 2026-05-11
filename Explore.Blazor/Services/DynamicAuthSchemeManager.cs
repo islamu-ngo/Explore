@@ -23,6 +23,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
     private readonly IDataProtectionProvider _dataProtection;
+    private readonly ISafeAuthDiagnosticsPolicy _safeDiagnosticsPolicy;
     private readonly ILogger<DynamicAuthSchemeManager> _logger;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly object _registeredSchemesSync = new();
@@ -43,6 +44,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         IConfiguration configuration,
         IWebHostEnvironment environment,
         IDataProtectionProvider dataProtection,
+        ISafeAuthDiagnosticsPolicy safeDiagnosticsPolicy,
         ILogger<DynamicAuthSchemeManager> logger)
     {
         _schemeProvider = schemeProvider;
@@ -51,6 +53,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         _configuration = configuration;
         _environment = environment;
         _dataProtection = dataProtection;
+        _safeDiagnosticsPolicy = safeDiagnosticsPolicy;
         _logger = logger;
     }
 
@@ -303,12 +306,10 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         if (!string.IsNullOrEmpty(clientSecret?.Trim()))
             _currentKeycloakSecret = clientSecret;
 
-        var trimmedSecret = clientSecret?.Trim();
         _logger.LogInformation(
             "[OIDC-DIAG] Registered Keycloak OIDC scheme (authority={Authority}, clientId={ClientId}, " +
-            "secretLength={SecretLen}, secretPrefix={SecretPrefix})",
-            authority, clientId, trimmedSecret?.Length ?? 0,
-            trimmedSecret?.Length > 4 ? trimmedSecret[..4] + "..." : "(none)");
+            "hasClientSecret={HasClientSecret})",
+            authority, clientId, !string.IsNullOrWhiteSpace(clientSecret));
     }
 
     private void UpdateKeycloakSchemeOptions(string authority, string clientId, string? clientSecret)
@@ -323,8 +324,8 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             _currentKeycloakSecret = clientSecret;
 
         _logger.LogInformation(
-            "Updated Keycloak OIDC scheme options (authority: {Authority}, secretLength: {SecretLen})",
-            authority, clientSecret?.Trim().Length ?? 0);
+            "Updated Keycloak OIDC scheme options (authority: {Authority}, hasClientSecret: {HasClientSecret})",
+            authority, !string.IsNullOrWhiteSpace(clientSecret));
     }
 
     private string? GetCurrentKeycloakSecret()
@@ -536,12 +537,10 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
                 var secret = context.TokenEndpointRequest?.ClientSecret;
                 logger.LogInformation(
                     "[OIDC-DIAG] Authorization code received. " +
-                    "tokenEndpoint={TokenEndpoint}, clientId={ClientId}, secretLength={SecretLen}, " +
-                    "secretPrefix={SecretPrefix}",
+                    "tokenEndpoint={TokenEndpoint}, hasClientId={HasClientId}, hasClientSecret={HasClientSecret}",
                     context.TokenEndpointRequest?.TokenEndpoint,
-                    context.TokenEndpointRequest?.ClientId,
-                    secret?.Length ?? 0,
-                    secret?.Length > 4 ? secret[..4] + "..." : "(empty)");
+                    !string.IsNullOrWhiteSpace(context.TokenEndpointRequest?.ClientId),
+                    !string.IsNullOrWhiteSpace(secret));
                 return Task.CompletedTask;
             },
             OnTokenResponseReceived = context =>
@@ -553,12 +552,11 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
                     .CreateLogger("AuthEndpoints");
                 logger.LogInformation(
                     "[OIDC-DIAG] Token response received (idToken={HasIdToken}, accessToken={HasAccessToken}, " +
-                    "refreshToken={HasRefreshToken}, error={Error}, errorDescription={ErrorDescription})",
+                    "refreshToken={HasRefreshToken}, hasError={HasError})",
                     !string.IsNullOrEmpty(context.TokenEndpointResponse?.IdToken),
                     !string.IsNullOrEmpty(context.TokenEndpointResponse?.AccessToken),
                     !string.IsNullOrEmpty(context.TokenEndpointResponse?.RefreshToken),
-                    context.TokenEndpointResponse?.Error,
-                    context.TokenEndpointResponse?.ErrorDescription);
+                    !string.IsNullOrWhiteSpace(context.TokenEndpointResponse?.Error));
                 return Task.CompletedTask;
             },
             OnRemoteFailure = context =>
@@ -569,45 +567,22 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
                 var provider = context.Scheme.Name.ToLowerInvariant();
                 var returnUrl = context.Properties?.RedirectUri ?? "/";
 
-                // Log credentials diagnostics for token exchange failures
-                var oidcOptions = context.HttpContext.RequestServices
-                    .GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
-                    .Get(context.Scheme.Name);
-
-                var secret = oidcOptions.ClientSecret;
-                var innerMsg = context.Failure?.InnerException?.Message;
-                var errorMsg = context.Failure?.Message ?? "unknown";
-                var exType = context.Failure?.GetType().Name ?? "unknown";
-                var secretLen = secret?.Length ?? 0;
-                var secretPrefix = secret?.Length > 4 ? secret[..4] + "..." : "(none)";
+                var diagnostic = _safeDiagnosticsPolicy.CreateDiagnostic(
+                    "oidc_remote_failure",
+                    context.Failure);
 
                 logger.LogError(
-                    context.Failure,
-                    "[OIDC-DIAG] Remote authentication FAILURE for {Provider}: {Error} " +
-                    "(innerError={InnerError}, exceptionType={ExType}, " +
-                    "clientId={ClientId}, secretLength={SecretLen}, secretPrefix={SecretPrefix}, " +
-                    "authority={Authority}, callbackPath={CallbackPath})",
-                    provider, errorMsg,
-                    innerMsg,
-                    exType,
-                    oidcOptions.ClientId,
-                    secretLen,
-                    secretPrefix,
-                    oidcOptions.Authority,
-                    oidcOptions.CallbackPath);
+                    "[OIDC-DIAG] Remote authentication failure for {Provider} " +
+                    "(errorCode={ErrorCode}, correlationId={CorrelationId}, failureCategory={FailureCategory})",
+                    provider,
+                    diagnostic.ErrorCode,
+                    diagnostic.CorrelationId,
+                    diagnostic.FailureCategory);
 
-                // Write to stderr so it's visible even when Aspire dashboard misses structured logs
-                Console.Error.WriteLine(
-                    $"[OIDC-DIAG] FAILURE: {errorMsg} | inner={innerMsg} | type={exType} | " +
-                    $"clientId={oidcOptions.ClientId} | secretLen={secretLen} | secretPrefix={secretPrefix} | " +
-                    $"authority={oidcOptions.Authority}");
-
-                // Include error detail in redirect URL for immediate browser visibility
-                var errorDetail = Uri.EscapeDataString(
-                    $"{errorMsg}|secretLen={secretLen}|clientId={oidcOptions.ClientId}");
-                var redirectUrl = $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}" +
-                                  $"&challengeError=1&provider={Uri.EscapeDataString(provider)}" +
-                                  $"&errorDetail={errorDetail}";
+                var redirectUrl = _safeDiagnosticsPolicy.BuildLoginRedirectUrl(
+                    returnUrl,
+                    provider,
+                    diagnostic);
                 context.Response.Redirect(redirectUrl);
                 context.HandleResponse();
                 return Task.CompletedTask;

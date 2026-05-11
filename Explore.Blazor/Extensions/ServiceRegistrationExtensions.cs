@@ -62,6 +62,15 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
         services.AddSingleton<SetupSecretSessionService>();
         services.AddSingleton<ISetupSecretSessionService>(sp => sp.GetRequiredService<SetupSecretSessionService>());
+        services.Configure<SetupSecretResolverOptions>(options =>
+        {
+            options.DevelopmentSecret = configuration["Setup:Secret"]?.Trim()
+                ?? configuration["Explore:Setup:Secret"]?.Trim()
+                ?? configuration["SETUP_SECRET"]?.Trim();
+        });
+        services.AddSingleton<ISetupSecretCookieProtector, SetupSecretCookieProtector>();
+        services.AddScoped<ISetupSecretResolver, SetupSecretResolver>();
+        services.AddScoped<IStorageUploadSessionStore, StorageUploadSessionStore>();
         services.AddMemoryCache();
         RegisterResolverConfigDataServices(services, configuration);
         services.AddScoped<IResolverConfigService, ResolverConfigService>();
