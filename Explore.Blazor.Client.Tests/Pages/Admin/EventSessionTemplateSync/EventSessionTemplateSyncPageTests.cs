@@ -8,6 +8,15 @@ using EventSessionTemplateSyncApplyRequest = Explore.Blazor.Client.Models.EventS
 using Explore.Blazor.Client.Pages.Admin.EventSessionTemplateSync;
 using Explore.Blazor.Client.Services.EventSessionTemplateSync;
 using MudBlazor;
+using AddedDefinitionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.AddedDefinitionDto;
+using AddedOptionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.AddedOptionDto;
+using FieldChangeDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.FieldChangeDto;
+using ModifiedDefinitionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.ModifiedDefinitionDto;
+using ModifiedOptionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.ModifiedOptionDto;
+using RetiredDefinitionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.RetiredDefinitionDto;
+using RetiredOptionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.RetiredOptionDto;
+using TemplateDiffDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.TemplateDiffDto;
+using UntouchedLocalDefinitionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.UntouchedLocalDefinitionDto;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin.EventSessionTemplateSync;
 
