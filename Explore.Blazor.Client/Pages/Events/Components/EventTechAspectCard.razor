@@ -13,12 +13,12 @@
         @if (ShowActions)
         {
             <div class="tech-aspect-card__actions">
-                <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                Size="Size.Small"
                                Color="Color.Primary"
                                OnClick="@(() => OnEdit.InvokeAsync())"
                                Title="Edit Tech Aspect" />
-                <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                Size="Size.Small"
                                Color="Color.Error"
                                OnClick="@(() => OnDelete.InvokeAsync())"

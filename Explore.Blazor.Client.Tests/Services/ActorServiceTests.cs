@@ -133,9 +133,16 @@ public class ActorServiceTests
         {
             _embedded = new HalCollectionEmbeddedOfActorListDto
             {
-                Items = items.Cast<object>().ToList()
+                Items = items.Select(ToHalResource).ToList()
             }
         };
+    }
+
+    private static HalResourceOfActorListDto ToHalResource(ActorListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfActorListDto>(json)
+               ?? new HalResourceOfActorListDto();
     }
 
     #endregion

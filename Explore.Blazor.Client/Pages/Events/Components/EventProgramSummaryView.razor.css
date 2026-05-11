@@ -107,11 +107,22 @@
     min-width: 0;
 }
 
+.event-program-summary__item-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--isl-space-1);
+}
+
 @media (max-width: 37.4375em) {
     .event-program-summary__header,
     .event-program-summary__group-header,
     .event-program-summary__item {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .event-program-summary__item-chips {
+        justify-content: flex-start;
     }
 }

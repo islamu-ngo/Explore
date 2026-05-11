@@ -4,6 +4,7 @@ using System.Reflection;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Options = Microsoft.Extensions.Options.Options;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -139,6 +140,65 @@ public class CircuitAccessTokenServiceTests
     }
 
     [Test]
+    public async Task AccessTokenForwardingHandler_WithHttpContextUserSession_UsesOnlyMatchingSessionStoredToken()
+    {
+        ClearTokenStore();
+
+        var userId = Guid.NewGuid().ToString();
+        var sessionA = Guid.NewGuid().ToString();
+        var sessionB = Guid.NewGuid().ToString();
+        var tokenA = CreateJwt(userId, sessionId: sessionA);
+
+        var storeService = new CircuitAccessTokenService(
+            new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionA) },
+            Substitute.For<ILogger<CircuitAccessTokenService>>());
+        storeService.SetToken(tokenA);
+
+        var accessor = new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionB) };
+        var handler = new TestableAccessTokenForwardingHandler(
+            accessor,
+            Substitute.For<ICircuitAccessTokenService>(),
+            Substitute.For<ICircuitUserContext>(),
+            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+        var terminal = new CaptureHandler();
+        handler.InnerHandler = terminal;
+
+        var response = await handler.InvokeAsync(new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/protected"));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(terminal.Request?.Headers.Authorization).IsNull();
+    }
+
+    [Test]
+    public async Task AccessTokenForwardingHandler_AfterClear_DoesNotForwardStaticToken()
+    {
+        ClearTokenStore();
+
+        var userId = Guid.NewGuid().ToString();
+        var sessionId = Guid.NewGuid().ToString();
+        var token = CreateJwt(userId, sessionId: sessionId);
+        var context = CreateHttpContextWithSession(userId, sessionId);
+        var storeService = new CircuitAccessTokenService(
+            new HttpContextAccessor { HttpContext = context },
+            Substitute.For<ILogger<CircuitAccessTokenService>>());
+        storeService.SetToken(token);
+        storeService.ClearToken();
+
+        var handler = new TestableAccessTokenForwardingHandler(
+            new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionId) },
+            Substitute.For<ICircuitAccessTokenService>(),
+            Substitute.For<ICircuitUserContext>(),
+            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+        var terminal = new CaptureHandler();
+        handler.InnerHandler = terminal;
+
+        var response = await handler.InvokeAsync(new HttpRequestMessage(HttpMethod.Get, "https://localhost/api/protected"));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(terminal.Request?.Headers.Authorization).IsNull();
+    }
+
+    [Test]
     public async Task CircuitAccessTokenService_GetTokenForUser_ReturnsOnlyMatchingUserToken()
     {
         ClearTokenStore();
@@ -199,6 +259,97 @@ public class CircuitAccessTokenServiceTests
         service.SetToken(sidToken);
 
         await Assert.That(CircuitAccessTokenService.GetTokenForUser(userId)).IsEqualTo(sidToken);
+    }
+
+    [Test]
+    public async Task CircuitAccessTokenService_SetTokenNull_ClearsLocalAndSharedSessionToken()
+    {
+        ClearTokenStore();
+
+        var userId = Guid.NewGuid().ToString();
+        var sessionId = Guid.NewGuid().ToString();
+        var token = CreateJwt(userId, sessionId: sessionId);
+        var context = CreateHttpContextWithSession(userId, sessionId);
+        var service = new CircuitAccessTokenService(
+            new HttpContextAccessor { HttpContext = context },
+            Substitute.For<ILogger<CircuitAccessTokenService>>());
+
+        service.SetToken(token);
+        service.SetToken(null);
+
+        await Assert.That(service.AccessToken).IsNull();
+        await Assert.That(CircuitAccessTokenService.GetTokenForUserSession(userId, sessionId)).IsNull();
+    }
+
+    [Test]
+    public async Task CircuitAccessTokenService_ClearToken_DoesNotClearOtherSessionForSameUser()
+    {
+        ClearTokenStore();
+
+        var userId = Guid.NewGuid().ToString();
+        var sessionA = Guid.NewGuid().ToString();
+        var sessionB = Guid.NewGuid().ToString();
+        var tokenA = CreateJwt(userId, sessionId: sessionA);
+        var tokenB = CreateJwt(userId, sessionId: sessionB);
+
+        var serviceA = new CircuitAccessTokenService(
+            new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionA) },
+            Substitute.For<ILogger<CircuitAccessTokenService>>());
+        var serviceB = new CircuitAccessTokenService(
+            new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionB) },
+            Substitute.For<ILogger<CircuitAccessTokenService>>());
+
+        serviceA.SetToken(tokenA);
+        serviceB.SetToken(tokenB);
+        serviceA.ClearToken();
+
+        await Assert.That(CircuitAccessTokenService.GetTokenForUserSession(userId, sessionA)).IsNull();
+        await Assert.That(CircuitAccessTokenService.GetTokenForUserSession(userId, sessionB)).IsEqualTo(tokenB);
+    }
+
+    [Test]
+    public async Task CircuitAccessTokenService_AccessToken_DoesNotUseTokenFromDifferentSessionForSameUser()
+    {
+        ClearTokenStore();
+
+        var userId = Guid.NewGuid().ToString();
+        var sessionA = Guid.NewGuid().ToString();
+        var sessionB = Guid.NewGuid().ToString();
+        var tokenA = CreateJwt(userId, sessionId: sessionA);
+
+        var ownerService = new CircuitAccessTokenService(
+            new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionA) },
+            Substitute.For<ILogger<CircuitAccessTokenService>>());
+        ownerService.SetToken(tokenA);
+
+        var requesterService = new CircuitAccessTokenService(
+            new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionB) },
+            Substitute.For<ILogger<CircuitAccessTokenService>>());
+
+        await Assert.That(requesterService.AccessToken).IsNull();
+    }
+
+    [Test]
+    public async Task CircuitAccessTokenService_SetTokenRefreshSuccess_UpdatesSharedSessionTokenAndExistingCircuitSeesNewToken()
+    {
+        ClearTokenStore();
+
+        var userId = Guid.NewGuid().ToString();
+        var sessionId = Guid.NewGuid().ToString();
+        var staleToken = CreateJwt(userId, expires: DateTime.UtcNow.AddMinutes(20), sessionId: sessionId);
+        var refreshedToken = CreateJwt(userId, expires: DateTime.UtcNow.AddMinutes(40), sessionId: sessionId);
+
+        var circuitService = new CircuitAccessTokenService(
+            new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionId) },
+            Substitute.For<ILogger<CircuitAccessTokenService>>());
+        circuitService.SetToken(staleToken);
+
+        var refreshScopeService = new CircuitAccessTokenService(
+            new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionId) },
+            Substitute.For<ILogger<CircuitAccessTokenService>>());
+        refreshScopeService.SetToken(refreshedToken);
+
+        await Assert.That(circuitService.AccessToken).IsEqualTo(refreshedToken);
     }
 
     [Test]
@@ -314,10 +465,23 @@ public class CircuitAccessTokenServiceTests
         return context;
     }
 
-    private static string CreateJwt(string sub, DateTime? expires = null)
+    private static string CreateJwt(string sub, DateTime? expires = null, string? sessionId = null)
     {
-        var jwt = new JwtSecurityToken(claims: new[] { new Claim("sub", sub) }, expires: expires);
+        var claims = new List<Claim> { new("sub", sub) };
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            claims.Add(new Claim("sid", sessionId));
+        }
+
+        var jwt = new JwtSecurityToken(claims: claims, expires: expires);
         return new JwtSecurityTokenHandler().WriteToken(jwt);
+    }
+
+    private static DefaultHttpContext CreateHttpContextWithSession(string userId, string sessionId, string? authToken = null)
+    {
+        var context = CreateHttpContext(new Claim("sub", userId), authToken);
+        ((ClaimsIdentity)context.User.Identity!).AddClaim(new Claim("sid", sessionId));
+        return context;
     }
 
     private static string CreateJwtWithSid(string sid, DateTime? expires = null)

@@ -204,9 +204,16 @@ public class LocationRoomServiceTests
         {
             _embedded = new HalCollectionEmbeddedOfLocationRoomListDto
             {
-                Items = items.Cast<object>().ToList()
+                Items = items.Select(ToHalResource).ToList()
             }
         };
+    }
+
+    private static HalResourceOfLocationRoomListDto ToHalResource(LocationRoomListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfLocationRoomListDto>(json)
+               ?? new HalResourceOfLocationRoomListDto();
     }
 
     private static HalResourceOfLocationRoomDto CreateHalResourceResponse(LocationRoomDto dto)

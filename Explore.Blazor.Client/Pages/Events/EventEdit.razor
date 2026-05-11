@@ -26,21 +26,15 @@
     {
         <MudContainer Class="py-8">
             <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Event not found.</MudAlert>
-            <AppButton Href="/my/events" Class="mt-4">Back to My Events</AppButton>
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/my/events" Class="mt-4">Back to My Events</MudButton>
         </MudContainer>
     }
     else
     {
         <div class="edit-event">
-        @if (!string.IsNullOrWhiteSpace(errorMessage))
-        {
-            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4 rounded-lg"
-                      ShowCloseIcon="true" CloseIconClicked="@(() => errorMessage = string.Empty)">
-                @errorMessage
-            </MudAlert>
-        }
-
-        <EditForm Model="updateDto" OnValidSubmit="@HandleSubmit">
+        <EditForm EditContext="_editContext" OnValidSubmit="@HandleSubmit">
+            <FormSubmissionGuard State="@_submitState">
+            <AppValidationSummary />
 
             <MudGrid Spacing="5">
                 @* ===== LEFT COLUMN: Event Image ===== *@
@@ -94,14 +88,14 @@
                                            Class="rounded-lg border-solid border-1 mud-border-lines-default">
                             <MudGrid Spacing="2">
                                 <MudItem xs="12">
-                                    <AppTextField T="string" @bind-Value="_appearance.BackgroundColor"
+                                    <MudTextField T="string" @bind-Value="_appearance.BackgroundColor"
                                                   Label="Background Color"
                                                   Variant="Variant.Outlined"
                                                   Margin="Margin.Dense"
                                                   Placeholder="#0f172a" />
                                 </MudItem>
                                 <MudItem xs="12">
-                                    <AppTextField T="string" @bind-Value="_appearance.ImageUri"
+                                    <MudTextField T="string" @bind-Value="_appearance.ImageUri"
                                                   Label="Background Image URL"
                                                   Variant="Variant.Outlined"
                                                   Margin="Margin.Dense"
@@ -128,22 +122,22 @@
                 <MudItem xs="12" sm="7" Class="edit-event__col-right">
 
                     @* --- Event Title (large, Luma-style) --- *@
-                    <AppTextField T="string" @bind-Value="updateDto.Title"
+                    <MudTextField T="string" @bind-Value="updateDto.Title"
                                   Placeholder="Event Name"
                                   Variant="Variant.Text"
                                   FullWidth="true"
                                   Immediate="true"
                                   Class="edit-event__title-input mb-1" />
 
-                    <AppButton Variant="Variant.Text"
+                    <MudButton Elevation="0" Variant="Variant.Text"
                                Size="Size.Small"
                                Color="Color.Default"
-                               OnClick="@(() => _showTimezoneSelector = !_showTimezoneSelector)"
+                               OnClick="@(() => { _showTimezoneSelector = !_showTimezoneSelector; })"
                                Class="edit-event__timezone-btn mb-3">
                         <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" />
                         @_selectedTimezoneDisplay
                         <MudIcon Icon="@(_showTimezoneSelector ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" Size="Size.Small" />
-                    </AppButton>
+                    </MudButton>
                     @if (_showTimezoneSelector)
                     {
                         <MudAutocomplete T="TimeZoneInfo"
@@ -180,7 +174,7 @@
                     }
 
                     @* --- Add Description Button (Luma-style popup) --- *@
-                    <AppButton StartIcon="@Icons.Material.Filled.Notes"
+                    <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Notes"
                                Variant="Variant.Text"
                                Color="Color.Default"
                                FullWidth="true"
@@ -194,7 +188,7 @@
                         {
                             <span>Add a description</span>
                         }
-                    </AppButton>
+                    </MudButton>
 
                     @* --- Program Summary: sessions stay as program items, sections stay in the program manager. --- *@
                     <EventOptionsSection Title="Program summary"
@@ -205,26 +199,26 @@
                                         Icon="@Icons.Material.Filled.EventNote"
                                         Summary="@ProgramItemsSummary"
                                         Description="@ProgramItemsDescription">
-                            <AppButton StartIcon="@Icons.Material.Filled.Add"
+                            <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Add"
                                        Variant="Variant.Text"
                                        Color="Color.Primary"
                                        OnClick="AddSession"
                                        Disabled="@(!CanAddSession || isProcessing)">
                                 Add session
-                            </AppButton>
+                            </MudButton>
                         </EventOptionRow>
 
                      <EventOptionRow Title="Program sections"
                                      Icon="@Icons.Material.Filled.AccountTree"
                                      Summary="@ProgramSectionsSummary"
                                      Description="Use sections, tracks, devrooms, or stages to organize saved program items without changing the event hierarchy.">
-                             <AppButton StartIcon="@Icons.Material.Filled.AccountTree"
+                             <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.AccountTree"
                                         Variant="Variant.Text"
                                         Color="Color.Default"
                                         OnClick="OpenProgramSectionsDialogAsync"
                                         Disabled="@(!CanManageProgramSections || isProcessing)">
                               Add section/track
-                          </AppButton>
+                          </MudButton>
                      </EventOptionRow>
                  </EventOptionsSection>
 
@@ -321,25 +315,7 @@
                             </MudSelect>
                         </div>
 
-                        @* Status *@
-                        <div class="edit-event__option-row">
-                            <div class="d-flex align-center gap-2">
-                                <MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" Color="Color.Secondary" />
-                                <MudText Typo="Typo.body2">Status</MudText>
-                            </div>
-                            <MudSelect T="int?" @bind-Value="updateDto.EventStatusId"
-                                       Variant="Variant.Text" Margin="Margin.Dense"
-                                       AnchorOrigin="Origin.BottomCenter"
-                                       Class="edit-event__option-select">
-                                @if (eventStatuses != null)
-                                {
-                                    @foreach (var s in eventStatuses)
-                                    {
-                                        <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.FullName</MudSelectItem>
-                                    }
-                                }
-                            </MudSelect>
-                        </div>
+
 
                         @* Audience Gender & Age *@
                         <div class="edit-event__option-row">
@@ -443,7 +419,7 @@
                                 {
                                     <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="font-style: italic;">None</MudText>
                                 }
-                                <AppIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                                OnClick="@(() => { _editTagCatMode = TagCategoryMode.Categories; _editTagCatInitialIds = selectedCategoryIds.ToList().AsReadOnly(); _showEditTagCatPopup = true; })"
                                                aria-label="Manage categories" />
                             </div>
@@ -469,7 +445,7 @@
                                 {
                                     <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="font-style: italic;">None</MudText>
                                 }
-                                <AppIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                                OnClick="@(() => { _editTagCatMode = TagCategoryMode.Tags; _editTagCatInitialIds = selectedTagIds.ToList().AsReadOnly(); _showEditTagCatPopup = true; })"
                                                aria-label="Manage tags" />
                             </div>
@@ -498,12 +474,12 @@
             </MudGrid>
 
             @* ===== Update Event Button (full width) ===== *@
-            <AppButton ButtonType="ButtonType.Submit"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" ButtonType="ButtonType.Submit"
                        FullWidth="true"
-                       Disabled="@(isProcessing || _isUploadingImage)"
+                       Disabled="@(_submitState.IsSubmitting || _isUploadingImage)"
                        Class="mt-6 edit-event__submit-button"
                        Size="Size.Large">
-                @if (isProcessing)
+                @if (_submitState.IsSubmitting)
                 {
                     <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                     <span>Updating...</span>
@@ -517,7 +493,8 @@
                 {
                     <span>Update Event</span>
                 }
-            </AppButton>
+            </MudButton>
+            </FormSubmissionGuard>
         </EditForm>
         </div>
 

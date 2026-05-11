@@ -22,12 +22,12 @@
                             @group.Sessions.Count session@(group.Sessions.Count == 1 ? string.Empty : "s") · @TimezoneDisplay
                         </MudText>
                     </div>
-                    <AppButton Variant="Variant.Text"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text"
                                Size="Size.Small"
                                StartIcon="@Icons.Material.Filled.Add"
                                OnClick="@(() => OnAddItineraryItem.InvokeAsync(group.Day))">
                         Add to this day
-                    </AppButton>
+                    </MudButton>
                 </div>
 
                 <div class="schedule-timeline__items">
@@ -45,15 +45,15 @@
                                 </MudText>
                             </div>
                             <div class="schedule-timeline__actions">
-                                <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                Size="Size.Small"
                                                aria-label="Edit session"
                                                OnClick="@(() => OnEditSession.InvokeAsync(entry.Index))" />
-                                <AppIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
                                                Size="Size.Small"
                                                aria-label="Duplicate session"
                                                OnClick="@(() => OnDuplicateSession.InvokeAsync(entry.Index))" />
-                                <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                Size="Size.Small"
                                                Color="Color.Error"
                                                aria-label="Remove session"
@@ -67,12 +67,12 @@
     }
 
     <div class="schedule-timeline__footer">
-        <AppButton StartIcon="@Icons.Material.Filled.Add"
+        <MudButton Elevation="0" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                    Variant="Variant.Outlined"
                    FullWidth="true"
                    OnClick="@(() => OnAddSession.InvokeAsync())">
             Add another session
-        </AppButton>
+        </MudButton>
     </div>
 </div>
 

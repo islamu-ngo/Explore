@@ -5,12 +5,13 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using Explore.Blazor.Client.Contracts.Services.Lookup
+@using Microsoft.AspNetCore.Components.Forms
+@using Explore.Blazor.Client.Components.Forms
 @using MudBlazor
 
 @inject IEventAspectService EventAspectService
 @inject IMadhabService MadhabService
 @inject ILanguageService LanguageService
-@inject ISnackbar Snackbar
 @inject ILogger<IslamicAspectEditDialog> Logger
 
 <MudDialog>
@@ -29,7 +30,9 @@
         }
         else
         {
-            <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <EditForm EditContext="_editContext">
+                <FormSubmissionGuard State="@_submitState">
+                <AppValidationSummary />
                 <MudGrid Spacing="3">
                     <MudItem xs="12" sm="6">
                         <MudSelect T="int?"
@@ -102,14 +105,15 @@
                                      Color="Color.Primary" />
                     </MudItem>
                 </MudGrid>
-            </MudForm>
+                </FormSubmissionGuard>
+            </EditForm>
         }
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel" Variant="Variant.Text">Cancel</AppButton>
-        <AppButton OnClick="SaveAsync"
-                   Disabled="@(_isSaving || _isLoading)">
-            @if (_isSaving)
+        <MudButton Elevation="0" Color="Color.Primary" OnClick="Cancel" Variant="Variant.Text" Disabled="_submitState.IsSubmitting">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync"
+                   Disabled="@(_isLoading || _submitState.IsSubmitting)">
+            @if (_submitState.IsSubmitting)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                 <span>Saving...</span>
@@ -118,7 +122,7 @@
             {
                 <span>Save</span>
             }
-        </AppButton>
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -134,10 +138,11 @@
 
     private bool IsNew => ExistingAspect == null;
 
-    private MudForm _form = null!;
-    private bool _isValid;
     private bool _isLoading = true;
-    private bool _isSaving;
+    
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
 
     private CreateUpdateIslamicAspectDto _model = new();
     private ICollection<MadhabListDto> _madhabs = new List<MadhabListDto>();
@@ -160,6 +165,9 @@
             };
         }
 
+        _editContext = new EditContext(_model);
+        _errorStore.Init(_editContext);
+
         _isLoading = false;
     }
 
@@ -178,15 +186,16 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load lookups for Islamic aspect dialog");
-            Snackbar.Add("Failed to load form data", Severity.Error);
+            _submitState.Fail("Failed to load form data");
         }
     }
 
     private async Task SaveAsync()
     {
-        if (_isSaving) return;
+        if (_submitState.IsSubmitting) return;
+        if (!_editContext.Validate()) return;
 
-        _isSaving = true;
+        _submitState.Start();
 
         try
         {
@@ -194,23 +203,36 @@
 
             if (response?.Success == true)
             {
-                Snackbar.Add(IsNew ? "Islamic characteristics added" : "Islamic characteristics updated", Severity.Success);
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
             {
                 var errorMessage = response?.Errors?.FirstOrDefault() ?? "Failed to save Islamic characteristics";
-                Snackbar.Add(errorMessage, Severity.Error);
+                _submitState.Fail(errorMessage);
+            }
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail($"Failed to save aspect: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving Islamic aspect for event {EventId}", EventId);
-            Snackbar.Add("An error occurred while saving", Severity.Error);
+            _submitState.Fail("An error occurred while saving");
         }
         finally
         {
-            _isSaving = false;
+            if (!_submitState.HasError)
+            {
+                _submitState.Complete();
+            }
         }
     }
 

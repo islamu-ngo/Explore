@@ -12,6 +12,7 @@ using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using MudBlazor;
+using Explore.Blazor.Client.Components.Forms;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
@@ -57,6 +58,9 @@ public partial class CreateEvent
     // Form state
     private Guid? _currentUserId;
 private CreateEventDraftRequestDto createDto = new();
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
     private ICollection<EventTypeListDto>? eventTypes;
     private ICollection<AudienceGenderListDto>? audienceGenders;
     private ICollection<AudienceAgeListDto>? audienceAges;
@@ -77,7 +81,7 @@ private CreateEventDraftRequestDto createDto = new();
     private int _templateListRequestVersion;
     private int _templatePreviewRequestVersion;
     private bool IsSubmitDisabled =>
-        isProcessing
+        _submitState.IsSubmitting
         || _isUploadingImage
         || _isLoadingTemplatePreview
         || (_creationContext is not null && _creationContext.CanCreate != true)
@@ -86,7 +90,6 @@ private CreateEventDraftRequestDto createDto = new();
     private bool isLoading = true;
     private bool _dataLoaded = false;
     private int? selectedMadhabId = null;
-    private string errorMessage = string.Empty;
     private IReadOnlyList<EventPublishReadinessErrorDto> _publishReadinessErrors = Array.Empty<EventPublishReadinessErrorDto>();
 
     // Image upload state
@@ -134,7 +137,6 @@ private CreateEventDraftRequestDto createDto = new();
     private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Local;
     private string _selectedTimezoneDisplay => FormatTimezoneShort(_selectedTimezone);
     private static readonly IReadOnlyList<TimeZoneInfo> _allTimezones = TimeZoneInfo.GetSystemTimeZones();
-    private bool isProcessing = false;
     private Guid createdEventId = Guid.Empty;
 
     private string BuildProgramSummary()
@@ -286,6 +288,9 @@ private CreateEventDraftRequestDto createDto = new();
 
     protected override async Task OnInitializedAsync()
     {
+        _editContext = new EditContext(createDto);
+        _errorStore.Init(_editContext);
+
         Logger.LogInformation("OnInitializedAsync starting");
         await LoadFormData();
 
@@ -688,7 +693,7 @@ private CreateEventDraftRequestDto createDto = new();
         {
             if (sessions.Count <= 1)
             {
-                errorMessage = "You must have at least one session.";
+                _submitState.Fail("You must have at least one session.");
                 return;
             }
 
@@ -712,7 +717,7 @@ private CreateEventDraftRequestDto createDto = new();
                     }
                     catch (Exception ex)
                     {
-                        errorMessage = $"Failed to delete session: {ex.Message}";
+                        _submitState.Fail($"Failed to delete session: {ex.Message}");
                     }
                 }
             }
@@ -876,17 +881,17 @@ private CreateEventDraftRequestDto createDto = new();
 
     private bool ValidateForm()
     {
-        errorMessage = string.Empty;
+        _submitState.Reset();
 
         if (_creationContext is not null && _creationContext.CanCreate != true)
         {
-            errorMessage = _creationContext.UnavailableReason ?? "You do not have access to create events.";
+            _submitState.Fail(_creationContext.UnavailableReason ?? "You do not have access to create events.");
             return false;
         }
 
         if (!CanSelectPublisherMode(_publisherMode))
         {
-            errorMessage = "Select an available publisher before creating the event.";
+            _submitState.Fail("Select an available publisher before creating the event.");
             return false;
         }
 
@@ -894,17 +899,17 @@ private CreateEventDraftRequestDto createDto = new();
         {
             if (!_selectedOrganizationId.HasValue)
             {
-                errorMessage = "Please select an organization.";
+                _submitState.Fail("Please select an organization.");
                 return false;
             }
             if (!string.IsNullOrEmpty(_organizationRoleError))
             {
-                errorMessage = _organizationRoleError;
+                _submitState.Fail(_organizationRoleError);
                 return false;
             }
             if (_creationContext is not null && GetPublisherOption("organization", _selectedOrganizationId.Value)?.CanPublish != true)
             {
-                errorMessage = "You cannot publish events for the selected organization.";
+                _submitState.Fail("You cannot publish events for the selected organization.");
                 return false;
             }
         }
@@ -913,17 +918,17 @@ private CreateEventDraftRequestDto createDto = new();
         {
             if (!_selectedGroupId.HasValue)
             {
-                errorMessage = "Please select a group.";
+                _submitState.Fail("Please select a group.");
                 return false;
             }
             if (!string.IsNullOrEmpty(_groupRoleError))
             {
-                errorMessage = _groupRoleError;
+                _submitState.Fail(_groupRoleError);
                 return false;
             }
             if (_creationContext is not null && GetPublisherOption("group", _selectedGroupId.Value)?.CanPublish != true)
             {
-                errorMessage = "You cannot publish events for the selected group.";
+                _submitState.Fail("You cannot publish events for the selected group.");
                 return false;
             }
         }
@@ -1057,19 +1062,18 @@ private CreateEventDraftRequestDto createDto = new();
 
         if (_isUploadingImage)
         {
-            errorMessage = "Please wait for the image upload to complete.";
+            _submitState.Fail("Please wait for the image upload to complete.");
             return;
         }
 
         if (_isLoadingTemplatePreview)
         {
-            errorMessage = "Please wait for the template preview to finish loading.";
+            _submitState.Fail("Please wait for the template preview to finish loading.");
             return;
         }
 
-        if (isProcessing) return;
-        isProcessing = true;
-        errorMessage = string.Empty;
+        if (_submitState.IsSubmitting) return;
+        _submitState.Start();
         _publishReadinessErrors = Array.Empty<EventPublishReadinessErrorDto>();
 
         try
@@ -1103,6 +1107,7 @@ private CreateEventDraftRequestDto createDto = new();
 
         if (response?.Success == true && response.Id.HasValue && response.Id != Guid.Empty)
             {
+                _submitState.Complete();
                 createdEventId = response.Id.Value;
                 Logger.LogInformation("Event created with ID: {EventId}", createdEventId);
 
@@ -1127,17 +1132,25 @@ private CreateEventDraftRequestDto createDto = new();
                 {
                     errorMsg += " Errors: " + string.Join(", ", response.Errors);
                 }
-                errorMessage = errorMsg;
+                _submitState.Fail(errorMsg);
+            }
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                Logger.LogError(ex, "Exception during event creation");
+                _submitState.Fail($"Error creating event: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Exception during event creation");
-            errorMessage = $"Error creating event: {ex.Message}";
-        }
-        finally
-        {
-            isProcessing = false;
+            _submitState.Fail($"Error creating event: {ex.Message}");
         }
     }
 
@@ -1151,7 +1164,7 @@ private CreateEventDraftRequestDto createDto = new();
         var readiness = await EventService.GetEventPublishReadinessAsync(eventId);
         if (readiness is null)
         {
-            errorMessage = "The draft was saved, but publish readiness could not be checked. Open the draft to continue.";
+            _submitState.Fail("The draft was saved, but publish readiness could not be checked. Open the draft to continue.");
             return;
         }
 
@@ -1159,7 +1172,7 @@ private CreateEventDraftRequestDto createDto = new();
         if (readiness.IsReady != true)
         {
             await ShowPublishReadinessErrorsAsync();
-            errorMessage = "The draft was saved, but it is not ready to publish yet.";
+            _submitState.Fail("The draft was saved, but it is not ready to publish yet.");
             return;
         }
 
@@ -1167,14 +1180,14 @@ private CreateEventDraftRequestDto createDto = new();
         var concurrencyStamp = draft?.ConcurrencyStamp;
         if (concurrencyStamp is null || concurrencyStamp == Guid.Empty)
         {
-            errorMessage = "The draft was saved, but its publish token could not be loaded. Open the draft to continue.";
+            _submitState.Fail("The draft was saved, but its publish token could not be loaded. Open the draft to continue.");
             return;
         }
 
         var confirmed = await ConfirmPublishDraftAsync(draft);
         if (confirmed != true)
         {
-            errorMessage = "The draft was saved. Review it again when you're ready to publish.";
+            _submitState.Fail("The draft was saved. Review it again when you're ready to publish.");
             return;
         }
 
@@ -1185,11 +1198,12 @@ private CreateEventDraftRequestDto createDto = new();
             return;
         }
 
-        errorMessage = publishResponse?.Message ?? "The draft was saved, but publishing failed.";
+        var errorMsg = publishResponse?.Message ?? "The draft was saved, but publishing failed.";
         if (publishResponse?.Errors?.Any() == true)
         {
-            errorMessage += " Errors: " + string.Join(", ", publishResponse.Errors);
+            errorMsg += " Errors: " + string.Join(", ", publishResponse.Errors);
         }
+        _submitState.Fail(errorMsg);
     }
 
     private async Task<bool?> ConfirmPublishDraftAsync(EventDto? draft)
@@ -1269,6 +1283,8 @@ private CreateEventDraftRequestDto createDto = new();
     };
 
     private static bool CanPublishAsGroup(int? roleId) => roleId is GroupCreatorRoleId or GroupAdminRoleId;
+
+    private static bool CanPublishAsGroup(RoleEnum? role) => CanPublishAsGroup(RoleHelper.ToRoleId(role));
 
     // ========== Timezone Methods ==========
 

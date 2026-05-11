@@ -1,6 +1,8 @@
 // ABOUTME: Unit tests for EventService.
 // Tests all event-related operations including CRUD and session management.
 
+using Explore.Blazor.Client.Models.EventSessions;
+
 namespace Explore.Blazor.Client.Tests.Services;
 
 /// <summary>
@@ -464,6 +466,32 @@ public class EventServiceTests
         await _apiClient.Received(1).CreateEventAsync(createDto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task CreateEventAsync_WithConcreteGeneratedClient_SendsIdempotencyKey()
+    {
+        // Arrange
+        var createDto = ComponentDataBuilder.CreateEventRequest.Generate();
+        var idempotencyKey = Guid.NewGuid().ToString("N");
+        using var handler = new CapturingHandler("""
+            {"id":"11111111-1111-1111-1111-111111111111","success":true,"message":"Event created successfully."}
+            """);
+        using var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://example.test/")
+        };
+        var service = new EventService(new EventApiClient(httpClient), _logger);
+
+        // Act
+        var result = await service.CreateEventAsync(createDto, idempotencyKey);
+
+        // Assert
+        await Assert.That(result?.Success).IsTrue();
+        IEnumerable<string>? values = null;
+        var hasIdempotencyHeader = handler.LastRequest?.Headers.TryGetValues("Idempotency-Key", out values) == true;
+        await Assert.That(hasIdempotencyHeader).IsTrue();
+        await Assert.That(values!.Single()).IsEqualTo(idempotencyKey);
+    }
+
     #endregion
 
     #region PublishEventAsync Tests
@@ -614,10 +642,10 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var updateDto = new UpdateEventDto { Id = eventId, Title = "Updated Title" };
+        var updateDto = new UpdateEventDraftRequestDto { Title = "Updated Title" };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
 
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -634,8 +662,8 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        var updateDto = new UpdateEventDto { Id = eventId };
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        var updateDto = new UpdateEventDraftRequestDto { Title = "Updated Title" };
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -650,19 +678,191 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = new Guid("d415b43c-3f93-4b68-9a2d-59021d838e11");
-        var updateDto = new UpdateEventDto { Id = eventId, Title = "Test Title" };
+        var updateDto = new UpdateEventDraftRequestDto { Title = "Test Title" };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
         await _service.UpdateEventAsync(eventId, updateDto);
 
-        // Assert: command wraps the DTO correctly
+        // Assert: service forwards the narrow draft DTO directly.
         await _apiClient.Received(1).UpdateEventAsync(
             eventId,
-            Arg.Is<UpdateEventRequestDto>(c => c != null && c.EventDto == updateDto),
+            Arg.Is<UpdateEventDraftRequestDto>(c => c == updateDto),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateEventAsync_WhenApiReturnsConflictProblem_ReturnsStaleDraftFailure()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var updateDto = new UpdateEventDraftRequestDto
+        {
+            ExpectedConcurrencyStamp = Guid.NewGuid(),
+            Title = "Updated Title"
+        };
+        var problemDetails = new ProblemDetails
+        {
+            Status = 409,
+            Title = "Concurrency conflict",
+            Detail = "The event draft changed since it was loaded. Refresh the event and try again."
+        };
+
+        _apiClient.UpdateEventAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<UpdateEventDraftRequestDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException<ProblemDetails>(
+                "Conflict",
+                409,
+                string.Empty,
+                new Dictionary<string, IEnumerable<string>>(),
+                problemDetails,
+                null));
+
+        // Act
+        var result = await _service.UpdateEventAsync(eventId, updateDto);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_draft_concurrency_conflict");
+        await Assert.That(result.Message).Contains("event draft changed");
+    }
+
+    #endregion
+
+    #region Event Session Composer Request Tests
+
+    [Test]
+    public async Task CreateSessionAsync_MapsComposerRequestToGeneratedDto()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        var roomId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var request = new CreateEventSessionRequest
+        {
+            EventId = eventId,
+            TenantId = tenantId,
+            Title = "Opening talk",
+            Description = "Welcome session",
+            Slug = "opening-talk",
+            LocationId = locationId,
+            RoomId = roomId,
+            StartTime = new DateTimeOffset(2026, 6, 1, 9, 0, 0, TimeSpan.Zero),
+            EndTime = new DateTimeOffset(2026, 6, 1, 10, 0, 0, TimeSpan.Zero),
+            MaxAudienceAttendees = 120,
+            RegistrationModeId = 2,
+            EventSessionKindId = 1,
+            IslamicAspect = new EventSessionIslamicAspectDto
+            {
+                StartTimeType = 1,
+                ReferencePrayer = 2,
+                OffsetMinutes = 10,
+                RequiresWudu = true,
+                RitualRequirementsJson = "{\"note\":\"Create\"}"
+            }
+        };
+        _apiClient.CreateEventSessionAsync(
+                Arg.Any<CreateEventSessionDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = sessionId });
+
+        var result = await _service.CreateSessionAsync(request);
+
+        await Assert.That(result.Id).IsEqualTo(sessionId);
+        await _apiClient.Received(1).CreateEventSessionAsync(
+            Arg.Is<CreateEventSessionDto>(dto =>
+                dto.EventId == eventId
+                && dto.TenantId == tenantId
+                && dto.Title == "Opening talk"
+                && dto.Description == "Welcome session"
+                && dto.Slug == "opening-talk"
+                && dto.LocationId == locationId
+                && dto.RoomId == roomId
+                && dto.StartTime == request.StartTime
+                && dto.EndTime == request.EndTime
+                && dto.MaxAudienceAttendees == 120
+                && dto.RegistrationModeId == 2
+                && dto.EventSessionKindId == 1
+                && dto.IslamicAspect != null
+                && dto.IslamicAspect.ReferencePrayer == 2
+                && dto.IslamicAspect.RitualRequirementsJson == "{\"note\":\"Create\"}"),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateSessionAsync_MapsComposerRequestToGeneratedDto()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        var roomId = Guid.NewGuid();
+        var request = new UpdateEventSessionRequest
+        {
+            Id = sessionId,
+            EventId = eventId,
+            Title = "Updated workshop",
+            Description = "Updated description",
+            Slug = "updated-workshop",
+            LocationId = locationId,
+            RoomId = roomId,
+            StartTime = new DateTimeOffset(2026, 6, 1, 11, 0, 0, TimeSpan.Zero),
+            EndTime = new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero),
+            MaxAudienceAttendees = 80,
+            RegistrationModeId = 3,
+            EventSessionKindId = 2,
+            IslamicAspect = new EventSessionIslamicAspectDto
+            {
+                StartTimeType = 2,
+                ReferencePrayer = 3,
+                OffsetMinutes = 20,
+                RequiresWudu = false,
+                RitualRequirementsJson = "{\"note\":\"Update\"}"
+            }
+        };
+        _apiClient.UpdateEventSessionAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<UpdateEventSessionDto>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = sessionId });
+
+        var result = await _service.UpdateSessionAsync(request);
+
+        await Assert.That(result.Id).IsEqualTo(sessionId);
+        await _apiClient.Received(1).UpdateEventSessionAsync(
+            sessionId,
+            Arg.Is<UpdateEventSessionDto>(dto =>
+                dto.Id == sessionId
+                && dto.EventId == eventId
+                && dto.Title == "Updated workshop"
+                && dto.Description == "Updated description"
+                && dto.Slug == "updated-workshop"
+                && dto.LocationId == locationId
+                && dto.RoomId == roomId
+                && dto.StartTime == request.StartTime
+                && dto.EndTime == request.EndTime
+                && dto.MaxAudienceAttendees == 80
+                && dto.RegistrationModeId == 3
+                && dto.EventSessionKindId == 2
+                && dto.IslamicAspect != null
+                && dto.IslamicAspect.ReferencePrayer == 3
+                && dto.IslamicAspect.RitualRequirementsJson == "{\"note\":\"Update\"}"),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -890,9 +1090,16 @@ public class EventServiceTests
         {
             _embedded = new HalCollectionEmbeddedOfEventListDto
             {
-                Items = items.Cast<object>().ToList()
+                Items = items.Select(ToHalResource).ToList()
             }
         };
+    }
+
+    private static HalResourceOfEventListDto ToHalResource(EventListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfEventListDto>(json)
+               ?? new HalResourceOfEventListDto();
     }
 
     /// <summary>
@@ -914,6 +1121,22 @@ public class EventServiceTests
             response,
             new Dictionary<string, IEnumerable<string>>(),
             new InvalidOperationException(message));
+    }
+
+    private sealed class CapturingHandler(string responseBody) : HttpMessageHandler
+    {
+        public HttpRequestMessage? LastRequest { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            LastRequest = request;
+            var response = new HttpResponseMessage(System.Net.HttpStatusCode.Created)
+            {
+                Content = new StringContent(responseBody, System.Text.Encoding.UTF8, "application/json")
+            };
+
+            return Task.FromResult(response);
+        }
     }
 
     #endregion

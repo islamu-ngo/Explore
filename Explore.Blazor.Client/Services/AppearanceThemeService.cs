@@ -38,6 +38,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         Warning = "#D97706",
         Error = "#DC2626",
         LinesDefault = "#A1A1AA",
+        LinesInputs = "#A1A1AA",
         TableLines = "#D4D4D8",
         Divider = "#E4E4E7",
         OverlayLight = "rgba(250,250,250,0.8)"
@@ -70,6 +71,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         Warning = "#FBBF24",
         Error = "#F87171",
         LinesDefault = "#3F3F46",
+        LinesInputs = "#3F3F46",
         TableLines = "#3F3F46",
         Divider = "#2E2E2E",
         OverlayLight = "rgba(0,0,0,0.7)"
@@ -416,6 +418,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         Warning = PaletteValue(dto.Warning, BuiltInLight.Warning.ToString()),
         Error = PaletteValue(dto.Error, BuiltInLight.Error.ToString()),
         LinesDefault = PaletteValue(dto.LinesDefault, BuiltInLight.LinesDefault.ToString()),
+        LinesInputs = PaletteValue(dto.LinesDefault, BuiltInLight.LinesInputs.ToString()),
         TableLines = PaletteValue(dto.LinesDefault, BuiltInLight.TableLines.ToString()),
         Divider = PaletteValue(dto.Divider, BuiltInLight.Divider.ToString()),
         OverlayLight = BuiltInLight.OverlayLight
@@ -448,6 +451,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         Warning = PaletteValue(dto.Warning, BuiltInDark.Warning.ToString()),
         Error = PaletteValue(dto.Error, BuiltInDark.Error.ToString()),
         LinesDefault = PaletteValue(dto.LinesDefault, BuiltInDark.LinesDefault.ToString()),
+        LinesInputs = PaletteValue(dto.LinesDefault, BuiltInDark.LinesInputs.ToString()),
         TableLines = PaletteValue(dto.LinesDefault, BuiltInDark.TableLines.ToString()),
         Divider = PaletteValue(dto.Divider, BuiltInDark.Divider.ToString()),
         OverlayLight = BuiltInDark.OverlayLight

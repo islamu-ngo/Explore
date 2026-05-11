@@ -205,9 +205,16 @@ public class EventDayServiceTests
         {
             _embedded = new HalCollectionEmbeddedOfEventDayListDto
             {
-                Items = items.Cast<object>().ToList()
+                Items = items.Select(ToHalResource).ToList()
             }
         };
+    }
+
+    private static HalResourceOfEventDayListDto ToHalResource(EventDayListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfEventDayListDto>(json)
+               ?? new HalResourceOfEventDayListDto();
     }
 
     private static HalResourceOfEventDayDto CreateHalResourceResponse(EventDayDto dto)

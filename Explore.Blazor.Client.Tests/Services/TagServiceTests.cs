@@ -305,9 +305,16 @@ public class TagServiceTests
         {
             _embedded = new HalCollectionEmbeddedOfTagListDto
             {
-                Items = items.Cast<object>().ToList()
+                Items = items.Select(ToHalResource).ToList()
             }
         };
+    }
+
+    private static HalResourceOfTagListDto ToHalResource(TagListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfTagListDto>(json)
+               ?? new HalResourceOfTagListDto();
     }
 
     #endregion

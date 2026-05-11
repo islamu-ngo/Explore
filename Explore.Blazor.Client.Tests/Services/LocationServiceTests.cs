@@ -428,9 +428,16 @@ public class LocationServiceTests
         {
             _embedded = new HalCollectionEmbeddedOfLocationListDto
             {
-                Items = items.Cast<object>().ToList()
+                Items = items.Select(ToHalResource).ToList()
             }
         };
+    }
+
+    private static HalResourceOfLocationListDto ToHalResource(LocationListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfLocationListDto>(json)
+               ?? new HalResourceOfLocationListDto();
     }
 
     #endregion

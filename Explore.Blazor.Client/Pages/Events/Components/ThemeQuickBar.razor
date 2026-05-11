@@ -9,13 +9,13 @@
             <MudText Typo="Typo.subtitle2">Theme</MudText>
             <MudText Typo="Typo.caption" Color="Color.Secondary">Quick visual style</MudText>
         </div>
-        <AppButton Variant="Variant.Text"
+        <MudButton Elevation="0" Variant="Variant.Text"
                    Size="Size.Small"
                    Color="Color.Primary"
                    Class="create-event__theme-advanced-button theme-quick-bar__advanced"
                    OnClick="@(_ => OnAdvancedRequested.InvokeAsync())">
             Advanced theme options
-        </AppButton>
+        </MudButton>
     </div>
 
     <div class="theme-quick-bar__presets" aria-label="Theme presets">

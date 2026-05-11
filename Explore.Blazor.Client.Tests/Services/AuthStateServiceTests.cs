@@ -1,3 +1,5 @@
+using Options = Microsoft.Extensions.Options.Options;
+
 namespace Explore.Blazor.Client.Tests.Services;
 
 /// <summary>

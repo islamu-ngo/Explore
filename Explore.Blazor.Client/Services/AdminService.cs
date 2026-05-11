@@ -37,6 +37,7 @@ public interface IAdminService
     Task<ICollection<MadhabListDto>> GetMadhabsAsync();
     Task<ICollection<VisibilityTypeListDto>> GetVisibilityTypesAsync();
     Task<ICollection<RegistrationModeListDto>> GetRegistrationModesAsync();
+    Task<ICollection<EventSessionKindListDto>> GetEventSessionKindsAsync();
     Task<ICollection<LanguageListDto>> GetLanguagesAsync();
 
     // Lookup tables - Organization/Actor related
@@ -342,6 +343,24 @@ public class AdminService : IAdminService
         {
             _logger.LogError(ex, "[AdminService.GetRegistrationModesAsync] Unexpected error fetching registration modes");
             return new List<RegistrationModeListDto>();
+        }
+    }
+
+    public async Task<ICollection<EventSessionKindListDto>> GetEventSessionKindsAsync()
+    {
+        try
+        {
+            return await _apiClient.GetEventSessionKindsAsync();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetEventSessionKindsAsync] API error fetching event session kinds. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<EventSessionKindListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetEventSessionKindsAsync] Unexpected error fetching event session kinds");
+            return new List<EventSessionKindListDto>();
         }
     }
 

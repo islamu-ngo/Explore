@@ -43,7 +43,7 @@
 
             <div class="comment-section">
                 <div class="comment-label">Share your experience (optional)</div>
-                <AppTextField T="string" @bind-Value="comment"
+                <MudTextField T="string" @bind-Value="comment"
                               Label="Your review"
                               Variant="Variant.Outlined"
                               Lines="5"
@@ -61,16 +61,16 @@
         </div>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel"
+        <MudButton Elevation="0" OnClick="Cancel"
                    Variant="Variant.Text"
                    Color="Color.Default">
             Cancel
-        </AppButton>
-        <AppButton OnClick="Submit"
+        </MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
                    Disabled="@(rating == 0)"
                    StartIcon="@Icons.Material.Filled.Send">
             Submit Review
-        </AppButton>
+        </MudButton>
     </DialogActions>
 </MudDialog>
 

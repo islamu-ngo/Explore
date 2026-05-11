@@ -45,10 +45,10 @@
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel">Cancel</AppButton>
-        <AppButton OnClick="Submit" Disabled="@(!_selectedSessionIds.Any())">
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!_selectedSessionIds.Any())">
             Register (@_selectedSessionIds.Count)
-        </AppButton>
+        </MudButton>
     </DialogActions>
 </MudDialog>
 

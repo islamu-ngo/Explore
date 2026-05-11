@@ -12,8 +12,7 @@ namespace Explore.Blazor.Client.Helpers;
 
 /// <summary>
 /// Extension methods for HAL collection resources to provide typed Items accessors.
-/// The NSwag-generated HAL types have Items as ICollection&lt;object&gt; due to OpenAPI schema limitations.
-/// These extensions provide strongly-typed access by deserializing the objects to their proper types.
+/// These extensions bridge generated HAL resource wrappers to the plain DTO/model shapes used by the UI.
 /// </summary>
 public static class HalResourceExtensions
 {
@@ -697,14 +696,13 @@ public static class HalResourceExtensions
     }
 
     /// <summary>
-    /// Deserializes a collection of objects to a strongly-typed collection.
-    /// This handles the case where NSwag generates Items as ICollection&lt;object&gt;
-    /// but the actual JSON contains properly typed objects.
-    /// Supports System.Text.Json JsonElement from the NSwag SystemTextJson generator.
+    /// Deserializes a collection of generated HAL resource objects to a strongly-typed collection.
+    /// Supports the legacy ICollection&lt;object&gt; shape and the typed HalResourceOf* item shape now emitted
+    /// by the OpenAPI contract.
     /// </summary>
-    private static ICollection<T> DeserializeItems<T>(ICollection<object> items) where T : class
+    private static ICollection<T> DeserializeItems<T>(System.Collections.IEnumerable items) where T : class
     {
-        var result = new List<T>(items.Count);
+        var result = new List<T>();
         foreach (var item in items)
         {
             if (item is T typedItem)

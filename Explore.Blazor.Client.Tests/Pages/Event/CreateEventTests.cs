@@ -1,4 +1,5 @@
 using Blazouter.Services;
+using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
 using MudBlazor;
@@ -88,7 +89,7 @@ public class CreateEventTests : IDisposable
         {
             Id = orgId,
             FullName = "Test Organization",
-            CurrentUserRole = 1 // Admin role
+            CurrentUserRole = RoleEnum.OrgAdmin
         };
         _organizationService.GetOrganizationsByUserAsync(Arg.Any<Guid>()).Returns(new List<OrganizationListDto> { org });
         _organizationService.GetMyOrganizationsAsync().Returns(new List<OrganizationListDto> { org });
@@ -517,7 +518,7 @@ public class CreateEventTests : IDisposable
         var newParentTemplateId = Guid.NewGuid();
         _eventTemplateService.GetTemplateByIdAsync(newParentTemplateId, Arg.Any<CancellationToken>())
             .Returns(CreateTemplateDetailModel(newParentTemplateId, "New Parent Template", eventTypeId: 1));
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = Guid.NewGuid()

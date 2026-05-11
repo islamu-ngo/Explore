@@ -90,6 +90,15 @@ public interface IImageStorageService
 public class ImageUploadResponse
 {
     public string UploadUrl { get; set; } = string.Empty;
+    public string UploadSessionId { get; set; } = string.Empty;
+    public string ObjectKey { get; set; } = string.Empty;
+    public string ViewUrl { get; set; } = string.Empty;
+    public int ExpiresInMinutes { get; set; }
+}
+
+public sealed class BffStorageUploadSessionResponse
+{
+    public string UploadSessionId { get; set; } = string.Empty;
     public string ObjectKey { get; set; } = string.Empty;
     public string ViewUrl { get; set; } = string.Empty;
     public int ExpiresInMinutes { get; set; }
@@ -117,6 +126,7 @@ public class PresignedDownloadUrlResponse
 public class ImageStorageService : IImageStorageService
 {
     private const string GenerateUploadUrlPath = "/api/storageobject/generate-upload-url";
+    private const string GenerateUploadSessionPath = "/bff/storage/upload-session";
     private const string UploadProxyPath = "/bff/storage/upload-proxy";
     private readonly IEventApiClient _apiClient;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -193,6 +203,18 @@ public class ImageStorageService : IImageStorageService
             };
 
             // Use a direct BFF call first to avoid fetch failures from generated client content negotiation.
+            var bffUploadSession = await GetUploadSessionViaBffAsync(request);
+            if (bffUploadSession != null)
+            {
+                return bffUploadSession;
+            }
+
+            if (OperatingSystem.IsBrowser())
+            {
+                _logger.LogWarning("BFF upload session request returned no usable response in browser runtime.");
+                return null;
+            }
+
             var response = await GetUploadUrlViaBffAsync(request);
             if (response == null)
             {
@@ -234,6 +256,49 @@ public class ImageStorageService : IImageStorageService
         }
     }
 
+    private async Task<ImageUploadResponse?> GetUploadSessionViaBffAsync(UploadRequestDto request)
+    {
+        try
+        {
+            using var response = _bffClient is not null
+                ? await _bffClient.PostAsync(GenerateUploadSessionPath, request)
+                : await _httpClientFactory.CreateClient("BffClient").PostAsJsonAsync(GenerateUploadSessionPath, request);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                _logger.LogWarning("Upload session request returned 401 Unauthorized");
+                return null;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var hasBody = response.Content.Headers.ContentLength.GetValueOrDefault() > 0;
+                _logger.LogWarning("Upload session request failed via BFF. Status={StatusCode}, HasBody={HasBody}",
+                    (int)response.StatusCode, hasBody);
+                return null;
+            }
+
+            var session = await response.Content.ReadFromJsonAsync<BffStorageUploadSessionResponse>();
+            if (session == null || string.IsNullOrWhiteSpace(session.UploadSessionId))
+            {
+                return null;
+            }
+
+            return new ImageUploadResponse
+            {
+                UploadSessionId = session.UploadSessionId,
+                ObjectKey = session.ObjectKey,
+                ViewUrl = session.ViewUrl,
+                ExpiresInMinutes = session.ExpiresInMinutes <= 0 ? 60 : session.ExpiresInMinutes
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error calling upload session endpoint via BFF");
+            return null;
+        }
+    }
+
     private async Task<UploadUrlResponseDto?> GetUploadUrlViaBffAsync(UploadRequestDto request)
     {
         try
@@ -264,12 +329,12 @@ public class ImageStorageService : IImageStorageService
         }
     }
 
-    private async Task<bool> UploadImageViaBffProxyAsync(string uploadUrl, FileUploadData fileData)
+    private async Task<bool> UploadImageViaBffProxyAsync(string uploadSessionId, FileUploadData fileData)
     {
         try
         {
             using var form = new MultipartFormDataContent();
-            form.Add(new StringContent(uploadUrl), "uploadUrl");
+            form.Add(new StringContent(uploadSessionId), "uploadSessionId");
             form.Add(new StringContent(fileData.ContentType), "contentType");
 
             using var fileContent = new ByteArrayContent(fileData.Content);
@@ -294,6 +359,41 @@ public class ImageStorageService : IImageStorageService
         catch (Exception ex)
         {
             _logger.LogError(ex, "BFF upload proxy request failed for {FileName}", fileData.FileName);
+            return false;
+        }
+    }
+
+    private async Task<bool> UploadImageViaBffProxyAsync(string uploadSessionId, IBrowserFile file)
+    {
+        try
+        {
+            using var form = new MultipartFormDataContent();
+            form.Add(new StringContent(uploadSessionId), "uploadSessionId");
+            form.Add(new StringContent(file.ContentType), "contentType");
+
+            await using var stream = file.OpenReadStream(maxAllowedSize: DefaultMaxFileSize);
+            using var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+            form.Add(fileContent, "file", file.Name);
+
+            using var response = _bffClient is not null
+                ? await _bffClient.PostMultipartAsync(UploadProxyPath, form)
+                : await _httpClientFactory.CreateClient("BffClient").PostAsync(UploadProxyPath, form);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("BFF upload proxy completed successfully for {FileName}", file.Name);
+                return true;
+            }
+
+            var hasBody = response.Content.Headers.ContentLength.GetValueOrDefault() > 0;
+            _logger.LogError("BFF upload proxy failed for {FileName}. Status={StatusCode}, HasBody={HasBody}",
+                file.Name, (int)response.StatusCode, hasBody);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "BFF upload proxy request failed for {FileName}", file.Name);
             return false;
         }
     }
@@ -393,8 +493,8 @@ public class ImageStorageService : IImageStorageService
 
         if (OperatingSystem.IsBrowser())
         {
-            _logger.LogInformation("Browser runtime detected. Uploading via BFF proxy for {FileName}", fileData.FileName);
-            return await UploadImageViaBffProxyAsync(uploadUrl, fileData);
+            _logger.LogWarning("Browser runtime requires a server-issued upload session for {FileName}", fileData.FileName);
+            return false;
         }
 
         try
@@ -491,7 +591,9 @@ public class ImageStorageService : IImageStorageService
             _logger.LogDebug("Got pre-signed URL. ObjectKey: {ObjectKey}", uploadResponse.ObjectKey);
 
             // Step 2: Upload to S3 using bytes
-            var uploadSuccess = await UploadImageFromBytesAsync(uploadResponse.UploadUrl, fileData);
+            var uploadSuccess = OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId)
+                ? await UploadImageViaBffProxyAsync(uploadResponse.UploadSessionId, fileData)
+                : await UploadImageFromBytesAsync(uploadResponse.UploadUrl, fileData);
             if (!uploadSuccess)
             {
                 _logger.LogError("S3 upload failed for file {FileName}", fileData.FileName);
@@ -616,7 +718,9 @@ public class ImageStorageService : IImageStorageService
             }
 
             // Step 2: Upload to S3
-            var uploadSuccess = await UploadImageAsync(uploadResponse.UploadUrl, file);
+            var uploadSuccess = OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId)
+                ? await UploadImageViaBffProxyAsync(uploadResponse.UploadSessionId, file)
+                : await UploadImageAsync(uploadResponse.UploadUrl, file);
             if (!uploadSuccess)
             {
                 return new ImageUploadResult

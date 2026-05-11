@@ -1,6 +1,8 @@
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Pages.Events.Sessions;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.EventSessionGroups;
+using Explore.Blazor.Client.Models.EventSessions;
 using System.Reflection;
 using System.Text.Json;
 
@@ -10,22 +12,28 @@ public sealed class CreateSessionTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IEventService _eventService;
+    private readonly IEventSessionLanguageService _eventSessionLanguageService;
     private readonly IAdminService _adminService;
     private readonly ILocationService _locationService;
     private readonly ILocationRoomService _locationRoomService;
-
     public CreateSessionTests()
     {
         _ctx = new BlazorTestContext();
         _eventService = Substitute.For<IEventService>();
+        _eventSessionLanguageService = Substitute.For<IEventSessionLanguageService>();
         _adminService = Substitute.For<IAdminService>();
         _locationService = Substitute.For<ILocationService>();
         _locationRoomService = Substitute.For<ILocationRoomService>();
         _ctx.Services.AddSingleton(_eventService);
+        _ctx.Services.AddSingleton(_eventSessionLanguageService);
         _ctx.Services.AddSingleton(_adminService);
         _ctx.Services.AddSingleton(_locationService);
         _ctx.Services.AddSingleton(_locationRoomService);
         _adminService.GetRegistrationModesAsync().Returns(CreateRegistrationModes());
+        _adminService.GetEventSessionKindsAsync().Returns(CreateSessionKinds());
+        _adminService.GetLanguagesAsync().Returns(CreateLanguages());
+        _eventSessionLanguageService.SyncLanguagesForSessionAsync(Arg.Any<Guid>(), Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(true);
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
         _locationRoomService.GetRoomsByLocationAsync(Arg.Any<Guid>()).Returns(new List<LocationRoomListDto>());
         _eventService.GetSessionGroupsByEventAsync(Arg.Any<Guid>()).Returns(new List<EventSessionGroupListModel>());
@@ -46,6 +54,8 @@ public sealed class CreateSessionTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("Add a talk, workshop, panel, class, or activity");
         await Assert.That(cut.Markup).Contains("Program item title");
+        await Assert.That(cut.Markup).Contains("Program item type");
+        await Assert.That(cut.Markup).Contains("Language");
         await Assert.That(cut.Markup).Contains("Program item date");
         await Assert.That(cut.Markup).Contains("Registration mode");
         await Assert.That(cut.Markup).Contains("Open");
@@ -94,18 +104,20 @@ public sealed class CreateSessionTests : IDisposable
                 new EventSessionCreateRoomOptionDto { Id = roomId, LocationId = locationId, Name = "Auditorium", Capacity = 120 }
             ]));
 
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
         });
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         session.Description = "A focused opening session.";
         session.LocationId = locationId;
         session.RoomId = roomId;
+        session.EventSessionKindId = 1;
+        session.LanguageIds = [1, 2];
         session.RegistrationModeId = 2;
         SetPrivateField(cut.Instance, "_sessionDate", new DateTime(2026, 6, 1));
         SetPrivateField(cut.Instance, "_startTime", new TimeSpan(9, 30, 0));
@@ -113,19 +125,27 @@ public sealed class CreateSessionTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.Received(1).CreateSessionAsync(Arg.Is<CreateEventSessionDto>(dto =>
+        await _eventService.Received(1).CreateSessionAsync(Arg.Is<CreateEventSessionRequest>(dto =>
             dto.EventId == eventId
             && dto.TenantId == tenantId
             && dto.Title == "Opening talk"
             && dto.Description == "A focused opening session."
             && dto.LocationId == locationId
             && dto.RoomId == roomId
+            && dto.EventSessionKindId == 1
             && dto.RegistrationModeId == 2
             && dto.StartTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 9, 30, 0))
             && dto.EndTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 10, 30, 0))
             && dto.StartTime.Value.Offset == TimeSpan.Zero
             && dto.EndTime.Value.Offset == TimeSpan.Zero));
-        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+        await _eventSessionLanguageService.Received(1).SyncLanguagesForSessionAsync(
+            sessionId,
+            Arg.Is<IEnumerable<int>>(ids => ids.OrderBy(id => id).SequenceEqual(new[] { 1, 2 })),
+            Arg.Any<CancellationToken>());
+        await _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>()
+            .Received(1)
+            .AnnouncePoliteAsync("Program item saved. Program summary will refresh on return.");
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
 
     [Test]
@@ -140,7 +160,7 @@ public sealed class CreateSessionTests : IDisposable
             eventId,
             tenantId,
             groups: [new EventSessionCreateGroupOptionDto { Id = groupId, Name = "Main track", SortOrder = 1 }]));
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -152,14 +172,14 @@ public sealed class CreateSessionTests : IDisposable
         });
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)groupId);
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
         await _eventService.Received(1).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
-        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
 
     [Test]
@@ -174,7 +194,7 @@ public sealed class CreateSessionTests : IDisposable
             eventId,
             tenantId,
             groups: [new EventSessionCreateGroupOptionDto { Id = groupId, Name = "Main track", SortOrder = 1 }]));
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -185,16 +205,16 @@ public sealed class CreateSessionTests : IDisposable
                 new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)groupId);
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.Received(1).CreateSessionAsync(Arg.Any<CreateEventSessionDto>());
+        await _eventService.Received(1).CreateSessionAsync(Arg.Any<CreateEventSessionRequest>());
         await _eventService.Received(2).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
-        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
 
     [Test]
@@ -204,16 +224,67 @@ public sealed class CreateSessionTests : IDisposable
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         SetPrivateField(cut.Instance, "_startTime", new TimeSpan(11, 0, 0));
         SetPrivateField(cut.Instance, "_endTime", new TimeSpan(10, 0, 0));
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionDto>());
+        await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionRequest>());
+        await _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>()
+            .Received(1)
+            .AnnounceAssertiveAsync("End time must be after start time.");
         var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
         await Assert.That(errorMessage).IsEqualTo("End time must be after start time.");
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WhenApiFails_AnnouncesAssertiveError()
+    {
+        var eventId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
+        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = false,
+            Message = "Program item could not be saved."
+        });
+
+        var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
+        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        session.Title = "Opening talk";
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>()
+            .Received(1)
+            .AnnounceAssertiveAsync("Program item could not be saved.");
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WhenLanguageSyncFails_AnnouncesPartialSaveError()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
+        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = sessionId
+        });
+        _eventSessionLanguageService.SyncLanguagesForSessionAsync(sessionId, Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
+        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
+        session.Title = "Opening talk";
+        session.LanguageIds = [1];
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>()
+            .Received(1)
+            .AnnounceAssertiveAsync("Program item was saved, but its languages could not be updated.");
     }
 
     [Test]
@@ -222,20 +293,20 @@ public sealed class CreateSessionTests : IDisposable
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
-        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.CreateSessionAsync(Arg.Any<CreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = Guid.NewGuid()
         });
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
         session.MaxAudienceAttendees = 0;
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.Received(1).CreateSessionAsync(Arg.Is<CreateEventSessionDto>(dto => dto.MaxAudienceAttendees == null));
+        await _eventService.Received(1).CreateSessionAsync(Arg.Is<CreateEventSessionRequest>(dto => dto.MaxAudienceAttendees == null));
     }
 
     [Test]
@@ -245,12 +316,12 @@ public sealed class CreateSessionTests : IDisposable
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid(), canAddSession: false));
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
-        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionDto>());
+        await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionRequest>());
         var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
         await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to add program items to this event draft.");
     }
@@ -270,7 +341,7 @@ public sealed class CreateSessionTests : IDisposable
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
         await InvokePrivateAsync(cut.Instance, "OnLocationChangedAsync", locationId);
-        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
         session.RoomId = roomId;
 
         await InvokePrivateAsync(cut.Instance, "OnLocationChangedAsync", new object?[] { null });
@@ -294,7 +365,7 @@ public sealed class CreateSessionTests : IDisposable
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
         cut.WaitForState(() => !cut.Markup.Contains("Loading event draft", StringComparison.Ordinal));
 
-        var session = GetPrivateField<CreateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
         await Assert.That(session.RegistrationModeId).IsEqualTo(3);
     }
 
@@ -362,6 +433,20 @@ public sealed class CreateSessionTests : IDisposable
             new() { Id = 1, MasterCode = "OPEN", FullName = "Open", Description = "Anyone can register." },
             new() { Id = 2, MasterCode = "APPROVAL_REQUIRED", FullName = "Approval required", Description = "Review requests before confirming." },
             new() { Id = 3, MasterCode = "INVITE_ONLY", FullName = "Invite only" }
+        ];
+
+    private static ICollection<EventSessionKindListDto> CreateSessionKinds()
+        =>
+        [
+            new() { Id = 1, MasterCode = "TALK", FullName = "Talk", Description = "Lecture, khutbah, or presentation." },
+            new() { Id = 2, MasterCode = "WORKSHOP", FullName = "Workshop", Description = "Hands-on guided session." }
+        ];
+
+    private static ICollection<LanguageListDto> CreateLanguages()
+        =>
+        [
+            new() { Id = 1, MasterCode = "EN", FullName = "English" },
+            new() { Id = 2, MasterCode = "AR", FullName = "Arabic" }
         ];
 
     private static T GetPrivateField<T>(object instance, string fieldName)

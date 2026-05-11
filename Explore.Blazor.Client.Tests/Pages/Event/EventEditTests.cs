@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models.EventSessionGroups;
+using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Explore.Blazor.Client.Pages.Events;
 using Microsoft.AspNetCore.Components;
@@ -18,7 +19,7 @@ public sealed class EventEditTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDto>()).Returns(new BaseCommandResponseOfGuid
+        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = eventId
@@ -29,7 +30,7 @@ public sealed class EventEditTests : IDisposable
         await InvokePrivateAsync(component, "AddSession");
 
         var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
-        await eventService.Received(1).UpdateEventAsync(eventId, Arg.Any<UpdateEventDto>());
+        await eventService.Received(1).UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>());
         await Assert.That(navigation.Uri.EndsWith($"/events/{eventId}/sessions/create", StringComparison.Ordinal)).IsTrue();
     }
 
@@ -38,7 +39,7 @@ public sealed class EventEditTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var eventService = Substitute.For<IEventService>();
-        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDto>()).Returns(new BaseCommandResponseOfGuid
+        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = false,
             Message = "Draft could not be saved."
@@ -50,7 +51,7 @@ public sealed class EventEditTests : IDisposable
 
         await InvokePrivateAsync(component, "AddSession");
 
-        await eventService.Received(1).UpdateEventAsync(eventId, Arg.Any<UpdateEventDto>());
+        await eventService.Received(1).UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>());
         await Assert.That(navigation.Uri).IsEqualTo(originalUri);
         await Assert.That(GetPrivateField<string>(component, "errorMessage"))
             .IsEqualTo("Draft could not be saved.");
@@ -260,7 +261,7 @@ public sealed class EventEditTests : IDisposable
         var sessionId = Guid.NewGuid();
         const int registrationPolicyId = 3;
         var eventService = Substitute.For<IEventService>();
-        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDto>()).Returns(new BaseCommandResponseOfGuid
+        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = eventId
@@ -291,9 +292,33 @@ public sealed class EventEditTests : IDisposable
 
         await eventService.Received(1).UpdateEventAsync(
             eventId,
-            Arg.Is<UpdateEventDto>(dto => dto.RegistrationPolicyId == registrationPolicyId));
-        await eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>());
-        await eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionDto>());
+            Arg.Is<UpdateEventDraftRequestDto>(dto =>
+                dto.RegistrationPolicyId == registrationPolicyId
+                && dto.ExpectedConcurrencyStamp == GetPrivateField<EventDto>(component, "currentEvent").ConcurrencyStamp));
+        await eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>());
+        await eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionRequest>());
+    }
+
+    [Test]
+    public async Task HandleSubmit_WhenEventUpdateIsStale_ShowsRefreshMessage()
+    {
+        var eventId = Guid.NewGuid();
+        var eventService = Substitute.For<IEventService>();
+        eventService.UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = false,
+            Id = eventId,
+            Message = "The event draft changed since it was loaded. Refresh the event and try again.",
+            Errors = ["Refresh the event and try again."],
+            FailureCode = "event_draft_concurrency_conflict"
+        });
+        var component = CreateComponent(eventId, canAddSession: true, eventService);
+        InvokePrivate(component, "PopulateFormFromEvent");
+
+        await InvokePrivateAsync(component, "HandleSubmit");
+
+        await Assert.That(GetPrivateField<string>(component, "errorMessage"))
+            .Contains("The event draft changed since it was loaded");
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -323,6 +348,7 @@ public sealed class EventEditTests : IDisposable
         {
             Id = eventId,
             TenantId = Guid.NewGuid(),
+            ConcurrencyStamp = Guid.Parse("33333333-3333-3333-3333-333333333333"),
             Title = "Program launch",
             ActorDisplayName = "ISLAMU",
             ActorTypeFullName = "Organization",

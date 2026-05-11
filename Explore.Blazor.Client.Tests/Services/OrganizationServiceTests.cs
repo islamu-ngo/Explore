@@ -410,9 +410,16 @@ public class OrganizationServiceTests
         {
             _embedded = new HalCollectionEmbeddedOfOrganizationListDto
             {
-                Items = items.Cast<object>().ToList()
+                Items = items.Select(ToHalResource).ToList()
             }
         };
+    }
+
+    private static HalResourceOfOrganizationListDto ToHalResource(OrganizationListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfOrganizationListDto>(json)
+               ?? new HalResourceOfOrganizationListDto();
     }
 
     private static HalResourceOfOrganizationDto CreateOrgResourceResponse(OrganizationDto dto)

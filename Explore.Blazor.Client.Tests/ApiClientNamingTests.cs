@@ -10,19 +10,36 @@ namespace Explore.Blazor.Client.Tests;
 /// <summary>
 /// Guardrail tests that enforce the ergonomics bar on the generated <see cref="IEventApiClient"/>.
 ///
-/// Created during Phase 0 of <c>dev/active/api-contract-stabilization/</c>. These tests are expected
-/// to FAIL on first run (RED) because the current API OpenAPI surface emits duplicate
-/// <c>(method, path)</c> pairs for URL-segment versioned clones, which cascades into NSwag
-/// generating ~464 methods whose names use the collision-disambiguation suffix pattern
-/// (<c>Foo2Async</c>, <c>Foo3Async</c>, <c>TenantGET2Async</c>, etc.). Do NOT "fix" these by
-/// deleting or weakening assertions — the intended fix lands in Phase 2 (delete URL-segment
-/// versioning at the API) and Phase 3 (stable operation-ids).
+/// Created during Phase 0 of <c>dev/active/api-contract-stabilization/</c>. These tests protect
+/// the stabilized API OpenAPI surface from regressing back to duplicate URL-segment aliases or
+/// unstable operation IDs that force NSwag collision-disambiguation suffixes such as
+/// <c>Foo2Async</c>, <c>Foo3Async</c>, or <c>TenantGET2Async</c>.
 ///
 /// Strategy: reflect over <see cref="IEventApiClient"/> public methods, collect every async
 /// method name, and assert against the naming invariants defined in the plan.
 /// </summary>
 public class ApiClientNamingTests
 {
+    private static readonly string[] ExcludedSchedulingDtoTypeNames =
+    [
+        "EventAgendaItemDto",
+        "EventAgendaItemListDto",
+        "EventDayDto",
+        "EventDayListDto",
+        "LocationRoomDto",
+        "LocationRoomListDto"
+    ];
+
+    private static readonly string[] RequiredSchedulingHalWrapperTypeNames =
+    [
+        "HalResourceOfEventAgendaItemDto",
+        "HalResourceOfEventDayDto",
+        "HalResourceOfLocationRoomDto",
+        "HalCollectionResourceOfEventAgendaItemListDto",
+        "HalCollectionResourceOfEventDayListDto",
+        "HalCollectionResourceOfLocationRoomListDto"
+    ];
+
     /// <summary>
     /// Exact-match banned method names. These are NSwag's collision-disambiguation fallbacks
     /// observed in the current generated client. Phase 2+3 must eliminate every one of them.
@@ -69,7 +86,6 @@ public class ApiClientNamingTests
             .Because("Generated client should expose at least one *Async method; zero methods indicates a generation failure.");
     }
 
-    [Skip("Category: API contract. Removal: enable after stable operationIds land and the NSwag client is regenerated in dev/active/api-contract-stabilization Phase 3.")]
     [Test]
     public async Task IEventApiClient_NoMethodUsesCollisionSuffixPattern()
     {
@@ -78,13 +94,11 @@ public class ApiClientNamingTests
             .OrderBy(name => name)
             .ToList();
 
-        // RED expectation: this count is currently ~464 per the Phase 0 inventory.
-        // Phase 2 + 3 must drive this to zero.
         await Assert.That(offenders).IsEmpty()
             .Because(
-                $"Every method on IEventApiClient ending in '\\dAsync' is a NSwag collision fallback and " +
-                $"must be eliminated by Phase 2 (delete URL-segment versioning) and Phase 3 (stable " +
-                $"operationIds). Offenders: {offenders.Count}. First 10: {string.Join(", ", offenders.Take(10))}.");
+                $"Every method on IEventApiClient ending in '\\dAsync' is a NSwag collision fallback " +
+                $"and indicates duplicate or unstable OpenAPI operationIds. Offenders: {offenders.Count}. " +
+                $"First 10: {string.Join(", ", offenders.Take(10))}.");
     }
 
     [Test]
@@ -103,7 +117,6 @@ public class ApiClientNamingTests
                 $"[{string.Join(", ", offenders)}].");
     }
 
-    [Skip("Category: API contract. Removal: enable after NSwag regenerates against the stabilized swagger.json in dev/active/api-contract-stabilization Phase 4.")]
     [Test]
     public async Task IEventApiClient_AllMethodNamesMatchCleanOperationIdShape()
     {
@@ -140,10 +153,57 @@ public class ApiClientNamingTests
             .Because($"Reflection found duplicate (name, signature) methods on IEventApiClient: [{string.Join("; ", duplicates)}].");
     }
 
+    [Test]
+    public async Task GeneratedClient_DoesNotEmitExcludedSchedulingDtoTypes()
+    {
+        var generatedClientSource = GetGeneratedClientSource();
+        var offenders = ExcludedSchedulingDtoTypeNames
+            .Where(typeName => generatedClientSource.Contains($"public partial class {typeName}", StringComparison.Ordinal))
+            .OrderBy(name => name)
+            .ToList();
+
+        await Assert.That(offenders).IsEmpty()
+            .Because("Scheduling DTOs have hand-maintained Blazor client shapes and must remain excluded from NSwag output. "
+                + $"Offenders: [{string.Join(", ", offenders)}].");
+    }
+
+    [Test]
+    public async Task GeneratedClient_StillEmitsSchedulingHalWrapperTypes()
+    {
+        var generatedClientSource = GetGeneratedClientSource();
+        var missing = RequiredSchedulingHalWrapperTypeNames
+            .Where(typeName => !generatedClientSource.Contains($"public partial class {typeName}", StringComparison.Ordinal))
+            .OrderBy(name => name)
+            .ToList();
+
+        await Assert.That(missing).IsEmpty()
+            .Because("The raw scheduling DTOs are excluded, but their HAL wrapper schemas must remain generated for API responses. "
+                + $"Missing: [{string.Join(", ", missing)}].");
+    }
+
+    [Test]
+    public async Task GeneratedClient_DoesNotEmitUntypedHalEmbeddedItemCollections()
+    {
+        var generatedClientSource = GetGeneratedClientSource();
+
+        await Assert.That(generatedClientSource.Contains("public System.Collections.Generic.ICollection<object>? Items", StringComparison.Ordinal))
+            .IsFalse()
+            .Because("HAL embedded collection item arrays must reference typed HAL resource schemas instead of falling back to ICollection<object>.");
+    }
+
     private static List<string> GetAsyncMethodNames() =>
         typeof(IEventApiClient)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .Where(m => m.Name.EndsWith("Async", StringComparison.Ordinal))
             .Select(m => m.Name)
             .ToList();
+
+    private static string GetGeneratedClientSource()
+    {
+        var generatedClientPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "../../../../Explore.Blazor.Client/Clients/EventApiClient.g.cs"));
+
+        return File.ReadAllText(generatedClientPath);
+    }
 }

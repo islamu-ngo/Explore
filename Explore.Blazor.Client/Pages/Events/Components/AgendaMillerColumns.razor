@@ -19,7 +19,7 @@
                 </MudText>
                 @if (CanManage)
                 {
-                    <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="OpenAddDayDialog" aria-label="Add day" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="OpenAddDayDialog" aria-label="Add day" />
                 }
             </div>
             <div class="agenda-miller__column-body">
@@ -57,7 +57,7 @@
                 </MudText>
                 @if (CanManage && SelectedDay is not null)
                 {
-                    <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="OpenAddAgendaItemDialog" aria-label="Add agenda item" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="OpenAddAgendaItemDialog" aria-label="Add agenda item" />
                 }
             </div>
             <div class="agenda-miller__column-body">
@@ -106,8 +106,8 @@
                 @if (CanManage && SelectedItem is not null)
                 {
                     <div class="d-flex gap-1">
-                        <AppIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="OpenEditAgendaItemDialog" aria-label="Edit item" />
-                        <AppIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="() => ConfirmDeleteItem(SelectedItem)" aria-label="Delete item" Color="Color.Error" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="OpenEditAgendaItemDialog" aria-label="Edit item" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="() => ConfirmDeleteItem(SelectedItem)" aria-label="Delete item" Color="Color.Error" />
                     </div>
                 }
             </div>

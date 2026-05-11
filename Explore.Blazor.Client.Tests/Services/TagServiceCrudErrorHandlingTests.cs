@@ -45,7 +45,7 @@ public class TagServiceCrudErrorHandlingTests
         {
             _embedded = new HalCollectionEmbeddedOfTagListDto
             {
-                Items = tags.Cast<object>().ToList()
+                Items = tags.Select(ToHalResource).ToList()
             }
         };
 
@@ -81,7 +81,7 @@ public class TagServiceCrudErrorHandlingTests
         var tags = new List<TagListDto> { new() { FullName = "Youth", MasterCode = "YOUTH" } };
         var halResponse = new HalCollectionResourceOfTagListDto
         {
-            _embedded = new HalCollectionEmbeddedOfTagListDto { Items = tags.Cast<object>().ToList() }
+            _embedded = new HalCollectionEmbeddedOfTagListDto { Items = tags.Select(ToHalResource).ToList() }
         };
         _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(halResponse);
         _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>()).Returns(halResponse);
@@ -233,5 +233,12 @@ public class TagServiceCrudErrorHandlingTests
     }
 
     #endregion
+
+    private static HalResourceOfTagListDto ToHalResource(TagListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfTagListDto>(json)
+               ?? new HalResourceOfTagListDto();
+    }
 
 }

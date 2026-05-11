@@ -141,7 +141,7 @@
                     
                     @* Back / Breadcrumb (Optional, Luma doesn't have it but it's good for navigation) *@
                     <div class="mb-4">
-                        <AppButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                        <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.ArrowBack"
                                    Variant="Variant.Text"
                                    Color="Color.Default"
                                    Href="/events"
@@ -149,7 +149,7 @@
                                    Class="px-0"
                                    Style="color: var(--mud-palette-text-secondary);">
                             Back to Events
-                        </AppButton>
+                        </MudButton>
                     </div>
 
                     @* Cancelled Alert *@
@@ -275,7 +275,7 @@
                                         }
                                     </div>
                                     
-                                    <AppButton Color="GetButtonColor()"
+                                    <MudButton Variant="Variant.Filled" Color="GetButtonColor()"
                                                Size="Size.Large"
                                                Class="py-2 px-8 rounded-lg font-weight-bold"
                                                Style="min-width: 160px;"
@@ -284,7 +284,7 @@
                                                Elevation="0"
                                                StartIcon="@(_isUserRegistered ? Icons.Material.Filled.CheckCircle : null)">
                                         @GetButtonText()
-                                    </AppButton>
+                                    </MudButton>
                                 </div>
 
                                 @if (_isUserRegistered)
@@ -329,7 +329,7 @@
                             }
                             @if (_canEdit)
                             {
-                                <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
                                                OnClick="@OpenDetailTagManagement"
                                                aria-label="Manage tags" />
                             }
@@ -344,7 +344,7 @@
                             }
                             @if (_canEdit)
                             {
-                                <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
                                                OnClick="@OpenDetailCategoryManagement"
                                                aria-label="Manage categories" />
                             }
@@ -596,7 +596,7 @@ else
             <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Large" Color="Color.Secondary" Style="font-size: 5rem;" Class="mb-6" />
             <MudText Typo="Typo.h3" Style="font-weight: 800;" Class="mb-4">Event not found</MudText>
             <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-8" Style="font-size: 1.1rem;">The event you are looking for might have been removed or is unavailable.</MudText>
-            <AppButton Href="/events" Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled" Class="px-8 py-3 rounded-lg font-weight-bold">Browse Events</AppButton>
+            <MudButton Elevation="0" Href="/events" Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled" Class="px-8 py-3 rounded-lg font-weight-bold">Browse Events</MudButton>
         </MudContainer>
     </div>
 }

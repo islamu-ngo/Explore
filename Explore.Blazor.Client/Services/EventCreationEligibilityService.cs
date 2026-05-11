@@ -116,7 +116,7 @@ public class EventCreationEligibilityService : IEventCreationEligibilityService
             if (settings?.AllowGroupSubmittedEvents == true)
             {
                 var groups = await _groupService.GetMyGroupsAsync();
-                var eligibleGroup = groups.FirstOrDefault(g => RoleHelper.CanManage(g.CurrentUserRole));
+                var eligibleGroup = groups.FirstOrDefault(g => RoleHelper.CanManageGroup(g.CurrentUserRole));
 
                 if (eligibleGroup is not null)
                 {

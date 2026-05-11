@@ -4,6 +4,7 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.EventSessionGroups;
+using Explore.Blazor.Client.Models.EventSessions;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -63,15 +64,15 @@ public interface IEventService
     Task<EventProgramSummaryDto?> GetEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<EventPublishReadinessDto?> GetEventPublishReadinessAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<bool> DeleteEventAsync(Guid eventId);
-    Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto);
-    Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDraftRequestDto request);
+    Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDraftRequestDto request);
+    Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDraftRequestDto request, string? idempotencyKey = null);
     Task<BaseCommandResponseOfGuid?> PublishEventAsync(Guid eventId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
     Task<ICollection<EventTypeListDto>> GetEventTypesAsync();
     Task<ICollection<EventFormatListDto>> GetEventFormatsAsync();
     Task<ICollection<EventSessionListDto>> GetAllSessionsAsync();
     Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(Guid eventId);
-    Task<BaseCommandResponseOfGuid> CreateSessionAsync(CreateEventSessionDto session);
-    Task<BaseCommandResponseOfGuid> UpdateSessionAsync(UpdateEventSessionDto session);
+    Task<BaseCommandResponseOfGuid> CreateSessionAsync(CreateEventSessionRequest session);
+    Task<BaseCommandResponseOfGuid> UpdateSessionAsync(UpdateEventSessionRequest session);
     Task<bool> DeleteSessionAsync(Guid sessionId);
     Task<ICollection<EventSessionGroupListModel>> GetSessionGroupsByEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid> CreateSessionGroupAsync(CreateEventSessionGroupRequestDto group);
@@ -374,12 +375,28 @@ public partial class EventService : IEventService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto)
+    public async Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDraftRequestDto request)
     {
         try
         {
-            var command = new UpdateEventRequestDto { EventDto = eventDto };
-            return await _apiClient.UpdateEventAsync(eventId, command);
+            return await _apiClient.UpdateEventAsync(eventId, request);
+        }
+        catch (ApiException<ProblemDetails> ex) when (ex.StatusCode == 409)
+        {
+            _logger.LogWarning(ex, "Event draft update rejected as stale for event {EventId}", eventId);
+            return new BaseCommandResponseOfGuid
+            {
+                Id = eventId,
+                Success = false,
+                Message = ex.Result?.Detail ?? ex.Result?.Title ?? "Event draft changed since it was loaded.",
+                Errors = ["Refresh the event and try again."],
+                FailureCode = "event_draft_concurrency_conflict"
+            };
+        }
+        catch (ApiException<BaseCommandResponseOfGuid> ex)
+        {
+            _logger.LogWarning(ex, "Event draft update rejected for event {EventId}", eventId);
+            return ex.Result;
         }
         catch (Exception ex)
         {
@@ -392,11 +409,8 @@ public partial class EventService : IEventService
     {
         try
         {
-            var command = new UpdateEventRequestDto
-            {
-                EventStatusDto = new UpdateEventStatusDto { EventStatusId = eventStatusId }
-            };
-            var result = await _apiClient.UpdateEventAsync(eventId, command);
+            var command = new UpdateEventStatusDto { EventStatusId = eventStatusId };
+            var result = await _apiClient.UpdateEventStatusAsync(eventId, command);
             return result?.Success ?? false;
         }
         catch (Exception ex)
@@ -406,10 +420,17 @@ public partial class EventService : IEventService
         }
     }
 
-    public async Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDraftRequestDto request)
+    public async Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDraftRequestDto request, string? idempotencyKey = null)
     {
         try
         {
+            if (_apiClient is EventApiClient generatedClient)
+            {
+                return await generatedClient.CreateEventWithIdempotencyKeyAsync(
+                    request,
+                    idempotencyKey ?? Guid.NewGuid().ToString("N"));
+            }
+
             return await _apiClient.CreateEventAsync(request);
         }
         catch (Exception ex)
@@ -456,9 +477,50 @@ public partial class EventService : IEventService
         return result?.GetItems() ?? new List<EventSessionListDto>();
     }
 
-    public Task<BaseCommandResponseOfGuid> CreateSessionAsync(CreateEventSessionDto session) => _apiClient.CreateEventSessionAsync(session);
+    public Task<BaseCommandResponseOfGuid> CreateSessionAsync(CreateEventSessionRequest session)
+        => _apiClient.CreateEventSessionAsync(new CreateEventSessionDto
+        {
+            EventId = session.EventId,
+            TenantId = session.TenantId,
+            StartTime = session.StartTime,
+            EndTime = session.EndTime,
+            LocationId = session.LocationId,
+            FeaturedImageId = session.FeaturedImageId,
+            RoomId = session.RoomId,
+            SortOrder = session.SortOrder,
+            Title = session.Title,
+            EventSessionKindId = session.EventSessionKindId,
+            Description = session.Description,
+            Slug = session.Slug,
+            MaxAudienceAttendees = session.MaxAudienceAttendees,
+            RegistrationModeId = session.RegistrationModeId,
+            Price = session.Price,
+            CurrencyCode = session.CurrencyCode,
+            SessionTemplateId = session.SessionTemplateId,
+            IslamicAspect = session.IslamicAspect
+        });
 
-    public Task<BaseCommandResponseOfGuid> UpdateSessionAsync(UpdateEventSessionDto session) => _apiClient.UpdateEventSessionAsync(session.Id ?? Guid.Empty, session);
+    public Task<BaseCommandResponseOfGuid> UpdateSessionAsync(UpdateEventSessionRequest session)
+        => _apiClient.UpdateEventSessionAsync(session.Id ?? Guid.Empty, new UpdateEventSessionDto
+        {
+            Id = session.Id,
+            EventId = session.EventId,
+            StartTime = session.StartTime,
+            EndTime = session.EndTime,
+            LocationId = session.LocationId,
+            FeaturedImageId = session.FeaturedImageId,
+            RoomId = session.RoomId,
+            SortOrder = session.SortOrder,
+            Title = session.Title,
+            EventSessionKindId = session.EventSessionKindId,
+            Description = session.Description,
+            Slug = session.Slug,
+            MaxAudienceAttendees = session.MaxAudienceAttendees,
+            RegistrationModeId = session.RegistrationModeId,
+            Price = session.Price,
+            CurrencyCode = session.CurrencyCode,
+            IslamicAspect = session.IslamicAspect
+        });
 
     public async Task<bool> DeleteSessionAsync(Guid sessionId)
     {

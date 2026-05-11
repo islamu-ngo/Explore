@@ -1,6 +1,10 @@
 // ABOUTME: Partial class extending NSwag-generated EventApiClient with request preparation hooks.
 // ABOUTME: Tenant context is resolved server-side from the forwarded host header.
 
+using System;
+using System.Net.Http;
+using System.Threading;
+
 namespace Explore.Blazor.Client.Clients;
 
 /// <summary>
@@ -9,12 +13,44 @@ namespace Explore.Blazor.Client.Clients;
 /// </summary>
 public partial class EventApiClient
 {
+    private static readonly AsyncLocal<string?> CreateEventIdempotencyKey = new();
+
+    public async Task<BaseCommandResponseOfGuid> CreateEventWithIdempotencyKeyAsync(
+        CreateEventDraftRequestDto body,
+        string idempotencyKey,
+        string? apiVersion = null,
+        string? xApiVersion = null,
+        CancellationToken cancellationToken = default)
+    {
+        var previousKey = CreateEventIdempotencyKey.Value;
+        CreateEventIdempotencyKey.Value = idempotencyKey;
+
+        try
+        {
+            return await CreateEventAsync(body, apiVersion, xApiVersion, cancellationToken);
+        }
+        finally
+        {
+            CreateEventIdempotencyKey.Value = previousKey;
+        }
+    }
+
     /// <summary>
     /// Called before each request.
     /// </summary>
     partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, string url)
     {
-        // Intentionally left empty.
-        // Host/subdomain/custom-domain resolution is handled by the API tenant context.
+        if (request.Method == HttpMethod.Post
+            && IsCreateEventRequest(url)
+            && !string.IsNullOrWhiteSpace(CreateEventIdempotencyKey.Value))
+        {
+            request.Headers.TryAddWithoutValidation("Idempotency-Key", CreateEventIdempotencyKey.Value);
+        }
+    }
+
+    private static bool IsCreateEventRequest(string url)
+    {
+        var path = url.Split('?', 2)[0].TrimStart('/');
+        return string.Equals(path, "api/event", StringComparison.OrdinalIgnoreCase);
     }
 }

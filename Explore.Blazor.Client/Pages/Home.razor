@@ -57,9 +57,9 @@ else if (IsOrganizationCentricMode && !IsOrganizationHomeAvailable)
                 This site is using organization-first public experience, but the primary organization is @PrimaryOrganizationStateLabel.
                 You can still browse the public @EventCatalogLabel.ToLowerInvariant() catalog.
             </MudText>
-            <AppButton Href="@EventCatalogUrl" Variant="Variant.Filled" Color="Color.Primary">
+            <MudButton Elevation="0" Href="@EventCatalogUrl" Variant="Variant.Filled" Color="Color.Primary">
                 Browse @EventCatalogLabel
-            </AppButton>
+            </MudButton>
         </MudAlert>
     </MudContainer>
 }
@@ -84,13 +84,13 @@ else if (IsOrganizationHomeAvailable)
                     <MudStack Row="true" Spacing="2" Class="organization-home__actions flex-wrap">
                         @foreach (var cta in HeroCtas)
                         {
-                            <AppButton @key="cta.Key" Href="@cta.Url" Variant="@MapButtonVariant(cta.Style)" Color="Color.Primary" Class="rounded-pill">
+                            <MudButton Elevation="0" @key="cta.Key" Href="@cta.Url" Variant="@MapButtonVariant(cta.Style)" Color="Color.Primary" Class="rounded-pill">
                                 @cta.Label
-                            </AppButton>
+                            </MudButton>
                         }
-                        <AppButton Href="@EventCatalogUrl" Variant="Variant.Outlined" Color="Color.Primary" Class="rounded-pill">
+                        <MudButton Elevation="0" Href="@EventCatalogUrl" Variant="Variant.Outlined" Color="Color.Primary" Class="rounded-pill">
                             View @EventCatalogLabel
-                        </AppButton>
+                        </MudButton>
                     </MudStack>
                 </MudItem>
                 @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.ProfilePictureUri))
@@ -121,9 +121,9 @@ else if (IsOrganizationHomeAvailable)
                             }
                             @if (!string.IsNullOrWhiteSpace(block.LinkUrl) && !string.IsNullOrWhiteSpace(block.LinkText))
                             {
-                                <AppButton Href="@block.LinkUrl" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward">
+                                <MudButton Elevation="0" Color="Color.Primary" Href="@block.LinkUrl" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward">
                                     @block.LinkText
-                                </AppButton>
+                                </MudButton>
                             }
                         </MudPaper>
                     </MudItem>
@@ -139,9 +139,9 @@ else if (IsOrganizationHomeAvailable)
                     @foreach (var eventSection in EventSections)
                     {
                         <MudItem @key="eventSection.Key" xs="12" sm="6" md="4">
-                            <AppButton Href="@(eventSection.Url)" Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" StartIcon="@ResolveSectionIcon(eventSection.Icon)">
+                            <MudButton Elevation="0" Href="@(eventSection.Url)" Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" StartIcon="@ResolveSectionIcon(eventSection.Icon)">
                                 @(eventSection.Label)
-                            </AppButton>
+                            </MudButton>
                         </MudItem>
                     }
                 </MudGrid>
@@ -166,9 +166,9 @@ else if (IsOrganizationHomeAvailable)
                                 {
                                     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@evt.Subtitle</MudText>
                                 }
-                                <AppButton Href="@GetEventUrl(evt)" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward">
+                                <MudButton Elevation="0" Color="Color.Primary" Href="@GetEventUrl(evt)" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward">
                                     View details
-                                </AppButton>
+                                </MudButton>
                             </MudPaper>
                         </MudItem>
                     }
@@ -188,9 +188,9 @@ else if (IsOrganizationHomeAvailable)
                         }
                         @if (!string.IsNullOrWhiteSpace(_shell?.PrimaryOrganization.WebsiteUrl))
                         {
-                            <AppButton Href="@_shell.PrimaryOrganization.WebsiteUrl" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.OpenInNew">
+                            <MudButton Elevation="0" Color="Color.Primary" Href="@_shell.PrimaryOrganization.WebsiteUrl" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.OpenInNew">
                                 Visit website
-                            </AppButton>
+                            </MudButton>
                         }
                     </MudPaper>
                 </MudItem>

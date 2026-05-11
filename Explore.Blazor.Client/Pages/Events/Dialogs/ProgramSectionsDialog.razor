@@ -49,27 +49,27 @@
                                 <span class="program-sections-dialog__meta">@FormatSectionMeta(programSection)</span>
                             </div>
                             <div class="program-sections-dialog__item-actions">
-                                <AppButton Variant="Variant.Text"
+                                <MudButton Elevation="0" Variant="Variant.Text"
                                            Color="Color.Primary"
                                            Disabled="@(!programSection.HasHalLink("edit") || _isSaving)"
                                            OnClick="@(() => EditSectionAsync(programSection))">
                                     Edit
-                                </AppButton>
+                                </MudButton>
                                  @if (programSection.HasHalLink("delete"))
                                  {
-                                     <AppButton Variant="Variant.Text"
+                                     <MudButton Elevation="0" Variant="Variant.Text"
                                                Color="Color.Error"
                                                Disabled="@_isSaving"
                                                OnClick="@(() => DeleteSectionAsync(programSection))">
                                          Delete
-                                     </AppButton>
+                                     </MudButton>
                                  }
-                                 <AppButton Variant="Variant.Text"
+                                 <MudButton Elevation="0" Variant="Variant.Text"
                                             Color="Color.Secondary"
                                             Disabled="@(!programSection.HasHalLink(AssignSessionLinkRel) || _isSaving)"
                                             OnClick="@(() => SelectAssignmentSectionAsync(programSection))">
                                      Assign sessions
-                                 </AppButton>
+                                 </MudButton>
                              </div>
                          </li>
                      }
@@ -88,9 +88,9 @@
                                 Assignment changes save immediately and refresh from the server.
                             </MudText>
                         </div>
-                        <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="ClearAssignmentSection" Disabled="@_isAssignmentSaving">
+                        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="ClearAssignmentSection" Disabled="@_isAssignmentSaving">
                             Close assignments
-                        </AppButton>
+                        </MudButton>
                     </div>
 
                     @if (!CanManageAssignments(_assignmentSection))
@@ -118,21 +118,21 @@
                                     </div>
                                     @if (isAssigned)
                                     {
-                                        <AppButton Variant="Variant.Text"
+                                        <MudButton Elevation="0" Variant="Variant.Text"
                                                    Color="Color.Error"
                                                    Disabled="@_isAssignmentSaving"
                                                    OnClick="@(() => UnassignSessionAsync(session))">
                                             Remove
-                                        </AppButton>
+                                        </MudButton>
                                     }
                                     else
                                     {
-                                        <AppButton Variant="Variant.Text"
+                                        <MudButton Elevation="0" Variant="Variant.Text"
                                                    Color="Color.Primary"
                                                    Disabled="@_isAssignmentSaving"
                                                    OnClick="@(() => AssignSessionAsync(session))">
                                             Assign
-                                        </AppButton>
+                                        </MudButton>
                                     }
                                 </li>
                             }
@@ -219,10 +219,10 @@
     <DialogActions>
         @if (_editingSectionId is not null)
         {
-            <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="ResetForm" Disabled="@_isSaving">Cancel edit</AppButton>
+            <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="ResetForm" Disabled="@_isSaving">Cancel edit</MudButton>
         }
-        <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="Close" Disabled="@_isSaving">Close</AppButton>
-        <AppButton OnClick="SaveAsync" Disabled="@_isSaving">
+        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="Close" Disabled="@_isSaving">Close</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="@_isSaving">
             @if (_isSaving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -232,7 +232,7 @@
             {
                 <span>@(_editingSectionId is null ? "Add section" : "Save section")</span>
             }
-        </AppButton>
+        </MudButton>
     </DialogActions>
 </MudDialog>
 

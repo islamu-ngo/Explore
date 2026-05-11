@@ -3,6 +3,8 @@
 
 using MudBlazor;
 
+using Explore.Blazor.Client.Clients;
+
 namespace Explore.Blazor.Client.Helpers;
 
 /// <summary>
@@ -34,6 +36,8 @@ public static class RoleHelper
         return roleId.Value is OrgCreator or OrgCoOwner or OrgAdmin;
     }
 
+    public static bool CanManage(RoleEnum? role) => ToRoleId(role) is { } roleId && CanManage(roleId);
+
     /// <summary>
     /// Checks if the given role ID has group management permissions (Creator or Admin).
     /// </summary>
@@ -42,6 +46,8 @@ public static class RoleHelper
         if (!roleId.HasValue) return false;
         return roleId.Value is GroupCreator or GroupAdmin;
     }
+
+    public static bool CanManageGroup(RoleEnum? role) => ToRoleId(role) is { } roleId && CanManageGroup(roleId);
 
     /// <summary>
     /// Returns a human-readable name for the organization role.
@@ -57,6 +63,8 @@ public static class RoleHelper
         _ => "Unknown"
     };
 
+    public static string GetRoleName(RoleEnum? role) => GetRoleName(ToRoleId(role));
+
     /// <summary>
     /// Returns a MudBlazor Color for the organization role badge.
     /// </summary>
@@ -71,16 +79,16 @@ public static class RoleHelper
         _ => Color.Default
     };
 
+    public static Color GetRoleColor(RoleEnum? role) => GetRoleColor(ToRoleId(role));
+
     /// <summary>
     /// Returns all assignable organization roles (excludes Creator).
     /// </summary>
     public static IReadOnlyList<(int Id, string Name)> GetAssignableOrgRoles() =>
     [
-        (OrgCoOwner, "Co-Owner"),
         (OrgAdmin, "Admin"),
         (OrgModerator, "Moderator"),
-        (OrgMember, "Member"),
-        (OrgViewer, "Viewer")
+        (OrgMember, "Member")
     ];
 
     /// <summary>
@@ -108,6 +116,8 @@ public static class RoleHelper
         _ => "Unknown"
     };
 
+    public static string GetGroupRoleName(RoleEnum? role) => GetGroupRoleName(ToRoleId(role));
+
     /// <summary>
     /// Returns a MudBlazor Color for the group role badge.
     /// </summary>
@@ -120,6 +130,8 @@ public static class RoleHelper
         _ => Color.Default
     };
 
+    public static Color GetGroupRoleColor(RoleEnum? role) => GetGroupRoleColor(ToRoleId(role));
+
     /// <summary>
     /// Returns assignable group roles for group membership administration.
     /// </summary>
@@ -129,4 +141,36 @@ public static class RoleHelper
         (GroupModerator, "Moderator"),
         (GroupMember, "Member")
     ];
+
+    public static RoleEnum? ToRoleEnum(int? roleId) => roleId switch
+    {
+        OrgAdmin => RoleEnum.OrgAdmin,
+        OrgModerator => RoleEnum.OrgModerator,
+        OrgMember => RoleEnum.OrgMember,
+        GroupAdmin => RoleEnum.GroupAdmin,
+        GroupModerator => RoleEnum.GroupModerator,
+        GroupMember => RoleEnum.GroupMember,
+        _ => null
+    };
+
+    public static int? ToRoleId(RoleEnum? role) => role switch
+    {
+        RoleEnum.Admin => 1,
+        RoleEnum.Moderator => 2,
+        RoleEnum.Member => 4,
+        RoleEnum.TenantAdmin => 11,
+        RoleEnum.TenantModerator => 12,
+        RoleEnum.TenantMember => 13,
+        RoleEnum.OrgAdmin => OrgAdmin,
+        RoleEnum.OrgModerator => OrgModerator,
+        RoleEnum.OrgMember => OrgMember,
+        RoleEnum.GroupAdmin => GroupAdmin,
+        RoleEnum.GroupModerator => GroupModerator,
+        RoleEnum.GroupMember => GroupMember,
+        RoleEnum.EventOwner => 41,
+        RoleEnum.EventManager => 42,
+        RoleEnum.RegistrationManager => 43,
+        RoleEnum.CheckInStaff => 44,
+        _ => null
+    };
 }

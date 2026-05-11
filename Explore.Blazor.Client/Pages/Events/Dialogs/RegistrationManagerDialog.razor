@@ -21,8 +21,8 @@
                 <CellTemplate Context="context">
                     @if (context.Item.ApprovalStatusMasterCode == "PENDING")
                     {
-                        <AppIconButton Icon="@Icons.Material.Filled.Check" Size="Size.Small" OnClick="@(() => UpdateStatus(context.Item, 2))" />
-                        <AppIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="@(() => UpdateStatus(context.Item, 3))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Check" Size="Size.Small" OnClick="@(() => UpdateStatus(context.Item, 2))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="@(() => UpdateStatus(context.Item, 3))" />
                     }
                 </CellTemplate>
             </TemplateColumn>
@@ -30,7 +30,7 @@
     </MudDataGrid>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Close">Close</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Close">Close</MudButton>
     </DialogActions>
 </MudDialog>
 

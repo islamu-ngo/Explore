@@ -13,14 +13,14 @@
 <div class="location-room-manager">
     <div class="d-flex align-center justify-space-between mb-2">
         <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Rooms</MudText>
-        <AppButton StartIcon="@Icons.Material.Filled.Add"
+        <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Add"
                    Variant="Variant.Text"
                    Size="Size.Small"
                    Color="Color.Primary"
                    OnClick="OpenCreateDialog"
                    Disabled="@(!CanManage || LocationId == Guid.Empty)">
             Add Room
-        </AppButton>
+        </MudButton>
     </div>
 
     @if (LocationId == Guid.Empty)

@@ -5,8 +5,10 @@
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using MudBlazor
 
+@using Microsoft.AspNetCore.Components.Forms
+@using Explore.Blazor.Client.Components.Forms
+
 @inject IEventAspectService EventAspectService
-@inject ISnackbar Snackbar
 @inject ILogger<TechAspectEditDialog> Logger
 
 <MudDialog>
@@ -17,7 +19,9 @@
         </div>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="_form" @bind-IsValid="_isValid">
+        <EditForm EditContext="_editContext">
+            <FormSubmissionGuard State="@_submitState">
+            <AppValidationSummary />
             <MudGrid Spacing="3">
                 <MudItem xs="12" sm="6">
                     <MudSelect T="int?"
@@ -32,7 +36,7 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <AppTextField T="string" T="string"
+                    <MudTextField T="string" T="string"
                                   Label="GitHub Repository URL"
                                   @bind-Value="_model.GithubRepoUrl"
                                   Placeholder="https://github.com/org/repo"
@@ -42,7 +46,7 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <AppTextField T="string" T="string"
+                    <MudTextField T="string" T="string"
                                   Label="Hackathon Track"
                                   @bind-Value="_model.HackathonTrack"
                                   Placeholder="e.g., AI/ML, Web3, Healthcare"
@@ -50,7 +54,7 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <AppTextField T="string" T="string"
+                    <MudTextField T="string" T="string"
                                   Label="Tech Stack Tags"
                                   @bind-Value="_model.TechStackTags"
                                   Placeholder="e.g., .NET, React, PostgreSQL"
@@ -99,7 +103,7 @@
                     </MudItem>
 
                     <MudItem xs="12" sm="4">
-                        <AppTextField T="string" T="string"
+                        <MudTextField T="string" T="string"
                                       Label="Currency"
                                       @bind-Value="_model.PrizeCurrencyCode"
                                       Placeholder="USD"
@@ -108,13 +112,14 @@
                     </MudItem>
                 }
             </MudGrid>
-        </MudForm>
+            </FormSubmissionGuard>
+        </EditForm>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel" Variant="Variant.Text">Cancel</AppButton>
-        <AppButton OnClick="SaveAsync"
-                   Disabled="@_isSaving">
-            @if (_isSaving)
+        <MudButton Elevation="0" Color="Color.Primary" OnClick="Cancel" Variant="Variant.Text" Disabled="_submitState.IsSubmitting">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync"
+                   Disabled="_submitState.IsSubmitting">
+            @if (_submitState.IsSubmitting)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                 <span>Saving...</span>
@@ -123,7 +128,7 @@
             {
                 <span>Save</span>
             }
-        </AppButton>
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -139,9 +144,9 @@
 
     private bool IsNew => ExistingAspect == null;
 
-    private MudForm _form = null!;
-    private bool _isValid;
-    private bool _isSaving;
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
 
     private CreateUpdateTechAspectDto _model = new();
 
@@ -162,13 +167,17 @@
                 PrizeCurrencyCode = ExistingAspect.PrizeCurrencyCode
             };
         }
+
+        _editContext = new EditContext(_model);
+        _errorStore.Init(_editContext);
     }
 
     private async Task SaveAsync()
     {
-        if (_isSaving) return;
+        if (_submitState.IsSubmitting) return;
+        if (!_editContext.Validate()) return;
 
-        _isSaving = true;
+        _submitState.Start();
 
         try
         {
@@ -184,23 +193,36 @@
 
             if (response?.Success == true)
             {
-                Snackbar.Add(IsNew ? "Tech characteristics added" : "Tech characteristics updated", Severity.Success);
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
             {
                 var errorMessage = response?.Errors?.FirstOrDefault() ?? "Failed to save Tech characteristics";
-                Snackbar.Add(errorMessage, Severity.Error);
+                _submitState.Fail(errorMessage);
+            }
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail($"Failed to save aspect: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving Tech aspect for event {EventId}", EventId);
-            Snackbar.Add("An error occurred while saving", Severity.Error);
+            _submitState.Fail("An error occurred while saving");
         }
         finally
         {
-            _isSaving = false;
+            if (!_submitState.HasError)
+            {
+                _submitState.Complete();
+            }
         }
     }
 

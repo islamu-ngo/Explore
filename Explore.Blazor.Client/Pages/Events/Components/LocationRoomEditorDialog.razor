@@ -4,6 +4,8 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
+@using Microsoft.AspNetCore.Components.Forms
+@using Explore.Blazor.Client.Components.Forms
 
 @inject ILocationRoomService RoomService
 
@@ -23,10 +25,12 @@
         }
         else
         {
-            <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <EditForm EditContext="_editContext">
+                <FormSubmissionGuard State="@_submitState">
+                <AppValidationSummary />
                 <MudStack Spacing="3">
-                    <AppTextField T="string"
-                                  @bind-Value="_name"
+                    <MudTextField T="string"
+                                  @bind-Value="_model.Name"
                                   Label="Room Name"
                                   Placeholder="e.g. Main Hall, Room A, Workshop Space"
                                   Variant="Variant.Outlined"
@@ -34,56 +38,53 @@
                                   RequiredError="Room name is required"
                                   FullWidth="true" />
 
-                    <AppTextField T="string"
-                                  @bind-Value="_slug"
+                    <MudTextField T="string"
+                                  @bind-Value="_model.Slug"
                                   Label="Slug"
                                   Placeholder="auto-generated if blank"
                                   Variant="Variant.Outlined"
                                   FullWidth="true" />
 
-                    <MudNumericField T="int"
-                                     @bind-Value="_capacity"
+                    <MudNumericField T="int?"
+                                     @bind-Value="_model.Capacity"
                                      Label="Capacity"
                                      Variant="Variant.Outlined"
                                      Margin="Margin.Dense"
                                      Min="0"
                                      Placeholder="0 = unlimited" />
 
-                    <AppTextField T="string"
-                                  @bind-Value="_description"
+                    <MudTextField T="string"
+                                  @bind-Value="_model.Description"
                                   Label="Description"
                                   Placeholder="Optional room description"
                                   Variant="Variant.Outlined"
                                   Lines="2"
                                   FullWidth="true" />
 
-                    <MudNumericField T="int"
-                                     @bind-Value="_sortOrder"
+                    <MudNumericField T="int?"
+                                     @bind-Value="_model.SortOrder"
                                      Label="Sort Order"
                                      Variant="Variant.Outlined"
                                      Margin="Margin.Dense"
                                      Min="1" />
                 </MudStack>
-            </MudForm>
+                </FormSubmissionGuard>
+            </EditForm>
 
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_errorMessage</MudAlert>
-            }
         }
     </DialogContent>
     <DialogActions>
-        <AppButton Variant="Variant.Text" OnClick="Cancel">Cancel</AppButton>
-        <AppButton Variant="Variant.Filled"
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" OnClick="Cancel" Disabled="_submitState.IsSubmitting">Cancel</MudButton>
+        <MudButton Elevation="0" Variant="Variant.Filled"
                    Color="Color.Primary"
                    OnClick="Save"
-                   Disabled="@(_isSaving || !_isValid)">
-            @if (_isSaving)
+                   Disabled="_submitState.IsSubmitting">
+            @if (_submitState.IsSubmitting)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
             @(IsNew ? "Add" : "Save")
-        </AppButton>
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -95,22 +96,18 @@
     [Parameter] public bool IsNew { get; set; } = true;
     [Parameter] public int InitialSortOrder { get; set; } = 1;
 
-    private MudForm? _form;
-    private bool _isValid;
-    private bool _isSaving;
     private bool _isLoadingDetail;
-    private string _errorMessage = string.Empty;
 
-    // Form fields
-    private string _name = string.Empty;
-    private string _slug = string.Empty;
-    private string _description = string.Empty;
-    private int _capacity;
-    private int _sortOrder = 1;
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
+
+    private CreateLocationRoomDto _model = new();
 
     protected override async Task OnInitializedAsync()
     {
-        _sortOrder = InitialSortOrder;
+        _model.SortOrder = InitialSortOrder;
+        _model.LocationId = LocationId;
 
         if (!IsNew && RoomId.HasValue)
         {
@@ -118,32 +115,31 @@
             var room = await RoomService.GetRoomByIdAsync(RoomId.Value);
             if (room != null)
             {
-                _name = room.Name;
-                _slug = room.Slug;
-                _description = room.Description;
-                _capacity = room.Capacity ?? 0;
-                _sortOrder = room.SortOrder;
+                _model.Name = room.Name;
+                _model.Slug = room.Slug ?? string.Empty;
+                _model.Description = room.Description ?? string.Empty;
+                _model.Capacity = room.Capacity ?? 0;
+                _model.SortOrder = room.SortOrder;
             }
             _isLoadingDetail = false;
         }
+
+        _editContext = new EditContext(_model);
+        _errorStore.Init(_editContext);
     }
 
     private async Task Save()
     {
-        if (_form != null)
-        {
-            await _form.Validate();
-            if (!_isValid) return;
-        }
+        if (_submitState.IsSubmitting) return;
+        if (!_editContext.Validate()) return;
 
-        if (string.IsNullOrWhiteSpace(_name))
+        if (string.IsNullOrWhiteSpace(_model.Name))
         {
-            _errorMessage = "Room name is required.";
+            _submitState.Fail("Room name is required.");
             return;
         }
 
-        _isSaving = true;
-        _errorMessage = string.Empty;
+        _submitState.Start();
 
         try
         {
@@ -152,11 +148,11 @@
                 var dto = new CreateLocationRoomDto
                 {
                     LocationId = LocationId,
-                    Name = _name.Trim(),
-                    Slug = string.IsNullOrWhiteSpace(_slug) ? null : _slug.Trim(),
-                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description,
-                    Capacity = _capacity,
-                    SortOrder = _sortOrder
+                    Name = _model.Name.Trim(),
+                    Slug = string.IsNullOrWhiteSpace(_model.Slug) ? null : _model.Slug.Trim(),
+                    Description = string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description,
+                    Capacity = _model.Capacity,
+                    SortOrder = _model.SortOrder
                 };
 
                 var result = await RoomService.CreateRoomAsync(dto);
@@ -166,18 +162,18 @@
                 }
                 else
                 {
-                    _errorMessage = result?.Message ?? "Failed to create room.";
+                    _submitState.Fail(result?.Message ?? "Failed to create room.");
                 }
             }
             else if (RoomId.HasValue)
             {
                 var dto = new UpdateLocationRoomDto
                 {
-                    Name = _name.Trim(),
-                    Slug = string.IsNullOrWhiteSpace(_slug) ? null : _slug.Trim(),
-                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description,
-                    Capacity = _capacity,
-                    SortOrder = _sortOrder
+                    Name = _model.Name.Trim(),
+                    Slug = string.IsNullOrWhiteSpace(_model.Slug) ? null : _model.Slug.Trim(),
+                    Description = string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description,
+                    Capacity = _model.Capacity,
+                    SortOrder = _model.SortOrder
                 };
 
                 var result = await RoomService.UpdateRoomAsync(RoomId.Value, dto);
@@ -187,17 +183,31 @@
                 }
                 else
                 {
-                    _errorMessage = result?.Message ?? "Failed to update room.";
+                    _submitState.Fail(result?.Message ?? "Failed to update room.");
                 }
+            }
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail($"Failed to save room: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Error: {ex.Message}";
+            _submitState.Fail($"Error: {ex.Message}");
         }
         finally
         {
-            _isSaving = false;
+            if (!_submitState.HasError)
+            {
+                _submitState.Complete();
+            }
         }
     }
 

@@ -13,14 +13,14 @@
 <div class="event-day-manager">
     <div class="d-flex align-center justify-space-between mb-2">
         <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Event Days</MudText>
-        <AppButton StartIcon="@Icons.Material.Filled.Add"
+        <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Add"
                    Variant="Variant.Text"
                    Size="Size.Small"
                    Color="Color.Primary"
                    OnClick="OpenCreateDialog"
                    Disabled="@(!CanManage)">
             Add Day
-        </AppButton>
+        </MudButton>
     </div>
 
     @if (_isLoading)
@@ -61,11 +61,11 @@
                         @if (CanManage)
                         {
                             <div class="d-flex gap-1">
-                                <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                Size="Size.Small"
                                                OnClick="@(() => OpenEditDialog(day))"
                                                aria-label="@($"Edit {day.Label}")" />
-                                <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                Size="Size.Small"
                                                Color="Color.Error"
                                                OnClick="@(() => DeleteDay(day))"

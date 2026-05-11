@@ -1,6 +1,8 @@
 // ABOUTME: Unit tests for EventAgendaItemService covering CRUD operations.
 // ABOUTME: Tests GetAgendaItemsByEvent, GetAgendaItemById, Create, Update, Delete with success and error paths.
 
+using System.Globalization;
+
 namespace Explore.Blazor.Client.Tests.Services;
 
 public class EventAgendaItemServiceTests
@@ -22,10 +24,11 @@ public class EventAgendaItemServiceTests
     public async Task GetAgendaItemsByEventAsync_ReturnsItems_WhenApiSucceeds()
     {
         var eventId = Guid.NewGuid();
+        var eventDate = new DateOnly(2026, 5, 7);
         var halResponse = CreateHalCollectionResponse(new List<EventAgendaItemListDto>
         {
-            new() { Id = Guid.NewGuid(), Title = "Keynote", SortOrder = 1 },
-            new() { Id = Guid.NewGuid(), Title = "Workshop", SortOrder = 2 }
+            CreateAgendaItemListDto("Keynote", 1, eventDate, new TimeOnly(9, 0), new TimeOnly(10, 0)),
+            CreateAgendaItemListDto("Workshop", 2, eventDate, new TimeOnly(10, 30), new TimeOnly(12, 0))
         });
 
         _apiClient.GetEventAgendaItemsByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -67,7 +70,13 @@ public class EventAgendaItemServiceTests
         var dto = new EventAgendaItemDto
         {
             Id = itemId,
-            Title = "Keynote Speech"
+            Title = "Keynote Speech",
+            StartTime = DateTimeOffset.Parse("2026-05-07T09:00:00+00:00", CultureInfo.InvariantCulture),
+            EndTime = DateTimeOffset.Parse("2026-05-07T10:00:00+00:00", CultureInfo.InvariantCulture),
+            LocalStartDate = new DateOnly(2026, 5, 7),
+            LocalEndDate = new DateOnly(2026, 5, 7),
+            LocalStartTime = new TimeOnly(9, 0),
+            LocalEndTime = new TimeOnly(10, 0)
         };
         var halResponse = CreateHalResourceResponse(dto);
 
@@ -203,9 +212,37 @@ public class EventAgendaItemServiceTests
         {
             _embedded = new HalCollectionEmbeddedOfEventAgendaItemListDto
             {
-                Items = items.Cast<object>().ToList()
+                Items = items.Select(ToHalResource).ToList()
             }
         };
+    }
+
+    private static EventAgendaItemListDto CreateAgendaItemListDto(
+        string title,
+        int sortOrder,
+        DateOnly localDate,
+        TimeOnly localStartTime,
+        TimeOnly localEndTime)
+    {
+        return new EventAgendaItemListDto
+        {
+            Id = Guid.NewGuid(),
+            EventId = Guid.NewGuid(),
+            Title = title,
+            SortOrder = sortOrder,
+            LocalStartDate = localDate,
+            LocalStartTime = localStartTime,
+            LocalEndTime = localEndTime,
+            StartTime = new DateTimeOffset(localDate.ToDateTime(localStartTime), TimeSpan.Zero),
+            EndTime = new DateTimeOffset(localDate.ToDateTime(localEndTime), TimeSpan.Zero)
+        };
+    }
+
+    private static HalResourceOfEventAgendaItemListDto ToHalResource(EventAgendaItemListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfEventAgendaItemListDto>(json)
+               ?? new HalResourceOfEventAgendaItemListDto();
     }
 
     private static HalResourceOfEventAgendaItemDto CreateHalResourceResponse(EventAgendaItemDto dto)

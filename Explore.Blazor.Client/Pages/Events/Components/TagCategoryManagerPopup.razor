@@ -9,7 +9,7 @@
                 <MudText Typo="Typo.h6" Class="tagcat-manager__title">
                     Manage @(Mode == TagCategoryMode.Tags ? "Tags" : "Categories")
                 </MudText>
-                <AppIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
                                OnClick="HandleClose" />
             </div>
 
@@ -42,7 +42,7 @@
                                         <MudText Typo="Typo.body2" Style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                             @item.Name
                                         </MudText>
-                                        <AppIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
                                                        Color="Color.Error"
                                                        OnClick="@(() => RemoveItem(item))"
                                                        aria-label="Remove" />
@@ -82,11 +82,11 @@
                 </div>
 
                 <div class="d-flex gap-3 mt-4">
-                    <AppButton Variant="Variant.Text" Color="Color.Default" Class="rounded-lg flex-1"
+                    <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" Class="rounded-lg flex-1"
                                OnClick="HandleClose" Disabled="_isSaving">
                         Cancel
-                    </AppButton>
-                    <AppButton Class="rounded-lg flex-1"
+                    </MudButton>
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="rounded-lg flex-1"
                                OnClick="HandleSave"
                                Disabled="@(_isSaving || !HasChanges)"
                                StartIcon="@(_isSaving ? null : Icons.Material.Filled.Save)">
@@ -99,7 +99,7 @@
                         {
                             <span>Save</span>
                         }
-                    </AppButton>
+                    </MudButton>
                 </div>
             }
         </div>

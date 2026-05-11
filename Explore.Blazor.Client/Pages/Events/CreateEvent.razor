@@ -26,14 +26,6 @@
     else
     {
         <div class="create-event">
-            @if (!string.IsNullOrWhiteSpace(errorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4 rounded-lg"
-                          ShowCloseIcon="true" CloseIconClicked="@(() => errorMessage = string.Empty)">
-                    @errorMessage
-                </MudAlert>
-            }
-
             @if (_publishReadinessErrors.Count > 0)
             {
                 <div id="publish-readiness-errors" role="alert" tabindex="-1">
@@ -51,8 +43,9 @@
                 </div>
             }
 
-        <EditForm Model="createDto" OnValidSubmit="@HandleSubmit">
-            <FluentValidationValidator />
+        <EditForm EditContext="_editContext" OnValidSubmit="@HandleSubmit">
+            <FormSubmissionGuard State="@_submitState">
+            <AppValidationSummary />
 
             <MudGrid Spacing="5">
                 @* ===== LEFT COLUMN: Event Image And Appearance ===== *@
@@ -215,7 +208,7 @@
                     }
 
                     @* --- Event Title (large, Luma-style) --- *@
-                    <AppTextField T="string" @bind-Value="createDto.Title"
+                    <MudTextField T="string" @bind-Value="createDto.Title"
                                   Label="Event name"
                                   Placeholder="Event Name"
                                   Variant="Variant.Text"
@@ -226,7 +219,7 @@
 
                     @* --- Event Timezone (event-level, shared by all dedicated session pages) --- *@
                     <div class="d-flex align-center gap-2 mb-2">
-                        <AppButton Variant="Variant.Text"
+                        <MudButton Elevation="0" Variant="Variant.Text"
                                    Size="Size.Small"
                                    Color="Color.Default"
                                    OnClick="@(() => _showTimezoneSelector = !_showTimezoneSelector)"
@@ -234,7 +227,7 @@
                             <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" />
                             @_selectedTimezoneDisplay
                             <MudIcon Icon="@(_showTimezoneSelector ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" Size="Size.Small" />
-                        </AppButton>
+                        </MudButton>
                     </div>
                     @if (_showTimezoneSelector)
                     {
@@ -267,7 +260,7 @@
                     @* Meeting link field (shown for Online and Hybrid) *@
                     @if (createDto.EventFormatId is 2 or 3)
                     {
-                        <AppTextField T="string" @bind-Value="createDto.EventUrl"
+                        <MudTextField T="string" @bind-Value="createDto.EventUrl"
                                       Label="Meeting link"
                                       Placeholder="https://zoom.us/j/... or Google Meet link"
                                       Variant="Variant.Outlined"
@@ -279,7 +272,7 @@
                     }
 
                     @* --- Add Description Button (Luma-style popup) --- *@
-                    <AppButton StartIcon="@Icons.Material.Filled.Notes"
+                    <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Notes"
                                Variant="Variant.Text"
                                Color="Color.Default"
                                FullWidth="true"
@@ -293,7 +286,7 @@
                         {
                             <span>Add a description</span>
                         }
-                    </AppButton>
+                    </MudButton>
 
                     @* --- Program Summary: sessions stay as program items, logistics stay separate. --- *@
                     <EventOptionsSection Title="Program summary"
@@ -305,20 +298,20 @@
                                          Summary="@ProgramItemsSummary"
                                          Description="Build the event program from sessions, then open the dedicated session composer when you are ready for more detail.">
                             <div class="d-flex flex-wrap gap-2">
-                                <AppButton StartIcon="@Icons.Material.Filled.Add"
+                                <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Add"
                                            Variant="Variant.Text"
                                            Color="Color.Primary"
                                            OnClick="AddSessionAsync"
-                                           Disabled="@isProcessing">
+                                           Disabled="@_submitState.IsSubmitting">
                                     Add session
-                                </AppButton>
-                                <AppButton StartIcon="@Icons.Material.Filled.AccountTree"
+                                </MudButton>
+                                <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.AccountTree"
                                            Variant="Variant.Text"
                                            Color="Color.Default"
                                            OnClick="ShowProgramSectionUnavailable"
-                                           Disabled="@isProcessing">
+                                           Disabled="@_submitState.IsSubmitting">
                                     Add section/track
-                                </AppButton>
+                                </MudButton>
                             </div>
                          </EventOptionRow>
 
@@ -460,7 +453,7 @@
                                         @category
                                     </MudChip>
                                 }
-                                <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                Size="Size.Small"
                                                Disabled="@AreEventOptionsDisabled"
                                                OnClick="OpenCategoryManager"
@@ -480,7 +473,7 @@
                                         @tag
                                     </MudChip>
                                 }
-                                <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                Size="Size.Small"
                                                Disabled="@AreEventOptionsDisabled"
                                                OnClick="OpenTagManager"
@@ -615,12 +608,12 @@
 
             @* ===== Review And Publish Button with Draft Option ===== *@
             <div class="d-flex gap-0 mt-6" style="width: 100%;">
-                <AppButton ButtonType="ButtonType.Submit"
+                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" ButtonType="ButtonType.Submit"
                            Disabled="@IsSubmitDisabled"
                            Class="create-event__submit-button"
                            Size="Size.Large"
                            Style="flex: 1; border-top-right-radius: 0; border-bottom-right-radius: 0;">
-                    @if (isProcessing)
+                    @if (_submitState.IsSubmitting)
                     {
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                         <span>Reviewing...</span>
@@ -639,7 +632,7 @@
                     {
                         <span>Review and publish</span>
                     }
-                </AppButton>
+                </MudButton>
                 <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown"
                          Variant="Variant.Filled"
                          Color="Color.Primary"
@@ -655,6 +648,7 @@
                     </MudMenuItem>
                 </MudMenu>
             </div>
+            </FormSubmissionGuard>
         </EditForm>
         </div>
 

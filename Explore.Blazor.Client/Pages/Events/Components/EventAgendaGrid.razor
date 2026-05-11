@@ -19,14 +19,14 @@
                 <span> &mdash; @(!string.IsNullOrEmpty(_selectedDay.Label) ? _selectedDay.Label : _selectedDay.LocalDate.ToString("MMM d"))</span>
             }
         </MudText>
-        <AppButton StartIcon="@Icons.Material.Filled.Add"
+        <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Add"
                    Variant="Variant.Text"
                    Size="Size.Small"
                    Color="Color.Primary"
                    OnClick="OpenCreateDialog"
                    Disabled="@(!CanManage)">
             Add Item
-        </AppButton>
+        </MudButton>
     </div>
 
     @if (Days.Count > 1)
@@ -120,11 +120,11 @@
                             @if (CanManage)
                             {
                                 <div class="d-flex gap-1">
-                                    <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                    Size="Size.Small"
                                                    OnClick="@(() => OpenEditDialog(item))"
                                                    aria-label="@($"Edit {item.Title}")" />
-                                    <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                    Size="Size.Small"
                                                    Color="Color.Error"
                                                    OnClick="@(() => DeleteItem(item))"

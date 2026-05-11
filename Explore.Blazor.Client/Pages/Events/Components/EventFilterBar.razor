@@ -26,7 +26,7 @@
             <MudIcon Icon="@Icons.Material.Filled.FilterList" Class="mr-2" Style="vertical-align: middle;" />
             Filters
         </MudText>
-        <AppIconButton Icon="@Icons.Material.Filled.Close"
+        <MudIconButton Icon="@Icons.Material.Filled.Close"
                        Size="Size.Small"
                        OnClick="CloseMobileDrawer"
                        aria-label="Close filters" />
@@ -209,7 +209,7 @@
 
                 <div class="filter-bar__filter-item filter-bar__filter-item--full">
                     <div class="filter-bar__label">Tech Stack</div>
-                    <AppTextField T="string" @bind-Value="TechStackTag" Margin="Margin.Dense" Dense="true" Placeholder="e.g. React, .NET" DebounceInterval="500" />
+                    <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="TechStackTag" Margin="Margin.Dense" Dense="true" Placeholder="e.g. React, .NET" DebounceInterval="500" />
                 </div>
             }
         </div>
@@ -220,7 +220,7 @@
         @{ var drawerActiveCount = GetActiveFilterCount(); }
         @if (drawerActiveCount > 0)
         {
-            <AppButton Variant="Variant.Text"
+            <MudButton Elevation="0" Variant="Variant.Text"
                        Color="Color.Error"
                        Size="Size.Small"
                        StartIcon="@Icons.Material.Filled.ClearAll"
@@ -228,14 +228,14 @@
                        FullWidth="true"
                        Class="mb-2">
                 Clear All (@drawerActiveCount)
-            </AppButton>
+            </MudButton>
         }
-        <AppButton StartIcon="@Icons.Material.Filled.Search"
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Search"
                    OnClick="ApplyMobileFilters"
                    FullWidth="true"
                    Size="Size.Large">
             Apply Filters
-        </AppButton>
+        </MudButton>
     </div>
 </MudDrawer>
 
@@ -244,7 +244,7 @@
 
     @* ── Primary Action Row: Search + Filters Toggle + Search Button ── *@
     <div class="filter-bar__primary-row">
-        <AppTextField T="string" @bind-Value="SearchTerm"
+        <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="SearchTerm"
                       Placeholder="Search events..."
                       Margin="Margin.Dense"
                       Adornment="Adornment.Start"
@@ -255,7 +255,7 @@
         @* ── Desktop: filled button with expand/collapse ── *@
         @if (!_isMobile)
         {
-            <AppButton Variant="Variant.Filled"
+            <MudButton Elevation="0" Variant="Variant.Filled"
                        Color="Color.Primary"
                        EndIcon="@(_filtersExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
                        OnClick="ToggleFilters"
@@ -271,15 +271,15 @@
                 {
                     <span>Filters</span>
                 }
-            </AppButton>
+            </MudButton>
         }
 
-        <AppButton StartIcon="@Icons.Material.Filled.Search"
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Search"
                    OnClick="SearchAsync"
                    Size="Size.Medium"
                    Class="filter-bar__search-btn">
             Search
-        </AppButton>
+        </MudButton>
     </div>
 
     @* ── Desktop: Collapsible Filter Panel ── *@
@@ -457,7 +457,7 @@
 
                         <div class="filter-bar__filter-item">
                             <div class="filter-bar__label">Tech Stack</div>
-                            <AppTextField T="string" @bind-Value="TechStackTag" Margin="Margin.Dense" Dense="true" Placeholder="e.g. React, .NET" DebounceInterval="500" />
+                            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="TechStackTag" Margin="Margin.Dense" Dense="true" Placeholder="e.g. React, .NET" DebounceInterval="500" />
                         </div>
                     }
                 </div>
@@ -470,9 +470,9 @@
                         <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">
                             @activeCount active @(activeCount == 1 ? "filter" : "filters")
                         </MudChip>
-                        <AppButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.ClearAll" OnClick="ClearAllFilters">
+                        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.ClearAll" OnClick="ClearAllFilters">
                             Clear All
-                        </AppButton>
+                        </MudButton>
                     </div>
                 }
             </div>
@@ -488,7 +488,7 @@
                       Overlap="true"
                       Bordered="true"
                       Visible="@(GetActiveFilterCount() > 0)">
-                <AppIconButton Icon="@Icons.Material.Filled.FilterList"
+                <MudIconButton Icon="@Icons.Material.Filled.FilterList"
                                Color="@(_mobileDrawerOpen ? Color.Primary : Color.Default)"
                                OnClick="ToggleFilters"
                                Size="Size.Medium"
@@ -504,7 +504,7 @@
         <MudSpacer />
         @if (ShowCustomizationButton)
         {
-            <AppIconButton Icon="@Icons.Material.Filled.Tune"
+            <MudIconButton Icon="@Icons.Material.Filled.Tune"
                            Color="Color.Default"
                            Size="Size.Medium"
                            OnClick="@(() => OnCustomizationRequested.InvokeAsync())"

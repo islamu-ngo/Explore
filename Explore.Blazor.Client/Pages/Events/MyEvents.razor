@@ -19,15 +19,15 @@
             <MudText Typo="Typo.h4" HtmlTag="h1">My Events</MudText>
         </div>
         <div class="d-flex flex-wrap gap-3">
-            <AppButton Variant="Variant.Outlined"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                        StartIcon="@Icons.Material.Filled.Business"
                        OnClick="NavigateToCreateOrganization">
                 Create Organization
-            </AppButton>
-            <AppButton StartIcon="@Icons.Material.Filled.Add"
+            </MudButton>
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                        OnClick="NavigateToCreateEvent">
                 Organize Event
-            </AppButton>
+            </MudButton>
         </div>
     </div>
 
@@ -45,9 +45,9 @@
         <div role="alert">
             <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="my-4">
                 @_errorMessage
-                <AppButton Variant="Variant.Text" Color="Color.Inherit" OnClick="RetryLoadAsync" Class="ml-4">
+                <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Inherit" OnClick="RetryLoadAsync" Class="ml-4">
                     Retry
-                </AppButton>
+                </MudButton>
             </MudAlert>
         </div>
     }
@@ -76,7 +76,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="12" md="6">
-                <AppTextField T="string" @bind-Value="_searchString"
+                <MudTextField T="string" @bind-Value="_searchString"
                               Placeholder="Search events..."
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search"
@@ -112,7 +112,7 @@
                 <Virtualize Items="@AllFilteredEvents" Context="evt" OverscanCount="4">
                     <ItemContent>
                         <MudItem xs="12" sm="6" md="4">
-                            <AppCard Class="h-100 d-flex flex-column position-relative">
+                            <MudCard Elevation="0" Class="h-100 d-flex flex-column position-relative">
                                 <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
                                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" AriaLabel="Event options" Dense="true" Color="Color.Default" Variant="Variant.Filled" Size="Size.Small" Style="background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); border-radius: 8px;">
                                         @if (CanEditEvent(evt))
@@ -173,23 +173,23 @@
                                 </MudCardContent>
 
                                 <MudCardActions>
-                                    <AppButton Variant="Variant.Text"
+                                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text"
                                                Href="@($"/events/{evt.Id}")"
                                                EndIcon="@Icons.Material.Filled.ArrowForward">
                                         Details
-                                    </AppButton>
+                                    </MudButton>
                                     <MudSpacer />
                                     @if (CanEditEvent(evt))
                                     {
-                                        <AppButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => EditEvent(evt))">Edit</AppButton>
+                                        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => EditEvent(evt))">Edit</MudButton>
                                     }
                                 </MudCardActions>
-                            </AppCard>
+                            </MudCard>
                         </MudItem>
                     </ItemContent>
                     <Placeholder>
                         <MudItem xs="12" sm="6" md="4">
-                            <AppCard Class="h-100 d-flex flex-column">
+                            <MudCard Elevation="0" Class="h-100 d-flex flex-column">
                                 <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                                 <MudCardContent>
                                     <MudSkeleton Width="40%" Class="mb-1" />
@@ -197,7 +197,7 @@
                                     <MudSkeleton Width="100%" />
                                     <MudSkeleton Width="60%" />
                                 </MudCardContent>
-                            </AppCard>
+                            </MudCard>
                         </MudItem>
                     </Placeholder>
                 </Virtualize>

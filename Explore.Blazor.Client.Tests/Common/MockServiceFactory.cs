@@ -34,7 +34,7 @@ public static class MockServiceFactory
         {
             _embedded = new HalCollectionEmbeddedOfEventListDto
             {
-                Items = new List<object>()
+                Items = new List<HalResourceOfEventListDto>()
             }
         });
 
@@ -44,7 +44,7 @@ public static class MockServiceFactory
             {
                 _embedded = new HalCollectionEmbeddedOfEventListDto
                 {
-                    Items = new List<object>()
+                    Items = new List<HalResourceOfEventListDto>()
                 }
             });
 
@@ -54,7 +54,7 @@ public static class MockServiceFactory
             {
                 _embedded = new HalCollectionEmbeddedOfOrganizationListDto
                 {
-                    Items = new List<object>()
+                    Items = new List<HalResourceOfOrganizationListDto>()
                 }
             });
 
@@ -64,7 +64,7 @@ public static class MockServiceFactory
             {
                 _embedded = new HalCollectionEmbeddedOfOrganizationListDto
                 {
-                    Items = new List<object>()
+                    Items = new List<HalResourceOfOrganizationListDto>()
                 }
             });
 

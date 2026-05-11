@@ -22,6 +22,7 @@ public sealed class EventProgramSummaryViewTests : IDisposable
         await Assert.That(cut.Markup).Contains("Keynotes");
         await Assert.That(cut.Markup).Contains("Fri 3 Jul");
         await Assert.That(cut.Markup).Contains("Opening keynote");
+        await Assert.That(cut.Markup).Contains("Talk");
         await Assert.That(cut.Markup).Contains("09:00–10:15");
         await Assert.That(cut.Markup).Contains("Auditorium");
         await Assert.That(cut.Markup).Contains("250 seats");
@@ -89,6 +90,9 @@ public sealed class EventProgramSummaryViewTests : IDisposable
                                             LocalStartTime = new TimeSpan(9, 0, 0),
                                             LocalEndTime = new TimeSpan(10, 15, 0),
                                             RoomName = "Auditorium",
+                                            EventSessionKindId = 1,
+                                            EventSessionKindName = "Talk",
+                                            EventSessionKindMasterCode = "TALK",
                                             Capacity = 250,
                                             RegistrationModeName = "Open registration"
                                         }

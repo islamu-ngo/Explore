@@ -4,6 +4,8 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
+@using Microsoft.AspNetCore.Components.Forms
+@using Explore.Blazor.Client.Components.Forms
 
 @inject IEventDayService EventDayService
 
@@ -23,10 +25,12 @@
         }
         else
         {
-            <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <EditForm EditContext="_editContext">
+                <FormSubmissionGuard State="@_submitState">
+                <AppValidationSummary />
                 <MudStack Spacing="3">
-                    <AppTextField T="string"
-                                  @bind-Value="_label"
+                    <MudTextField T="string"
+                                  @bind-Value="_model.Label"
                                   Label="Label"
                                   Placeholder="e.g. Day 1, Opening Day, Workshop Day"
                                   Variant="Variant.Outlined"
@@ -39,58 +43,55 @@
                                    Required="true"
                                    RequiredError="Date is required" />
 
-                    <AppTextField T="string"
-                                  @bind-Value="_description"
+                    <MudTextField T="string"
+                                  @bind-Value="_model.Description"
                                   Label="Description"
                                   Placeholder="Optional description for this day"
                                   Variant="Variant.Outlined"
                                   Lines="2"
                                   FullWidth="true" />
 
-                    <AppTextField T="string"
-                                  @bind-Value="_bannerText"
+                    <MudTextField T="string"
+                                  @bind-Value="_model.BannerText"
                                   Label="Banner Text"
                                   Placeholder="Optional banner message"
                                   Variant="Variant.Outlined"
                                   FullWidth="true" />
 
-                    <MudNumericField T="int"
-                                     @bind-Value="_sortOrder"
+                    <MudNumericField T="int?"
+                                     @bind-Value="_model.SortOrder"
                                      Label="Sort Order"
                                      Variant="Variant.Outlined"
                                      Margin="Margin.Dense"
                                      Min="1" />
 
-                    <MudSwitch T="bool"
-                               @bind-Value="_isPublished"
+                    <MudSwitch T="bool?"
+                               @bind-Value="_model.IsPublished"
                                Label="Published"
                                Color="Color.Primary" />
 
-                    <MudSwitch T="bool"
-                               @bind-Value="_allowsDayScopeRegistration"
+                    <MudSwitch T="bool?"
+                               @bind-Value="_model.AllowsDayScopeRegistration"
                                Label="Allow Day-Scope Registration"
                                Color="Color.Primary" />
                 </MudStack>
-            </MudForm>
+                </FormSubmissionGuard>
+            </EditForm>
 
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_errorMessage</MudAlert>
-            }
         }
     </DialogContent>
     <DialogActions>
-        <AppButton Variant="Variant.Text" OnClick="Cancel">Cancel</AppButton>
-        <AppButton Variant="Variant.Filled"
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" OnClick="Cancel" Disabled="_submitState.IsSubmitting">Cancel</MudButton>
+        <MudButton Elevation="0" Variant="Variant.Filled"
                    Color="Color.Primary"
                    OnClick="Save"
-                   Disabled="@(_isSaving || !_isValid)">
-            @if (_isSaving)
+                   Disabled="_submitState.IsSubmitting">
+            @if (_submitState.IsSubmitting)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
             @(IsNew ? "Add" : "Save")
-        </AppButton>
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -102,24 +103,19 @@
     [Parameter] public bool IsNew { get; set; } = true;
     [Parameter] public int InitialSortOrder { get; set; } = 1;
 
-    private MudForm? _form;
-    private bool _isValid;
-    private bool _isSaving;
     private bool _isLoadingDetail;
-    private string _errorMessage = string.Empty;
-
-    // Form fields
-    private string _label = string.Empty;
     private DateTime? _localDate;
-    private string _description = string.Empty;
-    private string _bannerText = string.Empty;
-    private int _sortOrder = 1;
-    private bool _isPublished = true;
-    private bool _allowsDayScopeRegistration;
+
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
+
+    private CreateEventDayDto _model = new() { IsPublished = true };
 
     protected override async Task OnInitializedAsync()
     {
-        _sortOrder = InitialSortOrder;
+        _model.SortOrder = InitialSortOrder;
+        _model.EventId = EventId;
 
         if (!IsNew && DayId.HasValue)
         {
@@ -127,34 +123,34 @@
             var day = await EventDayService.GetDayByIdAsync(DayId.Value);
             if (day != null)
             {
-                _label = day.Label;
+                _model.Label = day.Label ?? string.Empty;
                 _localDate = day.LocalDate.ToDateTime(TimeOnly.MinValue);
-                _description = day.Description;
-                _bannerText = day.BannerText;
-                _sortOrder = day.SortOrder;
-                _isPublished = day.IsPublished;
-                _allowsDayScopeRegistration = day.AllowsDayScopeRegistration;
+                _model.Description = day.Description ?? string.Empty;
+                _model.BannerText = day.BannerText ?? string.Empty;
+                _model.SortOrder = day.SortOrder;
+                _model.IsPublished = day.IsPublished;
+                _model.AllowsDayScopeRegistration = day.AllowsDayScopeRegistration;
             }
             _isLoadingDetail = false;
         }
+
+        _editContext = new EditContext(_model);
+        _errorStore.Init(_editContext);
     }
 
     private async Task Save()
     {
-        if (_form != null)
-        {
-            await _form.Validate();
-            if (!_isValid) return;
-        }
+        if (_submitState.IsSubmitting) return;
+        if (!_editContext.Validate()) return;
 
         if (!_localDate.HasValue)
         {
-            _errorMessage = "Date is required.";
+            _submitState.Fail("Date is required.");
             return;
         }
 
-        _isSaving = true;
-        _errorMessage = string.Empty;
+        _model.LocalDate = _localDate.Value;
+        _submitState.Start();
 
         try
         {
@@ -164,12 +160,12 @@
                 {
                     EventId = EventId,
                     LocalDate = _localDate.Value,
-                    Label = string.IsNullOrWhiteSpace(_label) ? null : _label,
-                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description,
-                    BannerText = string.IsNullOrWhiteSpace(_bannerText) ? null : _bannerText,
-                    IsPublished = _isPublished,
-                    SortOrder = _sortOrder,
-                    AllowsDayScopeRegistration = _allowsDayScopeRegistration
+                    Label = string.IsNullOrWhiteSpace(_model.Label) ? null : _model.Label,
+                    Description = string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description,
+                    BannerText = string.IsNullOrWhiteSpace(_model.BannerText) ? null : _model.BannerText,
+                    IsPublished = _model.IsPublished,
+                    SortOrder = _model.SortOrder,
+                    AllowsDayScopeRegistration = _model.AllowsDayScopeRegistration
                 };
 
                 var result = await EventDayService.CreateDayAsync(dto);
@@ -179,7 +175,7 @@
                 }
                 else
                 {
-                    _errorMessage = result?.Message ?? "Failed to create day.";
+                    _submitState.Fail(result?.Message ?? "Failed to create day.");
                 }
             }
             else if (DayId.HasValue)
@@ -187,12 +183,12 @@
                 var dto = new UpdateEventDayDto
                 {
                     LocalDate = _localDate.Value,
-                    Label = string.IsNullOrWhiteSpace(_label) ? null : _label,
-                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description,
-                    BannerText = string.IsNullOrWhiteSpace(_bannerText) ? null : _bannerText,
-                    IsPublished = _isPublished,
-                    SortOrder = _sortOrder,
-                    AllowsDayScopeRegistration = _allowsDayScopeRegistration
+                    Label = string.IsNullOrWhiteSpace(_model.Label) ? null : _model.Label,
+                    Description = string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description,
+                    BannerText = string.IsNullOrWhiteSpace(_model.BannerText) ? null : _model.BannerText,
+                    IsPublished = _model.IsPublished,
+                    SortOrder = _model.SortOrder,
+                    AllowsDayScopeRegistration = _model.AllowsDayScopeRegistration
                 };
 
                 var result = await EventDayService.UpdateDayAsync(DayId.Value, dto);
@@ -202,17 +198,31 @@
                 }
                 else
                 {
-                    _errorMessage = result?.Message ?? "Failed to update day.";
+                    _submitState.Fail(result?.Message ?? "Failed to update day.");
                 }
+            }
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail($"Failed to save day: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Error: {ex.Message}";
+            _submitState.Fail($"Error: {ex.Message}");
         }
         finally
         {
-            _isSaving = false;
+            if (!_submitState.HasError)
+            {
+                _submitState.Complete();
+            }
         }
     }
 

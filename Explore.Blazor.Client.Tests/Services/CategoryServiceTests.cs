@@ -331,9 +331,16 @@ public class CategoryServiceTests
         {
             _embedded = new HalCollectionEmbeddedOfCategoryListDto
             {
-                Items = items.Cast<object>().ToList()
+                Items = items.Select(ToHalResource).ToList()
             }
         };
+    }
+
+    private static HalResourceOfCategoryListDto ToHalResource(CategoryListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfCategoryListDto>(json)
+               ?? new HalResourceOfCategoryListDto();
     }
 
     #endregion

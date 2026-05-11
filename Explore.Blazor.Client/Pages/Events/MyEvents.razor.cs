@@ -182,7 +182,15 @@ public partial class MyEvents : ComponentBase
 
         if (result == true && evt.Id.HasValue)
         {
-            var success = await EventService.UpdateEventStatusAsync(evt.Id.Value, 2); // Published = 2
+            var eventDetail = await EventService.GetEventByIdAsync(evt.Id.Value);
+            if (eventDetail?.ConcurrencyStamp is not { } concurrencyStamp)
+            {
+                Snackbar.Add("Failed to publish event. Refresh your events and try again.", Severity.Error);
+                return;
+            }
+
+            var publishResponse = await EventService.PublishEventAsync(evt.Id.Value, concurrencyStamp);
+            var success = publishResponse?.Success == true;
             if (success)
             {
                 evt.EventStatusId = 2;

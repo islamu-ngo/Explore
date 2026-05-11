@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
+using Explore.Blazor.Client.Components.Forms;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
@@ -36,6 +37,7 @@ public partial class EventEdit
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected ILogger<EventEdit> Logger { get; set; } = null!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
+    [Inject] private IAccessibilityAnnouncerService AccessibilityAnnouncerService { get; set; } = default!;
     [Inject] private IEventRegistrationPolicyService RegistrationPolicyService { get; set; } = default!;
     [Inject] private ICustomPropertyDefinitionService CustomPropertyDefinitionService { get; set; } = default!;
 
@@ -217,14 +219,14 @@ public partial class EventEdit
 
     // Event data
     private EventDto? currentEvent;
-    private UpdateEventDto? updateDto;
+    private UpdateEventDraftRequestDto? updateDto;
 
     // Form state
     private ICollection<EventTypeListDto>? eventTypes;
+    private ICollection<EventStatusListDto>? eventStatuses;
     private ICollection<AudienceGenderListDto>? audienceGenders;
     private ICollection<AudienceAgeListDto>? audienceAges;
     private ICollection<EventFormatListDto>? eventFormats;
-    private ICollection<EventStatusListDto>? eventStatuses;
     private ICollection<VisibilityTypeListDto>? visibilityTypes;
     private ICollection<MadhabListDto>? madhabs;
     private ICollection<CategoryListDto>? allCategories;
@@ -234,7 +236,10 @@ public partial class EventEdit
     private ICollection<LanguageListDto>? languages;
     private ICollection<EventRegistrationPolicyListDto>? registrationPolicies;
     private bool isLoading = true;
-    private string errorMessage = string.Empty;
+
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
 
     // Image upload state
     private string? imagePreviewUrl;
@@ -264,6 +269,7 @@ public partial class EventEdit
 
     // UI toggles
     private bool _showTimezoneSelector = false;
+    private bool _programUpdatedOnReturn;
 
     // Timezone
     private TimeZoneInfo _selectedTimezone = TimeZoneInfo.Local;
@@ -279,7 +285,21 @@ public partial class EventEdit
             EventId = id;
         }
 
+        _programUpdatedOnReturn = HasProgramUpdatedReturnMarker();
+
         await LoadEventData();
+
+        if (_programUpdatedOnReturn && !_submitState.HasError)
+        {
+            await AccessibilityAnnouncerService.AnnouncePoliteAsync("Program summary refreshed after saving the program item.");
+        }
+    }
+
+    private bool HasProgramUpdatedReturnMarker()
+    {
+        var query = Navigation.ToAbsoluteUri(Navigation.Uri).Query;
+        return query.Contains("programUpdated=1", StringComparison.OrdinalIgnoreCase)
+            || query.Contains("programUpdated=true", StringComparison.OrdinalIgnoreCase);
     }
 
     // ========== Data Loading ==========
@@ -293,8 +313,8 @@ public partial class EventEdit
             var eventTypesTask = AdminService.GetEventTypesAsync();
             var audienceGendersTask = AdminService.GetAudienceGendersAsync();
             var audienceAgesTask = AdminService.GetAudienceAgesAsync();
-            var eventFormatsTask = AdminService.GetEventFormatsAsync();
             var eventStatusesTask = AdminService.GetEventStatusesAsync();
+            var eventFormatsTask = AdminService.GetEventFormatsAsync();
             var visibilityTypesTask = AdminService.GetVisibilityTypesAsync();
             var madhabsTask = AdminService.GetMadhabsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
@@ -305,16 +325,16 @@ public partial class EventEdit
             var registrationPoliciesTask = RegistrationPolicyService.GetEventRegistrationPoliciesAsync();
 
             await Task.WhenAll(
-                eventTypesTask, audienceGendersTask, audienceAgesTask,
-                eventFormatsTask, eventStatusesTask, visibilityTypesTask,
+                eventTypesTask, audienceGendersTask, audienceAgesTask, eventStatusesTask,
+                eventFormatsTask, visibilityTypesTask,
                 madhabsTask, categoriesTask, tagsTask, locationsTask,
                 registrationModesTask, languagesTask, registrationPoliciesTask);
 
             eventTypes = await eventTypesTask;
+            eventStatuses = await eventStatusesTask;
             audienceGenders = await audienceGendersTask;
             audienceAges = await audienceAgesTask;
             eventFormats = await eventFormatsTask;
-            eventStatuses = await eventStatusesTask;
             visibilityTypes = await visibilityTypesTask;
             madhabs = await madhabsTask;
             allCategories = await categoriesTask;
@@ -343,13 +363,13 @@ public partial class EventEdit
             }
             else
             {
-                errorMessage = "Event not found";
+                _submitState.Fail("Event not found");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading event data for editing");
-            errorMessage = $"Error loading event: {ex.Message}";
+            _submitState.Fail($"Error loading event: {ex.Message}");
         }
         finally
         {
@@ -361,15 +381,14 @@ public partial class EventEdit
     {
         if (currentEvent == null) return;
 
-        updateDto = new UpdateEventDto
+        updateDto = new UpdateEventDraftRequestDto
         {
-            Id = currentEvent.Id,
+            ExpectedConcurrencyStamp = currentEvent.ConcurrencyStamp,
             Title = currentEvent.Title,
             Subtitle = currentEvent.Subtitle,
             Description = currentEvent.Description,
             AudienceGenderId = currentEvent.AudienceGenderId,
             AudienceAgeId = currentEvent.AudienceAgeId,
-            ActorId = currentEvent.ActorId,
             Price = currentEvent.Price,
             CurrencyCode = currentEvent.CurrencyCode,
             FeaturedImageId = currentEvent.FeaturedImageId,
@@ -378,11 +397,8 @@ public partial class EventEdit
             ExternalRegistrationUrl = currentEvent.EventUrl,
             EventTypeId = currentEvent.EventTypeId,
             EventFormatId = currentEvent.EventFormatId,
-            EventStatusId = currentEvent.EventStatusId,
             VisibilityTypeId = currentEvent.VisibilityTypeId,
             MadhabId = currentEvent.MadhabId,
-            FirstSessionDate = currentEvent.FirstSessionDate,
-            LastSessionDate = currentEvent.LastSessionDate,
             Timezone = currentEvent.Timezone,
             BackgroundColor = currentEvent.BackgroundColor,
             BackgroundImageId = currentEvent.BackgroundImageId,
@@ -408,6 +424,9 @@ public partial class EventEdit
                 _selectedTimezone = TimeZoneInfo.Local;
             }
         }
+
+        _editContext = new EditContext(updateDto);
+        _errorStore.Init(_editContext);
     }
 
     // ========== Image Upload ==========
@@ -507,7 +526,7 @@ public partial class EventEdit
     {
         if (!CanAddSession || EventId == Guid.Empty)
         {
-            errorMessage = "You do not currently have permission to add sessions to this event.";
+            _submitState.Fail("You do not currently have permission to add sessions to this event.");
             return;
         }
 
@@ -518,7 +537,7 @@ public partial class EventEdit
     {
         if (index < 0 || index >= sessions.Count || sessions[index].Id is not { } sessionId || sessionId == Guid.Empty)
         {
-            errorMessage = "Save the session before editing it in the dedicated composer.";
+            _submitState.Fail("Save the session before editing it in the dedicated composer.");
             return;
         }
 
@@ -527,19 +546,19 @@ public partial class EventEdit
 
     private void ShowDuplicateUnavailable()
     {
-        errorMessage = "Duplicate session will be available from the dedicated session composer.";
+        _submitState.Fail("Duplicate session will be available from the dedicated session composer.");
     }
 
     private void ShowProgramSectionUnavailable()
     {
-        errorMessage = "Section and track setup will be available from the saved event program manager.";
+        _submitState.Fail("Section and track setup will be available from the saved event program manager.");
     }
 
     private async Task OpenProgramSectionsDialogAsync()
     {
         if (!CanManageProgramSections || EventId == Guid.Empty)
         {
-            errorMessage = "You do not currently have permission to manage program sections for this event.";
+            _submitState.Fail("You do not currently have permission to manage program sections for this event.");
             return;
         }
 
@@ -576,7 +595,7 @@ public partial class EventEdit
         {
             if (sessions.Count <= 1)
             {
-                errorMessage = "You must have at least one session.";
+                _submitState.Fail("You must have at least one session.");
                 return;
             }
 
@@ -600,7 +619,7 @@ public partial class EventEdit
                     }
                     catch (Exception ex)
                     {
-                        errorMessage = $"Failed to delete session: {ex.Message}";
+                        _submitState.Fail($"Failed to delete session: {ex.Message}");
                     }
                 }
             }
@@ -698,13 +717,12 @@ public partial class EventEdit
 
         if (_isUploadingImage)
         {
-            errorMessage = "Please wait for the image upload to complete.";
+            _submitState.Fail("Please wait for the image upload to complete.");
             return false;
         }
 
-        if (isProcessing) return false;
-        isProcessing = true;
-        errorMessage = string.Empty;
+        if (_submitState.IsSubmitting) return false;
+        _submitState.Start();
 
         try
         {
@@ -717,31 +735,28 @@ public partial class EventEdit
             updateDto.BackgroundColor = _appearance.BackgroundColor;
             updateDto.BackgroundEffect = _appearance.BackgroundEffect;
 
-            if (sessions.Count > 0)
+            if (EventId == Guid.Empty)
             {
-                var earliestStart = sessions.Min(s => DateTimeHelper.ConvertLocalToUtc(s.StartTime));
-                var latestEnd = sessions.Max(s => DateTimeHelper.ConvertLocalToUtc(s.EndTime));
-                updateDto.FirstSessionDate = earliestStart;
-                updateDto.LastSessionDate = latestEnd;
-                updateDto.FirstSessionStartUtc = earliestStart;
-                updateDto.LastSessionStartUtc = latestEnd;
-            }
-
-            if (!updateDto.Id.HasValue)
-            {
-                errorMessage = "Event ID is missing";
+                _submitState.Fail("Event ID is missing");
                 return false;
             }
 
-            var response = await EventService.UpdateEventAsync(updateDto.Id.Value, updateDto);
+            var response = await EventService.UpdateEventAsync(EventId, updateDto);
 
             if (response?.Success == true)
             {
+                currentEvent = await EventService.GetEventByIdAsync(EventId) ?? currentEvent;
+                if (currentEvent is not null)
+                {
+                    updateDto.ExpectedConcurrencyStamp = currentEvent.ConcurrencyStamp;
+                }
+
                 if (!string.IsNullOrWhiteSpace(navigateToOnSuccess))
                 {
                     Navigation.NavigateTo(navigateToOnSuccess);
                 }
-
+                
+                _submitState.Complete();
                 return true;
             }
             else
@@ -751,19 +766,28 @@ public partial class EventEdit
                 {
                     errorMsg += " Errors: " + string.Join(", ", response.Errors);
                 }
-                errorMessage = errorMsg;
+                _submitState.Fail(errorMsg);
                 return false;
             }
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                Logger.LogError(ex, "Exception during event update");
+                _submitState.Fail($"Error updating event: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
+            }
+            return false;
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Exception during event update");
-            errorMessage = $"Error updating event: {ex.Message}";
+            _submitState.Fail($"Error updating event: {ex.Message}");
             return false;
-        }
-        finally
-        {
-            isProcessing = false;
         }
     }
 

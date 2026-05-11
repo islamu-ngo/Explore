@@ -9,6 +9,8 @@ using MudBlazor;
 using MudBlazor.Interop;
 using MudBlazor.Services;
 
+using Options = Microsoft.Extensions.Options.Options;
+
 namespace Explore.Blazor.Client.Tests.Common;
 
 /// <summary>

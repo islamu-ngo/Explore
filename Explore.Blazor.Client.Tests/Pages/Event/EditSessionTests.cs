@@ -1,5 +1,7 @@
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.EventSessionGroups;
+using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
 using System.Reflection;
 using System.Text.Json;
@@ -10,25 +12,35 @@ public sealed class EditSessionTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IEventService _eventService;
+    private readonly IEventSessionLanguageService _eventSessionLanguageService;
     private readonly IAdminService _adminService;
     private readonly ILocationService _locationService;
     private readonly ILocationRoomService _locationRoomService;
-
     public EditSessionTests()
     {
         _ctx = new BlazorTestContext();
         _eventService = Substitute.For<IEventService>();
+        _eventSessionLanguageService = Substitute.For<IEventSessionLanguageService>();
         _adminService = Substitute.For<IAdminService>();
         _locationService = Substitute.For<ILocationService>();
         _locationRoomService = Substitute.For<ILocationRoomService>();
         _ctx.Services.AddSingleton(_eventService);
+        _ctx.Services.AddSingleton(_eventSessionLanguageService);
         _ctx.Services.AddSingleton(_adminService);
         _ctx.Services.AddSingleton(_locationService);
         _ctx.Services.AddSingleton(_locationRoomService);
         _adminService.GetRegistrationModesAsync().Returns(CreateRegistrationModes());
+        _adminService.GetEventSessionKindsAsync().Returns(CreateSessionKinds());
+        _adminService.GetLanguagesAsync().Returns(CreateLanguages());
+        _eventSessionLanguageService.GetLanguagesBySessionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new List<EventSessionLanguageListDto>());
+        _eventSessionLanguageService.SyncLanguagesForSessionAsync(Arg.Any<Guid>(), Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(true);
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
         _locationRoomService.GetRoomsByLocationAsync(Arg.Any<Guid>()).Returns(new List<LocationRoomListDto>());
         _eventService.GetSessionGroupsByEventAsync(Arg.Any<Guid>()).Returns(new List<EventSessionGroupListModel>());
+        _eventService.GetEventSessionCreateContextAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => CreateSessionContext(call.ArgAt<Guid>(0)));
         _eventService.AssignSessionToGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
         _eventService.UnassignSessionFromGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>())
@@ -49,9 +61,15 @@ public sealed class EditSessionTests : IDisposable
         cut.WaitForState(() => cut.Markup.Contains("Edit program item", StringComparison.Ordinal));
 
         await Assert.That(cut.Markup).Contains("Program item title");
+        await Assert.That(cut.Markup).Contains("Program item type");
+        await Assert.That(cut.Markup).Contains("Workshop · Hands-on guided session.");
+        await Assert.That(cut.Markup).Contains("Language");
         await Assert.That(cut.Markup).Contains("Program item date");
         await Assert.That(cut.Markup).Contains("Registration mode");
         await Assert.That(cut.Markup).Contains("Open");
+        await Assert.That(cut.Markup).Contains("Program item context");
+        await Assert.That(cut.Markup).Contains("Event timezone");
+        await Assert.That(cut.Markup).Contains("Europe/Brussels");
         await Assert.That(cut.Markup).Contains("Program items are sessions, not child events.");
         await Assert.That(cut.Markup).DoesNotContain("Edit session");
     }
@@ -73,7 +91,7 @@ public sealed class EditSessionTests : IDisposable
             new() { Id = roomId, LocationId = locationId, Name = "Breakout A", Capacity = 50 }
         });
         _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true, locationId: locationId, roomId: roomId));
-        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -82,11 +100,13 @@ public sealed class EditSessionTests : IDisposable
         var cut = _ctx.Render<EditSession>(parameters => parameters
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
-        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<UpdateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Updated workshop";
         session.Description = "Updated practical session.";
         session.LocationId = locationId;
         session.RoomId = roomId;
+        session.EventSessionKindId = 2;
+        session.LanguageIds = [1, 2];
         session.MaxAudienceAttendees = 50;
         session.RegistrationModeId = 2;
         SetPrivateField(cut.Instance, "_sessionDate", new DateTime(2026, 7, 3));
@@ -95,20 +115,29 @@ public sealed class EditSessionTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.Received(1).UpdateSessionAsync(Arg.Is<UpdateEventSessionDto>(dto =>
+        await _eventService.Received(1).UpdateSessionAsync(Arg.Is<UpdateEventSessionRequest>(dto =>
             dto.Id == sessionId
             && dto.EventId == eventId
             && dto.Title == "Updated workshop"
             && dto.Description == "Updated practical session."
+            && dto.Slug == "original-session"
             && dto.LocationId == locationId
             && dto.RoomId == roomId
+            && dto.EventSessionKindId == 2
             && dto.MaxAudienceAttendees == 50
             && dto.RegistrationModeId == 2
+            && dto.IslamicAspect != null
+            && dto.IslamicAspect.ReferencePrayer == 2
+            && dto.IslamicAspect.RequiresWudu == true
             && dto.StartTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 14, 0, 0))
             && dto.EndTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 15, 30, 0))
             && dto.StartTime.Value.Offset == TimeSpan.Zero
             && dto.EndTime.Value.Offset == TimeSpan.Zero));
-        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+        await _eventSessionLanguageService.Received(1).SyncLanguagesForSessionAsync(
+            sessionId,
+            Arg.Is<IEnumerable<int>>(ids => ids.OrderBy(id => id).SequenceEqual(new[] { 1, 2 })),
+            Arg.Any<CancellationToken>());
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
 
     [Test]
@@ -123,7 +152,7 @@ public sealed class EditSessionTests : IDisposable
         {
             new() { Id = groupId, EventId = eventId, Name = "Workshop track", SortOrder = 1, TenantId = Guid.NewGuid() }
         });
-        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -137,14 +166,43 @@ public sealed class EditSessionTests : IDisposable
         var cut = _ctx.Render<EditSession>(parameters => parameters
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
-        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<UpdateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Updated workshop";
         SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)groupId);
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
         await _eventService.Received(1).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
-        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
+    }
+
+    [Test]
+    public async Task SaveSessionAsync_WhenLanguageSyncFails_AnnouncesPartialSaveError()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId));
+        _eventService.GetSessionByIdAsync(sessionId).Returns(CreateSession(eventId, sessionId, canEdit: true));
+        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        {
+            Success = true,
+            Id = sessionId
+        });
+        _eventSessionLanguageService.SyncLanguagesForSessionAsync(sessionId, Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var cut = _ctx.Render<EditSession>(parameters => parameters
+            .Add(component => component.EventId, eventId)
+            .Add(component => component.SessionId, sessionId));
+        var session = GetPrivateField<UpdateEventSessionRequest>(cut.Instance, "_session");
+        session.Title = "Updated workshop";
+        session.LanguageIds = [1];
+
+        await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
+
+        await _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>()
+            .Received(1)
+            .AnnounceAssertiveAsync("Program item was saved, but its languages could not be updated.");
     }
 
     [Test]
@@ -159,7 +217,7 @@ public sealed class EditSessionTests : IDisposable
         {
             new() { Id = groupId, EventId = eventId, Name = "Workshop track", SortOrder = 1, TenantId = Guid.NewGuid() }
         });
-        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>()).Returns(new BaseCommandResponseOfGuid
+        _eventService.UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -173,7 +231,7 @@ public sealed class EditSessionTests : IDisposable
         var cut = _ctx.Render<EditSession>(parameters => parameters
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
-        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<UpdateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Updated workshop";
         SetPrivateField(cut.Instance, "_selectedSessionGroupId", (Guid?)null);
 
@@ -181,7 +239,7 @@ public sealed class EditSessionTests : IDisposable
 
         await _eventService.Received(1).UnassignSessionFromGroupAsync(eventId, groupId, sessionId);
         await _eventService.DidNotReceive().AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
-        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
 
     [Test]
@@ -198,7 +256,7 @@ public sealed class EditSessionTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>());
+        await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>());
         var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
         await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to edit this program item.");
     }
@@ -217,7 +275,7 @@ public sealed class EditSessionTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionDto>());
+        await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>());
         var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
         await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to edit this program item.");
     }
@@ -244,7 +302,7 @@ public sealed class EditSessionTests : IDisposable
         var cut = _ctx.Render<EditSession>(parameters => parameters
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
-        var session = GetPrivateField<UpdateEventSessionDto>(cut.Instance, "_session");
+        var session = GetPrivateField<UpdateEventSessionRequest>(cut.Instance, "_session");
         await Assert.That(session.RoomId).IsEqualTo(originalRoomId);
 
         await InvokePrivateAsync(cut.Instance, "OnLocationChangedAsync", newLocationId);
@@ -286,12 +344,24 @@ public sealed class EditSessionTests : IDisposable
             EventTitle = "Program launch",
             Title = "Original session",
             Description = "Original description.",
+            Slug = "original-session",
             StartTime = DateTimeOffset.Parse("2026-07-03T09:00:00+00:00"),
             EndTime = DateTimeOffset.Parse("2026-07-03T10:00:00+00:00"),
             LocationId = locationId,
             RoomId = roomId,
+            EventSessionKindId = 2,
+            EventSessionKindFullName = "Workshop",
+            EventSessionKindMasterCode = "WORKSHOP",
             MaxAudienceAttendees = 25,
             RegistrationModeId = 1,
+            IslamicAspect = new IslamicAspect2
+            {
+                StartTimeType = 1,
+                ReferencePrayer = 2,
+                OffsetMinutes = 15,
+                RequiresWudu = true,
+                RitualRequirementsJson = "{\"note\":\"Bring prayer mat\"}"
+            },
             TenantId = Guid.NewGuid(),
             SessionGroups = primaryGroupId.HasValue
                 ? new List<SessionGroups>
@@ -325,6 +395,36 @@ public sealed class EditSessionTests : IDisposable
             new() { Id = 2, MasterCode = "APPROVAL_REQUIRED", FullName = "Approval required", Description = "Review requests before confirming." },
             new() { Id = 3, MasterCode = "INVITE_ONLY", FullName = "Invite only" }
         ];
+
+    private static ICollection<EventSessionKindListDto> CreateSessionKinds()
+        =>
+        [
+            new() { Id = 1, MasterCode = "TALK", FullName = "Talk", Description = "Lecture, khutbah, or presentation." },
+            new() { Id = 2, MasterCode = "WORKSHOP", FullName = "Workshop", Description = "Hands-on guided session." }
+        ];
+
+    private static ICollection<LanguageListDto> CreateLanguages()
+        =>
+        [
+            new() { Id = 1, MasterCode = "EN", FullName = "English" },
+            new() { Id = 2, MasterCode = "AR", FullName = "Arabic" }
+        ];
+
+    private static EventSessionCreateContextDto CreateSessionContext(Guid eventId)
+        => new()
+        {
+            EventId = eventId,
+            EventTitle = "Program launch",
+            TenantId = Guid.NewGuid(),
+            TimeZoneId = "Europe/Brussels",
+            EventStartDate = new DateTimeOffset(2026, 7, 3, 0, 0, 0, TimeSpan.Zero),
+            EventEndDate = new DateTimeOffset(2026, 7, 4, 0, 0, 0, TimeSpan.Zero),
+            Defaults = new EventSessionCreateDefaultsDto { RegistrationModeId = 1 },
+            Locations = [],
+            Rooms = [],
+            SessionGroups = [],
+            Notices = []
+        };
 
     private static T GetPrivateField<T>(object instance, string fieldName)
     {

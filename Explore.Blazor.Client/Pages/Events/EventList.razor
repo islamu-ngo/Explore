@@ -266,33 +266,33 @@
 @if (_selectedEvent != null)
             {
                 <div class="event-list__detail-header d-flex align-center gap-1 px-2 py-1">
-                    <AppIconButton Icon="@Icons.Material.Filled.KeyboardDoubleArrowRight"
+                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardDoubleArrowRight"
                                    Size="Size.Small"
                                    OnClick="@HandleDrawerCloseClick"
                                    aria-label="Close" />
 
                     @* ── Prev / Next navigation arrows ── *@
-                    <AppIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp"
+                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp"
                                    Size="Size.Small"
                                    Disabled="@(!CanNavigatePrevEvent())"
                                    OnClick="@NavigatePrevEvent"
                                    aria-label="Previous event" />
-                    <AppIconButton Icon="@Icons.Material.Filled.KeyboardArrowDown"
+                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowDown"
                                    Size="Size.Small"
                                    Disabled="@(!CanNavigateNextEvent())"
                                    OnClick="@NavigateNextEvent"
                                    aria-label="Next event" />
 
                     <div class="d-flex gap-2 mx-auto">
-                        <AppButton StartIcon="@Icons.Material.Filled.OpenInNew"
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.OpenInNew"
                                    OnClick="@(() => Navigation.NavigateTo($"/events/{_selectedEvent!.Id}"))">
                             Event Page
-                        </AppButton>
-                        <AppButton Color="Color.Default"
+                        </MudButton>
+                        <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Default"
                                    StartIcon="@Icons.Material.Outlined.ContentCopy"
                                    OnClick="@CopyEventLinkAsync">
                             Copy Link
-                        </AppButton>
+                        </MudButton>
                     </div>
 
                     @* ── Three-dots menu (edit / delete) ── *@
@@ -537,7 +537,7 @@
                             <MudText Typo="Typo.overline" Style="font-weight: 600;">TAGS</MudText>
                             @if (_selectedEvent.HasManagementLinks())
                             {
-                                <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
                                                OnClick="@OpenTagManagement"
                                                aria-label="Manage tags" />
                             }
@@ -566,7 +566,7 @@
                             <MudText Typo="Typo.overline" Style="font-weight: 600;">CATEGORIES</MudText>
                             @if (_selectedEvent.HasManagementLinks())
                             {
-                                <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
                                                OnClick="@OpenCategoryManagement"
                                                aria-label="Manage categories" />
                             }
@@ -901,24 +901,24 @@
                     @* ── Action Buttons ── *@
                     @if (IsUserRegistered(_selectedEvent.Id ?? Guid.Empty))
                     {
-                        <AppButton Variant="Variant.Outlined"
+                        <MudButton Elevation="0" Variant="Variant.Outlined"
                                    Color="Color.Success"
                                    FullWidth="true"
                                    StartIcon="@Icons.Material.Filled.EventAvailable"
                                    Disabled="true"
                                    Class="rounded-lg">
                             Registered
-                        </AppButton>
+                        </MudButton>
                     }
                     else
                     {
-                        <AppButton Variant="Variant.Outlined"
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                                    FullWidth="true"
                                    StartIcon="@Icons.Material.Outlined.HowToReg"
                                    OnClick="@(() => OpenInlineRegistration())"
                                    Class="rounded-lg">
                             Register for this Event
-                        </AppButton>
+                        </MudButton>
                     }
                 </div>
 
@@ -931,7 +931,7 @@
                                 <MudText Typo="Typo.h6" Class="drawer-reg-popup__title">
                                     Register for Event
                                 </MudText>
-                                <AppIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
                                                OnClick="CloseInlineRegistration" />
                             </div>
 
@@ -959,32 +959,32 @@
                                          }
                                      </MudText>
 
-                                      <AppButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
+                                      <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
                                                  FullWidth="true"
                                                  Href="@GetSelectedEventCalendarUrl()"
                                                  StartIcon="@Icons.Material.Outlined.CalendarMonth">
                                           Add to Calendar
-                                      </AppButton>
+                                      </MudButton>
 
-                                      <AppButton Variant="Variant.Outlined" Class="rounded-lg mb-2"
+                                      <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined" Class="rounded-lg mb-2"
                                                  FullWidth="true"
                                                  OnClick="ShareSelectedEventAsync"
                                                  StartIcon="@Icons.Material.Filled.Share">
                                           Share this Event
-                                      </AppButton>
+                                      </MudButton>
 
-                                      <AppButton Variant="Variant.Filled" Class="rounded-lg mb-2"
+                                      <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="rounded-lg mb-2"
                                                  FullWidth="true"
                                                  Href="/my/registrations"
                                                 StartIcon="@Icons.Material.Filled.AppRegistration">
                                          View My Registrations
-                                     </AppButton>
+                                     </MudButton>
 
-                                     <AppButton Variant="Variant.Text" Class="rounded-lg"
+                                     <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" Class="rounded-lg"
                                                 FullWidth="true"
                                                 OnClick="CloseInlineRegistration">
                                          Done
-                                    </AppButton>
+                                    </MudButton>
                                 </div>
                             }
                             else if (_regIsAlreadyRegistered)
@@ -997,29 +997,29 @@
                                      <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
                                          You are already registered for this event.
                                      </MudText>
-                                      <AppButton Variant="Variant.Filled" Class="rounded-lg mb-2"
+                                      <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="rounded-lg mb-2"
                                                  FullWidth="true"
                                                  Href="/my/registrations"
                                                  StartIcon="@Icons.Material.Filled.AppRegistration">
                                           View My Registrations
-                                      </AppButton>
-                                      <AppButton Variant="Variant.Outlined" Class="rounded-lg mb-2"
+                                      </MudButton>
+                                      <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined" Class="rounded-lg mb-2"
                                                  FullWidth="true"
                                                  OnClick="ShareSelectedEventAsync"
                                                  StartIcon="@Icons.Material.Filled.Share">
                                           Share this Event
-                                      </AppButton>
-                                      <AppButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
+                                      </MudButton>
+                                      <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
                                                  FullWidth="true"
                                                  Href="@GetSelectedEventCalendarUrl()"
                                                  StartIcon="@Icons.Material.Outlined.CalendarMonth">
                                           Add to Calendar
-                                      </AppButton>
-                                      <AppButton Variant="Variant.Text" Class="rounded-lg"
+                                      </MudButton>
+                                      <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" Class="rounded-lg"
                                                  FullWidth="true"
                                                  OnClick="CloseInlineRegistration">
                                          Close
-                                     </AppButton>
+                                     </MudButton>
                                 </div>
                             }
                             else
@@ -1078,20 +1078,20 @@
                                 }
 
                                 @* ── Google Calendar (placeholder) ── *@
-                                <AppButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-3"
+                                <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-3"
                                            FullWidth="true"
                                            StartIcon="@Icons.Material.Outlined.CalendarMonth"
                                            Disabled="true">
                                     Add to Google Calendar
-                                </AppButton>
+                                </MudButton>
 
                                 @* ── Submit ── *@
                                 <div class="d-flex gap-3">
-                                    <AppButton Variant="Variant.Text" Color="Color.Default" Class="rounded-lg flex-1"
+                                    <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" Class="rounded-lg flex-1"
                                                OnClick="CloseInlineRegistration" Disabled="_regIsSubmitting">
                                         Cancel
-                                    </AppButton>
-                                    <AppButton Class="rounded-lg flex-1"
+                                    </MudButton>
+                                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="rounded-lg flex-1"
                                                OnClick="HandleInlineRegistrationSubmit"
                                                Disabled="@(_regIsSubmitting || !_regSelectedSessionIds.Any())">
                                         @if (_regIsSubmitting)
@@ -1103,7 +1103,7 @@
                                         {
                                             <span>Register (@_regSelectedSessionIds.Count)</span>
                                         }
-                                    </AppButton>
+                                    </MudButton>
                                 </div>
                             }
                         </div>

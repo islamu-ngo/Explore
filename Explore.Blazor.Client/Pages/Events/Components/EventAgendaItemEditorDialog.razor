@@ -5,6 +5,8 @@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using Explore.Blazor.Client.Contracts.Services.Lookup
+@using Microsoft.AspNetCore.Components.Forms
+@using Explore.Blazor.Client.Components.Forms
 
 @inject IEventAgendaItemService AgendaItemService
 @inject IScheduleItemKindService KindService
@@ -25,9 +27,11 @@
         }
         else
         {
-            <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <EditForm Model="@this" OnValidSubmit="Save">
+                <FormSubmissionGuard State="@_submitState">
+                <AppValidationSummary />
                 <MudStack Spacing="3">
-                    <AppTextField T="string"
+                    <MudTextField T="string"
                                   @bind-Value="_title"
                                   Label="Title"
                                   Placeholder="e.g. Opening Keynote, Workshop: AI Basics"
@@ -36,7 +40,7 @@
                                   RequiredError="Title is required"
                                   FullWidth="true" />
 
-                    <AppTextField T="string"
+                    <MudTextField T="string"
                                   @bind-Value="_description"
                                   Label="Description"
                                   Placeholder="Optional description"
@@ -126,26 +130,22 @@
                                      Margin="Margin.Dense"
                                      Min="1" />
                 </MudStack>
-            </MudForm>
-
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_errorMessage</MudAlert>
-            }
+                </FormSubmissionGuard>
+            </EditForm>
         }
     </DialogContent>
     <DialogActions>
-        <AppButton Variant="Variant.Text" OnClick="Cancel">Cancel</AppButton>
-        <AppButton Variant="Variant.Filled"
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" OnClick="Cancel" Disabled="_submitState.IsSubmitting">Cancel</MudButton>
+        <MudButton Elevation="0" Variant="Variant.Filled"
                    Color="Color.Primary"
                    OnClick="Save"
-                   Disabled="@(_isSaving || !_isValid)">
-            @if (_isSaving)
+                   Disabled="_submitState.IsSubmitting">
+            @if (_submitState.IsSubmitting)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
             @(IsNew ? "Add" : "Save")
-        </AppButton>
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -160,11 +160,10 @@
     [Parameter] public List<LocationRoomListDto> Rooms { get; set; } = new();
     [Parameter] public Guid? PreselectedDayId { get; set; }
 
-    private MudForm? _form;
-    private bool _isValid;
-    private bool _isSaving;
     private bool _isLoadingDetail;
-    private string _errorMessage = string.Empty;
+    
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
 
     // Form fields
     private string _title = string.Empty;
@@ -216,20 +215,15 @@
 
     private async Task Save()
     {
-        if (_form != null)
-        {
-            await _form.Validate();
-            if (!_isValid) return;
-        }
+        if (_submitState.IsSubmitting) return;
 
         if (string.IsNullOrWhiteSpace(_title))
         {
-            _errorMessage = "Title is required.";
+            _submitState.Fail("Title is required.");
             return;
         }
 
-        _isSaving = true;
-        _errorMessage = string.Empty;
+        _submitState.Start();
 
         try
         {
@@ -275,7 +269,7 @@
                 }
                 else
                 {
-                    _errorMessage = result?.Message ?? "Failed to create agenda item.";
+                    _submitState.Fail(result?.Message ?? "Failed to create agenda item.");
                 }
             }
             else if (ItemId.HasValue)
@@ -298,17 +292,31 @@
                 }
                 else
                 {
-                    _errorMessage = result?.Message ?? "Failed to update agenda item.";
+                    _submitState.Fail(result?.Message ?? "Failed to update agenda item.");
                 }
+            }
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail($"Failed to save item: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Error: {ex.Message}";
+            _submitState.Fail($"Error: {ex.Message}");
         }
         finally
         {
-            _isSaving = false;
+            if (!_submitState.HasError)
+            {
+                _submitState.Complete();
+            }
         }
     }
 

@@ -8,6 +8,9 @@
 @using Explore.Blazor.Client.Services
 @using Microsoft.AspNetCore.Authorization
 @using MudBlazor
+@using Explore.Blazor.Client.Models.EventSessions
+@using Explore.Blazor.Client.Components.Forms
+@using Microsoft.AspNetCore.Components.Forms
 
 <PageTitle>Edit program item</PageTitle>
 
@@ -25,25 +28,18 @@
             else if (_event is null || _sourceSession is null)
             {
                 <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
-                    @(_errorMessage ?? "The program item could not be loaded. Return to the event draft and try again.")
+                    @(_submitState.ErrorMessage ?? "The program item could not be loaded. Return to the event draft and try again.")
                 </MudAlert>
 
-                <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToEventDraft">
+                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToEventDraft">
                     Back to event draft
-                </AppButton>
+                </MudButton>
             }
             else
             {
                 <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
                     Update <strong>@_sourceSession.Title</strong> for <strong>@_event.Title</strong>. Program items are sessions, not child events.
                 </MudText>
-
-                @if (!string.IsNullOrWhiteSpace(_errorMessage))
-                {
-                    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
-                        @_errorMessage
-                    </MudAlert>
-                }
 
                 @if (!string.IsNullOrWhiteSpace(_successMessage))
                 {
@@ -63,11 +59,12 @@
                     </MudAlert>
                 }
 
-                <EditForm Model="_session" OnValidSubmit="SaveSessionAsync">
-                    <DataAnnotationsValidator />
+                <EditForm EditContext="_editContext" OnValidSubmit="SaveSessionAsync">
+                    <FormSubmissionGuard State="@_submitState">
+                    <AppValidationSummary />
 
                     <div class="edit-session__form-grid">
-                        <AppTextField T="string"
+                        <MudTextField Variant="Variant.Outlined" T="string"
                                       Value="@_session.Title"
                                       ValueChanged="@(value => _session.Title = value)"
                                       For="@(() => _session.Title)"
@@ -76,7 +73,7 @@
                                       Placeholder="Program item title"
                                       aria-label="Program item title" />
 
-                        <AppTextField T="string"
+                        <MudTextField Variant="Variant.Outlined" T="string"
                                       Value="@_session.Description"
                                       ValueChanged="@(value => _session.Description = value)"
                                       For="@(() => _session.Description)"
@@ -168,13 +165,14 @@
                     </div>
 
                     <div class="edit-session__actions">
-                        <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToEventDraft" Disabled="@_isSaving">
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToEventDraft" Disabled="@_submitState.IsSubmitting">
                             Back to event draft
-                        </AppButton>
-                        <AppButton ButtonType="ButtonType.Submit" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isSaving || !_canEditSession)">
-                            @(_isSaving ? "Saving..." : "Save changes")
-                        </AppButton>
+                        </MudButton>
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" ButtonType="ButtonType.Submit" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_submitState.IsSubmitting || !_canEditSession)">
+                            @(_submitState.IsSubmitting ? "Saving..." : "Save changes")
+                        </MudButton>
                     </div>
+                    </FormSubmissionGuard>
                 </EditForm>
             }
         </MudPaper>
@@ -197,20 +195,24 @@
     private ICollection<LocationRoomListDto> _rooms = new List<LocationRoomListDto>();
     private ICollection<EventSessionGroupListModel> _sessionGroups = new List<EventSessionGroupListModel>();
     private ICollection<RegistrationModeListDto> _registrationModes = new List<RegistrationModeListDto>();
-    private readonly UpdateEventSessionDto _session = new();
+    private readonly UpdateEventSessionRequest _session = new();
     private DateTime? _sessionDate;
     private TimeSpan? _startTime;
     private TimeSpan? _endTime;
     private bool _isLoading = true;
-    private bool _isSaving;
     private bool _canEditSession;
     private Guid? _selectedSessionGroupId;
     private Guid? _initialSessionGroupId;
-    private string? _errorMessage;
     private string? _successMessage;
+
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
 
     protected override async Task OnInitializedAsync()
     {
+        _editContext = new EditContext(_session);
+        _errorStore.Init(_editContext);
         var eventTask = EventService.GetEventByIdAsync(EventId);
         var sessionTask = EventService.GetSessionByIdAsync(SessionId);
         var locationsTask = LocationService.GetAllLocationsAsync();
@@ -225,15 +227,15 @@
 
         if (_event is null)
         {
-            _errorMessage = "The event draft could not be loaded.";
+            _submitState.Fail("The event draft could not be loaded.");
         }
         else if (_sourceSession is null)
         {
-            _errorMessage = "The session could not be loaded.";
+            _submitState.Fail("The session could not be loaded.");
         }
         else if (_sourceSession.EventId != EventId)
         {
-            _errorMessage = "This session does not belong to the selected event draft.";
+            _submitState.Fail("This session does not belong to the selected event draft.");
             _sourceSession = null;
         }
         else
@@ -295,16 +297,16 @@
 
     private async Task SaveSessionAsync()
     {
-        _errorMessage = null;
         _successMessage = null;
 
         if (!TryPrepareSession(out var validationError))
         {
-            _errorMessage = validationError;
+            _submitState.Fail(validationError!);
             return;
         }
 
-        _isSaving = true;
+        if (_submitState.IsSubmitting) return;
+        _submitState.Start();
         try
         {
             var result = await EventService.UpdateSessionAsync(_session);
@@ -320,15 +322,29 @@
                 return;
             }
 
-            _errorMessage = result.Message ?? "Program item could not be saved. Check the details and try again.";
+            _submitState.Fail(result.Message ?? "Program item could not be saved. Check the details and try again.");
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail($"Program item could not be saved: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
+            }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Program item could not be saved: {ex.Message}";
+            _submitState.Fail($"Program item could not be saved: {ex.Message}");
         }
         finally
         {
-            _isSaving = false;
+            if (!_submitState.HasError)
+            {
+                _submitState.Complete();
+            }
         }
     }
 
@@ -389,7 +405,7 @@
             if (unassignResult.Success == true)
                 return true;
 
-            _errorMessage = unassignResult.Message ?? "Session was saved, but it could not be removed from the previous program section.";
+            _submitState.Fail(unassignResult.Message ?? "Session was saved, but it could not be removed from the previous program section.");
             return false;
         }
 
@@ -403,7 +419,7 @@
         if (result.Success == true)
             return true;
 
-        _errorMessage = result.Message ?? "Session was saved, but it could not be assigned to the selected program section.";
+        _submitState.Fail(result.Message ?? "Session was saved, but it could not be assigned to the selected program section.");
         return false;
     }
 

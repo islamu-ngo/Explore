@@ -50,13 +50,13 @@
         }
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel" Variant="Variant.Text" Disabled="@_isDeleting">Cancel</AppButton>
-        <AppButton Color="Color.Error"
+        <MudButton Elevation="0" Color="Color.Primary" OnClick="Cancel" Variant="Variant.Text" Disabled="@_isDeleting">Cancel</MudButton>
+        <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Error"
                    OnClick="ConfirmDelete"
                    Disabled="@(_isDeleting || _isLoading)"
                    StartIcon="@(_isDeleting ? Icons.Material.Filled.HourglassBottom : Icons.Material.Filled.Delete)">
             @(_isDeleting ? "Deleting..." : "Delete Event")
-        </AppButton>
+        </MudButton>
     </DialogActions>
 </MudDialog>
 

@@ -191,10 +191,17 @@ public class LandingPageServiceTests
         {
             _embedded = new HalCollectionEmbeddedOfEventListDto
             {
-                Items = items.Cast<object>().ToList()
+                Items = items.Select(ToHalResource).ToList()
             },
             TotalCount = totalCount
         };
+    }
+
+    private static HalResourceOfEventListDto ToHalResource(EventListDto item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        return System.Text.Json.JsonSerializer.Deserialize<HalResourceOfEventListDto>(json)
+               ?? new HalResourceOfEventListDto();
     }
 
     #endregion
