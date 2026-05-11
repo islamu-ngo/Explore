@@ -29,8 +29,8 @@
                 <MudItem xs="12" md="6" Class="pa-8 d-flex flex-column justify-center align-start">
                     <MudStack Spacing="6" Style="width: 100%;">
                         <div class="d-flex gap-4 flex-wrap">
-                            <AppButton Href="/login" Size="Size.Large" StartIcon="@Icons.Material.Filled.PersonAdd" Class="rounded-pill px-8 py-3">Create Account</AppButton>
-                            <AppButton Href="/login" Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Large" StartIcon="@Icons.Material.Filled.Login" Class="rounded-pill px-8 py-3">Log In</AppButton>
+                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/login" Size="Size.Large" StartIcon="@Icons.Material.Filled.PersonAdd" Class="rounded-pill px-8 py-3">Create Account</MudButton>
+                            <MudButton Elevation="0" Href="/login" Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Large" StartIcon="@Icons.Material.Filled.Login" Class="rounded-pill px-8 py-3">Log In</MudButton>
                         </div>
 
                         <MudDivider />
@@ -111,7 +111,7 @@
             <div class="d-flex justify-center gap-6 px-12">
                 @for (int i = 0; i < 3; i++)
                 {
-                    <AppCard Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column" Style="flex: 1; max-width: 400px;">
+                    <MudCard Elevation="0" Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column" Style="flex: 1; max-width: 400px;">
                         <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                         <MudCardContent Class="pa-4">
                             <MudSkeleton Width="80%" Height="24px" Class="mb-2" />
@@ -119,7 +119,7 @@
                             <MudSkeleton Width="90%" Height="16px" Class="mb-4" />
                             <MudSkeleton Width="120px" Height="20px" />
                         </MudCardContent>
-                    </AppCard>
+                    </MudCard>
                 }
             </div>
         }
@@ -132,7 +132,7 @@
                         <div class="d-flex justify-center gap-6 px-12 h-100 align-center">
                             @foreach (var evt in chunk)
                             {
-                                <AppCard @key="evt.Id" Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column h-100 cursor-pointer hover:mud-elevation-4 transition-all" Style="flex: 1; max-width: 400px;" @onclick="@(() => ScrollToRegister())">
+                                <MudCard Elevation="0" @key="evt.Id" Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column h-100 cursor-pointer hover:mud-elevation-4 transition-all" Style="flex: 1; max-width: 400px;" @onclick="@(() => ScrollToRegister())">
                                     <div style="height: 200px; background-color: var(--mud-palette-background-grey); position: relative;">
                                         @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
                                         {
@@ -151,9 +151,9 @@
                                     <MudCardContent Class="flex-grow-1 d-flex flex-column pa-4">
                                         <MudText Typo="Typo.h6" Class="mb-2" Style="font-weight: 700; line-height: 1.3;">@evt.Title</MudText>
                                         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4 flex-grow-1">@TruncateText(evt.Description, 100)</MudText>
-                                        <AppButton Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward" Class="align-self-start px-0">View Details</AppButton>
+                                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward" Class="align-self-start px-0">View Details</MudButton>
                                     </MudCardContent>
-                                </AppCard>
+                                </MudCard>
                             }
                         </div>
                     </MudCarouselItem>
@@ -188,7 +188,7 @@
             <MudText Typo="Typo.h4" Style="font-weight: 800;" Class="mb-4">Ready to Join?</MudText>
             <MudText Typo="Typo.h6" Style="opacity: 0.9; font-weight: 400;" Class="mb-8">Create your account now and get full access to all upcoming events.</MudText>
             <div class="d-flex justify-center gap-4">
-                <AppButton Href="/login" Color="Color.Surface" Size="Size.Large" Style="color: var(--mud-palette-primary-darken); font-weight: 700;" Class="rounded-pill px-8">Sign Up Now</AppButton>
+                <MudButton Elevation="0" Variant="Variant.Filled" Href="/login" Color="Color.Surface" Size="Size.Large" Style="color: var(--mud-palette-primary-darken); font-weight: 700;" Class="rounded-pill px-8">Sign Up Now</MudButton>
             </div>
         </MudPaper>
     </MudContainer>

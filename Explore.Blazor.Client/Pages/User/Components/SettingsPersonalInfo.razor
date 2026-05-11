@@ -3,6 +3,7 @@
 @using Explore.Blazor.Client.Clients
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
+@using Explore.Blazor.Client.Components.Forms
 @inject IUserService UserService
 @inject ISnackbar Snackbar
 
@@ -28,15 +29,6 @@
     }
     else
     {
-        @if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div role="alert">
-                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
-                    @_errorMessage
-                </MudAlert>
-            </div>
-        }
-
         @if (!string.IsNullOrEmpty(_successMessage))
         {
             <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _successMessage = null)">
@@ -44,7 +36,9 @@
             </MudAlert>
         }
 
-        <MudForm @ref="_form" @bind-IsValid="_success">
+        <EditForm EditContext="_editContext" OnValidSubmit="SaveSettings">
+            <FormSubmissionGuard State="@_submitState">
+            <AppValidationSummary />
             <!-- Profile Picture Section -->
             <div class="settings-profile-picture mb-8">
                 <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Profile Picture</MudText>
@@ -76,14 +70,14 @@
                 <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Name</MudText>
                 <MudGrid Spacing="3">
                     <MudItem xs="12" sm="6">
-                        <AppTextField T="string" @bind-Value="_user.FirstName" 
+                        <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_user.FirstName" 
                                       Label="First Name" 
                                       Required="true" 
                                       Adornment="Adornment.Start" 
                                       AdornmentIcon="@Icons.Material.Filled.Person" />
                     </MudItem>
                     <MudItem xs="12" sm="6">
-                        <AppTextField T="string" @bind-Value="_user.LastName" 
+                        <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_user.LastName" 
                                       Label="Last Name" 
                                       Required="true" 
                                       Adornment="Adornment.Start" 
@@ -100,7 +94,7 @@
                 <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Contact Information</MudText>
                 <MudGrid Spacing="3">
                     <MudItem xs="12">
-                        <AppTextField T="string" @bind-Value="_user.Email" 
+                        <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_user.Email" 
                                       Label="Email" 
                                       ReadOnly="true" 
                                       HelperText="Email cannot be changed"
@@ -108,7 +102,7 @@
                                       AdornmentIcon="@Icons.Material.Filled.Email" />
                     </MudItem>
                     <MudItem xs="12">
-                        <AppTextField T="string" @bind-Value="_user.Username" 
+                        <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_user.Username" 
                                       Label="Username" 
                                       Adornment="Adornment.Start" 
                                       AdornmentIcon="@Icons.Material.Filled.AlternateEmail" />
@@ -121,17 +115,17 @@
 
             <!-- Action Buttons -->
             <div class="d-flex justify-end gap-3 mt-8">
-                <AppButton Variant="Variant.Outlined" 
+                <MudButton Elevation="0" Variant="Variant.Outlined" 
                            Color="Color.Default" 
                            OnClick="ResetForm"
                            Class="rounded-pill px-6">
                     Cancel
-                </AppButton>
-                <AppButton OnClick="SaveSettings" 
-                           Disabled="@(!_success || _isSaving)" 
+                </MudButton>
+                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" ButtonType="ButtonType.Submit"
+                           Disabled="@(_submitState.IsSubmitting)" 
                            StartIcon="@Icons.Material.Filled.Save"
                            Class="rounded-pill px-6">
-                    @if (_isSaving)
+                    @if (_submitState.IsSubmitting)
                     {
                         <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
                         <span>Saving...</span>
@@ -140,9 +134,10 @@
                     {
                         <span>Save Changes</span>
                     }
-                </AppButton>
+                </MudButton>
             </div>
-        </MudForm>
+            </FormSubmissionGuard>
+        </EditForm>
     }
 </div>
 
@@ -150,18 +145,21 @@
     [Inject]
     private IDialogService DialogService { get; set; } = null!;
 
-    private MudForm? _form;
     private bool _loading = true;
-    private bool _isSaving = false;
-    private bool _success = true;
-    private string? _errorMessage;
     private string? _successMessage;
     private string? _profileImagePreview;
     private UserDto? _user;
     private UserDto? _originalUser;
 
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
+
     protected override async Task OnInitializedAsync()
     {
+        _user = new UserDto();
+        _editContext = new EditContext(_user);
+        _errorStore.Init(_editContext);
         await LoadUserDataAsync();
     }
 
@@ -170,7 +168,13 @@
         try
         {
             _loading = true;
-            _user = await UserService.GetCurrentUserAsync();
+            var loadedUser = await UserService.GetCurrentUserAsync();
+            if (loadedUser != null)
+            {
+                _user = loadedUser;
+                _editContext = new EditContext(_user);
+                _errorStore.Init(_editContext);
+            }
             _originalUser = new UserDto
             {
                 Id = _user?.Id,
@@ -184,7 +188,7 @@
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Failed to load user profile: {ex.Message}";
+            _submitState.Fail($"Failed to load user profile: {ex.Message}");
         }
         finally
         {
@@ -199,8 +203,8 @@
 
         try
         {
-            _isSaving = true;
-            _errorMessage = null;
+            if (_submitState.IsSubmitting) return;
+            _submitState.Start();
             _successMessage = null;
 
             var updateDto = new UpdateUserDto
@@ -228,16 +232,30 @@
             }
             else
             {
-                _errorMessage = result?.Message ?? "Failed to save profile";
+                _submitState.Fail(result?.Message ?? "Failed to save profile");
+            }
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail($"Failed to save profile: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Failed to save profile: {ex.Message}";
+            _submitState.Fail($"Failed to save profile: {ex.Message}");
         }
         finally
         {
-            _isSaving = false;
+            if (!_submitState.HasError)
+            {
+                _submitState.Complete();
+            }
         }
     }
 
@@ -249,7 +267,7 @@
             _user.LastName = _originalUser.LastName;
             _user.Username = _originalUser.Username;
             _profileImagePreview = _originalUser.ProfileImageUri;
-            _errorMessage = null;
+            _submitState.Reset();
             _successMessage = null;
         }
     }
@@ -266,7 +284,7 @@
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Failed to upload image: {ex.Message}";
+            _submitState.Fail($"Failed to upload image: {ex.Message}");
         }
 
         return Task.CompletedTask;

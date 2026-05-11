@@ -6,16 +6,16 @@
 
 <MudDialog>
     <DialogContent>
-        <AppTextField T="string" @bind-Value="model.Email" Label="Email" Required="true" RequiredError="Email is required" InputType="InputType.Email" />
-        <MudSelect T="int?" Label="Role" @bind-Value="model.Role" AnchorOrigin="Origin.BottomCenter">
-            <MudSelectItem T="int?" Value="2">Co-Owner</MudSelectItem>
-            <MudSelectItem T="int?" Value="3">Admin</MudSelectItem>
-            <MudSelectItem T="int?" Value="4">Member</MudSelectItem>
+        <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="model.Email" Label="Email" Required="true" RequiredError="Email is required" InputType="InputType.Email" />
+        <MudSelect T="RoleEnum?" Label="Role" @bind-Value="model.Role" AnchorOrigin="Origin.BottomCenter">
+            <MudSelectItem T="RoleEnum?" Value="@((RoleEnum)2)">Co-Owner</MudSelectItem>
+            <MudSelectItem T="RoleEnum?" Value="@((RoleEnum)3)">Admin</MudSelectItem>
+            <MudSelectItem T="RoleEnum?" Value="@((RoleEnum)4)">Member</MudSelectItem>
         </MudSelect>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel">Cancel</AppButton>
-        <AppButton OnClick="Submit">Invite</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Invite</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -28,7 +28,7 @@
     protected override void OnInitialized()
     {
         model.OrganizationId = OrganizationId;
-        model.Role = 4; // Member role
+        model.Role = (RoleEnum)4; // Member role
     }
 
     private void Cancel() => MudDialog.Cancel();

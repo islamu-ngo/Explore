@@ -37,19 +37,19 @@
                 </MudText>
             </div>
             <div class="d-flex gap-2">
-                <AppButton Variant="Variant.Outlined"
+                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                            StartIcon="@Icons.Material.Filled.Download"
                            OnClick="@(() => ExportAsync("csv"))"
                            Disabled="_isExporting">
                     Export CSV
-                </AppButton>
-                <AppButton Variant="Variant.Outlined"
+                </MudButton>
+                <MudButton Elevation="0" Variant="Variant.Outlined"
                            Color="Color.Default"
                            StartIcon="@Icons.Material.Filled.Download"
                            OnClick="@(() => ExportAsync("tsv"))"
                            Disabled="_isExporting">
                     Export TSV
-                </AppButton>
+                </MudButton>
             </div>
         </div>
 
@@ -57,7 +57,7 @@
         <MudPaper Elevation="0" Class="pa-4 mb-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
             <MudGrid Spacing="3">
                 <MudItem xs="12" sm="6" md="4">
-                    <AppTextField T="string" @bind-Value="_searchEmail"
+                    <MudTextField T="string" @bind-Value="_searchEmail"
                                   Label="Search by email"
                                   Adornment="Adornment.Start"
                                   AdornmentIcon="@Icons.Material.Filled.Search"

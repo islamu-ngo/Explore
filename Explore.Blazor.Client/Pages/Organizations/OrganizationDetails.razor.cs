@@ -6,7 +6,8 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
-using MudBlazor;
+using MudBlazor;using Microsoft.AspNetCore.Components.Forms;
+using Explore.Blazor.Client.Components.Forms;
 
 namespace Explore.Blazor.Client.Pages.Organizations;
 
@@ -32,8 +33,10 @@ public partial class OrganizationDetails
 
     private UpdateOrganizationDto editModel = new();
     private AppearanceSettings _appearance = new();
-    private MudForm? form;
-    private bool formValid;
+
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
 
     private IEnumerable<EventListDto> UpcomingEvents =>
         _orgEvents.Where(e => e.IsPast != true)
@@ -85,6 +88,9 @@ public partial class OrganizationDetails
                 ImageUri = organization.ActorBannerPictureUri ?? string.Empty,
                 BackgroundEffect = organization.ActorBackgroundEffect ?? "None"
             };
+
+            _editContext = new EditContext(editModel);
+            _errorStore.Init(_editContext);
         }
     }
 
@@ -135,17 +141,18 @@ public partial class OrganizationDetails
         }
 
         isEditMode = !isEditMode;
+        _submitState.Reset();
         errorMessage = string.Empty;
         successMessage = string.Empty;
     }
 
     private async Task SaveChanges()
     {
-        if (!formValid) return;
+        if (_submitState.IsSubmitting) return;
 
         try
         {
-            isSaving = true;
+            _submitState.Start();
             errorMessage = string.Empty;
             successMessage = string.Empty;
 
@@ -157,15 +164,34 @@ public partial class OrganizationDetails
                 isEditMode = false;
                 await LoadOrganization(); // Reload to show updated data
             }
+            else
+            {
+                _submitState.Fail(success?.Message ?? "Failed to update organization");
+            }
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail($"Failed to update organization: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
+            }
+            Logger.LogError(ex, "Error updating organization {OrganizationId}", Id);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error updating organization {OrganizationId}", Id);
-            errorMessage = $"Failed to update organization: {ex.Message}";
+            _submitState.Fail($"Failed to update organization: {ex.Message}");
         }
         finally
         {
-            isSaving = false;
+            if (!_submitState.HasError)
+            {
+                _submitState.Complete();
+            }
         }
     }
 

@@ -4,6 +4,7 @@
 @page "/onboarding/auth-provider"
 @rendermode InteractiveServer
 @layout SetupLayout
+@using Explore.Blazor.Client.Components.Forms
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
@@ -49,8 +50,8 @@
                     <MudIcon Icon="@Icons.Material.Filled.Key" Color="Color.Primary" Style="font-size: 4rem;" Class="mb-4" />
                     <MudText Typo="Typo.h5" Class="mb-2">Keycloak Detected</MudText>
                     <MudText Typo="Typo.body2" Class="mb-6">We've automatically configured Keycloak from your environment variables.</MudText>
-                    <AppButton Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" Disabled="@(!CanSave)" OnClick="SaveAndContinueAsync" Class="mb-4 px-8">
-                        @if (_isSaving)
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" Disabled="@(!CanSave)" OnClick="SaveAndContinueAsync" Class="mb-4 px-8">
+                        @if (_submitState.IsSubmitting)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                             @:Continuing...
@@ -59,10 +60,10 @@
                         {
                             @:Continue with Keycloak
                         }
-                    </AppButton>
-                    <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => _showAdvancedConfig = true)">
+                    </MudButton>
+                    <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="@(() => _showAdvancedConfig = true)">
                         Configure Authentication Providers
-                    </AppButton>
+                    </MudButton>
                 </MudPaper>
             }
             else
@@ -106,16 +107,16 @@
                                     }
                                     else
                                     {
-                                        <AppTextField T="string"
+                                        <MudTextField Variant="Variant.Outlined" T="string"
                                                       Label="Authority URL (Required)"
                                                       @bind-Value="_model.KeycloakAuthority"
                                                       Placeholder="https://keycloak.example.com/realms/myrealm"
                                                       HelperText="The Keycloak realm URL used for OIDC discovery." />
-                                        <AppTextField T="string"
+                                        <MudTextField Variant="Variant.Outlined" T="string"
                                                       Label="Client ID (Required)"
                                                       @bind-Value="_model.KeycloakClientId"
                                                       Placeholder="my-client" />
-                                        <AppTextField T="string"
+                                        <MudTextField Variant="Variant.Outlined" T="string"
                                                       Label="Client Secret"
                                                       InputType="InputType.Password"
                                                       @bind-Value="_model.KeycloakClientSecret"
@@ -144,7 +145,7 @@
 
                                 @if (_model.AtprotoLoginEnabled)
                                 {
-                                    <AppTextField T="string"
+                                    <MudTextField Variant="Variant.Outlined" T="string"
                                                   Label="Public URL (Required)"
                                                   @bind-Value="_model.AtprotoPublicUrl"
                                                   Placeholder="https://event.example.com"
@@ -181,11 +182,11 @@
 
                                 @if (_model.GoogleSsoEnabled)
                                 {
-                                    <AppTextField T="string"
+                                    <MudTextField Variant="Variant.Outlined" T="string"
                                                   Label="Google Client ID (Required)"
                                                   @bind-Value="_model.GoogleClientId"
                                                   Placeholder="123456789.apps.googleusercontent.com" />
-                                    <AppTextField T="string"
+                                    <MudTextField Variant="Variant.Outlined" T="string"
                                                   Label="Google Client Secret (Required)"
                                                   InputType="InputType.Password"
                                                   @bind-Value="_model.GoogleClientSecret" />
@@ -205,9 +206,9 @@
 
                 @* ── Actions ── *@
                 <MudStack Row="true" Spacing="2" Class="mt-2">
-                    <AppButton Disabled="@(!CanSave)"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)"
                                OnClick="SaveAndContinueAsync">
-                        @if (_isSaving)
+                        @if (_submitState.IsSubmitting)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                             @:Saving...
@@ -216,7 +217,7 @@
                         {
                             @:Save & Continue to Login
                         }
-                    </AppButton>
+                    </MudButton>
                 </MudStack>
             }
         }
@@ -226,7 +227,7 @@
 @code {
     private AuthProviderConfigurationModel _model = new();
     private bool _isLoading = true;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private string? _errorMessage;
     private string? _successMessage;
     private bool _showAdvancedConfig = false;
@@ -245,7 +246,7 @@
         !string.IsNullOrWhiteSpace(_model.GoogleClientId) && !string.IsNullOrWhiteSpace(_model.GoogleClientSecret);
 
     private bool CanSave =>
-        !_isSaving &&
+        !_submitState.IsSubmitting &&
         HasAnyProviderEnabled &&
         (!_model.KeycloakEnabled || HasKeycloakCredentials) &&
         (!_model.AtprotoLoginEnabled || HasAtprotoCredentials) &&
@@ -290,7 +291,7 @@
 
     private async Task SaveAndContinueAsync()
     {
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
         _successMessage = null;
 
@@ -298,7 +299,7 @@
 
         if (!response.Success)
         {
-            _isSaving = false;
+            _submitState.Complete();
             _errorMessage = string.IsNullOrWhiteSpace(response.Message)
                 ? "Failed to save auth provider configuration."
                 : response.Message;
@@ -321,7 +322,7 @@
             Logger.LogWarning(ex, "Failed to refresh auth schemes after saving config. Login may require app restart.");
         }
 
-        _isSaving = false;
+        _submitState.Complete();
 
         // Navigate to login so the admin can authenticate with the chosen provider
         Navigation.NavigateTo("/onboarding/authz-provider", forceLoad: true);

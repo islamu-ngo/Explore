@@ -50,10 +50,10 @@ else
                 </div>
 
                 <div class="org-profile__header-right">
-                    <AppButton StartIcon="@Icons.Material.Filled.NotificationsActive"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.NotificationsActive"
                                Class="org-profile__subscribe-btn">
                         Subscribe
-                    </AppButton>
+                    </MudButton>
                 </div>
             </div>
 
@@ -107,7 +107,7 @@ else
                         @foreach (var evt in _upcomingEvents)
                         {
                             <MudItem xs="12" sm="6" md="4">
-                                <AppCard Class="org-profile__event-card cursor-pointer"
+                                <MudCard Elevation="0" Class="org-profile__event-card cursor-pointer"
                                          @onclick="@(() => NavigateToEvent(evt))">
                                     <div class="org-profile__event-card-image">
                                         <MudImage Src="@GetEventImage(evt)"
@@ -142,7 +142,7 @@ else
                                             </MudText>
                                         </div>
                                     </MudCardContent>
-                                </AppCard>
+                                </MudCard>
                             </MudItem>
                         }
                     </MudGrid>
@@ -248,7 +248,7 @@ else
                     <MudStack Spacing="3">
                         @foreach (var review in _reviews.Take(3))
                         {
-                            <AppCard Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                            <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
                                 <div class="d-flex justify-space-between align-start mb-2">
                                     <div class="d-flex align-center gap-2">
                                         <MudAvatar Size="Size.Medium" Color="Color.Primary" Variant="Variant.Outlined">
@@ -262,14 +262,14 @@ else
                                     <MudRating ReadOnly="true" SelectedValue="@(review.Rating ?? 0)" Size="Size.Small" />
                                 </div>
                                 <MudText Typo="Typo.body2">@review.Comment</MudText>
-                            </AppCard>
+                            </MudCard>
                         }
                     </MudStack>
 
                     @if (_reviews.Count > 3)
                     {
                         <div class="d-flex justify-center mt-4">
-                            <AppButton Variant="Variant.Outlined" OnClick="ShowAllReviews">View All Reviews</AppButton>
+                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined" OnClick="ShowAllReviews">View All Reviews</MudButton>
                         </div>
                     }
                 </div>

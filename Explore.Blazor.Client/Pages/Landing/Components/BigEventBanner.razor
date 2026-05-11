@@ -23,9 +23,9 @@
         </MudStack>
 
         <div class="d-flex gap-4 align-center mt-4">
-            <AppButton Size="Size.Large" Class="rounded-pill px-8 py-3" Href="@($"/events/{Event.Id}")">
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" Class="rounded-pill px-8 py-3" Href="@($"/events/{Event.Id}")">
                 View Details
-            </AppButton>
+            </MudButton>
             <div class="d-flex align-center gap-2 px-4 py-2 rounded-pill" style="background: rgba(0,0,0,0.3); backdrop-filter: blur(4px);">
                 <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
                 <MudText Typo="Typo.body2">@Event.ActorDisplayName</MudText>

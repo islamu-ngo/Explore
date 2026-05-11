@@ -48,10 +48,10 @@ else
                 </div>
 
                 <div class="group-profile__header-right">
-                    <AppButton StartIcon="@Icons.Material.Filled.NotificationsActive"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.NotificationsActive"
                                Class="group-profile__subscribe-btn">
                         Subscribe
-                    </AppButton>
+                    </MudButton>
                 </div>
             </div>
 
@@ -81,7 +81,7 @@ else
                         @foreach (var evt in _upcomingEvents)
                         {
                             <MudItem xs="12" sm="6" md="4">
-                                <AppCard Class="group-profile__event-card cursor-pointer"
+                                <MudCard Elevation="0" Class="group-profile__event-card cursor-pointer"
                                          @onclick="@(() => NavigateToEvent(evt))"
                                          tabindex="0"
                                          role="link"
@@ -121,7 +121,7 @@ else
                                             </MudText>
                                         </div>
                                     </MudCardContent>
-                                </AppCard>
+                                </MudCard>
                             </MudItem>
                         }
                     </MudGrid>

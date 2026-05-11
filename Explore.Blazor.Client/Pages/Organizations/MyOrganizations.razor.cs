@@ -118,12 +118,22 @@ public partial class MyOrganizations : ComponentBase
         return RoleHelper.GetRoleColor(roleId);
     }
 
+    private static Color GetRoleColor(RoleEnum role)
+    {
+        return RoleHelper.GetRoleColor(role);
+    }
+
     /// <summary>
     /// Gets the display name for a role ID.
     /// </summary>
     private static string GetRoleName(int roleId)
     {
         return RoleHelper.GetRoleName(roleId);
+    }
+
+    private static string GetRoleName(RoleEnum role)
+    {
+        return RoleHelper.GetRoleName(role);
     }
 
     /// <summary>

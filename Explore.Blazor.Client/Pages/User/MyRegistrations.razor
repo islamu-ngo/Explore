@@ -18,15 +18,15 @@
             <MudText Typo="Typo.overline" Class="mud-text-secondary" Style="letter-spacing: 0.18em;">PARTICIPANT</MudText>
             <MudText Typo="Typo.h4" HtmlTag="h1">My Registrations</MudText>
         </div>
-        <AppButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/my/profile">
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/my/profile">
             Back to Profile
-        </AppButton>
+        </MudButton>
     </div>
 
     <!-- Filters -->
     <MudGrid Class="mb-8">
         <MudItem xs="12">
-            <AppTextField T="string" T="string"
+            <MudTextField T="string" T="string"
                           @bind-Value="_searchString" 
                           Placeholder="Search events..." 
                           Adornment="Adornment.Start" 
@@ -47,7 +47,7 @@
     }
     else if (!FilteredRegistrations.Any())
     {
-        <AppCard Class="my-registrations__empty-state">
+        <MudCard Elevation="0" Class="my-registrations__empty-state">
             <MudCardContent Class="my-registrations__empty-content" role="status">
                 <MudIcon Icon="@Icons.Material.Outlined.AppRegistration"
                          Size="Size.Large"
@@ -59,13 +59,13 @@
                 <MudText Typo="Typo.body1" Color="Color.Secondary" Class="my-registrations__empty-copy">
                     When you register for an event, it will appear here so you can quickly find the details again.
                 </MudText>
-                <AppButton Href="/events"
+                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/events"
                            StartIcon="@Icons.Material.Filled.Explore"
                            Class="my-registrations__empty-action">
                     Browse Events
-                </AppButton>
+                </MudButton>
             </MudCardContent>
-        </AppCard>
+        </MudCard>
     }
     else
     {
@@ -74,7 +74,7 @@
             <Virtualize Items="@FilteredRegistrations.ToList()" Context="reg" OverscanCount="4">
                 <ItemContent>
                     <MudItem xs="12" sm="6" md="4">
-                        <AppCard Class="h-100 d-flex flex-column">
+                        <MudCard Elevation="0" Class="h-100 d-flex flex-column">
                             <MudCardMedia Image="@ImageHelper.GetEventImageUrl(reg.FeaturedImageUri, reg.EventTitle ?? "Event")"
                                            Height="200" />
                             <MudCardContent Class="flex-grow-1">
@@ -89,36 +89,36 @@
                                 </div>
                             </MudCardContent>
                              <MudCardActions>
-                                 <AppButton Variant="Variant.Text" 
+                                 <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" 
                                             EndIcon="@Icons.Material.Filled.ArrowForward"
                                             Href="@($"/events/{reg.EventId}")">
                                      Details
-                                 </AppButton>
-                                 <AppButton Variant="Variant.Text"
+                                 </MudButton>
+                                 <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text"
                                             StartIcon="@Icons.Material.Filled.CalendarMonth"
                                             Href="@($"/api/event/{reg.EventId}/calendar")">
                                      Calendar
-                                 </AppButton>
+                                 </MudButton>
                                  <MudSpacer />
-                                 <AppButton Variant="Variant.Text" 
+                                 <MudButton Elevation="0" Variant="Variant.Text" 
                                             Color="Color.Error" 
                                            OnClick="@(() => CancelRegistration(reg.RegistrationId))">
                                     Cancel
-                                </AppButton>
+                                </MudButton>
                             </MudCardActions>
-                        </AppCard>
+                        </MudCard>
                     </MudItem>
                 </ItemContent>
                 <Placeholder>
                     <MudItem xs="12" sm="6" md="4">
-                        <AppCard Class="h-100 d-flex flex-column">
+                        <MudCard Elevation="0" Class="h-100 d-flex flex-column">
                             <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                             <MudCardContent>
                                 <MudSkeleton Width="30%" Class="mb-1" />
                                 <MudSkeleton Width="70%" Class="mb-4" />
                                 <MudSkeleton Width="50%" />
                             </MudCardContent>
-                        </AppCard>
+                        </MudCard>
                     </MudItem>
                 </Placeholder>
             </Virtualize>

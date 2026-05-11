@@ -4,7 +4,7 @@
 <PageTitle>Organization Created Successfully</PageTitle>
 
 <MudContainer Class="organization-success">
-    <AppCard Class="mx-auto" Style="max-width: 600px;">
+    <MudCard Elevation="0" Class="mx-auto" Style="max-width: 600px;">
         <MudCardContent Class="text-center pa-6">
             <MudStack AlignItems="AlignItems.Center" Spacing="4">
                 <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
@@ -32,18 +32,18 @@
                 </MudAlert>
 
                 <MudStack Row Spacing="2" Class="mt-4">
-                    <AppButton StartIcon="@Icons.Material.Filled.Home"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Home"
                                OnClick="@(() => NavigationManager.NavigateTo("/"))">
                         Return to Home
-                    </AppButton>
+                    </MudButton>
 
-                    <AppButton Variant="Variant.Outlined"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                                StartIcon="@Icons.Material.Filled.Event"
                                OnClick="@(() => NavigationManager.NavigateTo("/events"))">
                         Browse Events
-                    </AppButton>
+                    </MudButton>
                 </MudStack>
             </MudStack>
         </MudCardContent>
-    </AppCard>
+    </MudCard>
 </MudContainer>

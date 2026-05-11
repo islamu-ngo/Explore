@@ -16,8 +16,8 @@
         </MudSelect>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel">Cancel</AppButton>
-        <AppButton OnClick="Submit">Save</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -42,7 +42,7 @@
             var updateDto = new UpdateOrganizationMemberRoleDto
             {
                 Id = Member.Id,
-                Role = newRoleId
+                Role = (RoleEnum)newRoleId
             };
 
             await MemberService.UpdateMemberRoleAsync(updateDto);

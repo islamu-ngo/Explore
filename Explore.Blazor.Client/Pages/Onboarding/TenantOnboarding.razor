@@ -1,6 +1,7 @@
 @page "/onboarding/tenant"
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
+@using Explore.Blazor.Client.Components.Forms
 @layout SetupLayout
 @attribute [Authorize]
 @rendermode InteractiveServer
@@ -31,9 +32,9 @@
             <MudAlert Severity="Severity.Warning" Class="mb-4">
                 You are authenticated but do not have tenant administrator permissions for this tenant.
             </MudAlert>
-            <AppButton Href="/events">
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/events">
                 Go to Events
-            </AppButton>
+            </MudButton>
         }
         else if (_showCompletionPrompt)
         {
@@ -49,12 +50,12 @@
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
                                 Review policies, branding, domains, and public experience before inviting visitors.
                             </MudText>
-                            <AppButton Href="@_administrationSettingsHref"
+                            <MudButton Elevation="0" Href="@_administrationSettingsHref"
                                        Variant="Variant.Filled"
                                        Color="Color.Primary"
                                        StartIcon="@Icons.Material.Filled.AdminPanelSettings">
                                 Go to administration settings
-                            </AppButton>
+                            </MudButton>
                         </MudPaper>
                     </MudItem>
                     <MudItem xs="12" md="6">
@@ -63,12 +64,12 @@
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
                                 Skip configuration for now and open the event catalog with the current defaults.
                             </MudText>
-                            <AppButton Href="/events"
+                            <MudButton Elevation="0" Href="/events"
                                        Variant="Variant.Outlined"
                                        Color="Color.Primary"
                                        StartIcon="@Icons.Material.Filled.Event">
                                 Go to events
-                            </AppButton>
+                            </MudButton>
                         </MudPaper>
                     </MudItem>
                 </MudGrid>
@@ -134,14 +135,14 @@
                                 Event card click opens detail page @(!_model.CanOverrideEventCardClickBehavior ? "🔒" : "")
                             </MudSwitch>
 
-                            <AppTextField T="string" Label="@("Subdomain (Optional)" + (!_model.CanOverrideSubdomain ? " 🔒" : ""))"
+                            <MudTextField T="string" Label="@("Subdomain (Optional)" + (!_model.CanOverrideSubdomain ? " 🔒" : ""))"
                                           Variant="Variant.Outlined"
                                           Placeholder="tenant-slug"
                                           @bind-Value="_model.Subdomain"
                                           Disabled="@(!_model.CanOverrideSubdomain)"
                                           HelperText="@($"Base domain: {(_model.InstanceBaseDomain == string.Empty ? "(not configured)" : _model.InstanceBaseDomain)}")" />
 
-                            <AppTextField T="string" Label="@("Custom Domain (Optional)" + (!_model.CanOverrideCustomDomain ? " 🔒" : ""))"
+                            <MudTextField T="string" Label="@("Custom Domain (Optional)" + (!_model.CanOverrideCustomDomain ? " 🔒" : ""))"
                                           Variant="Variant.Outlined"
                                           Placeholder="events.example.org"
                                           @bind-Value="_model.CustomDomain"
@@ -151,7 +152,7 @@
 
                     <MudExpansionPanel Text="Platform Identity">
                         <MudStack Spacing="3">
-                            <AppTextField T="string" Label="@("Brand Display Name" + (!_model.CanOverrideBrandDisplayName ? " 🔒" : " (Required)"))"
+                            <MudTextField T="string" Label="@("Brand Display Name" + (!_model.CanOverrideBrandDisplayName ? " 🔒" : " (Required)"))"
                                           Variant="Variant.Outlined"
                                           Required="true"
                                           RequiredError="Brand display name is required."
@@ -160,16 +161,16 @@
 
                             @if (_model.IsTenantWhiteLabelingEnabled)
                             {
-                                <AppTextField T="string" Label="@("Brand Logo URL (Optional)" + (!_model.CanOverrideBrandLogoUrl ? " 🔒" : ""))"
+                                <MudTextField T="string" Label="@("Brand Logo URL (Optional)" + (!_model.CanOverrideBrandLogoUrl ? " 🔒" : ""))"
                                               Variant="Variant.Outlined"
                                               @bind-Value="_model.BrandLogoUrl"
                                               Disabled="@(!_model.CanOverrideBrandLogoUrl)" />
-                                <AppTextField T="string" Label="@("Brand Favicon URL (Optional)" + (!_model.CanOverrideBrandFaviconUrl ? " 🔒" : ""))"
+                                <MudTextField T="string" Label="@("Brand Favicon URL (Optional)" + (!_model.CanOverrideBrandFaviconUrl ? " 🔒" : ""))"
                                               Variant="Variant.Outlined"
                                               @bind-Value="_model.BrandFaviconUrl"
                                               Disabled="@(!_model.CanOverrideBrandFaviconUrl)" />
                                 <MudExpansionPanel Text="Advanced Branding" DisableGutters="true" Class="elevation-0">
-                                    <AppTextField T="string" Label="@("Custom CSS URL (Optional)" + (!_model.CanOverrideBrandCustomCssUrl ? " 🔒" : ""))"
+                                    <MudTextField T="string" Label="@("Custom CSS URL (Optional)" + (!_model.CanOverrideBrandCustomCssUrl ? " 🔒" : ""))"
                                                   Variant="Variant.Outlined"
                                                   @bind-Value="_model.BrandCustomCssUrl"
                                                   Disabled="@(!_model.CanOverrideBrandCustomCssUrl)" />
@@ -179,13 +180,13 @@
                     </MudExpansionPanel>
                 </MudExpansionPanels>
 
-                <AppButton OnClick="CompleteOnboardingAsync"
-                           Disabled="_isSaving"
+                <MudButton Elevation="0" OnClick="CompleteOnboardingAsync"
+                           Disabled="_submitState.IsSubmitting"
                            Color="Color.Primary"
                            Variant="Variant.Filled"
                            Size="Size.Large">
                     Complete Tenant Onboarding
-                </AppButton>
+                </MudButton>
             </MudStack>
         }
     </MudPaper>
@@ -194,7 +195,7 @@
 @code {
     private TenantPolicySettingsModel _model = new();
     private bool _isLoading = true;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private bool _canEdit;
     private bool _showCompletionPrompt;
     private string _administrationSettingsHref = "/admin/tenant/settings";
@@ -230,11 +231,11 @@
 
     private async Task CompleteOnboardingAsync()
     {
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
 
         var response = await TenantOnboardingService.CompleteAsync(_model);
-        _isSaving = false;
+        _submitState.Complete();
 
         if (response.Success)
         {

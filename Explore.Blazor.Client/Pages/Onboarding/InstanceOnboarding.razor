@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Explore.Blazor.Client.Models.Responses
+@using Explore.Blazor.Client.Components.Forms
 @layout SetupLayout
 @attribute [Authorize]
 @rendermode InteractiveServer
@@ -72,7 +73,7 @@
 
                             <ValidationSummary />
 
-                            <AppTextField T="string" Label="Site Name (Required)"
+                            <MudTextField T="string" Label="Site Name (Required)"
                                           Variant="Variant.Outlined"
                                           Required="true"
                                           RequiredError="Site name is required."
@@ -81,21 +82,21 @@
                                           Placeholder="e.g. ISLAMU Explore, My Community Events" />
                             <ValidationMessage For="@(() => _siteProfile.SiteName)" />
 
-                            <AppTextField T="string" Label="Support Email (Optional)"
+                            <MudTextField T="string" Label="Support Email (Optional)"
                                           Variant="Variant.Outlined"
                                           For="@(() => _siteProfile.SupportEmail)"
                                           @bind-Value="_siteProfile.SupportEmail"
                                           Placeholder="support@example.org" />
                             <ValidationMessage For="@(() => _siteProfile.SupportEmail)" />
 
-                            <AppTextField T="string" Label="Canonical URL (Optional)"
+                            <MudTextField T="string" Label="Canonical URL (Optional)"
                                           Variant="Variant.Outlined"
                                           For="@(() => _siteProfile.CanonicalUrl)"
                                           @bind-Value="_siteProfile.CanonicalUrl"
                                           Placeholder="https://events.example.org" />
                             <ValidationMessage For="@(() => _siteProfile.CanonicalUrl)" />
 
-                            <AppTextField T="string" Label="Purpose (Optional)"
+                            <MudTextField T="string" Label="Purpose (Optional)"
                                           Variant="Variant.Outlined"
                                           Lines="3"
                                           For="@(() => _siteProfile.Purpose)"
@@ -165,48 +166,48 @@
                         <MudText Typo="Typo.body2"><strong>Site:</strong> @_siteProfile.SiteName</MudText>
                         <MudText Typo="Typo.body2"><strong>Mode:</strong> @(IsSingleTenantMode ? "Single Tenant" : "Multi Tenant")</MudText>
                         <MudStack Direction="Direction.Row" Spacing="2">
-                            <AppButton Href="/events" StartIcon="@Icons.Material.Filled.Event">
+                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/events" StartIcon="@Icons.Material.Filled.Event">
                                 Browse Events
-                            </AppButton>
-                            <AppButton Href="/admin/instance/settings"
+                            </MudButton>
+                            <MudButton Elevation="0" Href="/admin/instance/settings"
                                        Variant="Variant.Outlined"
                                        Color="Color.Secondary"
                                        StartIcon="@Icons.Material.Filled.Settings">
                                 Open Instance Settings
-                            </AppButton>
+                            </MudButton>
                         </MudStack>
                     </MudStack>
                     </MudStep>
                 </ChildContent>
 
                 <ActionContent Context="stepper">
-                    <AppButton Variant="Variant.Text"
+                    <MudButton Elevation="0" Variant="Variant.Text"
                                Color="Color.Default"
-                               Disabled="@(_activeStep == 0 || _isSaving)"
+                               Disabled="@(_activeStep == 0 || _submitState.IsSubmitting)"
                                OnClick="@(() => stepper.PreviousStepAsync())">
                         Back
-                    </AppButton>
+                    </MudButton>
                     <MudSpacer />
 
                     @if (_activeStep == SiteProfileStepIndex)
                     {
-                        <AppButton OnClick="ContinueToPreflightAsync"
-                                   Disabled="@(_isSaving || _isPreflightLoading)">
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="ContinueToPreflightAsync"
+                                   Disabled="@(_submitState.IsSubmitting || _isPreflightLoading)">
                             Next
-                        </AppButton>
+                        </MudButton>
                     }
                     else if (_activeStep == PreflightStepIndex)
                     {
-                        <AppButton OnClick="CompleteOnboardingAsync"
-                                   Disabled="@(_isSaving || _isPreflightLoading || _preflight?.IsReadyToLaunch != true)">
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="CompleteOnboardingAsync"
+                                   Disabled="@(_submitState.IsSubmitting || _isPreflightLoading || _preflight?.IsReadyToLaunch != true)">
                             @_completeButtonLabel
-                        </AppButton>
+                        </MudButton>
                     }
                     else
                     {
-                        <AppButton Href="/events">
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/events">
                             Go to Events
-                        </AppButton>
+                        </MudButton>
                     }
                 </ActionContent>
             </MudStepper>
@@ -224,7 +225,7 @@
     private OnboardingPreflightModel? _preflight;
     private bool _isLoading = true;
     private bool _isPreflightLoading;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private string? _errorMessage;
     private bool _setupSecretSynced;
     private string? _syncWarning;
@@ -369,7 +370,7 @@
             return;
         }
 
-        _isSaving = true;
+        _submitState.Start();
         _completeButtonLabel = "Saving...";
         _errorMessage = null;
 
@@ -392,12 +393,12 @@
         // The setup form can sit open for minutes while the user reads guidance, and Keycloak access
         // tokens have short lifetimes (often 1-5 min). Without this, the API's [Authorize] rejects
         // the Complete command with 401, and we'd have to redirect the user back through /login,
-        // losing their form data. See docs/SECURITY.md on token forwarding.
+        // losing their form data. See docs/SECURITY-MODEL.md on token forwarding.
         var preRefreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
         if (!preRefreshed)
         {
             Logger.LogWarning("Pre-complete auth session refresh failed. Aborting Complete and redirecting to login.");
-            _isSaving = false;
+            _submitState.Complete();
             _completeButtonLabel = "Complete Instance Onboarding";
             _errorMessage = "Your session expired. Please sign in again to complete setup.";
             Navigation.NavigateTo("/login", forceLoad: true);
@@ -423,7 +424,7 @@
             }
         }
 
-        _isSaving = false;
+        _submitState.Complete();
         _completeButtonLabel = "Complete Instance Onboarding";
 
         if (response.StatusCode == 401)

@@ -94,7 +94,7 @@ public class MyOrganizationsTests : IDisposable
                 Email = "hub@example.com",
                 City = "Brussels",
                 Country = "Belgium",
-                CurrentUserRole = 1,
+                CurrentUserRole = RoleEnum.OrgAdmin,
                 ApprovalStatusId = 2
             }
         };

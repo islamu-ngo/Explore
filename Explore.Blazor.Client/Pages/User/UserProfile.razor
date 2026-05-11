@@ -20,14 +20,14 @@
     else if (!string.IsNullOrEmpty(ErrorMessage))
     {
         <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6">@ErrorMessage</MudAlert>
-        <AppButton OnClick="@LoadUserDataAsync">Retry</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@LoadUserDataAsync">Retry</MudButton>
     }
     else if (UserData == null)
     {
         <MudAlert Severity="Severity.Warning" Variant="Variant.Filled">
             Unable to load user profile. Please try logging in again.
         </MudAlert>
-        <AppButton Href="/login" Class="mt-4">Log In</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/login" Class="mt-4">Log In</MudButton>
     }
     else
     {
@@ -51,7 +51,7 @@
                         </MudAvatar>
                     </div>
                     <div class="org-profile__header-right">
-                        <AppButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="/settings" Class="org-profile__subscribe-btn">Edit Profile</AppButton>
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="/settings" Class="org-profile__subscribe-btn">Edit Profile</MudButton>
                     </div>
                 </div>
 
@@ -117,7 +117,7 @@
                                     @foreach (var evt in _posts)
                                     {
                                         <MudItem xs="12" sm="6" md="4">
-                                            <AppCard Class="org-profile__event-card cursor-pointer" @onclick="@(() => NavigateToEvent(evt.Id))">
+                                            <MudCard Elevation="0" Class="org-profile__event-card cursor-pointer" @onclick="@(() => NavigateToEvent(evt.Id))">
                                                 <div class="org-profile__event-card-image">
                                                     <MudImage Src="@GetEventImage(evt)" ObjectFit="ObjectFit.Cover" Style="width: 100%; height: 100%; display: block;" />
                                                 </div>
@@ -139,7 +139,7 @@
                                                         <MudText Typo="Typo.caption" Color="Color.Secondary">@GetLocationText(evt)</MudText>
                                                     </div>
                                                 </MudCardContent>
-                                            </AppCard>
+                                            </MudCard>
                                         </MudItem>
                                     }
                                 </MudGrid>
@@ -166,7 +166,7 @@
                                     @foreach (var reg in _history)
                                     {
                                         <MudItem xs="12" sm="6" md="4">
-                                            <AppCard Class="org-profile__event-card cursor-pointer" @onclick="@(() => NavigateToEvent(reg.EventId))">
+                                            <MudCard Elevation="0" Class="org-profile__event-card cursor-pointer" @onclick="@(() => NavigateToEvent(reg.EventId))">
                                                 <div class="org-profile__event-card-image">
                                                     <MudImage Src="@GetHistoryImage(reg)" ObjectFit="ObjectFit.Cover" Style="width: 100%; height: 100%; display: block;" />
                                                 </div>
@@ -180,7 +180,7 @@
                                                         <MudText Typo="Typo.caption" Color="Color.Secondary">@FormatHistoryDate(reg)</MudText>
                                                     </div>
                                                 </MudCardContent>
-                                            </AppCard>
+                                            </MudCard>
                                         </MudItem>
                                     }
                                 </MudGrid>
@@ -202,7 +202,7 @@
                                 <MudStack Spacing="3">
                                     @foreach (var review in MyReviews)
                                     {
-                                        <AppCard Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                                        <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
                                             <div class="d-flex justify-space-between align-start mb-2">
                                                 <div>
                                                     <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">@(review.OrganizationFullName ?? "Organization")</MudText>
@@ -211,7 +211,7 @@
                                                 <MudRating ReadOnly="true" SelectedValue="@(review.Rating ?? 0)" Size="Size.Small" />
                                             </div>
                                             <MudText Typo="Typo.body2">@review.Comment</MudText>
-                                        </AppCard>
+                                        </MudCard>
                                     }
                                 </MudStack>
                             }

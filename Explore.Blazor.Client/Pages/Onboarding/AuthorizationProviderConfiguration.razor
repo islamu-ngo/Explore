@@ -4,6 +4,7 @@
 @page "/onboarding/authz-provider"
 @rendermode InteractiveServer
 @layout SetupLayout
+@using Explore.Blazor.Client.Components.Forms
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
@@ -45,8 +46,8 @@
                     <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Primary" Style="font-size: 4rem;" Class="mb-4" />
                     <MudText Typo="Typo.h5" Class="mb-2">Cerbos Detected</MudText>
                     <MudText Typo="Typo.body2" Class="mb-6">We've automatically configured Cerbos from your environment variables.</MudText>
-                    <AppButton Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" Disabled="@(!CanSave)" OnClick="SaveAndContinueAsync" Class="mb-4 px-8">
-                        @if (_isSaving)
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" Disabled="@(!CanSave)" OnClick="SaveAndContinueAsync" Class="mb-4 px-8">
+                        @if (_submitState.IsSubmitting)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                             @:Continuing...
@@ -55,10 +56,10 @@
                         {
                             @:Continue with Cerbos
                         }
-                    </AppButton>
-                    <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => _showAdvancedConfig = true)">
+                    </MudButton>
+                    <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="@(() => _showAdvancedConfig = true)">
                         Configure Authorization Provider
-                    </AppButton>
+                    </MudButton>
                 </MudPaper>
             }
             else
@@ -118,7 +119,7 @@
                                 </MudAlert>
                             }
 
-                            <AppTextField T="string"
+                            <MudTextField Variant="Variant.Outlined" T="string"
                                           Label="Cerbos gRPC Endpoint"
                                           Value="_model.CerbosGrpcEndpoint"
                                           ValueChanged="OnCerbosEndpointChanged"
@@ -127,7 +128,7 @@
                                           HelperText="Accepts a full URL or bare host:port. Bare remote endpoints default to HTTPS; localhost defaults to HTTP." />
 
                             <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                <AppButton Variant="Variant.Outlined"
+                                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                                            Disabled="@(!CanVerify)"
                                            OnClick="VerifyCerbosEndpointAsync">
                                     @if (_isVerifying)
@@ -139,7 +140,7 @@
                                     {
                                         @:Verify Endpoint
                                     }
-                                </AppButton>
+                                </MudButton>
 
                                 @if (_model.CerbosEndpointVerified)
                                 {
@@ -160,9 +161,9 @@
                 }
 
                 <MudStack Row="true" Spacing="2" Class="mt-2">
-                    <AppButton Disabled="@(!CanSave)"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)"
                                OnClick="SaveAndContinueAsync">
-                        @if (_isSaving)
+                        @if (_submitState.IsSubmitting)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                             @:Saving...
@@ -171,7 +172,7 @@
                         {
                             @:Save & Continue
                         }
-                    </AppButton>
+                    </MudButton>
                 </MudStack>
             }
         }
@@ -184,7 +185,7 @@
     private AuthorizationProviderConfigurationModel _model = new();
     private bool _isAuthenticated;
     private bool _isLoading = true;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private bool _isVerifying;
     private string? _errorMessage;
     private string? _successMessage;
@@ -201,7 +202,7 @@
         !string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint);
 
     private bool CanSave =>
-        !_isSaving &&
+        !_submitState.IsSubmitting &&
         (_model.Provider.Equals("local", StringComparison.OrdinalIgnoreCase) ||
          (!string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint) && _model.CerbosEndpointVerified));
 
@@ -330,7 +331,7 @@
 
     private async Task SaveAndContinueAsync()
     {
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
         _successMessage = null;
 
@@ -340,7 +341,7 @@
             "PUT",
             "/api/InstanceOnboarding/authz-provider-configuration",
             _model);
-        _isSaving = false;
+        _submitState.Complete();
 
         if (!response.Success)
         {
