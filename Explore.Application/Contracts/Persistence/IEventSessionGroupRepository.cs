@@ -12,4 +12,6 @@ public interface IEventSessionGroupRepository : IGenericRepository<EventSessionG
     Task<EventSessionGroup?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken);
 
     Task<List<EventSessionGroup>> GetByEventAsync(Guid eventId, CancellationToken cancellationToken);
+
+    Task<List<EventSessionGroup>> GetActiveByEventAsync(Guid eventId, CancellationToken cancellationToken);
 }

@@ -118,6 +118,7 @@ public partial class ExploreDbContext
     public DbSet<EventFormat> EventFormats { get; set; }
     public DbSet<VisibilityType> VisibilityTypes { get; set; }
     public DbSet<RegistrationMode> RegistrationModes { get; set; }
+    public DbSet<EventSessionKind> EventSessionKinds { get; set; }
     public DbSet<ScheduleItemKind> ScheduleItemKinds { get; set; }
     public DbSet<EventRegistrationPolicy> EventRegistrationPolicies { get; set; }
     public DbSet<RegistrationScope> RegistrationScopes { get; set; }

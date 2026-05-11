@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    partial class ExploreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260507090201_AddEventSessionKinds")]
+    partial class AddEventSessionKinds
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3275,10 +3278,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
 
-                    b.Property<int?>("EventSessionKindId")
-                        .HasColumnType("integer")
-                        .HasColumnName("event_session_kind_id");
-
                     b.Property<Guid?>("FeaturedImageId")
                         .HasColumnType("uuid")
                         .HasColumnName("featured_image_id");
@@ -3390,9 +3389,6 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("EventId")
                         .HasDatabaseName("ix_event_sessions_event_id");
-
-                    b.HasIndex("EventSessionKindId")
-                        .HasDatabaseName("ix_event_sessions_event_session_kind_id");
 
                     b.HasIndex("FeaturedImageId")
                         .HasDatabaseName("ix_event_sessions_featured_image_id");
@@ -11013,12 +11009,6 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_event_sessions_events_event_id");
 
-                    b.HasOne("Explore.Domain.EventSessionKind", "EventSessionKind")
-                        .WithMany()
-                        .HasForeignKey("EventSessionKindId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_event_sessions_event_session_kinds_event_session_kind_id");
-
                     b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
                         .WithMany()
                         .HasForeignKey("FeaturedImageId")
@@ -11051,8 +11041,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Event");
 
                     b.Navigation("EventDay");
-
-                    b.Navigation("EventSessionKind");
 
                     b.Navigation("FeaturedImage");
 

@@ -39,6 +39,10 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     public LocationRoom? Room { get; set; }
 
     public string? Title { get; set; }
+
+    public int? EventSessionKindId { get; set; }
+    public EventSessionKind? EventSessionKind { get; set; }
+
     [ForeignKey("Tenant")]
     public Guid TenantId { get; set; }
     public required Tenant Tenant { get; set; }

@@ -14,6 +14,7 @@ internal static class EventSessionQueryExtensions
             .Include(s => s.Event)
             .Include(s => s.Location)
                 .ThenInclude(l => l!.Pii)
+            .Include(s => s.EventSessionKind)
             .Include(s => s.RegistrationMode)
             .Include(s => s.Room)
             .Include(s => s.FeaturedImage)

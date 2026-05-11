@@ -65,6 +65,7 @@ public static class LookupTableSeeder
         await SeedExternalApiKeyStatusesAsync(context, cancellationToken);
         await SeedExternalApiKeyCreditPeriodsAsync(context, cancellationToken);
         await SeedNotificationReasonsAsync(context, cancellationToken);
+        await SeedEventSessionKindsAsync(context, cancellationToken);
         await SeedScheduleItemKindsAsync(context, cancellationToken);
         await SeedEventRegistrationPoliciesAsync(context, cancellationToken);
         await SeedRegistrationScopesAsync(context, cancellationToken);
@@ -109,6 +110,26 @@ public static class LookupTableSeeder
             new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.Outro, MasterCode = "OUTRO", FullName = "Outro", Description = "Closing remarks or farewell block" },
             new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.Logistics, MasterCode = "LOGISTICS", FullName = "Logistics", Description = "Registration, seating, or housekeeping block" },
             new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.Custom, MasterCode = "CUSTOM", FullName = "Custom", Description = "Tenant-defined block not covered by standard kinds" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedEventSessionKindsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<EventSessionKind>().AnyAsync(ct)) return;
+
+        context.Set<EventSessionKind>().AddRange(
+            new EventSessionKind { Id = (int)EventSessionKindEnum.Talk, MasterCode = "TALK", FullName = "Talk", Description = "A standard presentation or talk" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.Workshop, MasterCode = "WORKSHOP", FullName = "Workshop", Description = "An interactive hands-on session" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.Panel, MasterCode = "PANEL", FullName = "Panel", Description = "A moderated discussion with multiple panelists" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.Lecture, MasterCode = "LECTURE", FullName = "Lecture", Description = "A formal instructional presentation" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.Class, MasterCode = "CLASS", FullName = "Class", Description = "A structured learning session" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.Activity, MasterCode = "ACTIVITY", FullName = "Activity", Description = "An activity or participatory program item" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.Keynote, MasterCode = "KEYNOTE", FullName = "Keynote", Description = "A featured keynote session" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.LightningTalk, MasterCode = "LIGHTNING_TALK", FullName = "Lightning talk", Description = "A short, focused presentation" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.BOF, MasterCode = "BOF", FullName = "Birds of a feather", Description = "An informal discussion around a shared topic" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.Demo, MasterCode = "DEMO", FullName = "Demo", Description = "A demonstration or showcase" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.QAndA, MasterCode = "Q_AND_A", FullName = "Q&A", Description = "A question-and-answer session" },
+            new EventSessionKind { Id = (int)EventSessionKindEnum.Other, MasterCode = "OTHER", FullName = "Other", Description = "A program item not covered by standard kinds" });
         await context.SaveChangesAsync(ct);
     }
 

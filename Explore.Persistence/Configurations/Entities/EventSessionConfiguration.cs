@@ -35,6 +35,11 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
             .HasForeignKey(e => e.RoomId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(e => e.EventSessionKind)
+            .WithMany()
+            .HasForeignKey(e => e.EventSessionKindId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasOne(e => e.EventDay)
             .WithMany()
             .HasForeignKey(e => e.EventDayId)
@@ -53,6 +58,9 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
 
         builder.HasIndex(e => new { e.TenantId, e.EventDayId, e.SortOrder })
             .HasDatabaseName("ix_event_sessions_tenant_day_sort");
+
+        builder.HasIndex(e => e.EventSessionKindId)
+            .HasDatabaseName("ix_event_sessions_event_session_kind_id");
 
         builder.ToTable(t =>
         {

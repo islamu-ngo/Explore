@@ -26,7 +26,9 @@ public static class PersistenceServicesRegistration
     //    builder.AddNpgsqlDbContext<ExploreDbContext>("ExploreDB");
 
     public static IServiceCollection ConfigurePersistenceServices(this IServiceCollection services,
-        IConfiguration configuration, bool skipDbContextRegistration = false)
+        IConfiguration configuration,
+        bool skipDbContextRegistration = false,
+        bool skipLookupCacheInitializer = false)
     {
         // Skip DbContext registration when running integration tests (they register their own)
         if (!skipDbContextRegistration)
@@ -97,7 +99,10 @@ public static class PersistenceServicesRegistration
 
         // Lookup cache
         services.AddSingleton<ILookupDataCache, LookupDataCache>();
-        services.AddHostedService<LookupDataCacheInitializer>();
+        if (!skipLookupCacheInitializer)
+        {
+            services.AddHostedService<LookupDataCacheInitializer>();
+        }
 
         // Lookup Table Repositories
         services.AddScoped<IApprovalStatusRepository, ApprovalStatusRepository>();
@@ -110,6 +115,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IRegistrationModeRepository, RegistrationModeRepository>();
         services.AddScoped<IEventRegistrationPolicyRepository, EventRegistrationPolicyRepository>();
         services.AddScoped<IRegistrationScopeRepository, RegistrationScopeRepository>();
+        services.AddScoped<IEventSessionKindRepository, EventSessionKindRepository>();
         services.AddScoped<IScheduleItemKindRepository, ScheduleItemKindRepository>();
         services.AddScoped<IMadhabRepository, MadhabRepository>();
         services.AddScoped<ILanguageRepository, LanguageRepository>();

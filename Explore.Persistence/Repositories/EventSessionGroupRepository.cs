@@ -46,4 +46,14 @@ public class EventSessionGroupRepository : GenericRepository<EventSessionGroup, 
             .ThenBy(group => group.Name)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<List<EventSessionGroup>> GetActiveByEventAsync(Guid eventId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventSessionGroups
+            .AsNoTrackingWithIdentityResolution()
+            .Where(group => group.EventId == eventId)
+            .OrderBy(group => group.SortOrder)
+            .ThenBy(group => group.Name)
+            .ToListAsync(cancellationToken);
+    }
 }
