@@ -332,7 +332,7 @@ The Blazor client uses an **NSwag-generated API client**:
 - `EventApiClient.g.cs` — Auto-generated code from `swagger.json`
 - The generated client is registered in WASM `Program.cs` with the BFF HttpClient
 
-To regenerate: update `swagger.json` from the API, then run the NSwag generator.
+To regenerate: build `Explore.API` to refresh `swagger.json` through build-time OpenAPI generation, then run/build the Blazor client so NSwag regenerates the API client.
 
 ---
 

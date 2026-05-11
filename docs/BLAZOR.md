@@ -45,7 +45,7 @@ BFF endpoints are split by concern in `Explore.Blazor/Extensions/` and wired thr
 | User/session view | `/bff/me` | `BffPreferenceEndpoints.cs` |
 | Preferences and appearance | `/bff/theme`, `/bff/language`, `/bff/direction`, `/bff/ui-themes`, `/bff/appearance/*` | `BffPreferenceEndpoints.cs` |
 | Setup secret | `GET/POST/DELETE /bff/setup-secret`, `/bff/setup-secret/sync` | `BffSetupSecretEndpoints.cs` |
-| Storage upload proxy | `/bff/storage/upload-proxy` | `BffStorageEndpoints.cs` |
+| Storage upload proxy | `/bff/storage/upload-session`, `/bff/storage/upload-proxy` | `BffStorageEndpoints.cs` |
 
 Keep new BFF endpoints in the smallest matching extension file. `BffEndpointExtensions.cs` should remain the facade/orchestrator, not a dumping ground for endpoint logic.
 
@@ -56,7 +56,7 @@ There are two related but separate transport paths:
 1. **Browser-to-API proxy path** — `YarpProxyExtensions.cs` proxies `/api/*` calls and applies security-sensitive transforms:
    - forwards the server-side access token as `Authorization: Bearer ...`,
    - forwards trusted tenant context when route context is available,
-   - removes the outgoing proxied `X-Setup-Secret` first, then resolves the setup secret in source order from request header, setup-secret cookie, or authenticated server-side session.
+   - strips any browser-supplied `X-Setup-Secret` value and forwards only the value returned by `ISetupSecretResolver`.
 2. **Server-side typed client path** — `HttpClientExtensions.cs` registers outgoing clients with separate handlers:
    - `AccessTokenForwardingHandler`,
    - `TenantHeaderForwardingHandler`,
@@ -70,19 +70,62 @@ All server-side handlers use `UseCookies = false` where applicable to avoid pool
 Setup-secret handling is intentionally BFF-owned:
 
 1. The browser sees only BFF-mediated cookie/session state, not the raw setup-secret persistence model.
-2. Setup-secret persistence uses an `HttpOnly` cookie plus server-side session fallback for authenticated bootstrap flows.
-3. `SameSite=Lax` is intentional because onboarding may cross top-level OIDC redirects before the first administrator completes setup.
-4. Setup-secret validation is rate-limited at the BFF edge and again at the API edge.
-5. The BFF limiter partitions requests by authenticated user when available, then antiforgery/session cookie state, then IP as the final fallback.
+2. Setup-secret forwarding uses `ISetupSecretResolver` with this trusted source order: BFF-owned setup handshake/session state, protected BFF-issued setup cookie, then explicit local/development/bootstrap configuration fallback. Inbound request headers are never a setup-secret source.
+3. The setup cookie is protected with ASP.NET Core Data Protection, `HttpOnly`, short-lived, invalidated by the BFF setup-secret endpoints, and `Secure` outside local development.
+4. `SameSite=Lax` is intentional because onboarding may cross top-level OIDC redirects before the first administrator completes setup.
+5. Setup-secret validation is rate-limited at the BFF edge and again at the API edge.
+6. The BFF limiter partitions requests by authenticated user when available, then antiforgery/session cookie state, then IP as the final fallback.
 
 When debugging onboarding, check both BFF setup-secret endpoints and API setup-secret validation rather than adding client-side storage shortcuts.
+
+## Auth Diagnostic Boundary
+
+Authentication challenge and OIDC callback failures are intentionally safe by default:
+
+1. Server redirects back to `/login` include only `challengeError=1`, a normalized `errorCode`, and a correlation ID.
+2. Raw IdP exception text, token endpoint response bodies, client IDs, client-secret prefixes, client-secret lengths, and `errorDetail` query values are not browser-visible.
+3. BFF logs use safe structured fields from `ISafeAuthDiagnosticsPolicy`; provider response bodies and secret-derived metadata stay out of production-path logs.
+4. The login page renders a generic failure message and provider choices. It must not render legacy `errorDetail` query values if an old URL is reused.
+
+## BFF Antiforgery Boundary
+
+Cookie-authenticated BFF mutations use a double-submit-style antiforgery contract:
+
+1. `UseAntiforgeryTokenMiddleware` issues a JavaScript-readable `XSRF-TOKEN` cookie on `GET` requests by calling `IAntiforgery.GetAndStoreTokens`.
+2. `Program.cs` configures ASP.NET Core antiforgery to validate the `X-CSRF-TOKEN` request header.
+3. `BrowserCredentialsMessageHandler` sends browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests when the token cookie is present.
+4. `BffCookieForwardingHandler` preserves cookie/XSRF context for InteractiveServer self-calls that legitimately call BFF endpoints from the server.
+5. Unsafe preference and appearance BFF endpoints must call `.ValidateAntiforgery()`. Missing or invalid tokens return `400` with `Antiforgery validation failed`.
+6. Positive protected examples include `/bff/auth/refresh-schemes`, `/bff/auth/refresh-session`, `/bff/storage/upload-proxy`, and the preference/appearance mutation endpoints.
+7. Documented exceptions are setup-secret bootstrap endpoints and `/bff/auth/refresh-session/internal`; these use separate credentials/authorization constraints because initial setup and server-side onboarding calls cannot reliably satisfy browser antiforgery semantics.
+
+## Storage Upload Proxy Boundary
+
+Browser-mediated storage uploads use BFF-owned upload sessions rather than caller-supplied destination URLs:
+
+1. The browser asks `/bff/storage/upload-session` for an upload session. The BFF calls the API generate-upload-url endpoint server-side, validates the returned presigned destination shape, and stores the exact approved destination in distributed cache.
+2. The browser receives an opaque `uploadSessionId`, object key, view URL, and expiry. It does not need to send a raw presigned upload URL back to the BFF proxy.
+3. The browser uploads bytes to `/bff/storage/upload-proxy` with `uploadSessionId`, `contentType`, and `file`. The proxy resolves the session, verifies the authenticated user and content type, and PUTs only to the exact server-issued destination.
+4. `/bff/storage/upload-proxy` rejects arbitrary HTTPS or presigned-looking URLs because client-provided destinations are not trusted.
+5. Upload sessions are short-lived, user-bound, content-type-bound, and consumed after successful proxy upload. Both storage BFF endpoints remain protected by authorization and antiforgery validation.
+6. Non-browser/server paths may still use direct presigned upload URLs where the server code owns the trusted URL; browser paths must use the BFF upload-session flow.
+
+## Auth-State Serialization Boundary
+
+The browser authentication state is intentionally display-only:
+
+1. `Explore.Blazor` configures `AddAuthenticationStateSerialization` with `AuthStateSerializationPolicy.SerializeDisplaySafeClaimsAsync`.
+2. Serialized claims are limited to display/name hints: `name`, `preferred_username`, `given_name`, and `family_name`.
+3. Serialized claims exclude email, `sub`, `sid`, `ClaimTypes.NameIdentifier`, `internal_user_id`, tenant identifiers, roles, permissions, admin claims, tokens, and any action-authority claims.
+4. UI authorization, tenancy, feature access, and action affordances must come from BFF status endpoints, API/HAL `_links`, or other server-confirmed service responses.
+5. Browser claim checks are not an authority source. If a UI action needs authority metadata and no HAL/status contract exists, record the missing affordance instead of synthesizing it from roles or cached claims.
 
 ## API Client Generation
 
 `Explore.Blazor.Client/Explore.Blazor.Client.csproj` runs the NSwag generation target before `CoreCompile`:
 
 1. API DTO/controller contract changes are made first.
-2. Development API startup or the integration test harness refreshes `Explore.API/swagger.json`.
+2. The API build refreshes the checked-in build-time OpenAPI contract at `Explore.API/swagger.json`.
 3. The Blazor client build regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
 4. Pages/components consume application services, not `EventApiClient` directly.
 

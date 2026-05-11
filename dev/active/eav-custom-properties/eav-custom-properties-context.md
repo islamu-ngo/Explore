@@ -262,7 +262,7 @@ D3 Consumption is functionally complete: specification-backed discovery filters,
 
 **D3 performance baseline satisfied:** correlated subquery pattern `EventCustomPropertyProjections.Any(p => p.EventId == e.Id && p.Namespace == ns && p.Key == k && ...)` is backed by composite index `ix_ecpp_tenant_namespace_key_normalized` and tenant-local index `ix_ecpp_tenant_event_namespace_key_ordinal`. Session mirror uses `escpp_*` equivalents. 15/15 integration tests completing in 14.9s (≈1s each with Testcontainers cold start) indicates no query-plan regression.
 
-**NSwag client regeneration:** happens automatically on `Explore.Blazor.Client` build via MSBuild `BeforeTargets="CoreCompile"` target (`dotnet nswag run nswag.json` reads live `swagger.json` exported by running API). New `CustomPropertyFilters` + `CustomPropertySearchTerm` fields will surface in `EventApiClient.g.cs` on next Aspire-started Blazor build. No manual regeneration required.
+**NSwag client regeneration:** happens automatically on `Explore.Blazor.Client` build via MSBuild `BeforeTargets="CoreCompile"` target (`dotnet nswag run nswag.json` reads checked-in `Explore.API/swagger.json`). Build `Explore.API` first so build-time OpenAPI generation refreshes `swagger.json`, then build `Explore.Blazor.Client` so new `CustomPropertyFilters` + `CustomPropertySearchTerm` fields surface in `EventApiClient.g.cs`.
 
 **D3 gate exit:** tasks 10.2, 10.2A checked green in tasks.md. Milestone D row updated to ✅ complete.
 

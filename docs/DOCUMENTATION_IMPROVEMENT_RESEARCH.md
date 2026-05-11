@@ -28,7 +28,7 @@ For this repository:
 
 - `docs/API.md`, `docs/CONFIGURATION.md`, `docs/QUICK_REFERENCE.md` -> reference.
 - `docs/docs-website/tutorials/*` -> tutorials.
-- `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/MULTI_TENANCY.md` -> explanation.
+- `docs/ARCHITECTURE.md`, `docs/SECURITY-MODEL.md`, `docs/MULTI_TENANCY.md` -> explanation.
 
 ## Writing Standards That Matter Most
 

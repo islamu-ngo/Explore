@@ -3,6 +3,12 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 
 # Security
 
+> **Audience:** Operators | Contributors | AI agents
+> **Status:** Mixed
+> **Owner:** Security
+> **Last Verified:** 2026-05-06
+> **Source Anchors:** `Explore.API/Extensions/AuthenticationExtensions.cs`, `Explore.API/Extensions/CorsExtensions.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Application/Services/ApiKeyHashing.cs`, `Explore.Application/Telemetry/BusinessMetrics.cs`, `Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs`, `Explore.Infrastructure/Services/FallbackAuthorizationService.cs`, `docs/AUTHORIZATION.md`
+
 ## Security Model
 
 The platform uses a BFF model:
@@ -10,6 +16,18 @@ The platform uses a BFF model:
 - `Explore.Blazor` (server) handles OIDC and session cookies.
 - `Explore.Blazor.Client` (WASM) does not directly manage access tokens.
 - `Explore.API` authorizes bearer-token requests and applies resource-level checks in Application layer.
+
+## Security CI Gates
+
+Security-sensitive changes are protected by both workflow checks and GitHub repository settings. See [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) for the required/advisory matrix, fork PR policy, and branch-protection guidance.
+
+Current security gates:
+
+- `Security Integration Tests` exercises auth, Keycloak, Cerbos, and policy-contract scenarios for matching paths and on schedule.
+- `Cerbos Policy Validation` compiles static policies and policy tests with a fixed Cerbos binary version.
+- `CodeQL Advanced` publishes code-scanning results for C#, JavaScript/TypeScript, and GitHub Actions.
+- `Dependency Review` blocks vulnerable dependency changes on pull requests.
+- Secret scanning and push protection must be enabled in GitHub repository or organization settings; they are not controlled by application runtime configuration.
 
 ## Authentication Flow (Current)
 
@@ -25,19 +43,57 @@ The platform uses a BFF model:
 - Custom `AudienceValidator`: checks both `aud` claim and `azp` (Keycloak authorized party) claim. Accepts if either contains a valid audience.
 - Clock skew tolerance: 5 minutes.
 - Dev mode: accepts self-signed certificates, suppresses HTTPS metadata requirement.
-- Detailed JWT event logging on: `OnAuthenticationFailed`, `OnTokenValidated`, `OnChallenge`, `OnMessageReceived`.
+- Detailed JWT event logging on: `OnMessageReceived`, `OnAuthenticationFailed`, and `OnChallenge`.
+
+## Auth Diagnostic Safety
+
+OIDC and BFF challenge failures must expose only safe diagnostic handles:
+
+- Browser redirects use `challengeError=1`, a normalized `errorCode`, and a correlation ID.
+- Browser redirects must not include `errorDetail`, raw exception messages, provider response bodies, client IDs, client-secret length, client-secret prefix, tokens, or secret-derived metadata.
+- Production-path logs use structured error codes, correlation IDs, failure categories, and boolean presence flags where needed. They must not log raw provider error bodies, raw exception text from identity-provider callbacks, client-secret prefixes, client-secret lengths, tokens, or refresh-token grant payloads.
+- Development-only diagnostics such as `/auth/debug` remain a local troubleshooting surface and must never include secret values.
+
+Use `ISafeAuthDiagnosticsPolicy` for BFF auth challenge and OIDC remote-failure redirects so user-facing errors stay generic while operators can correlate failures through logs and traces.
 
 ## Header and Secret Hardening
 
 In YARP transforms:
 
 - `X-Tenant-Slug` is forwarded when route or request context provides an explicit tenant hint.
-- Incoming `X-Setup-Secret` is stripped first, then replaced only with trusted value resolved from:
-  1. request header,
-  2. cookie,
-  3. server-side session (per user).
+- Any incoming or stale proxied `X-Setup-Secret` header is removed first. The BFF then resolves a setup secret through `ISetupSecretResolver` in this source order:
+  1. BFF-owned setup handshake/session state,
+  2. protected BFF-issued setup cookie,
+  3. explicit local/development/bootstrap configuration fallback.
+- Inbound request headers are never trusted as setup-secret sources. Browser-controlled `X-Setup-Secret` values must be stripped and ignored by both YARP and server-side forwarding handlers.
 
-This prevents direct client injection of setup-secret into proxied API traffic.
+This prevents stale outgoing proxy headers and browser-controlled privileged headers from leaking across requests. Treat the setup secret as bootstrap-only sensitive material; the BFF protects the setup cookie with ASP.NET Core Data Protection and forwards only resolver output to downstream API calls.
+
+## BFF Antiforgery Contract
+
+Cookie-authenticated unsafe BFF endpoints must validate antiforgery tokens because browsers automatically include BFF cookies on same-site requests.
+
+- Token issuance: `UseAntiforgeryTokenMiddleware` calls `IAntiforgery.GetAndStoreTokens` on `GET` requests and writes the request token to the readable `XSRF-TOKEN` cookie.
+- Header contract: clients send the token back in the `X-CSRF-TOKEN` header. This matches the BFF `AddAntiforgery` configuration.
+- Browser client path: `BrowserCredentialsMessageHandler` attaches browser credentials and adds `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` requests.
+- Server self-call path: `BffCookieForwardingHandler` forwards captured cookies and mirrors `XSRF-TOKEN` into `X-CSRF-TOKEN` when InteractiveServer code calls BFF endpoints.
+- Endpoint validation: unsafe minimal BFF endpoints call `.ValidateAntiforgery()`, which returns `400 Antiforgery validation failed` for missing or invalid tokens.
+- Protected endpoint families include auth refresh, storage upload proxy, preference mutations, and appearance profile mutations.
+- Documented exceptions are setup-secret bootstrap endpoints and `/bff/auth/refresh-session/internal`; these remain constrained by setup credentials, authorization, and rate limiting because they are used before or outside normal browser antiforgery semantics.
+
+Do not add new unsafe `/bff/*` endpoints without either `.ValidateAntiforgery()` or a documented bootstrap/internal exception with equivalent compensating controls.
+
+## Storage Upload Destination Binding
+
+The Blazor BFF upload proxy is an SSRF-sensitive boundary because it performs server-side `PUT` requests to a URL associated with user-uploaded content. Browser callers must not control that destination directly.
+
+- Browser upload flow starts with `/bff/storage/upload-session`. The BFF obtains the presigned upload URL from the API, validates that it is an HTTPS presigned destination with required signing markers, and stores the exact approved destination in distributed cache under an opaque upload session id.
+- `/bff/storage/upload-proxy` accepts `uploadSessionId`, `contentType`, and `file`, not a trusted raw `uploadUrl`. It resolves the upload session server-side and rejects missing, expired, cross-user, content-type-mismatched, or unknown sessions.
+- Arbitrary HTTPS URLs, private/internal hosts, or presigned-looking attacker URLs must not be proxied merely because they contain S3-style query parameters.
+- Upload sessions are short-lived, user-bound, content-type-bound, and consumed after successful upload. This keeps the browser path bound to a server-issued upload intent without duplicating tenant storage policy in the UI layer.
+- BFF storage logs must not include raw upstream response bodies, presigned URLs, signatures, tokens, or object secrets. Use safe fields such as host, status code, `hasBody`, and session failure code.
+
+Server-side/non-browser code paths may still use direct presigned upload URLs when the server owns the trusted URL. Browser-facing upload proxy paths must use the upload-session contract.
 
 Forwarded-host trust for direct API traffic:
 
@@ -85,7 +141,7 @@ Authorization policies are organized in three tiers:
 
 ### Static Policies (Disk)
 
-31 resource policy files + 1 derived roles file in `cerbos/policies/`:
+Static resource policy files plus `derived_roles.yaml` live in `cerbos/policies/`. Avoid relying on an exact count in docs; architecture tests and policy parity checks are the safer source of truth.
 
 - **`derived_roles.yaml`**: Resolves instance admin, tenant admin, and org admin roles from principal attributes and resource context.
 - **Resource policies** (`{kind}.yaml`): Each defines rules per derived role and `authenticated_user`. Instance admin gets wildcard `"*"`, tenant/org admin get CRUD, authenticated user gets `"view"`.
@@ -203,14 +259,25 @@ Blazor client checks are UX-only:
 
 They are not security enforcement. Security enforcement remains server-side through API and MediatR authorization.
 
+## Blazor Auth-State Serialization Boundary
+
+`Explore.Blazor` serializes only display-safe identity hints into the browser authentication state:
+
+- allowed: display/name hints such as `name`, `preferred_username`, `given_name`, and `family_name`,
+- excluded: `sub`, `sid`, `ClaimTypes.NameIdentifier`, `internal_user_id`, tenant identifiers, roles, permissions, admin claims, email, tokens, and any action-authority claims.
+
+Browser-visible authorization, tenancy, feature access, and action affordances must come from BFF/API/HAL/status endpoints, not from serialized claims. Server-side claims may still enrich the BFF principal for API calls, token forwarding, setup flows, and server-only authorization decisions.
+
 ## Admin Claims Enrichment
 
 `BffAdminClaimsTransformation`:
 
 - calls API endpoint `api/User/admin-authority`,
-- adds admin claims to principal for UI use,
+- adds admin claims to the server-side BFF principal for server decisions and downstream API context,
 - resolves and adds `internal_user_id` by matching external identity (`provider + provider subject`) to local user records,
 - caches positive results for 5 minutes and negative results for 30 seconds.
+
+These admin and internal-user claims are intentionally not serialized as browser authority. Blazor UI affordances must use BFF status endpoints, API/HAL `_links`, or other server-confirmed contracts.
 
 Post-onboarding provider management safety:
 
@@ -244,9 +311,9 @@ Five CORS policies are configured in `Program.cs`:
 |---|---|---|---|---|
 | `InternalAppPolicy` | Configurable | All | Yes | Internal app communication (BFF ↔ API) |
 | `ExternalAppPolicy` | Configurable | Specific set | No | External API consumers |
-| `InternalWebsitePolicy` | `iloveibadah.app` only | All | Yes | Internal website |
+| `InternalWebsitePolicy` | Configurable `Cors:AllowedOrigins` with default fallback | All | Yes | Internal website |
 | `ExternalWebsitePolicy` | Configurable | `GET`, `OPTIONS` only | No | External read-only |
-| `DevPolicy` | All origins | All | Yes | Development only |
+| `DevPolicy` | All origins | All | No | Development only |
 
 ## External API Keys
 
@@ -260,21 +327,21 @@ Non-interactive callers (direct API consumers, integrations, automation) authent
 
 ### Hashing
 
-- Secrets are stored as HMAC-SHA256 hashes in `ExternalApiKey.SecretHash`. The full plaintext is never persisted.
-- Verification uses `CryptographicOperations.FixedTimeEquals` to prevent timing oracles.
-- The HMAC key is an instance-wide server-side secret; compromise of the database alone is not sufficient to forge valid credentials.
+- Secrets are stored as SHA256 hashes in `ExternalApiKey.SecretHash`. The full plaintext is never persisted.
+- Verification recomputes the SHA256 hash and uses `CryptographicOperations.FixedTimeEquals` to reduce timing-oracle risk.
+- The raw `{keyId}.{secret}` value is returned once at creation time; losing it requires revoking and issuing a replacement key.
 
-### Rotation
+### Revocation And Replacement
 
-- Rotation issues a **new** key record and leaves the old key in a `PendingRotation` state so callers can migrate without downtime. Only one active key per caller identity is required; concurrent active/pending pairs are permitted.
-- Secret values are returned **once only**, at creation or rotation time, in the HTTP response body. The secret is then discarded server-side and cannot be re-derived.
-- Clients that lose a secret must rotate — the platform cannot recover it.
+- Current API surfaces support creating keys, updating key policy, and revoking keys. The lookup table contains a `PendingRotation` status for future overlap workflows, but the inspected API surface does not expose a dedicated rotate endpoint.
+- Secret values are returned **once only**, at creation time, in the HTTP response body. The secret is then discarded server-side and cannot be re-derived.
+- Clients that lose a secret must revoke the old key and issue a replacement — the platform cannot recover it.
 
 ### Raw Key Logging Prohibited
 
 - The `X-API-Key` header value must never appear in logs, traces, or metrics.
 - `ILogger` calls inside `ApiKeyAuthenticationHandler` log only `keyId` and outcome — the secret segment is discarded after parsing.
-- Business metrics (`external_api_key.authentication_attempts`) tag `key_id` and outcome but never the credential.
+- Business metrics (`explore.external_api_keys.authentication_attempts`) tag `tenant_id`, `owner_type`, and `outcome`, but never the credential.
 - Correlation IDs and request logs redact the `Authorization`/`X-API-Key` headers before emission.
 
 ### Tenant Isolation
@@ -304,6 +371,13 @@ The HATEOAS link generation system is authorization-aware:
 3. Remaining links with `PermissionResourceKind` are batched into a single `IsAllowedBatchAsync()` call.
 4. On batch authorization failure, all permission-bound links are **denied** (fail-closed).
 5. This ensures clients never see links they cannot execute.
+
+Related authorization references:
+
+- [AUTHORIZATION.md](AUTHORIZATION.md) — provider model, resource checks, and fallback behavior.
+- [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md) — handler/request authoring patterns.
+- [API.md](API.md) — API authentication, API-key routing, and error contracts.
+- [BLAZOR.md](BLAZOR.md) — BFF proxy/token/setup-secret boundaries.
 
 ## Row-Level Security (RLS) — Planned
 

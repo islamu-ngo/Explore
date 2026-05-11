@@ -22,6 +22,7 @@ ABOUTME: Replaces generic template guidance with repo-specific constraints and l
 6. [Pattern Selection Guide](#pattern-selection-guide)
 7. [Decision Framework](#decision-framework)
 8. [API Contract Rules](#api-contract-rules)
+9. [CI/CD Governance](#cicd-governance)
 
 ---
 
@@ -387,6 +388,17 @@ Callers passing `CancellationToken` must use a **named argument** (`cancellation
 4. Confirm API contract tests still pass (`dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`).
 5. If the generated client needs regeneration, open a separate contract PR — do not mix contract and feature work.
 
+## CI/CD Governance
+
+GitHub Actions gates, branch-protection policy, environment settings, artifact retention, fork PR rules, and generated-artifact review rules live in [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md).
+
+Key rules:
+
+- Keep required workflow/job names stable unless branch protection is migrated in the same change.
+- Required checks must be always-present or have a documented no-op path; do not make a path-skipped workflow required without a wrapper gate.
+- OpenAPI and NSwag client drift is governed CI evidence. Contributors regenerate through the documented command path and commit the generated artifacts.
+- Production deployment approval, branch restrictions, environment secrets, secret scanning, and push protection are GitHub repository or organization settings, not application configuration.
+
 ---
 
 ## Related Documentation
@@ -441,7 +453,7 @@ Every change — human or agent — routes through the Contribution Contract bef
 | New EF Core migration | `add-ef-migration` | `dotnet-efcore-guidelines`, `.claude/rules/efcore-migrations.md` |
 | Repository query change | `update-repository-query` | `dotnet-efcore-guidelines`, `.claude/rules/efcore-persistence.md` |
 | Blazor component affordance gated by HAL links | `blazor-component-affordance` | `blazor-ui-conventions`, `blazor-bff-patterns` |
-| 401/403 BFF/API auth issue | `bff-auth-bug` | `auth-patterns`, `blazor-bff-patterns`, `docs/SECURITY.md` |
+| 401/403 BFF/API auth issue | `bff-auth-bug` | `auth-patterns`, `blazor-bff-patterns`, `docs/SECURITY-MODEL.md` |
 | Cerbos policy change | `cerbos-policy-change` | `docs/AUTHORIZATION_PATTERNS.md`, `auth-patterns` |
 | OpenAPI contract / breaking change | `openapi-contract-change` | `docs/API.md`, `docs/API_CHANGELOG.md` |
 

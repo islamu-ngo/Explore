@@ -188,7 +188,7 @@ Same as previous revision — see `secrets-refactor-control-plane-context.md` hi
 ## Reference Docs To Open When Working On Specific Tasks
 
 - `docs/ARCHITECTURE.md` - Clean Architecture enforcement.
-- `docs/SECURITY.md` - BFF + multi-client audience validation + Cerbos.
+- `docs/SECURITY-MODEL.md` - BFF + multi-client audience validation + Cerbos.
 - `docs/QUICK_REFERENCE.md` - Critical rules.
 - `docs/SECRETS.md` - Will be rewritten at end of Phase 6.
 - `.claude/skills/` — all project skills as listed in previous context.

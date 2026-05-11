@@ -173,7 +173,7 @@ The user-facing components for the Instance Admin.
   - **Effort**: L
 
 - **Task 6.2: Update Documentation**
-  - **Files**: `docs/MULTI_TENANCY.md`, `docs/SECURITY.md`
+  - **Files**: `docs/MULTI_TENANCY.md`, `docs/SECURITY-MODEL.md`
   - **Acceptance Criteria**:
     - [ ] Update `MULTI_TENANCY.md` to document the "Break-Glass" capability as a formal exception to the data isolation rule.
     - [ ] Update `SECURITY.md` to mention the impersonation claim and audit logging mechanism.

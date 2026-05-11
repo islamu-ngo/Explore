@@ -29,7 +29,7 @@ This file provides a checklist for tracking the implementation of the Admin Impe
 
 ### Phase 6: Testing & Documentation
 - [ ] **Task 6.1**: Write comprehensive unit and integration tests for the new logic.
-- [ ] **Task 6.2**: Update `docs/MULTI_TENANCY.md` and `docs/SECURITY.md` with details of the new feature.
+- [ ] **Task 6.2**: Update `docs/MULTI_TENANCY.md` and `docs/SECURITY-MODEL.md` with details of the new feature.
 ## Context Reset Session Update (2026-02-15 21:26 Europe/Brussels)
 
 - Status update: No task-state changes in this session for this track.

@@ -316,7 +316,7 @@ All broken and should be removed:
 - docs/API.md (HIGH)
 - docs/DOMAIN.md (HIGH)
 - docs/CONFIGURATION.md (MEDIUM)
-- docs/SECURITY.md (LOW)
+- docs/SECURITY-MODEL.md (LOW)
 - docs/BLAZOR.md (MEDIUM)
 - docs/PROJECT.md (MEDIUM)
 - docs/TESTING.md (NEW)
@@ -393,4 +393,3 @@ All broken and should be removed:
 - **Files modified and why**: None for this specific track in this session.
 - **Blockers/issues discovered**: None newly discovered for this track.
 - **Next immediate steps**: Await user clarification on Federation status and Sentry implementation (Task 1.2 and 1.3), or proceed immediately with Phase 2 documentation updates based on existing plans.
-

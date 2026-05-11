@@ -16,7 +16,7 @@
 
 - **Multi-Tenancy Architecture**: This feature is a formal exception to the strict data isolation rules defined in `docs/MULTI_TENANCY.md`. It relies on the existing `TenantId` infrastructure.
 - **Clean Architecture & CQRS**: The implementation will follow existing patterns, introducing new CQRS commands and queries within the Application layer and using MediatR for orchestration.
-- **BFF Security Model**: The plan depends heavily on the Backend-for-Frontend pattern outlined in `docs/SECURITY.md`, where the `Explore.Blazor` project manages the secure session cookie.
+- **BFF Security Model**: The plan depends heavily on the Backend-for-Frontend pattern outlined in `docs/SECURITY-MODEL.md`, where the `Explore.Blazor` project manages the secure session cookie.
 - **HATEOAS Framework**: The dynamic nature of the UI relies on the existing HATEOAS infrastructure (`Explore.API/Hateoas` and `Explore.Application/Hateoas`), which will be extended to support the impersonation context.
 
 ## 3. Key Files & Locations for Implementation

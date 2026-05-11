@@ -33,6 +33,20 @@ Use the GitHub templates to keep requests and reviews actionable:
 | [AI agent task](../.github/ISSUE_TEMPLATE/ai_agent_task.yml) | Work packages that need context, scoped files, validation, and handoff expectations. |
 | [Pull request template](../.github/PULL_REQUEST_TEMPLATE.md) | PR summary, docs impact, validation evidence, UI screenshots, release/operator notes, and agent handoff. |
 
+### How to Contribute
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/foobar`)
+3. Commit your changes (`git commit -m "Add feature"`)
+4. Push to the branch (`git push origin feature/foobar`)
+5. Create a new Pull Request
+
+Before opening a PR:
+- build the solution in Release mode
+- run the affected test projects individually
+- update docs when behavior, configuration, or operations change
+
+
 ## Branch And Commit
 
 ### Branch Prefixes
@@ -170,7 +184,7 @@ When DTO contracts change, sequence matters to avoid false compile failures.
 
 1. Update DTOs, validators, mappings, and handlers in API/Application layers
 2. Build API: `dotnet build --project Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`
-3. Run API/AppHost in Development so `Explore.API/swagger.json` is refreshed
+3. Confirm the API build refreshed `Explore.API/swagger.json` through build-time OpenAPI generation
 4. Build Blazor client: `dotnet build --project Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --verbosity quiet`
 5. Update Blazor services/components that use the generated client types
 6. Rebuild and rerun all tests

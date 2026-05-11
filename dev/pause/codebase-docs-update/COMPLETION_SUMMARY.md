@@ -31,7 +31,7 @@ Comprehensive update of documentation, skills, agents, and codebase to enterpris
 
 ### Task 1.3: Cerbos Terminology Alignment
 **Status**: ✅ **COMPLETE**
-**Files**: `docs/SECURITY.md`, `docs/CONFIGURATION.md`
+**Files**: `docs/SECURITY-MODEL.md`, `docs/CONFIGURATION.md`
 
 **Changes**:
 - ✅ Unified terminology: "not currently integrated"
@@ -273,7 +273,7 @@ These sections can be refactored to:
 
 ### Files Modified: 8 Documentation Files
 1. `docs/FEDERATION.md` - Status clarification
-2. `docs/SECURITY.md` - Cerbos terminology alignment
+2. `docs/SECURITY-MODEL.md` - Cerbos terminology alignment
 3. `docs/CONFIGURATION.md` - Instance settings + modules + monitoring
 4. `docs/QUICK_REFERENCE.md` - Enhanced rules
 5. `docs/API.md` - HATEOAS + OutputCache

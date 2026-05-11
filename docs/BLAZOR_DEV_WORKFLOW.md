@@ -62,7 +62,7 @@ Alternative: the Chrome-DevTools MCP for deeper frontend inspection (see [`CLAUD
 ## 4. Cross-References
 
 - Component / render-mode conventions → [`docs/BLAZOR.md`](BLAZOR.md)
-- BFF auth / YARP / token forwarding → [`docs/SECURITY.md`](SECURITY.md), [`blazor-bff-patterns`](../.claude/skills/blazor-bff-patterns/SKILL.md)
+- BFF auth / YARP / token forwarding → [`docs/SECURITY-MODEL.md`](SECURITY.md), [`blazor-bff-patterns`](../.claude/skills/blazor-bff-patterns/SKILL.md)
 - UI conventions (MudBlazor, BEM, theming) → [`blazor-ui-conventions`](../.claude/skills/blazor-ui-conventions/SKILL.md)
 - Accessibility requirements → [`docs/ACCESSIBILITY.md`](ACCESSIBILITY.md)
 - Design tokens, CSS layers, wrappers → [`design-system`](../.claude/skills/design-system/SKILL.md)

@@ -552,7 +552,7 @@ OUT of scope:
   - [ ] **8.7.2** `event_editor` policy (covers event + event-session editing + runtime value/definition edits; rolls in prior `event_session_editor`)
   - [ ] **8.7.3** `property_governance_admin` policy (covers projection rebuild, dirty-scope drain, governance reporting, projection-first promotion, exposure flag management; rolls in prior `custom_property_projection_admin`)
   - [ ] **8.7.4** `platform_namespace_editor` policy (default deny; explicit grant only for platform operators; applied to any write targeting `namespace = 'platform'`)
-  - [ ] **8.7.5** Document endpoint-to-policy mapping in `docs/SECURITY.md` (four mappings, not seven)
+  - [ ] **8.7.5** Document endpoint-to-policy mapping in `docs/SECURITY-MODEL.md` (four mappings, not seven)
   - [ ] **8.7.6** Integration tests verify authorized vs unauthorized responses for each new endpoint
   - [ ] **8.7.7** Future-proof test: prove a new policy can be split from one of the four without renaming existing policies or breaking existing endpoints
 
@@ -738,7 +738,7 @@ OUT of scope:
   - [ ] **11.10A.5** `.temp.` experimental namespace usage guidelines
 - [ ] **11.10B** Update docs with Milestone D projection + Milestone E sync + Milestone F aggregate view operator-facing docs
   - [ ] **11.10B.1** `docs/API.md` - new projection admin + template sync endpoints
-  - [ ] **11.10B.2** `docs/SECURITY.md` - new authorization policies
+  - [ ] **11.10B.2** `docs/SECURITY-MODEL.md` - new authorization policies
   - [ ] **11.10B.3** `docs/TROUBLESHOOTING.md` - projection rebuild playbook + sync conflict resolution
 
 ---

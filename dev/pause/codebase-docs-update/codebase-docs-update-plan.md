@@ -173,7 +173,7 @@ This plan addresses comprehensive updates to the ISLAMU Event project's document
 ---
 
 #### Task 1.3: Fix Cerbos Terminology Inconsistency
-**Files**: `docs/SECURITY.md`, `docs/CONFIGURATION.md`
+**Files**: `docs/SECURITY-MODEL.md`, `docs/CONFIGURATION.md`
 
 **Current Issue**:
 - SECURITY.md says Cerbos is "future"
@@ -719,7 +719,7 @@ Content:
 
 ### Documentation Files (11 files)
 1. `docs/FEDERATION.md` - Status clarification
-2. `docs/SECURITY.md` - Cerbos terminology
+2. `docs/SECURITY-MODEL.md` - Cerbos terminology
 3. `docs/CONFIGURATION.md` - Cerbos terminology + instance settings
 4. `docs/QUICK_REFERENCE.md` - Add rule 13, enhance rule 11
 5. `docs/API.md` - HATEOAS + OutputCache

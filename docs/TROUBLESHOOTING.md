@@ -52,9 +52,27 @@ Symptoms:
 - Missing/old generated client types.
 
 Checks:
-1. Ensure API starts in `Development` so `OpenApiExportService` refreshes `Explore.API/swagger.json`.
-2. Rebuild `Explore.Blazor.Client`; its `GenerateApiClient` target regenerates `Clients/EventApiClient.g.cs`.
-3. Confirm `swagger.json` timestamp changed.
+1. Regenerate the governed OpenAPI document through the same API build-time generation path used by CI:
+
+   ```bash
+   dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet
+   ```
+
+2. Rebuild `Explore.Blazor.Client`; its `GenerateApiClient` target regenerates `Clients/EventApiClient.g.cs`:
+
+   ```bash
+   dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
+   ```
+
+3. Confirm only intentional generated artifacts changed:
+
+   ```bash
+   git diff -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs
+   ```
+
+4. Commit `Explore.API/swagger.json` and `Explore.Blazor.Client/Clients/EventApiClient.g.cs` only when the API-surface change is intentional. Do not hand-edit either file.
+
+If CI reports drift on an unrelated PR, check `.github/workflows/openapi-contract.yml` job summary. The guard has an internal no-op detector; unrelated changes should pass without regeneration.
 
 ## Auth And BFF Issues
 
@@ -86,7 +104,7 @@ Checks:
 2. BFF endpoints:
     - `POST /bff/setup-secret`
     - `POST /bff/setup-secret/sync`
-3. ensure secret is not being injected directly by client headers; proxy strips and re-resolves trusted value.
+3. ensure browser-supplied `X-Setup-Secret` headers are stripped and ignored. The BFF should forward only resolver output from BFF-owned setup handshake/session state, protected setup cookie, or explicit local/development/bootstrap configuration fallback.
 4. auto-generated setup secrets expire after 60 minutes from API startup.
 5. if the setup page reports `Environment`, use the configured `SETUP_SECRET` value; if it reports `Generated`, use the API startup log secret; if it reports `Expired`, restart the API to reopen setup mode.
 6. use `GET /api/System/onboarding-preflight` to inspect non-sensitive launch blockers and operational warnings before retrying completion.
@@ -193,6 +211,6 @@ Checks:
 
 - API: `https://localhost:7039`
 - Swagger: `https://localhost:7039/swagger`
-- Scalar: `https://localhost:7039/scalar/v1`
+- Scalar: mapped by `MapScalarApiReference()` in Development/Testing API runs
 - Blazor (dotnet): `https://localhost:7177`
 - Blazor (docker compose): `http://localhost:7002`

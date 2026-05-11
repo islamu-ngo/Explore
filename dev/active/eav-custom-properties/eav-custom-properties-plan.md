@@ -3,7 +3,7 @@ ABOUTME: Treats EAV as the Layer 3 extension system only, with governed semantic
 
 # EAV Custom Properties - Implementation Plan
 
-**Last Updated: 2026-05-06 (dev-docs-update handoff refreshed)**
+**Last Updated: 2026-05-08 (implementation closure plan refreshed with Tavily + Context7 research)**
 
 ---
 
@@ -51,6 +51,12 @@ The remaining milestones are planned against these external evidence anchors:
 - **Microsoft Learn + Chris Woodruff - EF Core Keyless Entity Types (Feb 2025)**: `[Keyless]` + `HasNoKey()` + `ToView()`/`ToSqlQuery()` for read-only aggregate views. Locked as Milestone F aggregate view implementation strategy.
 - **architecture-weekly.com - Rebuilding event-driven read models (2026)**: projection status tracking table (name, version, status) + PostgreSQL advisory locks for rebuild coordination. Locked as Milestone D rebuild tooling pattern.
 - **Clean Architecture skill + dotnet-efcore-guidelines skill (project)**: interface placement, specification pattern, named query filters, pooled DbContext, manual validator instantiation. Non-negotiable.
+- **Microsoft Learn - EF Core global query filters / multitenancy / concurrency / keyless entity types (Context7, 2026-05-08)**: confirms tenant isolation belongs in global filters, soft-delete filters should be default-on, optimistic concurrency must compare loaded tokens during `SaveChanges`, and aggregate read views should be modeled as keyless read-only types instead of mutable entities.
+- **FluentValidation documentation (Context7, 2026-05-08)**: confirms explicit/manual validation is the controllable API/CQRS pattern; validators should produce testable error codes and validation results, and async validators must be invoked with `ValidateAsync`/`ValidateAndThrowAsync` plus the request `CancellationToken`.
+- **MediatR documentation (Context7, 2026-05-08)**: confirms command/query requests have one handler, cross-cutting concerns can live in pipeline behaviors, and handlers/pipeline behaviors must preserve `CancellationToken`; this plan still follows the repo-specific rule that request validators are manually instantiated unless the project convention changes globally.
+- **2025-2026 EAV/custom-field architecture research (Tavily, 2026-05-08)**: modern guidance still treats EAV as powerful but hazardous because integrity constraints, hidden schema, and query performance can degrade quickly. The plan therefore keeps EAV as governed Layer 3 only, requires typed validation in Application, moves search/filter/export to explicit projections, and demands audit/soft-delete/archival policies for lifecycle operations.
+- **Catalog/search-index practice research (Tavily, 2026-05-08)**: any custom attribute used for search/filter/faceting must be projected into an indexed read model while the catalog/runtime tables remain source of truth. This reinforces the existing `EventCustomPropertyProjection`/session projection strategy and blocks raw EAV joins in discovery paths.
+- **ABP Object Extensions / module entity extensions (OSS reference)**: useful reference for explicit property definitions, constants, validation hooks, and controlled DTO/entity mapping. Not adopted as runtime storage because ABP-style extension bags/JSON are too opaque for this plan's typed value, option lifecycle, exposure, audit, and projection requirements.
 - **Orchard Core ContentFields pattern**: validates field/index separation (our projection tables = their index tables) but NOT a pattern to adopt wholesale because Orchard uses YesSql, not EF Core.
 - **Anti-pattern: nopCommerce `GenericAttribute` (string-only values)**: cautionary reference. Our normalized + typed model is deliberately stricter.
 - **Anti-pattern: single-JSONB blob (ABP ExtensibleObject)**: rejected for Layer 3 runtime to preserve typed validation, audit, soft delete, multi-value semantics, and governed exposure flags.
@@ -178,6 +184,139 @@ Current priority order:
 3. Prove export/moderation payload exposure ceilings; current searches found no dedicated custom-property export/moderation composer beyond aggregate facets.
 4. Decide and implement explicit audited purge workflow/policy.
 5. Decide the runtime modeling boundary ADR: custom fields on existing resources versus a separate runtime schema engine.
+
+### Phase 13 - Current Closure Plan (2026-05-08)
+
+Phase 13 is the active implementation plan. It supersedes any older milestone wording that still reads like fresh Milestone D/E/F construction. The repo already contains the core runtime custom-property stack; the remaining work is to prove, harden, and operationalize it to enterprise quality.
+
+Phase 12 and earlier milestone sections remain historical delivery context and evidence. **Phase 13 is the authoritative remaining checklist** for closure work after 2026-05-08.
+
+#### Source-of-truth implementation map
+
+Use these existing code paths as the architecture baseline before adding or changing anything:
+
+- **Domain identity/governance**: `Explore.Domain/CustomPropertyDefinition.cs`, `Explore.Domain/EventCustomPropertyDefinition.cs`, `Explore.Domain/EventSessionCustomPropertyDefinition.cs`, `Explore.Domain/Constants/CustomPropertyIdentity.cs`, `Explore.Domain/Constants/CustomPropertyNamespaces.cs`, `Explore.Domain/Constants/CustomPropertySemanticReservations.cs`, and `Explore.Domain/Settings/Definitions/CustomPropertyQuotaSettingDefinitions.cs`.
+- **Persistence and lifecycle**: `Explore.Persistence/Repositories/CustomPropertyDefinitionRepository.cs`, `Explore.Persistence/Repositories/EventCustomPropertyRepository.cs`, `Explore.Persistence/Repositories/CustomPropertyGovernanceRepository.cs`, `Explore.Persistence/Configurations/Entities/*CustomProperty*Configuration.cs`, and `Explore.Persistence/Projections/EventCustomPropertyProjectionUpdater.cs`.
+- **Application rules**: `Explore.Application/Services/CustomPropertyGovernancePolicy.cs`, `Explore.Application/Features/CustomProperties/CustomPropertyRuntimeValueValidator.cs`, `Explore.Application/Specifications/Events/EventCustomPropertyProjectionFilter.cs`, `Explore.Application/Specifications/EventSessions/EventSessionCustomPropertyProjectionFilter.cs`, and the corresponding `EventQuerySpecification` / `EventSessionQuerySpecification` composition points.
+- **CQRS/API surfaces**: `Explore.Application/Features/*CustomPropert*/Handlers`, `Explore.API/Controllers/CustomPropertyDefinitionController.cs`, `Explore.API/Controllers/EventCustomPropertyController.cs`, `Explore.API/Controllers/EventSessionCustomPropertyController.cs`, `Explore.API/Controllers/CustomPropertyGovernanceController.cs`, `Explore.API/Controllers/CustomPropertyProjectionAdminController.cs`, and the matching HATEOAS policies.
+- **Proof harness**: `Event.Domain.UnitTests/CustomProperties`, `Event.Application.UnitTests/Features/CustomPropert*`, `Event.Application.UnitTests/Specifications/*CustomPropertyProjectionFilterTests.cs`, `Event.Persistence.IntegrationTests/Repositories/CustomPropertyOptionLifecycleRepositoryTests.cs`, `Event.Persistence.IntegrationTests/Projections/CustomPropertyProjectionCoordinationTests.cs`, and `Event.API.IntegrationTests/Features/CustomPropertyDefinitionControllerTests.cs`.
+
+#### Phase 13.1 - Quota boundary and error-shape closure
+
+Objective: every configured quota has deterministic behavior at `limit - 1`, `limit`, and `limit + 1`, and every breach returns the same machine-readable error family.
+
+Scope:
+
+- Add a boundary matrix for:
+  - shared/event/session definition count,
+  - options per definition on create/update,
+  - multi-value rows per value write,
+  - definitions per template,
+  - sync apply payload bytes,
+  - projection rebuild batch size,
+  - dirty-scope pending backlog per tenant.
+- Normalize all quota failures to RFC 7807-compatible `quota_exceeded` responses with a stable extension payload:
+  - `code = quota_exceeded`,
+  - `quotaKey`,
+  - `limit`,
+  - `actual` or `attempted`,
+  - `scope` (`shared`, `event`, `session`, `template`, `projection`, or `sync`),
+  - `tenantId` only when safe for the caller's authorization level.
+- Keep quota checks in Application/Persistence seams where the owning invariant already lives; do not hide quota decisions in controllers.
+- Preserve `CancellationToken` through every quota-checking query and write path.
+
+Gate:
+
+- Unit tests prove each boundary at `limit - 1`, `limit`, and `limit + 1`.
+- API integration tests prove normalized ProblemDetails for each quota scope family, unless a single shared error mapper is introduced and separately unit-tested across every quota exception shape.
+- No quota failure returns ad hoc message-only errors.
+- Dirty-scope quota overflow behavior is explicit: either reject the whole runtime write with `quota_exceeded`, accept the runtime write and mark projection recovery as operator-blocked, or apply another documented backpressure policy. The chosen behavior must be tested because it controls whether source-of-truth writes can proceed when projection recovery is saturated.
+
+#### Phase 13.2 - Docker/Testcontainers certification
+
+Objective: prove the Layer 3 stack works against PostgreSQL + EF Core behavior, not only in mocks or unit tests.
+
+Certification flows:
+
+- template → runtime definition/options → value write → projection row → discovery filter/search → aggregate read view,
+- tenant isolation with named `Tenant` filters still active when soft-deleted rows are inspected,
+- soft delete/retirement preserving historical reads,
+- option rename/retire/reorder preserving semantic identity by normalized `Namespace + Key`,
+- stale technical concurrency returning `409 concurrent_update`,
+- successful mutable-definition/template/runtime updates rotating `ConcurrencyStamp` and stale prior stamps failing consistently,
+- stale business template sync returning a separate provenance/sync conflict,
+- projection rebuild/drain producing byte-identical projection state except timestamps,
+- exposure ceilings blocking internal-only definitions/options/values/facets from public/export/moderation paths.
+
+Gate:
+
+- `Event.Persistence.IntegrationTests` passes targeted custom-property lifecycle/projection suites in Docker/Testcontainers.
+- `Event.API.IntegrationTests` passes targeted custom-property controller/security suites in Docker/Testcontainers.
+- `Event.Architecture.Tests` remains green so the closure work does not violate Clean Architecture.
+
+#### Phase 13.3 - Exposure, export, and moderation proof
+
+Objective: custom-property visibility is a ceiling plus pipeline-specific permissions, never a side effect of field presence.
+
+Rules:
+
+- `ExposureLevel` is the maximum visibility ceiling.
+- `IsSearchable`, `IsFilterable`, `IsExportable`, `IsModerationRelevant`, and `IsAnalyticsRelevant` are purpose-specific grants inside that ceiling.
+- Public/export/moderation DTOs must read from projection/aggregate contracts, not raw EAV tables.
+- `Exists` filters must either honor exposure/search/filter policy or remain authenticated governance-only features.
+- Generated client DTOs must not expose internal definition metadata unless the endpoint is explicitly authenticated and authorized.
+
+Gate:
+
+- Tests show internal definitions and values do not leak through search, filter, facet, export, moderation, aggregate-view, or generated-client response paths.
+- Any missing export/moderation composer is documented as absent rather than assumed safe.
+- Blazor/custom-property mutation affordances are proven HAL-link gated, not independently role/claim gated in component code; use targeted component tests or an explicit static review checklist if automated coverage is not practical.
+
+#### Phase 13.4 - Explicit audited purge policy
+
+Objective: normal delete remains retirement + soft delete; hard purge is a rare, authorized, audited operation for no-dependent-history cases only.
+
+Policy:
+
+- Default lifecycle is retire + soft delete for definitions, options, and values.
+- Purge is blocked when historical values, audit references, projection rows that cannot be rebuilt, or sync provenance depend on the definition/option.
+- Purge requires an admin authorization action distinct from normal edit/delete.
+- Purge produces an audit summary with actor, tenant, resource scope, definition/option identifiers, dependency counts, reason, timestamp, and result.
+- Purge never disables tenant isolation; if soft-deleted rows must be inspected, only the named `SoftDelete` filter may be ignored.
+
+Gate:
+
+- Unit tests prove purge eligibility decisions.
+- Persistence integration tests prove blocked purge with history and successful purge without history.
+- API tests prove authorization and audit response shape.
+
+#### Phase 13.5 - Runtime modeling boundary ADR
+
+Objective: close the product ambiguity between custom fields and full no-code schema modeling.
+
+Decision options:
+
+1. **Keep EAV bounded to custom fields on existing resources**: finish this plan, keep Layer 1/2 semantics out of Layer 3, and use governance reports to identify promotion candidates.
+2. **Add a separate Runtime Schema Engine plan**: only if the product needs user-defined entity types, arbitrary relationships, reference fields, uniqueness constraints, cross-field rules, formulas/computed fields, schema migrations, or workflow/policy rules.
+
+Gate:
+
+- ADR states which option is chosen.
+- If option 1 is chosen, documentation explicitly rejects using EAV as a universal domain model.
+- If option 2 is chosen, the new runtime schema plan is separate from this EAV closure plan and does not mutate Layer 3 into a generic relational engine.
+
+#### Phase 13 engineering constraints
+
+- Domain remains dependency-free: no EF Core, MediatR, ASP.NET Core, FluentValidation, or DTO leakage into `Explore.Domain`.
+- Repositories return entities, not DTOs or `IQueryable`; handlers map DTOs and compose specifications.
+- Validators remain manually instantiated per current repo convention; if pipeline validation is later adopted, it must be a repository-wide architecture decision, not a custom-property exception.
+- Reads that do not mutate state use `AsNoTracking` where possible.
+- Runtime request paths must not disable the named `Tenant` query filter.
+- Applied migrations are never edited; corrective schema work is a new focused migration.
+- HAL links remain the Blazor/UI source of truth for mutation affordances.
+- Layer 2 typed/aspect filters must not route through Layer 3 projection filters.
+- EAV/custom-property discovery uses projection tables or aggregate read views, never hot-path joins over raw runtime value tables.
+- All new handlers, repository methods, projection workers, and validators pass `CancellationToken` end to end.
 
 ## Execution Reset
 
@@ -2418,7 +2557,7 @@ Actual delivery is milestone-driven. Milestones control implementation order and
   - Each new endpoint explicitly uses the correct policy
   - Integration tests verify authorized vs unauthorized responses
   - **Test: subdivision is deferred, not impossible** - write one test proving that if Milestone E/F later introduces a new workflow requiring a subdivision, the policy can be split without renaming or breaking existing endpoints
-  - Document policy taxonomy in `docs/SECURITY.md`
+  - Document policy taxonomy in `docs/SECURITY-MODEL.md`
 
 ---
 
@@ -2810,7 +2949,7 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 - `docs/MODULAR_EVENTS.md` - module gating interaction with Layer 2/3
 - `docs/CUSTOM_PROPERTIES.md` - full operator-facing documentation
 - `docs/API.md` - new projection admin + template sync endpoints
-- `docs/SECURITY.md` - new authorization policies
+- `docs/SECURITY-MODEL.md` - new authorization policies
 - `docs/TROUBLESHOOTING.md` - projection rebuild playbook, sync conflict resolution
 
 #### Task 11.10A: Update Lexicon Planning Docs (**Milestone F**)

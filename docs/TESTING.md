@@ -20,7 +20,7 @@ Key TUnit features used:
 
 ## Test Projects
 
-Each project has a specific role. Run individually — never use solution-level `dotnet test`. Currently 9 projects.
+Each project has a specific role. Run individually — never use solution-level `dotnet test`. Currently 10 projects.
 
 | Project | Layer | Role | Requires Infra |
 |---------|-------|------|----------------|
@@ -28,6 +28,7 @@ Each project has a specific role. Run individually — never use solution-level 
 | `Event.Application.UnitTests` | Application | Handler logic, validation, mapping | No |
 | `Event.Architecture.Tests` | Cross-cutting | Convention enforcement via reflection | No |
 | `Explore.Secrets.UnitTests` | Infrastructure | Secret provider logic, encryption, rotation | No |
+| `Explore.Infrastructure.Tests` | Infrastructure | Provider adapters, configuration resolvers, authorization fallback behavior | No |
 | `Event.Persistence.IntegrationTests` | Persistence | EF Core queries, repository behavior, migrations | PostgreSQL |
 | `Event.API.IntegrationTests` | API | HTTP endpoints, middleware, auth flows | Full stack |
 | `Explore.Blazor.IntegrationTests` | BFF | Middleware pipeline, auth endpoints, delegating handlers | No |
@@ -42,6 +43,7 @@ dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --con
 dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet
 
 # Integration tests (requires Docker infrastructure running)
 dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
@@ -63,7 +65,7 @@ Use TUnit metadata to route tests into the smallest lane that proves the behavio
 
 | Lane | TUnit Metadata | Projects | Purpose | Default Frequency |
 |------|----------------|----------|---------|-------------------|
-| Unit | `[Category("Unit")]` or project-level unit suite | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Explore.Secrets.UnitTests` | Fast domain, handler, validator, mapping, and service behavior | Every PR |
+| Unit | `[Category("Unit")]` or project-level unit suite | `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Explore.Secrets.UnitTests`, `Explore.Infrastructure.Tests` | Fast domain, handler, validator, mapping, service, provider, configuration, and fallback behavior | Every PR |
 | Architecture | project-level architecture suite | `Event.Architecture.Tests` | Clean Architecture, naming, accessibility structure, authorization parity, and test-suite governance | Every PR |
 | Component | `[Category("Component")]` or project-level UI suite | `Explore.Blazor.Client.Tests` | bUnit component, service, accessibility, wrapper, and design-system behavior | Every PR |
 | API Contract | `[Category(TestCategories.Fast)]`, `[Category(TestCategories.Security)]`, `[Category(TestCategories.PolicyContract)]` | `Event.API.IntegrationTests` | HTTP serialization, HAL, ProblemDetails, auth matrix, Cerbos contract, and API surface rules | Every PR where possible |
@@ -76,10 +78,12 @@ Use TUnit metadata to route tests into the smallest lane that proves the behavio
 Example TUnit filters:
 
 ```bash
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --treenode-filter "////[Category=Security]"
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet --treenode-filter "////[Category=E2E]"
-dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet --treenode-filter "////[Category!=Manual visual]"
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "////[Category=Security]"
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "////[Category=E2E]"
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "////[Category!=Manual visual]"
 ```
+
+The nightly E2E runtime workflow intentionally runs the full `Explore.Blazor.Client.E2ETests` project without a category filter. Some critical browser flows are not tagged with `[Category("E2E")]` yet, while manual visual flows are explicitly skipped until baseline storage is approved.
 
 ### Disabled Test Governance
 
@@ -100,6 +104,7 @@ Skip reason requirements:
 |------|--------------------------|-------------------|
 | Tenant isolation leaks | `Event.Persistence.IntegrationTests`, `Event.API.IntegrationTests`, `Explore.Blazor.Client.E2ETests` | EF named filters, repository queries, API tenant binding, browser-visible cross-tenant denial |
 | Authorization drift | `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Event.Architecture.Tests` | Handler authorization outcomes, endpoint 401/403/ProblemDetails, Cerbos/fallback parity |
+| Infrastructure provider/config drift | `Explore.Infrastructure.Tests`, `Event.Architecture.Tests` | Provider adapters, deployment-mode settings, configuration resolvers, fallback authorization behavior, and governance keys |
 | BFF token/header boundary failure | `Explore.Blazor.IntegrationTests`, `Explore.Blazor.Client.E2ETests` | Cookie-only browser state, server-side token forwarding, setup-secret stripping/replacement, trusted tenant hint forwarding |
 | HAL/UI action mismatch | `Event.API.IntegrationTests`, `Explore.Blazor.Client.Tests` | HATEOAS link policies, response contracts, UI affordances gated by `_links` |
 | Relational persistence regression | `Event.Persistence.IntegrationTests` | PostgreSQL migrations, query translation, constraints, soft delete, tenant filters, Respawn reset |
@@ -110,8 +115,10 @@ Skip reason requirements:
 ## E2E Browser Tests (Explore.Blazor.Client.E2ETests)
 
 - Uses Playwright for real browser automation.
-- Requires full Aspire AppHost orchestration and infrastructure dependencies.
-- Not run in normal CI; intended for manual validation or nightly execution.
+- Starts the Aspire AppHost through `Aspire.Hosting.Testing` inside the test fixture; do not start a second external AppHost for this suite.
+- Requires Docker on the runner because the fixture starts Testcontainers for PostgreSQL and Keycloak.
+- Not run in normal PR CI; `.github/workflows/e2e.yml` runs it manually and nightly until reliability is proven.
+- Installs Chromium dependencies in CI before running tests and uploads TRX, Playwright traces, screenshots, videos, test logs, and Docker diagnostics.
 - Keep this suite intentionally small; only add flows that require a real browser.
 
 ### Generating TRX Reports
@@ -209,13 +216,22 @@ TDD is the default unless explicitly allowed to skip.
 
 ## CI Pipeline Integration
 
-The standard CI pipeline runs the non-E2E test projects on every PR. The pipeline:
+The standard CI pipeline runs the fast non-E2E test projects on every PR; integration-enabled callers run PostgreSQL-backed suites separately. The pipeline:
 
 1. Restores dependencies
 2. Builds in Release configuration
-3. Runs each test project sequentially (not solution-level)
-4. Fails the PR if any test project reports failures
-5. Architecture tests run alongside unit tests (no infrastructure needed)
+3. Runs each fast, non-E2E test project sequentially (not solution-level), including `Explore.Infrastructure.Tests`
+4. Publishes TRX evidence for CI troubleshooting
+5. Fails the PR if any test project reports failures
+6. Architecture tests run alongside unit tests (no infrastructure needed)
+
+Nightly/manual runtime lanes are intentionally advisory until reliability data proves they can be merge-blocking:
+
+- `.github/workflows/e2e.yml` runs the Aspire-backed Playwright E2E project manually and on schedule.
+- `.github/workflows/security-tests.yml` and `.github/workflows/cerbos-policy-check.yml` also run on schedule so auth, Keycloak, Cerbos, and policy contracts are exercised even when no matching path changes occur.
+- Runtime-lane failures retain artifacts for debugging rather than forcing an immediate local rerun.
+
+Required vs advisory gate policy, branch-protection guidance, and artifact retention expectations are maintained in [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md).
 
 Rate limiting is automatically disabled in the `Testing` environment — all rate limit policies are replaced with `NoLimiter`.
 

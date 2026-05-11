@@ -19,7 +19,7 @@ ISLAMU Event (solution: `Explore`) is an open-source event discovery and managem
 4. Multi-tenant runtime support with tenant-aware data filters.
 5. Blazor BFF architecture with OIDC-based authentication.
 6. Runtime-selectable authorization provider (Cerbos or local).
-7. HAL/HATEOAS API responses and OpenAPI export for client generation.
+7. HAL/HATEOAS API responses and build-time OpenAPI generation for client generation.
 8. Modular event aspects (Islamic and Tech aspect models).
 9. Background PDS sync worker for federation-related outbox processing.
 
@@ -46,5 +46,5 @@ Use the following docs as source of truth while implementing:
 - `docs/QUICK_REFERENCE.md`
 - `docs/ARCHITECTURE.md`
 - `docs/API.md`
-- `docs/SECURITY.md`
+- `docs/SECURITY-MODEL.md`
 - `docs/MULTI_TENANCY.md`

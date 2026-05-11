@@ -800,7 +800,7 @@ Parallelism opportunities within a slice: in Slice A, Phases 1 and 7 touch disjo
 - `docs/LOCALIZATION.md` — tier model, provider routing, governance keys, TMS API reference
 - `docs/EXTENSIBILITY.md` — TMS abstraction documented pattern
 - `docs/CONFIGURATION.md` — governance cascade, secret storage
-- `docs/SECURITY.md` — BFF model, claim fallback, authorization layering
+- `docs/SECURITY-MODEL.md` — BFF model, claim fallback, authorization layering
 
 ### External references (Phase 4, 7)
 - [Tolgee v2 API docs](https://docs.tolgee.io/api)

@@ -277,8 +277,9 @@ Explore.API/
 │   ├── RouteNames.cs                  — 100+ named route constants
 │   ├── Assemblers/                    — 19 entity-specific assemblers (EventAssembler, OrganizationAssembler, etc.)
 │   └── Policies/                      — 19 entity-specific link policies (EventLinkPolicy, etc.)
-├── OpenApi/                       — Scalar/OpenAPI customization
-│   └── HalSchemaTransformer.cs    — Transforms OpenAPI schema for HAL format
+├── OpenApi/                       — Scalar/OpenAPI customization and build-time contract transformers
+│   ├── HalDtoSchemaTransformer.cs — Native OpenAPI HAL schema shaping
+│   └── HalSchemaFilter.cs         — Swashbuckle transition HAL schema shaping
 ├── BackgroundServices/            — Hosted background workers
 │   ├── OutboxProcessor.cs         — Polls outbox_messages, dispatches events, retry + dead-letter
 │   └── PdsSyncWorker.cs           — ATProto PDS synchronization (outbox pattern, exponential backoff)
@@ -365,9 +366,9 @@ Explore.Blazor.Client/
 │   └── Footer.razor               — Site footer (template-based, tenant-configurable)
 ├── Shared/                        — Shared editor components
 │   └── AppearanceEditor.razor/.css — Appearance editor (color picker, effects, image URL)
-├── Clients/                       — Generated API clients
-│   ├── EventApiClient.cs          — NSwag-generated client interface + implementation
-│   └── EventApiClient.g.cs        — Auto-generated client code from OpenAPI spec
+├── Clients/                       — API client boundary
+│   ├── EventApiClient.cs          — Hand-written interface/extensions around generated client behavior
+│   └── EventApiClient.g.cs        — NSwag-generated client code from OpenAPI spec
 ├── Models/                        — Client-side models
 │   ├── UserInfo.cs                — Deserialized user info from BFF
 │   ├── TenantContext.cs           — Client-side tenant state

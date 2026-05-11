@@ -3,11 +3,19 @@ ABOUTME: Templates to be finalized before first public release.
 
 # Accessibility Artifacts
 
+> **Audience:** Operators | Contributors | AI agents
+> **Status:** Mixed
+> **Owner:** Frontend
+> **Last Verified:** 2026-05-06
+> **Source Anchors:** `docs/ACCESSIBILITY.md`, `docs/TESTING.md`, `Event.Architecture.Tests/AccessibilityConventionTests.cs`, `Explore.Blazor.Client.Tests/Accessibility/SharedComponentAccessibilityTests.cs`
+
+This page is a release-readiness artifact set. Keep the statement, assistive-technology matrix, evidence summary, and release gate checklist here, but do not publish the template sections as current conformance evidence until the release owner fills in the release-specific values.
+
 ---
 
-## Accessibility Statement (Template)
+## Accessibility Statement Template
 
-> **Last Updated**: {DATE}
+> **Publication Status:** Unreleased template. Replace this line with a release date before publishing a public accessibility statement.
 
 ISLAMU Event Platform is committed to ensuring digital accessibility for people with disabilities. We are continually improving the user experience for everyone, and applying the relevant accessibility standards.
 
@@ -37,8 +45,8 @@ We aim to conform to the Web Content Accessibility Guidelines (WCAG) 2.2, Level 
 ### Feedback
 
 We welcome your feedback on the accessibility of ISLAMU Event Platform. Please let us know if you encounter accessibility barriers:
-- Email: {CONTACT_EMAIL}
-- Contact form: {CONTACT_URL}
+- Email: Configure the public accessibility support address before publishing.
+- Contact form: Configure the public accessibility contact URL before publishing.
 
 We try to respond to accessibility feedback within 5 business days.
 
@@ -71,14 +79,16 @@ This website relies on the following technologies:
 
 ---
 
-## Test Evidence Summary (Template)
+## Test Evidence Summary Template
+
+The table below is a release evidence template. Replace the `Unverified template` entries with the actual release validation date and test output before using it as public evidence.
 
 ### Automated Test Results
 
 | Test Suite | Pass | Fail | Skip | Date |
 |------------|------|------|------|------|
-| Architecture Convention Tests (a11y) | 8 | 0 | 0 | {DATE} |
-| bUnit Component A11y Tests | 6 | 0 | 1 | {DATE} |
+| Architecture Convention Tests (a11y) | 8 | 0 | 0 | Unverified template |
+| bUnit Component A11y Tests | 6 | 0 | 1 | Unverified template |
 
 ### Manual Test Results
 

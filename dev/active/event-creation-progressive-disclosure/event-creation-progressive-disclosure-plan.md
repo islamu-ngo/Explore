@@ -3,7 +3,7 @@
 
 # Event Creation Progressive Disclosure Plan
 
-Last Updated: 2026-05-05 14:05 CEST
+Last Updated: 2026-05-07 13:08 CEST
 
 ## Executive Direction
 
@@ -178,15 +178,15 @@ Future lookup, not required for Phase 1: `SessionGroupType` (`Track`, `Devroom`,
 
 ### Event draft contracts
 
-Create/reshape draft endpoints before UI hardening:
+Create/reshape draft endpoints before UI hardening. Current public API/OpenAPI/Blazor boundary status:
 
-- `CreateEventDraftRequestDto`
-- `UpdateEventDraftRequest`
-- no client-controlled `EventStatusId`
-- idempotency key for draft creation
-- optimistic concurrency on update
-- centralized ProblemDetails mapping
-- publish readiness remains separate from draft persistence
+- Implemented: `CreateEventDraftRequestDto` for scalar draft create.
+- Implemented: `UpdateEventDraftRequestDto` for scalar draft update.
+- Implemented: no client-controlled `EventStatusId` in draft create/update paths; lifecycle changes use explicit status/publish endpoints.
+- Implemented: idempotency key forwarding for draft creation from Blazor via `Idempotency-Key` on `POST /api/event`.
+- Implemented: optimistic concurrency / stale-write UX on draft update through required `ExpectedConcurrencyStamp`, Application conflict detection, API 409 metadata, and Blazor refresh-and-retry messaging.
+- Remaining refinement: centralized ProblemDetails mapping.
+- Publish readiness remains separate from draft persistence.
 
 ### Session/program-item contracts
 
@@ -364,6 +364,8 @@ Draft -> Submitted -> InReview -> Accepted -> Rejected -> Published -> Cancelled
 
 Do not implement the full lifecycle in Phase 1 unless needed, but keep contracts and permissions compatible with it.
 
+Current implementation stance: lifecycle planning is complete for this pass. Do not add `EventSessionStatusId`, review queues, submit/approve/reject endpoints, or publish-state transitions until there is an explicit session review workflow. Existing create/edit contracts should remain compatible with those states by avoiding hard-coded assumptions that all sessions are immediately publishable.
+
 Anticipate event-scoped program permissions:
 
 ```text
@@ -381,6 +383,8 @@ event.session_group.update
 event.session_group.delete
 event.session_group.reorder
 ```
+
+Current implementation stance: this is the planned future permission vocabulary. Runtime authorization should only add fine-grained actions when corresponding endpoints/actions exist; current HAL and handler authorization remain on the existing CRUD/update resource checks. Reorder, review, speaker assignment, and session publish permissions are deferred with their future command/UI slices.
 
 ## Phase 8 — Hardening
 
@@ -417,24 +421,24 @@ The current folder name can remain for continuity, but the scope is now broader 
 
 ## Current Implementation Status
 
-Implemented before this correction:
+Implemented for the corrected direction:
 
-- progressive Create Event page shell
-- ThemeQuickBar and ThemeStudioTray prototypes
-- Event Options summary rows
-- transitional `ScheduleTimelineComposer`
-- transitional `SessionEditorPanel`/workflow
-- a wrong-direction `ParentEventId` hierarchy slice may exist and must be rolled back if it was only introduced for program parts
+- Corrected active source away from child-event/`ParentEventId` program modeling.
+- Create/Edit Event shells are draft shells with dedicated Add Session navigation, not giant nested session editors.
+- `EventSessionGroup` and `EventSessionGroupSession` exist as the program grouping and assignment model.
+- Session create context, Program Summary, session-group endpoints, group/session assignment commands, and Add Session/session-group HAL affordances are implemented.
+- Dedicated session create/edit pages exist and bind Blazor-facing session request models while `EventService` maps to generated API DTOs at the boundary.
+- Program Summary readiness warnings now use machine-addressable paths for `program.sessions[*]`, `program.groups`, and `program.agenda[*]`.
+- Existing session/session-group program write validation failures return RFC7807 `ValidationProblemDetails`.
+- Component-level accessibility tests cover Create Session success, local validation failure, and API failure announcements.
 
-Missing for corrected direction:
+Still missing or intentionally deferred for the corrected direction:
 
-- `EventSessionGroup`
-- `EventSessionGroupSession`
-- session create context
-- dedicated session create/edit page
-- Program summary over sessions/groups
-- Add session HAL affordance
-- group/session assignment commands
+- Full browser/E2E keyboard/focus/announcement verification for the authenticated Add Session/session composer flow.
+- Persisted session kind selection, contextual labels, and composer picker wiring on top of the existing `EventSessionKind` lookup foundation.
+- Contract-backed speaker, language, category/tag, template, custom-field, and image composer fields.
+- Speaker/language/agenda logistics rendering in Program Summary where useful.
+- Reorder commands/audit, bulk/multi-group assignment workflows, conflict detection, and full session lifecycle/review/publish workflows once their endpoint/UI acceptance criteria exist.
 
 ## Risks
 

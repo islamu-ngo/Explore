@@ -72,7 +72,7 @@
 ### Task 1.3: Fix Cerbos Terminology Inconsistency
 **Status**: ⏳ Not Started
 **Estimated Time**: 15 minutes
-**Files**: `docs/SECURITY.md`, `docs/CONFIGURATION.md`
+**Files**: `docs/SECURITY-MODEL.md`, `docs/CONFIGURATION.md`
 
 - [ ] Read current Cerbos references in SECURITY.md
 - [ ] Read current Cerbos references in CONFIGURATION.md
@@ -861,4 +861,3 @@ priority: critical|high|medium|low
 - [x] Reviewed task continuity status for context reset handoff.
 - [ ] Resume implementation work from this task latest documented in-progress section.
 - [ ] Re-validate with build/tests once implementation resumes.
-

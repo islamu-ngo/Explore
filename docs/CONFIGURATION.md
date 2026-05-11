@@ -3,6 +3,12 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 
 # Configuration
 
+> **Audience:** Operators | Contributors | AI agents
+> **Status:** Implemented
+> **Owner:** Platform/Ops
+> **Last Verified:** 2026-05-06
+> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
+
 ## Runtime Configuration Sources
 
 The system uses three configuration layers:
@@ -10,6 +16,27 @@ The system uses three configuration layers:
 1. static app settings (`appsettings*.json`, environment variables, user secrets),
 2. secret management (`AddInfisicalCompatibility` / `AddInfisicalBlazorCompatibility` + `AddSecretManagement`),
 3. governance settings in database (`SystemSetting` + `TenantSetting`).
+
+## Deployment CI/CD Secrets
+
+GitHub Actions deployment secrets are **workflow environment secrets**, not runtime app settings and not `SecretProvider` keys. Configure them in GitHub repository environments so production deployments can require approval before secrets are released to the deploy job.
+
+| Environment | Secret / variable | Purpose |
+|---|---|---|
+| `production` secret | `COOLIFY_DEPLOY_API_WEBHOOK` | Coolify API application deployment webhook. |
+| `production` secret | `COOLIFY_DEPLOY_UI_WEBHOOK` | Coolify UI application deployment webhook. |
+| `production` secret | `COOLIFY_DEPLOY_TOKEN` | Bearer token used when invoking production Coolify webhooks. |
+| `production` variable | `PRODUCTION_URL` | Public environment URL shown on the GitHub deployment environment. |
+| `production` variable | `PRODUCTION_API_URL` | Optional API base URL for `/alive` and `/health` smoke checks. |
+| `production` variable | `PRODUCTION_UI_URL` | Optional UI base URL for `/alive` and `/health` smoke checks. |
+| `staging` secret | `COOLIFY_DEPLOY_API_STAGING_WEBHOOK` | Coolify staging API application deployment webhook. |
+| `staging` secret | `COOLIFY_DEPLOY_UI_STAGING_WEBHOOK` | Coolify staging UI application deployment webhook. |
+| `staging` secret | `COOLIFY_DEPLOY_TOKEN` | Bearer token used when invoking staging Coolify webhooks. |
+| `staging` variable | `STAGING_URL` | Public environment URL shown on the GitHub deployment environment. |
+| `staging` variable | `STAGING_API_URL` | Optional API base URL for `/alive` and `/health` smoke checks. |
+| `staging` variable | `STAGING_UI_URL` | Optional UI base URL for `/alive` and `/health` smoke checks. |
+
+Keep the existing secret names until the deploy workflows are consolidated. If names are normalized later, update the workflow and this table in the same change.
 
 ## Core Static Sections
 
@@ -39,18 +66,21 @@ Refresh behavior binds from `SecretRefresh` and runs via hosted `SecretRefreshSe
 
 ## API Compatibility Mapping (Infisical -> .NET keys)
 
-`Explore.API.Extensions.ConfigurationExtensions` maps external secret names to canonical keys, including:
+`Explore.API.Extensions.ConfigurationExtensions` maps compatibility names into canonical .NET keys. Most mappings use `TrySet`, so existing canonical keys are not overwritten; `CERBOS_GRPC_ENDPOINT` explicitly assigns `Cerbos:GrpcEndpoint` when present.
 
 - `DEPLOYMENT_MODE` (Infisical `/api`) -> `Deployment:Mode` (`single_tenant`/`multi_tenant` normalized to `SingleTenant`/`MultiTenant`)
-- `KEYCLOAK_ENDPOINT` (Infisical `/keycloak`) -> `Keycloak:Authority` (via base URL + realm)
-- keycloak realm/base URL values -> `Keycloak:Authority`, `Keycloak:MetadataAddress`, `Keycloak:Audience`
-- S3 integration values -> `S3Settings:*`
+- `KEYCLOAK_ENDPOINT` + `KEYCLOAK_REALM` (Infisical `/keycloak`) -> `Keycloak:Authority`, `Keycloak:MetadataAddress`, `Keycloak:AuthorizationUrl`
+- Keycloak mapper defaults -> `Keycloak:Audience=islamu-event-api`, `Keycloak:RequireHttpsMetadata=true`
+- `CERBOS_GRPC_ENDPOINT` (Infisical `/cerbos`) -> `Cerbos:GrpcEndpoint`
+- S3 runtime values:
+  - `ISLAMU_EVENT_REGION` -> `S3Settings:Region`
+  - `ISLAMU_EVENT_PRIVATE_BUCKET_NAME` -> `S3Settings:BucketName`
+  - `ISLAMU_EVENT_PRIVATE_ACCESS_KEY_ID` -> `S3Settings:AccessKeyId`
+  - `ISLAMU_EVENT_PRIVATE_SECRET_ACCESS_KEY_ID` -> `S3Settings:SecretAccessKey`
+  - `ISLAMU_EVENT_S3_ENDPOINT` -> `S3Settings:Endpoint`
+  - `ISLAMU_EVENT_S3_PUBLIC_ENDPOINT` -> `S3Settings:PublicEndpoint`
 
 Keycloak base URL: `KEYCLOAK_ENDPOINT` (Infisical `/keycloak`). No hardcoded fallback — if not set, Keycloak mapping is skipped.
-
-Important behavior:
-
-- mapping uses `TrySet`: existing canonical keys are not overwritten.
 
 Storage naming rules:
 
@@ -61,13 +91,16 @@ Storage naming rules:
 
 ## Blazor Server Compatibility Mapping
 
-`Explore.Blazor.Extensions.ConfigurationExtensions` maps Keycloak and API base URL keys similarly.
+`Explore.Blazor.Extensions.ConfigurationExtensions` maps Keycloak, Google, and API base URL keys for the BFF host.
 
-API base URL: `API_ENDPOINT` (Infisical `/blazor`) or `ExploreApi:BaseUrl`. Inline code fallback `https://localhost:7039/` is used only when no value is configured at all.
+API base URL: `API_ENDPOINT` (Infisical `/blazor`) maps into `ExploreApi:BaseUrl`. Runtime YARP resolution checks `ExploreApi:BaseUrl`, then Aspire service discovery keys `services__explore-api__https__0` and `services__explore-api__http__0`, then falls back to `https://localhost:7039/` when no value is configured at all.
 
 Important behavior:
 
+- `KEYCLOAK_CLIENT_ID` maps to `Keycloak:ClientId`; when a Keycloak authority is resolved and no client id is provided, the BFF defaults to `islamu-event-blazor`.
 - `Keycloak:ClientSecret` is explicitly overridden when `KEYCLOAK_BLAZOR_CLIENT_SECRET` (Infisical) is present.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` map to `Google:ClientId` and `Google:ClientSecret`.
+- `Keycloak:RequireHttpsMetadata` is set to `true` when Keycloak input is mapped.
 
 ## Governance Settings (Database)
 
@@ -93,6 +126,17 @@ Major groups:
 - `localization.*`
 
 Values are stored as JSON-serialized strings in `SystemSetting.Value` and `TenantSetting.Value`.
+
+Sensitive runtime credentials use a separate secret-setting key space. Do not expose actual values in documentation, logs, screenshots, or issue templates.
+
+| Concern | Governance key family | Secret-bearing key family |
+|---|---|---|
+| SMTP | `email.*` | `email.smtp_username`, `email.smtp_password` |
+| S3-compatible storage | `s3.*` | `s3.access_key_id`, `s3.secret_access_key` |
+| Authentication | `auth.*` | `auth.keycloak_client_secret`, `auth.google_client_secret` |
+| Cerbos admin credentials | `cerbos.*` | `cerbos.custom_admin_username`, `cerbos.custom_admin_password` |
+
+`SecretDefinitionRegistry` recognizes provider folders for `/api`, `/storage`, `/keycloak`, `/cerbos`, `/postgresql`, `/smtp`, `/analytics`, and `/ai`. Blazor maps Google client values from `/blazor`; do not claim Google is part of the current secret-catalog folder list unless the registry changes.
 
 ## Analytics Settings (Governance)
 
@@ -127,8 +171,8 @@ Cookie consent and privacy governance keys:
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `analytics.global_disable_client_tracking` | bool | `false` | Emergency kill switch — disables all **browser-side** analytics immediately. Server-side relay endpoints and server analytics continue normally. Scope: browser SDK initialization only. |
-| `analytics.cookie_banner_enabled` | bool | `false` | Whether the cookie consent banner is shown to end users |
-| `analytics.decline_behavior` | enum | `"disable"` | What happens when a user declines consent: `disable` (no analytics) or `cookieless` (privacy-preserving analytics) |
+| `analytics.cookie_consent_enabled` | bool | `false` | Whether the cookie consent banner is shown to end users |
+| `analytics.decline_behavior` | enum | `"cookieless"` | What happens when a user declines consent: `disable` (no analytics) or `cookieless` (privacy-preserving analytics) |
 | `analytics.consent_cookie_lifetime_days` | int | `180` | How long the consent preference cookie persists (ICO recommends 6 months) |
 | `analytics.posthog_cookieless_mode` | enum | `"on_reject"` | PostHog cookieless mode: `off`, `always` (never stores on device), `on_reject` (cookieless after decline) |
 | `analytics.posthog_person_profiles` | enum | `"identified_only"` | PostHog person profile creation: `always`, `identified_only`, `never` |
@@ -163,17 +207,18 @@ Post-onboarding management note:
 
 ## Settings Cascade Rules
 
-`SettingsResolver` resolves values in this order:
+`HierarchicalSettingsResolver` resolves settings through the current scope hierarchy:
 
-1. system setting,
-2. if not locked and tenant provided, tenant override,
-3. fallback to system default.
+1. instance/system setting,
+2. tenant setting when a tenant scope is present and the instance setting is not locked,
+3. organization setting when an organization scope is present and upstream settings allow delegation,
+4. group setting when a group scope is present and upstream settings allow delegation,
+5. user setting when a user scope is present and upstream settings allow delegation,
+6. default setting definition value.
 
-Cache behavior:
+Cache behavior uses hierarchical cache keys such as `HierSettings:System` and scope-specific keys for tenant, organization, group, and user settings. The resolver honors lock flags so a higher-scope locked value prevents lower-scope overrides.
 
-- system settings cache key: `SystemSettings_All`
-- tenant settings cache key prefix: `TenantSettings_`
-- default cache TTL: 5 minutes
+Runtime resolvers may add more specific precedence. For S3, `S3ConfigResolver` reads database settings first (`s3.*` and `s3.access_key_id`/`s3.secret_access_key`) and falls back to `IConfiguration` (`S3Settings:*`). For SMTP, `SmtpConfigResolver` reads through the hierarchical settings resolver for governance and secret-bearing email keys.
 
 ## Deployment Mode Configuration
 
@@ -220,7 +265,7 @@ Keys in `GovernanceSettingKeys.Localization`:
 | `localization.tms_project_id` | string | `null` | TMS project identifier |
 | `localization.tms_component` | string | `null` | Weblate component slug (Weblate only) |
 
-TMS API keys/tokens are stored via `SecretProvider`, not governance settings.
+Current localization/TMS settings are governance settings. Do not document TMS API keys or tokens as `SecretProvider`-backed until secret definitions or resolver support exist in source.
 
 See [LOCALIZATION.md](LOCALIZATION.md) for full architecture.
 
@@ -299,6 +344,8 @@ When `TrustLoopbackProxy=true` (Aspire-style local development), loopback proxie
 
 ## Related
 
+- [SECRETS.md](SECRETS.md)
+- [SELF_HOSTING.md](SELF_HOSTING.md)
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)
 - [RENDER_POLICIES.md](RENDER_POLICIES.md)
 - [OPERATIONS.md](OPERATIONS.md)

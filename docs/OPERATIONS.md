@@ -73,6 +73,32 @@ Operational rules:
 - Instance Cerbos readiness follows authorization fail-closed semantics: if the operator selected `authorization.provider=cerbos`, an unreachable PDP makes `/health` unhealthy rather than silently falling back to local RBAC.
 - Local authorization mode skips Cerbos readiness, so self-hosted/local deployments do not need a Cerbos PDP unless explicitly selected.
 
+## Deployment Protection and Evidence
+
+GitHub Actions deploys use the `staging` and `production` environments. Configure environment rules in GitHub repository settings, not in application runtime configuration:
+
+- `production` should require reviewer approval and restrict deployments to `main` and version tags.
+- `staging` should use environment-scoped secrets and can deploy automatically from `develop` unless the release process requires review.
+- Store Coolify webhook URLs and bearer tokens as environment secrets. Do not print webhook URLs or tokens in workflow logs.
+
+See [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) for the required/advisory gate matrix, branch-protection settings, and artifact retention policy.
+
+Deploy jobs call the existing Coolify webhook contract with timeout, retry, redacted error output, transport-failure summaries, and explicit HTTP status validation. The job writes a deployment summary and uploads deployment evidence for 90 days. If environment URL variables are configured, the workflow smoke-checks `/alive` and `/health` for the deployed API and UI with a bounded retry budget before reporting success.
+
+### Deployment Image Source of Truth
+
+Container builds publish mutable convenience tags (`latest` for production and `develop` for staging), immutable commit-SHA tags, digest evidence, SBOM/provenance attestations, and image scan artifacts.
+
+Production must not rely on `latest` as the source of truth once deployment promotion is complete.
+
+Decision path:
+
+1. Preferred: configure Coolify to deploy explicit image digests when the current Coolify application/webhook model supports `image@sha256:...`.
+2. Fallback: configure Coolify to deploy immutable commit-SHA tags (`sha-*` for production and `dev-*` for staging) and record the resolved digest in deployment evidence.
+3. Temporary risk: mutable tags remain convenience aliases while Coolify capability is being confirmed.
+
+Do not remove digest/SBOM/provenance evidence even if Coolify temporarily consumes immutable tags rather than digests.
+
 ## Graceful Shutdown Contract
 
 API and Blazor include shutdown-aware checks for rolling deployments.
@@ -130,7 +156,7 @@ Timeout expiry: `504 Gateway Timeout`.
 ### Correlation ID
 
 - `CorrelationIdMiddleware` reads `X-Correlation-ID` or `X-Request-ID` from incoming request.
-- Generates new UUID if absent.
+- Uses `HttpContext.TraceIdentifier` when both request headers are absent.
 - Pushes to Serilog `LogContext` as `CorrelationId` property for structured log correlation.
 
 ### Forwarded Header Trust
@@ -149,8 +175,16 @@ Added to every response by `SecurityHeadersMiddleware`:
 
 ### Business Metrics (OpenTelemetry)
 
-Meter `Explore.Business` exposes counters tagged with `tenant_id` and `resource_type`:
-- `events.created`, `events.published`, `registrations.created`, `organizations.created`, `authorization.decisions`
+Meter `Explore.Business` exposes source-defined business counters. Counter names and tags are not uniform across all events; check the metric-specific tags before building dashboards.
+
+Current counters include:
+
+- `explore.events.created` (`tenant_id`, `event_type`)
+- `explore.events.published` (`tenant_id`)
+- `explore.registrations.created` (`tenant_id`)
+- `explore.organizations.created` (`tenant_id`)
+- `explore.authorization.decisions` (`resource`, `action`, `result`)
+- `event_role_assignment.changed` (`operation`, `outcome`, `role`)
 
 ## Cerbos PDP Operations
 
@@ -243,7 +277,7 @@ Three persistence tiers behave differently in multi-node deployments:
 
 - Revocation sets `ExternalApiKeyStatusId` to `Revoked`. The change takes effect on the **next** authentication attempt — in-flight requests already past the auth handler complete normally.
 - Cache invalidation for the key row is immediate (HybridCache `RemoveAsync`); no stale reads beyond the auth handler's first lookup.
-- Revoked keys emit `external_api_key.revoked` business metrics tagged with `tenant_id` and `owner_type`.
+- Revoked keys emit `explore.external_api_keys.revoked` business metrics tagged with `tenant_id` and `owner_type`.
 
 ### Usage Reporting
 
@@ -253,14 +287,14 @@ Three persistence tiers behave differently in multi-node deployments:
 
 ### Observability
 
-Six business metric counters (all tagged with `tenant_id`, `owner_type`):
+External API-key business counters use the `explore.external_api_keys.*` prefix. Most lifecycle counters include `tenant_id` and `owner_type`; authentication attempts add `outcome`, and throttle events add `policy`.
 
-- `external_api_key.created`
-- `external_api_key.revoked`
-- `external_api_key.policy_updated`
-- `external_api_key.rotated`
-- `external_api_key.authentication_attempts` (+ `outcome` tag: `success` / `invalid` / `inactive` / `expired` / `tenant_mismatch` / `empty_header`)
-- `external_api_key.throttled`
+- `explore.external_api_keys.created`
+- `explore.external_api_keys.revoked`
+- `explore.external_api_keys.policy_updated`
+- `explore.external_api_keys.rotated` (metric exists for future/overlap workflows; do not infer a public rotate endpoint from this metric alone)
+- `explore.external_api_keys.authentication_attempts` (+ `outcome` tag: `success` / `invalid` / `inactive` / `expired` / `tenant_mismatch` / `empty_header`)
+- `explore.external_api_keys.throttled` (+ `policy` tag)
 
 Structured logs on the auth handler include `key_id` and outcome only — never the secret segment.
 
@@ -438,12 +472,12 @@ Admin settings management:
 4. For single-instance: check filesystem permissions, disk space.
 5. Escalate to SRE if distributed bundle writer is needed.
 
-### Runbook: API Key Rotation
-1. Navigate to Admin UI → Localization → TMS Provider section.
-2. Click "Rotate" next to the API key status chip.
-3. Paste the new API key in the write-only field.
-4. Click "Save" to persist.
-5. Click "Test Connection" to verify the new key works.
+### Runbook: TMS Credential Replacement
+1. Open the Admin UI localization provider settings for the affected instance or tenant.
+2. Replace the TMS API credential through the configured settings or secret-provider path.
+3. Save the settings and use the provider test action, if available, to verify the new credential.
+4. If the credential is managed by an external secret provider, rotate it in that provider first and then refresh or restart the application according to the secret-provider runbook.
+5. Keep the old credential active only for the minimum overlap window required by the external TMS provider.
 
 ### Localization Metrics & Alerts
 

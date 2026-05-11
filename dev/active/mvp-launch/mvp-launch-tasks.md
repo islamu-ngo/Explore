@@ -443,11 +443,11 @@ ABOUTME: Rebaselined after the 2026-05-03 source/doc audit; use the plan for str
 - Acceptance: Calendar buttons work from 3 touchpoints
 
 #### WP-6.4: NSwag Client Regeneration
-- [ ] Export OpenAPI (run API)
-- [ ] Rebuild Blazor client (regenerates `EventApiClient.g.cs`)
+- [ ] Build `Explore.API` so build-time OpenAPI generation refreshes `Explore.API/swagger.json`
+- [ ] Rebuild Blazor client so NSwag regenerates `EventApiClient.g.cs`
 - [x] Fix consuming code — direct download anchors used; generated client not required by UI path
 - [x] Run client tests
-- Acceptance: Client builds cleanly; OpenAPI regeneration pending runtime/API export
+- Acceptance: Client builds cleanly; OpenAPI regeneration pending build-time API generation and Blazor client rebuild
 
 #### WP-6.5: Tests
 - [ ] Integration: valid .ics with correct Content-Type — pending runtime/API smoke
@@ -787,7 +787,7 @@ ABOUTME: Rebaselined after the 2026-05-03 source/doc audit; use the plan for str
 Apply whenever API surface changes (WP-3, WP-6, WP-14, WP-16):
 
 1. Update API (controllers, DTOs, handlers)
-2. Run API → export OpenAPI → `swagger.json` refreshed
+2. Build `Explore.API` → build-time OpenAPI generation refreshes `swagger.json`
 3. `dotnet build Explore.Blazor.Client` → `EventApiClient.g.cs` regenerated
 4. Fix consuming code broken by contract changes
 5. `dotnet test --project Explore.Blazor.Client.Tests`

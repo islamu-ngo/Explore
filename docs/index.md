@@ -38,12 +38,14 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 
 ## Governance And Rules
 - [GOVERNANCE.md](GOVERNANCE.md) - design and code governance.
+- [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) - GitHub Actions gates, branch protection, deployment environments, and CI/CD evidence policy.
 - [NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md) - naming rules for entities, CQRS, services, tests.
 - [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md) - placeholder syntax used in generic templates.
 - [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md) - shortest safe path for docs-only and small-bug PRs.
 - [CONTRIBUTING.md](CONTRIBUTING.md) - contribution workflow and validation steps.
 - [DOCUMENTATION_ARCHITECTURE.md](DOCUMENTATION_ARCHITECTURE.md) - docs architecture, ownership, metadata, source-anchor, and quality-gate policy.
 - [DOCUMENTATION_STYLE_GUIDE.md](DOCUMENTATION_STYLE_GUIDE.md) - documentation writing rules.
+- [PUBLIC_DOCS_ROADMAP.md](PUBLIC_DOCS_ROADMAP.md) - future hosted public-docs boundary and candidate pages.
 - [BLAZOR_DEV_WORKFLOW.md](BLAZOR_DEV_WORKFLOW.md) - stop → build → run → wait → inspect loop for Blazor visual verification.
 
 ## AI Agent Contribution Context
@@ -99,6 +101,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [BENCHMARKS.md](BENCHMARKS.md) - runtime benchmark project and benchmark interpretation rules.
 - [ACCESSIBILITY.md](ACCESSIBILITY.md) - WCAG AA compliance, service contracts, testing.
 - [ACCESSIBILITY_ARTIFACTS.md](ACCESSIBILITY_ARTIFACTS.md) - statement, AT matrix, release gate checklist.
+- [PUBLIC_DOCS_ROADMAP.md](PUBLIC_DOCS_ROADMAP.md) - deferred public documentation website plan.
 - [API_CHANGELOG.md](API_CHANGELOG.md) - API-specific change log.
 - [semantic_versioning/CHANGELOG.md](semantic_versioning/CHANGELOG.md) - release history.
 - [semantic_versioning/v0.1.0.md](semantic_versioning/v0.1.0.md) - v0.1.0 historical notes.

@@ -40,11 +40,13 @@ For external secret providers, keep the naming distinction from [SECRETS.md](SEC
 
 ## Upload And Download Flow
 
-1. An authenticated caller asks the API for a presigned upload URL.
+1. An authenticated caller asks the API for a presigned upload URL, or a browser caller asks the Blazor BFF for an upload session.
 2. `ObjectStorageService.GeneratePresignedUploadUrl` creates an object key under `uploads/` with a timestamp, unique id, sanitized name, and original extension.
-3. The client uploads bytes to the presigned URL or through the Blazor BFF upload proxy.
-4. The application stores or updates `StorageObject` metadata through authenticated write endpoints.
-5. Readers use public storage object endpoints, public image endpoints, or presigned download URL endpoints depending on the caller path.
+3. Browser uploads use `/bff/storage/upload-session` first. The BFF stores the exact server-issued destination in distributed cache and returns an opaque `uploadSessionId` instead of asking the browser to trust or replay a raw upload URL.
+4. Browser uploads send `uploadSessionId`, `contentType`, and `file` to `/bff/storage/upload-proxy`; the proxy resolves the server-approved destination and rejects arbitrary client-supplied URLs.
+5. Server/non-browser upload paths may still upload directly to a trusted presigned URL generated for that request.
+6. The application stores or updates `StorageObject` metadata through authenticated write endpoints.
+7. Readers use public storage object endpoints, public image endpoints, or presigned download URL endpoints depending on the caller path.
 
 `GetFileStream` translates S3 404 responses into `KeyNotFoundException`, which is useful when diagnosing broken metadata-to-object references.
 

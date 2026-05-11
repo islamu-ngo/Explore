@@ -3,9 +3,15 @@ ABOUTME: Distinguishes shipped governance/auth controls from roadmap protocol fe
 
 # Federation
 
+> **Audience:** Contributors | Integrators | AI agents
+> **Status:** Mixed
+> **Owner:** API
+> **Last Verified:** 2026-05-06
+> **Source Anchors:** `Explore.Domain/Actor.cs`, `Explore.Domain/Federation/PdsSyncOutbox.cs`, `Explore.API/Controllers/AtprotoRecordController.cs`, `Explore.API/BackgroundServices/PdsSyncWorker.cs`, `Explore.Infrastructure/Services/Federation/PdsService.cs`, `docs/LEXICONS.md`, `docs/OUTBOX_PATTERN.md`
+
 ## Status
 
-Federation protocol support (ATProto / ActivityPub bridge behavior) remains a **roadmap feature**. The project currently ships foundation models and federation-related governance/auth controls, but not full protocol endpoints.
+Federation protocol support (ATProto / ActivityPub bridge behavior) remains a **roadmap feature**. The project currently ships foundation models, persistence, internal API resources, outbound PDS sync plumbing, and federation-related governance/auth controls, but not public protocol endpoints.
 
 ### ✅ Implemented (Current Runtime + Foundation)
 - **Domain entities**: federation models exist in `Explore.Domain`:
@@ -15,9 +21,13 @@ Federation protocol support (ATProto / ActivityPub bridge behavior) remains a **
   - `IndexedDid` (DID cache model)
   - `ActorKeyStore` (key storage model)
   - supporting enums: `ActorType`, `DidCustodyType`
+- **Persistence**: federation tables are represented through `ExploreDbContext` DbSets, entity configurations, and repositories, including ATProto record and PDS sync outbox repositories.
+- **Internal API resources**: CRUD-style APIs exist for ATProto records and indexed DID records. These are platform API resources, not public ATProto or ActivityPub protocol endpoints.
+- **Outbound PDS sync**: `PdsSyncWorker` polls `PdsSyncOutbox` entries and calls `IPdsService`; `PdsService` sends XRPC `com.atproto.repo.putRecord` and `com.atproto.repo.deleteRecord` requests to a configured PDS host.
 - **Governance toggle**: instance-level decentralization setting is available via `federation.decentralization_enabled`.
-- **Onboarding/admin controls**: decentralization is exposed in instance onboarding/admin settings with a confirmation warning and lock semantics (`LockDecentralizationEnabled`).
-- **Dependency gating**: decentralization is coupled to auth-provider setup and requires ATProto login support (`auth.atproto_login_enabled`).
+- **Settings surface**: decentralization is represented in governance setting DTOs and can be locked through `LockDecentralizationEnabled` when instance governance settings are updated.
+- **Related auth setting**: `auth.atproto_login_enabled` is a separate governance setting for ATProto login support. Do not document public ATProto OAuth login as implemented until source adds that flow.
+- **Authorization fallback**: local fallback authorization treats actor records as read-only for authenticated users and denies ATProto record/indexed DID writes except for instance-admin bypass.
 
 ### ⏳ Not Yet Implemented (Protocol Roadmap)
 - **Public protocol endpoints** are still not implemented:
@@ -30,22 +40,22 @@ Federation protocol support (ATProto / ActivityPub bridge behavior) remains a **
 - **Cryptographic federation verification** (HTTP signatures / full protocol validation paths) is not implemented.
 - **Public social collections** (followers/following/liked) are not exposed as protocol collections.
 
-**Important**: The decentralization toggle is now part of runtime governance configuration, but full external federation protocol behavior is still phased roadmap work.
+**Important**: The decentralization toggle is now part of runtime governance configuration, and outbound PDS sync foundation exists, but full external federation protocol behavior is still phased roadmap work.
 
 ## Protocol Overview (Planned)
 
 > **Note**: This section describes the **intended** federation model for ISLAMU Event.
-> **Current Status**: Protocol implementation not yet started. Only domain entities exist.
+> **Current Status**: Foundation models, internal resources, governance controls, and outbound PDS sync plumbing exist. Public ActivityPub and ATProto server protocol endpoints are not implemented.
 
-- **Server-to-Server (S2S)** (planned): Instances exchange activities via inbox/outbox
-- **HTTP Signatures** (planned): Cryptographic verification of federated messages
-- **WebFinger** (planned): Actor discovery via `/.well-known/webfinger`
-- **Collections** (planned): Followers, Following, Liked as ordered collections
+- **Server-to-Server (S2S)** (planned): Instances exchange activities via inbox/outbox.
+- **HTTP Signatures** (planned): Cryptographic verification of federated messages.
+- **WebFinger** (planned): Actor discovery via `/.well-known/webfinger`.
+- **Collections** (planned): Followers, Following, Liked as ordered collections.
 
 ## Planned Architecture Philosophy
 
-> **⚠️ Planned Feature**: The architecture diagrams below represent the **intended design**.
-> **Current Implementation**: Only domain entities (Actor, AtprotoRecord, etc.) exist. No HTTP endpoints or federation logic implemented.
+> **⚠️ Planned Feature**: The architecture diagrams below represent the **intended** public federation design.
+> **Current Implementation**: Domain models, persistence, internal ATProto resources, governance settings, and outbound PDS sync plumbing exist. Public ActivityPub endpoints, ATProto PDS/AppView server behavior, and bridge/gateway behavior are not implemented.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -155,7 +165,7 @@ Federation protocol support (ATProto / ActivityPub bridge behavior) remains a **
 ## Identity System Hybrid Approach (Planned)
 
 > **⚠️ Planned Feature**: The hybrid authentication system is not yet implemented.
-> **Current State**: Only Keycloak/OIDC authentication is active. ATProto OAuth integration is planned.
+> **Current State**: Keycloak/OIDC authentication is active. ATProto login support is represented by governance settings and foundation models, but public ATProto OAuth login is not implemented.
 
 **Planned Approach**: Support BOTH Keycloak (traditional) AND ATProto OAuth, with custodial DIDs for Keycloak users:
 
@@ -197,7 +207,7 @@ Federation protocol support (ATProto / ActivityPub bridge behavior) remains a **
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Handling Nullable DID (did_status)
+## Handling Nullable DID (`did_status`)
 
 The key insight is that DID creation is **async**. Here's how to handle it:
 ```
@@ -223,3 +233,24 @@ The key insight is that DID creation is **async**. Here's how to handle it:
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+## Lexicon Boundary
+
+[LEXICONS.md](LEXICONS.md) defines the current NSID hierarchy used for stable event and event-session projections. That document explicitly excludes ATProto PDS publication, bridgy-fed wiring, ActivityPub federation, and outbox/publication machinery. Link to it when documenting schema vocabulary; do not use it as evidence that public federation publication is implemented.
+
+## Outbox Boundary
+
+[OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) documents the generic transactional outbox and names `PdsSyncOutbox` as a specialized AT Protocol sync variant. This supports reliable outbound processing, but it is not equivalent to a public ActivityPub inbox/outbox server API.
+
+## Operator And Product Guidance
+
+- Treat decentralization settings as governance controls for foundation behavior, not a promise that external federation is live.
+- Keep public-facing release notes explicit: federation protocol interoperability is roadmap work until protocol endpoints, conformance tests, and operator runbooks exist.
+- If implementing public protocol support later, update this document with exact routes, auth/trust boundaries, conformance tests, and rollback guidance.
+
+## Related
+
+- [PROJECT.md](PROJECT.md) — product scope and maturity.
+- [LEXICONS.md](LEXICONS.md) — NSID hierarchy and schema boundaries.
+- [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) — transactional outbox and PDS sync variant.
+- [AUTHORIZATION.md](AUTHORIZATION.md) — authorization provider model.

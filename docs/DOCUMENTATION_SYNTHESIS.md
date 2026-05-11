@@ -43,7 +43,7 @@ These docs should remain the highest-priority source of truth:
 - `docs/QUICK_REFERENCE.md`
 - `docs/API.md`
 - `docs/CONFIGURATION.md`
-- `docs/SECURITY.md`
+- `docs/SECURITY-MODEL.md`
 - `docs/MULTI_TENANCY.md`
 - `docs/RENDER_POLICIES.md`
 - `docs/OPERATIONS.md`

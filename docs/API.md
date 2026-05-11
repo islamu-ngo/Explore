@@ -7,7 +7,7 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Status:** Implemented
 > **Owner:** API
 > **Last Verified:** 2026-05-06
-> **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Services/OpenApiExportService.cs`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/SwaggerJsonExportTests.cs`
+> **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
 This document describes the full API behavior in `Explore.API`: the middleware pipeline, rate limiting, request timeouts, caching strategy, HATEOAS implementation, specification pattern, error handling, content negotiation, and client-generation flow.
@@ -602,8 +602,8 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 
 ## OpenAPI Export And Client Generation
 
-1. In Development, `OpenApiExportService` fetches `/openapi/event-api.json` after API startup and writes `Explore.API/swagger.json`.
-2. Integration tests can refresh the same file from the runtime OpenAPI endpoint when contract assertions need the generated document.
+1. Building `Explore.API/Explore.API.csproj` runs ASP.NET Core build-time OpenAPI generation and refreshes the checked-in `Explore.API/swagger.json` contract.
+2. Contract invariant and parity tests assert the runtime `/openapi/event-api.json` shape without writing generated files.
 3. HAL schema transformers shape OpenAPI schemas so generated clients preserve HAL extension data.
 4. `Explore.Blazor.Client/Explore.Blazor.Client.csproj` uses `Explore.API/swagger.json` as NSwag input and regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` before `CoreCompile`.
 5. DTO changes should follow API-first regeneration workflow (see `docs/CONTRIBUTING.md`).
@@ -611,7 +611,7 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 ---
 
 ## Related Docs
-- `docs/SECURITY.md` — auth, JWT, CORS, security headers
+- `docs/SECURITY-MODEL.md` — auth, JWT, CORS, security headers
 - `docs/ARCHITECTURE.md` — Clean Architecture layers, request flow
 - `docs/OPERATIONS.md` — rate limiting config, timeouts, shutdown
 - `docs/CODEBASE_INSIGHTS.md` — non-obvious patterns
