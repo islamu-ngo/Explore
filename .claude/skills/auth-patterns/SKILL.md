@@ -21,7 +21,7 @@ Use this skill for browser-to-BFF-to-API authentication flow, endpoint protectio
 - Not for non-auth CQRS structure work where access rules are unchanged; use [../cqrs-mediatr-guidelines/SKILL.md](../cqrs-mediatr-guidelines/SKILL.md).
 
 ## Must-Read Docs
-- [../../../docs/SECURITY.md](../../../docs/SECURITY.md)
+- [../../../docs/SECURITY-MODEL.md](../../../docs/SECURITY-MODEL.md)
 - [../../../docs/API.md](../../../docs/API.md)
 - [../../../docs/AUTHORIZATION.md](../../../docs/AUTHORIZATION.md)
 - [../../../docs/QUICK_REFERENCE.md](../../../docs/QUICK_REFERENCE.md)

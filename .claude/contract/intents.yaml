@@ -47,7 +47,7 @@ intents:
     must_read_docs:
       - docs/API.md
       - docs/QUICK_REFERENCE.md
-      - docs/SECURITY.md
+      - docs/SECURITY-MODEL.md
     load_skills:
       - cqrs-mediatr-guidelines
       - auth-patterns
@@ -219,7 +219,7 @@ intents:
       - "auth not working"
       - "BFF auth bug"
     must_read_docs:
-      - docs/SECURITY.md
+      - docs/SECURITY-MODEL.md
       - docs/BLAZOR.md
     load_skills:
       - blazor-bff-patterns
@@ -246,7 +246,7 @@ intents:
       - "cerbos policy"
       - "update permission"
     must_read_docs:
-      - docs/SECURITY.md
+      - docs/SECURITY-MODEL.md
       - docs/AUTHORIZATION.md
     load_skills: []
     load_rules: []

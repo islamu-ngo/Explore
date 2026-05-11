@@ -5,7 +5,7 @@ paths:
   - "Explore.Blazor/**/*.cs"
   - "Explore.Blazor/**/*.razor"
 related_skills: [blazor-bff-patterns, auth-patterns]
-related_docs: [docs/BLAZOR.md, docs/SECURITY.md, docs/ARCHITECTURE.md]
+related_docs: [docs/BLAZOR.md, docs/SECURITY-MODEL.md, docs/ARCHITECTURE.md]
 minimum_tests: [Explore.Blazor.IntegrationTests, Event.Architecture.Tests]
 related_intents: [bff-auth-bug]
 ---
@@ -25,7 +25,7 @@ related_intents: [bff-auth-bug]
 ## Must Read
 - [docs/QUICK_REFERENCE.md#multi-tenancy-reminder](../../docs/QUICK_REFERENCE.md#multi-tenancy-reminder)
 - [docs/BLAZOR.md](../../docs/BLAZOR.md)
-- [docs/SECURITY.md](../../docs/SECURITY.md)
+- [docs/SECURITY-MODEL.md](../../docs/SECURITY-MODEL.md)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

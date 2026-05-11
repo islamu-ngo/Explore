@@ -34,9 +34,9 @@ scenarios:
       - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
     acceptance_criteria:
-      - "Controller action uses explicit `[HttpGet(\"resources/summaries\", Name = RouteNames.ResourceSummariesList)]`."
+      - 'Controller action uses explicit `[HttpGet("resources/summaries", Name = RouteNames.ResourceSummariesList)]`.'
       - "Controller action has `[AllowAnonymous]` attribute."
-      - "Controller action has `[OutputCache(PolicyName = \"ListData\")]`."
+      - 'Controller action has `[OutputCache(PolicyName = "ListData")]`.'
       - "Query handler returns `PaginatedResult<ResourceSummaryDto>`."
       - "Repository returns entities; DTO mapping happens in handler."
       - "A new `ResourceSummariesLinkPolicy` emits `self`, `next`, `prev` via `yield return`."
@@ -205,7 +205,7 @@ scenarios:
       - "dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
     acceptance_criteria:
-      - "Button rendering is guarded by `@if (Event.HasHalLink(\"edit\"))` or equivalent helper."
+      - 'Button rendering is guarded by `@if (Event.HasHalLink("edit"))` or equivalent helper.'
       - "No reference to `IsInRole`, `User.Claims`, or `RoleHelper.CanManage` in the component."
       - "Dialog invocation uses v9 `ShowAsync<T>()` (not `Show<T>()`)."
       - "Component uses BEM-scoped CSS in the matching `.razor.css` file."
@@ -221,7 +221,7 @@ scenarios:
     expected_must_reads:
       - "AGENTS.md"
       - "docs/QUICK_REFERENCE.md"
-      - "docs/SECURITY.md"
+      - "docs/SECURITY-MODEL."
       - "docs/AUTHORIZATION.md"
       - ".claude/rules/blazor-server.md"
       - ".claude/skills/auth-patterns/SKILL.md"
@@ -252,7 +252,7 @@ scenarios:
     expected_must_reads:
       - "AGENTS.md"
       - "docs/QUICK_REFERENCE.md"
-      - "docs/SECURITY.md"
+      - "docs/SECURITY-MODEL.md"
       - "docs/AUTHORIZATION.md"
       - ".claude/skills/auth-patterns/SKILL.md"
     expected_paths_in_scope:
