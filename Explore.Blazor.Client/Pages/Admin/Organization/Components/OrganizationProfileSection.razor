@@ -38,25 +38,25 @@
 
         <MudGrid Spacing="3">
             <MudItem xs="12">
-                <AppTextField T="string" @bind-Value="_model.FullName"
+                <MudTextField T="string" @bind-Value="_model.FullName"
                               Label="Organization Name"
                               Variant="Variant.Outlined"
                               Required="true" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <AppTextField T="string" @bind-Value="_model.Email"
+                <MudTextField T="string" @bind-Value="_model.Email"
                               Label="Email"
                               Variant="Variant.Outlined"
                               Required="true"
                               InputType="InputType.Email" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <AppTextField T="string" @bind-Value="_model.WebsiteUrl"
+                <MudTextField T="string" @bind-Value="_model.WebsiteUrl"
                               Label="Website URL"
                               Variant="Variant.Outlined" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <AppTextField T="string" @bind-Value="_model.Address"
+                <MudTextField T="string" @bind-Value="_model.Address"
                               Label="Address"
                               Variant="Variant.Outlined"
                               Required="true" />
@@ -69,32 +69,32 @@
                                  Min="0" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <AppTextField T="string" @bind-Value="_model.City"
+                <MudTextField T="string" @bind-Value="_model.City"
                               Label="City"
                               Variant="Variant.Outlined"
                               Required="true" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <AppTextField T="string" @bind-Value="_model.Country"
+                <MudTextField T="string" @bind-Value="_model.Country"
                               Label="Country"
                               Variant="Variant.Outlined"
                               Required="true" />
             </MudItem>
             <MudItem xs="12">
-                <AppTextField T="string" Value="@_organization?.ActorProfilePictureUri"
+                <MudTextField T="string" Value="@_organization?.ActorProfilePictureUri"
                               Label="Profile Image URL (managed via Actor)"
                               Variant="Variant.Outlined"
                               ReadOnly="true"
                               Placeholder="Set through Actor settings" />
             </MudItem>
             <MudItem xs="12" sm="4">
-                <AppTextField T="string" @bind-Value="_appearance.BackgroundColor"
+                <MudTextField T="string" @bind-Value="_appearance.BackgroundColor"
                               Label="Banner Color"
                               Variant="Variant.Outlined"
                               InputType="InputType.Color" />
             </MudItem>
             <MudItem xs="12" sm="8">
-                <AppTextField T="string" @bind-Value="_appearance.ImageUri"
+                <MudTextField T="string" @bind-Value="_appearance.ImageUri"
                               Label="Banner Picture URL"
                               Variant="Variant.Outlined"
                               Placeholder="https://... (image or GIF)" />
@@ -139,11 +139,11 @@
         </MudPaper>
 
         <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
-            <AppButton OnClick="SaveAsync"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync"
                        Disabled="@_saving"
                        StartIcon="@(_saving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
                 @(_saving ? "Saving..." : "Save Organization Settings")
-            </AppButton>
+            </MudButton>
         </MudStack>
     }
 </div>

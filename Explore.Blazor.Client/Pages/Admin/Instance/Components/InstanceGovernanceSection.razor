@@ -33,7 +33,7 @@
                             </MudStack>
                         </TooltipContent>
                         <ChildContent>
-                            <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                         </ChildContent>
                     </MudTooltip>
                 </MudStack>
@@ -130,7 +130,7 @@
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                 <MudText Typo="Typo.h6" Style="font-weight:600;">Runtime Render Policy</MudText>
                 <MudTooltip Text="Choose a preset strategy for route rendering. All Interactive Server is recommended for most deployments.">
-                    <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                 </MudTooltip>
             </MudStack>
 
@@ -147,7 +147,7 @@
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                     <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@option.Label</MudText>
                                     <MudTooltip Text="@option.HelpText">
-                                        <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                                     </MudTooltip>
                                 </MudStack>
                                 @if (IsRecommendedPreset(option.Value))
@@ -176,7 +176,7 @@
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                             <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Global Fallback</MudText>
                             <MudTooltip Text="Used when a route-group specific override is unavailable.">
-                                <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                             </MudTooltip>
                         </MudStack>
 
@@ -205,7 +205,7 @@
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                 <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@group.Label</MudText>
                                 <MudTooltip Text="@group.HelpText">
-                                    <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                                 </MudTooltip>
                             </MudStack>
 
@@ -243,7 +243,7 @@
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                 <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Tenant Render Policy Delegation</MudText>
                 <MudTooltip Text="When enabled, tenants can override render policy settings. Use per-route-group locks to restrict specific areas.">
-                    <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                 </MudTooltip>
             </MudStack>
 

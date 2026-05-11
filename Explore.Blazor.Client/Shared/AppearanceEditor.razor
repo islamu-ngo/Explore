@@ -35,7 +35,7 @@
             @if (ShowImageField)
             {
                 <MudItem xs="12">
-                    <AppTextField T="string"
+                    <MudTextField Variant="Variant.Outlined" T="string"
                                   Value="@ImageUri"
                                   ValueChanged="OnImageUriChanged"
                                   Label="Background Image URL"
@@ -60,13 +60,13 @@
             </MudItem>
 
             <MudItem xs="12" Class="d-flex justify-end">
-                <AppButton Variant="Variant.Text"
+                <MudButton Elevation="0" Variant="Variant.Text"
                            Color="Color.Default"
                            StartIcon="@Icons.Material.Filled.RestartAlt"
                            Size="Size.Small"
                            OnClick="OnReset">
                     Reset
-                </AppButton>
+                </MudButton>
             </MudItem>
         </MudGrid>
     </div>

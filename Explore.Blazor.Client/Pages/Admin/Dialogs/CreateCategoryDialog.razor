@@ -11,14 +11,15 @@
         </MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="form" @bind-IsValid="success" Model="categoryDto">
-            <AppTextField T="string" @bind-Value="categoryDto.FullName" Label="Name" For="@(() => categoryDto.FullName)" Required="true" RequiredError="Name is required." />
-            <AppTextField T="string" @bind-Value="categoryDto.MasterCode" Label="Master Code" For="@(() => categoryDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
-        </MudForm>
+        <EditForm EditContext="_editContext">
+            <FluentValidationValidator />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="categoryDto.FullName" Label="Name" For="@(() => categoryDto.FullName)" Required="true" RequiredError="Name is required." />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="categoryDto.MasterCode" Label="Master Code" For="@(() => categoryDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
+        </EditForm>
     </DialogContent>
     <DialogActions>
-        <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</AppButton>
-        <AppButton OnClick="Submit">Create</AppButton>
+        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Create</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -26,16 +27,17 @@
     [CascadingParameter]
     private IDialogReference? DialogReference { get; set; }
 
-    private CreateCategoryDtoValidator validator = new();
-    private MudForm form;
-    private bool success;
-
+    private EditContext _editContext = default!;
     private CreateCategoryDto categoryDto = new();
 
-    private async Task Submit()
+    protected override void OnInitialized()
     {
-        await form.Validate();
-        if (form.IsValid)
+        _editContext = new EditContext(categoryDto);
+    }
+
+    private void Submit()
+    {
+        if (_editContext.Validate())
         {
             DialogReference?.Dismiss(DialogResult.Ok(categoryDto));
         }

@@ -37,7 +37,7 @@
                 <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight: 600;">Invite Member</MudText>
                 <MudGrid Spacing="2">
                     <MudItem xs="12" sm="6">
-                        <AppTextField T="string" @bind-Value="_inviteEmail"
+                        <MudTextField T="string" @bind-Value="_inviteEmail"
                                       Label="Member Email"
                                       Variant="Variant.Outlined"
                                       InputType="InputType.Email"
@@ -56,12 +56,12 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="12" sm="2" Class="d-flex align-center">
-                        <AppButton StartIcon="@Icons.Material.Filled.PersonAdd"
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd"
                                    OnClick="InviteMemberAsync"
                                    Disabled="_isInviting"
                                    FullWidth="true">
                             @(_isInviting ? "Inviting..." : "Invite")
-                        </AppButton>
+                        </MudButton>
                     </MudItem>
                 </MudGrid>
             </MudPaper>
@@ -122,12 +122,12 @@
                                         <MudSelectItem Value="@role.Id">@role.Name</MudSelectItem>
                                     }
                                 </MudSelect>
-                                <AppIconButton Icon="@Icons.Material.Filled.Save"
+                                <MudIconButton Icon="@Icons.Material.Filled.Save"
                                                Color="Color.Primary"
                                                Disabled="@(!IsRoleChanged(context) || IsCreator(context) || _busyMemberId == context.Id)"
                                                OnClick="@(() => SaveRoleAsync(context))"
                                                Title="Save role" />
-                                <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                Color="Color.Error"
                                                Disabled="@(IsCreator(context) || _busyMemberId == context.Id)"
                                                OnClick="@(() => RemoveMemberAsync(context))"
@@ -219,7 +219,7 @@
             {
                 GroupId = GroupId,
                 Email = _inviteEmail.Trim(),
-                Role = _inviteRole
+                Role = (RoleEnum)_inviteRole
             });
 
             if (response?.Success == true)
@@ -259,7 +259,7 @@
             var response = await GroupService.UpdateGroupMemberRoleAsync(new UpdateGroupMemberRoleDto
             {
                 Id = member.Id.Value,
-                Role = GetPendingRole(member)
+                Role = (RoleEnum)GetPendingRole(member)
             });
 
             if (response?.Success == true)

@@ -59,12 +59,12 @@
             }
             @if (ShowCookieSettingsLink)
             {
-                <AppButton Variant="Variant.Text"
+                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text"
                            Size="Size.Small"
                            Class="site-footer__link"
                            OnClick="OnCookieSettingsClick">
                     Cookie Settings
-                </AppButton>
+                </MudButton>
             }
         </div>
     }
@@ -74,7 +74,7 @@
         <div class="site-footer__social">
             @foreach (var social in SocialLinks)
             {
-                <AppIconButton Icon="@FooterIconHelper.GetSocialIcon(social.Platform)"
+                <MudIconButton Icon="@FooterIconHelper.GetSocialIcon(social.Platform)"
                                aria-label="@social.Label"
                                title="@social.Label"
                                Class="site-footer__social-btn"

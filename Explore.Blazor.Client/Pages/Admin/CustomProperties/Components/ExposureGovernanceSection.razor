@@ -6,6 +6,7 @@
 @using Explore.Blazor.Client.Models.CustomProperties
 @using Explore.Blazor.Client.Pages.Admin.CustomProperties.Dialogs
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Components.Forms
 @using Explore.Domain.Enums
 @using MudBlazor
 @inject ICustomPropertyAdminService AdminService
@@ -52,7 +53,7 @@
                            Color="Color.Primary"
                            Variant="Variant.Filled"
                            OnClick="OpenBulkEditDialogAsync"
-                           Disabled="@(_selected.Count == 0 || _isSaving)">
+                           Disabled="@(_selected.Count == 0 || _submitState.IsSubmitting)">
                     Bulk edit flags
                 </MudButton>
             }
@@ -151,7 +152,7 @@
                         <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                        Size="Size.Small"
                                        Color="Color.Primary"
-                                       Disabled="@(context.Item.IsSystemOwned || _isSaving)"
+                                       Disabled="@(context.Item.IsSystemOwned || _submitState.IsSubmitting)"
                                        OnClick="@(() => OpenEditDialogAsync(context.Item))"
                                        aria-label="@($"Edit governance flags for {context.Item.DisplayName}")" />
                     </CellTemplate>
@@ -166,7 +167,7 @@
 
 @code {
     private bool _isLoading;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private string? _errorMessage;
     private string? _search;
     private EntityTypeName _entityType = EntityTypeName.Event;
@@ -268,7 +269,7 @@
 
     private async Task ApplySingleUpdateAsync(DefinitionFlagUpdateModel update)
     {
-        _isSaving = true;
+        _submitState.Start();
         try
         {
             var response = await AdminService.UpdateDefinitionFlagsAsync(update);
@@ -288,13 +289,13 @@
         }
         finally
         {
-            _isSaving = false;
+            _submitState.Complete();
         }
     }
 
     private async Task ApplyBulkUpdateAsync(DefinitionFlagUpdateModel template)
     {
-        _isSaving = true;
+        _submitState.Start();
         try
         {
             var updates = _selected.Select(d => new DefinitionFlagUpdateModel
@@ -327,7 +328,7 @@
         }
         finally
         {
-            _isSaving = false;
+            _submitState.Complete();
         }
     }
 

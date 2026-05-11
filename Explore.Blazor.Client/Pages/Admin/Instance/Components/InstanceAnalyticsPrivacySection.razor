@@ -30,7 +30,7 @@
 
         <MudGrid>
             <MudItem xs="6">
-                <AppTextField T="string" Label="Provider"
+                <MudTextField Variant="Variant.Outlined" T="string" Label="Provider"
                               Value="@Model.Provider" ReadOnly="true"
                               HelperText="Set via environment variable or secret manager" />
             </MudItem>
@@ -50,7 +50,7 @@
 
         @if (!string.IsNullOrEmpty(Model.EndpointUrl))
         {
-            <AppTextField T="string" Label="Endpoint URL"
+            <MudTextField Variant="Variant.Outlined" T="string" Label="Endpoint URL"
                           Value="@Model.EndpointUrl" ReadOnly="true" />
         }
 

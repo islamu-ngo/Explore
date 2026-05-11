@@ -7,7 +7,8 @@
 
 <MudDialog Class="cp-def-editor">
     <DialogContent>
-        <MudForm @ref="_form" IsValid="@_success" Class="d-flex flex-column gap-4">
+        <EditForm EditContext="_editContext" class="d-flex flex-column gap-4">
+            <FluentValidationValidator />
             
             <MudGrid>
                 <MudItem xs="12" sm="6">
@@ -122,11 +123,11 @@
                 <CustomPropertyOptionEditor Options="@Model.Options" />
             }
 
-        </MudForm>
+        </EditForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel" aria-label="Cancel editing">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!_success)" aria-label="Save definition">Save</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" aria-label="Save definition">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -137,8 +138,7 @@
     [Parameter]
     public CustomPropertyDefinitionDetailModel? Definition { get; set; }
 
-    private MudForm _form = default!;
-    private bool _success;
+    private EditContext _editContext = default!;
 
     // We bind to a local copy so we can cancel without polluting original
     public CustomPropertyDefinitionDetailModel Model { get; set; } = new();
@@ -176,18 +176,18 @@
             {
                 EntityTypeName = EntityTypeName.Event,
                 PropertyType = PropertyType.Text,
-                IsActive = true,
                 ExposureLevel = ExposureLevel.TenantAdminOnly
             };
         }
+
+        _editContext = new EditContext(Model);
     }
 
     private void Cancel() => DialogInstance.Cancel();
 
-    private async Task Submit()
+    private void Submit()
     {
-        await _form.Validate();
-        if (_success)
+        if (_editContext.Validate())
         {
             DialogInstance.Close(DialogResult.Ok(Model));
         }

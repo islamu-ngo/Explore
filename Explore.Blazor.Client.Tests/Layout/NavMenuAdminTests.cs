@@ -1,5 +1,5 @@
-// ABOUTME: Component tests for NavMenu admin section visibility based on DB-backed admin claims.
-// Verifies that admin menu items are shown/hidden per admin authority level (instance, tenant, organization).
+// ABOUTME: Component tests for NavMenu admin section visibility based on BFF-reported admin status.
+// Verifies browser admin claims are not treated as navigation authority.
 
 using Explore.Blazor.Client.Tests.Common.Authentication;
 
@@ -7,7 +7,7 @@ namespace Explore.Blazor.Client.Tests.Layout;
 
 /// <summary>
 /// Tests for the NavMenu admin section rendering behavior.
-/// Admin links are shown based on the user's admin authority claims:
+/// Admin links are shown based on BFF/admin status models:
 /// - Instance admin: Instance Administration
 /// - Tenant admin: Tenant Administration only
 /// - Organization admin: Organization Settings link(s)
@@ -80,7 +80,7 @@ public class NavMenuAdminTests : IDisposable
     }
 
     [Test]
-    public async Task NavMenu_InstanceAdmin_ShowsAllPlatformAdminLinks()
+    public async Task NavMenu_InstanceAdminClaimOnly_DoesNotShowAdminLinks()
     {
         // Arrange
         _ctx.SetAuthenticatedUserWithClaims(
@@ -93,13 +93,13 @@ public class NavMenuAdminTests : IDisposable
         var cut = RenderNavMenu();
         OpenDropdown(cut);
 
-        // Assert -- instance admin sees instance administration link only
-        await Assert.That(cut.Markup).Contains("Instance Administration");
+        // Assert -- serialized/browser claims are not treated as admin authority
+        await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
     }
 
     [Test]
-    public async Task NavMenu_TenantAdmin_ShowsTenantSettingsOnly()
+    public async Task NavMenu_TenantAdminClaimOnly_DoesNotShowAdminLinks()
     {
         // Arrange
         var tenantId = AuthenticationTestConstants.DefaultTenantId;
@@ -113,9 +113,9 @@ public class NavMenuAdminTests : IDisposable
         var cut = RenderNavMenu();
         OpenDropdown(cut);
 
-        // Assert -- tenant admin sees tenant administration but not instance-level links
+        // Assert -- serialized/browser claims are not treated as admin authority
         await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
-        await Assert.That(cut.Markup).Contains("Tenant Administration");
+        await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
         await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
     }
 
@@ -134,9 +134,9 @@ public class NavMenuAdminTests : IDisposable
         var cut = RenderNavMenu();
         OpenDropdown(cut);
 
-        // Assert -- org admin sees Organization Settings but not platform-level admin links
-        await Assert.That(cut.Markup).Contains("Organization Settings");
-        await Assert.That(cut.Markup).Contains($"/admin/organization/{orgId}/settings");
+        // Assert -- serialized/browser claims are not treated as admin authority
+        await Assert.That(cut.Markup).DoesNotContain("Organization Settings");
+        await Assert.That(cut.Markup).DoesNotContain($"/admin/organization/{orgId}/settings");
         await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
         await Assert.That(cut.Markup).DoesNotContain("Instance Settings");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
@@ -159,9 +159,9 @@ public class NavMenuAdminTests : IDisposable
         var cut = RenderNavMenu();
         OpenDropdown(cut);
 
-        // Assert -- one link per administered organization
-        await Assert.That(cut.Markup).Contains($"/admin/organization/{orgId1}/settings");
-        await Assert.That(cut.Markup).Contains($"/admin/organization/{orgId2}/settings");
+        // Assert -- serialized/browser org-admin claims do not create admin links
+        await Assert.That(cut.Markup).DoesNotContain($"/admin/organization/{orgId1}/settings");
+        await Assert.That(cut.Markup).DoesNotContain($"/admin/organization/{orgId2}/settings");
     }
 
     [Test]
@@ -180,10 +180,10 @@ public class NavMenuAdminTests : IDisposable
         var cut = RenderNavMenu();
         OpenDropdown(cut);
 
-        // Assert -- sees instance admin links plus the org link
-        await Assert.That(cut.Markup).Contains("Instance Administration");
+        // Assert -- serialized/browser claims do not create admin links
+        await Assert.That(cut.Markup).DoesNotContain("Instance Administration");
         await Assert.That(cut.Markup).DoesNotContain("Tenant Administration");
-        await Assert.That(cut.Markup).Contains($"/admin/organization/{orgId}/settings");
+        await Assert.That(cut.Markup).DoesNotContain($"/admin/organization/{orgId}/settings");
     }
 
     [Test]
@@ -201,7 +201,7 @@ public class NavMenuAdminTests : IDisposable
         OpenDropdown(cut);
 
         // Assert
-        await Assert.That(cut.Markup).Contains("href=\"/admin/instance/settings\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/tenant/settings\"");
     }
 
@@ -222,7 +222,7 @@ public class NavMenuAdminTests : IDisposable
 
         // Assert
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin\"");
-        await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/tenant/settings\"");
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
     }
 

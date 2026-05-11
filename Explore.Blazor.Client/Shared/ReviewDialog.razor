@@ -6,12 +6,12 @@
         <MudStack Spacing="3">
             <MudText>How was your experience with @OrganizationName?</MudText>
             <MudRating @bind-SelectedValue="Rating" MaxValue="5" Size="Size.Large" />
-            <AppTextField T="string" @bind-Value="Comment" Label="Comment" Lines="4" />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="Comment" Label="Comment" Lines="4" />
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel">Cancel</AppButton>
-        <AppButton OnClick="Submit">Submit Review</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Submit Review</MudButton>
     </DialogActions>
 </MudDialog>
 

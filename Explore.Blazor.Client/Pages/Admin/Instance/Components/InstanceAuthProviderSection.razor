@@ -50,9 +50,9 @@
 
                         @if (Model.KeycloakEnabled)
                         {
-                            <AppTextField T="string" Label="Authority URL" @bind-Value="Model.KeycloakAuthority" />
-                            <AppTextField T="string" Label="Client ID" @bind-Value="Model.KeycloakClientId" />
-                            <AppTextField T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.KeycloakClientSecret" />
+                            <MudTextField Variant="Variant.Outlined" T="string" Label="Authority URL" @bind-Value="Model.KeycloakAuthority" />
+                            <MudTextField Variant="Variant.Outlined" T="string" Label="Client ID" @bind-Value="Model.KeycloakClientId" />
+                            <MudTextField Variant="Variant.Outlined" T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.KeycloakClientSecret" />
                         }
 
                         @if (!IsSingleTenant)
@@ -79,7 +79,7 @@
 
                         @if (Model.AtprotoLoginEnabled)
                         {
-                            <AppTextField T="string" Label="Public URL" @bind-Value="Model.AtprotoPublicUrl" HelperText="Used to serve ATProto OAuth client metadata." />
+                            <MudTextField Variant="Variant.Outlined" T="string" Label="Public URL" @bind-Value="Model.AtprotoPublicUrl" HelperText="Used to serve ATProto OAuth client metadata." />
                         }
 
                         @if (!IsSingleTenant)
@@ -106,8 +106,8 @@
 
                         @if (Model.GoogleSsoEnabled)
                         {
-                            <AppTextField T="string" Label="Client ID" @bind-Value="Model.GoogleClientId" />
-                            <AppTextField T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.GoogleClientSecret" />
+                            <MudTextField Variant="Variant.Outlined" T="string" Label="Client ID" @bind-Value="Model.GoogleClientId" />
+                            <MudTextField Variant="Variant.Outlined" T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.GoogleClientSecret" />
                         }
 
                         @if (!IsSingleTenant)
@@ -140,12 +140,12 @@
                                 </MudTooltip>
                                 @ProviderStatusChip(IsAuthorizationProviderSelected(LocalProvider))
                             </MudStack>
-                            <AppButton Variant="@(IsAuthorizationProviderSelected(LocalProvider) ? Variant.Outlined : Variant.Filled)"
+                            <MudButton Elevation="0" Variant="@(IsAuthorizationProviderSelected(LocalProvider) ? Variant.Outlined : Variant.Filled)"
                                        Color="Color.Primary"
                                        Disabled="@IsAuthorizationProviderSelected(LocalProvider)"
                                        OnClick="@(() => SelectAuthorizationProviderAsync(LocalProvider))">
                                 @(IsAuthorizationProviderSelected(LocalProvider) ? "Enabled" : "Enable Local Authorization")
-                            </AppButton>
+                            </MudButton>
                         </MudStack>
                     </MudStack>
                 </MudPaper>
@@ -168,12 +168,12 @@
                                 }
                                 @ProviderStatusChip(IsAuthorizationProviderSelected(CerbosProvider))
                             </MudStack>
-                            <AppButton Variant="@(IsAuthorizationProviderSelected(CerbosProvider) ? Variant.Outlined : Variant.Filled)"
+                            <MudButton Elevation="0" Variant="@(IsAuthorizationProviderSelected(CerbosProvider) ? Variant.Outlined : Variant.Filled)"
                                        Color="Color.Primary"
                                        Disabled="@IsAuthorizationProviderSelected(CerbosProvider)"
                                        OnClick="@(() => SelectAuthorizationProviderAsync(CerbosProvider))">
                                 @(IsAuthorizationProviderSelected(CerbosProvider) ? "Enabled" : "Enable Cerbos Authorization")
-                            </AppButton>
+                            </MudButton>
                         </MudStack>
 
                         @if (IsAuthorizationProviderSelected(CerbosProvider))
@@ -191,7 +191,7 @@
                                 </MudAlert>
                             }
 
-                            <AppTextField T="string"
+                            <MudTextField Variant="Variant.Outlined" T="string"
                                           Label="Cerbos gRPC Endpoint"
                                           Value="AuthorizationModel.CerbosGrpcEndpoint"
                                           ValueChanged="OnCerbosEndpointChanged"
@@ -233,10 +233,10 @@
         Color="@(enabled ? Color.Success : Color.Default)"
         Variant="Variant.Outlined">@(enabled ? "Enabled" : "Disabled")</MudChip>;
 
-    private RenderFragment AuthenticationProviderButton(string providerName, bool enabled, Func<Task> onClick) => @<AppButton
+    private RenderFragment AuthenticationProviderButton(string providerName, bool enabled, Func<Task> onClick) => @<MudButton Elevation="0"
         Variant="@(enabled ? Variant.Outlined : Variant.Filled)"
         Color="@(enabled ? Color.Error : Color.Primary)"
-        OnClick="CreateAuthenticationClick(onClick)">@(enabled ? $"Disable {providerName}" : $"Enable {providerName}")</AppButton>;
+        OnClick="CreateAuthenticationClick(onClick)">@(enabled ? $"Disable {providerName}" : $"Enable {providerName}")</MudButton>;
 
     private EventCallback<MouseEventArgs> CreateAuthenticationClick(Func<Task> onClick) =>
         EventCallback.Factory.Create<MouseEventArgs>(this, onClick);

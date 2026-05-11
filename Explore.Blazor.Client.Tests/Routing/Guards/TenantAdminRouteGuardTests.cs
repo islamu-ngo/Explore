@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for TenantAdminRouteGuard that restricts tenant settings routes to tenant admins.
-// ABOUTME: Verifies tenant-admin claim checks and tenant onboarding status fallback behavior.
+// ABOUTME: Unit tests for TenantAdminRouteGuard that restricts tenant settings routes to BFF-confirmed tenant admins.
+// ABOUTME: Verifies browser tenant-admin claims are not treated as route authority.
 
 using Blazouter.Models;
 using Explore.Blazor.Client.Routing.Guards;
@@ -32,7 +32,7 @@ public class TenantAdminRouteGuardTests
     }
 
     [Test]
-    public async Task CanActivateAsync_UserWithTenantClaim_ReturnsTrue()
+    public async Task CanActivateAsync_UserWithTenantClaim_ReturnsFalseWithoutBffStatus()
     {
         // Arrange
         var principal = new AuthenticationTestBuilder()
@@ -52,7 +52,7 @@ public class TenantAdminRouteGuardTests
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
 
         // Assert
-        await Assert.That(result).IsTrue();
+        await Assert.That(result).IsFalse();
     }
 
     [Test]

@@ -57,9 +57,9 @@
                 <MudItem xs="12" md="9" Class="@(!_showMobileMenu ? "d-block" : "d-none d-md-block")">
                     <MudPaper Elevation="0" Class="settings-content pa-6" Style="background-color: transparent;">
                         <div class="d-md-none mb-4">
-                            <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToMenu">
+                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToMenu">
                                 Settings Menu
-                            </AppButton>
+                            </MudButton>
                         </div>
                         @if (_currentSection == "profile")
                         {

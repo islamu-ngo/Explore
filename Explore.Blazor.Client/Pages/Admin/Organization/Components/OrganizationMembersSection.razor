@@ -35,10 +35,10 @@
     @if (_canManage)
     {
         <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-3">
-            <AppButton StartIcon="@Icons.Material.Filled.PersonAdd"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd"
                        OnClick="OpenInviteDialog">
                 Invite Member
-            </AppButton>
+            </MudButton>
         </MudStack>
     }
 
@@ -106,11 +106,11 @@
         </MudTable>
 
         <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-3">
-            <AppButton Variant="Variant.Outlined"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                        StartIcon="@Icons.Material.Filled.People"
                        OnClick="NavigateToMembers">
                 Open Full Members Page
-            </AppButton>
+            </MudButton>
         </MudStack>
     }
 </div>

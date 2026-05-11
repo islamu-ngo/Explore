@@ -15,11 +15,11 @@
     
     @if (OnRetry.HasDelegate)
     {
-        <AppButton StartIcon="@Icons.Material.Filled.Refresh"
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Refresh"
                    OnClick="OnRetry"
                    Class="mb-4">
             @RetryText
-        </AppButton>
+        </MudButton>
     }
 }
 

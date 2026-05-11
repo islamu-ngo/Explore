@@ -1,5 +1,5 @@
 @* ABOUTME: Dialog for creating and editing footer link groups. *@
-@* ABOUTME: Follows TenantNavigationDialog pattern with MudForm validation and DialogResult dispatch. *@
+@* ABOUTME: Follows TenantNavigationDialog pattern with EditForm validation and DialogResult dispatch. *@
 
 @using Explore.Blazor.Client.Contracts.Services.Footer
 @using MudBlazor
@@ -12,8 +12,9 @@
         </MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="_form" @bind-IsValid="_isValid" Model="_model">
-            <AppTextField T="string" @bind-Value="_model.Title"
+        <EditForm EditContext="_editContext">
+            <FluentValidationValidator />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_model.Title"
                           Label="Group Title"
                           For="@(() => _model.Title)"
                           Required="true"
@@ -26,11 +27,11 @@
                              Label="Active"
                              Color="Color.Primary" />
             }
-        </MudForm>
+        </EditForm>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel">Cancel</AppButton>
-        <AppButton OnClick="Submit">@(_isEdit ? "Update" : "Create")</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">@(_isEdit ? "Update" : "Create")</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -41,8 +42,7 @@
     [Parameter]
     public FooterLinkGroupListModel? ExistingGroup { get; set; }
 
-    private MudForm _form = null!;
-    private bool _isValid;
+    private EditContext _editContext = default!;
     private bool _isEdit;
     private bool _isActive = true;
     private CreateFooterLinkGroupModel _model = new();
@@ -56,12 +56,13 @@
             _model.Title = ExistingGroup.Title;
             _isActive = ExistingGroup.IsActive;
         }
+
+        _editContext = new EditContext(_model);
     }
 
-    private async Task Submit()
+    private void Submit()
     {
-        await _form.Validate();
-        if (_form.IsValid)
+        if (_editContext.Validate())
         {
             if (_isEdit && ExistingGroup != null)
             {

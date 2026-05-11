@@ -13,32 +13,32 @@
         </MudText>
     </div>
     <MudStack Spacing="3">
-        <AppTextField T="string" Label="S3 Endpoint"
+        <MudTextField T="string" Label="S3 Endpoint"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.S3Endpoint"
                       Placeholder="https://fsn1.your-objectstorage.com"
                       HelperText="S3-compatible endpoint URL (e.g., Hetzner, MinIO, AWS)" />
 
-        <AppTextField T="string" Label="Public Endpoint (Optional)"
+        <MudTextField T="string" Label="Public Endpoint (Optional)"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.S3PublicEndpoint"
                       Placeholder="https://public.your-objectstorage.com"
                       HelperText="Public endpoint for presigned URLs, if different from internal endpoint" />
 
-        <AppTextField T="string" Label="Bucket Name"
+        <MudTextField T="string" Label="Bucket Name"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.S3BucketName" />
 
-        <AppTextField T="string" Label="Access Key ID"
+        <MudTextField T="string" Label="Access Key ID"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.S3AccessKeyId" />
 
-        <AppTextField T="string" Label="Secret Access Key"
+        <MudTextField T="string" Label="Secret Access Key"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.S3SecretAccessKey"
                       InputType="InputType.Password" />
 
-        <AppTextField T="string" Label="Region"
+        <MudTextField T="string" Label="Region"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.S3Region"
                       Placeholder="fsn1"
@@ -58,13 +58,13 @@
         <MudDivider Class="my-2" />
 
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <AppButton Variant="Variant.Outlined"
+            <MudButton Elevation="0" Variant="Variant.Outlined"
                        Color="Color.Info"
                        OnClick="TestConnectionAsync"
                        Disabled="_isTesting"
                        StartIcon="@(_isTesting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.NetworkCheck)">
                 @(_isTesting ? "Testing..." : "Test Connection")
-            </AppButton>
+            </MudButton>
 
             @if (_testResult != null)
             {

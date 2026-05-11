@@ -5,6 +5,8 @@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Constants
 @using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using Explore.Blazor.Client.Components.Forms
 @inject IExternalApiKeyService ApiKeyService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -13,16 +15,18 @@
     <DialogContent>
         @if (!_created)
         {
-            <MudForm @ref="_form" @bind-IsValid="_formValid">
+            <EditForm EditContext="_editContext">
+                <FormSubmissionGuard State="@_submitState">
+                <AppValidationSummary />
                 <MudStack Spacing="4">
-                    <AppTextField T="string"
+                    <MudTextField Variant="Variant.Outlined" T="string"
                                   @bind-Value="_dto.Name"
                                   Label="Name"
                                   Required="true"
                                   RequiredError="Name is required"
                                   HelperText="A descriptive name for this API key" />
 
-                    <AppTextField T="string"
+                    <MudTextField Variant="Variant.Outlined" T="string"
                                   @bind-Value="_dto.Description"
                                   Label="Description"
                                   Lines="2"
@@ -53,12 +57,8 @@
                                    Clearable="true"
                                    HelperText="Leave empty for no expiration" />
                 </MudStack>
-            </MudForm>
-
-            @if (!string.IsNullOrWhiteSpace(_errorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Class="mt-4" Dense="true">@_errorMessage</MudAlert>
-            }
+                </FormSubmissionGuard>
+            </EditForm>
         }
         else
         {
@@ -86,14 +86,14 @@
     <DialogActions>
         @if (!_created)
         {
-            <AppButton OnClick="Cancel" Disabled="_isSubmitting">Cancel</AppButton>
-            <AppButton OnClick="Submit" Disabled="@(_isSubmitting || !_selectedScopes.Any())">
-                @(_isSubmitting ? "Creating..." : "Create API Key")
-            </AppButton>
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel" Disabled="_submitState.IsSubmitting">Cancel</MudButton>
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(_submitState.IsSubmitting || !_selectedScopes.Any())">
+                @(_submitState.IsSubmitting ? "Creating..." : "Create API Key")
+            </MudButton>
         }
         else
         {
-            <AppButton OnClick="Close">Done</AppButton>
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Close">Done</MudButton>
         }
     </DialogActions>
 </MudDialog>
@@ -105,16 +105,22 @@
     [Parameter] public Guid? OrganizationId { get; set; }
     [Parameter] public Guid? GroupId { get; set; }
 
-    private MudForm _form = default!;
-    private bool _formValid;
-    private bool _isSubmitting;
     private bool _created;
-    private string? _errorMessage;
     private string? _createdSecret;
+
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
 
     private readonly CreateExternalApiKeyDto _dto = new() { Name = string.Empty };
     private readonly HashSet<string> _selectedScopes = new(StringComparer.OrdinalIgnoreCase);
     private DateTime? _expiresAt;
+
+    protected override void OnInitialized()
+    {
+        _editContext = new EditContext(_dto);
+        _errorStore.Init(_editContext);
+    }
 
     private void ToggleScope(string scope, bool selected)
     {
@@ -126,25 +132,27 @@
 
     private async Task Submit()
     {
-        await _form.Validate();
+        if (_submitState.IsSubmitting) return;
 
-        if (!_form.IsValid || !_selectedScopes.Any())
+        if (!_editContext.Validate() || !_selectedScopes.Any())
         {
-            _errorMessage = _selectedScopes.Any() ? null : "Select at least one scope.";
+            if (!_selectedScopes.Any())
+            {
+                _submitState.Fail("Select at least one scope.");
+            }
             return;
         }
 
-        _isSubmitting = true;
-        _errorMessage = null;
-
-        _dto.ExternalApiKeyOwnerTypeId = OwnerType;
-        _dto.OrganizationId = OrganizationId;
-        _dto.GroupId = GroupId;
-        _dto.Scopes = _selectedScopes.OrderBy(s => s).ToList();
-        _dto.ExpiresAt = _expiresAt.HasValue ? new DateTimeOffset(_expiresAt.Value, TimeSpan.Zero) : null;
-
         try
         {
+            _submitState.Start();
+
+            _dto.ExternalApiKeyOwnerTypeId = OwnerType;
+            _dto.OrganizationId = OrganizationId;
+            _dto.GroupId = GroupId;
+            _dto.Scopes = _selectedScopes.OrderBy(s => s).ToList();
+            _dto.ExpiresAt = _expiresAt.HasValue ? new DateTimeOffset(_expiresAt.Value, TimeSpan.Zero) : null;
+
             var response = await ApiKeyService.CreateApiKeyAsync(_dto);
 
             if (response?.Success == true && !string.IsNullOrWhiteSpace(response.ApiKey))
@@ -154,20 +162,35 @@
             }
             else
             {
-                _errorMessage = response?.Message ?? "Failed to create API key.";
+                var msg = response?.Message ?? "Failed to create API key.";
                 if (response?.Errors?.Any() == true)
                 {
-                    _errorMessage += " " + string.Join("; ", response.Errors);
+                    msg += " " + string.Join("; ", response.Errors);
                 }
+                _submitState.Fail(msg);
+            }
+        }
+        catch (ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail($"Failed to create API key: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
             }
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Error creating API key: {ex.Message}";
+            _submitState.Fail($"Error creating API key: {ex.Message}");
         }
         finally
         {
-            _isSubmitting = false;
+            if (!_submitState.HasError)
+            {
+                _submitState.Complete();
+            }
         }
     }
 

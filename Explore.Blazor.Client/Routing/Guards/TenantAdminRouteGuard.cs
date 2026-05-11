@@ -1,5 +1,5 @@
 // ABOUTME: Route guard that restricts tenant admin routes to tenant-scoped administrators only.
-// ABOUTME: Uses tenant admin claims first, then tenant onboarding status as a fallback source of truth.
+// ABOUTME: Uses the BFF tenant onboarding status endpoint as the source of truth.
 
 using Blazouter.Interfaces;
 using Blazouter.Models;
@@ -19,11 +19,6 @@ public sealed class TenantAdminRouteGuard(
         if (user.Identity?.IsAuthenticated != true)
         {
             return false;
-        }
-
-        if (user.HasClaim(c => c.Type == "explore:admin:tenant"))
-        {
-            return true;
         }
 
         var tenantStatus = await tenantOnboardingService.GetStatusAsync().ConfigureAwait(false);

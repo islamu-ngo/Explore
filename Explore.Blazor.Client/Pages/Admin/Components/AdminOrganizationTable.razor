@@ -56,14 +56,14 @@
                 @if (context.ApprovalStatusId == (int)RequestStatus.Pending)
                 {
                     <MudTooltip Text="Approve">
-                        <AppIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
                                        Color="Color.Success"
                                        Variant="Variant.Filled"
                                        Size="Size.Small"
                                        OnClick="@(() => OnApprove.InvokeAsync(context))" />
                     </MudTooltip>
                     <MudTooltip Text="Reject">
-                        <AppIconButton Icon="@Icons.Material.Filled.Cancel"
+                        <MudIconButton Icon="@Icons.Material.Filled.Cancel"
                                        Color="Color.Error"
                                        Variant="Variant.Filled"
                                        Size="Size.Small"
@@ -73,7 +73,7 @@
                 else if (context.ApprovalStatusId == (int)RequestStatus.Approved)
                 {
                     <MudTooltip Text="Revoke approval">
-                        <AppIconButton Icon="@Icons.Material.Filled.Restore"
+                        <MudIconButton Icon="@Icons.Material.Filled.Restore"
                                        Color="Color.Warning"
                                        Variant="Variant.Filled"
                                        Size="Size.Small"
@@ -83,7 +83,7 @@
                 else if (context.ApprovalStatusId == (int)RequestStatus.Rejected)
                 {
                     <MudTooltip Text="Move back to pending">
-                        <AppIconButton Icon="@Icons.Material.Filled.Restore"
+                        <MudIconButton Icon="@Icons.Material.Filled.Restore"
                                        Color="Color.Info"
                                        Variant="Variant.Filled"
                                        Size="Size.Small"
@@ -94,12 +94,12 @@
         </MudTd>
 
         <MudTd DataLabel="Details" Style="text-align:center">
-            <AppButton Size="Size.Small"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small"
                        StartIcon="@Icons.Material.Filled.Visibility"
                        OnClick="@(() => OnViewDetails.InvokeAsync(context))"
                        Class="rounded-pill">
                 Details
-            </AppButton>
+            </MudButton>
         </MudTd>
     </RowTemplate>
 
@@ -108,11 +108,11 @@
             <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Color="Color.Default" />
             <MudText Typo="Typo.h6" Class="mt-2" Style="font-weight: 700;">No matching requests</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">Try clearing filters or changing your search.</MudText>
-            <AppButton Variant="Variant.Outlined"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                        OnClick="OnClearFilters"
                        Class="mt-4 rounded-pill">
                 Clear filters
-            </AppButton>
+            </MudButton>
         </div>
     </NoRecordsContent>
 </MudTable>

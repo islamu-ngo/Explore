@@ -12,7 +12,7 @@
         </MudText>
     </div>
     <MudStack Spacing="3">
-        <AppTextField T="string" Label="SMTP Host"
+        <MudTextField T="string" Label="SMTP Host"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.Host"
                       Placeholder="smtp.example.com" />
@@ -23,11 +23,11 @@
                          Min="1"
                          Max="65535" />
 
-        <AppTextField T="string" Label="Username"
+        <MudTextField T="string" Label="Username"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.Username" />
 
-        <AppTextField T="string" Label="Password"
+        <MudTextField T="string" Label="Password"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.Password"
                       InputType="InputType.Password" />
@@ -42,12 +42,12 @@
             <MudSelectItem Value="@("Auto")">Auto</MudSelectItem>
         </MudSelect>
 
-        <AppTextField T="string" Label="From Address"
+        <MudTextField T="string" Label="From Address"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.FromAddress"
                       Placeholder="noreply@example.com" />
 
-        <AppTextField T="string" Label="From Name"
+        <MudTextField T="string" Label="From Name"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.FromName"
                       Placeholder="ISLAMU Explore" />
@@ -65,13 +65,13 @@
         <MudDivider Class="my-2" />
 
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <AppButton Variant="Variant.Outlined"
+            <MudButton Elevation="0" Variant="Variant.Outlined"
                        Color="Color.Info"
                        OnClick="TestConnectionAsync"
                        Disabled="_isTesting"
                        StartIcon="@(_isTesting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.NetworkCheck)">
                 @(_isTesting ? "Testing..." : "Test Connection")
-            </AppButton>
+            </MudButton>
 
             @if (_testResult != null)
             {

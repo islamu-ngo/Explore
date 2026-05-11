@@ -19,19 +19,19 @@
         </MudText>
     </div>
     <MudStack Spacing="3">
-        <AppTextField T="string" Label="Brand Display Name"
+        <MudTextField T="string" Label="Brand Display Name"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.DefaultBrandDisplayName" />
 
-        <AppTextField T="string" Label="Brand Logo URL"
+        <MudTextField T="string" Label="Brand Logo URL"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.DefaultBrandLogoUrl" />
 
-        <AppTextField T="string" Label="Brand Favicon URL"
+        <MudTextField T="string" Label="Brand Favicon URL"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.DefaultBrandFaviconUrl" />
 
-        <AppTextField T="string" Label="Custom CSS URL (Optional)"
+        <MudTextField T="string" Label="Custom CSS URL (Optional)"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.DefaultBrandCustomCssUrl"
                       HelperText="Optional override for a platform-level custom stylesheet." />

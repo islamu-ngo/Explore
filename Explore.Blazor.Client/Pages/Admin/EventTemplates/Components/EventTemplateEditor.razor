@@ -5,12 +5,16 @@
 @using Explore.Blazor.Client.Models.EventTemplates
 @using Explore.Blazor.Client.Models
 @using Explore.Blazor.Client.Models.Responses
+@using Microsoft.AspNetCore.Components.Forms
+@using Explore.Blazor.Client.Components.Forms
 @inject IEventTemplateService TemplateService
 @inject ISnackbar Snackbar
 
 <MudDialog Class="event-template-editor">
     <DialogContent>
-        <MudForm @ref="_form" IsValid="@_isValid">
+        <EditForm EditContext="_editContext">
+            <FormSubmissionGuard State="@_submitState">
+            <AppValidationSummary />
             <MudGrid>
                 <MudItem xs="12" sm="6">
                     <MudTextField @bind-Value="_model.TemplateKey" Label="Template Key" Required="true" 
@@ -51,12 +55,13 @@
                     <EventTemplateDefinitionEditor Definitions="_definitions" OnDefinitionsChanged="HandleDefinitionsChanged" />
                 </MudItem>
             </MudGrid>
-        </MudForm>
+            </FormSubmissionGuard>
+        </EditForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="@(_isSaving || !_isValid)">
-            @(_isSaving ? "Saving..." : "Save")
+        <MudButton OnClick="Cancel" Disabled="_submitState.IsSubmitting">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_submitState.IsSubmitting">
+            @(_submitState.IsSubmitting ? "Saving..." : "Save")
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -68,9 +73,9 @@
     [Parameter]
     public EventTemplateDetailModel? Template { get; set; }
 
-    private MudForm _form = null!;
-    private bool _isValid;
-    private bool _isSaving;
+    private EditContext _editContext = default!;
+    private FormSubmitState _submitState = new();
+    private ServerValidationErrorStore _errorStore = new();
 
     private CreateEventTemplateDto _model = new();
     private List<EventTemplateDefinitionModel> _definitions = new();
@@ -149,6 +154,9 @@
         
         // Pass ref to the UI model representation so the child editor can mutate it directly
         _model.Definitions = _definitions.Select(d => MapToDefinitionDto(d)).ToList();
+
+        _editContext = new EditContext(_model);
+        _errorStore.Init(_editContext);
     }
 
     private void HandleDefinitionsChanged(IList<EventTemplateDefinitionModel> definitions)
@@ -206,10 +214,10 @@
 
     private async Task SaveAsync()
     {
-        await _form.Validate();
-        if (!_isValid) return;
+        if (_submitState.IsSubmitting) return;
+        if (!_editContext.Validate()) return;
 
-        _isSaving = true;
+        _submitState.Start();
         try
         {
             // Sync definitions from child editor before saving
@@ -250,16 +258,30 @@
                 {
                     errorMsg += ": " + string.Join(", ", result.Errors);
                 }
-                Snackbar.Add(errorMsg, Severity.Error);
+                _submitState.Fail(errorMsg);
+            }
+        }
+        catch (Clients.ApiException ex)
+        {
+            if (!_errorStore.HandleApiError(ex))
+            {
+                _submitState.Fail($"Failed to save template: {ex.Message}");
+            }
+            else
+            {
+                _submitState.Fail("Please fix the validation errors below.");
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
+            _submitState.Fail($"An error occurred: {ex.Message}");
         }
         finally
         {
-            _isSaving = false;
+            if (!_submitState.HasError)
+            {
+                _submitState.Complete();
+            }
         }
     }
 

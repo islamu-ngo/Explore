@@ -13,10 +13,10 @@
                     Create, view, and manage tenants on this platform.
                 </MudText>
             </div>
-            <AppButton StartIcon="@Icons.Material.Filled.Add"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                        OnClick="OpenCreateDialog">
                 Create Tenant
-            </AppButton>
+            </MudButton>
         </MudStack>
     </div>
 
@@ -66,7 +66,7 @@
                     }
                 </MudTd>
                 <MudTd DataLabel="Actions">
-                    <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                    Color="Color.Error"
                                    Size="Size.Small"
                                    OnClick="@(() => ConfirmDeleteTenant(context))"
@@ -87,12 +87,12 @@
         </TitleContent>
         <DialogContent>
             <MudStack Spacing="3">
-                <AppTextField T="string" @bind-Value="_newTenantName"
+                <MudTextField T="string" @bind-Value="_newTenantName"
                               Label="Tenant Name"
                               Variant="Variant.Outlined"
                               Required="true"
                               RequiredError="Tenant name is required" />
-                <AppTextField T="string" @bind-Value="_newTenantSlug"
+                <MudTextField T="string" @bind-Value="_newTenantSlug"
                               Label="Slug (URL identifier)"
                               Variant="Variant.Outlined"
                               HelperText="Lowercase, alphanumeric with hyphens"
@@ -104,11 +104,11 @@
             </MudStack>
         </DialogContent>
         <DialogActions>
-            <AppButton OnClick="@(() => _showCreateDialog = false)">Cancel</AppButton>
-            <AppButton OnClick="CreateTenantAsync"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => _showCreateDialog = false)">Cancel</MudButton>
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateTenantAsync"
                        Disabled="_isCreating || string.IsNullOrWhiteSpace(_newTenantName) || string.IsNullOrWhiteSpace(_newTenantSlug)">
                 @(_isCreating ? "Creating..." : "Create")
-            </AppButton>
+            </MudButton>
         </DialogActions>
     </MudDialog>
 
@@ -129,10 +129,10 @@
             </MudAlert>
         </DialogContent>
         <DialogActions>
-            <AppButton OnClick="@(() => _showDeleteDialog = false)">Cancel</AppButton>
-            <AppButton Color="Color.Error" OnClick="DeleteTenantAsync" Disabled="_isDeleting">
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => _showDeleteDialog = false)">Cancel</MudButton>
+            <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Error" OnClick="DeleteTenantAsync" Disabled="_isDeleting">
                 @(_isDeleting ? "Deleting..." : "Delete Permanently")
-            </AppButton>
+            </MudButton>
         </DialogActions>
     </MudDialog>
 </div>

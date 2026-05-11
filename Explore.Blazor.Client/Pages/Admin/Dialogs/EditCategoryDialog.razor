@@ -11,14 +11,15 @@
         </MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="form" @bind-IsValid="success" Model="categoryDto">
-            <AppTextField T="string" @bind-Value="categoryDto.FullName" Label="Name" For="@(() => categoryDto.FullName)" Required="true" RequiredError="Name is required." />
-            <AppTextField T="string" @bind-Value="categoryDto.MasterCode" Label="Master Code" For="@(() => categoryDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
-        </MudForm>
+        <EditForm EditContext="_editContext">
+            <FluentValidationValidator />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="categoryDto.FullName" Label="Name" For="@(() => categoryDto.FullName)" Required="true" RequiredError="Name is required." />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="categoryDto.MasterCode" Label="Master Code" For="@(() => categoryDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
+        </EditForm>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel">Cancel</AppButton>
-        <AppButton OnClick="Submit">Update</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Update</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -28,10 +29,7 @@
 
     [Parameter] public CategoryListDto ExistingCategory { get; set; }
 
-    private UpdateCategoryDtoValidator validator = new();
-    private MudForm form;
-    private bool success;
-
+    private EditContext _editContext = default!;
     private UpdateCategoryDto categoryDto = new();
 
     protected override void OnInitialized()
@@ -40,12 +38,12 @@
         categoryDto.FullName = ExistingCategory.FullName;
         categoryDto.MasterCode = ExistingCategory.MasterCode;
         categoryDto.ParentId = ExistingCategory.ParentId;
+        _editContext = new EditContext(categoryDto);
     }
 
-    private async Task Submit()
+    private void Submit()
     {
-        await form.Validate();
-        if (form.IsValid)
+        if (_editContext.Validate())
         {
             DialogReference?.Dismiss(DialogResult.Ok(categoryDto));
         }

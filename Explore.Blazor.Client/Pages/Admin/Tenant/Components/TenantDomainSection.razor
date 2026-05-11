@@ -21,13 +21,13 @@
             <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
         </MudSelect>
 
-        <AppTextField T="string" Label="Subdomain"
+        <MudTextField T="string" Label="Subdomain"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.Subdomain"
                       Disabled="@(!Model.CanOverrideSubdomain)"
                       HelperText="@($"{Model.Subdomain}.{Model.InstanceBaseDomain}")" />
 
-        <AppTextField T="string" Label="Custom Domain"
+        <MudTextField T="string" Label="Custom Domain"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.CustomDomain"
                       Disabled="@(!Model.CanOverrideCustomDomain)"

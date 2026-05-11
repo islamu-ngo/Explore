@@ -4,7 +4,7 @@
 @inject NavigationManager Navigation
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="error-page" role="alert" aria-labelledby="@TitleId">
-    <AppCard Class="error-page__card">
+    <MudCard Elevation="0" Class="error-page__card">
         <MudCardContent>
             <MudStack Spacing="4" AlignItems="AlignItems.Center" Class="error-page__content">
                 <div class="error-page__badge" aria-hidden="true">
@@ -27,34 +27,34 @@
                 @if (ShowSearch)
                 {
                     <div class="error-page__search" role="search" aria-label="Search events">
-                        <AppTextField T="string"
+                        <MudTextField Variant="Variant.Outlined" T="string"
                                       Value="@_searchTerm"
                                       ValueChanged="OnSearchTermChanged"
                                       Placeholder="Search events"
                                       FullWidth="true"
                                       Immediate="true"
                                       DebounceInterval="150" />
-                        <AppButton OnClick="RunSearch" StartIcon="@Icons.Material.Filled.Search">
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="RunSearch" StartIcon="@Icons.Material.Filled.Search">
                             Search
-                        </AppButton>
+                        </MudButton>
                     </div>
                 }
 
                 <MudStack Row="true" Spacing="2" Justify="Justify.Center" Class="error-page__actions">
-                    <AppButton Href="@PrimaryHref" StartIcon="@PrimaryIcon">
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="@PrimaryHref" StartIcon="@PrimaryIcon">
                         @PrimaryText
-                    </AppButton>
+                    </MudButton>
 
                     @if (!string.IsNullOrWhiteSpace(SecondaryHref) && !string.IsNullOrWhiteSpace(SecondaryText))
                     {
-                        <AppButton Href="@SecondaryHref" Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@SecondaryIcon">
+                        <MudButton Elevation="0" Href="@SecondaryHref" Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@SecondaryIcon">
                             @SecondaryText
-                        </AppButton>
+                        </MudButton>
                     }
                 </MudStack>
             </MudStack>
         </MudCardContent>
-    </AppCard>
+    </MudCard>
 </MudContainer>
 
 @code {

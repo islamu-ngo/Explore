@@ -291,42 +291,30 @@ public partial class NavMenu : IDisposable
         return DisplayHelper.GetInitials(name);
     }
 
-    // DB-first authority: admin claims are added by AdminClaimsTransformation
-    // and serialized to WASM via AddAuthenticationStateSerialization.
-    // Claim types match Explore.Application.Authorization.AdminClaimTypes constants.
-
     private bool HasAnyAdminAuthority(ClaimsPrincipal user)
     {
         if (user.Identity?.IsAuthenticated != true)
             return false;
 
         return _isCurrentUserInstanceAdmin
-               || _isCurrentUserTenantAdmin
-               || user.HasClaim(c => c.Type == "explore:admin:instance")
-               || user.HasClaim(c => c.Type == "explore:admin:tenant")
-               || user.HasClaim(c => c.Type == "explore:admin:organization");
+               || _isCurrentUserTenantAdmin;
     }
 
     private bool IsInstanceAdmin(ClaimsPrincipal user)
     {
         return user.Identity?.IsAuthenticated == true
-               && (_isCurrentUserInstanceAdmin || user.HasClaim(c => c.Type == "explore:admin:instance"));
+               && _isCurrentUserInstanceAdmin;
     }
 
     private bool IsTenantAdmin(ClaimsPrincipal user)
     {
         return user.Identity?.IsAuthenticated == true
-               && (_isCurrentUserTenantAdmin || user.HasClaim(c => c.Type == "explore:admin:tenant"));
+               && _isCurrentUserTenantAdmin;
     }
 
     private static IEnumerable<string> GetAdminOrganizationIds(ClaimsPrincipal user)
     {
-        if (user.Identity?.IsAuthenticated != true)
-            return [];
-
-        return user.FindAll("explore:admin:organization")
-                   .Select(c => c.Value)
-                   .Where(v => Guid.TryParse(v, out _));
+        return [];
     }
 
     private async Task LoadNavigationLinksAsync()

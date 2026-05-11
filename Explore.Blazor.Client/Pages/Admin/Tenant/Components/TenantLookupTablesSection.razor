@@ -29,7 +29,7 @@
         <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" TabPanelsClass="pa-4">
             <MudTabPanel Text="Categories" Icon="@Icons.Material.Filled.Category">
                 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3">
-                    <AppTextField T="string" @bind-Value="_categorySearch"
+                    <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_categorySearch"
                                   Placeholder="Search categories..."
                                   Adornment="Adornment.Start"
                                   AdornmentIcon="@Icons.Material.Filled.Search"
@@ -37,10 +37,10 @@
                                   Immediate="true"
                                   Clearable="true"
                                   Class="flex-grow-1" />
-                    <AppButton StartIcon="@Icons.Material.Filled.Add"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                                OnClick="OpenCreateCategoryDialogAsync">
                         Create
-                    </AppButton>
+                    </MudButton>
                 </MudStack>
 
                 <MudTable Items="FilteredCategories" Dense="true" Hover="true" Striped="true" Breakpoint="Breakpoint.Sm">
@@ -55,8 +55,8 @@
                         <MudTd DataLabel="Code">@context.MasterCode</MudTd>
                         <MudTd DataLabel="Parent">@(string.IsNullOrWhiteSpace(context.ParentFullName) ? "Root" : context.ParentFullName)</MudTd>
                         <MudTd DataLabel="Actions">
-                            <AppIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditCategoryDialogAsync(context))" />
-                            <AppIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteCategoryAsync(context))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditCategoryDialogAsync(context))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteCategoryAsync(context))" />
                         </MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -64,7 +64,7 @@
 
             <MudTabPanel Text="Tags" Icon="@Icons.Material.Filled.LocalOffer">
                 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3">
-                    <AppTextField T="string" @bind-Value="_tagSearch"
+                    <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_tagSearch"
                                   Placeholder="Search tags..."
                                   Adornment="Adornment.Start"
                                   AdornmentIcon="@Icons.Material.Filled.Search"
@@ -72,10 +72,10 @@
                                   Immediate="true"
                                   Clearable="true"
                                   Class="flex-grow-1" />
-                    <AppButton StartIcon="@Icons.Material.Filled.Add"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                                OnClick="OpenCreateTagDialogAsync">
                         Create
-                    </AppButton>
+                    </MudButton>
                 </MudStack>
 
                 <MudTable Items="FilteredTags" Dense="true" Hover="true" Striped="true" Breakpoint="Breakpoint.Sm">
@@ -88,8 +88,8 @@
                         <MudTd DataLabel="Name">@context.FullName</MudTd>
                         <MudTd DataLabel="Code">@context.MasterCode</MudTd>
                         <MudTd DataLabel="Actions">
-                            <AppIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditTagDialogAsync(context))" />
-                            <AppIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTagAsync(context))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditTagDialogAsync(context))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTagAsync(context))" />
                         </MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -97,7 +97,7 @@
 
             <MudTabPanel Text="Locations" Icon="@Icons.Material.Filled.LocationOn">
                 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3">
-                    <AppTextField T="string" @bind-Value="_locationSearch"
+                    <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_locationSearch"
                                   Placeholder="Search locations..."
                                   Adornment="Adornment.Start"
                                   AdornmentIcon="@Icons.Material.Filled.Search"
@@ -105,10 +105,10 @@
                                   Immediate="true"
                                   Clearable="true"
                                   Class="flex-grow-1" />
-                    <AppButton StartIcon="@Icons.Material.Filled.Add"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                                OnClick="OpenCreateLocationDialogAsync">
                         Create
-                    </AppButton>
+                    </MudButton>
                 </MudStack>
 
                 <MudTable Items="FilteredLocations" Dense="true" Hover="true" Striped="true" Breakpoint="Breakpoint.Sm">
@@ -125,8 +125,8 @@
                         <MudTd DataLabel="City">@(context.City ?? "-")</MudTd>
                         <MudTd DataLabel="Country">@(context.Country ?? "-")</MudTd>
                         <MudTd DataLabel="Actions">
-                            <AppIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditLocationDialogAsync(context))" />
-                            <AppIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteLocationAsync(context))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditLocationDialogAsync(context))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteLocationAsync(context))" />
                         </MudTd>
                     </RowTemplate>
                 </MudTable>

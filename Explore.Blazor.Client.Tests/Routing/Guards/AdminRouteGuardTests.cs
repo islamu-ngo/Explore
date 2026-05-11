@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for AdminRouteGuard that restricts /admin/* routes to users with DB-backed admin claims.
-// Verifies claim-based and onboarding-fallback authorization for instance admin access only.
+// ABOUTME: Unit tests for AdminRouteGuard that restricts /admin/* routes to BFF-confirmed instance admins.
+// Verifies browser admin claims are not treated as route authority.
 
 using Blazouter.Models;
 using Explore.Blazor.Client.Routing.Guards;
@@ -54,7 +54,7 @@ public class AdminRouteGuardTests
     }
 
     [Test]
-    public async Task CanActivateAsync_UserWithInstanceAdminClaim_ReturnsTrue()
+    public async Task CanActivateAsync_UserWithInstanceAdminClaim_ReturnsFalseWithoutBffStatus()
     {
         // Arrange
         var principal = new AuthenticationTestBuilder()
@@ -73,7 +73,7 @@ public class AdminRouteGuardTests
         var result = await guard.CanActivateAsync(routeMatch);
 
         // Assert
-        await Assert.That(result).IsTrue();
+        await Assert.That(result).IsFalse();
     }
 
     [Test]
@@ -125,7 +125,7 @@ public class AdminRouteGuardTests
     }
 
     [Test]
-    public async Task CanActivateAsync_UserWithBothInstanceAndTenantClaims_ReturnsTrue()
+    public async Task CanActivateAsync_UserWithBothInstanceAndTenantClaims_ReturnsFalseWithoutBffStatus()
     {
         // Arrange
         var principal = new AuthenticationTestBuilder()
@@ -145,7 +145,7 @@ public class AdminRouteGuardTests
         var result = await guard.CanActivateAsync(routeMatch);
 
         // Assert
-        await Assert.That(result).IsTrue();
+        await Assert.That(result).IsFalse();
     }
 
     [Test]

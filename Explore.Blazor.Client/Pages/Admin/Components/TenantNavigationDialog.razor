@@ -10,34 +10,35 @@
         </MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="form" @bind-IsValid="success" Model="linkDto">
-            <AppTextField T="string" @bind-Value="linkDto.Label" 
+        <EditForm EditContext="_editContext">
+            <FluentValidationValidator />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="linkDto.Label" 
                           Label="Label" 
                           For="@(() => linkDto.Label)" 
                           Required="true" 
                           RequiredError="Label is required." 
                           Placeholder="e.g., About Us" />
             
-            <AppTextField T="string" @bind-Value="linkDto.Url" 
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="linkDto.Url" 
                           Label="URL" 
                           For="@(() => linkDto.Url)" 
                           Required="true" 
                           RequiredError="URL is required." 
                           Placeholder="e.g., https://example.com/about" />
             
-            <AppTextField T="string" @bind-Value="linkDto.Icon" 
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="linkDto.Icon" 
                           Label="Icon (Material Design)" 
                           Placeholder="Leave empty to use default Link icon" 
                           HelperText="e.g., Icons.Material.Filled.Info" />
             
-            <MudCheckBox T="bool" @bind-Checked="linkDto.OpenInNewTab" 
+            <MudCheckBox T="bool?" @bind-Value="linkDto.OpenInNewTab" 
                          Label="Open in new tab" 
                          Color="Color.Primary" />
-        </MudForm>
+        </EditForm>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel">Cancel</AppButton>
-        <AppButton OnClick="Submit">@(_isEdit ? "Update" : "Create")</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">@(_isEdit ? "Update" : "Create")</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -48,8 +49,7 @@
     [Parameter]
     public TenantNavigationLinkDto? ExistingLink { get; set; }
 
-    private MudForm form = null!;
-    private bool success;
+    private EditContext _editContext = default!;
     private bool _isEdit;
     private CreateTenantNavigationLinkDto linkDto = new();
 
@@ -64,12 +64,13 @@
             linkDto.Icon = ExistingLink.Icon;
             linkDto.OpenInNewTab = ExistingLink.OpenInNewTab;
         }
+
+        _editContext = new EditContext(linkDto);
     }
 
-    private async Task Submit()
+    private void Submit()
     {
-        await form.Validate();
-        if (form.IsValid)
+        if (_editContext.Validate())
         {
             if (_isEdit && ExistingLink != null)
             {

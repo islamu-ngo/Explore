@@ -124,15 +124,15 @@
                             Setup secret is validated and your session is authenticated.
                         </MudAlert>
 
-                        <AppButton FullWidth="true"
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
                                    Size="Size.Large"
                                    OnClick="ContinueToOnboardingAsync"
                                    Class="mb-2">
                             Continue Setup
-                        </AppButton>
-                        <AppButton Variant="Variant.Text" Color="Color.Default" FullWidth="true" OnClick="ClearStoredSecretAsync">
+                        </MudButton>
+                        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" FullWidth="true" OnClick="ClearStoredSecretAsync">
                             Clear Secret
-                        </AppButton>
+                        </MudButton>
                     }
                     else if (_validationSucceeded)
                     {
@@ -148,22 +148,22 @@
 
                         @foreach (var provider in _detectedProviders)
                         {
-                            <AppButton FullWidth="true"
+                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
                                        StartIcon="@Icons.Material.Filled.Login"
                                        OnClick="@(() => ContinueToProviderLogin(provider))"
                                        Class="mb-2">
                                 Continue with @provider.DisplayName
-                            </AppButton>
+                            </MudButton>
                         }
 
-                        <AppButton Variant="Variant.Outlined" FullWidth="true" OnClick="ContinueToAuthConfig">
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined" FullWidth="true" OnClick="ContinueToAuthConfig">
                             Configure Authentication
-                        </AppButton>
+                        </MudButton>
                     }
                     else
                     {
                         @* Not yet validated: show secret input + validate button *@
-                        <AppTextField T="string"
+                        <MudTextField T="string"
                                       Label="Setup Secret"
                                       InputType="InputType.Password"
                                       Variant="Variant.Outlined"
@@ -176,7 +176,7 @@
                             @GetSetupSecretHint()
                         </MudText>
 
-                        <AppButton FullWidth="true"
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
                                    Size="Size.Large"
                                    Disabled="_isValidating || string.IsNullOrWhiteSpace(_secret)"
                                    OnClick="ValidateAsync"
@@ -186,7 +186,7 @@
                                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                             }
                             Validate Secret
-                        </AppButton>
+                        </MudButton>
                     }
                 </div>
             }

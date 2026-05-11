@@ -11,14 +11,15 @@
         </MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="form" @bind-IsValid="success" Model="tagDto">
-            <AppTextField T="string" @bind-Value="tagDto.FullName" Label="Name" For="@(() => tagDto.FullName)" Required="true" RequiredError="Name is required." />
-            <AppTextField T="string" @bind-Value="tagDto.MasterCode" Label="Master Code" For="@(() => tagDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
-        </MudForm>
+        <EditForm EditContext="_editContext">
+            <FluentValidationValidator />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="tagDto.FullName" Label="Name" For="@(() => tagDto.FullName)" Required="true" RequiredError="Name is required." />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="tagDto.MasterCode" Label="Master Code" For="@(() => tagDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
+        </EditForm>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel">Cancel</AppButton>
-        <AppButton OnClick="Submit">Update</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Update</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -28,10 +29,7 @@
 
     [Parameter] public TagDto ExistingTag { get; set; }
 
-    private UpdateTagDtoValidator validator = new();
-    private MudForm form;
-    private bool success;
-
+    private EditContext _editContext = default!;
     private UpdateTagDto tagDto = new();
 
     protected override void OnInitialized()
@@ -40,12 +38,12 @@
         tagDto.FullName = ExistingTag.FullName;
         tagDto.MasterCode = ExistingTag.MasterCode;
         tagDto.TenantId = ExistingTag.TenantId;
+        _editContext = new EditContext(tagDto);
     }
 
-    private async Task Submit()
+    private void Submit()
     {
-        await form.Validate();
-        if (form.IsValid)
+        if (_editContext.Validate())
         {
             DialogReference?.Dismiss(DialogResult.Ok(tagDto));
         }

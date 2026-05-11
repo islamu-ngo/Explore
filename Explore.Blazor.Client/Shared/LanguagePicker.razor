@@ -25,7 +25,7 @@
          Dense="true"
          Class="language-picker">
     <ActivatorContent>
-        <AppButton Variant="Variant.Text"
+        <MudButton Elevation="0" Variant="Variant.Text"
                    Color="Color.Inherit"
                    OnClick="ToggleMenu"
                    EndIcon="@(_isOpen ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)"
@@ -35,7 +35,7 @@
                 <span class="language-picker__flag">@currentLanguage.Flag</span>
                 <span class="language-picker__current-language">@currentLanguage.LanguageCode.ToUpperInvariant()</span>
             </span>
-        </AppButton>
+        </MudButton>
     </ActivatorContent>
     <ChildContent>
         @if (_cultures.Count > 0)

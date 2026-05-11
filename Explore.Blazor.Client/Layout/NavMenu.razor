@@ -18,7 +18,7 @@
         <!-- Sidebar Toggle (shown only when a page registers a sidebar) -->
         @if (SidebarState.HasSidebar)
         {
-            <AppIconButton Icon="@Icons.Material.Filled.Menu"
+            <MudIconButton Icon="@Icons.Material.Filled.Menu"
                            Color="Color.Inherit"
                            OnClick="ToggleSidebarPanel"
                             Title="Toggle sidebar"
@@ -96,11 +96,11 @@
                     @if (_eventCreationEligibility.CanCreate)
                     {
                         <a href="@_eventCreationEligibility.CreateEventRoute" style="text-decoration: none;">
-                            <AppButton StartIcon="@Icons.Material.Filled.Add"
+                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                                        Size="Size.Small"
                                        Class="navbar__create-event-btn">
                                 Add Event
-                            </AppButton>
+                            </MudButton>
                         </a>
                     }
 
@@ -313,25 +313,25 @@
 
                     @if (_showAddEventForAnonymous)
                     {
-                        <AppButton StartIcon="@Icons.Material.Filled.Add"
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                                    Size="Size.Small"
                                    Class="navbar__create-event-btn"
                                    OnClick="@(() => OpenLoginPrompt("/events/create", "Sign in to add an event. After you sign in, we will bring you back to the event form."))">
                             Add Event
-                        </AppButton>
+                        </MudButton>
                     }
-                    <AppButton Class="navbar__login-btn"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="navbar__login-btn"
                                 StartIcon="@Icons.Material.Filled.Login"
                                 OnClick="StartLogin">
                         Login
-                    </AppButton>
+                    </MudButton>
                 </NotAuthorized>
             </AuthorizeView>
 
             @* AI Assistant toggle follows tenant audience policy and the current user's preference. *@
             @if (AiAssistantState.IsAvailable)
             {
-                <AppIconButton Icon="@Icons.Material.Filled.AutoAwesome"
+                <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome"
                                Color="Color.Inherit"
                                Size="Size.Medium"
                                OnClick="ToggleAiAssistantPanel"

@@ -170,6 +170,22 @@ public class AuthRedirectPagesTests : IDisposable
     }
 
     [Test]
+    public async Task LoginRedirect_WithChallengeErrorAndErrorDetail_DoesNotRenderErrorDetail()
+    {
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
+        nav.NavigateTo("/login?returnUrl=%2Fsetup&challengeError=1&provider=keycloak&errorDetail=secretLen%3D24%7CclientId%3Dislamu-event-blazor");
+
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+
+        await Assert.That(cut.Markup).Contains("The last login attempt failed");
+        await Assert.That(cut.Markup).Contains("Continue with Keycloak");
+        await Assert.That(cut.Markup).DoesNotContain("secretLen");
+        await Assert.That(cut.Markup).DoesNotContain("clientId");
+        await Assert.That(cut.Markup).DoesNotContain("islamu-event-blazor");
+    }
+
+    [Test]
     public async Task LoginRedirect_WithSingleAtprotoAndLoginHint_ShouldAutoRedirectToAtprotoChallenge()
     {
         // Arrange

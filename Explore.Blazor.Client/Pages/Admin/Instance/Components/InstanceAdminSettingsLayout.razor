@@ -5,6 +5,7 @@
 @using Microsoft.AspNetCore.Components
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Forms
 
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject ITenantOnboardingService TenantOnboardingService
@@ -77,9 +78,9 @@
                 <MudItem xs="12" md="9" Class="@(!_showMobileMenu ? "d-block" : "d-none d-md-block")">
                     <MudPaper Elevation="0" Class="settings-content pa-6" Style="background-color: transparent;">
                         <div class="d-md-none mb-4">
-                            <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToMenu">
+                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToMenu">
                                 Settings Menu
-                            </AppButton>
+                            </MudButton>
                         </div>
                         @if (_currentSection == "governance")
                         {
@@ -188,10 +189,10 @@
                                                 Configure webhook endpoints to receive event notifications.
                                             </MudText>
                                         </div>
-                                        <AppButton StartIcon="@Icons.Material.Filled.Add"
+                                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                                                    Disabled="true">
                                             Add Webhook
-                                        </AppButton>
+                                        </MudButton>
                                     </MudStack>
                                 </div>
                                 <MudAlert Severity="Severity.Info" Class="mt-4">
@@ -214,38 +215,38 @@
                                 <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
                                     @if (_hasAnnouncementBar)
                                     {
-                                        <AppButton Variant="Variant.Outlined"
+                                        <MudButton Elevation="0" Variant="Variant.Outlined"
                                                    Color="Color.Error"
                                                    OnClick="RemoveAnnouncementBarAsync"
-                                                   Disabled="_isSaving"
-                                                   StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Delete)">
-                                            @(_isSaving ? "Saving..." : "Remove Announcement Bar")
-                                        </AppButton>
+                                                   Disabled="_submitState.IsSubmitting"
+                                                   StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Delete)">
+                                            @(_submitState.IsSubmitting ? "Saving..." : "Remove Announcement Bar")
+                                        </MudButton>
                                     }
                                     @if (_hasAnnouncementBar && HasUsableAnnouncementBar(_tenantModel))
                                     {
-                                        <AppButton Variant="Variant.Outlined"
+                                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                                                    OnClick="@(() => SaveAsync(false))"
-                                                   Disabled="_isSaving"
-                                                   StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                                            @(_isSaving ? "Saving..." : "Save Text Update")
-                                        </AppButton>
+                                                   Disabled="_submitState.IsSubmitting"
+                                                   StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                            @(_submitState.IsSubmitting ? "Saving..." : "Save Text Update")
+                                        </MudButton>
                                     }
-                                    <AppButton OnClick="@(() => SaveAsync(true))"
-                                               Disabled="_isSaving"
-                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Campaign)">
-                                        @(_isSaving ? "Saving..." : "Save and Show to Everyone")
-                                    </AppButton>
+                                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => SaveAsync(true))"
+                                               Disabled="_submitState.IsSubmitting"
+                                               StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Campaign)">
+                                        @(_submitState.IsSubmitting ? "Saving..." : "Save and Show to Everyone")
+                                    </MudButton>
                                 </MudStack>
                             }
                             else
                             {
                                 <MudStack Row="true" Justify="Justify.FlexEnd">
-                                    <AppButton OnClick="SaveAsync"
-                                               Disabled="_isSaving"
-                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                                        @(_isSaving ? "Saving..." : "Save Settings")
-                                    </AppButton>
+                                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync"
+                                               Disabled="_submitState.IsSubmitting"
+                                               StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                        @(_submitState.IsSubmitting ? "Saving..." : "Save Settings")
+                                    </MudButton>
                                 </MudStack>
                             }
                         }
@@ -281,7 +282,7 @@
     private FooterGovernanceSettingsModel _footerGovernance = new();
     private int _tenantCount;
     private bool _isLoading = true;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private bool _canEdit;
     private bool _hasAnnouncementBar;
     private bool _lastAnnouncementSaveStartedWithExistingBar;
@@ -372,12 +373,12 @@
             return;
         }
 
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
 
         if (!await EnsureFreshAuthSessionAsync())
         {
-            _isSaving = false;
+            _submitState.Complete();
             return;
         }
 
@@ -437,7 +438,7 @@
                 PublicExperienceAdminSaveResult policyResponse = await TenantPublicExperienceAdminService.SaveSingleTenantPolicySettingsAsync(_tenantModel);
                 if (!policyResponse.Success)
                 {
-                    _isSaving = false;
+                    _submitState.Complete();
                     _errorMessage = string.IsNullOrWhiteSpace(policyResponse.Message)
                         ? "Policy settings failed."
                         : policyResponse.Message;
@@ -452,7 +453,7 @@
 
                 if (!announcementResponse.Success)
                 {
-                    _isSaving = false;
+                    _submitState.Complete();
                     _errorMessage = string.IsNullOrWhiteSpace(announcementResponse.Message)
                         ? "Announcement bar settings failed."
                         : announcementResponse.Message;
@@ -473,7 +474,7 @@
             var failed = results.FirstOrDefault(r => !r.Success);
             if (failed is not null)
             {
-                _isSaving = false;
+                _submitState.Complete();
                 _errorMessage = string.IsNullOrWhiteSpace(failed.Message) ? "Failed to save settings." : failed.Message;
                 return;
             }
@@ -484,7 +485,7 @@
             await InstanceOnboardingService.RefreshAuthSchemesAsync();
         }
 
-        _isSaving = false;
+        _submitState.Complete();
         await RefreshShellExperienceAsync(openAiAssistantIfAvailable: ShouldOpenAiAssistantAfterSave());
 
         var successMessage = _currentSection == "announcement-bar"
@@ -502,19 +503,19 @@
         _tenantModel.AnnouncementBarLinkUrl = string.Empty;
         _tenantModel.ForceAnnouncementBarRedisplay = false;
 
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
 
         if (!await EnsureFreshAuthSessionAsync())
         {
-            _isSaving = false;
+            _submitState.Complete();
             return;
         }
 
         PublicExperienceAdminSaveResult response = await TenantPublicExperienceAdminService.SaveAnnouncementBarAsync(
             _tenantModel,
             forceRedisplay: false);
-        _isSaving = false;
+        _submitState.Complete();
 
         if (response.Success)
         {
@@ -552,17 +553,17 @@
             return;
         }
 
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
 
         if (!await EnsureFreshAuthSessionAsync())
         {
-            _isSaving = false;
+            _submitState.Complete();
             return;
         }
 
         PublicExperienceAdminSaveResult response = await TenantPublicExperienceAdminService.SaveAsync(_publicExperienceModel);
-        _isSaving = false;
+        _submitState.Complete();
 
         if (response.Success)
         {

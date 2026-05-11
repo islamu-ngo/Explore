@@ -60,20 +60,20 @@
             {
                 <MudGrid Class="mt-2">
                     <MudItem xs="12" md="6">
-                        <AppTextField T="string" Label="API URL"
+                        <MudTextField Variant="Variant.Outlined" T="string" Label="API URL"
                                       @bind-Value="_state.TmsApiUrl"
                                       Placeholder="https://app.tolgee.io"
                                       HelperText="Absolute https:// URL of the TMS API base" />
                     </MudItem>
                     <MudItem xs="12" md="6">
-                        <AppTextField T="string" Label="Project ID"
+                        <MudTextField Variant="Variant.Outlined" T="string" Label="Project ID"
                                       @bind-Value="_state.TmsProjectId"
                                       HelperText="Tolgee project ID or Weblate project slug" />
                     </MudItem>
                     @if (_state.IsWeblate)
                     {
                         <MudItem xs="12" md="6">
-                            <AppTextField T="string" Label="Component Slug"
+                            <MudTextField Variant="Variant.Outlined" T="string" Label="Component Slug"
                                           @bind-Value="_state.TmsComponent"
                                           HelperText="Weblate: component slug within the project (required)" />
                         </MudItem>
@@ -89,17 +89,17 @@
                                  Size="Size.Small">
                             @(_state.TmsApiKeyConfigured ? "API Key Configured" : "API Key Not Configured")
                         </MudChip>
-                        <AppButton Variant="Variant.Text"
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text"
                                    Size="Size.Small"
                                    StartIcon="@Icons.Material.Filled.Refresh"
                                    OnClick="RotateApiKeyAsync"
                                    Disabled="_state.IsSaving"
                                    aria-label="Rotate TMS API key">
                             Rotate
-                        </AppButton>
+                        </MudButton>
                         @if (_state.TmsApiKeyConfigured)
                         {
-                            <AppButton Variant="Variant.Text"
+                            <MudButton Elevation="0" Variant="Variant.Text"
                                        Size="Size.Small"
                                        Color="Color.Error"
                                        StartIcon="@Icons.Material.Filled.DeleteForever"
@@ -107,7 +107,7 @@
                                        Disabled="_state.IsSaving"
                                        aria-label="Clear TMS API key">
                                 Clear
-                            </AppButton>
+                            </MudButton>
                         }
                     </MudStack>
                     <MudTextField T="string"
@@ -216,14 +216,14 @@
             </MudStack>
 
             <MudStack Row="true" Spacing="2" Class="mt-3">
-                <AppButton StartIcon="@Icons.Material.Filled.FlashOn"
+                <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.FlashOn"
                            Variant="Variant.Filled"
                            Color="Color.Warning"
                            Disabled="_state.IsSavingKillSwitches"
                            OnClick="SaveKillSwitchesNowAsync"
                            aria-label="Save and apply kill-switches immediately">
                     @(_state.IsSavingKillSwitches ? "Applying…" : "Save & Apply Kill-switches Now")
-                </AppButton>
+                </MudButton>
             </MudStack>
         </div>
 
@@ -231,7 +231,7 @@
 
         @* ── Actions ────────────────────────────────── *@
         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-            <AppButton StartIcon="@Icons.Material.Filled.NetworkCheck"
+            <MudButton Elevation="0" Color="Color.Primary" StartIcon="@Icons.Material.Filled.NetworkCheck"
                        Variant="Variant.Outlined"
                        Disabled="@(_state.IsTesting || _state.IsOffline)"
                        OnClick="TestConnectionAsync"
@@ -245,15 +245,15 @@
                 {
                     @:Test Connection
                 }
-            </AppButton>
-            <AppButton StartIcon="@Icons.Material.Filled.Save"
+            </MudButton>
+            <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Save"
                        Variant="Variant.Filled"
                        Color="Color.Primary"
                        Disabled="_state.IsSaving"
                        OnClick="SaveAsync"
                        aria-label="Save all localization settings">
                 @(_state.IsSaving ? "Saving…" : "Save")
-            </AppButton>
+            </MudButton>
         </MudStack>
 
         @if (!string.IsNullOrWhiteSpace(_state.LastTestResult))
@@ -310,7 +310,7 @@
                     var exportDisabled = _state.IsOffline || _state.IsSaving || isExporting
                                          || (_state.BundleHealthLoaded && !_state.BundlePathWritable);
                     <MudTooltip Text="@(!_state.BundlePathWritable && _state.BundleHealthLoaded ? "Bundle path is not writable — see health banner above" : "")">
-                        <AppButton Variant="Variant.Outlined"
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                                    StartIcon="@Icons.Material.Filled.CloudDownload"
                                    OnClick="@(() => ExportBundleAsync(language))"
                                    Disabled="@exportDisabled"
@@ -320,7 +320,7 @@
                                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" role="status" />
                             }
                             Export @(language.ToUpperInvariant())
-                        </AppButton>
+                        </MudButton>
                     </MudTooltip>
                 }
             </MudStack>
@@ -334,14 +334,14 @@
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
                         Reset to offline-only mode. This clears TMS configuration and forces all translations to come from bundled files.
                     </MudText>
-                    <AppButton Variant="Variant.Outlined"
+                    <MudButton Elevation="0" Variant="Variant.Outlined"
                                Color="Color.Error"
                                StartIcon="@Icons.Material.Filled.RestartAlt"
                                OnClick="ResetToOfflineAsync"
                                Disabled="_state.IsSaving"
                                aria-label="Reset to offline-only mode">
                         Reset to Offline-Only
-                    </AppButton>
+                    </MudButton>
                 </MudStack>
             </MudExpansionPanel>
         </MudExpansionPanels>

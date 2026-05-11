@@ -7,7 +7,7 @@
 <MudDialog Class="login-prompt" DefaultFocus="DefaultFocus.None">
     <DialogContent>
         <div class="login-prompt__container">
-            <AppIconButton Icon="@Icons.Material.Filled.Close"
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
                            Size="Size.Small"
                            Class="login-prompt__close"
                            OnClick="Close" />
@@ -23,7 +23,7 @@
             </div>
 
             <div class="login-prompt__section">
-                <AppButton Variant="Variant.Filled"
+                <MudButton Elevation="0" Variant="Variant.Filled"
                            Color="Color.Primary"
                            FullWidth="true"
                            Size="Size.Large"
@@ -31,15 +31,15 @@
                            OnClick="ContinueToLogin"
                            Class="login-prompt__btn login-prompt__btn--primary">
                     Continue to Login
-                </AppButton>
+                </MudButton>
 
-                <AppButton Variant="Variant.Text"
+                <MudButton Elevation="0" Variant="Variant.Text"
                            Color="Color.Default"
                            FullWidth="true"
                            OnClick="Close"
                            Class="login-prompt__btn login-prompt__btn--cancel">
                     Not now
-                </AppButton>
+                </MudButton>
             </div>
         </div>
     </DialogContent>

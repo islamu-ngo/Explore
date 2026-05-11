@@ -55,7 +55,7 @@
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12" md="6">
-                    <AppTextField T="string"
+                    <MudTextField T="string"
                                   @bind-Value="Model.EventCatalogLabel"
                                   Label="Event catalog label"
                                   Variant="Variant.Outlined"
@@ -89,7 +89,7 @@
 
             <MudExpansionPanels Elevation="0" Class="mt-2">
                 <MudExpansionPanel Text="Advanced home blocks JSON">
-                    <AppTextField T="string"
+                    <MudTextField T="string"
                                   @bind-Value="Model.HomeBlocksJson"
                                   Label="Home blocks JSON"
                                   Variant="Variant.Outlined"
@@ -100,7 +100,7 @@
                     @RenderJsonWarning(Model.HomeBlocksJson, "home blocks")
                 </MudExpansionPanel>
                 <MudExpansionPanel Text="Advanced calls-to-action JSON">
-                    <AppTextField T="string"
+                    <MudTextField T="string"
                                   @bind-Value="Model.CtasJson"
                                   Label="CTAs JSON"
                                   Variant="Variant.Outlined"
@@ -111,7 +111,7 @@
                     @RenderJsonWarning(Model.CtasJson, "CTAs")
                 </MudExpansionPanel>
                 <MudExpansionPanel Text="Advanced event section presets JSON">
-                    <AppTextField T="string"
+                    <MudTextField T="string"
                                   @bind-Value="Model.EventSectionPresetsJson"
                                   Label="Event section presets JSON"
                                   Variant="Variant.Outlined"

@@ -11,20 +11,21 @@
         </MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="form" @bind-IsValid="success" Model="locationDto">
-            <AppTextField T="string" @bind-Value="locationDto.FullName" Label="Name" For="@(() => locationDto.FullName)" Required="true" RequiredError="Name is required." />
-            <AppTextField T="string" @bind-Value="locationDto.Address" Label="Address" For="@(() => locationDto.Address)" />
-            <AppTextField T="string" @bind-Value="locationDto.City" Label="City" For="@(() => locationDto.City)" />
-            <AppTextField T="string" @bind-Value="locationDto.Postcode" Label="Postcode" For="@(() => locationDto.Postcode)" />
-            <AppTextField T="string" @bind-Value="locationDto.Country" Label="Country" For="@(() => locationDto.Country)" />
+        <EditForm EditContext="_editContext">
+            <FluentValidationValidator />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.FullName" Label="Name" For="@(() => locationDto.FullName)" Required="true" RequiredError="Name is required." />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Address" Label="Address" For="@(() => locationDto.Address)" />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.City" Label="City" For="@(() => locationDto.City)" />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Postcode" Label="Postcode" For="@(() => locationDto.Postcode)" />
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Country" Label="Country" For="@(() => locationDto.Country)" />
             <MudNumericField @bind-Value="locationDto.Latitude" Label="Latitude" For="@(() => locationDto.Latitude)" />
             <MudNumericField @bind-Value="locationDto.Longitude" Label="Longitude" For="@(() => locationDto.Longitude)" />
-            <AppTextField T="string" @bind-Value="locationDto.Timezone" Label="Timezone" For="@(() => locationDto.Timezone)" />
-        </MudForm>
+            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="locationDto.Timezone" Label="Timezone" For="@(() => locationDto.Timezone)" />
+        </EditForm>
     </DialogContent>
     <DialogActions>
-        <AppButton OnClick="Cancel">Cancel</AppButton>
-        <AppButton OnClick="Submit">Update</AppButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Update</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -34,10 +35,7 @@
 
     [Parameter] public LocationDto ExistingLocation { get; set; }
 
-    private UpdateLocationDtoValidator validator = new();
-    private MudForm form;
-    private bool success;
-
+    private EditContext _editContext = default!;
     private UpdateLocationDto locationDto = new();
 
     protected override void OnInitialized()
@@ -51,12 +49,12 @@
         locationDto.Latitude = ExistingLocation.Latitude;
         locationDto.Longitude = ExistingLocation.Longitude;
         locationDto.Timezone = ExistingLocation.Timezone;
+        _editContext = new EditContext(locationDto);
     }
 
-    private async Task Submit()
+    private void Submit()
     {
-        await form.Validate();
-        if (form.IsValid)
+        if (_editContext.Validate())
         {
             DialogReference?.Dismiss(DialogResult.Ok(locationDto));
         }

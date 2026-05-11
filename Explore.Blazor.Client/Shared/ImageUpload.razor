@@ -35,25 +35,25 @@
                        Accept="@AcceptedFormats"
                        MaximumFileCount="1">
             <CustomContent Context="fileUpload">
-                <AppButton Variant="Variant.Outlined"
+                <MudButton Elevation="0" Variant="Variant.Outlined"
                            StartIcon="@Icons.Material.Filled.CloudUpload"
                            Color="Color.Primary"
                            Size="Size.Small"
                            OnClick="@fileUpload.OpenFilePickerAsync">
                     @(UploadButtonText ?? "Select Image")
-                </AppButton>
+                </MudButton>
             </CustomContent>
         </MudFileUpload>
 
         @if (HasImage)
         {
-            <AppButton Variant="Variant.Text"
+            <MudButton Elevation="0" Variant="Variant.Text"
                        Color="Color.Error"
                        StartIcon="@Icons.Material.Filled.Delete"
                        Size="Size.Small"
                        OnClick="RemoveImage">
                 Remove
-            </AppButton>
+            </MudButton>
         }
     </div>
 

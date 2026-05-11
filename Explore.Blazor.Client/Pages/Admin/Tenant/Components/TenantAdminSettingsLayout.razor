@@ -4,6 +4,7 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Components.Forms
 
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IInstanceOnboardingService InstanceOnboardingService
@@ -33,12 +34,12 @@
                              Icon="@Icons.Material.Filled.Apartment">
                         Multi-Tenant
                     </MudChip>
-                    <AppButton Variant="Variant.Text"
+                    <MudButton Elevation="0" Variant="Variant.Text"
                                Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.Dns"
                                Href="/admin/instance/settings">
                         Manage Platform
-                    </AppButton>
+                    </MudButton>
                 </MudStack>
             }
         </div>
@@ -153,9 +154,9 @@
                 <MudItem xs="12" md="9" Class="@(!_showMobileMenu ? "d-block" : "d-none d-md-block")">
                     <MudPaper Elevation="0" Class="settings-content pa-6" Style="background-color: transparent;">
                         <div class="d-md-none mb-4">
-                            <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToMenu">
+                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToMenu">
                                 Settings Menu
-                            </AppButton>
+                            </MudButton>
                         </div>
                         @if (_currentSection == "policies")
                         {
@@ -264,7 +265,7 @@
                                     </MudAlert>
                                 }
                                 <div class="settings-form-section mt-4">
-                                    <AppTextField T="string" T="string"
+                                    <MudTextField T="string" T="string"
                                                   @bind-Value="_model.CommunityGuidelinesContent"
                                                   Label="Guidelines Content"
                                                   Lines="20"
@@ -292,9 +293,9 @@
                                         Your platform is currently running in Single-Tenant Mode. If you intend to host multiple organizations with their own dedicated instances, domains, and policies, you can switch to Multi-Tenant Mode. 
                                         <strong>This will enable the full Instance Administration dashboard.</strong>
                                     </MudText>
-                                    <AppButton Variant="Variant.Outlined" Color="Color.Warning" Href="/admin/instance/settings">
+                                    <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Warning" Href="/admin/instance/settings">
                                         Go to Instance Administration
-                                    </AppButton>
+                                    </MudButton>
                                 </div>
                             </div>
                         }
@@ -308,38 +309,38 @@
                                 <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
                                     @if (_hasAnnouncementBar)
                                     {
-                                        <AppButton Variant="Variant.Outlined"
+                                        <MudButton Elevation="0" Variant="Variant.Outlined"
                                                    Color="Color.Error"
                                                    OnClick="RemoveAnnouncementBarAsync"
-                                                   Disabled="_isSaving"
-                                                   StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Delete)">
-                                            @(_isSaving ? "Saving..." : "Remove Announcement Bar")
-                                        </AppButton>
+                                                   Disabled="_submitState.IsSubmitting"
+                                                   StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Delete)">
+                                            @(_submitState.IsSubmitting ? "Saving..." : "Remove Announcement Bar")
+                                        </MudButton>
                                     }
                                     @if (_hasAnnouncementBar && HasUsableAnnouncementBar(_model))
                                     {
-                                        <AppButton Variant="Variant.Outlined"
+                                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
                                                    OnClick="@(() => SaveAsync(false))"
-                                                   Disabled="_isSaving"
-                                                   StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                                            @(_isSaving ? "Saving..." : "Save Text Update")
-                                        </AppButton>
+                                                   Disabled="_submitState.IsSubmitting"
+                                                   StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                            @(_submitState.IsSubmitting ? "Saving..." : "Save Text Update")
+                                        </MudButton>
                                     }
-                                    <AppButton OnClick="@(() => SaveAsync(true))"
-                                               Disabled="_isSaving"
-                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Campaign)">
-                                        @(_isSaving ? "Saving..." : "Save and Show to Everyone")
-                                    </AppButton>
+                                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => SaveAsync(true))"
+                                               Disabled="_submitState.IsSubmitting"
+                                               StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Campaign)">
+                                        @(_submitState.IsSubmitting ? "Saving..." : "Save and Show to Everyone")
+                                    </MudButton>
                                 </MudStack>
                             }
                             else
                             {
                                 <MudStack Row="true" Justify="Justify.FlexEnd">
-                                    <AppButton OnClick="SaveAsync"
-                                               Disabled="_isSaving"
-                                               StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                                        @(_isSaving ? "Saving..." : "Save Tenant Settings")
-                                    </AppButton>
+                                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync"
+                                               Disabled="_submitState.IsSubmitting"
+                                               StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                        @(_submitState.IsSubmitting ? "Saving..." : "Save Tenant Settings")
+                                    </MudButton>
                                 </MudStack>
                             }
                          }
@@ -355,7 +356,7 @@
     private TenantPublicExperienceAdminModel _publicExperienceModel = new();
     private TenantPublicExperienceSection? _publicExperienceSection;
     private bool _isLoading = true;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private bool _canEdit;
     private bool _isSingleTenantMode;
     private bool _isInstanceAdmin;
@@ -399,12 +400,12 @@
             return;
         }
 
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
         _model.ForceAnnouncementBarRedisplay = _currentSection == "announcement-bar" && forceAnnouncementBarRedisplay;
 
         var response = await TenantOnboardingService.UpdateSettingsAsync(_model);
-        _isSaving = false;
+        _submitState.Complete();
         _model.ForceAnnouncementBarRedisplay = false;
 
         if (response.Success)
@@ -433,11 +434,11 @@
         _model.AnnouncementBarLinkUrl = string.Empty;
         _model.ForceAnnouncementBarRedisplay = false;
 
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
 
         var response = await TenantOnboardingService.UpdateSettingsAsync(_model);
-        _isSaving = false;
+        _submitState.Complete();
 
         if (response.Success)
         {
@@ -475,11 +476,11 @@
             return;
         }
 
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
 
         var response = await TenantPublicExperienceAdminService.SaveAsync(_publicExperienceModel);
-        _isSaving = false;
+        _submitState.Complete();
 
         if (response.Success)
         {

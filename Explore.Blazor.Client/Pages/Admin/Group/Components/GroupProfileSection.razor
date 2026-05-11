@@ -15,7 +15,7 @@
 
     <MudGrid Spacing="3">
         <MudItem xs="12">
-            <AppTextField T="string" @bind-Value="Model.FullName"
+            <MudTextField T="string" @bind-Value="Model.FullName"
                           Label="Group Name"
                           Variant="Variant.Outlined"
                           Adornment="Adornment.Start"
@@ -25,14 +25,14 @@
         </MudItem>
 
         <MudItem xs="12">
-            <AppTextField T="string" @bind-Value="Model.Description"
+            <MudTextField T="string" @bind-Value="Model.Description"
                           Label="Description"
                           Variant="Variant.Outlined"
                           Lines="4" />
         </MudItem>
 
         <MudItem xs="12" sm="6">
-            <AppTextField T="string" @bind-Value="Branding.ImageUri"
+            <MudTextField T="string" @bind-Value="Branding.ImageUri"
                           Label="Banner Picture URL"
                           Variant="Variant.Outlined"
                           Adornment="Adornment.Start"
@@ -40,14 +40,14 @@
         </MudItem>
 
         <MudItem xs="12" sm="6">
-            <AppTextField T="string" @bind-Value="Branding.BackgroundColor"
+            <MudTextField T="string" @bind-Value="Branding.BackgroundColor"
                           Label="Banner Color"
                           Variant="Variant.Outlined"
                           InputType="InputType.Color" />
         </MudItem>
 
         <MudItem xs="12">
-            <AppTextField T="string" @bind-Value="Branding.ImageUri"
+            <MudTextField T="string" @bind-Value="Branding.ImageUri"
                           Label="Banner Media URL"
                           Variant="Variant.Outlined"
                           Placeholder="https://... (image or GIF)" />
@@ -96,11 +96,11 @@
     </MudPaper>
 
     <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
-        <AppButton OnClick="@(() => OnSave.InvokeAsync())"
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => OnSave.InvokeAsync())"
                    Disabled="IsSaving"
                    StartIcon="@(_isSavingIcon)">
             @(IsSaving ? "Saving..." : "Save Group Settings")
-        </AppButton>
+        </MudButton>
     </MudStack>
 </div>
 

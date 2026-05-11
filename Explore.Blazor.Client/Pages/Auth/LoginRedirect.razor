@@ -4,6 +4,7 @@
 @page "/login"
 @using System.Net.Http.Json
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
 @inject NavigationManager Navigation
 @inject IHttpClientFactory HttpClientFactory
@@ -38,9 +39,9 @@
             <div role="alert">
                 <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
             </div>
-            <AppButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadProvidersAsync">
+            <MudButton Elevation="0" Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadProvidersAsync">
                 Retry
-            </AppButton>
+            </MudButton>
         }
         else
         {
@@ -58,7 +59,7 @@
                             }
                         </div>
 
-                        <AppButton Variant="@(provider.Recommended ? Variant.Filled : Variant.Outlined)"
+                        <MudButton Elevation="0" Variant="@(provider.Recommended ? Variant.Filled : Variant.Outlined)"
                                    Color="@(provider.Recommended ? Color.Primary : Color.Default)"
                                    FullWidth="true"
                                    Size="Size.Large"
@@ -66,30 +67,29 @@
                                    OnClick="@(() => StartProvider(provider))"
                                    Class="login-page__provider-button">
                             Continue with @GetProviderDisplayName(provider)
-                        </AppButton>
+                        </MudButton>
 
                         @if (IsAtproto(provider) && string.Equals(_expandedProviderName, provider.Name, StringComparison.OrdinalIgnoreCase))
                         {
-                            <div class="login-page__handle-panel">
-                                <AppTextField T="string"
+                            <EditForm Model="@this" OnValidSubmit="StartAtprotoChallenge" class="login-page__handle-panel">
+                                <MudTextField Variant="Variant.Outlined" T="string"
                                               Label="ATProto handle"
                                               Placeholder="user.bsky.social"
                                               Adornment="Adornment.Start"
                                               AdornmentIcon="@Icons.Material.Filled.AlternateEmail"
                                               Immediate="true"
-                                              @bind-Value="_atprotoHandle"
-                                              OnKeyUp="HandleAtprotoKeyUp" />
+                                              @bind-Value="_atprotoHandle" />
 
-                                <AppButton Variant="Variant.Filled"
+                                <MudButton Elevation="0" Variant="Variant.Filled"
                                            Color="Color.Primary"
                                            FullWidth="true"
                                            Size="Size.Large"
+                                           ButtonType="ButtonType.Submit"
                                            Disabled="@string.IsNullOrWhiteSpace(_atprotoHandle)"
-                                           OnClick="StartAtprotoChallenge"
                                            Class="login-page__handle-submit">
                                     Continue
-                                </AppButton>
-                            </div>
+                                </MudButton>
+                            </EditForm>
                         }
                     </div>
                 }
@@ -267,13 +267,7 @@
         Navigation.NavigateTo(challengeUrl, forceLoad: true);
     }
 
-    private void HandleAtprotoKeyUp(KeyboardEventArgs args)
-    {
-        if (string.Equals(args.Key, "Enter", StringComparison.Ordinal))
-        {
-            StartAtprotoChallenge();
-        }
-    }
+    // HandleAtprotoKeyUp removed in favor of EditForm submission
 
     private static bool IsButtonProvider(AuthProviderItem provider)
     {

@@ -3,6 +3,7 @@
 
 @using Explore.Blazor.Client.Pages.Admin.Components
 @using Explore.Blazor.Client.Contracts.Services.Footer
+@using Explore.Blazor.Client.Components.Forms
 @using Microsoft.AspNetCore.Authorization
 @using MudBlazor
 @using System.Text.Json
@@ -64,7 +65,7 @@
                                   Placeholder="Brief description shown in the footer" />
                 }
 
-                <AppTextField T="string" @bind-Value="_copyrightText"
+                <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_copyrightText"
                               Label="Copyright Text"
                               Placeholder="e.g., &copy; 2026 My Organization" />
 
@@ -107,13 +108,13 @@
                                     <MudSelectItem Value="@platform">@CapitalizePlatform(platform)</MudSelectItem>
                                 }
                             </MudSelect>
-                            <AppTextField T="string" @bind-Value="_socialLinks[index].Url"
+                            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_socialLinks[index].Url"
                                           Label="URL"
                                           Placeholder="https://..." />
-                            <AppTextField T="string" @bind-Value="_socialLinks[index].Label"
+                            <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_socialLinks[index].Label"
                                           Label="Label (optional)"
                                           Placeholder="Display name" />
-                            <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                            Color="Color.Error"
                                            Size="Size.Small"
                                            OnClick="@(() => RemoveSocialLink(index))"
@@ -122,31 +123,31 @@
                     }
                 }
 
-                <AppButton StartIcon="@Icons.Material.Filled.Add"
+                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                            OnClick="AddSocialLink"
                            Class="mt-2">
                     Add Social Link
-                </AppButton>
+                </MudButton>
             }
         </MudPaper>
 
         <!-- Save Settings Button -->
         <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-8">
-            <AppButton OnClick="SaveSettingsAsync"
-                       Disabled="_isSaving"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveSettingsAsync"
+                       Disabled="_submitState.IsSubmitting"
                        StartIcon="@Icons.Material.Filled.Save">
-                @(_isSaving ? "Saving..." : "Save Settings")
-            </AppButton>
+                @(_submitState.IsSubmitting ? "Saving..." : "Save Settings")
+            </MudButton>
         </MudStack>
 
         <!-- Link Groups -->
         <MudPaper Elevation="0" Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default mb-6">
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
                 <MudText Typo="Typo.h6">Link Groups</MudText>
-                <AppButton StartIcon="@Icons.Material.Filled.Add"
+                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                            OnClick="OpenCreateGroupDialog">
                     Create Group
-                </AppButton>
+                </MudButton>
             </MudStack>
 
             @if (_linkGroups.Count == 0)
@@ -168,13 +169,13 @@
                     <RowTemplate>
                         <MudTd DataLabel="Order">
                             <MudStack Row="true" Spacing="1">
-                                <AppIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
                                                Size="Size.Small"
                                                Color="Color.Default"
                                                OnClick="@(() => MoveGroupUp(context))"
                                                Disabled="@IsFirstGroup(context)"
                                                Title="Move up" />
-                                <AppIconButton Icon="@Icons.Material.Filled.ArrowDownward"
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
                                                Size="Size.Small"
                                                Color="Color.Default"
                                                OnClick="@(() => MoveGroupDown(context))"
@@ -193,17 +194,17 @@
                         <MudTd DataLabel="Links">@context.LinkCount</MudTd>
                         <MudTd DataLabel="Actions">
                             <MudStack Row="true" Spacing="1">
-                                <AppIconButton Icon="@Icons.Material.Filled.Link"
+                                <MudIconButton Icon="@Icons.Material.Filled.Link"
                                                Size="Size.Small"
                                                Color="Color.Info"
                                                OnClick="@(() => SelectGroup(context))"
                                                Title="Manage Links" />
-                                <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                Size="Size.Small"
                                                Color="Color.Primary"
                                                OnClick="@(() => OpenEditGroupDialog(context))"
                                                Title="Edit" />
-                                <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                Size="Size.Small"
                                                Color="Color.Error"
                                                OnClick="@(() => DeleteGroup(context))"
@@ -221,15 +222,15 @@
             <MudPaper Elevation="0" Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <AppIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
                                        OnClick="DeselectGroup"
                                        Title="Back to groups" />
                         <MudText Typo="Typo.h6">Links in &ldquo;@_selectedGroup.Title&rdquo;</MudText>
                     </MudStack>
-                    <AppButton StartIcon="@Icons.Material.Filled.Add"
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
                                OnClick="OpenCreateLinkDialog">
                         Add Link
-                    </AppButton>
+                    </MudButton>
                 </MudStack>
 
                 @if (_selectedGroupLinks.Count == 0)
@@ -259,12 +260,12 @@
                             </MudTd>
                             <MudTd DataLabel="Actions">
                                 <MudStack Row="true" Spacing="1">
-                                    <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                    Size="Size.Small"
                                                    Color="Color.Primary"
                                                    OnClick="@(() => OpenEditLinkDialog(context))"
                                                    Title="Edit" />
-                                    <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                    Size="Size.Small"
                                                    Color="Color.Error"
                                                    OnClick="@(() => DeleteLink(context))"
@@ -283,7 +284,7 @@
     // ── State ─────────────────────────────────────────────────────────────
 
     private bool _isLoading = true;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private string? _errorMessage;
 
     // Settings fields
@@ -366,7 +367,7 @@
 
     private async Task SaveSettingsAsync()
     {
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
 
         try
@@ -403,7 +404,7 @@
         }
         finally
         {
-            _isSaving = false;
+            _submitState.Complete();
         }
     }
 

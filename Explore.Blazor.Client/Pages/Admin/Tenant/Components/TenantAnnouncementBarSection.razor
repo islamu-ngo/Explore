@@ -25,7 +25,7 @@
             Show announcement bar
         </MudSwitch>
 
-        <AppTextField T="string"
+        <MudTextField T="string"
                       @bind-Value="Model.AnnouncementBarMessage"
                       Label="Announcement message"
                       Variant="Variant.Outlined"
@@ -36,7 +36,7 @@
 
         <MudGrid Spacing="3">
             <MudItem xs="12" md="5">
-                <AppTextField T="string"
+                <MudTextField T="string"
                               @bind-Value="Model.AnnouncementBarLinkText"
                               Label="Optional link text"
                               Variant="Variant.Outlined"
@@ -44,7 +44,7 @@
                               Disabled="!Model.AnnouncementBarEnabled" />
             </MudItem>
             <MudItem xs="12" md="7">
-                <AppTextField T="string"
+                <MudTextField T="string"
                               @bind-Value="Model.AnnouncementBarLinkUrl"
                               Label="Optional link URL"
                               Variant="Variant.Outlined"
