@@ -1,0 +1,91 @@
+# ABOUTME: Nightly and manual Aspire-backed Playwright E2E runtime lane.
+# ABOUTME: Runs the browser suite outside required PR checks and retains failure artifacts.
+
+name: E2E Runtime Tests
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 2 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Aspire-backed Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build E2E test project
+        run: >-
+          dotnet build Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj
+          --configuration Release
+          --no-restore
+          --verbosity minimal
+
+      - name: Install Playwright Chromium dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          pwsh Explore.Blazor.Client.E2ETests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Run Aspire-backed Playwright E2E tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/e2e
+
+          dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj \
+            --configuration Release \
+            --no-build \
+            --verbosity minimal \
+            -- \
+            --report-trx \
+            --report-trx-filename Explore.Blazor.Client.E2ETests.trx \
+            | tee artifacts/e2e/e2e-test.log
+
+      - name: Capture Docker diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/e2e/docker
+
+          docker ps -a > artifacts/e2e/docker/containers.txt || true
+          docker images > artifacts/e2e/docker/images.txt || true
+
+          while read -r container_id container_name; do
+            [ -n "$container_id" ] || continue
+            safe_name="${container_name//[^A-Za-z0-9_.-]/-}"
+            docker logs "$container_id" > "artifacts/e2e/docker/${safe_name}.log" 2>&1 || true
+          done < <(docker ps -a --format '{{.ID}} {{.Names}}' || true)
+
+      - name: Upload E2E Evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-runtime-evidence
+          path: |
+            artifacts/e2e/**
+            Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/**/*.trx
+            Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/playwright-artifacts/**
+          if-no-files-found: warn
+          retention-days: 30

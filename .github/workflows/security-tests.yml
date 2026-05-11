@@ -3,16 +3,30 @@
 
 name: Security Integration Tests
 
+permissions:
+  contents: read
+
 on:
+  schedule:
+    - cron: "45 2 * * *"
   push:
     branches: [main, develop]
     paths:
       - "cerbos/**"
       - "docker/keycloak/**"
       - "Explore.Application/Authorization/**"
+      - "Explore.API/Program.cs"
+      - "Explore.API/Extensions/**"
+      - "Explore.API/Middleware/**"
+      - "Explore.Blazor/Program.cs"
+      - "Explore.Blazor/Services/**"
+      - "Explore.Blazor/Yarp/**"
       - "Explore.Infrastructure/Services/CerbosAuthorizationService.cs"
       - "Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs"
       - "Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs"
+      - "Explore.Infrastructure/Services/LocalAuthorizationProvider.cs"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/AUTHORIZATION.md"
       - "Event.API.IntegrationTests/Fixtures/Keycloak*"
       - "Event.API.IntegrationTests/Fixtures/Cerbos*"
       - "Event.API.IntegrationTests/Fixtures/Security*"
@@ -31,12 +45,25 @@ on:
       - "cerbos/**"
       - "docker/keycloak/**"
       - "Explore.Application/Authorization/**"
+      - "Explore.API/Program.cs"
+      - "Explore.API/Extensions/**"
+      - "Explore.API/Middleware/**"
+      - "Explore.Blazor/Program.cs"
+      - "Explore.Blazor/Services/**"
+      - "Explore.Blazor/Yarp/**"
+      - "Explore.Infrastructure/Services/CerbosAuthorizationService.cs"
+      - "Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs"
+      - "Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs"
+      - "Explore.Infrastructure/Services/LocalAuthorizationProvider.cs"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/AUTHORIZATION.md"
       - "Event.API.IntegrationTests/Fixtures/**"
       - "Event.API.IntegrationTests/Features/Security*"
       - "Event.API.IntegrationTests/Features/Cerbos*"
       - "Event.API.IntegrationTests/Features/Token*"
       - "Event.API.IntegrationTests/Features/Authorization*"
       - "Event.API.IntegrationTests/Features/Cloud*"
+      - ".github/workflows/security-tests.yml"
   workflow_dispatch:
 
 concurrency:
@@ -51,14 +78,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/packages.lock.json'
+          cache-dependency-path: "**/packages.lock.json"
 
       - name: Restore
         run: dotnet restore
@@ -67,7 +94,24 @@ jobs:
         run: dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
 
       - name: Security Integration Tests
-        run: dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal --treenode-filter "/*/*[Category=Security]"
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/security-tests
+          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*[Category=Security]" 2>&1 | tee artifacts/security-tests/security-integration-tests.log
 
       - name: Cerbos Policy Contract Tests
-        run: dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal --treenode-filter "/*/*[Category=PolicyContract]"
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/security-tests
+          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*[Category=PolicyContract]" 2>&1 | tee artifacts/security-tests/cerbos-policy-contract-tests.log
+
+      - name: Upload Security Test Evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: security-test-evidence
+          path: artifacts/security-tests/**
+          if-no-files-found: warn
+          retention-days: 30

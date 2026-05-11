@@ -1,0 +1,181 @@
+# ABOUTME: Reusable container image build workflow with SBOM, provenance, and digest evidence.
+# ABOUTME: Publishes API/UI images to ATCR and GHCR while retaining immutable build metadata.
+
+name: "Container Build (Reusable)"
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        required: true
+        type: string
+      dockerfile:
+        required: true
+        type: string
+      context:
+        required: false
+        type: string
+        default: "."
+      metadata-tags:
+        required: true
+        type: string
+      build-configuration:
+        required: false
+        type: string
+        default: "Release"
+      registry:
+        required: false
+        type: string
+        default: "atcr.io"
+      registry-user:
+        required: true
+        type: string
+    secrets:
+      ATCR_PASSWORD:
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  artifact-metadata: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build ${{ inputs.image-name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to ATcr
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ inputs.registry-user }}
+          password: ${{ secrets.ATCR_PASSWORD }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: |
+            ${{ inputs.registry }}/${{ inputs.registry-user }}/${{ inputs.image-name }}
+            ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}
+          tags: ${{ inputs.metadata-tags }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_CONFIGURATION=${{ inputs.build-configuration }}
+
+      - name: Record image digest evidence
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ inputs.image-name }}
+          DOCKERFILE: ${{ inputs.dockerfile }}
+          CONTEXT: ${{ inputs.context }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+          METADATA: ${{ steps.build.outputs.metadata }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/container
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          metadata_raw = os.environ.get("METADATA") or "{}"
+          try:
+              metadata = json.loads(metadata_raw)
+          except json.JSONDecodeError:
+              metadata = {"raw": metadata_raw}
+
+          evidence = {
+              "imageName": os.environ["IMAGE_NAME"],
+              "dockerfile": os.environ["DOCKERFILE"],
+              "context": os.environ["CONTEXT"],
+              "digest": os.environ["DIGEST"],
+              "tags": [line for line in os.environ["TAGS"].splitlines() if line.strip()],
+              "metadata": metadata,
+              "github": {
+                  "repository": os.environ["GITHUB_REPOSITORY"],
+                  "sha": os.environ["GITHUB_SHA"],
+                  "ref": os.environ["GITHUB_REF"],
+                  "runId": os.environ["GITHUB_RUN_ID"],
+                  "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              },
+          }
+
+          path = Path("artifacts/container") / f"{os.environ['IMAGE_NAME']}-digest.json"
+          path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+
+          {
+            echo "## Container image digest"
+            echo
+            echo "Image: \`${IMAGE_NAME}\`"
+            echo
+            echo "Digest: \`${DIGEST}\`"
+            echo
+            echo "Tags:"
+            echo '```text'
+            printf '%s\n' "$TAGS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Scan image vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ steps.build.outputs.digest }}
+          format: table
+          output: artifacts/container/${{ inputs.image-name }}-trivy.txt
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      - name: Generate GHCR artifact attestation
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Upload container build evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: container-build-${{ inputs.image-name }}
+          path: artifacts/container/**
+          if-no-files-found: warn
+          retention-days: 90

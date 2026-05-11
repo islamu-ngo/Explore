@@ -1,0 +1,36 @@
+# ABOUTME: Configures Dependabot update automation for GitHub Actions and NuGet dependencies.
+# ABOUTME: Keeps immutable GitHub Actions SHA pins and NuGet dependencies maintainable.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: Europe/Brussels
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:30"
+      timezone: Europe/Brussels
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: scope
+    groups:
+      dotnet-dependencies:
+        patterns:
+          - "*"

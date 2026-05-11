@@ -1,11 +1,15 @@
 # ABOUTME: CodeQL security scanning for C#, JS/TS, and GitHub Actions.
-# ABOUTME: Runs on pushes to main, PRs to main, and weekly schedule.
+# ABOUTME: Runs on main/develop pushes and PRs, merge queues, and a weekly schedule.
 
 name: "CodeQL Advanced"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths-ignore:
       - ".claude/**"
       - ".codex/**"
@@ -34,7 +38,7 @@ on:
       - "opencode.json"
       - "jean.json"
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths-ignore:
       - ".claude/**"
       - ".codex/**"
@@ -64,11 +68,14 @@ on:
       - "jean.json"
   schedule:
     - cron: "27 2 * * 0"
+  merge_group:
+    types: [checks_requested]
 
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    timeout-minutes: 45
     permissions:
       security-events: write
       packages: read
@@ -82,16 +89,24 @@ jobs:
           - language: actions
             build-mode: none
           - language: csharp
-            build-mode: none
+            build-mode: manual
           - language: javascript-typescript
             build-mode: none
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup .NET
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -100,10 +115,10 @@ jobs:
         if: matrix.build-mode == 'manual'
         shell: bash
         run: |
-          echo 'Manual build mode is not configured.'
-          exit 1
+          dotnet restore
+          dotnet build --configuration Release --no-restore --verbosity minimal
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
         with:
           category: "/language:${{matrix.language}}"

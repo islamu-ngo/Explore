@@ -3,38 +3,71 @@
 
 name: Cerbos Policy Validation
 
+permissions:
+  contents: read
+
 on:
+  schedule:
+    - cron: "0 3 * * *"
   push:
     branches: [main, develop]
     paths:
       - "cerbos/**"
       - "Explore.Application/Authorization/**"
+      - "Explore.Infrastructure/Services/CerbosAuthorizationService.cs"
+      - "Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs"
+      - "Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs"
+      - "Explore.Infrastructure/Services/LocalAuthorizationProvider.cs"
       - ".github/workflows/cerbos-policy-check.yml"
   pull_request:
     branches: [main, develop]
     paths:
       - "cerbos/**"
       - "Explore.Application/Authorization/**"
+      - "Explore.Infrastructure/Services/CerbosAuthorizationService.cs"
+      - "Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs"
+      - "Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs"
+      - "Explore.Infrastructure/Services/LocalAuthorizationProvider.cs"
       - ".github/workflows/cerbos-policy-check.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   cerbos-policy-check:
     name: Cerbos Policy Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup Cerbos
-        uses: cerbos/cerbos-setup-action@v1
+        uses: cerbos/cerbos-setup-action@6d88cfd96db5af84489633c6a2db42bf2522933b # v1
         with:
-          version: "latest"
+          version: "0.53.0"
 
       - name: Compile Cerbos Policies
+        shell: bash
         run: |
-          cerbos compile cerbos/policies
+          set -o pipefail
+          mkdir -p artifacts/cerbos-policy
+          cerbos compile cerbos/policies 2>&1 | tee artifacts/cerbos-policy/compile.log
 
       - name: Run Cerbos Policy Tests
         if: hashFiles('cerbos/tests/**') != ''
+        shell: bash
         run: |
-          cerbos compile --tests=cerbos/tests cerbos/policies
+          set -o pipefail
+          mkdir -p artifacts/cerbos-policy
+          cerbos compile --tests=cerbos/tests cerbos/policies 2>&1 | tee artifacts/cerbos-policy/tests.log
+
+      - name: Upload Cerbos Policy Evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cerbos-policy-evidence
+          path: artifacts/cerbos-policy/**
+          if-no-files-found: warn
+          retention-days: 30

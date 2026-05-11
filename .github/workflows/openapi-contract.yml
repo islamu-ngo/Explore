@@ -1,0 +1,180 @@
+# ABOUTME: Validates that governed OpenAPI and generated API client artifacts are current.
+# ABOUTME: Regenerates swagger/client outputs for relevant API-surface changes and fails on drift.
+
+name: OpenAPI Contract Guard
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  openapi-contract:
+    name: OpenAPI Contract Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect OpenAPI-Relevant Changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch: running OpenAPI guard." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          base_sha=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+          elif [ "${{ github.event_name }}" = "merge_group" ]; then
+            base_sha="${{ github.event.merge_group.base_sha }}"
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            base_sha="${{ github.event.before }}"
+          fi
+
+          if [ -z "$base_sha" ]; then
+            base_sha="HEAD~1"
+          fi
+
+          changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA" || true)"
+          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(Explore\.API/.*\.(cs|csproj|json)$|Explore\.Application/.*\.cs$|Explore\.Domain/.*\.cs$|Event\.API\.IntegrationTests/.*\.(cs|csproj)$|Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|Explore\.API/swagger\.json$|Directory\.Packages\.props$|global\.json$|\.github/workflows/openapi-contract\.yml$)' || true)"
+
+          if [ -n "$relevant_files" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## OpenAPI Contract Guard"
+              echo
+              echo "Relevant changes detected; regenerating governed OpenAPI artifacts."
+              echo
+              echo '```text'
+              printf '%s\n' "$relevant_files"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## OpenAPI Contract Guard"
+              echo
+              echo "No OpenAPI-relevant changes detected; guard passed without regeneration."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Setup .NET
+        if: steps.changes.outputs.relevant == 'true'
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore
+        if: steps.changes.outputs.relevant == 'true'
+        run: dotnet restore
+
+      - name: Generate OpenAPI Document
+        if: steps.changes.outputs.relevant == 'true'
+        run: dotnet build Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal
+
+      - name: Regenerate Blazor API Client
+        if: steps.changes.outputs.relevant == 'true'
+        run: dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
+
+      - name: Check Generated Contract Drift
+        if: steps.changes.outputs.relevant == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/openapi-contract
+
+          git diff -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs > artifacts/openapi-contract/generated-contract.diff
+          cp Explore.API/swagger.json artifacts/openapi-contract/swagger.json
+          cp Explore.Blazor.Client/Clients/EventApiClient.g.cs artifacts/openapi-contract/EventApiClient.g.cs
+
+          if [ -e Explore.API/swagger_event-api.json ]; then
+            echo "Unexpected generated OpenAPI suffix artifact exists: Explore.API/swagger_event-api.json" >&2
+            exit 1
+          fi
+
+          if git diff --quiet -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs; then
+            {
+              echo "## OpenAPI Contract Drift"
+              echo
+              echo "No generated OpenAPI/client drift detected after regeneration."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## OpenAPI Contract Drift"
+              echo
+              echo "Generated OpenAPI artifacts are stale. Build Explore.API and Explore.Blazor.Client locally, then commit:"
+              echo
+              echo "- \`Explore.API/swagger.json\`"
+              echo "- \`Explore.Blazor.Client/Clients/EventApiClient.g.cs\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Verify OpenAPI Determinism
+        if: steps.changes.outputs.relevant == 'true'
+        run: dotnet build Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity quiet
+
+      - name: Verify Client Determinism
+        if: steps.changes.outputs.relevant == 'true'
+        run: dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
+
+      - name: Check Deterministic Second Run
+        if: steps.changes.outputs.relevant == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs > artifacts/openapi-contract/determinism.diff
+
+          if [ -e Explore.API/swagger_event-api.json ]; then
+            echo "Unexpected generated OpenAPI suffix artifact exists after deterministic rebuild: Explore.API/swagger_event-api.json" >&2
+            exit 1
+          fi
+
+          if git diff --quiet -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs; then
+            {
+              echo "## OpenAPI Determinism"
+              echo
+              echo "Second regeneration run produced zero diff."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## OpenAPI Determinism"
+              echo
+              echo "Second regeneration run produced drift; inspect \`determinism.diff\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Upload OpenAPI Guard Artifacts
+        if: always() && steps.changes.outputs.relevant == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: openapi-contract-guard
+          path: |
+            artifacts/openapi-contract/**
+            **/TestResults/*.trx
+          if-no-files-found: warn
+          retention-days: 30
