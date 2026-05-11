@@ -54,9 +54,15 @@ public class RebuildEventCustomPropertyProjectionCommandHandler
 
             if (request.RequestDto.BatchSize.Value > maxBatchSize)
             {
-                response.Success = false;
-                response.Message = "Projection rebuild request validation failed.";
-                response.Errors = [$"quota_exceeded: Projection rebuild batch size limit of {maxBatchSize} has been exceeded."];
+                response.SetQuotaExceeded(
+                    "Projection rebuild request validation failed.",
+                    new QuotaExceededDetails(
+                        CustomPropertyQuotaSettingDefinitions.ProjectionRebuildBatchSize.Key,
+                        maxBatchSize,
+                        null,
+                        request.RequestDto.BatchSize.Value,
+                        "event_custom_property_projection_rebuild",
+                        request.RequestDto.TenantId));
                 return response;
             }
         }

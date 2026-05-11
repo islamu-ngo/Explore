@@ -15,4 +15,21 @@ public class BaseCommandResponse<TKey>
     /// Null on success or when no specific failure code applies.
     /// </summary>
     public string? FailureCode { get; set; }
+
+    /// <summary>
+    /// Structured quota metadata for failures that should surface as quota_exceeded ProblemDetails at API boundaries.
+    /// </summary>
+    public QuotaExceededDetails? QuotaExceeded { get; set; }
+
+    public void SetQuotaExceeded(
+        string message,
+        QuotaExceededDetails quotaExceeded,
+        string? error = null)
+    {
+        Success = false;
+        Message = message;
+        FailureCode = FailureCodes.QuotaExceeded;
+        QuotaExceeded = quotaExceeded;
+        Errors = [error ?? quotaExceeded.ToErrorMessage()];
+    }
 }

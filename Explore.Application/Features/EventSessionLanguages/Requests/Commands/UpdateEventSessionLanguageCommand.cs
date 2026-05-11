@@ -12,5 +12,15 @@ public class UpdateEventSessionLanguageCommand : IRequest<BaseCommandResponse<in
 {
     public required UpdateEventSessionLanguageDto EventSessionLanguageDto { get; set; }
 
+    public Guid TenantId { get; set; }
+
+    public Guid EventId { get; set; }
+
     string? ISecureRequest.ResourceId => EventSessionLanguageDto.EventSessionId.ToString();
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes => new Dictionary<string, object>
+    {
+        ["tenantId"] = TenantId.ToString(),
+        ["eventId"] = EventId.ToString()
+    };
 }

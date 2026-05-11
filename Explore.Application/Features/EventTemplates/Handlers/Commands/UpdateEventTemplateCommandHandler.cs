@@ -85,9 +85,15 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
             cancellationToken);
         if (request.TemplateDto.Definitions.Count > maxDefinitions)
         {
-            response.Success = false;
-            response.Message = "Event template update failed.";
-            response.Errors = [$"quota_exceeded: Event template definition limit of {maxDefinitions} has been exceeded for this template."];
+            response.SetQuotaExceeded(
+                "Event template update failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+                    maxDefinitions,
+                    null,
+                    request.TemplateDto.Definitions.Count,
+                    "event_template_definitions",
+                    template.TenantId));
             return response;
         }
 

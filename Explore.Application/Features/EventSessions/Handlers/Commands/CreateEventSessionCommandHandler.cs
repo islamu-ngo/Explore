@@ -24,6 +24,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
+    private readonly IEventSessionKindRepository _eventSessionKindRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventSessionTemplateRepository _eventSessionTemplateRepository;
     private readonly IEventSessionCustomPropertyRepository _eventSessionCustomPropertyRepository;
@@ -38,6 +39,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
+        IEventSessionKindRepository eventSessionKindRepository,
         IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
         IEventSessionTemplateRepository eventSessionTemplateRepository,
         IEventSessionCustomPropertyRepository eventSessionCustomPropertyRepository,
@@ -51,6 +53,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
+        _eventSessionKindRepository = eventSessionKindRepository;
         _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
         _eventSessionTemplateRepository = eventSessionTemplateRepository;
         _eventSessionCustomPropertyRepository = eventSessionCustomPropertyRepository;
@@ -69,6 +72,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
             _eventRepository,
             _locationRepository,
             _registrationModeRepository,
+            _eventSessionKindRepository,
             _eventSessionTemplateRepository,
             _eventSessionRepository);
         var validationResult = await validator.ValidateAsync(request.EventSessionDto, cancellationToken);

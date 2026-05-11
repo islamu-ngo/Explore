@@ -1,5 +1,5 @@
 // ABOUTME: Enriches authenticated ClaimsPrincipal with DB-resolved admin authority claims.
-// Bridges the gap between server-side IAdminContext and Blazor WASM via claim serialization.
+// Keeps DB-backed admin authority available to server-side BFF/API authorization decisions.
 
 using System.Security.Claims;
 using Explore.Application.Authorization;
@@ -14,8 +14,7 @@ namespace Explore.Infrastructure.Identity;
 /// <summary>
 /// Transforms the authenticated ClaimsPrincipal by adding admin authority claims
 /// resolved from the database via <see cref="IAdminContext"/>.
-/// These claims are serialized to Blazor WASM via <c>AddAuthenticationStateSerialization</c>,
-/// enabling the frontend to check admin authority without additional API calls.
+/// These claims remain server-side; browser UI authority must come from BFF/API/HAL/status endpoints.
 /// </summary>
 public sealed class AdminClaimsTransformation : IClaimsTransformation
 {

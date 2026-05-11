@@ -1,0 +1,21 @@
+// ABOUTME: Structured quota failure metadata shared by command responses, exceptions, and API ProblemDetails mapping.
+// ABOUTME: Prevents quota handling from relying on ad hoc string parsing while keeping HTTP concerns out of Application.
+
+namespace Explore.Application.Responses;
+
+public sealed record QuotaExceededDetails(
+    string QuotaKey,
+    int Limit,
+    int? Actual,
+    int? Attempted,
+    string Scope,
+    Guid? TenantId = null)
+{
+    public string ToErrorMessage()
+    {
+        var observed = Attempted ?? Actual;
+        return observed.HasValue
+            ? $"quota_exceeded: quota '{QuotaKey}' limit {Limit} was exceeded by {observed.Value} in scope '{Scope}'."
+            : $"quota_exceeded: quota '{QuotaKey}' limit {Limit} was exceeded in scope '{Scope}'.";
+    }
+}

@@ -5,6 +5,7 @@ using AutoMapper;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventRegistrationIntent;
 using Explore.Application.DTOs.EventRegistrationPolicy;
+using Explore.Application.DTOs.EventSessionKind;
 using Explore.Application.DTOs.RegistrationMode;
 using Explore.Application.DTOs.RegistrationScope;
 using Explore.Application.DTOs.ScheduleItemKind;
@@ -55,6 +56,9 @@ public class RegistrationMappingProfile : Profile
 
         CreateMap<EventRegistrationPolicy, EventRegistrationPolicyDto>().ReverseMap();
         CreateMap<EventRegistrationPolicy, EventRegistrationPolicyListDto>().ReverseMap();
+
+        CreateMap<EventSessionKind, EventSessionKindDto>().ReverseMap();
+        CreateMap<EventSessionKind, EventSessionKindListDto>().ReverseMap();
 
         CreateMap<ScheduleItemKind, ScheduleItemKindDto>().ReverseMap();
         CreateMap<ScheduleItemKind, ScheduleItemKindListDto>().ReverseMap();

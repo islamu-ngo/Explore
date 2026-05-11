@@ -82,11 +82,17 @@ public class EventTemplateSyncService : IEventTemplateSyncService
             @event.TenantId,
             cancellationToken);
 
-        if (plan.GetTotalChangeCount() > quota)
+        var totalChangeCount = plan.GetTotalChangeCount();
+        if (totalChangeCount > quota)
         {
-            throw new ValidationException(new ValidationResult([
-                new ValidationFailure(nameof(TemplateSyncPlanDto), $"quota_exceeded: sync plan exceeds tenant quota of {quota} changes.")
-            ]));
+            throw new QuotaExceededException(
+                "Template sync plan exceeds the tenant change-count quota.",
+                CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key,
+                quota,
+                totalChangeCount,
+                totalChangeCount,
+                "event_template_sync",
+                @event.TenantId);
         }
 
         var maxPayloadBytes = await _quotaResolver.GetIntAsync(
@@ -94,11 +100,17 @@ public class EventTemplateSyncService : IEventTemplateSyncService
             @event.TenantId,
             cancellationToken);
 
-        if (JsonSerializer.SerializeToUtf8Bytes(plan).Length > maxPayloadBytes)
+        var payloadBytes = JsonSerializer.SerializeToUtf8Bytes(plan).Length;
+        if (payloadBytes > maxPayloadBytes)
         {
-            throw new ValidationException(new ValidationResult([
-                new ValidationFailure(nameof(TemplateSyncPlanDto), $"quota_exceeded: sync plan payload exceeds tenant quota of {maxPayloadBytes} bytes.")
-            ]));
+            throw new QuotaExceededException(
+                "Template sync plan payload exceeds the tenant payload-size quota.",
+                CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key,
+                maxPayloadBytes,
+                payloadBytes,
+                payloadBytes,
+                "event_template_sync_payload",
+                @event.TenantId);
         }
 
         var templateKey = @event.SourceTemplateKey;

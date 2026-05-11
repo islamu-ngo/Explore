@@ -145,6 +145,12 @@ public class ContactShareConsentService : IContactShareConsentService
         return existing?.Status == ConsentStatus.Granted;
     }
 
+    public async Task<Guid?> ResolveRecipientOrganizationId(Guid recipientActorId)
+    {
+        var actor = await _actorRepository.GetById(recipientActorId);
+        return actor?.OrganizationId;
+    }
+
     public async Task WithdrawConsent(Guid tenantId, Guid userId, Guid consentId)
     {
         var consent = await _consentRepository.GetById(consentId);

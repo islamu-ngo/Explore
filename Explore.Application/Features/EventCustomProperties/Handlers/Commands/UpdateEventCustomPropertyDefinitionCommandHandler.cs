@@ -107,9 +107,15 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
             cancellationToken);
         if (request.DefinitionDto.Options.Count > maxOptions)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition update failed.";
-            response.Errors = [$"quota_exceeded: Custom-property option limit of {maxOptions} has been exceeded for this definition."];
+            response.SetQuotaExceeded(
+                "Event custom property definition update failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                    maxOptions,
+                    null,
+                    request.DefinitionDto.Options.Count,
+                    "event_custom_property_options",
+                    definition.TenantId));
             return response;
         }
 

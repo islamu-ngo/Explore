@@ -18,6 +18,9 @@ public sealed class UpdateEventDraftRequestDtoValidator : AbstractValidator<Upda
         IEventSeriesRepository eventSeriesRepository,
         IEventRegistrationPolicyRepository eventRegistrationPolicyRepository)
     {
+        RuleFor(request => request.ExpectedConcurrencyStamp)
+            .NotEmpty().WithMessage("{PropertyName} is required.");
+
         RuleFor(request => request.Title)
             .NotEmpty().WithMessage("{PropertyName} is required.")
             .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");

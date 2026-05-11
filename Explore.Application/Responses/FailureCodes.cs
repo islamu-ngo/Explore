@@ -9,6 +9,8 @@ namespace Explore.Application.Responses;
 /// </summary>
 public static class FailureCodes
 {
+    public const string QuotaExceeded = "quota_exceeded";
+
     /// <summary>
     /// Multi-Tenant → Single-Tenant mode switch blocked because more than one active tenant exists.
     /// The UI should direct the user to archive or suspend the extra tenants first.

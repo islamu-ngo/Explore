@@ -93,9 +93,15 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
             cancellationToken);
         if (currentDefinitionCount >= maxDefinitions)
         {
-            response.Success = false;
-            response.Message = "Custom-property definition creation failed.";
-            response.Errors = [$"quota_exceeded: Custom-property definition limit of {maxDefinitions} has been reached for this scope."];
+            response.SetQuotaExceeded(
+                "Custom-property definition creation failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTenantPerEntityScope.Key,
+                    maxDefinitions,
+                    currentDefinitionCount,
+                    currentDefinitionCount + 1,
+                    "custom_property_definition_scope",
+                    _tenantContext.TenantId));
             return response;
         }
 
@@ -105,9 +111,15 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
             cancellationToken);
         if (request.DefinitionDto.Options.Count > maxOptions)
         {
-            response.Success = false;
-            response.Message = "Custom-property definition creation failed.";
-            response.Errors = [$"quota_exceeded: Custom-property option limit of {maxOptions} has been exceeded for this definition."];
+            response.SetQuotaExceeded(
+                "Custom-property definition creation failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                    maxOptions,
+                    null,
+                    request.DefinitionDto.Options.Count,
+                    "custom_property_definition_options",
+                    _tenantContext.TenantId));
             return response;
         }
 

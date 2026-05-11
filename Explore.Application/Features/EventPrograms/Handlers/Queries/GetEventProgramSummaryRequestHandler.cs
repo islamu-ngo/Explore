@@ -19,15 +19,18 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
     private readonly IEventRepository _eventRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IEventSessionGroupRepository _eventSessionGroupRepository;
+    private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
 
     public GetEventProgramSummaryRequestHandler(
         IEventRepository eventRepository,
         IEventSessionRepository eventSessionRepository,
-        IEventSessionGroupRepository eventSessionGroupRepository)
+        IEventSessionGroupRepository eventSessionGroupRepository,
+        IEventAgendaItemRepository eventAgendaItemRepository)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
         _eventSessionGroupRepository = eventSessionGroupRepository;
+        _eventAgendaItemRepository = eventAgendaItemRepository;
     }
 
     public async Task<EventProgramSummaryDto?> Handle(GetEventProgramSummaryRequest request, CancellationToken cancellationToken)
@@ -38,6 +41,7 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
 
         var sessions = await _eventSessionRepository.GetSessionsByEvent(request.EventId);
         var groups = await _eventSessionGroupRepository.GetByEventAsync(request.EventId, cancellationToken);
+        var agendaItems = await _eventAgendaItemRepository.GetByEventAsync(request.EventId, cancellationToken);
         var groupLookup = groups.ToDictionary(group => group.Id);
         var timezoneId = eventEntity.EventTimeZoneId ?? eventEntity.Timezone;
         var timezone = ResolveTimeZone(timezoneId);
@@ -50,6 +54,7 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
         };
 
         AddGlobalWarnings(summary, eventEntity, timezoneId, groups, sessions);
+        AddAgendaWarnings(summary, agendaItems, eventEntity, timezone);
 
         var programGroups = BuildProgramGroups(sessions, groupLookup, timezone, eventEntity, summary);
         summary.Sections = programGroups
@@ -76,7 +81,7 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
     {
         var accumulators = new Dictionary<string, ProgramGroupAccumulator>(StringComparer.Ordinal);
 
-        foreach (var session in sessions)
+        foreach (var (session, sessionIndex) in sessions.Select((session, index) => (session, index)))
         {
             var primaryAssignment = session.SessionGroups
                 .Where(assignment => !assignment.IsDeleted && groupLookup.ContainsKey(assignment.EventSessionGroupId))
@@ -99,11 +104,11 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
 
             if (primaryAssignment is null)
             {
-                AddWarning(summary, $"sessions/{session.Id}", "Assign this program item to a section, track, devroom, or stage before publishing.");
-                item.ReadinessWarnings.Add(CreateWarning($"sessions/{session.Id}", "Program section is not assigned."));
+                AddWarning(summary, ProgramSessionPath(sessionIndex, "sessionGroupId"), "Assign this program item to a section, track, devroom, or stage before publishing.");
+                item.ReadinessWarnings.Add(CreateWarning(ProgramSessionPath(sessionIndex, "sessionGroupId"), "Program section is not assigned."));
             }
 
-            AddSessionWarnings(summary, item, session, eventEntity);
+            AddSessionWarnings(summary, item, session, eventEntity, sessionIndex);
         }
 
         return accumulators.Values.ToList();
@@ -131,6 +136,9 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
         {
             SessionId = session.Id,
             Title = string.IsNullOrWhiteSpace(session.Title) ? "Untitled program item" : session.Title.Trim(),
+            EventSessionKindId = session.EventSessionKindId,
+            EventSessionKindName = session.EventSessionKind?.FullName,
+            EventSessionKindMasterCode = session.EventSessionKind?.MasterCode,
             StartsAtUtc = session.StartTime,
             EndsAtUtc = session.EndTime,
             LocalDate = DateOnly.FromDateTime(localStart.DateTime),
@@ -181,54 +189,74 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
     {
         if (string.IsNullOrWhiteSpace(timezoneId))
         {
-            AddWarning(summary, "event/timezone", "No event timezone is configured. Program summary uses UTC until a timezone is set.");
+            AddWarning(summary, "event.timeZoneId", "No event timezone is configured. Program summary uses UTC until a timezone is set.");
         }
 
         if (!eventEntity.FirstSessionDate.HasValue || !eventEntity.LastSessionDate.HasValue)
         {
-            AddWarning(summary, "event/date-window", "No event date window is configured. Confirm program item dates before publishing.");
+            AddWarning(summary, "event.dateWindow", "No event date window is configured. Confirm program item dates before publishing.");
         }
 
         if (groups.Count == 0)
         {
-            AddWarning(summary, "event/program-sections", "No program sections exist yet. Add a section, track, devroom, or stage to organize sessions.");
+            AddWarning(summary, "program.groups", "No program sections exist yet. Add a section, track, devroom, or stage to organize sessions.");
         }
 
         if (sessions.Count == 0)
         {
-            AddWarning(summary, "event/program-items", "No program items exist yet. Add talks, workshops, panels, classes, or activities as sessions.");
+            AddWarning(summary, "program.sessions", "No program items exist yet. Add talks, workshops, panels, classes, or activities as sessions.");
         }
     }
 
-    private static void AddSessionWarnings(EventProgramSummaryDto summary, EventProgramItemDto item, EventSession session, Event eventEntity)
+    private static void AddSessionWarnings(EventProgramSummaryDto summary, EventProgramItemDto item, EventSession session, Event eventEntity, int sessionIndex)
     {
         if (string.IsNullOrWhiteSpace(session.Title))
         {
-            AddWarning(summary, $"sessions/{session.Id}/title", "A program item is missing a title.");
-            item.ReadinessWarnings.Add(CreateWarning($"sessions/{session.Id}/title", "Title is missing."));
+            AddWarning(summary, ProgramSessionPath(sessionIndex, "title"), "A program item is missing a title.");
+            item.ReadinessWarnings.Add(CreateWarning(ProgramSessionPath(sessionIndex, "title"), "Title is missing."));
         }
 
         if (session.LocationId is null && session.RoomId is null)
         {
-            AddWarning(summary, $"sessions/{session.Id}/location", $"{item.Title} has no location or room assigned.");
-            item.ReadinessWarnings.Add(CreateWarning($"sessions/{session.Id}/location", "Location or room is missing."));
+            AddWarning(summary, ProgramSessionPath(sessionIndex, "locationId"), $"{item.Title} has no location or room assigned.");
+            item.ReadinessWarnings.Add(CreateWarning(ProgramSessionPath(sessionIndex, "locationId"), "Location or room is missing."));
         }
 
         if (session.MaxAudienceAttendees is null)
         {
-            AddWarning(summary, $"sessions/{session.Id}/capacity", $"{item.Title} has no capacity configured.");
+            AddWarning(summary, ProgramSessionPath(sessionIndex, "maxAudienceAttendees"), $"{item.Title} has no capacity configured.");
         }
 
         if (session.RegistrationModeId is null)
         {
-            AddWarning(summary, $"sessions/{session.Id}/registration", $"{item.Title} has no registration mode configured.");
+            AddWarning(summary, ProgramSessionPath(sessionIndex, "registrationModeId"), $"{item.Title} has no registration mode configured.");
         }
 
         if (eventEntity.FirstSessionDate.HasValue && item.LocalDate < eventEntity.FirstSessionDate.Value ||
             eventEntity.LastSessionDate.HasValue && item.LocalDate > eventEntity.LastSessionDate.Value)
         {
-            AddWarning(summary, $"sessions/{session.Id}/date", $"{item.Title} is outside the event date window.");
-            item.ReadinessWarnings.Add(CreateWarning($"sessions/{session.Id}/date", "Outside event date window."));
+            AddWarning(summary, ProgramSessionPath(sessionIndex, "startTime"), $"{item.Title} is outside the event date window.");
+            item.ReadinessWarnings.Add(CreateWarning(ProgramSessionPath(sessionIndex, "startTime"), "Outside event date window."));
+        }
+    }
+
+    private static void AddAgendaWarnings(
+        EventProgramSummaryDto summary,
+        IReadOnlyList<EventAgendaItem> agendaItems,
+        Event eventEntity,
+        TimeZoneInfo timezone)
+    {
+        foreach (var (agendaItem, agendaIndex) in agendaItems.Select((agendaItem, index) => (agendaItem, index)))
+        {
+            var localStart = agendaItem.LocalStartDate == default
+                ? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(agendaItem.StartTime, timezone).DateTime)
+                : agendaItem.LocalStartDate;
+
+            if (eventEntity.FirstSessionDate.HasValue && localStart < eventEntity.FirstSessionDate.Value ||
+                eventEntity.LastSessionDate.HasValue && localStart > eventEntity.LastSessionDate.Value)
+            {
+                AddWarning(summary, ProgramAgendaPath(agendaIndex, "startTime"), $"{agendaItem.Title} is outside the event date window.");
+            }
         }
     }
 
@@ -263,6 +291,16 @@ public class GetEventProgramSummaryRequestHandler : IRequestHandler<GetEventProg
             Path = path,
             Message = message
         };
+    }
+
+    private static string ProgramSessionPath(int index, string propertyName)
+    {
+        return $"program.sessions[{index}].{propertyName}";
+    }
+
+    private static string ProgramAgendaPath(int index, string propertyName)
+    {
+        return $"program.agenda[{index}].{propertyName}";
     }
 
 }

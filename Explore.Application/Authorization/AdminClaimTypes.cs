@@ -1,12 +1,11 @@
 // ABOUTME: Constants for admin authority claim types used in IClaimsTransformation.
-// These claims bridge DB-first admin authority to the Blazor frontend via claim serialization.
+// These claims enrich the server principal for BFF/API decisions and must not be serialized as browser authority.
 
 namespace Explore.Application.Authorization;
 
 /// <summary>
 /// Defines claim types for admin authority resolved from the database.
-/// Used by <c>AdminClaimsTransformation</c> to enrich the ClaimsPrincipal with admin authority,
-/// which is then serialized to Blazor WASM via <c>AddAuthenticationStateSerialization</c>.
+/// Used by <c>AdminClaimsTransformation</c> to enrich the server ClaimsPrincipal with admin authority.
 /// </summary>
 public static class AdminClaimTypes
 {

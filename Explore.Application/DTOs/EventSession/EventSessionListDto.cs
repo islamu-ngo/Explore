@@ -36,6 +36,9 @@ public class EventSessionListDto
 
     // Session Details
     public string? Title { get; set; }
+    public int? EventSessionKindId { get; set; }
+    public string? EventSessionKindFullName { get; set; }
+    public string? EventSessionKindMasterCode { get; set; }
     public string? Slug { get; set; }
 
     // Media

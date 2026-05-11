@@ -101,6 +101,26 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration,
         bool enableAuditing)
     {
+        return services.AddSecretManagement(
+            configuration,
+            enableAuditing,
+            enableRefreshService: true);
+    }
+
+    /// <summary>
+    /// Adds complete secret management with configurable auditing and background refresh.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The configuration root.</param>
+    /// <param name="enableAuditing">Whether to enable audit logging decorator.</param>
+    /// <param name="enableRefreshService">Whether to register the background refresh service.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddSecretManagement(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool enableAuditing,
+        bool enableRefreshService)
+    {
         // Add core secret provider
         services.AddSecretProvider(configuration);
 
@@ -116,7 +136,10 @@ public static class ServiceCollectionExtensions
         services.AddSecretObservability(enableAuditing);
 
         // Add background refresh service
-        services.AddSecretRefreshService();
+        if (enableRefreshService)
+        {
+            services.AddSecretRefreshService();
+        }
 
         return services;
     }

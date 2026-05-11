@@ -82,9 +82,15 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandler : IRequestHa
 
         if (request.Values.Count > maxRows)
         {
-            response.Success = false;
-            response.Message = "Event session custom property multi-value set failed.";
-            response.Errors = [$"quota_exceeded: Multi-value custom-property row limit of {maxRows} has been exceeded for this definition."];
+            response.SetQuotaExceeded(
+                "Event session custom property multi-value set failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxMultiValueRowsPerValue.Key,
+                    maxRows,
+                    null,
+                    request.Values.Count,
+                    "event_session_custom_property_multi_values",
+                    definition.TenantId));
             return response;
         }
 

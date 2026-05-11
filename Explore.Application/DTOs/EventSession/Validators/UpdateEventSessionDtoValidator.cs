@@ -9,17 +9,20 @@ public class UpdateEventSessionDtoValidator : AbstractValidator<UpdateEventSessi
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
+    private readonly IEventSessionKindRepository _eventSessionKindRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
 
     public UpdateEventSessionDtoValidator(
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
+        IEventSessionKindRepository eventSessionKindRepository,
         IEventSessionRepository eventSessionRepository)
     {
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
+        _eventSessionKindRepository = eventSessionKindRepository;
         _eventSessionRepository = eventSessionRepository;
 
         RuleFor(p => p.Id)
@@ -51,6 +54,14 @@ public class UpdateEventSessionDtoValidator : AbstractValidator<UpdateEventSessi
         RuleFor(p => p.Title)
             .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.Title))
             .WithMessage("{PropertyName} must not exceed 500 characters.");
+
+        RuleFor(p => p.EventSessionKindId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                var exists = await _eventSessionKindRepository.Exists(id.Value);
+                return exists;
+            }).WithMessage("{PropertyName} does not exist.");
 
         RuleFor(p => p.Description)
             .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.Description))

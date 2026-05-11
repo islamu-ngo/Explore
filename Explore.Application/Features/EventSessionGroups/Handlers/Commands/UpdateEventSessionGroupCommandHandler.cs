@@ -62,6 +62,18 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
             return response;
         }
 
+        if (await SlugExistsForEventAsync(
+                request.EventSessionGroup.EventId,
+                request.EventSessionGroup.Slug,
+                request.EventSessionGroup.Id,
+                cancellationToken))
+        {
+            response.Success = false;
+            response.Message = "Event session group update failed.";
+            response.Errors = ["Slug must be unique within the event."];
+            return response;
+        }
+
         group.Name = request.EventSessionGroup.Name;
         group.Slug = request.EventSessionGroup.Slug;
         group.Description = request.EventSessionGroup.Description;
@@ -77,5 +89,15 @@ public class UpdateEventSessionGroupCommandHandler : IRequestHandler<UpdateEvent
         response.Id = group.Id;
         response.Message = "Event session group updated successfully.";
         return response;
+    }
+
+    private async Task<bool> SlugExistsForEventAsync(Guid eventId, string? slug, Guid currentGroupId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+            return false;
+
+        var groups = await _eventSessionGroupRepository.GetActiveByEventAsync(eventId, cancellationToken);
+        return groups.Any(group => group.Id != currentGroupId
+            && string.Equals(group.Slug, slug.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 }

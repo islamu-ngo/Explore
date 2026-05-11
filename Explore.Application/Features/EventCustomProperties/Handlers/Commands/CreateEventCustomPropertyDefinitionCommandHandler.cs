@@ -90,9 +90,15 @@ public class CreateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
             cancellationToken);
         if (currentDefinitionCount >= maxDefinitions)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition creation failed.";
-            response.Errors = [$"quota_exceeded: Event custom-property definition limit of {maxDefinitions} has been reached."];
+            response.SetQuotaExceeded(
+                "Event custom property definition creation failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key,
+                    maxDefinitions,
+                    currentDefinitionCount,
+                    currentDefinitionCount + 1,
+                    "event_custom_property_definitions",
+                    _tenantContext.TenantId));
             return response;
         }
 
@@ -102,9 +108,15 @@ public class CreateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
             cancellationToken);
         if (request.DefinitionDto.Options.Count > maxOptions)
         {
-            response.Success = false;
-            response.Message = "Event custom property definition creation failed.";
-            response.Errors = [$"quota_exceeded: Custom-property option limit of {maxOptions} has been exceeded for this definition."];
+            response.SetQuotaExceeded(
+                "Event custom property definition creation failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                    maxOptions,
+                    null,
+                    request.DefinitionDto.Options.Count,
+                    "event_custom_property_options",
+                    _tenantContext.TenantId));
             return response;
         }
 

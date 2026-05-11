@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
@@ -17,6 +18,8 @@ namespace Explore.Application.Features.Events.Handlers.Commands;
 
 public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEventDraftCommand, BaseCommandResponse<Guid>>
 {
+    public const string ConcurrencyConflictCode = "event_draft_concurrency_conflict";
+
     private readonly IEventRepository _eventRepository;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
@@ -80,6 +83,15 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
             response.Success = false;
             response.Message = "Event not found.";
             return response;
+        }
+
+        if (eventEntity.ConcurrencyStamp != request.Draft.ExpectedConcurrencyStamp)
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "The event draft changed since it was loaded. Refresh the event and try again.",
+                "event",
+                eventEntity.Id.ToString());
         }
 
         var draft = request.Draft;

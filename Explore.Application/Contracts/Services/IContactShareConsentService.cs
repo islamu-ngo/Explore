@@ -29,6 +29,11 @@ public interface IContactShareConsentService
         string? consentUiVersion);
 
     /// <summary>
+    /// Resolves the organisation represented by a recipient actor.
+    /// </summary>
+    Task<Guid?> ResolveRecipientOrganizationId(Guid recipientActorId);
+
+    /// <summary>
     /// Checks whether a granted consent already exists for this user + organizer combination.
     /// Used by UI to decide whether to show the checkbox or an info notice.
     /// </summary>

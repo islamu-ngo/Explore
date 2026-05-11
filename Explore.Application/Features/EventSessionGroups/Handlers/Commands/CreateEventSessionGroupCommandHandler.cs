@@ -59,6 +59,17 @@ public class CreateEventSessionGroupCommandHandler : IRequestHandler<CreateEvent
             return response;
         }
 
+        if (await SlugExistsForEventAsync(
+                request.EventSessionGroup.EventId,
+                request.EventSessionGroup.Slug,
+                cancellationToken))
+        {
+            response.Success = false;
+            response.Message = "Event session group creation failed.";
+            response.Errors = ["Slug must be unique within the event."];
+            return response;
+        }
+
         var group = _mapper.Map<EventSessionGroup>(request.EventSessionGroup);
         group.TenantId = parentEvent.TenantId;
 
@@ -68,5 +79,14 @@ public class CreateEventSessionGroupCommandHandler : IRequestHandler<CreateEvent
         response.Id = group.Id;
         response.Message = "Event session group created successfully.";
         return response;
+    }
+
+    private async Task<bool> SlugExistsForEventAsync(Guid eventId, string? slug, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+            return false;
+
+        var groups = await _eventSessionGroupRepository.GetActiveByEventAsync(eventId, cancellationToken);
+        return groups.Any(group => string.Equals(group.Slug, slug.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 }

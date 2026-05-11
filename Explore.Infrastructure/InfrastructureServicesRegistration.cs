@@ -74,8 +74,8 @@ public static class InfrastructureServicesRegistration
         // Required so authorization providers (Cerbos + fallback) treat external API-key callers consistently with human users.
         services.AddScoped<IMachinePrincipalAccessor, MachinePrincipalAccessor>();
 
-        // Claims transformation: enriches ClaimsPrincipal with DB-resolved admin authority.
-        // Claims are serialized to Blazor WASM via AddAuthenticationStateSerialization.
+        // Claims transformation: enriches the server ClaimsPrincipal with DB-resolved admin authority.
+        // Admin authority is not serialized to Blazor WASM; browser affordances use BFF/API/HAL/status endpoints.
         services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();
 
         // Configuration audit logging

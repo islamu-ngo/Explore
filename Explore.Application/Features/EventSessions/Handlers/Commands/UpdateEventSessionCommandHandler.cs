@@ -23,6 +23,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
+    private readonly IEventSessionKindRepository _eventSessionKindRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventDayRepository _eventDayRepository;
@@ -33,6 +34,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
+        IEventSessionKindRepository eventSessionKindRepository,
         IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
         IEventScheduleProjectionCalculator scheduleProjectionCalculator,
         IEventDayRepository eventDayRepository,
@@ -42,6 +44,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
+        _eventSessionKindRepository = eventSessionKindRepository;
         _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
         _scheduleProjectionCalculator = scheduleProjectionCalculator;
         _eventDayRepository = eventDayRepository;
@@ -56,6 +59,7 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
             _eventRepository,
             _locationRepository,
             _registrationModeRepository,
+            _eventSessionKindRepository,
             _eventSessionRepository);
         var validationResult = await validator.ValidateAsync(request.EventSessionDto, cancellationToken);
 

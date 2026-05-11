@@ -49,6 +49,8 @@ public class EventSessionMappingProfile : Profile
             .ForMember(dest => dest.ConcurrencyStamp, opt => opt.Ignore());
         CreateMap<EventSession, EventSessionDto>()
             .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+            .ForMember(dest => dest.EventSessionKindFullName, opt => opt.MapFrom(src => src.EventSessionKind != null ? src.EventSessionKind.FullName : null))
+            .ForMember(dest => dest.EventSessionKindMasterCode, opt => opt.MapFrom(src => src.EventSessionKind != null ? src.EventSessionKind.MasterCode : null))
             .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null))
             .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.Name : null))
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))
@@ -58,6 +60,8 @@ public class EventSessionMappingProfile : Profile
                 .ThenBy(assignment => assignment.SortOrder)));
         CreateMap<EventSession, EventSessionListDto>()
             .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : null))
+            .ForMember(dest => dest.EventSessionKindFullName, opt => opt.MapFrom(src => src.EventSessionKind != null ? src.EventSessionKind.FullName : null))
+            .ForMember(dest => dest.EventSessionKindMasterCode, opt => opt.MapFrom(src => src.EventSessionKind != null ? src.EventSessionKind.MasterCode : null))
             .ForMember(dest => dest.LocationFullName, opt => opt.MapFrom(src => src.Location != null ? src.Location.FullName : null))
             .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.Name : null))
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))

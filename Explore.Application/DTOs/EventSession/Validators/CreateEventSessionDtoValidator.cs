@@ -9,6 +9,7 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
+    private readonly IEventSessionKindRepository _eventSessionKindRepository;
     private readonly IEventSessionTemplateRepository _eventSessionTemplateRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
 
@@ -16,12 +17,14 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
+        IEventSessionKindRepository eventSessionKindRepository,
         IEventSessionTemplateRepository eventSessionTemplateRepository,
         IEventSessionRepository eventSessionRepository)
     {
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
+        _eventSessionKindRepository = eventSessionKindRepository;
         _eventSessionTemplateRepository = eventSessionTemplateRepository;
         _eventSessionRepository = eventSessionRepository;
 
@@ -51,6 +54,14 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
         RuleFor(p => p.Title)
             .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.Title))
             .WithMessage("{PropertyName} must not exceed 500 characters.");
+
+        RuleFor(p => p.EventSessionKindId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                var exists = await _eventSessionKindRepository.Exists(id.Value);
+                return exists;
+            }).WithMessage("{PropertyName} does not exist.");
 
         RuleFor(p => p.Description)
             .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.Description))

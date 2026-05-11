@@ -79,9 +79,15 @@ public class CreateEventTemplateCommandHandler : IRequestHandler<CreateEventTemp
             cancellationToken);
         if (request.TemplateDto.Definitions.Count > maxDefinitions)
         {
-            response.Success = false;
-            response.Message = "Event template creation failed.";
-            response.Errors = [$"quota_exceeded: Event template definition limit of {maxDefinitions} has been exceeded for this template."];
+            response.SetQuotaExceeded(
+                "Event template creation failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+                    maxDefinitions,
+                    null,
+                    request.TemplateDto.Definitions.Count,
+                    "event_template_definitions",
+                    _tenantContext.TenantId));
             return response;
         }
 

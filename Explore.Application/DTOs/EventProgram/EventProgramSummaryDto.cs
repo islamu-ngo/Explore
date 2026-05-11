@@ -42,6 +42,9 @@ public class EventProgramItemDto
 {
     public Guid SessionId { get; set; }
     public string Title { get; set; } = string.Empty;
+    public int? EventSessionKindId { get; set; }
+    public string? EventSessionKindName { get; set; }
+    public string? EventSessionKindMasterCode { get; set; }
     public DateTimeOffset StartsAtUtc { get; set; }
     public DateTimeOffset EndsAtUtc { get; set; }
     public DateOnly LocalDate { get; set; }
