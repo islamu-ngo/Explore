@@ -218,6 +218,12 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task Matrix_Public_EventSessionKinds_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/eventsessionkind");
+    }
+
+    [Test]
     public async Task Matrix_Public_AuthProviderStatus_AnonymousOK()
     {
         await AssertAnonymousOk("/api/instance/settings/auth-provider/status");

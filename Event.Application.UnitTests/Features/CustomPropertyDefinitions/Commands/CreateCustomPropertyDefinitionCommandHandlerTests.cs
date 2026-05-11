@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.Features.CustomPropertyDefinitions.Handlers.Commands;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Settings.Definitions;
@@ -194,8 +195,63 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Errors.Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
+        await Assert.That(result.QuotaExceeded).IsNotNull();
+        await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTenantPerEntityScope.Key);
+        await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(2);
+        await Assert.That(result.QuotaExceeded.Actual).IsEqualTo(2);
+        await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(3);
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("custom_property_definition_scope");
+        await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
+        await Assert.That(result.Errors.Any(error => error.Contains(FailureCodes.QuotaExceeded, StringComparison.Ordinal))).IsTrue();
         await _customPropertyDefinitionRepository.DidNotReceiveWithAnyArgs().CreateWithOptions(default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task Handle_WhenDefinitionCountIsOneBelowQuota_DoesNotReturnQuotaFailure()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var createdId = Guid.NewGuid();
+        var command = new CreateCustomPropertyDefinitionCommand
+        {
+            DefinitionDto = CreateValidDto()
+        };
+        var mappedEntity = new CustomPropertyDefinition
+        {
+            Id = createdId,
+            Tenant = null,
+            Namespace = command.DefinitionDto.Namespace,
+            Key = command.DefinitionDto.Key,
+            DisplayName = command.DefinitionDto.DisplayName,
+            EntityTypeName = command.DefinitionDto.EntityTypeName,
+            PropertyType = command.DefinitionDto.PropertyType,
+            ExposureLevel = command.DefinitionDto.ExposureLevel,
+        };
+
+        _tenantContext.TenantId.Returns(tenantId);
+        _currentUserService.UserId.Returns(userId);
+        _mapper.Map<CustomPropertyDefinition>(command.DefinitionDto).Returns(mappedEntity);
+        _customPropertyGovernancePolicy.EvaluateDefinition(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(new CustomPropertyGovernanceEvaluation
+            {
+                NormalizedNamespace = "tenant.community",
+                NormalizedKey = "prayer_notes",
+            });
+        _customPropertyDefinitionRepository.ExistsScopedMachineKey(tenantId, EntityTypeName.Organization, "tenant.community", "prayer_notes")
+            .Returns(false);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTenantPerEntityScope.Key, tenantId, Arg.Any<CancellationToken>())
+            .Returns(2);
+        _customPropertyDefinitionRepository.CountDefinitionsForScope(tenantId, EntityTypeName.Organization, Arg.Any<CancellationToken>())
+            .Returns(1);
+        _customPropertyDefinitionRepository.CreateWithOptions(Arg.Any<CustomPropertyDefinition>(), Arg.Any<IReadOnlyCollection<CustomPropertyOption>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<CustomPropertyDefinition>());
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.FailureCode).IsNotEqualTo(FailureCodes.QuotaExceeded);
+        await Assert.That(result.QuotaExceeded).IsNull();
     }
 
     [Test]
@@ -226,7 +282,15 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Errors.Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
+        await Assert.That(result.QuotaExceeded).IsNotNull();
+        await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key);
+        await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(1);
+        await Assert.That(result.QuotaExceeded.Actual).IsNull();
+        await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(2);
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("custom_property_definition_options");
+        await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
+        await Assert.That(result.Errors.Any(error => error.Contains(FailureCodes.QuotaExceeded, StringComparison.Ordinal))).IsTrue();
         await _customPropertyDefinitionRepository.DidNotReceiveWithAnyArgs().CreateWithOptions(default!, default!, default, default);
     }
 

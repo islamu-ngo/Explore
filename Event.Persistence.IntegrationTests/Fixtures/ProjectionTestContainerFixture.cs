@@ -2,6 +2,7 @@
 // ABOUTME: Uses EnsureCreatedAsync so tests run against the current EF model without depending on migration-file drift.
 
 using Explore.Domain;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -61,6 +62,13 @@ public class ProjectionTestContainerFixture : IAsyncInitializer, IAsyncDisposabl
     }
 
     public ExploreDbContext CreateDbContext() => CreateDbContextInternal();
+
+    public ExploreDbContext CreateDbContext(ITenantContext tenantContext)
+    {
+        var context = CreateDbContextInternal();
+        context.TenantContext = tenantContext;
+        return context;
+    }
 
     private ExploreDbContext CreateDbContextInternal()
     {

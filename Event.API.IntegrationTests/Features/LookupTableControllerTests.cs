@@ -110,6 +110,17 @@ public class LookupTableControllerTests
 
     #endregion
 
+    #region EventSessionKind Controller
+
+    [Test]
+    public async Task EventSessionKind_GetAll_ShouldReturnOk()
+    {
+        var response = await _fixture.Client.GetAsync("/api/eventsessionkind");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    #endregion
+
     #region ApprovalStatus Controller
 
     [Test]

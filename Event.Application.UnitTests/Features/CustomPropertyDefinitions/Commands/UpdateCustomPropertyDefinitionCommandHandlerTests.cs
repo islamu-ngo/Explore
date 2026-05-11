@@ -9,6 +9,7 @@ using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.CustomPropertyDefinitions.Handlers.Commands;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Settings.Definitions;
@@ -262,7 +263,15 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Errors.Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
+        await Assert.That(result.QuotaExceeded).IsNotNull();
+        await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key);
+        await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(1);
+        await Assert.That(result.QuotaExceeded.Actual).IsNull();
+        await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(2);
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("custom_property_definition_options");
+        await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
+        await Assert.That(result.Errors.Any(error => error.Contains(FailureCodes.QuotaExceeded, StringComparison.Ordinal))).IsTrue();
         await _customPropertyDefinitionRepository.DidNotReceive().UpdateWithOptions(
             Arg.Any<CustomPropertyDefinition>(),
             Arg.Any<IReadOnlyCollection<CustomPropertyOption>>(),

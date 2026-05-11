@@ -6,7 +6,11 @@ using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.Application.Exceptions;
+using Explore.Application.Responses;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -65,6 +69,89 @@ public class ProblemDetailsContractTests
     }
 
     [Test]
+    public async Task GlobalExceptionHandler_OnQuotaExceededException_Returns422ProblemDetailsWithStableExtensions()
+    {
+        var tenantId = Guid.NewGuid();
+        using var client = CreateClientThatThrows(
+            new QuotaExceededException(
+                "Custom-property definition quota exceeded.",
+                CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key,
+                limit: 3,
+                actual: 3,
+                attempted: 4,
+                scope: "event_custom_property_definitions",
+                tenantId: tenantId));
+
+        var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.UnprocessableEntity, "Quota exceeded");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("type").GetString()).IsEqualTo("/problems/quota_exceeded");
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo("Custom-property definition quota exceeded.");
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("quota_exceeded");
+        await Assert.That(root.GetProperty("quotaKey").GetString()).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key);
+        await Assert.That(root.GetProperty("limit").GetInt32()).IsEqualTo(3);
+        await Assert.That(root.GetProperty("actual").GetInt32()).IsEqualTo(3);
+        await Assert.That(root.GetProperty("attempted").GetInt32()).IsEqualTo(4);
+        await Assert.That(root.GetProperty("scope").GetString()).IsEqualTo("event_custom_property_definitions");
+        await Assert.That(root.TryGetProperty("tenantId", out _)).IsFalse();
+    }
+
+    [Test]
+    public async Task CommandResponseQuotaMapper_Returns422ProblemDetailsWithStableExtensions()
+    {
+        var tenantId = Guid.NewGuid();
+        var response = new BaseCommandResponse<Guid>();
+        response.SetQuotaExceeded(
+            "Custom-property option quota exceeded.",
+            new QuotaExceededDetails(
+                CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                Limit: 2,
+                Actual: null,
+                Attempted: 3,
+                Scope: "event_custom_property_options",
+                TenantId: tenantId));
+
+        var controller = new TestController
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
+        controller.HttpContext.Request.Path = "/api/events/test/custom-properties";
+
+        var mapperType = Type.GetType("Explore.API.ExceptionHandling.QuotaProblemDetailsFactory, Explore.API", throwOnError: true)!;
+        var method = mapperType.GetMethods()
+            .Single(candidate => candidate.Name == "ToQuotaProblemOrBadRequest" && candidate.IsGenericMethodDefinition)
+            .MakeGenericMethod(typeof(Guid));
+
+        var actionResult = (ActionResult)method.Invoke(null, [controller, response])!;
+        var objectResult = actionResult as ObjectResult;
+
+        await Assert.That(objectResult).IsNotNull();
+        await Assert.That(objectResult!.StatusCode).IsEqualTo(StatusCodes.Status422UnprocessableEntity);
+
+        var problemDetails = objectResult.Value as ProblemDetails;
+        await Assert.That(problemDetails).IsNotNull();
+        await Assert.That(problemDetails!.Status).IsEqualTo(StatusCodes.Status422UnprocessableEntity);
+        await Assert.That(problemDetails.Title).IsEqualTo("Quota exceeded");
+        await Assert.That(problemDetails.Type).IsEqualTo("/problems/quota_exceeded");
+        await Assert.That(problemDetails.Detail).IsEqualTo("Custom-property option quota exceeded.");
+        await Assert.That(problemDetails.Instance).IsEqualTo("/api/events/test/custom-properties");
+        await Assert.That(problemDetails.Extensions["code"]).IsEqualTo(FailureCodes.QuotaExceeded);
+        await Assert.That(problemDetails.Extensions["quotaKey"]).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key);
+        await Assert.That(problemDetails.Extensions["limit"]).IsEqualTo(2);
+        await Assert.That(problemDetails.Extensions.ContainsKey("actual")).IsFalse();
+        await Assert.That(problemDetails.Extensions["attempted"]).IsEqualTo(3);
+        await Assert.That(problemDetails.Extensions["scope"]).IsEqualTo("event_custom_property_options");
+        await Assert.That(problemDetails.Extensions.ContainsKey("tenantId")).IsFalse();
+    }
+
+    [Test]
     public async Task GlobalExceptionHandler_OnUnhandledException_SanitizesInternalDetails()
     {
         const string sensitiveMessage = "SQL connection to prod-db-01.internal failed";
@@ -120,7 +207,7 @@ public class ProblemDetailsContractTests
     {
         using var client = CreateClientThatThrows(new NotFoundException("Resource", Guid.NewGuid()));
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"/api/actor/{Guid.NewGuid()}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/actor/{Guid.NewGuid()}");
         request.Headers.Add("Accept", "application/json");
 
         var response = await client.SendAsync(request);
@@ -146,6 +233,28 @@ public class ProblemDetailsContractTests
         await Assert.That(instanceValue).Contains("/api/actor/");
     }
 
+    [Test]
+    public async Task ProblemDetails_WhenCorrelationHeaderProvided_IncludesCorrelationIdExtension()
+    {
+        const string correlationId = "phase-0b-problem-details-correlation";
+        using var client = CreateClientThatThrows(new NotFoundException("Resource", Guid.NewGuid()));
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/actor/{Guid.NewGuid()}");
+        request.Headers.Add("X-Correlation-ID", correlationId);
+
+        var response = await client.SendAsync(request);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.NotFound, "Resource not found");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+
+        await Assert.That(root.TryGetProperty("correlationId", out var correlationIdExtension)).IsTrue();
+        await Assert.That(correlationIdExtension.GetString()).IsEqualTo(correlationId);
+        await Assert.That(response.Headers.TryGetValues("X-Correlation-ID", out var responseCorrelationIds)).IsTrue();
+        await Assert.That(responseCorrelationIds).Contains(correlationId);
+    }
+
     private HttpClient CreateClientThatThrows(Exception exception)
     {
         var app = _fixture.Factory.WithWebHostBuilder(builder =>
@@ -159,6 +268,8 @@ public class ProblemDetailsContractTests
 
         return app.CreateClient();
     }
+
+    private sealed class TestController : ControllerBase;
 
     private sealed class ThrowingMediator(Exception exception) : IMediator
     {

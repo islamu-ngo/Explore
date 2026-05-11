@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Seeds;
@@ -108,6 +109,37 @@ public class EventSessionGroupRealRuntimeTests(RealRuntimeApiFixture fixture)
         await Assert.That(persisted.Color).IsEqualTo(updateDto.Color);
         await Assert.That(persisted.SortOrder).IsEqualTo(updateDto.SortOrder);
         await Assert.That(persisted.IsPublished).IsTrue();
+    }
+
+    [Test]
+    public async Task Create_WhenSlugAlreadyExists_ReturnsValidationProblemDetails()
+    {
+        await _fixture.ResetDatabaseAsync();
+
+        var scenario = await SeedEventAsync("Session Group Duplicate Slug Event");
+        await SeedProgramSectionAsync(scenario.EventId, scenario.TenantId, "Main stage");
+        var createDto = new CreateEventSessionGroupRequestDto
+        {
+            EventId = scenario.EventId,
+            Name = "Duplicate main stage",
+            Slug = "MAIN-STAGE",
+            SortOrder = 20,
+            IsPublished = true
+        };
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, BaseUrl, scenario.UserId);
+        request.Content = JsonContent.Create(createDto);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/problem+json");
+
+        await using var bodyStream = await response.Content.ReadAsStreamAsync();
+        using var json = await JsonDocument.ParseAsync(bodyStream);
+        var root = json.RootElement;
+        await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("Program validation failed");
+        await Assert.That(root.GetProperty("errors").GetProperty("program")[0].GetString())
+            .IsEqualTo("Slug must be unique within the event.");
     }
 
     [Test]

@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.Features.EventTemplates.Handlers.Commands;
 using Explore.Application.Features.EventTemplates.Requests.Commands;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Settings.Definitions;
@@ -35,7 +36,15 @@ public class EventTemplateDefinitionQuotaTests
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Errors!.Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
+        await Assert.That(result.QuotaExceeded).IsNotNull();
+        await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key);
+        await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(1);
+        await Assert.That(result.QuotaExceeded.Actual).IsNull();
+        await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(2);
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_template_definitions");
+        await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
+        await Assert.That(result.Errors!.Single()).Contains(FailureCodes.QuotaExceeded);
         governancePolicy.DidNotReceiveWithAnyArgs().EvaluateDefinition(default!, default!);
         await repository.DidNotReceiveWithAnyArgs().CreateWithDefinitions(default!, default!, default);
     }
@@ -68,7 +77,15 @@ public class EventTemplateDefinitionQuotaTests
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Errors!.Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
+        await Assert.That(result.QuotaExceeded).IsNotNull();
+        await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key);
+        await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(1);
+        await Assert.That(result.QuotaExceeded.Actual).IsNull();
+        await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(2);
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_template_definitions");
+        await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
+        await Assert.That(result.Errors!.Single()).Contains(FailureCodes.QuotaExceeded);
         governancePolicy.DidNotReceiveWithAnyArgs().EvaluateDefinition(default!, default!);
         await repository.DidNotReceiveWithAnyArgs().UpdateWithDefinitions(default!, default!, default);
     }

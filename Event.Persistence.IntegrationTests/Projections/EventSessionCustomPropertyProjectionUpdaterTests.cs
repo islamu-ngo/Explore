@@ -3,14 +3,17 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Exceptions;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Definitions;
 using Explore.Persistence;
 using Explore.Persistence.Projections;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -153,6 +156,46 @@ public class EventSessionCustomPropertyProjectionUpdaterTests
         await Assert.That(status!.State).IsEqualTo(CustomPropertyProjectionState.Idle);
     }
 
+    [Test]
+    public async Task UpdateForDefinitionAsync_WhenDirtyScopeBacklogQuotaExceeded_ThrowsQuotaExceededException()
+    {
+        using var seedContext = _fixture.CreateDbContext();
+        var scope = await SeedSessionWithDefinitionAsync(seedContext, PropertyType.Text);
+        await SetDirtyScopeQuotaAsync(seedContext, scope.TenantId, quota: 0);
+
+        using var lockerContext = _fixture.CreateDbContext();
+        await using var lockerTransaction = await lockerContext.Database.BeginTransactionAsync();
+        await AcquireExclusiveProjectionLockAsync(
+            lockerContext,
+            IEventSessionCustomPropertyProjectionUpdater.ProjectionName,
+            scope.TenantId,
+            lockerTransaction,
+            CancellationToken.None);
+
+        using var updateContext = _fixture.CreateDbContext();
+        var updater = CreateUpdater(updateContext);
+
+        var exception = await Assert.ThrowsAsync<QuotaExceededException>(() =>
+            updater.UpdateForDefinitionAsync(scope.DefinitionId, CancellationToken.None));
+
+        await Assert.That(exception.Details.QuotaKey)
+            .IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDirtyScopePendingPerTenant.Key);
+        await Assert.That(exception.Details.Limit).IsEqualTo(0);
+        await Assert.That(exception.Details.Actual).IsEqualTo(0);
+        await Assert.That(exception.Details.Attempted).IsEqualTo(1);
+        await Assert.That(exception.Details.Scope).IsEqualTo("event_session_custom_property_projection_dirty_scope");
+        await Assert.That(exception.Details.TenantId).IsEqualTo(scope.TenantId);
+
+        using var verify = _fixture.CreateDbContext();
+        var pendingCount = await verify.CustomPropertyProjectionDirtyScopes
+            .AsNoTracking()
+            .CountAsync(r =>
+                r.TenantId == scope.TenantId
+                && r.ProjectionName == IEventSessionCustomPropertyProjectionUpdater.ProjectionName
+                && r.DrainedAt == null);
+        await Assert.That(pendingCount).IsEqualTo(0);
+    }
+
     #region Helpers
 
     private static EventSessionCustomPropertyProjectionUpdater CreateUpdater(ExploreDbContext context)
@@ -261,6 +304,68 @@ public class EventSessionCustomPropertyProjectionUpdaterTests
         await context.SaveChangesAsync();
 
         return new SessionProjectionTestScope(tenant.Id, session.Id, definition.Id);
+    }
+
+    private static async Task SetDirtyScopeQuotaAsync(ExploreDbContext context, Guid tenantId, int quota)
+    {
+        var tenant = await context.Tenants.FirstAsync(t => t.Id == tenantId);
+        context.TenantSettingOverrides.Add(new TenantSetting
+        {
+            TenantId = tenantId,
+            Tenant = tenant,
+            SettingKey = CustomPropertyQuotaSettingDefinitions.MaxDirtyScopePendingPerTenant.Key,
+            Value = quota.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            IsLocked = false,
+        });
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task AcquireExclusiveProjectionLockAsync(
+        ExploreDbContext context,
+        string projectionName,
+        Guid tenantId,
+        IDbContextTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        var connection = context.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction.GetDbTransaction();
+        command.CommandText = "SELECT pg_try_advisory_xact_lock(@key1, @key2)";
+
+        var key1 = command.CreateParameter();
+        key1.ParameterName = "@key1";
+        key1.Value = ComputeStableKey(projectionName);
+        command.Parameters.Add(key1);
+
+        var key2 = command.CreateParameter();
+        key2.ParameterName = "@key2";
+        key2.Value = ComputeStableKey(tenantId.ToString("N"));
+        command.Parameters.Add(key2);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        await Assert.That(result).IsEqualTo(true);
+    }
+
+    private static int ComputeStableKey(string value)
+    {
+        unchecked
+        {
+            const int fnvOffsetBasis = unchecked((int)2166136261);
+            const int fnvPrime = 16777619;
+            var hash = fnvOffsetBasis;
+            foreach (var c in value)
+            {
+                hash ^= c;
+                hash *= fnvPrime;
+            }
+
+            return hash;
+        }
     }
 
     private sealed record SessionProjectionTestScope(Guid TenantId, Guid EventSessionId, Guid DefinitionId);

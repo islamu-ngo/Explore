@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.Features.EventCustomPropertyProjections.Handlers.Commands;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Commands;
+using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain.Settings.Definitions;
 using NSubstitute;
@@ -128,9 +129,44 @@ public class RebuildEventCustomPropertyProjectionCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors).IsNotNull();
-        await Assert.That(result.Errors!).Contains(e => e.Contains("quota_exceeded", StringComparison.Ordinal));
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
+        await Assert.That(result.QuotaExceeded).IsNotNull();
+        await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.ProjectionRebuildBatchSize.Key);
+        await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(25);
+        await Assert.That(result.QuotaExceeded.Actual).IsNull();
+        await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(26);
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_custom_property_projection_rebuild");
+        await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
+        await Assert.That(result.Errors!).Contains(e => e.Contains(FailureCodes.QuotaExceeded, StringComparison.Ordinal));
         await _projectionUpdater.DidNotReceive()
             .RebuildForTenantAsync(Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WithBatchSizeOneBelowQuota_PassesBatchSizeToUpdater()
+    {
+        var tenantId = Guid.NewGuid();
+        _quotaResolver
+            .GetIntAsync(
+                CustomPropertyQuotaSettingDefinitions.ProjectionRebuildBatchSize.Key,
+                tenantId,
+                Arg.Any<CancellationToken>())
+            .Returns(25);
+        _projectionUpdater
+            .RebuildForTenantAsync(tenantId, 24, Arg.Any<CancellationToken>())
+            .Returns(new ProjectionRebuildResult(true, 10, 0, 0));
+
+        var command = new RebuildEventCustomPropertyProjectionCommand
+        {
+            RequestDto = new RebuildProjectionRequestDto { TenantId = tenantId, BatchSize = 24 }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.QuotaExceeded).IsNull();
+        await _projectionUpdater.Received(1)
+            .RebuildForTenantAsync(tenantId, 24, Arg.Any<CancellationToken>());
     }
 
     [Test]

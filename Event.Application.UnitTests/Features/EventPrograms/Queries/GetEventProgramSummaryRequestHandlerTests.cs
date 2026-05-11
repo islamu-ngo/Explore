@@ -16,6 +16,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
     private readonly IEventSessionRepository _eventSessionRepository = Substitute.For<IEventSessionRepository>();
     private readonly IEventSessionGroupRepository _eventSessionGroupRepository = Substitute.For<IEventSessionGroupRepository>();
+    private readonly IEventAgendaItemRepository _eventAgendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
 
     [Test]
     public async Task Handle_WhenEventHasGroupedSessions_ReturnsSectionsDaysItemsAndMetadata()
@@ -39,6 +40,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
         _eventSessionRepository.GetSessionsByEvent(eventId).Returns([session]);
         _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([group]);
+        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
         var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
 
@@ -69,6 +71,7 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
 
         await Assert.That(result).IsNull();
         await _eventSessionRepository.DidNotReceive().GetSessionsByEvent(Arg.Any<Guid>());
+        await _eventAgendaItemRepository.DidNotReceive().GetByEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -97,16 +100,52 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
         _eventSessionRepository.GetSessionsByEvent(eventId).Returns([session]);
         _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
 
         var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Sections.Single().SectionKey).IsEqualTo("unassigned");
         await Assert.That(result.Sections.Single().Title).IsEqualTo("Unassigned program items");
-        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "event/timezone")).IsTrue();
-        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "event/program-sections")).IsTrue();
-        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path.Contains("/title", StringComparison.Ordinal))).IsTrue();
-        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path.Contains("/location", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "event.timeZoneId")).IsTrue();
+        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "program.groups")).IsTrue();
+        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "program.sessions[0].title")).IsTrue();
+        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "program.sessions[0].locationId")).IsTrue();
+    }
+
+    [Test]
+    public async Task Handle_WhenSessionAndAgendaAreOutsideEventWindow_ReturnsProgramReadinessPaths()
+    {
+        var eventId = Guid.NewGuid();
+        var tenant = CreateTenant(Guid.NewGuid());
+        var eventEntity = CreateEvent(eventId, tenant);
+        var session = CreateSession(
+            Guid.NewGuid(),
+            eventEntity,
+            tenant,
+            location: null,
+            room: null,
+            new DateTimeOffset(2026, 6, 5, 7, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 6, 5, 8, 0, 0, TimeSpan.Zero));
+        var agendaItem = CreateAgendaItem(
+            Guid.NewGuid(),
+            eventEntity,
+            tenant,
+            new DateTimeOffset(2026, 5, 30, 7, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 5, 30, 8, 0, 0, TimeSpan.Zero));
+
+        _eventRepository.GetEventWithDetails(eventId).Returns(eventEntity);
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([session]);
+        _eventSessionGroupRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([]);
+        _eventAgendaItemRepository.GetByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([agendaItem]);
+
+        var result = await CreateHandler().Handle(new GetEventProgramSummaryRequest { EventId = eventId }, CancellationToken.None);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.ReadinessWarnings.Any(warning => warning.Path == "program.sessions[0].startTime")).IsTrue();
+        await Assert.That(result.ReadinessWarnings.Any(warning => warning.Path == "program.agenda[0].startTime")).IsTrue();
+        await Assert.That(result.Sections.Single().SessionGroups.Single().Days.Single().Items.Single().ReadinessWarnings
+            .Any(warning => warning.Path == "program.sessions[0].startTime")).IsTrue();
     }
 
     private GetEventProgramSummaryRequestHandler CreateHandler()
@@ -114,7 +153,8 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
         return new GetEventProgramSummaryRequestHandler(
             _eventRepository,
             _eventSessionRepository,
-            _eventSessionGroupRepository);
+            _eventSessionGroupRepository,
+            _eventAgendaItemRepository);
     }
 
     private static Tenant CreateTenant(Guid tenantId)
@@ -231,6 +271,27 @@ public sealed class GetEventProgramSummaryRequestHandlerTests
                 FullName = "Open",
                 MasterCode = "OPEN"
             }
+        };
+    }
+
+    private static EventAgendaItem CreateAgendaItem(
+        Guid agendaItemId,
+        Explore.Domain.Event eventEntity,
+        Tenant tenant,
+        DateTimeOffset startTime,
+        DateTimeOffset endTime)
+    {
+        return new EventAgendaItem
+        {
+            Id = agendaItemId,
+            EventId = eventEntity.Id,
+            Event = eventEntity,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            Title = "Lunch break",
+            StartTime = startTime,
+            EndTime = endTime,
+            SortOrder = 1
         };
     }
 

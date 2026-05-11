@@ -96,7 +96,6 @@ public class ContractInvariantsTests
             .Because($"Every (method, path) pair must appear exactly once. Duplicates: {string.Join("; ", duplicates.Take(5))}");
     }
 
-    [Skip("Category: API contract. Removal: enable after stable operationIds are wired in dev/active/api-contract-stabilization Phase 3.")]
     [Test]
     public async Task OpenApiDocument_EveryOperationHasOperationId()
     {
@@ -145,6 +144,258 @@ public class ContractInvariantsTests
         await Assert.That(banned)
             .IsEmpty()
             .Because($"operationIds must be human-readable, not NSwag collision fallbacks (GET, POST2, TenantGET2, FooAsync2, ...). Found: {string.Join("; ", banned.Take(5))}");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_EventListResponseReferencesHalCollectionSchema()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var content = document.RootElement
+            .GetProperty("paths")
+            .GetProperty("/api/event")
+            .GetProperty("get")
+            .GetProperty("responses")
+            .GetProperty("200")
+            .GetProperty("content");
+
+        await Assert.That(GetSchemaReference(content.GetProperty("application/hal+json; v=0.1")))
+            .IsEqualTo("#/components/schemas/HalCollectionResourceOfEventListDto")
+            .Because("The canonical HAL event list response must reference the HAL collection wrapper schema.");
+        await Assert.That(GetSchemaReference(content.GetProperty("application/json; v=0.1")))
+            .IsEqualTo("#/components/schemas/HalCollectionResourceOfEventListDto")
+            .Because("The versioned JSON event list response must stay aligned with the HAL collection wrapper schema.");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_HalCollectionResourceSchemaHasLinksEmbeddedAndPagination()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var properties = GetSchemaProperties(document, "HalCollectionResourceOfEventListDto");
+        var expectedProperties = new[] { "_links", "_embedded", "pageNumber", "pageSize", "totalCount", "totalPages" };
+
+        var missingProperties = expectedProperties
+            .Where(propertyName => !properties.TryGetProperty(propertyName, out _))
+            .ToList();
+
+        await Assert.That(missingProperties)
+            .IsEmpty()
+            .Because($"The event list HAL collection wrapper must expose pagination plus HAL affordances. Missing: {string.Join(", ", missingProperties)}");
+        await Assert.That(GetReference(properties.GetProperty("_embedded")))
+            .IsEqualTo("#/components/schemas/HalCollectionEmbeddedOfEventListDto")
+            .Because("The HAL collection wrapper must reference the typed embedded collection schema.");
+        await Assert.That(GetReference(properties.GetProperty("_links").GetProperty("additionalProperties")))
+            .IsEqualTo("#/components/schemas/HalLink")
+            .Because("HAL _links must be documented as a relation-name map of HalLink objects.");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_HalCollectionEmbeddedSchemaHasItemsArray()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var embeddedProperties = GetSchemaProperties(document, "HalCollectionEmbeddedOfEventListDto");
+        var items = embeddedProperties.GetProperty("items");
+
+        await Assert.That(GetStringProperty(items, "type"))
+            .IsEqualTo("array")
+            .Because("The event list embedded HAL collection must expose an items array for embedded resources.");
+        await Assert.That(GetReference(items.GetProperty("items")))
+            .IsEqualTo("#/components/schemas/HalResourceOfEventListDto")
+            .Because("Embedded event list items must be typed as HAL resources, not as object arrays.");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_HalCollectionEmbeddedItemsReferenceTypedHalResources()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var schemas = document.RootElement
+            .GetProperty("components")
+            .GetProperty("schemas");
+
+        var untypedEmbeddedCollections = schemas
+            .EnumerateObject()
+            .Where(schema => schema.Name.StartsWith("HalCollectionEmbeddedOf", System.StringComparison.Ordinal))
+            .Select(schema =>
+            {
+                var itemReference = schema.Value.TryGetProperty("properties", out var properties)
+                    && properties.TryGetProperty("items", out var items)
+                    && items.TryGetProperty("items", out var itemSchema)
+                    ? GetReference(itemSchema)
+                    : null;
+
+                return new { SchemaName = schema.Name, ItemReference = itemReference };
+            })
+            .Where(schema => string.IsNullOrWhiteSpace(schema.ItemReference)
+                || !schema.ItemReference.StartsWith("#/components/schemas/HalResourceOf", System.StringComparison.Ordinal))
+            .Select(schema => $"{schema.SchemaName} -> {schema.ItemReference ?? "<missing>"}")
+            .ToList();
+
+        await Assert.That(untypedEmbeddedCollections)
+            .IsEmpty()
+            .Because("Every HAL embedded collection must type its items as HAL resources so generated clients do not fall back to ICollection<object>. "
+                + $"Untyped: {string.Join(", ", untypedEmbeddedCollections)}");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_HalResourceSchemaIsFlattenedAndHasHalProperties()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var properties = GetSchemaProperties(document, "HalResourceOfEventDto");
+        var expectedProperties = new[] { "id", "title", "_links", "_embedded" };
+        var missingProperties = expectedProperties
+            .Where(propertyName => !properties.TryGetProperty(propertyName, out _))
+            .ToList();
+
+        await Assert.That(missingProperties)
+            .IsEmpty()
+            .Because($"The event HAL resource schema must stay flattened and expose HAL affordances. Missing: {string.Join(", ", missingProperties)}");
+        await Assert.That(properties.TryGetProperty("data", out _))
+            .IsFalse()
+            .Because("HAL resource schemas must be flattened; a nested data property would break the client contract.");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_CatalogedHalResourceSchemasAreFlattened()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var catalogedSchemaNames = new[]
+        {
+            "HalResourceOfEventDto",
+            "HalResourceOfEventSessionDto",
+            "HalResourceOfEventSessionGroupDto",
+            "HalResourceOfCategoryDto",
+            "HalResourceOfTagDto",
+            "HalResourceOfLocationDto",
+            "HalResourceOfOrganizationDto",
+            "HalResourceOfActorDto",
+            "HalResourceOfCustomPropertyDefinitionDto",
+            "HalResourceOfEventCustomPropertyDefinitionDto",
+            "HalResourceOfEventSessionCustomPropertyDefinitionDto",
+            "HalResourceOfEventTemplateDto",
+            "HalResourceOfEventSessionTemplateDto",
+            "HalResourceOfGroupDto",
+            "HalResourceOfIndexedDidDto",
+            "HalResourceOfLocationRoomDto",
+            "HalResourceOfEventDayDto",
+            "HalResourceOfEventAgendaItemDto",
+            "HalResourceOfTemplateDiffDto"
+        };
+
+        var unflattened = catalogedSchemaNames
+            .Where(schemaName =>
+            {
+                var properties = GetSchemaProperties(document, schemaName);
+                return properties.TryGetProperty("data", out _)
+                    || !properties.TryGetProperty("_links", out _)
+                    || !properties.TryGetProperty("_embedded", out _);
+            })
+            .ToList();
+
+        await Assert.That(unflattened)
+            .IsEmpty()
+            .Because($"Every explicitly cataloged HAL detail schema must be flattened and expose HAL affordances. Offenders: {string.Join(", ", unflattened)}");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_NonHalDtoSchemasAreNotMutatedAsHalResources()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var eventDtoProperties = GetSchemaProperties(document, "EventDto");
+
+        await Assert.That(eventDtoProperties.TryGetProperty("_links", out _))
+            .IsFalse()
+            .Because("Plain DTO component schemas must not receive HAL affordance properties; only explicit HAL wrapper schemas are mutated.");
+        await Assert.That(eventDtoProperties.TryGetProperty("_embedded", out _))
+            .IsFalse()
+            .Because("Plain DTO component schemas must stay reusable outside HAL wrappers.");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_PublicHalDetailResourceSchemasAreNotEmpty()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var schemas = document.RootElement
+            .GetProperty("components")
+            .GetProperty("schemas");
+
+        var emptyHalDetailSchemas = schemas
+            .EnumerateObject()
+            .Where(schema => schema.Name.StartsWith("HalResourceOf", System.StringComparison.Ordinal))
+            .Where(schema => !schema.Value.TryGetProperty("properties", out var properties)
+                || properties.ValueKind != JsonValueKind.Object
+                || !properties.EnumerateObject().Any())
+            .Select(schema => schema.Name)
+            .ToList();
+
+        await Assert.That(emptyHalDetailSchemas)
+            .IsEmpty()
+            .Because($"Every public HAL detail wrapper must be explicitly evaluated and documented instead of remaining an empty schema. Empty: {string.Join(", ", emptyHalDetailSchemas)}");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_HalResourceArrayItemsRemainComponentReferences()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var properties = GetSchemaProperties(document, "HalResourceOfEventDto");
+
+        await Assert.That(GetReference(properties.GetProperty("tags").GetProperty("items")))
+            .IsEqualTo("#/components/schemas/TagListDto")
+            .Because("HAL event tag arrays must reference the registered DTO component to avoid duplicate NSwag DTO artifacts.");
+        await Assert.That(GetReference(properties.GetProperty("categories").GetProperty("items")))
+            .IsEqualTo("#/components/schemas/CategoryListDto")
+            .Because("HAL event category arrays must reference the registered DTO component to avoid duplicate NSwag DTO artifacts.");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_PublicEnumSchemasUseStringValues()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var roleEnum = GetSchema(document, "RoleEnum");
+        var deploymentMode = GetSchema(document, "DeploymentMode");
+
+        await Assert.That(GetStringProperty(roleEnum, "type"))
+            .IsEqualTo("string")
+            .Because("The API serializes enums with JsonStringEnumConverter, so RoleEnum must not be documented as an integer.");
+        await Assert.That(GetEnumValues(roleEnum))
+            .IsEquivalentTo(["Admin", "Moderator", "Member", "TenantAdmin", "TenantModerator", "TenantMember", "OrgAdmin", "OrgModerator", "OrgMember", "GroupAdmin", "GroupModerator", "GroupMember", "EventOwner", "EventManager", "RegistrationManager", "CheckInStaff"])
+            .Because("RoleEnum must expose the public string literals clients receive over JSON.");
+
+        await Assert.That(GetStringProperty(deploymentMode, "type"))
+            .IsEqualTo("string")
+            .Because("DeploymentMode must remain documented as the same string enum shape generated for the client.");
+        await Assert.That(GetEnumValues(deploymentMode))
+            .IsEquivalentTo(["SingleTenant", "MultiTenant"])
+            .Because("DeploymentMode must expose public string literals, not numeric enum values.");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_RepresentativeNullablePropertiesIncludeNull()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var eventProperties = GetSchemaProperties(document, "EventDto");
+        var organizationProperties = GetSchemaProperties(document, "OrganizationListDto");
+
+        await Assert.That(SchemaAllowsNull(eventProperties.GetProperty("subtitle")))
+            .IsTrue()
+            .Because("Nullable scalar properties must include null in the schema so generated clients preserve optionality.");
+        await Assert.That(SchemaAllowsNull(eventProperties.GetProperty("description")))
+            .IsTrue()
+            .Because("Additional nullable scalar properties must include null in the schema so generated clients preserve optionality.");
+        await Assert.That(SchemaAllowsNull(organizationProperties.GetProperty("currentUserRole")))
+            .IsTrue()
+            .Because("Nullable enum references must include null in the schema while still referencing the enum component.");
+        await Assert.That(GetOneOfReference(organizationProperties.GetProperty("currentUserRole")))
+            .IsEqualTo("#/components/schemas/RoleEnum")
+            .Because("Nullable enum references must retain the RoleEnum component reference instead of inlining or losing the enum schema.");
     }
 
     private async Task<JsonDocument> GetOpenApiDocumentAsync()
@@ -211,6 +462,68 @@ public class ContractInvariantsTests
         if (!value.EndsWith(suffix, System.StringComparison.Ordinal)) return false;
         var stem = value[..^suffix.Length];
         return stem.Length > 0 && char.IsDigit(stem[^1]);
+    }
+
+    private static JsonElement GetSchemaProperties(JsonDocument document, string schemaName) => document.RootElement
+        .GetProperty("components")
+        .GetProperty("schemas")
+        .GetProperty(schemaName)
+        .GetProperty("properties");
+
+    private static JsonElement GetSchema(JsonDocument document, string schemaName) => document.RootElement
+        .GetProperty("components")
+        .GetProperty("schemas")
+        .GetProperty(schemaName);
+
+    private static string? GetSchemaReference(JsonElement contentEntry) => GetReference(contentEntry.GetProperty("schema"));
+
+    private static string? GetReference(JsonElement element) => GetStringProperty(element, "$ref");
+
+    private static string? GetStringProperty(JsonElement element, string propertyName)
+        => element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
+            ? property.GetString()
+            : null;
+
+    private static IReadOnlyList<string> GetEnumValues(JsonElement schema)
+        => schema.TryGetProperty("enum", out var enumValues) && enumValues.ValueKind == JsonValueKind.Array
+            ? enumValues.EnumerateArray()
+                .Where(value => value.ValueKind == JsonValueKind.String)
+                .Select(value => value.GetString()!)
+                .ToArray()
+            : [];
+
+    private static bool SchemaAllowsNull(JsonElement schema)
+    {
+        if (schema.TryGetProperty("type", out var type))
+        {
+            if (type.ValueKind == JsonValueKind.String)
+            {
+                return string.Equals(type.GetString(), "null", System.StringComparison.Ordinal);
+            }
+
+            if (type.ValueKind == JsonValueKind.Array
+                && type.EnumerateArray().Any(value => value.ValueKind == JsonValueKind.String
+                    && string.Equals(value.GetString(), "null", System.StringComparison.Ordinal)))
+            {
+                return true;
+            }
+        }
+
+        return schema.TryGetProperty("oneOf", out var oneOf)
+            && oneOf.ValueKind == JsonValueKind.Array
+            && oneOf.EnumerateArray().Any(SchemaAllowsNull);
+    }
+
+    private static string? GetOneOfReference(JsonElement schema)
+    {
+        if (!schema.TryGetProperty("oneOf", out var oneOf) || oneOf.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        return oneOf.EnumerateArray()
+            .Select(GetReference)
+            .FirstOrDefault(reference => !string.IsNullOrWhiteSpace(reference));
     }
 
     private readonly record struct OperationRef(string Path, string Method, string? OperationId);

@@ -1,5 +1,5 @@
 // ABOUTME: Architecture tests enforcing API contract stability invariants at compile time.
-// ABOUTME: Every [Http*] action must have Name=, route names must be unique, and ApiExplorer-hidden endpoints are exempted.
+// ABOUTME: Every [Http*] action must have Name= and response metadata; ApiExplorer-hidden endpoints are exempted.
 
 namespace Event.Architecture.Tests;
 
@@ -8,6 +8,7 @@ using System.Reflection;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.Features.Events.Requests.Queries;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using NetArchTest.Rules;
@@ -82,6 +83,115 @@ public class ApiContractArchitectureTests
 
         await Assert.That(violations).IsEmpty()
             .Because("every non-hidden HTTP action must set Name= on its [Http*] attribute for stable operationIds; see docs/GOVERNANCE.md#api-contract-rules");
+    }
+
+    [Test]
+    [Skip("Category: API contract. Removal: enable after Phase 0B fills missing [ProducesResponseType] metadata for backend-contract-risk-register.md R-005 and dev/active/backend-api-health-refactor/backend-api-health-refactor-tasks.md Phase 0B.")]
+    [DisplayName("Every non-hidden [Http*] action must declare response metadata")]
+    public async Task EveryNonHiddenAction_MustDeclare_ResponseMetadata()
+    {
+        var controllerTypes = Types.InAssembly(ApiAssembly)
+            .That()
+            .Inherit(typeof(ControllerBase))
+            .And()
+            .AreNotAbstract()
+            .GetTypes()
+            .ToList();
+
+        var violations = new List<string>();
+
+        foreach (var controller in controllerTypes)
+        {
+            if (IsHiddenFromApiExplorer(controller))
+            {
+                continue;
+            }
+
+            var controllerResponseMetadata = controller
+                .GetCustomAttributes<ProducesResponseTypeAttribute>(inherit: true)
+                .ToList();
+
+            var actions = controller
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(IsHttpAction)
+                .ToList();
+
+            foreach (var action in actions)
+            {
+                if (IsHiddenFromApiExplorer(action))
+                {
+                    continue;
+                }
+
+                var hasResponseMetadata = controllerResponseMetadata.Count > 0
+                    || action.GetCustomAttributes<ProducesResponseTypeAttribute>(inherit: true).Any();
+
+                if (!hasResponseMetadata)
+                {
+                    violations.Add($"{controller.Name}.{action.Name}");
+                }
+            }
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("every public API operation must declare explicit response metadata before Phase 2 can enforce ProblemDetails-specific error contracts; see dev/active/backend-api-health-refactor/backend-api-health-refactor-tasks.md Phase 0B.");
+    }
+
+    [Test]
+    [DisplayName("Actions with response metadata must declare a 2xx success response")]
+    public async Task ActionsWithResponseMetadata_MustDeclare_SuccessResponse()
+    {
+        var controllerTypes = Types.InAssembly(ApiAssembly)
+            .That()
+            .Inherit(typeof(ControllerBase))
+            .And()
+            .AreNotAbstract()
+            .GetTypes()
+            .ToList();
+
+        var violations = new List<string>();
+
+        foreach (var controller in controllerTypes)
+        {
+            if (IsHiddenFromApiExplorer(controller))
+            {
+                continue;
+            }
+
+            var controllerResponseMetadata = controller
+                .GetCustomAttributes<ProducesResponseTypeAttribute>(inherit: true)
+                .ToList();
+
+            var actions = controller
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(IsHttpAction)
+                .ToList();
+
+            foreach (var action in actions)
+            {
+                if (IsHiddenFromApiExplorer(action))
+                {
+                    continue;
+                }
+
+                var responseMetadata = controllerResponseMetadata
+                    .Concat(action.GetCustomAttributes<ProducesResponseTypeAttribute>(inherit: true))
+                    .ToList();
+
+                if (responseMetadata.Count == 0)
+                {
+                    continue;
+                }
+
+                if (!responseMetadata.Any(attribute => IsSuccessStatusCode(attribute.StatusCode)))
+                {
+                    violations.Add($"{controller.Name}.{action.Name}");
+                }
+            }
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("actions that opt into response metadata must include at least one explicit 2xx success response so OpenAPI consumers can distinguish success from ProblemDetails/error responses.");
     }
 
     [Test]
@@ -284,5 +394,16 @@ public class ApiContractArchitectureTests
         }
 
         return false;
+    }
+
+    private static bool IsHiddenFromApiExplorer(MemberInfo member)
+    {
+        return member.GetCustomAttributes<ApiExplorerSettingsAttribute>(inherit: true)
+            .Any(attribute => attribute.IgnoreApi);
+    }
+
+    private static bool IsSuccessStatusCode(int statusCode)
+    {
+        return statusCode is >= StatusCodes.Status200OK and < StatusCodes.Status300MultipleChoices;
     }
 }

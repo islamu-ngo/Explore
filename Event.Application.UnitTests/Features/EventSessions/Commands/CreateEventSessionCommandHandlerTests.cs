@@ -19,6 +19,7 @@ public class CreateEventSessionCommandHandlerTests
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
+    private readonly IEventSessionKindRepository _eventSessionKindRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventSessionTemplateRepository _eventSessionTemplateRepository;
     private readonly IEventSessionCustomPropertyRepository _eventSessionCustomPropertyRepository;
@@ -35,6 +36,7 @@ public class CreateEventSessionCommandHandlerTests
         _eventRepository = Substitute.For<IEventRepository>();
         _locationRepository = Substitute.For<ILocationRepository>();
         _registrationModeRepository = Substitute.For<IRegistrationModeRepository>();
+        _eventSessionKindRepository = Substitute.For<IEventSessionKindRepository>();
         _eventSessionIslamicAspectRepository = Substitute.For<IEventSessionIslamicAspectRepository>();
         _eventSessionTemplateRepository = Substitute.For<IEventSessionTemplateRepository>();
         _eventSessionCustomPropertyRepository = Substitute.For<IEventSessionCustomPropertyRepository>();
@@ -49,6 +51,7 @@ public class CreateEventSessionCommandHandlerTests
             _eventRepository,
             _locationRepository,
             _registrationModeRepository,
+            _eventSessionKindRepository,
             _eventSessionIslamicAspectRepository,
             _eventSessionTemplateRepository,
             _eventSessionCustomPropertyRepository,

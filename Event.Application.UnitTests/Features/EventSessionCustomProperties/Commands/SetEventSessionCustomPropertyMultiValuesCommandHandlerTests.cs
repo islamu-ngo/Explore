@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Application.Features.EventSessionCustomProperties.Handlers.Commands;
 using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Settings.Definitions;
@@ -130,8 +131,35 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandlerTests
         var result = await CreateSut().Handle(CreateCommand("alpha", "beta", "gamma"), CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
-        await Assert.That((result.Errors ?? []).Any(error => error.Contains("quota_exceeded", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
+        await Assert.That(result.QuotaExceeded).IsNotNull();
+        await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxMultiValueRowsPerValue.Key);
+        await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(2);
+        await Assert.That(result.QuotaExceeded.Actual).IsNull();
+        await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(3);
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_session_custom_property_multi_values");
+        await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(_tenantId);
+        await Assert.That((result.Errors ?? []).Any(error => error.Contains(FailureCodes.QuotaExceeded, StringComparison.Ordinal))).IsTrue();
         await _repository.DidNotReceiveWithAnyArgs().SetMultiValues(default, default, default!, default);
+    }
+
+    [Test]
+    public async Task Handle_WhenMultiValueRowCountEqualsQuota_Succeeds()
+    {
+        _repository.GetDefinitionWithDetails(_definitionId).Returns(CreateDefinition(isMulti: true));
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxMultiValueRowsPerValue.Key, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(3);
+
+        var result = await CreateSut().Handle(CreateCommand("alpha", "beta", "gamma"), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.FailureCode).IsNotEqualTo(FailureCodes.QuotaExceeded);
+        await Assert.That(result.QuotaExceeded).IsNull();
+        await _repository.Received(1).SetMultiValues(
+            _definitionId,
+            _sessionId,
+            Arg.Is<IReadOnlyCollection<EventSessionCustomPropertyValue>>(values => values.Count == 3),
+            Arg.Any<CancellationToken>());
     }
 
     private SetEventSessionCustomPropertyMultiValuesCommandHandler CreateSut() => new(

@@ -42,7 +42,41 @@ public class EventSessionTemplateSyncServiceTests
     }
 
     [Test]
-    public async Task ApplySyncAsync_WhenPayloadQuotaExceeded_ThrowsValidationException()
+    public async Task ApplySyncAsync_WhenChangeCountQuotaExceeded_ThrowsQuotaExceededException()
+    {
+        var eventSessionRepository = Substitute.For<IEventSessionRepository>();
+        var templateRepository = Substitute.For<IEventSessionTemplateRepository>();
+        var runtimeRepository = Substitute.For<IEventSessionCustomPropertyRepository>();
+        var diffService = Substitute.For<IEventSessionTemplateDiffService>();
+        var projectionUpdater = Substitute.For<IEventSessionCustomPropertyProjectionUpdater>();
+        var auditRepository = Substitute.For<IAuditLogRepository>();
+        var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
+        var currentUser = Substitute.For<ICurrentUserService>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+
+        var sessionId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key, tenantId, Arg.Any<CancellationToken>()).Returns(0);
+        eventSessionRepository.GetById(sessionId).Returns(new EventSession { Id = sessionId, Event = null!, Tenant = null!, TenantId = tenantId, SourceTemplateId = Guid.NewGuid(), SourceTemplateKey = "session-template", SourceTemplateVersion = 1 });
+        diffService.ComputeDiffAsync(sessionId, 2, Arg.Any<CancellationToken>()).Returns(new TemplateDiffDto(2, 1, [], [], [], [], [], [], []));
+
+        var service = new EventSessionTemplateSyncService(eventSessionRepository, templateRepository, runtimeRepository, diffService, projectionUpdater, auditRepository, quotaResolver, currentUser, unitOfWork);
+
+        var exception = await Assert.ThrowsAsync<QuotaExceededException>(async () =>
+            await service.ApplySyncAsync(sessionId, new TemplateSyncPlanDto { TargetTemplateVersion = 2, BaseProvenanceVersion = 1, AddedDefinitionKeys = ["tenant.sync/session"] }, 1, CancellationToken.None));
+
+        await Assert.That(exception.Details.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key);
+        await Assert.That(exception.Details.Limit).IsEqualTo(0);
+        await Assert.That(exception.Details.Actual).IsEqualTo(1);
+        await Assert.That(exception.Details.Attempted).IsEqualTo(1);
+        await Assert.That(exception.Details.Scope).IsEqualTo("event_session_template_sync");
+        await Assert.That(exception.Details.TenantId).IsEqualTo(tenantId);
+
+        await templateRepository.DidNotReceiveWithAnyArgs().GetPublishedSessionTemplateVersion(default, default!, default, default);
+    }
+
+    [Test]
+    public async Task ApplySyncAsync_WhenPayloadQuotaExceeded_ThrowsQuotaExceededException()
     {
         var eventSessionRepository = Substitute.For<IEventSessionRepository>();
         var templateRepository = Substitute.For<IEventSessionTemplateRepository>();
@@ -63,8 +97,16 @@ public class EventSessionTemplateSyncServiceTests
 
         var service = new EventSessionTemplateSyncService(eventSessionRepository, templateRepository, runtimeRepository, diffService, projectionUpdater, auditRepository, quotaResolver, currentUser, unitOfWork);
 
-        await Assert.ThrowsAsync<ValidationException>(async () =>
+        var exception = await Assert.ThrowsAsync<QuotaExceededException>(async () =>
             await service.ApplySyncAsync(sessionId, new TemplateSyncPlanDto { TargetTemplateVersion = 2, BaseProvenanceVersion = 1, AddedDefinitionKeys = ["tenant.sync/session"] }, 1, CancellationToken.None));
+
+        await Assert.That(exception.Details.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key);
+        await Assert.That(exception.Details.Limit).IsEqualTo(1);
+        await Assert.That(exception.Details.Actual).IsNotNull();
+        await Assert.That(exception.Details.Actual!.Value).IsGreaterThan(1);
+        await Assert.That(exception.Details.Attempted).IsEqualTo(exception.Details.Actual);
+        await Assert.That(exception.Details.Scope).IsEqualTo("event_session_template_sync_payload");
+        await Assert.That(exception.Details.TenantId).IsEqualTo(tenantId);
 
         await templateRepository.DidNotReceiveWithAnyArgs().GetPublishedSessionTemplateVersion(default, default!, default, default);
     }

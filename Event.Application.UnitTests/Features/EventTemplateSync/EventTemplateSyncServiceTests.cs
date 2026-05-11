@@ -83,27 +83,42 @@ public class EventTemplateSyncServiceTests
     }
 
     [Test]
-    public async Task ApplySyncAsync_WhenQuotaExceeded_ThrowsValidationException()
+    public async Task ApplySyncAsync_WhenChangeCountQuotaExceeded_ThrowsQuotaExceededException()
     {
         _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(0);
         _eventRepository.GetById(_eventId).Returns(CreateEvent());
         _diffService.ComputeDiffAsync(_eventId, 2, Arg.Any<CancellationToken>()).Returns(new TemplateDiffDto(2, 1, [], [], [], [], [], [], []));
 
-        await Assert.ThrowsAsync<ValidationException>(async () =>
+        var exception = await Assert.ThrowsAsync<QuotaExceededException>(async () =>
             await CreateSut().ApplySyncAsync(_eventId, CreatePlan(addedDefinitionKeys: ["tenant.sync/field"]), 1, CancellationToken.None));
+
+        await Assert.That(exception.Details.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key);
+        await Assert.That(exception.Details.Limit).IsEqualTo(0);
+        await Assert.That(exception.Details.Actual).IsEqualTo(1);
+        await Assert.That(exception.Details.Attempted).IsEqualTo(1);
+        await Assert.That(exception.Details.Scope).IsEqualTo("event_template_sync");
+        await Assert.That(exception.Details.TenantId).IsEqualTo(_tenantId);
     }
 
     [Test]
-    public async Task ApplySyncAsync_WhenPayloadQuotaExceeded_ThrowsValidationException()
+    public async Task ApplySyncAsync_WhenPayloadQuotaExceeded_ThrowsQuotaExceededException()
     {
         _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(1);
         _eventRepository.GetById(_eventId).Returns(CreateEvent());
         _diffService.ComputeDiffAsync(_eventId, 2, Arg.Any<CancellationToken>()).Returns(new TemplateDiffDto(2, 1, [], [], [], [], [], [], []));
 
-        await Assert.ThrowsAsync<ValidationException>(async () =>
+        var exception = await Assert.ThrowsAsync<QuotaExceededException>(async () =>
             await CreateSut().ApplySyncAsync(_eventId, CreatePlan(addedDefinitionKeys: ["tenant.sync/field"]), 1, CancellationToken.None));
+
+        await Assert.That(exception.Details.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key);
+        await Assert.That(exception.Details.Limit).IsEqualTo(1);
+        await Assert.That(exception.Details.Actual).IsNotNull();
+        await Assert.That(exception.Details.Actual!.Value).IsGreaterThan(1);
+        await Assert.That(exception.Details.Attempted).IsEqualTo(exception.Details.Actual);
+        await Assert.That(exception.Details.Scope).IsEqualTo("event_template_sync_payload");
+        await Assert.That(exception.Details.TenantId).IsEqualTo(_tenantId);
 
         await _templateRepository.DidNotReceiveWithAnyArgs().GetPublishedTemplateVersion(default, default!, default, default);
     }

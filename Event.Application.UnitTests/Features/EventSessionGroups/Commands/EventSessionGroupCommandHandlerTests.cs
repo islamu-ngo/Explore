@@ -69,6 +69,82 @@ public class EventSessionGroupCommandHandlerTests
     }
 
     [Test]
+    public async Task Create_WhenSlugAlreadyExistsForUnpublishedGroupInEvent_ReturnsValidationFailure()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var parentEvent = CreateEvent(eventId, tenantId);
+        var existingGroup = CreateGroup(Guid.NewGuid(), eventId, tenantId, parentEvent);
+        existingGroup.IsPublished = false;
+        existingGroup.Slug = "main-track";
+
+        _eventRepository.Exists(eventId).Returns(true);
+        _eventRepository.GetById(eventId).Returns(parentEvent);
+        _groupRepository.GetActiveByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([existingGroup]);
+
+        var handler = new CreateEventSessionGroupCommandHandler(
+            _groupRepository,
+            _eventRepository,
+            _locationRepository,
+            _roomRepository,
+            _mapper);
+
+        var result = await handler.Handle(new CreateEventSessionGroupCommand
+        {
+            EventSessionGroup = new CreateEventSessionGroupRequestDto
+            {
+                EventId = eventId,
+                Name = "Main track duplicate",
+                Slug = "MAIN-TRACK"
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Slug must be unique within the event.");
+        await _groupRepository.DidNotReceive().Create(Arg.Any<EventSessionGroup>());
+    }
+
+    [Test]
+    public async Task Update_WhenSlugAlreadyExistsForAnotherUnpublishedGroupInEvent_ReturnsValidationFailure()
+    {
+        var eventId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var parentEvent = CreateEvent(eventId, tenantId);
+        var currentGroup = CreateGroup(groupId, eventId, tenantId, parentEvent);
+        currentGroup.Slug = "workshops";
+        var existingGroup = CreateGroup(Guid.NewGuid(), eventId, tenantId, parentEvent);
+        existingGroup.IsPublished = false;
+        existingGroup.Slug = "main-track";
+
+        _eventRepository.Exists(eventId).Returns(true);
+        _groupRepository.Exists(groupId).Returns(true);
+        _groupRepository.GetForUpdateAsync(groupId, Arg.Any<CancellationToken>()).Returns(currentGroup);
+        _groupRepository.GetActiveByEventAsync(eventId, Arg.Any<CancellationToken>()).Returns([currentGroup, existingGroup]);
+
+        var handler = new UpdateEventSessionGroupCommandHandler(
+            _groupRepository,
+            _eventRepository,
+            _locationRepository,
+            _roomRepository);
+
+        var result = await handler.Handle(new UpdateEventSessionGroupCommand
+        {
+            EventSessionGroup = new UpdateEventSessionGroupRequestDto
+            {
+                Id = groupId,
+                EventId = eventId,
+                Name = "Renamed track",
+                Slug = "MAIN-TRACK"
+            }
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Slug must be unique within the event.");
+        await _groupRepository.DidNotReceive().Update(Arg.Any<EventSessionGroup>());
+    }
+
+    [Test]
     public async Task AssignSession_WhenSessionBelongsToDifferentEvent_ReturnsFailure()
     {
         var eventId = Guid.NewGuid();

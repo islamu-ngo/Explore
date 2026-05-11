@@ -18,6 +18,7 @@ public class UpdateEventSessionCommandHandlerTests
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
+    private readonly IEventSessionKindRepository _eventSessionKindRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IEventDayRepository _eventDayRepository;
@@ -30,6 +31,7 @@ public class UpdateEventSessionCommandHandlerTests
         _eventRepository = Substitute.For<IEventRepository>();
         _locationRepository = Substitute.For<ILocationRepository>();
         _registrationModeRepository = Substitute.For<IRegistrationModeRepository>();
+        _eventSessionKindRepository = Substitute.For<IEventSessionKindRepository>();
         _eventSessionIslamicAspectRepository = Substitute.For<IEventSessionIslamicAspectRepository>();
         _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
         _eventDayRepository = Substitute.For<IEventDayRepository>();
@@ -40,6 +42,7 @@ public class UpdateEventSessionCommandHandlerTests
             _eventRepository,
             _locationRepository,
             _registrationModeRepository,
+            _eventSessionKindRepository,
             _eventSessionIslamicAspectRepository,
             _scheduleProjectionCalculator,
             _eventDayRepository,
