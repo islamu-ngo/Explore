@@ -6,11 +6,13 @@ using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.HealthChecks;
 using Explore.Blazor.Services;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using Polly.Timeout;
+using Refit;
 
 namespace Explore.Blazor.Extensions;
 
@@ -67,8 +69,14 @@ public static class HttpClientExtensions
             .AddInteractiveResilience();
         services.AddTypedApiClient<IFooterAdminService, FooterAdminService>(apiBaseUrl, environment)
             .AddInteractiveResilience();
-        services.AddTypedApiClient<ILocalizationAdminService, LocalizationAdminService>(apiBaseUrl, environment)
+        services.AddRefitClient<ILocalizationAdminApi>(RefitClientRegistrationExtensions.CreateDefaultRefitSettings())
+            .ConfigureHttpClient(client => client.BaseAddress = new Uri(apiBaseUrl))
+            .AddHttpMessageHandler<AccessTokenForwardingHandler>()
+            .AddHttpMessageHandler<TenantHeaderForwardingHandler>()
+            .AddHttpMessageHandler<SetupSecretForwardingHandler>()
+            .ConfigureDevCertBypass(environment)
             .AddInteractiveResilience();
+        services.AddScoped<ILocalizationAdminService, LocalizationAdminService>();
 
         // Admin claims transformation client (shorter timeout, no token forwarding handler)
         services.AddHttpClient(BffAdminClaimsTransformation.HttpClientName, client =>
