@@ -673,7 +673,35 @@ public static class HalResourceExtensions
     public static bool HasLink(this HalResourceOfOrganizationDto dto, string linkRel)
         => dto._links?.ContainsKey(linkRel) == true;
 
+    public static ICollection<OrganizationMemberDto> GetItems(this HalCollectionResourceOfOrganizationMemberDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<OrganizationMemberDto>();
+
+        return DeserializeItems<OrganizationMemberDto>(collection._embedded.Items);
+    }
+
+    public static bool HasLink(this HalCollectionResourceOfOrganizationMemberDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    public static bool HasHalLink(this OrganizationMemberDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
     // ========== Group HAL Link Helpers ==========
+
+    public static ICollection<GroupMemberDto> GetItems(this HalCollectionResourceOfGroupMemberDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<GroupMemberDto>();
+
+        return DeserializeItems<GroupMemberDto>(collection._embedded.Items);
+    }
+
+    public static bool HasLink(this HalCollectionResourceOfGroupMemberDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    public static bool HasHalLink(this GroupMemberDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
     public static bool HasLink(this HalResourceOfGroupDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);

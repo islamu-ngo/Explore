@@ -1,6 +1,7 @@
 // ABOUTME: Dialog helper entrypoint for showing CreateApiKeyDialog via typed static API.
 // ABOUTME: Keeps dialog invocation logic in code-behind rather than inline Razor blocks.
 
+using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -16,5 +17,5 @@ public partial class CreateApiKeyDialog : ComponentBase
         => dialogService.ShowAsync<CreateApiKeyDialog>(
             title,
             parameters ?? new DialogParameters(),
-            options ?? new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+            options ?? DialogOptionsFactory.Small());
 }
