@@ -4,10 +4,12 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace Explore.Infrastructure.Analytics;
 
@@ -18,20 +20,27 @@ namespace Explore.Infrastructure.Analytics;
 /// </summary>
 public class PostHogAnalyticsProvider : IAnalyticsProvider, IAnalyticsFeatureFlagProvider
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAnalyticsConfigResolver _configResolver;
     private readonly ILogger<PostHogAnalyticsProvider> _logger;
 
     private const string DefaultPostHogHost = "https://us.i.posthog.com";
 
     public PostHogAnalyticsProvider(
-        HttpClient httpClient,
+        IHttpClientFactory httpClientFactory,
         IAnalyticsConfigResolver configResolver,
         ILogger<PostHogAnalyticsProvider> logger)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _configResolver = configResolver;
         _logger = logger;
+    }
+
+    private IPostHogApi CreateApi(AnalyticsConfiguration config)
+    {
+        var client = _httpClientFactory.CreateClient("PostHogClient");
+        client.BaseAddress = new Uri(BuildUrl(config, ""));
+        return RestService.For<IPostHogApi>(client);
     }
 
     public Task IdentifyAsync(string distinctId, IDictionary<string, object>? traits = null, CancellationToken cancellationToken = default)
@@ -85,34 +94,35 @@ public class PostHogAnalyticsProvider : IAnalyticsProvider, IAnalyticsFeatureFla
                 return false;
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, BuildUrl(config, "/decide/?v=3"));
-            request.Content = JsonContent.Create(new
+            var api = CreateApi(config);
+            var request = new PostHogDecideRequest
             {
-                api_key = config.ApiKey,
-                distinct_id = distinctId,
-                groups = new { }
-            });
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", config.PersonalApiKey);
+                ApiKey = config.ApiKey,
+                DistinctId = distinctId,
+                Groups = new { }
+            };
 
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                return false;
-            }
-
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            using var doc = JsonDocument.Parse(json);
-            if (!doc.RootElement.TryGetProperty("featureFlags", out var featureFlags) || featureFlags.ValueKind != JsonValueKind.Object)
+            var response = await api.DecideAsync($"Bearer {config.PersonalApiKey}", request, cancellationToken);
+            if (!response.IsSuccessStatusCode || response.Content == null)
             {
                 return false;
             }
 
-            if (!featureFlags.TryGetProperty(featureKey, out var featureValue))
+            if (!response.Content.FeatureFlags.TryGetValue(featureKey, out var featureValue))
             {
                 return false;
             }
 
-            return featureValue.ValueKind == JsonValueKind.True;
+            if (featureValue is JsonElement element && element.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+            if (featureValue is bool b && b)
+            {
+                return true;
+            }
+
+            return false;
         }
         catch (Exception ex)
         {
@@ -131,34 +141,31 @@ public class PostHogAnalyticsProvider : IAnalyticsProvider, IAnalyticsFeatureFla
                 return null;
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, BuildUrl(config, "/decide/?v=3"));
-            request.Content = JsonContent.Create(new
+            var api = CreateApi(config);
+            var request = new PostHogDecideRequest
             {
-                api_key = config.ApiKey,
-                distinct_id = distinctId,
-                groups = new { }
-            });
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", config.PersonalApiKey);
+                ApiKey = config.ApiKey,
+                DistinctId = distinctId,
+                Groups = new { }
+            };
 
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                return null;
-            }
-
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            using var doc = JsonDocument.Parse(json);
-            if (!doc.RootElement.TryGetProperty("featureFlagPayloads", out var payloads) || payloads.ValueKind != JsonValueKind.Object)
+            var response = await api.DecideAsync($"Bearer {config.PersonalApiKey}", request, cancellationToken);
+            if (!response.IsSuccessStatusCode || response.Content == null)
             {
                 return null;
             }
 
-            if (!payloads.TryGetProperty(featureKey, out var payloadValue))
+            if (!response.Content.FeatureFlagPayloads.TryGetValue(featureKey, out var payloadValue))
             {
                 return null;
             }
 
-            return payloadValue.GetRawText();
+            if (payloadValue is JsonElement element)
+            {
+                return element.GetRawText();
+            }
+
+            return JsonSerializer.Serialize(payloadValue);
         }
         catch (Exception ex)
         {
@@ -177,21 +184,17 @@ public class PostHogAnalyticsProvider : IAnalyticsProvider, IAnalyticsFeatureFla
                 return;
             }
 
-            var payload = new
+            var payload = new PostHogCaptureRequest
             {
-                api_key = config.ApiKey,
-                @event = eventName,
-                distinct_id = distinctId,
-                properties = properties ?? new Dictionary<string, object>()
+                ApiKey = config.ApiKey,
+                Event = eventName,
+                DistinctId = distinctId,
+                Properties = properties ?? new Dictionary<string, object>()
             };
 
-            var json = JsonSerializer.Serialize(payload);
-            using var request = new HttpRequestMessage(HttpMethod.Post, BuildUrl(config, "/capture/"))
-            {
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
-            };
-
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
+            var api = CreateApi(config);
+            var response = await api.CaptureAsync(payload, cancellationToken);
+            
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogDebug("PostHog capture returned status {StatusCode}", response.StatusCode);
@@ -215,4 +218,49 @@ public class PostHogAnalyticsProvider : IAnalyticsProvider, IAnalyticsFeatureFla
         var baseUrl = string.IsNullOrWhiteSpace(config.EndpointUrl) ? DefaultPostHogHost : config.EndpointUrl;
         return $"{baseUrl.TrimEnd('/')}{path}";
     }
+}
+
+internal interface IPostHogApi
+{
+    [Post("/capture/")]
+    Task<IApiResponse> CaptureAsync([Body] PostHogCaptureRequest request, CancellationToken cancellationToken = default);
+
+    [Post("/decide/?v=3")]
+    Task<IApiResponse<PostHogDecideResponse>> DecideAsync([Header("Authorization")] string authorization, [Body] PostHogDecideRequest request, CancellationToken cancellationToken = default);
+}
+
+internal class PostHogCaptureRequest
+{
+    [JsonPropertyName("api_key")]
+    public string ApiKey { get; set; } = string.Empty;
+
+    [JsonPropertyName("event")]
+    public string Event { get; set; } = string.Empty;
+
+    [JsonPropertyName("distinct_id")]
+    public string DistinctId { get; set; } = string.Empty;
+
+    [JsonPropertyName("properties")]
+    public IDictionary<string, object> Properties { get; set; } = new Dictionary<string, object>();
+}
+
+internal class PostHogDecideRequest
+{
+    [JsonPropertyName("api_key")]
+    public string ApiKey { get; set; } = string.Empty;
+
+    [JsonPropertyName("distinct_id")]
+    public string DistinctId { get; set; } = string.Empty;
+
+    [JsonPropertyName("groups")]
+    public object Groups { get; set; } = new { };
+}
+
+internal class PostHogDecideResponse
+{
+    [JsonPropertyName("featureFlags")]
+    public Dictionary<string, object> FeatureFlags { get; set; } = new();
+
+    [JsonPropertyName("featureFlagPayloads")]
+    public Dictionary<string, object> FeatureFlagPayloads { get; set; } = new();
 }

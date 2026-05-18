@@ -2,10 +2,11 @@
 // ABOUTME: Supports import, export, language listing with Token authentication.
 
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Infrastructure;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace Explore.Infrastructure.Localization;
 
@@ -16,18 +17,27 @@ namespace Explore.Infrastructure.Localization;
 /// </summary>
 public class WeblateTranslationProvider : ITranslationManagementProvider
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ITranslationConfigResolver _configResolver;
     private readonly ILogger<WeblateTranslationProvider> _logger;
 
     public WeblateTranslationProvider(
-        HttpClient httpClient,
+        IHttpClientFactory httpClientFactory,
         ITranslationConfigResolver configResolver,
         ILogger<WeblateTranslationProvider> logger)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _configResolver = configResolver;
         _logger = logger;
+    }
+
+    private IWeblateApi CreateApi(TranslationConfiguration config)
+    {
+        var client = _httpClientFactory.CreateClient("WeblateClient");
+        client.BaseAddress = new Uri(config.ApiUrl!.TrimEnd('/'));
+        client.DefaultRequestHeaders.Accept.Clear();
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        return RestService.For<IWeblateApi>(client);
     }
 
     public async Task<bool> TestConnectionAsync(CancellationToken ct = default)
@@ -38,8 +48,8 @@ public class WeblateTranslationProvider : ITranslationManagementProvider
 
         try
         {
-            var request = CreateRequest(HttpMethod.Get, config, $"/api/projects/{config.ProjectId}/");
-            var response = await _httpClient.SendAsync(request, ct);
+            var api = CreateApi(config);
+            var response = await api.TestConnectionAsync(config.ProjectId, ct);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -70,20 +80,18 @@ public class WeblateTranslationProvider : ITranslationManagementProvider
             {
                 if (!key.Translations.TryGetValue(lang, out var translation)) continue;
 
-                var payload = new
+                var payload = new WeblateUnitRequest
                 {
-                    key = key.KeyName,
-                    value = new[] { translation }
+                    Key = key.KeyName,
+                    Value = new[] { translation }
                 };
 
-                var request = CreateRequest(HttpMethod.Post, config,
-                    $"/api/translations/{config.ProjectId}/{config.Component}/{lang}/units/");
-                request.Content = JsonContent.Create(payload);
-
-                var response = await _httpClient.SendAsync(request, ct);
+                var api = CreateApi(config);
+                var response = await api.CreateTranslationUnitAsync(config.ProjectId, config.Component, lang, payload, ct);
+                
                 if (!response.IsSuccessStatusCode)
                 {
-                    var body = await response.Content.ReadAsStringAsync(ct);
+                    var body = response.Error?.Content;
                     _logger.LogDebug("Weblate unit create for {Key}/{Lang}: {Status} {Body}", key.KeyName, lang, response.StatusCode, body);
                 }
             }
@@ -98,29 +106,16 @@ public class WeblateTranslationProvider : ITranslationManagementProvider
         if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId) || string.IsNullOrWhiteSpace(config.Component))
             return [];
 
-        var request = CreateRequest(HttpMethod.Get, config,
-            $"/api/translations/{config.ProjectId}/{config.Component}/{languageCode}/file/");
-        request.Headers.Accept.Clear();
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-        var response = await _httpClient.SendAsync(request, ct);
-        if (!response.IsSuccessStatusCode)
+        var api = CreateApi(config);
+        var response = await api.ExportTranslationsAsync(config.ProjectId, config.Component, languageCode, ct);
+        
+        if (!response.IsSuccessStatusCode || response.Content == null)
         {
             _logger.LogWarning("Weblate export failed for {Language}: {StatusCode}", languageCode, response.StatusCode);
             return [];
         }
 
-        try
-        {
-            using var stream = await response.Content.ReadAsStreamAsync(ct);
-            var dict = await JsonSerializer.DeserializeAsync<Dictionary<string, string>>(stream, cancellationToken: ct);
-            return dict?.Select(kvp => new TranslationExport(kvp.Key, kvp.Value)) ?? [];
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "Failed to parse Weblate export for {Language}", languageCode);
-            return [];
-        }
+        return response.Content.Select(kvp => new TranslationExport(kvp.Key, kvp.Value));
     }
 
     public async Task<IEnumerable<string>> GetAvailableLanguagesAsync(CancellationToken ct = default)
@@ -129,37 +124,45 @@ public class WeblateTranslationProvider : ITranslationManagementProvider
         if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId))
             return [];
 
-        var request = CreateRequest(HttpMethod.Get, config, $"/api/projects/{config.ProjectId}/languages/");
-        var response = await _httpClient.SendAsync(request, ct);
+        var api = CreateApi(config);
+        var response = await api.GetLanguagesAsync(config.ProjectId, ct);
 
-        if (!response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode || response.Content == null)
         {
             _logger.LogWarning("Weblate list languages failed: {StatusCode}", response.StatusCode);
             return [];
         }
 
-        try
-        {
-            using var stream = await response.Content.ReadAsStreamAsync(ct);
-            var langResponse = await JsonSerializer.DeserializeAsync<WeblateLanguagesResponse>(stream, cancellationToken: ct);
-            return langResponse?.Results?.Select(l => l.Code) ?? [];
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "Failed to parse Weblate languages response");
-            return [];
-        }
-    }
-
-    private static HttpRequestMessage CreateRequest(HttpMethod method, TranslationConfiguration config, string path)
-    {
-        var request = new HttpRequestMessage(method, $"{config.ApiUrl!.TrimEnd('/')}{path}");
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        // Auth token is set on the HttpClient via DI configuration (SecretProvider)
-        return request;
+        return response.Content?.Results?.Select(l => l.Code) ?? [];
     }
 
     // Weblate API response models (internal)
-    private sealed record WeblateLanguagesResponse(List<WeblateLanguage>? Results);
-    private sealed record WeblateLanguage(string Code);
+    internal sealed record WeblateLanguagesResponse(
+        [property: JsonPropertyName("results")] List<WeblateLanguage>? Results);
+    internal sealed record WeblateLanguage(
+        [property: JsonPropertyName("code")] string Code);
+}
+
+internal interface IWeblateApi
+{
+    [Get("/api/projects/{projectId}/")]
+    Task<IApiResponse> TestConnectionAsync(string projectId, CancellationToken cancellationToken = default);
+
+    [Post("/api/translations/{projectId}/{component}/{languageCode}/units/")]
+    Task<IApiResponse> CreateTranslationUnitAsync(string projectId, string component, string languageCode, [Body] WeblateUnitRequest request, CancellationToken cancellationToken = default);
+
+    [Get("/api/translations/{projectId}/{component}/{languageCode}/file/")]
+    Task<IApiResponse<Dictionary<string, string>>> ExportTranslationsAsync(string projectId, string component, string languageCode, CancellationToken cancellationToken = default);
+
+    [Get("/api/projects/{projectId}/languages/")]
+    Task<IApiResponse<WeblateTranslationProvider.WeblateLanguagesResponse>> GetLanguagesAsync(string projectId, CancellationToken cancellationToken = default);
+}
+
+internal class WeblateUnitRequest
+{
+    [JsonPropertyName("key")]
+    public string Key { get; set; } = string.Empty;
+
+    [JsonPropertyName("value")]
+    public string[] Value { get; set; } = Array.Empty<string>();
 }

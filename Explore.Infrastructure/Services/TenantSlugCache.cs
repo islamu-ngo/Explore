@@ -35,12 +35,28 @@ public class TenantSlugCache : ITenantSlugCache, IDisposable
     {
         await EnsureWarmAsync(cancellationToken);
 
+        var tenantId = TryGetValue(_slugToTenantId, slug);
+        if (tenantId.HasValue)
+        {
+            return tenantId;
+        }
+
+        await LoadAsync(forceRefresh: true, cancellationToken);
+
         return TryGetValue(_slugToTenantId, slug);
     }
 
     public async ValueTask<Guid?> GetTenantIdByDomainAsync(string domain, CancellationToken cancellationToken = default)
     {
         await EnsureWarmAsync(cancellationToken);
+
+        var tenantId = TryGetValue(_domainToTenantId, domain);
+        if (tenantId.HasValue)
+        {
+            return tenantId;
+        }
+
+        await LoadAsync(forceRefresh: true, cancellationToken);
 
         return TryGetValue(_domainToTenantId, domain);
     }

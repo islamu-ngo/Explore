@@ -77,15 +77,27 @@ public class RuntimeAnalyticsProviderTests
 
     private static RuntimeAnalyticsProvider CreateRuntimeProvider(MutableAnalyticsConfigResolver resolver)
     {
-        var postHogClient = new HttpClient(new StaticOkHandler());
-        var plausibleClient = new HttpClient(new StaticOkHandler());
-        var rybbitClient = new HttpClient(new StaticOkHandler());
-        var rudderClient = new HttpClient(new StaticOkHandler());
+        var postHogClient = new HttpClient(new StaticOkHandler()) { BaseAddress = new Uri("https://posthog") };
+        var plausibleClient = new HttpClient(new StaticOkHandler()) { BaseAddress = new Uri("https://plausible") };
+        var rybbitClient = new HttpClient(new StaticOkHandler()) { BaseAddress = new Uri("https://rybbit") };
+        var rudderClient = new HttpClient(new StaticOkHandler()) { BaseAddress = new Uri("https://rudder") };
 
-        var postHog = new PostHogAnalyticsProvider(postHogClient, resolver, Substitute.For<ILogger<PostHogAnalyticsProvider>>());
-        var plausible = new PlausibleAnalyticsProvider(plausibleClient, resolver, Substitute.For<ILogger<PlausibleAnalyticsProvider>>());
-        var rybbit = new RybbitAnalyticsProvider(rybbitClient, resolver, Substitute.For<ILogger<RybbitAnalyticsProvider>>());
-        var rudderStack = new RudderStackAnalyticsProvider(rudderClient, resolver, Substitute.For<ILogger<RudderStackAnalyticsProvider>>());
+        var postHogFactory = Substitute.For<IHttpClientFactory>();
+        postHogFactory.CreateClient(Arg.Any<string>()).Returns(postHogClient);
+        
+        var plausibleFactory = Substitute.For<IHttpClientFactory>();
+        plausibleFactory.CreateClient(Arg.Any<string>()).Returns(plausibleClient);
+        
+        var rybbitFactory = Substitute.For<IHttpClientFactory>();
+        rybbitFactory.CreateClient(Arg.Any<string>()).Returns(rybbitClient);
+        
+        var rudderFactory = Substitute.For<IHttpClientFactory>();
+        rudderFactory.CreateClient(Arg.Any<string>()).Returns(rudderClient);
+
+        var postHog = new PostHogAnalyticsProvider(postHogFactory, resolver, Substitute.For<ILogger<PostHogAnalyticsProvider>>());
+        var plausible = new PlausibleAnalyticsProvider(plausibleFactory, resolver, Substitute.For<ILogger<PlausibleAnalyticsProvider>>());
+        var rybbit = new RybbitAnalyticsProvider(rybbitFactory, resolver, Substitute.For<ILogger<RybbitAnalyticsProvider>>());
+        var rudderStack = new RudderStackAnalyticsProvider(rudderFactory, resolver, Substitute.For<ILogger<RudderStackAnalyticsProvider>>());
         var nullProvider = new NullAnalyticsProvider(Substitute.For<ILogger<NullAnalyticsProvider>>());
 
         var cache = new MemoryCache(new MemoryCacheOptions());

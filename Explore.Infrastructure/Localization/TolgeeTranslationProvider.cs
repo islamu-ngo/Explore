@@ -4,8 +4,10 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Infrastructure;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace Explore.Infrastructure.Localization;
 
@@ -16,18 +18,27 @@ namespace Explore.Infrastructure.Localization;
 /// </summary>
 public class TolgeeTranslationProvider : ITranslationManagementProvider
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ITranslationConfigResolver _configResolver;
     private readonly ILogger<TolgeeTranslationProvider> _logger;
 
     public TolgeeTranslationProvider(
-        HttpClient httpClient,
+        IHttpClientFactory httpClientFactory,
         ITranslationConfigResolver configResolver,
         ILogger<TolgeeTranslationProvider> logger)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _configResolver = configResolver;
         _logger = logger;
+    }
+
+    private ITolgeeApi CreateApi(TranslationConfiguration config)
+    {
+        var client = _httpClientFactory.CreateClient("TolgeeClient");
+        client.BaseAddress = new Uri(config.ApiUrl!.TrimEnd('/'));
+        // Maintain the application/json accept header requirement
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        return RestService.For<ITolgeeApi>(client);
     }
 
     public async Task<bool> TestConnectionAsync(CancellationToken ct = default)
@@ -38,8 +49,8 @@ public class TolgeeTranslationProvider : ITranslationManagementProvider
 
         try
         {
-            var request = CreateRequest(HttpMethod.Get, config, $"/v2/projects/{config.ProjectId}");
-            var response = await _httpClient.SendAsync(request, ct);
+            var api = CreateApi(config);
+            var response = await api.TestConnectionAsync(config.ProjectId, ct);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -61,23 +72,21 @@ public class TolgeeTranslationProvider : ITranslationManagementProvider
         var keyList = keys.ToList();
         if (keyList.Count == 0) return;
 
-        // Tolgee batch key create/update endpoint
-        var payload = new
+        var payload = new TolgeeImportRequest
         {
-            keys = keyList.Select(k => new
+            Keys = keyList.Select(k => new TolgeeImportKey
             {
-                name = k.KeyName,
-                translations = k.Translations
-            })
+                Name = k.KeyName,
+                Translations = k.Translations
+            }).ToList()
         };
 
-        var request = CreateRequest(HttpMethod.Post, config, $"/v2/projects/{config.ProjectId}/keys/import-resolvable");
-        request.Content = JsonContent.Create(payload);
-
-        var response = await _httpClient.SendAsync(request, ct);
+        var api = CreateApi(config);
+        var response = await api.ImportKeysAsync(config.ProjectId, payload, ct);
+        
         if (!response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsStringAsync(ct);
+            var body = response.Error?.Content;
             _logger.LogWarning("Tolgee import failed with {StatusCode}: {Body}", response.StatusCode, body);
         }
         else
@@ -92,40 +101,29 @@ public class TolgeeTranslationProvider : ITranslationManagementProvider
         if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId))
             return [];
 
-        var request = CreateRequest(HttpMethod.Get, config,
-            $"/v2/projects/{config.ProjectId}/translations/{languageCode}?structureDelimiter=.");
-
-        var response = await _httpClient.SendAsync(request, ct);
-        if (!response.IsSuccessStatusCode)
+        var api = CreateApi(config);
+        var response = await api.ExportTranslationsAsync(config.ProjectId, languageCode, ct);
+        
+        if (!response.IsSuccessStatusCode || response.Content == null)
         {
             _logger.LogWarning("Tolgee export failed for {Language}: {StatusCode}", languageCode, response.StatusCode);
             return [];
         }
 
-        try
-        {
-            using var stream = await response.Content.ReadAsStreamAsync(ct);
-            var tolgeeResponse = await JsonSerializer.DeserializeAsync<TolgeeTranslationsResponse>(stream, cancellationToken: ct);
-
-            if (tolgeeResponse?._embedded?.Keys is null)
-                return [];
-
-            var exports = new List<TranslationExport>();
-            foreach (var key in tolgeeResponse._embedded.Keys)
-            {
-                if (key.Translations.TryGetValue(languageCode, out var translation) && translation?.Text is not null)
-                {
-                    exports.Add(new TranslationExport(key.KeyName, translation.Text));
-                }
-            }
-
-            return exports;
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "Failed to parse Tolgee response for {Language}", languageCode);
+        var tolgeeResponse = response.Content;
+        if (tolgeeResponse?._embedded?.Keys is null)
             return [];
+
+        var exports = new List<TranslationExport>();
+        foreach (var key in tolgeeResponse._embedded.Keys)
+        {
+            if (key.Translations.TryGetValue(languageCode, out var translation) && translation?.Text is not null)
+            {
+                exports.Add(new TranslationExport(key.KeyName, translation.Text));
+            }
         }
+
+        return exports;
     }
 
     public async Task<IEnumerable<string>> GetAvailableLanguagesAsync(CancellationToken ct = default)
@@ -134,42 +132,59 @@ public class TolgeeTranslationProvider : ITranslationManagementProvider
         if (string.IsNullOrWhiteSpace(config.ApiUrl) || string.IsNullOrWhiteSpace(config.ProjectId))
             return [];
 
-        var request = CreateRequest(HttpMethod.Get, config, $"/v2/projects/{config.ProjectId}/languages");
-        var response = await _httpClient.SendAsync(request, ct);
+        var api = CreateApi(config);
+        var response = await api.GetLanguagesAsync(config.ProjectId, ct);
 
-        if (!response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode || response.Content == null)
         {
             _logger.LogWarning("Tolgee list languages failed: {StatusCode}", response.StatusCode);
             return [];
         }
 
-        try
-        {
-            using var stream = await response.Content.ReadAsStreamAsync(ct);
-            var langResponse = await JsonSerializer.DeserializeAsync<TolgeeLanguagesResponse>(stream, cancellationToken: ct);
-            return langResponse?._embedded?.Languages?.Select(l => l.Tag) ?? [];
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "Failed to parse Tolgee languages response");
-            return [];
-        }
-    }
-
-    private static HttpRequestMessage CreateRequest(HttpMethod method, TranslationConfiguration config, string path)
-    {
-        var request = new HttpRequestMessage(method, $"{config.ApiUrl!.TrimEnd('/')}{path}");
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        // API key is set on the HttpClient via DI configuration (SecretProvider)
-        return request;
+        return response.Content?._embedded?.Languages?.Select(l => l.Tag) ?? [];
     }
 
     // Tolgee API response models (internal)
-    private sealed record TolgeeTranslationsResponse(TolgeeTranslationsEmbedded? _embedded);
-    private sealed record TolgeeTranslationsEmbedded(List<TolgeeKeyWithTranslation>? Keys);
-    private sealed record TolgeeKeyWithTranslation(string KeyName, Dictionary<string, TolgeeTranslationValue> Translations);
-    private sealed record TolgeeTranslationValue(string? Text);
-    private sealed record TolgeeLanguagesResponse(TolgeeLanguagesEmbedded? _embedded);
-    private sealed record TolgeeLanguagesEmbedded(List<TolgeeLanguage>? Languages);
-    private sealed record TolgeeLanguage(string Tag);
+    internal sealed record TolgeeTranslationsResponse(
+        [property: JsonPropertyName("_embedded")] TolgeeTranslationsEmbedded? _embedded);
+    internal sealed record TolgeeTranslationsEmbedded(List<TolgeeKeyWithTranslation>? Keys);
+    internal sealed record TolgeeKeyWithTranslation(
+        [property: JsonPropertyName("name")] string KeyName, 
+        Dictionary<string, TolgeeTranslationValue> Translations);
+    internal sealed record TolgeeTranslationValue(string? Text);
+    internal sealed record TolgeeLanguagesResponse(
+        [property: JsonPropertyName("_embedded")] TolgeeLanguagesEmbedded? _embedded);
+    internal sealed record TolgeeLanguagesEmbedded(List<TolgeeLanguage>? Languages);
+    internal sealed record TolgeeLanguage(string Tag);
 }
+
+internal interface ITolgeeApi
+{
+    [Get("/v2/projects/{projectId}")]
+    Task<IApiResponse> TestConnectionAsync(string projectId, CancellationToken cancellationToken = default);
+
+    [Post("/v2/projects/{projectId}/keys/import-resolvable")]
+    Task<IApiResponse> ImportKeysAsync(string projectId, [Body] TolgeeImportRequest request, CancellationToken cancellationToken = default);
+
+    [Get("/v2/projects/{projectId}/translations/{languageCode}?structureDelimiter=.")]
+    Task<IApiResponse<TolgeeTranslationProvider.TolgeeTranslationsResponse>> ExportTranslationsAsync(string projectId, string languageCode, CancellationToken cancellationToken = default);
+
+    [Get("/v2/projects/{projectId}/languages")]
+    Task<IApiResponse<TolgeeTranslationProvider.TolgeeLanguagesResponse>> GetLanguagesAsync(string projectId, CancellationToken cancellationToken = default);
+}
+
+internal class TolgeeImportRequest
+{
+    [JsonPropertyName("keys")]
+    public List<TolgeeImportKey> Keys { get; set; } = new();
+}
+
+internal class TolgeeImportKey
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("translations")]
+    public IDictionary<string, string> Translations { get; set; } = new Dictionary<string, string>();
+}
+

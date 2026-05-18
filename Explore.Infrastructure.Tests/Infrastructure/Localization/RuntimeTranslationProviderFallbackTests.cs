@@ -55,8 +55,14 @@ public class RuntimeTranslationProviderFallbackTests
         var tolgeeClient = new HttpClient(new ThrowingHttpHandler()) { BaseAddress = new Uri("https://tolgee.unreachable.invalid") };
         var weblateClient = new HttpClient(new ThrowingHttpHandler()) { BaseAddress = new Uri("https://weblate.unreachable.invalid") };
 
-        var tolgee = new TolgeeTranslationProvider(tolgeeClient, resolver, Substitute.For<ILogger<TolgeeTranslationProvider>>());
-        var weblate = new WeblateTranslationProvider(weblateClient, resolver, Substitute.For<ILogger<WeblateTranslationProvider>>());
+        var tolgeeFactory = Substitute.For<IHttpClientFactory>();
+        tolgeeFactory.CreateClient(Arg.Any<string>()).Returns(tolgeeClient);
+        
+        var weblateFactory = Substitute.For<IHttpClientFactory>();
+        weblateFactory.CreateClient(Arg.Any<string>()).Returns(weblateClient);
+
+        var tolgee = new TolgeeTranslationProvider(tolgeeFactory, resolver, Substitute.For<ILogger<TolgeeTranslationProvider>>());
+        var weblate = new WeblateTranslationProvider(weblateFactory, resolver, Substitute.For<ILogger<WeblateTranslationProvider>>());
         var offline = new OfflineTranslationProvider(Substitute.For<ILogger<OfflineTranslationProvider>>());
         var nullProvider = new NullTranslationProvider(Substitute.For<ILogger<NullTranslationProvider>>());
 

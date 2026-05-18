@@ -1,28 +1,36 @@
 // ABOUTME: Rybbit analytics provider implementation using Rybbit HTTP tracking API.
 // ABOUTME: Supports event/page tracking with tenant-safe fire-and-forget behavior.
 
-using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace Explore.Infrastructure.Analytics;
 
 public class RybbitAnalyticsProvider : IAnalyticsProvider
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAnalyticsConfigResolver _configResolver;
     private readonly ILogger<RybbitAnalyticsProvider> _logger;
 
     public RybbitAnalyticsProvider(
-        HttpClient httpClient,
+        IHttpClientFactory httpClientFactory,
         IAnalyticsConfigResolver configResolver,
         ILogger<RybbitAnalyticsProvider> logger)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _configResolver = configResolver;
         _logger = logger;
+    }
+
+    private IRybbitApi CreateApi(AnalyticsConfiguration config)
+    {
+        var client = _httpClientFactory.CreateClient("RybbitClient");
+        client.BaseAddress = new Uri(config.EndpointUrl!.TrimEnd('/'));
+        return RestService.For<IRybbitApi>(client);
     }
 
     public Task IdentifyAsync(string distinctId, IDictionary<string, object>? traits = null, CancellationToken cancellationToken = default)
@@ -59,16 +67,18 @@ public class RybbitAnalyticsProvider : IAnalyticsProvider
                 return;
             }
 
-            var payload = new
+            var payload = new RybbitEventRequest
             {
-                type,
-                name,
-                userId = distinctId,
-                siteId = config.ApiKey,
-                properties = properties ?? new Dictionary<string, object>()
+                Type = type,
+                Name = name,
+                UserId = distinctId,
+                SiteId = config.ApiKey,
+                Properties = properties ?? new Dictionary<string, object>()
             };
 
-            using var response = await _httpClient.PostAsJsonAsync($"{config.EndpointUrl.TrimEnd('/')}/api/track", payload, cancellationToken);
+            var api = CreateApi(config);
+            var response = await api.SendTrackAsync(payload, cancellationToken);
+            
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogDebug("Rybbit call returned status {StatusCode}", response.StatusCode);
@@ -86,4 +96,28 @@ public class RybbitAnalyticsProvider : IAnalyticsProvider
             && config.IsEnabled
             && !string.IsNullOrWhiteSpace(config.ApiKey);
     }
+}
+
+internal interface IRybbitApi
+{
+    [Post("/api/track")]
+    Task<IApiResponse> SendTrackAsync([Body] RybbitEventRequest request, CancellationToken cancellationToken = default);
+}
+
+internal class RybbitEventRequest
+{
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("userId")]
+    public string UserId { get; set; } = string.Empty;
+
+    [JsonPropertyName("siteId")]
+    public string SiteId { get; set; } = string.Empty;
+
+    [JsonPropertyName("properties")]
+    public IDictionary<string, object> Properties { get; set; } = new Dictionary<string, object>();
 }

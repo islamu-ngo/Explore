@@ -2,29 +2,38 @@
 // ABOUTME: Avoids process-wide static singleton state to keep tenant configuration isolated.
 
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace Explore.Infrastructure.Analytics;
 
 public class RudderStackAnalyticsProvider : IAnalyticsProvider
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAnalyticsConfigResolver _configResolver;
     private readonly ILogger<RudderStackAnalyticsProvider> _logger;
 
     public RudderStackAnalyticsProvider(
-        HttpClient httpClient,
+        IHttpClientFactory httpClientFactory,
         IAnalyticsConfigResolver configResolver,
         ILogger<RudderStackAnalyticsProvider> logger)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _configResolver = configResolver;
         _logger = logger;
+    }
+
+    private IRudderStackApi CreateApi(AnalyticsConfiguration config)
+    {
+        var client = _httpClientFactory.CreateClient("RudderStackClient");
+        var endpoint = (config.EndpointUrl ?? string.Empty).TrimEnd('/');
+        client.BaseAddress = new Uri(endpoint);
+        return RestService.For<IRudderStackApi>(client);
     }
 
     public Task IdentifyAsync(string distinctId, IDictionary<string, object>? traits = null, CancellationToken cancellationToken = default)
@@ -86,13 +95,10 @@ public class RudderStackAnalyticsProvider : IAnalyticsProvider
                 return;
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"{endpoint}{path}");
-            request.Content = JsonContent.Create(payload);
-
             var authToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{config.ApiKey}:"));
-            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", authToken);
+            var api = CreateApi(config);
 
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
+            var response = await api.SendAsync(path.TrimStart('/'), $"Basic {authToken}", payload, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogDebug("RudderStack call {Path} returned status {StatusCode}", path, response.StatusCode);
@@ -111,3 +117,9 @@ public class RudderStackAnalyticsProvider : IAnalyticsProvider
             && !string.IsNullOrWhiteSpace(config.ApiKey);
     }
 }
+
+    internal interface IRudderStackApi
+    {
+        [Post("/{path}")]
+        Task<IApiResponse> SendAsync(string path, [Header("Authorization")] string authorization, [Body] object request, CancellationToken cancellationToken = default);
+    }

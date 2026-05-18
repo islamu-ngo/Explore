@@ -117,11 +117,17 @@ public class RuntimeTranslationProviderTests
 
     private static RuntimeTranslationProvider CreateRuntimeProvider(ITranslationConfigResolver resolver)
     {
-        var tolgeeClient = new HttpClient(new StaticOkHandler());
-        var weblateClient = new HttpClient(new StaticOkHandler());
+        var tolgeeClient = new HttpClient(new StaticOkHandler()) { BaseAddress = new Uri("https://tolgee.test") };
+        var weblateClient = new HttpClient(new StaticOkHandler()) { BaseAddress = new Uri("https://weblate.test") };
 
-        var tolgee = new TolgeeTranslationProvider(tolgeeClient, resolver, Substitute.For<ILogger<TolgeeTranslationProvider>>());
-        var weblate = new WeblateTranslationProvider(weblateClient, resolver, Substitute.For<ILogger<WeblateTranslationProvider>>());
+        var tolgeeFactory = Substitute.For<IHttpClientFactory>();
+        tolgeeFactory.CreateClient(Arg.Any<string>()).Returns(tolgeeClient);
+        
+        var weblateFactory = Substitute.For<IHttpClientFactory>();
+        weblateFactory.CreateClient(Arg.Any<string>()).Returns(weblateClient);
+
+        var tolgee = new TolgeeTranslationProvider(tolgeeFactory, resolver, Substitute.For<ILogger<TolgeeTranslationProvider>>());
+        var weblate = new WeblateTranslationProvider(weblateFactory, resolver, Substitute.For<ILogger<WeblateTranslationProvider>>());
         var offline = new OfflineTranslationProvider(Substitute.For<ILogger<OfflineTranslationProvider>>());
         var nullProvider = new NullTranslationProvider(Substitute.For<ILogger<NullTranslationProvider>>());
 

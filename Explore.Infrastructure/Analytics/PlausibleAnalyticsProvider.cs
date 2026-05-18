@@ -1,29 +1,38 @@
 // ABOUTME: Plausible analytics provider implementation using Plausible Events API.
 // ABOUTME: Implements event/page tracking with safe no-op behavior when config is incomplete.
 
-using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace Explore.Infrastructure.Analytics;
 
 public class PlausibleAnalyticsProvider : IAnalyticsProvider
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAnalyticsConfigResolver _configResolver;
     private readonly ILogger<PlausibleAnalyticsProvider> _logger;
 
     private const string DefaultPlausibleHost = "https://plausible.io";
 
     public PlausibleAnalyticsProvider(
-        HttpClient httpClient,
+        IHttpClientFactory httpClientFactory,
         IAnalyticsConfigResolver configResolver,
         ILogger<PlausibleAnalyticsProvider> logger)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _configResolver = configResolver;
         _logger = logger;
+    }
+
+    private IPlausibleApi CreateApi(AnalyticsConfiguration config)
+    {
+        var client = _httpClientFactory.CreateClient("PlausibleClient");
+        var host = string.IsNullOrWhiteSpace(config.EndpointUrl) ? DefaultPlausibleHost : config.EndpointUrl;
+        client.BaseAddress = new Uri(host.TrimEnd('/'));
+        return RestService.For<IPlausibleApi>(client);
     }
 
     public Task IdentifyAsync(string distinctId, IDictionary<string, object>? traits = null, CancellationToken cancellationToken = default)
@@ -60,19 +69,17 @@ public class PlausibleAnalyticsProvider : IAnalyticsProvider
                 return;
             }
 
-            var host = string.IsNullOrWhiteSpace(config.EndpointUrl)
-                ? DefaultPlausibleHost
-                : config.EndpointUrl!;
-
-            var requestPayload = new
+            var requestPayload = new PlausibleEventRequest
             {
-                name = eventName,
-                domain = config.ApiKey,
-                url = properties is not null && properties.TryGetValue("url", out var value) ? value?.ToString() ?? "/" : "/",
-                props = properties ?? new Dictionary<string, object>()
+                Name = eventName,
+                Domain = config.ApiKey,
+                Url = properties is not null && properties.TryGetValue("url", out var value) ? value?.ToString() ?? "/" : "/",
+                Props = properties ?? new Dictionary<string, object>()
             };
 
-            using var response = await _httpClient.PostAsJsonAsync($"{host.TrimEnd('/')}/api/event", requestPayload, cancellationToken);
+            var api = CreateApi(config);
+            var response = await api.SendEventAsync(requestPayload, cancellationToken);
+            
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogDebug("Plausible call returned status {StatusCode}", response.StatusCode);
@@ -90,4 +97,25 @@ public class PlausibleAnalyticsProvider : IAnalyticsProvider
             && config.IsEnabled
             && !string.IsNullOrWhiteSpace(config.ApiKey);
     }
+}
+
+internal interface IPlausibleApi
+{
+    [Post("/api/event")]
+    Task<IApiResponse> SendEventAsync([Body] PlausibleEventRequest request, CancellationToken cancellationToken = default);
+}
+
+internal class PlausibleEventRequest
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("domain")]
+    public string Domain { get; set; } = string.Empty;
+
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = string.Empty;
+
+    [JsonPropertyName("props")]
+    public IDictionary<string, object> Props { get; set; } = new Dictionary<string, object>();
 }

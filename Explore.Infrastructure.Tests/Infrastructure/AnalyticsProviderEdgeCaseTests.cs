@@ -18,6 +18,9 @@ public class AnalyticsProviderEdgeCaseTests
     {
         var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = new HttpClient(handler);
+        client.BaseAddress = new Uri("https://analytics.example.com");
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient(Arg.Any<string>()).Returns(client);
         var resolver = new StubAnalyticsConfigResolver(new AnalyticsConfiguration
         {
             Provider = Explore.Domain.Enums.AnalyticsProviderEnum.Posthog,
@@ -25,7 +28,7 @@ public class AnalyticsProviderEdgeCaseTests
             ApiKey = "public-key",
             EndpointUrl = "https://analytics.example.com"
         });
-        var provider = new PostHogAnalyticsProvider(client, resolver, Substitute.For<ILogger<PostHogAnalyticsProvider>>());
+        var provider = new PostHogAnalyticsProvider(factory, resolver, Substitute.For<ILogger<PostHogAnalyticsProvider>>());
 
         resolver.SetEnabled(false);
         await provider.TrackAsync("user-1", "signup_completed");
@@ -49,6 +52,9 @@ public class AnalyticsProviderEdgeCaseTests
             });
 
         var client = new HttpClient(handler);
+        client.BaseAddress = new Uri("https://analytics.example.com");
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient(Arg.Any<string>()).Returns(client);
         var resolver = new StubAnalyticsConfigResolver(new AnalyticsConfiguration
         {
             Provider = Explore.Domain.Enums.AnalyticsProviderEnum.Posthog,
@@ -57,7 +63,7 @@ public class AnalyticsProviderEdgeCaseTests
             PersonalApiKey = "personal-key",
             EndpointUrl = "https://analytics.example.com"
         });
-        var provider = new PostHogAnalyticsProvider(client, resolver, Substitute.For<ILogger<PostHogAnalyticsProvider>>());
+        var provider = new PostHogAnalyticsProvider(factory, resolver, Substitute.For<ILogger<PostHogAnalyticsProvider>>());
 
         var result = await provider.IsFeatureEnabledAsync("new_ui", "user-1");
 
@@ -69,6 +75,9 @@ public class AnalyticsProviderEdgeCaseTests
     {
         var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = new HttpClient(handler);
+        client.BaseAddress = new Uri("https://analytics.example.com");
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient(Arg.Any<string>()).Returns(client);
         var resolver = new StubAnalyticsConfigResolver(new AnalyticsConfiguration
         {
             Provider = Explore.Domain.Enums.AnalyticsProviderEnum.Posthog,
@@ -76,7 +85,7 @@ public class AnalyticsProviderEdgeCaseTests
             ApiKey = "public-key",
             EndpointUrl = "https://analytics.example.com"
         });
-        var provider = new PostHogAnalyticsProvider(client, resolver, Substitute.For<ILogger<PostHogAnalyticsProvider>>());
+        var provider = new PostHogAnalyticsProvider(factory, resolver, Substitute.For<ILogger<PostHogAnalyticsProvider>>());
 
         var payload = await provider.GetFeatureFlagPayloadAsync("new_ui", "user-1");
 
@@ -89,6 +98,9 @@ public class AnalyticsProviderEdgeCaseTests
     {
         var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = new HttpClient(handler);
+        client.BaseAddress = new Uri("https://plausible.example.com");
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient(Arg.Any<string>()).Returns(client);
         var resolver = new StubAnalyticsConfigResolver(new AnalyticsConfiguration
         {
             Provider = Explore.Domain.Enums.AnalyticsProviderEnum.Plausible,
@@ -96,7 +108,7 @@ public class AnalyticsProviderEdgeCaseTests
             ApiKey = "example.com",
             EndpointUrl = "https://plausible.example.com"
         });
-        var provider = new PlausibleAnalyticsProvider(client, resolver, Substitute.For<ILogger<PlausibleAnalyticsProvider>>());
+        var provider = new PlausibleAnalyticsProvider(factory, resolver, Substitute.For<ILogger<PlausibleAnalyticsProvider>>());
 
         resolver.SetEnabled(false);
         await provider.TrackAsync("user-1", "signup_completed");
@@ -109,6 +121,9 @@ public class AnalyticsProviderEdgeCaseTests
     {
         var handler = new RecordingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
         var client = new HttpClient(handler);
+        client.BaseAddress = new Uri("https://plausible.example.com");
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient(Arg.Any<string>()).Returns(client);
         var resolver = new StubAnalyticsConfigResolver(new AnalyticsConfiguration
         {
             Provider = Explore.Domain.Enums.AnalyticsProviderEnum.Plausible,
@@ -116,7 +131,7 @@ public class AnalyticsProviderEdgeCaseTests
             ApiKey = string.Empty,
             EndpointUrl = "https://plausible.example.com"
         });
-        var provider = new PlausibleAnalyticsProvider(client, resolver, Substitute.For<ILogger<PlausibleAnalyticsProvider>>());
+        var provider = new PlausibleAnalyticsProvider(factory, resolver, Substitute.For<ILogger<PlausibleAnalyticsProvider>>());
 
         await provider.TrackAsync("user-1", "signup_completed");
 
