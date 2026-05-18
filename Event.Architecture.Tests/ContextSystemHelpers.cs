@@ -17,7 +17,7 @@ internal static class ContextSystemHelpers
         while (dir is not null)
         {
             var agents = Path.Combine(dir.FullName, "AGENTS.md");
-            var claude = Path.Combine(dir.FullName, "CLAUDE.md");
+            var claude = Path.Combine(dir.FullName, "AGENTS.md");
             if (File.Exists(agents) && File.Exists(claude))
             {
                 return dir.FullName;
@@ -25,7 +25,7 @@ internal static class ContextSystemHelpers
             dir = dir.Parent;
         }
         throw new InvalidOperationException(
-            "Repository root not found: neither AGENTS.md nor CLAUDE.md discovered while walking up from test output directory.");
+            "Repository root not found: neither AGENTS.md nor AGENTS.md discovered while walking up from test output directory.");
     }
 
     public static string RepoPath(params string[] segments) =>

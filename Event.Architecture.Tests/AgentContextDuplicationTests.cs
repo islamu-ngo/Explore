@@ -40,7 +40,7 @@ public class AgentContextDuplicationTests
                 if (content.Contains(phrase, StringComparison.OrdinalIgnoreCase))
                 {
                     var relative = Path.GetRelativePath(RepoRoot, file);
-                    errors.Add($"{relative}: contains forbidden stack-overview phrase '{phrase}'. Link to CLAUDE.md instead.");
+                    errors.Add($"{relative}: contains forbidden stack-overview phrase '{phrase}'. Link to AGENTS.md instead.");
                 }
             }
         }

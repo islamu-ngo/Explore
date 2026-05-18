@@ -51,7 +51,9 @@ public class BlazorClientArchitectureTests
     {
         // Wave B Phase 6B swaps HashSet for ImmutableHashSet snapshot.
         "Explore.Blazor/Services/DynamicAuthSchemeManager.cs",
-        // Per-user keyed static store — safe-by-design but flagged for review visibility.
+        // Bounded session-scoped token cache — ConcurrentDictionary required for atomic operations.
+        "Explore.Blazor/Services/CircuitTokenStore.cs",
+        // SetupSecretSessionService (co-located) uses ConcurrentDictionary for ephemeral secret storage.
         "Explore.Blazor/Services/CircuitAccessTokenService.cs",
     };
 
@@ -67,6 +69,29 @@ public class BlazorClientArchitectureTests
         "Explore.Blazor.Client/Contracts/Services/IContactShareConsentService.cs",
         "Explore.Blazor.Client/Contracts/Services/ILocalizationAdminService.cs",
         "Explore.Blazor.Client/Contracts/Services/Footer/IFooterAdminService.cs",
+    };
+
+    private static readonly HashSet<string> Known_BffClient_Exceptions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // These are currently being migrated to Refit.
+        "Explore.Blazor.Client/Program.cs",
+        "Explore.Blazor.Client/Services/Http/BffClient.cs",
+        "Explore.Blazor.Client/Services/InstanceOnboardingService.cs",
+        "Explore.Blazor.Client/Services/TenantOnboardingService.cs",
+        "Explore.Blazor.Client/Services/TenantBrandingSettingsAdminService.cs",
+        "Explore.Blazor.Client/Services/LanguagePreferenceService.cs",
+        "Explore.Blazor.Client/Services/PublicExperienceService.cs",
+        "Explore.Blazor.Client/Services/ImageStorageService.cs",
+        "Explore.Blazor.Client/Services/ImageUploadClient.cs"
+    };
+
+    private static readonly HashSet<string> Known_RawHttpJson_Exceptions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Low-level HTTP helpers are the approved boundary for raw JSON deserialization/problem handling.
+        "Explore.Blazor.Client/Extensions/HttpResponseExtensions.cs",
+        "Explore.Blazor.Client/Services/Http/BffClient.cs",
+        // Phase 3 explicitly defers onboarding until its raw HTTP flow is split or migrated.
+        "Explore.Blazor.Client/Services/InstanceOnboardingService.cs",
     };
 
     // --------------------------------------------------------------------------------------------
@@ -679,7 +704,7 @@ public class BlazorClientArchitectureTests
 
         var violations = new List<string>();
 
-        foreach (var file in EnumerateCsFiles(BlazorClientRoot))
+        foreach (var file in EnumerateRazorAndCsFiles(BlazorClientRoot))
         {
             var relative = NormalisePath(Path.GetRelativePath(BlazorClientRoot, file));
             // Allowed: Program.cs (WASM bootstrap) + any Extensions/ folder.
@@ -744,6 +769,111 @@ public class BlazorClientArchitectureTests
 
         await Assert.That(violations).IsEmpty()
             .Because($"Pure interface files under Contracts/I*.cs must not declare model types. Violations: {string.Join(", ", violations)}");
+    }
+
+    // ============================================================================================
+    // RULE 1.15 — Do not use magic strings to resolve BffClient manually via IHttpClientFactory.
+    // ============================================================================================
+
+    [Test]
+    public async Task Rule_1_15_Services_MustNotUse_IHttpClientFactory_For_BffClient()
+    {
+        if (BlazorClientRoot is null)
+        {
+            await Assert.That(true).IsTrue().Because("Blazor.Client source not found — skipping");
+            return;
+        }
+
+        var violations = new List<string>();
+
+        foreach (var file in EnumerateRazorAndCsFiles(BlazorClientRoot))
+        {
+            var relative = NormalisePath(Path.GetRelativePath(BlazorClientRoot, file));
+            var fullRelative = "Explore.Blazor.Client/" + relative;
+
+            var content = await File.ReadAllTextAsync(file);
+            if (content.Contains("CreateClient(\"BffClient\")"))
+            {
+                // We're actively migrating these. Do not add new ones.
+                if (!Known_BffClient_Exceptions.Contains(fullRelative))
+                {
+                    violations.Add(fullRelative);
+                }
+            }
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because($"Use typed Refit clients instead of IHttpClientFactory.CreateClient(\"BffClient\"). Violations: {string.Join(", ", violations)}");
+    }
+
+    // ============================================================================================
+    // RULE 1.16 — Refit clients must be registered securely using AddBffRefitClient<T>().
+    // ============================================================================================
+
+    [Test]
+    public async Task Rule_1_16_RefitClients_MustUse_AddBffRefitClient_Registration()
+    {
+        if (BlazorClientRoot is null)
+        {
+            await Assert.That(true).IsTrue().Because("Blazor.Client source not found — skipping");
+            return;
+        }
+
+        var violations = new List<string>();
+        var programCsPath = Path.Combine(BlazorClientRoot, "Program.cs");
+        if (File.Exists(programCsPath))
+        {
+            var content = await File.ReadAllTextAsync(programCsPath);
+            // Look for raw AddRefitClient usage (ignoring AddBffRefitClient)
+            if (Regex.IsMatch(content, @"(?<!AddBff)AddRefitClient\s*<", RegexOptions.CultureInvariant))
+            {
+                violations.Add("Explore.Blazor.Client/Program.cs");
+            }
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because($"Refit clients targeting the BFF must be registered using AddBffRefitClient<T>() to guarantee antiforgery and credentials. Violations: {string.Join(", ", violations)}");
+    }
+
+    // ============================================================================================
+    // RULE 1.17 — Raw HTTP JSON/success-status helpers stay behind approved low-level boundaries.
+    // ============================================================================================
+
+    [Test]
+    public async Task Rule_1_17_RawHttpJsonHelpers_MustStayIn_ApprovedBoundaries()
+    {
+        if (BlazorClientRoot is null)
+        {
+            await Assert.That(true).IsTrue().Because("Blazor.Client source not found — skipping");
+            return;
+        }
+
+        var violations = new List<string>();
+        var forbiddenPatterns = new[]
+        {
+            "ReadFromJsonAsync",
+            "GetFromJsonAsync",
+            "EnsureSuccessStatusCode"
+        };
+
+        foreach (var file in EnumerateRazorAndCsFiles(BlazorClientRoot))
+        {
+            var relative = NormalisePath(Path.GetRelativePath(BlazorClientRoot, file));
+            var fullRelative = "Explore.Blazor.Client/" + relative;
+            if (Known_RawHttpJson_Exceptions.Contains(fullRelative))
+            {
+                continue;
+            }
+
+            var content = await File.ReadAllTextAsync(file);
+            if (forbiddenPatterns.Any(pattern => content.Contains(pattern, StringComparison.Ordinal)))
+            {
+                violations.Add(fullRelative);
+            }
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because($"Use IApiClientExecutor, generated clients, or approved low-level HTTP helpers instead of raw HTTP JSON/status helpers. Violations: {string.Join(", ", violations)}");
     }
 
     // --------------------------------------------------------------------------------------------

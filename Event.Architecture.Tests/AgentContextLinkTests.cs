@@ -1,4 +1,4 @@
-// ABOUTME: Detects dead relative markdown links across AGENTS.md, CLAUDE.md, docs/index.md and .claude/**/*.md.
+// ABOUTME: Detects dead relative markdown links across AGENTS.md, AGENTS.md, docs/index.md and .claude/**/*.md.
 // ABOUTME: Part of the AI-context contract; mirrors the /docs-lint slash command.
 
 namespace Event.Architecture.Tests;
@@ -12,7 +12,7 @@ public class AgentContextLinkTests
     {
         var roots = new[]
         {
-            RepoPath("CLAUDE.md"),
+            RepoPath("AGENTS.md"),
             RepoPath("docs", "index.md"),
             RepoPath(".github", "copilot-instructions.md"),
         };
