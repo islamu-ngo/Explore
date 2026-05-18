@@ -83,18 +83,18 @@ Last Updated: 2026-04-30 Europe/Brussels
 - **Impact:** 10 intents v1 covering the primary change categories (add-get-endpoint, add-write-endpoint, add-hal-link, add-cqrs-handler, add-ef-migration, update-repository-query, blazor-component-affordance, bff-auth-bug, cerbos-policy-change, openapi-contract-change). Validated against `.claude/contract/schema.json` (JSON Schema 2020-12) by `AgentContextIntentManifestTests`. Benchmarked by 8 cold-start scenarios at `.claude/benchmarks/cold-start-tasks.yaml` which map one-to-one onto the intents.
 - **Consequence:** Adding a new change type now requires adding an intent; skipping that step means the change is "off-contract" and noted in the PR description. Drift is bounded by CI, not goodwill.
 
-### CLAUDE.md is the canonical AI-agent contract; AGENTS.md is a 3-line redirect stub
+### AGENTS.md is the canonical AI-agent contract; AGENTS.md is a 3-line redirect stub
 
-- **Decision:** After initially making `AGENTS.md` the canonical tool-neutral entrypoint and `CLAUDE.md` a thin Claude-specific bootloader (Phase 1), the final state (per user request m0102) inverts this: `CLAUDE.md` carries the full 14-section AI-agent contract (344 lines including Contribution Contract, Canonical Artifacts, Cold-Start Flow, Rule Authority Order, 7 general + 13 non-inferable CRITICAL RULES, Task-Routing Entrypoints, Absolute Fetch Rule, Verification Policy, Blazor UI Workflow pointer, Claude-Specific Operational Rules, Coding & File Standards, Collaboration, Tool-Specific Bootloaders, Enforcement, Shell Behavior Rules Appendix, See Also footer). `AGENTS.md` becomes exactly:
+- **Decision:** After initially making `AGENTS.md` the canonical tool-neutral entrypoint and `AGENTS.md` a thin Claude-specific bootloader (Phase 1), the final state (per user request m0102) inverts this: `AGENTS.md` carries the full 14-section AI-agent contract (344 lines including Contribution Contract, Canonical Artifacts, Cold-Start Flow, Rule Authority Order, 7 general + 13 non-inferable CRITICAL RULES, Task-Routing Entrypoints, Absolute Fetch Rule, Verification Policy, Blazor UI Workflow pointer, Claude-Specific Operational Rules, Coding & File Standards, Collaboration, Tool-Specific Bootloaders, Enforcement, Shell Behavior Rules Appendix, See Also footer). `AGENTS.md` becomes exactly:
 
   ```
   # AI Agents
 
-  See [CLAUDE.md](CLAUDE.md) for AI agent instructions.
+  See [AGENTS.md](AGENTS.md) for AI agent instructions.
   ```
 
-- **Why:** The user preferred a single canonical file (`CLAUDE.md`) with a pointer for tools that auto-discover `AGENTS.md`, rather than two files that both carry content. This eliminates cross-file duplication while preserving cross-tool compatibility via the one-line redirect.
-- **Impact:** All agents still link to `AGENTS.md` in their Mandatory Reads — the link resolves (stub exists), redirects to `CLAUDE.md` (which holds the content). `ContextSystemHelpers.RepoRoot` continues to walk up looking for both files and finds both. `AgentContextDuplicationTests` keeps preventing any agent from inlining the now-CLAUDE-owned project context. `.github/copilot-instructions.md` points at `AGENTS.md` and inherits the redirect for free.
+- **Why:** The user preferred a single canonical file (`AGENTS.md`) with a pointer for tools that auto-discover `AGENTS.md`, rather than two files that both carry content. This eliminates cross-file duplication while preserving cross-tool compatibility via the one-line redirect.
+- **Impact:** All agents still link to `AGENTS.md` in their Mandatory Reads — the link resolves (stub exists), redirects to `AGENTS.md` (which holds the content). `ContextSystemHelpers.RepoRoot` continues to walk up looking for both files and finds both. `AgentContextDuplicationTests` keeps preventing any agent from inlining the now-CLAUDE-owned project context. `.github/copilot-instructions.md` points at `AGENTS.md` and inherits the redirect for free.
 - **Consequence:** The "tool-neutral entrypoint" guarantee is now provided by the pointer stub, not by content parity. Every other tool (Codex, Cursor, Gemini, Zed, Aider) that discovers `AGENTS.md` will follow the single link with zero ambiguity.
 
 ### Context-system enforcement lives in `Event.Architecture.Tests` (parity with code architecture gates)
@@ -102,12 +102,12 @@ Last Updated: 2026-04-30 Europe/Brussels
 - **Decision:** The 4 new CI tests (`AgentContextSchemaTests`, `AgentContextLinkTests`, `AgentContextIntentManifestTests`, `AgentContextDuplicationTests`) are added to the existing `Event.Architecture.Tests` project — not a new one. They use the same TUnit + `[Test] public async Task X()` + `await Assert.That(...).IsEmpty()` pattern as `CleanArchitectureTests`, `CqrsPatternTests`, etc. A shared `ContextSystemHelpers.cs` carries the markdown/YAML/link parsers.
 - **Why:** The repo already treats architecture tests as CI gates; the AI-context layer deserves the same seriousness. Colocating keeps maintenance in one place, reuses the TUnit runner, and signals to maintainers that context drift is a real regression, not a "docs nit."
 - **Impact:** `.github/workflows/agent-context.yml` runs the whole `Event.Architecture.Tests` project (TUnit doesn't support `--filter`) — the ~3-second marginal cost is negligible. No new NuGet dependency was added: a narrow regex-based markdown reader and a state-machine YAML reader replaced the originally considered Markdig + YamlDotNet.
-- **Consequence:** Changes to `AGENTS.md`, `CLAUDE.md`, `docs/**`, `.claude/**`, or the context-test files themselves trigger the workflow. Any dead link, missing frontmatter key, invalid intent reference, or agent-file duplication blocks merge.
+- **Consequence:** Changes to `AGENTS.md`, `AGENTS.md`, `docs/**`, `.claude/**`, or the context-test files themselves trigger the workflow. Any dead link, missing frontmatter key, invalid intent reference, or agent-file duplication blocks merge.
 
 ### Source projects use `Explore.*`; test projects use `Event.*` (mostly)
 
 - **Decision:** All path-scoped rules, intent manifest entries, and context helpers are anchored to this naming split: source = `Explore.API`, `Explore.Application`, `Explore.Domain`, `Explore.Persistence`, `Explore.Blazor`, `Explore.Blazor.Client`, `Explore.Infrastructure`, `Explore.AppHost`, `Explore.Secrets`, `Explore.Diagnostic`, `Explore.ServiceDefaults`; tests = `Event.API.IntegrationTests`, `Event.Application.UnitTests`, `Event.Architecture.Tests`, `Event.Domain.UnitTests`, `Event.Persistence.IntegrationTests`, `Event.Benchmarks`, `Event.MigrationService` (a hosted MigrationService, not a test project despite the `Event.*` prefix), plus the `Explore.*` Blazor/Secrets test projects. Plan v4 drafts incorrectly used `Event.*` for source paths; caught by a subagent during Phase 2 rule-writing and corrected in `intents.yaml` + rule files.
-- **Why:** This split is historical and not inferable from code. `docs/GOVERNANCE.md` tree diagrams still reference the old `Event.*` source naming in places — flagged as pre-existing staleness, **not** fixed in this pass (per CLAUDE.md no-pre-existing-fixes rule).
+- **Why:** This split is historical and not inferable from code. `docs/GOVERNANCE.md` tree diagrams still reference the old `Event.*` source naming in places — flagged as pre-existing staleness, **not** fixed in this pass (per AGENTS.md no-pre-existing-fixes rule).
 - **Impact:** Every `paths_in_scope` glob in `intents.yaml`, every `paths:` glob in `.claude/rules/*.md`, every path reference in `AgentContext*Tests.cs`, and every benchmark scenario must respect this split. A new agent that assumes `Event.Domain` is a source project will get empty results from every grep and be surprised.
 - **Consequence:** Future cleanup of `docs/GOVERNANCE.md` should align its tree diagrams with the `Explore.*` source naming. Until then, the Contribution Contract is the authoritative path map — an intent's `paths_in_scope` is the ground truth.
 
@@ -359,7 +359,7 @@ Last Updated: 2026-04-30 Europe/Brussels
 
 ### ValidationBehavior: Delete (Option A — Manual Validation)
 - Decision: Delete `ValidationBehavior.cs` rather than enabling pipeline validation.
-- Why: Per CLAUDE.md rule, validators are manually instantiated in handlers. The behavior was never registered and is dead code. Enabling it would require auditing 617 handlers for double validation — unacceptable risk for the benefit. Manual validation gives handlers explicit control over validation timing and error shaping.
+- Why: Per AGENTS.md rule, validators are manually instantiated in handlers. The behavior was never registered and is dead code. Enabling it would require auditing 617 handlers for double validation — unacceptable risk for the benefit. Manual validation gives handlers explicit control over validation timing and error shaping.
 - Files removed: `Explore.Application/Behaviors/ValidationBehavior.cs`
 
 ### Idempotency Store: Database-backed (PostgreSQL)

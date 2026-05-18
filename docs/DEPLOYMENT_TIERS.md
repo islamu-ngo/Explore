@@ -16,11 +16,11 @@ The same application can move across tiers mainly through configuration and infr
    - data topology: single PostgreSQL deployment.
 2. Tier 2 - Community
    - target: production multi-tenant.
-   - authorization mode: `authorization.provider=cerbos` with local fallback.
+   - authorization mode: `authorization.provider=cerbos` with fail-closed PDP behavior.
    - data topology: PostgreSQL + Cerbos service + optional replica/cache.
 3. Tier 3 - Ummah-Scale
    - target: high-scale / strict isolation.
-   - authorization mode: Cerbos HA + local fallback.
+   - authorization mode: Cerbos HA with explicit operational failover.
    - data topology: separated clusters for app data, identity, and policy.
 
 ## Tier 1 - Humble
@@ -46,13 +46,15 @@ Recommended when:
 Typical setup:
 
 - enable Cerbos and set `authorization.provider=cerbos`,
-- keep local provider as automatic fallback,
+- keep local authorization configured only as an explicit operator-selected recovery mode,
 - add basic redundancy for API and data reads.
 
 Runtime behavior:
 
 - `RuntimeAuthorizationProvider` chooses Cerbos first (when configured),
-- failures fall back to local provider without redeploying code.
+- instance Cerbos failures deny/fail closed; they do not automatically fall back to local RBAC,
+- switching to local authorization requires an explicit provider-mode configuration change,
+- BYO tenant Cerbos can opt into `failure_mode=open`; that is the explicit tenant-scoped local fallback case.
 
 ## Tier 3 - Ummah-Scale
 

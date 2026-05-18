@@ -47,7 +47,7 @@ Governance settings resolution uses a **5-tier cascade**: User → Group → Org
 
 1. Build: `dotnet build --configuration Release --verbosity quiet`
 2. Run test projects individually with `dotnet test --project <path>.csproj` (not solution-level test).
-3. Use `CLAUDE.md` for the exact current project list.
+3. Use `AGENTS.md` for the exact current project list.
 
 ## Common Failure Patterns
 1. DTO changed but NSwag client not regenerated.

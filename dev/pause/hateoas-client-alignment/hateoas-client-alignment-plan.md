@@ -275,8 +275,8 @@ After implementation:
 - **Effort**: S
 - **Dependency**: Tasks 3.1, 4.1
 
-#### Task 5.2: Update `CLAUDE.md` Non-Inferable Technical Rules
-- **File**: `CLAUDE.md`
+#### Task 5.2: Update `AGENTS.md` Non-Inferable Technical Rules
+- **File**: `AGENTS.md`
 - **Change**: Add rule under "Non-Inferable Technical Rules":
   > **Rule #12**: Blazor UI components must determine action affordance (edit/delete/create visibility) exclusively from HAL `_links` returned by the API. Never use `RoleHelper`, `IsInRole()`, or member-list fetches to derive action permissions in UI components. Exceptions: NavMenu admin claims (navigation structure), EventCreationEligibilityService (multi-resource eligibility), page-level `[Authorize]` route guards.
 - **Acceptance Criteria**:
@@ -334,7 +334,7 @@ Task 2.2, 2.3         ──────► Task 2.4 (HasManagementLinks)
 Task 1.1, 2.2         ──────► Task 4.1 (deserialization guard tests)
 Task 1.1              ──────► Task 4.2 (org collection tests)
 Task 3.1              ──────► Task 5.1 (API.md update)
-Task 3.1              ──────► Task 5.2 (CLAUDE.md rule)
+Task 3.1              ──────► Task 5.2 (AGENTS.md rule)
 ```
 
 ---

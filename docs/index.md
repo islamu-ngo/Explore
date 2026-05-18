@@ -6,7 +6,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 > **Audience:** Operators | Contributors | Admins | Integrators | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-05-12
 > **Source Anchors:** `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `.github/workflows/agent-context.yml`
 
 ## Audience Paths
@@ -18,12 +18,12 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 | Admins | [ADMIN_GUIDE.md](ADMIN_GUIDE.md) | [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md), [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md), [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md), [TEMPLATE_SYNC.md](TEMPLATE_SYNC.md), [CONTACT_SHARING.md](CONTACT_SHARING.md), [NOTIFICATIONS.md](NOTIFICATIONS.md), [SEO.md](SEO.md), [STORAGE.md](STORAGE.md), [EMAIL_NOTIFICATIONS.md](EMAIL_NOTIFICATIONS.md) |
 | Integrators | [API_COOKBOOK.md](API_COOKBOOK.md) | [API.md](API.md), [CONTACT_SHARING.md](CONTACT_SHARING.md), [NOTIFICATIONS.md](NOTIFICATIONS.md), [SEO.md](SEO.md), [API_CHANGELOG.md](API_CHANGELOG.md), [SECURITY.md](SECURITY.md), [CONFIGURATION.md](CONFIGURATION.md) |
 | Contributors | [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md), [CONTRIBUTING.md](CONTRIBUTING.md) | [TESTING.md](TESTING.md), [BENCHMARKS.md](BENCHMARKS.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [DOCUMENTATION_STYLE_GUIDE.md](DOCUMENTATION_STYLE_GUIDE.md) |
-| AI agents | [../AGENTS.md](../AGENTS.md), [../CLAUDE.md](../CLAUDE.md) | [../.claude/contract/README.md](../.claude/contract/README.md), [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml), [../dev/_journal/README.md](../dev/_journal/README.md) |
+| AI agents | [../AGENTS.md](../AGENTS.md), [../AGENTS.md](../AGENTS.md) | [../.claude/contract/README.md](../.claude/contract/README.md), [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml), [../dev/_journal/README.md](../dev/_journal/README.md) |
 
 ## Read First
 - [README.md](../README.md) - product overview and quick start.
 - [GETTING_STARTED.md](GETTING_STARTED.md) - short local build, run, and first-contribution path.
-- [CLAUDE.md](../CLAUDE.md) - project rules used by contributors and AI agents.
+- [AGENTS.md](../AGENTS.md) - project rules used by contributors and AI agents.
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - implementation constraints that are easy to violate.
 
 ## Core Architecture
@@ -34,6 +34,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [BLAZOR.md](BLAZOR.md) - client architecture, render policy, service patterns.
 - [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) - transactional outbox, retry, dead-letter.
 - [FOOTER_MANAGEMENT.md](FOOTER_MANAGEMENT.md) - footer data model, templates, governance.
+- [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md) - Layer 3 custom-property governance, projections, templates, purge, export/moderation boundaries.
 - [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) - CSS layers, tokens, wrapper components.
 
 ## Governance And Rules
@@ -50,7 +51,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 
 ## AI Agent Contribution Context
 - [../AGENTS.md](../AGENTS.md) - tool-neutral entrypoint, Contribution Contract, rule authority, cold-start flow.
-- [../CLAUDE.md](../CLAUDE.md) - Claude Code-specific bootloader.
+- [../AGENTS.md](../AGENTS.md) - Claude Code-specific bootloader.
 - [../.claude/contract/README.md](../.claude/contract/README.md) - Contribution Contract (eight questions every change must answer).
 - [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml) - intent → context map (paths, rules, skills, tests, docs).
 - [../.claude/rules/README.md](../.claude/rules/README.md) - path-scoped rule files auto-loaded by editing scope.
@@ -91,6 +92,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 ## Extensibility And Federation
 - [EXTENSIBILITY.md](EXTENSIBILITY.md) - modular extension strategy.
 - [MODULAR_EVENTS.md](MODULAR_EVENTS.md) - event aspect composition model.
+- [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md) - governed custom fields on existing resources; see ADR-006 for the runtime-schema boundary.
 - [LEXICONS.md](LEXICONS.md) - ATProto-compatible NSID lexicon hierarchy and evolution.
 - [FEDERATION.md](FEDERATION.md) - current federation implementation status vs roadmap.
 
@@ -110,3 +112,4 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [adr/ADR-003-css-layer-architecture.md](adr/ADR-003-css-layer-architecture.md) - CSS @layer architecture.
 - [adr/ADR-004-accessibility-architecture.md](adr/ADR-004-accessibility-architecture.md) - accessibility service architecture.
 - [adr/ADR-005-footer-customization.md](adr/ADR-005-footer-customization.md) - tenant footer customization.
+- [adr/ADR-006-custom-properties-runtime-boundary.md](adr/ADR-006-custom-properties-runtime-boundary.md) - custom properties versus runtime schema engine boundary.

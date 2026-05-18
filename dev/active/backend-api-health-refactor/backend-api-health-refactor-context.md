@@ -31,7 +31,7 @@ Out of scope:
 
 ## 3. Governing Repo Rules
 
-From `CLAUDE.md`, `.claude/contract/intents.yaml`, `.claude/rules/*`, and canonical docs:
+From `AGENTS.md`, `.claude/contract/intents.yaml`, `.claude/rules/*`, and canonical docs:
 
 - Domain has no EF Core, ASP.NET Core, MediatR, or infrastructure dependencies.
 - Application references Domain and owns CQRS requests, handlers, DTO mapping, validators, specifications, use-case orchestration, idempotency semantics, and authorization metadata.

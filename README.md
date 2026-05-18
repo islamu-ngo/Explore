@@ -122,7 +122,7 @@ There are many ways you can contribute to ISLAMU Event:
 
 Start with [Contributing](docs/CONTRIBUTING.md). Code contributors should also read [Governance](docs/GOVERNANCE.md), [Quick Reference](docs/QUICK_REFERENCE.md), and [Architecture](docs/ARCHITECTURE.md).
 
-AI-assisted contributors should follow [`CLAUDE.md`](CLAUDE.md) and [`AGENTS.md`](AGENTS.md).
+AI-assisted contributors should follow [`AGENTS.md`](AGENTS.md) and [`AGENTS.md`](AGENTS.md).
 
 Please read [Contribution Guidelines][contribution-guidelines] for details on the process for submitting pull requests to us.
 

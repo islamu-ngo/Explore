@@ -216,7 +216,7 @@ TDD is the default unless explicitly allowed to skip.
 
 ## CI Pipeline Integration
 
-The standard CI pipeline runs the fast non-E2E test projects on every PR; integration-enabled callers run PostgreSQL-backed suites separately. The pipeline:
+The standard CI pipeline runs the fast non-E2E test projects on every PR; integration-enabled callers run PostgreSQL-backed suites separately. GitHub Actions restore steps use `dotnet restore --locked-mode`, so package input changes must include matching `packages.lock.json` updates. The pipeline:
 
 1. Restores dependencies
 2. Builds in Release configuration

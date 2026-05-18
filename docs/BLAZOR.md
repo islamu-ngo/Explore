@@ -129,7 +129,7 @@ The browser authentication state is intentionally display-only:
 3. The Blazor client build regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
 4. Pages/components consume application services, not `EventApiClient` directly.
 
-Generated DTOs preserve HAL `_links` through extension data. Per-resource UI affordances must be gated by HAL links from the API, not by duplicating role checks in Razor components.
+Generated DTOs preserve HAL `_links` through extension data. Per-resource UI affordances must be gated by HAL links from the API, not by duplicating role checks in Razor components. Admin authorization-provider setup/sync UI surfaces server-confirmed status, sync, and manual-package download affordances; the browser never owns Cerbos Admin API credentials or access tokens.
 
 ## Render And Public Experience
 

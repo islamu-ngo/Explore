@@ -87,7 +87,7 @@ Id (Guid), UserId, Type, Title, Body, IsRead, ReadAt, EntityType, EntityId, Crea
 
 ### Entity Change: Add ISoftDeletable
 
-Per project conventions (CLAUDE.md rule #10), entities should include auditing fields. The notification entity should implement `ISoftDeletable` to support user-initiated deletion without data loss. We also need `IAuditableEntity` for consistency.
+Per project conventions (AGENTS.md rule #10), entities should include auditing fields. The notification entity should implement `ISoftDeletable` to support user-initiated deletion without data loss. We also need `IAuditableEntity` for consistency.
 
 **Decision**: Add `ISoftDeletable` + audit fields to `Notification` entity. This allows users to "dismiss" notifications without permanent deletion and enables the soft-delete query filter.
 

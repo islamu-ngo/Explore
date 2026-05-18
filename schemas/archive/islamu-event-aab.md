@@ -473,19 +473,6 @@ Table "notification_reasons" {
   Note: 'Lookup: why a notification was triggered. Seeded.'
 }
 
-Table "event_session_kinds" {
-  "id" int [pk, not null]
-  "master_code" varchar(100) [not null]
-  "full_name" varchar(200) [not null]
-  "description" varchar(500)
-
-  indexes {
-    master_code [unique, name: 'ix_event_session_kinds_master_code']
-  }
-
-  Note: 'Lookup: classifying a program item/session (talk, workshop, panel, activity, etc.). Seeded.'
-}
-
 // ============================================================
 // System / Configuration Tables
 // ============================================================
@@ -818,26 +805,19 @@ Table "tenants" {
   Note: 'Multi-tenant root entity. All scoped entities reference this.'
 }
 
-
-Table "tenant_settings_documents" {
+Table "tenant_settings" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
-  "document_key" varchar(128) [not null]
-  "schema_version" int [not null]
-  "defaults_version" varchar(64) [not null]
-  "payload_json" jsonb [not null]
+  "event_publishing_policy" int [not null]
+  "allow_public_organization_registration" boolean [not null]
+  "require_organization_verification" boolean [not null]
+  "allow_public_group_creation" boolean [not null]
+  "require_group_approval" boolean [not null]
+  "default_organization_id" uuid
+  "default_group_id" uuid
   "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
-  "created_at" timestamptz [not null, default: `NOW()`]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
 
-  indexes {
-    document_key [name: 'ix_tenant_settings_documents_document_key']
-    (tenant_id, document_key) [unique, name: 'ix_tenant_settings_documents_tenant_id_document_key']
-  }
-
-  Note: 'Tenant-owned typed settings documents. Payload is non-secret JSONB; tenant.branding is provisioned for each tenant.'
+  Note: 'Tenant-level governance config. Concurrency-protected.'
 }
 
 Table "tenant_setting_overrides"{
@@ -2450,7 +2430,6 @@ Table "event_sessions" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "event_id" uuid [not null]
   "event_day_id" uuid
-  "event_session_kind_id" int
   "start_time" timestamptz [not null]
   "end_time" timestamptz [not null]
   "location_id" uuid
@@ -2490,7 +2469,6 @@ Table "event_sessions" {
     (tenant_id, event_id, local_start_date, local_start_minute_of_day) [name: 'ix_event_sessions_tenant_event_local_start']
     (tenant_id, room_id, start_time, end_time) [name: 'ix_event_sessions_tenant_room_time']
     (tenant_id, event_day_id, sort_order) [name: 'ix_event_sessions_tenant_day_sort']
-    (event_session_kind_id) [name: 'ix_event_sessions_event_session_kind_id']
     (event_day_id) [name: 'ix_event_sessions_event_day_id']
     (event_id) [name: 'ix_event_sessions_event_id']
     (registration_mode_id) [name: 'ix_event_sessions_registration_mode_id']
@@ -2502,62 +2480,6 @@ Table "event_sessions" {
   Note: 'Check: CK_EventSession_NonNegativePrice, CK_EventSession_DurationPositive.'
 }
 
-Table "event_session_groups" {
-  "id" uuid [pk, not null, note: 'uuidv7()']
-  "event_id" uuid [not null]
-  "name" varchar(200) [not null]
-  "slug" varchar(200)
-  "description" varchar(1000)
-  "location_id" uuid
-  "room_id" uuid
-  "color" varchar(50)
-  "sort_order" int [not null, default: 0]
-  "is_published" boolean [not null]
-  "tenant_id" uuid [not null]
-  "created_at" timestamptz [not null]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
-  "is_deleted" boolean [not null]
-  "deleted_at" timestamptz
-  "deleted_by" uuid
-  "concurrency_stamp" uuid [not null]
-
-  indexes {
-    (tenant_id, event_id, sort_order) [name: 'ix_event_session_groups_tenant_event_sort']
-    (event_id) [name: 'ix_event_session_groups_event_id']
-    (location_id) [name: 'ix_event_session_groups_location_id']
-    (room_id) [name: 'ix_event_session_groups_room_id']
-  }
-
-  Note: 'Tenant-scoped program section/track/devroom grouping for sessions inside an event.'
-}
-
-Table "event_session_group_sessions" {
-  "id" uuid [pk, not null, note: 'uuidv7()']
-  "event_session_group_id" uuid [not null]
-  "event_session_id" uuid [not null]
-  "event_id" uuid [not null]
-  "is_primary" boolean [not null]
-  "sort_order" int [not null, default: 0]
-  "tenant_id" uuid [not null]
-  "created_at" timestamptz [not null]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
-  "is_deleted" boolean [not null]
-  "deleted_at" timestamptz
-  "deleted_by" uuid
-
-  indexes {
-    (tenant_id, event_session_group_id, sort_order) [name: 'ix_event_session_group_sessions_tenant_group_sort']
-    (tenant_id, event_session_id) [name: 'ix_event_session_group_sessions_tenant_session']
-    (event_session_id) [name: 'ix_event_session_group_sessions_event_session_id']
-    (event_session_group_id, event_session_id) [unique, name: 'ix_event_session_group_sessions_group_session_unique']
-  }
-
-  Note: 'Explicit join assigning EventSession program items to tracks/devrooms/sections.'
-}
 
 Table "event_session_islamic_aspects" {
   "event_session_id" uuid [pk, not null, note: 'shared PK with event_sessions']
@@ -2962,7 +2884,7 @@ Table "event_role_assignments" {
 
 // Tenants & Setup
 Ref: "tenants"."tenant_status_id" > "tenant_statuses"."id" [delete: restrict]
-Ref: "tenant_settings_documents"."tenant_id" - "tenants"."id" [delete: cascade]
+Ref: "tenant_settings"."tenant_id" - "tenants"."id" [delete: cascade]
 Ref: "tenant_setting_overrides"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_navigation_links"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_footer_link_groups"."tenant_id" > "tenants"."id" [delete: restrict]

@@ -69,11 +69,12 @@ The actual logic of "is this user allowed to do this?" is delegated to a runtime
 
 ### 3.4. HATEOAS Link Authorization
 
-The API uses a Hypermedia as the Engine of Application State (HATEOAS) model, and the links returned to the client are authorization-aware.
+The API uses a Hypermedia as the Engine of Application State (HATEOAS) model. HAL `_links` are the browser/client source of truth for action availability; Blazor and other clients must not recreate action gates from roles, claims, or cached local state.
 
--   **Mechanism**: The `HateoasAuthorizationEvaluator` service is used by resource assemblers when building API responses.
--   **Behavior**: It evaluates the permissions required to execute the action associated with each potential link. If the current user is not authorized, the link is omitted from the response. This prevents the UI from displaying options that the user cannot act upon.
--   **Batching & Performance**: To avoid $N+1$ performance issues, the evaluator implements a **4-Phase Capability Planning Pipeline** (Candidate → Normalize → Batch Decision → Materialize).
+-   **Mechanism**: `HateoasAuthorizationEvaluator` is used by resource assemblers and manual sync controllers before links are materialized.
+-   **Behavior**: It evaluates the permissions required to execute each potential link. If the current user is not authorized, the link is omitted from the response. Permission-bound links fail closed when authorization evaluation fails; non-permission navigation links may remain when they only require authentication or static conditions.
+-   **Metadata**: Link permission metadata includes resource kind, resource id, action, optional `AuthorizationScope`, and resource attributes. Descriptor-based links propagate scope and attributes from `ResourceDescriptors`; API-only links use explicit `AuthorizationActions` + `ResourceKinds` constants.
+-   **Batching & Performance**: To avoid $N+1$ performance issues, the evaluator implements a **4-Phase Capability Planning Pipeline** (Candidate → Normalize → Batch Decision → Materialize). Deduplication includes resource kind/id/action, scope, and canonicalized attributes so scoped or attribute-sensitive links do not collapse into the wrong decision.
 -   **Provider Optimizations**:
     -   **Cerbos**: Uses the official gRPC SDK to send deduplicated checks in a **single batch request** (`CheckResourcesAsync`).
     -   **Fallback (Local)**: Resolves the user's **Authority Profile** (admin status, tenant membership) **exactly once** per batch to eliminate redundant database/async overhead during individual link evaluation.
@@ -84,8 +85,9 @@ The API uses a Hypermedia as the Engine of Application State (HATEOAS) model, an
 ### 4.1. Cerbos
 
 -   **Description**: A powerful, open-source, stateless authorization service that allows policies to be defined in human-readable YAML files.
--   **Usage**: When configured, the `CerbosAuthorizationService` translates the application's authorization request into a Cerbos `CheckResources` API call. This allows for complex policies (e.g., resource-based, attribute-based, time-based) to be managed outside the application code.
--   **BYO (Bring Your Own) Cerbos**: The platform supports a multi-tenant model where each tenant can optionally provide their own Cerbos PDP configuration.
+-   **Layering**: Application owns provider-neutral catalogs and checks (`AuthorizationActions`, `ResourceKinds`, `AuthorizationCheck`, `ResourceDescriptors`). Infrastructure owns Cerbos gRPC, Admin API, ZIP package export, client caching, and package publishing details.
+-   **Usage**: When configured, the `CerbosAuthorizationService` translates the application's authorization request into a Cerbos `CheckResources` API call. Cerbos policy resource kinds are namespaced, for example `islamuevent_custom_property_template` and `islamuevent_custom_property_projection`.
+-   **BYO (Bring Your Own) Cerbos**: The platform supports a multi-tenant model where each tenant can optionally provide their own Cerbos PDP and Admin API configuration.
 
 ### 4.2. Fallback RBAC Service
 
@@ -105,14 +107,19 @@ The `RuntimeAuthorizationProvider` selects the authorization engine for a given 
     -   If `"cerbos"`, it uses the instance's shared `CerbosAuthorizationService` and fails closed if the PDP is unavailable.
     -   If any other value (or null), it uses the local `FallbackAuthorizationService`.
 
+If reading the instance provider setting fails, runtime authorization uses the Cerbos fail-closed path and logs only safe `FailureType` metadata. It does not default open to local RBAC.
+
 ### 4.4. Failure Modes
 
 The system is designed to fail safely — deny by default when the configured provider is unavailable.
 
 -   **Instance Cerbos Failure**: If the connection to the instance-level Cerbos PDP fails (e.g., network error, timeout), all authorization checks are denied. The operator explicitly chose Cerbos; falling back to a potentially more permissive local RBAC would silently bypass intended policies. Restore Cerbos connectivity or explicitly switch the authorization provider setting to local RBAC through instance administration to recover without Cerbos.
 -   **BYO Cerbos Failure**:
-    -   If the tenant's BYO configuration has `failure_mode=closed`, the fallback provider runs in `SafeMode`, denying all requests except for those from an instance administrator.
+    -   If the tenant's BYO configuration has `failure_mode=closed`, the fallback provider runs in provider-instance-scoped `SafeMode`, denying all requests except for those from an instance administrator.
     -   If `failure_mode=open`, the fallback provider runs its standard RBAC logic.
+-   **BYO Configuration Failure**: If tenant BYO configuration cannot be resolved, runtime authorization activates provider-instance safe mode instead of silently using local RBAC.
+-   **Blank BYO PDP Endpoint**: If a tenant explicitly sets `cerbos.mode=custom_endpoint` but leaves the custom PDP endpoint blank, the resolver preserves BYO mode, failure mode, and explicit BYO Admin API config. Runtime authorization then applies the configured `failure_mode`; it does not fall back to the instance PDP.
+-   **Safe Logging**: Runtime failure logs avoid raw endpoints, Admin API credentials, JWTs/tokens, response bodies, and exception objects/messages. They keep safe operational metadata such as failure type, action, mode, counts, request id, and correlation id.
 
 ## 5. Roles and Permissions
 

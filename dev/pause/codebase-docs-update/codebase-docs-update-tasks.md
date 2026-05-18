@@ -589,7 +589,7 @@ priority: critical|high|medium|low
 - [ ] Create new file `docs/TESTING.md`
 - [ ] Add sections:
   1. **Testing Philosophy and Standards**
-     - [ ] TDD principles (from CLAUDE.md)
+     - [ ] TDD principles (from AGENTS.md)
      - [ ] Test quality standards
      - [ ] Coverage expectations
 
@@ -645,7 +645,7 @@ priority: critical|high|medium|low
       - [ ] Testing controllers
       - [ ] Testing Blazor components
 
-- [ ] Add to CLAUDE.md references
+- [ ] Add to AGENTS.md references
 - [ ] Cross-reference in CONTRIBUTING.md
 
 **Acceptance Criteria**:
@@ -655,7 +655,7 @@ priority: critical|high|medium|low
 - [ ] Per-project execution emphasized
 - [ ] AAA pattern explained with examples
 - [ ] Mocking strategy documented
-- [ ] Referenced from CLAUDE.md and CONTRIBUTING.md
+- [ ] Referenced from AGENTS.md and CONTRIBUTING.md
 
 **Blockers**: None
 
@@ -697,7 +697,7 @@ priority: critical|high|medium|low
 - [ ] Add Introduction section explaining purpose
 - [ ] Create "Rules → Skills" Matrix:
   ```markdown
-  | CLAUDE.md Rule | Skills Covering | Enforcement Level |
+  | AGENTS.md Rule | Skills Covering | Enforcement Level |
   |----------------|-----------------|-------------------|
   | #1: Repositories → Entities | dotnet-efcore, cqrs-mediatr | Block |
   | #2: Manual Validators | clean-architecture, cqrs-mediatr | Block |
@@ -705,7 +705,7 @@ priority: critical|high|medium|low
   ```
 - [ ] Create "Rules → Agents" Matrix:
   ```markdown
-  | CLAUDE.md Rule | Agents Enforcing | Usage |
+  | AGENTS.md Rule | Agents Enforcing | Usage |
   |----------------|------------------|-------|
   | #1, #2, #3 | code-refactor-master | Refactoring compliance |
   | All rules | code-architecture-reviewer | PR review |
@@ -734,7 +734,7 @@ priority: critical|high|medium|low
 - [ ] All agents mapped to skills and rules
 - [ ] Quick lookup section provides fast navigation
 - [ ] Usage scenarios help users find right tools
-- [ ] Cross-referenced from CLAUDE.md
+- [ ] Cross-referenced from AGENTS.md
 
 **Blockers**: None
 

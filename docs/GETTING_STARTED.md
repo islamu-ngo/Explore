@@ -50,7 +50,7 @@ Use the Aspire dashboard output to find exact dynamic endpoints. Do not assume t
 Use Compose when you want the self-hosting topology locally:
 
 ```bash
-API_ENDPOINT=http://explore-api:8080/ docker compose up -d postgres redis keycloak-db keycloak explore-api explore-blazor
+API_ENDPOINT=http://islamu-event-api:8080/ docker compose up -d postgres redis keycloak-db keycloak islamu-event-api islamu-event-ui
 ```
 
 Default Compose endpoints:

@@ -70,13 +70,15 @@ Last Updated: 2026-05-07
 - [x] Add explicit read-only permissions to `test.yml`, `_build-test.yml`, and `agent-context.yml`.
 - [x] Update `agent-context.yml` to use `global-json-file: global.json`.
 - [x] Refactor `_build-test.yml` so Postgres starts only for integration lanes.
-- [ ] Evaluate `dotnet restore --locked-mode`; enable where all relevant lock files support it or split lock-file normalization into a separate PR.
+- [x] Evaluate `dotnet restore --locked-mode`; enable where all relevant lock files support it or split lock-file normalization into a separate PR.
+- [x] Normalize deployable Dockerfiles so container build stages copy root restore inputs, project files, and relevant `packages.lock.json` files before `dotnet restore --locked-mode`.
 
 ### Acceptance Criteria
 
 - [x] Non-integration PR CI does not start unnecessary database services.
 - [x] `agent-context.yml` uses the repository `global.json` SDK pin.
-- [ ] Locked restore behavior is documented before it becomes universal.
+- [x] Locked restore behavior is documented before it becomes universal.
+- [x] API and Blazor Dockerfiles use locked restore with all required restore inputs present before restore.
 
 ## Phase 2 — Dedicated OpenAPI Contract Guard
 
@@ -93,7 +95,7 @@ Last Updated: 2026-05-07
 - [x] Build `Explore.Blazor.Client/Explore.Blazor.Client.csproj` to trigger NSwag and regenerate `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
   - [x] `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet`
 - [ ] Run `Event.API.IntegrationTests/Features/ApiContractInventoryGeneratorTests.cs` only after its timestamped output is normalized or deterministic mode exists.
-- [ ] Run stable OpenAPI contract invariant tests.
+- [x] Run stable OpenAPI contract invariant tests.
 - [ ] Do not unskip currently skipped contract/client tests until a separate stabilization task proves them reliable.
 - [x] Add drift check: `git diff --exit-code -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
 - [ ] Include `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md` in the diff only when generated in the job.
@@ -267,7 +269,7 @@ Last Updated: 2026-05-07
 - [ ] GitHub Environment configuration is outside the local repo and must be created/verified in GitHub.
 - [ ] Coolify webhook support for digest-based deploys needs confirmation.
 - [ ] If digest deploy is unsupported, immutable commit-SHA tag deployment plus resolved-digest recording must be implemented.
-- [ ] Universal locked restore may require generating missing `packages.lock.json` files.
+- [ ] Docker image build validation still needs a clean CI run because the local workspace has unrelated compile/package issues.
 - [ ] The corrected NuGet audit currently detects existing vulnerabilities; package remediation or an explicit required/advisory decision is needed before CI can be fully green.
 - [ ] OpenAPI output may need normalization before strict diff is reliable.
 - [ ] Some existing OpenAPI/client tests are skipped and may require separate stabilization.

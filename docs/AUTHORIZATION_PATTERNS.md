@@ -44,12 +44,16 @@ This project enforces fine-grained authorization in `Explore.Application.Behavio
 2. Otherwise, instance-level mode from `SystemSetting` key `AuthorizationProvider` (cached for 1 minute):
    - `"cerbos"` -> `CerbosAuthorizationService`
    - any other value -> `FallbackAuthorizationService`
-3. If instance Cerbos fails (network/timeout), it falls back to `FallbackAuthorizationService`.
+3. If the instance provider setting cannot be read, the runtime uses the Cerbos fail-closed path and logs safe `FailureType` metadata only.
+
+Instance Cerbos failures are fail-closed. Network, timeout, or PDP-unavailable failures deny rather than falling back to `FallbackAuthorizationService`; switching back to local RBAC requires an explicit provider configuration change.
 
 BYO Cerbos failure handling:
 
 - `failure_mode=closed`: fallback runs in `SafeMode` (non-instance-admin traffic denied).
 - `failure_mode=open`: fallback runs in standard RBAC mode.
+
+BYO config resolver failures activate provider-instance `SafeMode` instead of silently using local RBAC. A tenant configured with `cerbos.mode=custom_endpoint` but no custom PDP endpoint remains in BYO mode: runtime authorization applies the configured failure mode, while explicit BYO Admin API configuration remains available for package sync/status operations.
 
 ## Fallback RBAC Facts
 

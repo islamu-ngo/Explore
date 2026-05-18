@@ -125,7 +125,7 @@ Last Updated: 2026-03-04
 - [x] **7.2** Update `docs/CONFIGURATION.md` — localization governance settings section
 - [x] **7.3** Update `docs/EXTENSIBILITY.md` — TMS provider abstraction section
 - [x] **7.4** Update `schemas/islamu-event.md` — TranslationManagementProviderEnum + Tag/Category unique indexes
-- [x] **7.5** Update `CLAUDE.md` — add LOCALIZATION.md to documentation index
+- [x] **7.5** Update `AGENTS.md` — add LOCALIZATION.md to documentation index
 
 ---
 

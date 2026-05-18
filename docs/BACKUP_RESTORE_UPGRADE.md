@@ -61,7 +61,7 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
 
    ```bash
    docker compose up -d postgres redis keycloak-db keycloak
-   docker compose up -d explore-api explore-blazor
+docker compose up -d islamu-event-api islamu-event-ui
    ```
 
 7. Check `/alive` and `/health` on the API and Blazor hosts.

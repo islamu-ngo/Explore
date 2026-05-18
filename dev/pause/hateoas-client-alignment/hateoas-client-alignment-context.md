@@ -136,10 +136,10 @@ For `OrganizationListDto`, the available attributes are `organizationId` (the re
 
 ## Technical Constraints
 
-1. **CLAUDE.md Rule #1**: No backwards-compat code — delete `CheckEditPermissions()` and `currentUserRole` in one change
-2. **CLAUDE.md Rule #5**: No default values in domain entities — not applicable here (Blazor layer only)
-3. **CLAUDE.md Rule #9**: File-scoped namespaces for any new C# files
-4. **CLAUDE.md ABOUTME rule**: All new files must start with two-line `ABOUTME:` summary
+1. **AGENTS.md Rule #1**: No backwards-compat code — delete `CheckEditPermissions()` and `currentUserRole` in one change
+2. **AGENTS.md Rule #5**: No default values in domain entities — not applicable here (Blazor layer only)
+3. **AGENTS.md Rule #9**: File-scoped namespaces for any new C# files
+4. **AGENTS.md ABOUTME rule**: All new files must start with two-line `ABOUTME:` summary
 5. **NSwag generated file**: Never modify `EventApiClient.g.cs` directly — it is regenerated on build
 6. **TDD**: Write failing test first, implement, verify green — required by project standards
 7. **Integration tests**: Must use `AuthenticatedApiTestFixture` pattern, not mocks

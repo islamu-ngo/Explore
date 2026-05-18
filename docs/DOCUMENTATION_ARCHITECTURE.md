@@ -35,7 +35,7 @@ Use `docs/index.md` as the entry point and keep these paths obvious:
 | Instance and tenant admins | `ADMIN_HIERARCHY.md` | `DEPLOYMENT_MODES.md`, `AUTHORIZATION_PATTERNS.md`, product feature docs |
 | Integrators | `API.md` | `API_CHANGELOG.md`, `SECURITY.md`, `CONFIGURATION.md` |
 | Contributors | `CONTRIBUTING.md` | `TESTING.md`, `QUICK_REFERENCE.md`, `DOCUMENTATION_STYLE_GUIDE.md` |
-| AI agents | `AGENTS.md`, `CLAUDE.md` | `.claude/contract/README.md`, `.claude/contract/intents.yaml`, `dev/_journal/README.md` |
+| AI agents | `AGENTS.md`, `AGENTS.md` | `.claude/contract/README.md`, `.claude/contract/intents.yaml`, `dev/_journal/README.md` |
 
 ## Canonical Docs And Owners
 
@@ -49,7 +49,7 @@ Each canonical doc has an owner category. Ownership means the category is respon
 | Frontend | `BLAZOR.md`, `DESIGN_SYSTEM.md`, `ACCESSIBILITY.md`, `RENDER_POLICIES.md` |
 | Product/Admin | `ADMIN_HIERARCHY.md`, feature/admin workflow docs |
 | Contributor Experience | `CONTRIBUTING.md`, `TESTING.md`, `DOCUMENTATION_STYLE_GUIDE.md`, this document |
-| Agent Context | `AGENTS.md`, `CLAUDE.md`, `.claude/contract/`, `.claude/skills/`, `dev/_journal/` |
+| Agent Context | `AGENTS.md`, `AGENTS.md`, `.claude/contract/`, `.claude/skills/`, `dev/_journal/` |
 
 ## Metadata Policy
 

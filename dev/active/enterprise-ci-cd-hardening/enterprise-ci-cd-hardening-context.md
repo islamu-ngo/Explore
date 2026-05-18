@@ -27,6 +27,8 @@ Last Updated: 2026-05-07
 - Implemented the Phase 8 governance-documentation slice: added `docs/CI_CD_GOVERNANCE.md`, linked it from governance/operations/testing/release docs, documented branch-protection rulesets, required vs advisory gates, GitHub Environment settings, fork PR policy, generated-artifact review rules, and artifact retention, and removed README Codecov/SonarCloud badges until those gates are actually implemented.
 - Implemented the Phase 9 action-pinning slice: replaced external GitHub Actions `uses:` tag references with full-length commit SHAs plus same-line version comments, while preserving local reusable workflow calls as path references; Dependabot `github-actions` automation remains responsible for keeping SHA pins maintainable.
 - Implemented the Phase 1B evidence-summary follow-up: `_build-test.yml` now assigns stable IDs to each fast/integration test step and writes always-running GitHub job summaries that map project names to step outcomes and the `test-results-fast` / `test-results-integration` artifacts.
+- Implemented the Phase 1C locked-restore follow-up for GitHub Actions and deployable Dockerfiles: all tracked project directories have matching `packages.lock.json` files; workflows now call `dotnet restore --locked-mode`; `Explore.API/Dockerfile` and `Explore.Blazor/Dockerfile` copy root restore inputs, referenced project files, and relevant lock files before locked restore; and `docs/CI_CD_GOVERNANCE.md` documents how package updates must include regenerated lock files.
+- Implemented the OpenAPI stable-invariant follow-up: `.github/workflows/openapi-contract.yml` now builds `Event.API.IntegrationTests` and runs the proven `OpenApiDocument_*` invariant subset with TUnit/MTP before generated-artifact drift is accepted.
 
 ## User Request
 
@@ -46,7 +48,7 @@ Create an implementation plan based on the GitHub workflow audit report. The pla
   - `dev/active/[task-name]/[task-name]-plan.md`
   - `dev/active/[task-name]/[task-name]-context.md`
   - `dev/active/[task-name]/[task-name]-tasks.md`
-- `CLAUDE.md` requires:
+- `AGENTS.md` requires:
   - Clean Architecture boundaries;
   - repositories return entities, not DTOs;
   - validators are manually instantiated in handlers;
@@ -93,6 +95,7 @@ Create an implementation plan based on the GitHub workflow audit report. The pla
 - PR1 added `Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj` to the fast test lane.
 - PR7 adds a manual/nightly workflow for `Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj`.
 - PR1 now uploads TRX artifacts for fast and integration test lanes, and the Phase 1B follow-up writes job summaries that point maintainers to the relevant project outcomes and artifact names; coverage artifacts remain future work.
+- GitHub Actions restore and deployable Docker build restore now use `dotnet restore --locked-mode`; Docker image build validation still needs a clean CI run because the local workspace has unrelated compile/package issues.
 
 ### Security
 
@@ -150,6 +153,14 @@ Create an implementation plan based on the GitHub workflow audit report. The pla
 ### Guard Design Decision
 
 Use the API build-time OpenAPI target as the canonical CI regeneration path. CI should fail on drift by comparing committed generated artifacts after regeneration and should reject the SDK suffix artifact (`swagger_event-api.json`) if it appears.
+
+The guard also runs stable OpenAPI invariant tests with:
+
+```bash
+dotnet run --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/OpenApiDocument_*" --minimum-expected-tests 5 --no-progress --report-trx --report-trx-filename openapi-invariants.trx
+```
+
+This intentionally excludes timestamped inventory generation and skipped route-name coverage tests until those outputs/tests are deterministic and stable.
 
 Files to compare:
 
@@ -268,7 +279,7 @@ If continuing implementation:
 - Exact current branch-protection and environment settings are not visible from local repo files.
 - Whether Coolify supports digest-based deploys through the current webhook contract needs verification.
 - If Coolify cannot deploy a digest directly, the fallback must be immutable commit-SHA tags plus post-deploy digest recording; mutable `latest` must not remain production source of truth.
-- Whether all projects have compatible lock files for universal `dotnet restore --locked-mode` needs validation during implementation.
+- Docker image build validation still needs a clean CI run because the local workspace has unrelated compile/package issues; local syntax validation cannot prove full container publish success.
 - Some OpenAPI/ApiClient tests are currently skipped; enabling them may require separate stabilization work.
 - OIDC availability depends on registry/deployment platform support; static secrets may remain temporarily.
 - Required-check names must be coordinated with repository settings before workflow renames are merged.

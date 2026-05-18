@@ -15,6 +15,8 @@ The platform uses a 3-layer model for both `Event` and `EventSession`:
 
 Layer 3 exists to provide governed extensibility without becoming a parallel domain model.
 
+The product boundary is locked by [ADR-006: Custom Properties Runtime Boundary](adr/ADR-006-custom-properties-runtime-boundary.md): custom properties are custom fields on existing first-class resources, not a runtime schema engine for user-defined entities or relationships.
+
 `Event` remains the parent program/container aggregate.
 
 `EventSession` remains the scheduled child aggregate.
@@ -113,6 +115,25 @@ Flag meanings are fixed.
 - `IsSystemOwned` means tenant editors cannot treat the definition as a normal tenant-local field.
 
 Handlers, jobs, and UI must not reinterpret these flags locally.
+
+## Export And Moderation Boundaries
+
+Custom-property export and moderation payloads must be explicit consumers of
+projection or aggregate contracts. A flag alone is not a publication decision:
+`ExposureLevel` is the ceiling, while `IsExportable` and `IsModerationRelevant`
+are purpose-specific grants inside that ceiling.
+
+Current repository state:
+
+- calendar export remains core-field only and does not compose Layer 3 custom-property payloads,
+- no dedicated custom-property export composer exists,
+- no dedicated custom-property moderation composer or queue exists,
+- admin projection row inspection may expose full row metadata only to authenticated governance/admin surfaces,
+- public/export/moderation consumers must request or receive an exposure ceiling and must not read raw EAV rows directly.
+
+If a future export or moderation composer is added, it must source from
+projection/aggregate contracts, apply an explicit exposure ceiling, and include
+tests proving internal custom properties do not leak through generated payloads.
 
 ## Projection Lifecycle
 

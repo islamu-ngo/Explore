@@ -38,13 +38,13 @@ The system checks deployment mode (SingleTenant/MultiTenant) **at runtime from t
 - **Global** (no tenant filter): User, lookup tables (EventType, Language, etc.), SystemSetting, ModuleDefinition, InstanceAdministrator
 - **Soft-delete only** (no tenant, has `ISoftDeletable`): User
 
-### The TenantSetting vs TenantSettings Distinction
+### Tenant Settings Storage Paths
 
-There are **two different entities** for tenant settings:
-- `TenantSetting` — Individual key-value pairs per tenant (governance overrides, used by `SettingsResolver`)
-- `TenantSettings` — A snapshot entity with explicit properties per tenant (display name, theme, etc.)
+Tenant settings now use two active storage paths:
+- `TenantSetting` — Individual scalar key-value overrides per tenant, exposed through `TenantSettingOverrides` and still used by non-migrated settings families.
+- `TenantSettingsDocument` — Typed JSONB documents per tenant, exposed through `TenantSettingsDocuments` for document-shaped families such as `tenant.branding`.
 
-The DbSet names reflect this: `TenantSettingOverrides` for `TenantSetting`, `TenantSettings` for `TenantSettings`.
+The obsolete `TenantSettings` snapshot entity was removed; do not reintroduce snapshot DTOs, repositories, or HAL surfaces for it.
 
 ---
 
@@ -307,7 +307,7 @@ Mappings are split into **10 domain-specific profiles** in `Explore.Application/
 
 | Profile | Covers |
 |---|---|
-| `TenantMappingProfile` | Tenant, TenantMember, TenantSettings, Footer |
+| `TenantMappingProfile` | Tenant, TenantMember, Footer |
 | `EventMappingProfile` | Event, EventSeries, EventDay, EventAgendaItem, Tags, Categories, Aspects |
 | `EventSessionMappingProfile` | EventSession, SessionAgendaItem, SessionSpeaker, SessionLanguage |
 | `CustomPropertyMappingProfile` | All custom property definitions, templates, options, values |

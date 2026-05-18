@@ -62,6 +62,14 @@ External `uses:` references in `.github/workflows/*.yml` are pinned to full-leng
 
 Local reusable workflows remain path-based (`./.github/workflows/...`) because they are controlled by this repository's review history. Dependabot's `github-actions` ecosystem in `.github/dependabot.yml` keeps external SHA pins maintainable.
 
+### NuGet Locked Restore Policy
+
+GitHub Actions restore steps and deployable Docker build stages use `dotnet restore --locked-mode`. All tracked project files have committed `packages.lock.json` files, and `Directory.Build.props` enables `RestorePackagesWithLockFile` plus CI-only `RestoreLockedMode` for `GITHUB_ACTIONS`.
+
+Package input changes must commit the matching lock-file changes in the same PR. Regenerate lock files with normal restore or `dotnet restore --force-evaluate`; never hand-edit `packages.lock.json`.
+
+Dockerfiles must copy the root restore inputs (`global.json`, `Directory.Build.props`, `Directory.Packages.props`), project files, and relevant `packages.lock.json` files before running `dotnet restore --locked-mode` inside the build stage. This preserves Docker layer caching while keeping NuGet resolution deterministic.
+
 ## Required vs Advisory Gates
 
 | Gate | Required | Advisory / scheduled | Promotion rule |

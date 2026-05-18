@@ -30,13 +30,75 @@ All forms in the platform must adhere to the **Canonical Form Architecture Stand
   - Asynchronous submit states must be announced to screen readers.
   - Closing a dialog must restore focus to the original triggering element.
 
+### 3.1 FormSubmitState — Mandatory Submission Lifecycle
+
+All components with asynchronous submission logic **must** use `FormSubmitState` (from `Explore.Blazor.Client.Components.Forms`) instead of manual `bool _isSaving` fields. This enforces a consistent, enterprise-grade submission lifecycle across the entire codebase.
+
+**Infrastructure location:** `Explore.Blazor.Client/Components/Forms/`
+
+| Component | Purpose |
+|:---|:---|
+| `FormSubmitState` | Tracks `IsSubmitting`, `IsSuccess`, `HasError`, `ErrorMessage` with a clean state machine (`Start()` → `Complete()` / `Fail(msg)` / `Reset()`). |
+| `FormSubmissionGuard` | Wraps `EditForm` to prevent concurrent submissions and propagate cancellation tokens. |
+| `ServerValidationErrorStore` | Maps server-side validation/auth errors (400/401/403) into `EditContext` for display. |
+| `AppValidationSummary` | Accessible validation summary with screen-reader announcements and focus management. |
+
+**Usage pattern:**
+
+```csharp
+@using Explore.Blazor.Client.Components.Forms
+
+@code {
+    private FormSubmitState _submitState = new();
+
+    private async Task SaveAsync()
+    {
+        _submitState.Start();
+        try
+        {
+            var response = await Service.SaveAsync(model);
+            if (response?.Success == true)
+            {
+                Snackbar.Add("Saved.", Severity.Success);
+                _submitState.Complete();
+                return;
+            }
+            _submitState.Fail(response?.Message ?? "Save failed.");
+        }
+        catch (Exception)
+        {
+            _submitState.Fail("An unexpected error occurred.");
+        }
+    }
+}
+```
+
+**Button binding:**
+
+```razor
+<MudButton Disabled="_submitState.IsSubmitting" OnClick="SaveAsync">
+    @(_submitState.IsSubmitting ? "Saving..." : "Save")
+</MudButton>
+```
+
+**Migration status:** As of 2026-05-11, all `private bool _isSaving` declarations have been eliminated project-wide. Zero instances remain. Every component with async submission uses `FormSubmitState`.
+
+### 3.2 Banned Patterns
+
+| Pattern | Replacement |
+|:---|:---|
+| `private bool _isSaving` | `private FormSubmitState _submitState = new()` |
+| `_isSaving = true / false` | `_submitState.Start()` / `_submitState.Complete()` / `_submitState.Fail(msg)` |
+| `Disabled="_isSaving"` | `Disabled="_submitState.IsSubmitting"` |
+| `<MudForm>` | `<EditForm>` with `FluentValidation` |
+
 ## 4. MudBlazor v9 Default Strategy
 
 MudBlazor v9 removed `MudGlobal` theming defaults (such as `ButtonVariant`, `InputDefaults`, etc.) to cleanly separate visual theming from component behavior.
 
 - **Do Not Use `MudGlobal`:** Do not attempt to re-introduce or rely on `MudGlobal` visual defaults.
 - **Provider Options:** Configure valid provider-level defaults exclusively within `AddMudServices()` in `Program.cs` (e.g., Snackbar configuration, dialog positioning defaults).
-- **Visual Styling:** 
+- **Visual Styling:**
   - Manage visual consistency using `MudTheme` (especially `LayoutProperties`), CSS custom properties (design tokens), and explicit component parameters.
   - Scoped component CSS should be used for highly specific layout adjustments instead of global overrides.
 
@@ -44,3 +106,12 @@ MudBlazor v9 removed `MudGlobal` theming defaults (such as `ButtonVariant`, `Inp
 
 - **Global Overrides:** The use of `.mud-*` selectors in global stylesheets (`mudblazor-overrides.css`) is strictly limited. Only low-risk visual tokens should be mapped, and structural/layout overrides should be thoroughly documented and scoped.
 - **CSS Layers:** All custom styling must respect the defined `@layer` architecture in `DESIGN_SYSTEM.md`. Scoped CSS isolation (`::deep`) is the preferred method for customizing MudBlazor components internally within semantic wrappers.
+
+## 6. MudForm Deprecation Status
+
+`MudForm` is **banned** from all new development. As of 2026-05-11:
+
+- **Zero** `<MudForm>` tags exist in the Blazor client codebase.
+- **Zero** `private bool _isSaving` declarations exist in the Blazor client codebase.
+- All forms use `EditForm` + `FluentValidation` or have no form submission logic.
+- All async submission flows use `FormSubmitState` from the canonical form infrastructure.

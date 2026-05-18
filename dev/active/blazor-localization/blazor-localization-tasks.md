@@ -779,7 +779,7 @@ Last Updated: 2026-04-14 (plan audit — 57/73 tasks)
 
 ## Execution Notes
 
-- **Build & test before every commit** per `CLAUDE.md`:
+- **Build & test before every commit** per `AGENTS.md`:
   ```bash
   dotnet build --configuration Release --verbosity quiet
   dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet

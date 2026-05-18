@@ -119,7 +119,7 @@ Named as `{Parent}{Module}Aspect`:
 
 - `SystemSetting` — Instance-wide settings (global)
 - `TenantSetting` — Per-tenant setting overrides
-- `TenantSettings` — Tenant settings snapshot entity (different from TenantSetting)
+- `TenantSettingsDocument` — Typed JSONB tenant settings document, such as `tenant.branding`
 - `AppSetting` — Application-level settings
 
 ---

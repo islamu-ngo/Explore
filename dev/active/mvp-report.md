@@ -308,7 +308,7 @@ Do not block launch on these. They are correctly deferred.
 
 ### 6.1 Docker Deployment
 
-- `docker-compose.yml` orchestrates: `postgres`, `keycloak-db`, `keycloak`, `explore-api`, `explore-blazor`; optional `minio` (storage profile) and `cerbos` (authz profile)
+- `docker-compose.yml` orchestrates: `postgres`, `keycloak-db`, `keycloak`, `islamu-event-api`, `islamu-event-ui`; optional `minio` (storage profile) and `cerbos` (authz profile)
 - Health checks on all services
 - Multi-stage Dockerfiles for both API and Blazor
 - Zero-downtime compatible (SIGTERM grace period 25s)

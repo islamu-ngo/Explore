@@ -24,12 +24,14 @@ Use this page when you have a symptom. For planned work, installation, backup, r
 
 ## Quick Triage Order
 
-1. Check `https://localhost:7039/health` and `/alive`.
-2. Check API startup logs for migration/seed failures.
-3. Verify deployment mode and tenant resolution behavior.
-4. Verify auth session (`/auth/status`) and token forwarding through BFF.
-5. Check rate limiting (`429`) and request timeout (`504`) before deeper debugging.
-6. If the issue followed an upgrade or restore, stop and verify [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) rollback and validation steps before changing data.
+1. Run the read-only doctor when diagnosing local or self-hosting setup drift:
+   `dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj -- --root .`
+2. Check `https://localhost:7039/health` and `/alive`.
+3. Check API startup logs for migration/seed failures.
+4. Verify deployment mode and tenant resolution behavior.
+5. Verify auth session (`/auth/status`) and token forwarding through BFF.
+6. Check rate limiting (`429`) and request timeout (`504`) before deeper debugging.
+7. If the issue followed an upgrade or restore, stop and verify [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) rollback and validation steps before changing data.
 
 ## Build And Test Failures
 
@@ -132,6 +134,34 @@ Checks:
 If `_links` are missing:
 - confirm request did not include `Prefer: return=minimal`.
 - link pruning can be authorization-driven (user lacks action permission).
+- permission-bound links are evaluated server-side through the HATEOAS authorization pipeline. If Cerbos/local authorization denies or batch evaluation fails, those links are omitted fail-closed.
+- admin/sync affordances are also filtered server-side before link materialization. Do not re-enable hidden actions in Blazor by checking client-side roles or claims.
+- for sync/history/status navigation links that are auth-only, verify the caller is authenticated and the endpoint is not returning a minimal representation.
+
+## Cerbos / Authorization Provider Issues
+
+### Instance Cerbos PDP Unavailable
+
+- When the instance provider is `cerbos`, runtime authorization fails closed. It does **not** fall back to local RBAC.
+- Check the PDP gRPC endpoint and app readiness health. Switch to local mode only as an explicit operator action.
+
+### BYO Tenant PDP Failure
+
+- `failure_mode=closed` activates provider-instance safe mode and denies non-instance-admin checks.
+- `failure_mode=open` uses local RBAC fallback only for that tenant BYO failure path.
+- BYO config resolver failures also activate provider-instance safe mode.
+
+### Blank Custom PDP Endpoint
+
+- `cerbos.mode=custom_endpoint` with a blank PDP endpoint remains BYO mode. It preserves the tenant failure mode and any explicit BYO Admin API config instead of falling back to the instance PDP.
+- Configure the PDP endpoint, change the tenant mode, or use manual ZIP/Admin API package operations while runtime authorization follows the configured failure mode.
+
+### Admin API Package Sync Failure
+
+- Use the safe issue code first: Admin API not configured, auth failure, unavailable/rejected package, reload failure, or package-status unknown.
+- Verify endpoint TLS/safety and credentials without logging or copying raw secrets into support artifacts.
+- If Admin API sync is unavailable, download the manual ZIP package from setup/admin UI and install it with `cerbosctl put`.
+- Zero-touch boot sync skips safely when Admin API endpoint or credentials are incomplete; use setup/admin UI sync after configuration is complete.
 
 ## 429 / 504 Responses
 

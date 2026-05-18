@@ -6,7 +6,7 @@ ABOUTME: Separates UI/API sync behavior from unimplemented history and full diff
 > **Audience:** Admins | Contributors
 > **Status:** Mixed
 > **Owner:** Product/Admin
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-05-12
 > **Source Anchors:** `Explore.Blazor.Client/Pages/Admin/EventTemplateSync/`, `Explore.Blazor.Client/Pages/Admin/EventSessionTemplateSync/`, `Explore.API/Controllers/EventTemplateSyncController.cs`, `Explore.API/Controllers/EventSessionTemplateSyncController.cs`, `Explore.Application/Services/EventTemplateSyncService.cs`, `Explore.Application/Services/EventSessionTemplateSyncService.cs`
 
 Template synchronization lets administrators compare an event or event session against its source template and apply selected custom-property changes. Treat this as a high-impact admin workflow because apply operations mutate live event or session custom-property definitions and options.
@@ -56,7 +56,7 @@ The services run apply work transactionally, refresh projections, and write audi
 | Event or session template provenance changed after diff load | Stale base conflict; API returns a conflict response and the UI asks the admin to reload. |
 | Definition or option changed concurrently | Concurrent-update conflict is returned for the affected item. |
 | Template provenance missing | Sync reports `missing_template_provenance`. |
-| Quota exceeded | Apply is rejected by service validation before mutating data. |
+| Quota exceeded | Apply is rejected before mutating data and returns structured `quota_exceeded` ProblemDetails (`422`). |
 | Transaction failure | Apply reports `apply_failed`; reload before retrying. |
 
 The API cookbook treats template-sync `409 Conflict` as a reload-and-retry case. Operators should not manually edit persisted template provenance to bypass these checks.

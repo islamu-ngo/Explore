@@ -20,6 +20,29 @@ This page is the operational reference for implemented runtime behavior. Task pr
 | Diagnose repeated symptoms | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | You have a concrete failure such as `401`, `429`, `504`, unhealthy readiness, setup-secret errors, or secret-provider failures. |
 | Validate release readiness | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | A change affects migrations, configuration, secrets, security, upgrade paths, or operator docs. |
 
+## Read-Only Doctor Diagnostics
+
+`Explore.Diagnostic` includes a read-only doctor CLI for self-hosting and local-environment preflight checks:
+
+```bash
+dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj -- --root .
+```
+
+The doctor prints deterministic `PASS`, `WARN`, and `FAIL` results with remediation links. It exits `0` when all checks are `PASS` or `WARN`, and exits `1` when any check is `FAIL`.
+
+Current checks cover:
+
+- .NET SDK version versus `global.json`;
+- Docker and Docker Compose availability;
+- Aspire CLI availability;
+- Compose service topology and BFF `API_ENDPOINT` alignment;
+- discrete PostgreSQL bootstrap variables expected by `BootstrapSecretLoader`;
+- presence of operator remediation docs.
+
+Non-negotiable safety boundary: doctor does **not** repair configuration, generate secrets, start containers, start Aspire, run migrations, seed data, call setup write endpoints, or persist setup state. Use it before running Compose/Aspire or when diagnosing a self-hosting setup, then follow the linked remediation docs for corrective action.
+
+Sensitive values are redacted before output. Do not add checks that print raw connection strings, passwords, setup secrets, bearer tokens, cookies, authorization headers, or secret-provider responses.
+
 ## Local Startup Topology (Aspire)
 
 `Explore.AppHost/AppHost.cs` starts services in this order:
@@ -62,7 +85,7 @@ Readiness interpretation:
 | `oidc-discovery` | API, Blazor | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
 | `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
-| `explore-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
+| `islamu-event-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
 | `secret_provider` | API, Blazor | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
 
 Operational rules:
@@ -188,57 +211,49 @@ Current counters include:
 
 ## Cerbos PDP Operations
 
-### Storage Topology
+### Storage And Package Topology
 
-Cerbos uses overlay storage (`.cerbos.yaml`):
+Static policies, schemas, and derived roles live in `cerbos/policies/`; native policy tests live in `cerbos/tests/`. The application publishes the bundled package through `IPolicyPackageService` instead of generating ad-hoc role policies at runtime.
 
-| Store | Purpose | Notes |
+Package delivery paths:
+
+| Path | Trigger | Notes |
 |---|---|---|
-| PostgreSQL (primary) | Dynamic policies from `PolicySyncService` | Admin API writes here |
-| Disk (fallback) | Static resource policies + derived roles | `cerbos/policies/*.yaml` |
+| Zero-touch boot sync | API startup when complete instance Admin API config exists | Skips safely when endpoint or credentials are incomplete. |
+| Setup/Admin UI sync | Operator-triggered setup or admin action | Returns safe issue codes for missing config, auth failure, unavailable/rejected package, reload failure, or unknown package status. |
+| Manual ZIP fallback | Setup/Admin download endpoint | Exports the same bundled package for `cerbosctl put` when Admin API sync is unavailable or intentionally disabled. |
 
-Admin API: basic auth, port 3592. Compile cache: 60s. Audit retention: 7 days.
+Runtime authorization checks use the PDP gRPC endpoint. Package sync/status uses the Admin API endpoint and credentials. Do not treat a healthy Admin API as proof that runtime PDP checks are healthy, or vice versa.
 
-### Policy Sync
-
-`PolicySyncService` generates Cerbos derived role policies from `Role`/`RolePermission` tables:
-
-| Operation | Trigger | Scope |
-|---|---|---|
-| `SyncRolePoliciesAsync(roleId)` | Custom role create/update/delete | Single role |
-| `SyncAllPoliciesAsync()` | Admin-triggered full resync | All roles as bundle |
-| `ReloadAllInstancesAsync()` | After any policy push | All PDP instances |
-
-Push flow: read roles → build typed policy documents → push to primary endpoint → broadcast reload → invalidate admin cache.
-
-Resilience: push and reload failures are logged but never fail the calling command.
-
-### Admin API Configuration (`Cerbos:AdminApi`)
+### Admin API Configuration (`Cerbos:AdminApi` And BYO Admin API)
 
 | Key | Type | Description |
 |---|---|---|
-| `Endpoints` | `List<string>` | All PDP instance URLs for reload broadcast |
-| `AdminUsername` | `string` | Basic Auth username |
-| `AdminPassword` | `string` | Basic Auth password |
+| `Endpoint` / `Endpoints` | `string` / `List<string>` | Instance Admin API target(s) for package upload/status/reload. |
+| `AdminUsername` | `string` | Basic Auth username; secret-bearing and redacted from reads/logs. |
+| `AdminPassword` | `string` | Basic Auth password; secret-bearing and redacted from reads/logs. |
+| BYO custom Admin API endpoint/credentials | tenant governance/secret settings | Optional per-tenant package target, preserved even when the tenant custom PDP endpoint is blank. |
+
+Non-local Admin API/PDP endpoints must use safe TLS-capable URLs. Unsafe endpoint changes are rejected before provider settings are persisted. Runtime failure logs must not include raw endpoints, credentials, JWTs/tokens, response bodies, or exception objects/messages.
 
 ### Monitoring
 
-| Log Message | Severity | Meaning |
-|---|---|---|
-| `Starting full policy sync to Cerbos` | Info | Full resync started |
-| `Synced policies for role {RoleId}` | Info | Single role sync succeeded |
-| `Failed to sync policies for role {RoleId}` | Error | Push failure (policies may be stale) |
-| `Reload broadcast: {Succeeded} succeeded, {Failed} failed` | Warning | Partial reload failure |
-| `BYO Cerbos PDP unreachable` | Warning | Tenant's custom PDP failed |
-| `Cerbos batch request: {CheckCount} checks` | Debug | Authorization batch sent |
+| Signal | Meaning |
+|---|---|
+| Cerbos readiness health check | Follows fail-closed semantics when instance Cerbos mode is active; local mode skips PDP readiness. |
+| Package status issue code | Distinguishes Admin API not configured, auth failure, Admin API unavailable/rejected package, reload failure, generic publish failure, and Cerbos package-status unknown. |
+| BYO closed safe-mode log | Tenant BYO failure activated provider-instance fallback safe mode; non-instance-admin decisions deny. |
+| BYO open fallback log | Tenant explicitly chose local RBAC fallback for BYO PDP failure. |
+| Runtime failure type metadata | Safe diagnostic context; no raw endpoints, credentials, JWTs, response bodies, or exception messages. |
 
 ### Incident Triage (Cerbos)
 
-1. Check PDP health: `GET {endpoint}/health` on each Cerbos instance.
-2. Verify `Cerbos:AdminApi:Endpoints` matches running instances.
-3. Check PostgreSQL store connectivity in Cerbos logs.
-4. For stale policies: trigger `SyncAllPoliciesAsync` or re-save the affected custom role.
-5. For BYO failures: check tenant's `failure_mode` and look for `SafeMode` activation in logs.
+1. Check the runtime PDP health and the app Cerbos readiness endpoint.
+2. Verify instance `Cerbos:GrpcEndpoint` for runtime checks and `Cerbos:AdminApi:*` for package operations.
+3. For BYO tenants, verify `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, and optional custom Admin API endpoint/credentials.
+4. If `cerbos.mode=custom_endpoint` has a blank PDP endpoint, runtime authorization still follows BYO failure mode; configure the PDP endpoint or temporarily choose local/open behavior only as an explicit operator decision.
+5. For package sync failures, inspect the safe issue code before retrying. Use setup/admin manual ZIP download plus `cerbosctl put` when Admin API sync is unavailable.
+6. For missing HAL affordances, confirm the link was not denied by server-side authorization before debugging route generation.
 
 ## Setup Secret Lifecycle
 
@@ -498,7 +513,7 @@ Admin settings management:
 
 ## AI Agent Operational Context
 
-AI-agent workflow rules are not runtime operations. Keep them in [../AGENTS.md](../AGENTS.md), [../CLAUDE.md](../CLAUDE.md), and [../dev/active/README.md](../dev/active/README.md) so operators do not have to scan agent tooling while diagnosing production behavior.
+AI-agent workflow rules are not runtime operations. Keep them in [../AGENTS.md](../AGENTS.md), [../AGENTS.md](../AGENTS.md), and [../dev/active/README.md](../dev/active/README.md) so operators do not have to scan agent tooling while diagnosing production behavior.
 
 
 ## Planned Capacity Work
@@ -547,6 +562,12 @@ Returns: pending (un-drained) dirty-scope rows with creation timestamps and reas
 ```
 GET /api/admin/custom-property-projections/events/{eventId}?exposureCeiling=Public
 ```
+Use `exposureCeiling` when inspecting rows for public/export/moderation analysis. Public callers and generated-client consumers must not read raw projection rows without a ceiling.
+
+**Projection rows for a specific event session:**
+```
+GET /api/admin/custom-property-projections/sessions/{eventSessionId}?exposureCeiling=Public
+```
 
 **Governance report (Rule 12):**
 ```
@@ -585,6 +606,8 @@ Processes pending dirty-scope rows without triggering a full rebuild. Idempotent
 - **Skip-on-contention:** Inline writers (triggered by value/definition changes) attempt the same lock. If contended (rebuild in progress), they upsert a `custom_property_projection_dirty_scope` row instead of blocking.
 - **Drain-on-completion:** The rebuild worker drains all pending dirty scopes after completing its scan, so the skip window is bounded.
 - **ConcurrencyStamp:** All mutable EAV entities carry an EF Core `ConcurrencyStamp` (`Guid`). `DbUpdateConcurrencyException` is translated to HTTP 409 with `code: concurrent_update`.
+- **Quota errors:** Business quota breaches return HTTP 422 with `code: quota_exceeded`, `quotaKey`, `limit`, `scope`, and optional `actual`/`attempted` fields.
+- **Admin purge:** Hard purge is separate from normal delete. It is admin-only, writes an audit summary, and is blocked when historical values, projection rows, audit references, or sync provenance exist.
 
 ### Hard limits
 

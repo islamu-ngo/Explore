@@ -1,5 +1,5 @@
 <!-- ABOUTME: How-to guide for the Blazor UI development and visual-verification cycle (stop → build → run → wait → inspect). -->
-<!-- ABOUTME: Extracted from CLAUDE.md to keep the root bootloader lean while preserving the full workflow for UI work. -->
+<!-- ABOUTME: Extracted from AGENTS.md to keep the root bootloader lean while preserving the full workflow for UI work. -->
 
 # Blazor UI Development Workflow
 
@@ -42,7 +42,7 @@ After the site is up, use the Playwriter MCP to visually verify your changes:
 - **Navigate / reload / scroll / screenshot** to verify changes.
 - **Keep Playwright commands short and independent** — long chains time out.
 
-Alternative: the Chrome-DevTools MCP for deeper frontend inspection (see [`CLAUDE.md`](../CLAUDE.md) § Specialized Tooling).
+Alternative: the Chrome-DevTools MCP for deeper frontend inspection (see [`AGENTS.md`](../AGENTS.md) § Specialized Tooling).
 
 ---
 

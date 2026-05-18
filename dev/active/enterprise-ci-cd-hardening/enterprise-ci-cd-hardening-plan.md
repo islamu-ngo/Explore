@@ -7,7 +7,7 @@ Last Updated: 2026-05-07
 
 ## Executive Summary
 
-The current GitHub Actions setup provides a useful foundation: reusable build/test logic, CodeQL, Cerbos policy checks, security integration tests, dependency review, reusable container builds, protected deploy jobs, advisory E2E runtime lanes, and Coolify deployment workflows. PR1-PR9 plus the Phase 1B evidence-summary follow-up now address the first correctness, hygiene, security-gate, container-evidence, deployment-protection, runtime-evidence, governance-documentation, and action supply-chain gaps: fast tests include the infrastructure suite, TRX/OpenAPI/security/container/deploy/E2E evidence is produced, fast/integration test summaries identify project outcomes and artifact names, OpenAPI drift is guarded, workflow permissions are explicit, missing timeouts/concurrency are added, Cerbos no longer uses a mutable binary version, C# CodeQL scans a built Release graph, Dependabot update automation is in place, external actions are SHA-pinned with version comments, deployable images emit digests/SBOM/provenance/GHCR attestations/Trivy scan output, deploy jobs use GitHub Environments plus hardened Coolify webhook calls, and `docs/CI_CD_GOVERNANCE.md` documents required checks, repository settings, fork PR policy, generated-artifact review, badges, and retention. Remaining enterprise gaps include coverage, full deploy workflow consolidation, Coolify digest/tag consumption, mandatory production smoke URL enforcement, and GitHub repository settings verification.
+The current GitHub Actions setup provides a useful foundation: reusable build/test logic, CodeQL, Cerbos policy checks, security integration tests, dependency review, reusable container builds, protected deploy jobs, advisory E2E runtime lanes, and Coolify deployment workflows. PR1-PR9 plus the Phase 1B/1C follow-ups now address the first correctness, hygiene, security-gate, container-evidence, deployment-protection, runtime-evidence, governance-documentation, and action supply-chain gaps: fast tests include the infrastructure suite, GitHub Actions restore uses locked NuGet restore, TRX/OpenAPI/security/container/deploy/E2E evidence is produced, fast/integration test summaries identify project outcomes and artifact names, OpenAPI drift is guarded, workflow permissions are explicit, missing timeouts/concurrency are added, Cerbos no longer uses a mutable binary version, C# CodeQL scans a built Release graph, Dependabot update automation is in place, external actions are SHA-pinned with version comments, deployable images emit digests/SBOM/provenance/GHCR attestations/Trivy scan output, deploy jobs use GitHub Environments plus hardened Coolify webhook calls, and `docs/CI_CD_GOVERNANCE.md` documents required checks, repository settings, fork PR policy, generated-artifact review, badges, locked restore, and retention. Remaining enterprise gaps include coverage, Dockerfile locked-restore normalization, full deploy workflow consolidation, Coolify digest/tag consumption, mandatory production smoke URL enforcement, and GitHub repository settings verification.
 
 This plan upgrades CI/CD in phases so reliability comes before strict enforcement. The first milestone keeps current workflow names stable, fixes deterministic build/test behavior, and introduces a dedicated OpenAPI contract guard that regenerates `Explore.API/swagger.json` and the NSwag client only when API-surface changes require it, then fails CI if generated artifacts were not committed. Later phases add least privilege, artifacts, security scanning, container provenance, protected deployments, smoke checks, and governance documentation.
 
@@ -38,10 +38,12 @@ This plan upgrades CI/CD in phases so reliability comes before strict enforcemen
 ### Important Gaps
 
 - PR2 now adds `.github/workflows/openapi-contract.yml` for OpenAPI/client drift; advisory `oasdiff`, Spectral, and deterministic action-inventory drift remain future work.
+- PR2 now also runs the stable `OpenApiDocument_*` contract invariant subset inside `.github/workflows/openapi-contract.yml`; advisory `oasdiff`, Spectral, and deterministic action-inventory drift remain future work.
 - PR1 now runs `Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj` in CI and documents the 10-project inventory in `docs/TESTING.md`.
 - PR7 now adds `.github/workflows/e2e.yml` for manual/nightly `Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj` execution.
 - PR3 gives workflows/jobs explicit least-privilege `permissions`.
 - PR1/PR2/PR5/PR6/PR7 now upload TRX, OpenAPI/client drift, container digest/scan, deployment, and E2E runtime evidence artifacts; the Phase 1B follow-up adds fast/integration test evidence summaries; coverage and richer policy outputs remain future work.
+- GitHub Actions restore and deployable Docker build restore now use `dotnet restore --locked-mode`; clean CI image builds still need to validate the container path because the local workspace has unrelated compile/package issues.
 - Deployments now use GitHub Environment bindings in workflow YAML, hardened webhook calls, bounded optional smoke checks, deployment summaries, and deploy concurrency keyed by environment. Production required reviewers, branch restrictions, and environment secrets must still be configured in GitHub repository settings.
 - External actions are full-SHA pinned with same-line version comments; local reusable workflows remain path-based.
 - Deploy workflows now build through a reusable container builder that emits digests/SBOM/provenance, but Coolify still deploys according to its pre-existing configured image/tag source until digest or immutable-SHA tag consumption is confirmed.
@@ -113,7 +115,7 @@ Not every enterprise-grade signal should block every PR. Use this matrix to avoi
 
 ## Non-Negotiable Principles
 
-1. **Repository conventions first**: follow `CLAUDE.md`, `docs/TESTING.md`, `docs/GOVERNANCE.md`, `docs/OPERATIONS.md`, `docs/SECURITY-MODEL.md`, and `docs/CONFIGURATION.md` before importing generic CI patterns.
+1. **Repository conventions first**: follow `AGENTS.md`, `docs/TESTING.md`, `docs/GOVERNANCE.md`, `docs/OPERATIONS.md`, `docs/SECURITY-MODEL.md`, and `docs/CONFIGURATION.md` before importing generic CI patterns.
 2. **Per-project tests only**: never introduce solution-level `dotnet test`; CI must run project-specific `dotnet test --project ...` lanes.
 3. **OpenAPI artifacts are generated, never hand-edited**: `Explore.API/swagger.json` and `Explore.Blazor.Client/Clients/EventApiClient.g.cs` must be refreshed by deterministic commands and committed when API-surface changes require it.
 4. **Fast checks first, strict checks after stability**: do not make flaky long-running lanes merge-blocking until reliability is proven with artifacts and trend data.
@@ -166,7 +168,7 @@ Not every enterprise-grade signal should block every PR. Use this matrix to avoi
 **Goal:** Make CI failures inspectable without rerunning locally.
 
 **Tasks:**
-- Add TRX output to each per-project test command using `--logger "trx;LogFileName=<project>.trx" --results-directory TestResults/<project>`.
+- Add TRX output to each per-project test command using the repository's TUnit/Microsoft.Testing.Platform syntax: `-- --report-trx --report-trx-filename <project>.trx`.
 - Upload TRX artifacts on success and failure.
 - Add failure summaries that list failed projects and artifact locations.
 - Defer coverage until TRX/test artifacts are stable; do not couple coverage-badge work to the first CI correctness PR.
@@ -184,7 +186,7 @@ Not every enterprise-grade signal should block every PR. Use this matrix to avoi
 
 **Tasks:**
 - Refactor `_build-test.yml` so Postgres starts only for integration lanes.
-- Evaluate `dotnet restore --locked-mode`; enable it only where all relevant lock files support it, or create a separate lock-file normalization PR.
+- Evaluate `dotnet restore --locked-mode`; enable it in GitHub Actions and deployable Dockerfile restore layers where all relevant lock files support it.
 - Keep `Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj` out of the fast PR lane; add it in Phase 7 as nightly/manual.
 - Align `agent-context.yml` with `global.json` by using `actions/setup-dotnet@v4` with `global-json-file: global.json` and cache settings.
 - Add `permissions: contents: read` to read-only validation workflows.
@@ -481,7 +483,7 @@ Reviewers must inspect generated artifact diffs for:
 ## Dependencies
 
 - GitHub repository/admin settings for branch protection, required checks, environments, secret scanning, and push protection.
-- Stable NuGet lock-file coverage if `dotnet restore --locked-mode` becomes required across all projects.
+- Clean Docker image build validation for the locked restore path after unrelated workspace compile/package issues are resolved.
 - Stable OpenAPI generation path through `Explore.API` build-time OpenAPI generation and NSwag.
 - Decision on coverage provider and README badges: Codecov/SonarCloud implementation vs badge removal.
 - Decision on container registry capabilities for attestations and digest-based deployment.

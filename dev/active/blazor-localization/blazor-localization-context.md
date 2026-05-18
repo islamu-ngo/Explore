@@ -397,7 +397,7 @@ Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceAdminSettingsLayou
 2. Read this file for key files + decisions + constraints
 3. Read `blazor-localization-tasks.md` for the atomic checklist
 4. Start with **Phase 0 — Audit & Architecture Anchors**: the existing code works; add guard rails before touching anything
-5. **Never** run destructive shell commands; follow the repo's `CLAUDE.md` shell behavior rules
+5. **Never** run destructive shell commands; follow the repo's `AGENTS.md` shell behavior rules
 6. Build first: `dotnet build --configuration Release --verbosity quiet`
 7. Run unit tests per project (no solution-level `dotnet test`)
 
@@ -736,7 +736,7 @@ Key format: `Translation:{tenantId}:{languageCode}:{mode}`. This ensures a `forc
 6. **Clean Architecture** — Domain has no deps; Application references Domain only; Infrastructure references Application + Domain; API/Blazor is the composition root. Manual validator instantiation (no DI for validators).
 7. **CQRS with MediatR** — commands return `BaseCommandResponse<Guid>`, queries return DTOs; authorization via `[AuthorizeResource]`/`IAuthorizedRequest`/`ISecureRequest` or endpoint-level attributes.
 8. **Secret storage** — TMS API keys/tokens stored via `SecretProvider` (Infisical-backed), never in governance settings, cookies, or logs.
-9. **No solution-level `dotnet test`** — run each test project individually per `CLAUDE.md` (Windows locale issues with `findstr /i`).
+9. **No solution-level `dotnet test`** — run each test project individually per `AGENTS.md` (Windows locale issues with `findstr /i`).
 10. **WCAG 2.2 AA** — non-negotiable for new UI work. Every new component passes accessibility checks before merging.
 11. **.NET 10** — runtime is `Net100` per `nswag.json`. Benefits from `CultureInfo.DefaultThreadCurrentCulture`/`CurrentUICulture` WASM fix and `PersistentComponentState` API.
 12. **No type suppression** — no `as any` equivalent, no `#pragma warning disable`, no empty catch blocks.

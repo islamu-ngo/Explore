@@ -241,7 +241,7 @@ Request for translate("lookup.tag.FIQH.full_name", "fr")
 - **Queries:** `GetAvailableLanguages`, `GetTranslation`, `GetTranslationsBatch`
 - **Commands:** `UpdateLocalizationConfig`, `TestTmsConnection`, `ExportTranslationsFromTms`, `ImportTranslationsToTms`
 - **Acceptance Criteria:**
-  - [ ] Commands return `BaseCommandResponse<Guid>` per CLAUDE.md rules
+  - [ ] Commands return `BaseCommandResponse<Guid>` per AGENTS.md rules
   - [ ] Queries are AllowAnonymous, commands are Authorize
 
 ---
@@ -407,7 +407,7 @@ Request for translate("lookup.tag.FIQH.full_name", "fr")
   - `GET /api/translations/{languageCode}` — get all translations for a language
   - `GET /api/translations/{key}/{languageCode}` — get single translation
   - `GET /api/translations/languages` — list available languages
-- **Auth:** `AllowAnonymous` (GET pattern per CLAUDE.md)
+- **Auth:** `AllowAnonymous` (GET pattern per AGENTS.md)
 - **Acceptance Criteria:**
   - [ ] MediatR query handlers
   - [ ] Output cache (1h for offline, 30min for live TMS)

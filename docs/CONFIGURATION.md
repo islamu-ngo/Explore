@@ -54,6 +54,21 @@ Commonly consumed sections in code:
 - `SecretProvider:*`
 - `SecretRefresh:*`
 
+### Cerbos Authorization Configuration
+
+Cerbos runtime settings are split between static instance configuration and governed database settings:
+
+- `Cerbos:GrpcEndpoint` points the instance authorization provider at the default PDP.
+- `Cerbos:AdminApi:*` configures policy package sync/status operations, not runtime authorization checks. Admin API credentials are secret-bearing and must be treated as write-only/redacted in UI and API responses.
+- Governance settings select the active provider (`AuthorizationProvider`), whether tenant customization is enabled, and per-tenant BYO values such as `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, custom Admin API endpoint, and custom Admin API credentials.
+
+Endpoint and secret safety rules:
+
+- Non-local PDP/Admin API endpoints must use safe TLS-capable URLs. Unsafe endpoint changes are rejected before provider settings are persisted or sync/cache invalidation runs.
+- Runtime failure logs must not include raw PDP/Admin API endpoints, Admin API credentials, JWTs/tokens, response bodies, or exception objects/messages.
+- A tenant with `cerbos.mode=custom_endpoint` and a blank PDP endpoint remains in BYO mode. Runtime authorization applies the tenant `failure_mode` instead of falling back to the instance PDP, while any explicit BYO Admin API configuration is still preserved for package operations.
+- `failure_mode=closed` activates provider-instance safe mode for local fallback decisions; `failure_mode=open` uses standard local RBAC fallback only for that tenant BYO failure path.
+
 ## Secret Provider Configuration
 
 `Explore.Secrets` binds provider config from `SecretProvider`:

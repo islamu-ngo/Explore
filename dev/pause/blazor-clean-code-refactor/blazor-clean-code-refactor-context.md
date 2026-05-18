@@ -485,7 +485,7 @@ Framework concrete types always allowed: `NavigationManager`, `PersistentCompone
 State container heuristic: types ending in `State`, `StateService`, `StateContainer`, `Interop` are allowed.
 Fully-qualified type names are namespace-stripped before check.
 
-### Verification — All CLAUDE.md Test Projects
+### Verification — All AGENTS.md Test Projects
 
 | Project | Result |
 |---------|--------|
@@ -535,7 +535,7 @@ Per user directive ("simple lambda → static-method refactor only"), executed m
 Replaced all remaining `Console.WriteLine` / `Console.Error.WriteLine` calls in 3 files with structured ILogger logging:
 
 **1. `Explore.Blazor.Client/Services/LazyAssemblyLoader.cs`** (WASM lazy-load diagnostics)
-- Added `ABOUTME:` 2-line header (was missing, CLAUDE.md mandate).
+- Added `ABOUTME:` 2-line header (was missing, AGENTS.md mandate).
 - Converted to primary-constructor DI: `public class LazyAssemblyLoaderService(ILogger<LazyAssemblyLoaderService> logger) : ILazyAssemblyLoader`.
 - `Console.WriteLine` → `_logger.LogDebug("Assembly {AssemblyName} will be loaded by the Router when needed.", assemblyName)`.
 - `Console.Error.WriteLine` → `_logger.LogWarning(ex, "Failed to load assembly {AssemblyName}.", assemblyName)`.
@@ -608,4 +608,3 @@ Current branch: `develop`. Wave A is fully shipped. The `refactor/blazor-clean-c
 - Phase 5.2-5.8 — ILogger severity audit, correlation ID verification, event IDs, secret leakage check, startup config validation, tenant-aware log scope, 36-site `GetLogger` migration
 
 **Test baseline after Wave A:** 2837 pass / 1 skip (pre-existing MudBlazor v9) / 0 fail across 8 test projects (E2E skipped — Aspire dependency).
-

@@ -144,7 +144,7 @@ Categories: `SourceReachable`, `SourceUnreachable`, `CredentialValid`, `Credenti
 
 - `Explore.Domain/AppSetting.cs` (PK `ConfigKey`, `EncryptedValue`, `KeyVersion`, `IsSensitive`, `Category`, `ValueType`). CHECK constraint blocks `Database:*`, `Security:MasterKey*`, `ConnectionStrings:*` keys.
 - `Explore.Domain/SystemSetting.cs` (governance key/value, JSON serialized). Used for instance-scope governance and auth provider secrets (anti-pattern - plain JSON, no encryption).
-- `Explore.Domain/TenantSetting.cs` (tenant override for governance keys). Separate from `TenantSettings` (plural, not related to secrets).
+- `Explore.Domain/TenantSetting.cs` (tenant override for governance keys). Separate from typed `TenantSettingsDocument` payloads; neither storage path should contain secrets.
 - `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs` defines the "logical secret key" namespace that currently leaks secret values into `SystemSetting.Value` JSON.
 
 ### Verified Consumers

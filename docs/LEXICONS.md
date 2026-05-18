@@ -105,7 +105,7 @@ The `temp.*` namespace is reserved for rapid iteration and unstable schemas:
 
 ## References
 
-- [CLAUDE.md](../CLAUDE.md) — agent contract.
+- [AGENTS.md](../AGENTS.md) — agent contract.
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) — hard invariants.
 - [GOVERNANCE.md](GOVERNANCE.md) — governance + decision frameworks.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — layering + request flow.

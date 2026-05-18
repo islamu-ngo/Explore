@@ -476,7 +476,7 @@ If no intent matches, stop and propose a new one per `.claude/contract/README.md
 ### Enforcement
 
 - Context-system integrity is enforced by `Event.Architecture.Tests.AgentContext{Schema,Link,IntentManifest,Duplication}Tests`.
-- CI workflow `.github/workflows/agent-context.yml` runs these tests on every PR that touches `AGENTS.md`, `CLAUDE.md`, `docs/**`, `.claude/**`, or `dev/_journal/{README,FINDING_TEMPLATE,PROMOTION_RULES}.md`.
+- CI workflow `.github/workflows/agent-context.yml` runs these tests on every PR that touches `AGENTS.md`, `AGENTS.md`, `docs/**`, `.claude/**`, or `dev/_journal/{README,FINDING_TEMPLATE,PROMOTION_RULES}.md`.
 - Benchmark scenarios live in `.claude/benchmarks/cold-start-tasks.yaml` to measure cold-start agent success.
 
 If a rule in `.claude/rules/` appears to conflict with `QUICK_REFERENCE.md` or this file, the canonical doc wins and the rule file must be fixed per [`AGENTS.md`](../AGENTS.md) §4.

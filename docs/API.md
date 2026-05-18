@@ -6,7 +6,7 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-05-12
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
@@ -406,8 +406,9 @@ Standard pagination via `PaginatedResult<T>`:
 
 1. Create/update flows return `BaseCommandResponse<Guid>` with `Success`, `Message`, `Errors`, `Id`.
 2. Many delete flows return `bool` and map to `204 NoContent` or `404 NotFound`.
-3. Query flows return DTOs or `PaginatedResult<TDto>` wrappers.
-4. All responses wrapped in HAL format by default.
+3. Explicit purge flows return `BaseCommandResponse<CustomPropertyPurgeResultDto>` and are admin-only operations that hard-delete only dependency-free custom-property definitions.
+4. Query flows return DTOs or `PaginatedResult<TDto>` wrappers.
+5. All responses wrapped in HAL format by default.
 
 ---
 
@@ -421,12 +422,27 @@ Exception handling uses .NET 8+ `IExceptionHandler` chain (not middleware):
    - `BadRequestException` → `400`
    - `NotFoundException` → `404`
    - `AuthorizationException` → `403`
+   - `QuotaExceededException` → `422` with type `/problems/quota_exceeded`
+   - `ConcurrencyConflictException` → `409` with type `/problems/concurrent_update` or `/problems/stale_sync_base`
    - Unhandled → `500` (detail hidden in production)
 
 All responses use **RFC 7807 ProblemDetails** with extensions:
 - `traceId` — from `HttpContext.TraceIdentifier`
 - `timestamp` — UTC ISO 8601
 - `correlationId` — from `X-Correlation-ID` / `X-Request-ID` header or generated UUID
+
+Custom-property quota failures use stable extensions `code`, `quotaKey`, `limit`,
+`scope`, and optional `actual`/`attempted`. The generic API mapper intentionally
+does not emit `tenantId`; tenant identifiers are only safe on explicitly
+authorized/admin surfaces.
+
+Template-sync conflicts keep business stale-base conflicts distinct from
+technical optimistic concurrency:
+
+| Code | HTTP | Problem type | Meaning |
+|---|---:|---|---|
+| `concurrent_update` | 409 | `/problems/concurrent_update` | A mutable row changed since the client loaded it. Reload and retry. |
+| `stale_sync_base` | 409 | `/problems/stale_sync_base` | The template sync base version changed. Recompute the diff before applying. |
 
 The `type` field uses IANA RFC 9110 standard URIs (e.g., `https://tools.ietf.org/html/rfc9110#section-15.5.5` for 404) instead of httpstatuses.com.
 

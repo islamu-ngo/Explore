@@ -136,7 +136,7 @@ Dangerous operation: applying a sync plan can update event or session content. T
 
 Custom-property administration includes exposure, search/filter/export governance, moderation/analytics flags, bulk edit, promotion reports, projection rebuild, and definition create/edit/delete flows.
 
-Dangerous operation: deleting or broadly changing a property definition can affect projections and operator-facing forms. Review projection status and drain/rebuild controls before high-volume changes.
+Dangerous operation: deleting or broadly changing a property definition can affect projections and operator-facing forms. Normal delete retires and soft-deletes definitions, options, and values. Permanent purge is a separate admin-only operation for dependency-free definitions; it writes an audit summary and is blocked when historical values, projection rows, audit references, or template-sync provenance exist. Review projection status and drain/rebuild controls before high-volume changes.
 
 ## Storage, SMTP, Localization, And Analytics Administration
 
@@ -154,3 +154,4 @@ Dangerous operation: deleting or broadly changing a property definition can affe
 - [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md) — implementation enforcement patterns.
 - [API_COOKBOOK.md](API_COOKBOOK.md) — direct caller and API-key integration guidance.
 - [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) — recovery planning for risky operational changes.
+- [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md) — custom-property lifecycle, projection, exposure, and purge boundaries.

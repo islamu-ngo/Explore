@@ -19,8 +19,8 @@ This guide covers running ISLAMU Event outside the Aspire developer loop. The re
 | Redis | Yes | `redis` | Distributed cache when configured | internal |
 | Keycloak DB | Yes | `keycloak-db` | Keycloak PostgreSQL database | internal |
 | Keycloak | Yes | `keycloak` | OIDC identity provider and realm import | `8080:8080` |
-| API | Yes | `explore-api` | REST API, migrations, health, metrics | `7039:8080` |
-| Blazor BFF | Yes | `explore-blazor` | Server host and YARP proxy to API | `7002:8080` |
+| API | Yes | `islamu-event-api` | REST API, migrations, health, metrics | `7039:8080` |
+| Blazor BFF | Yes | `islamu-event-ui` | Server host and YARP proxy to API | `7002:8080` |
 | MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile | `9005:9000`, `9006:9001` |
 | Cerbos | Optional | `cerbos` | External authorization PDP profile | `3592:3592`, `3593:3593` |
 
@@ -35,7 +35,7 @@ Profiles:
 2. Start the required stack:
 
    ```bash
-   docker compose up -d postgres redis keycloak-db keycloak explore-api explore-blazor
+docker compose up -d postgres redis keycloak-db keycloak islamu-event-api islamu-event-ui
    ```
 
 3. Add optional storage when local S3/MinIO is needed:
@@ -102,7 +102,7 @@ Infisical/domain secret definitions use the `STORAGE_S3_*` family under storage 
 | `SETUP_SECRET` | API | Optional fixed setup secret. If absent, API generates and logs a temporary secret. |
 | `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
 
-`docker-compose.yml` currently sets Blazor `API_ENDPOINT` with a default of `http://eventapi:8080/`. Because the Compose service is `explore-api`, operators should set `API_ENDPOINT=http://explore-api:8080/` until the Compose default is reconciled.
+`docker-compose.yml` sets Blazor `API_ENDPOINT` with a default of `http://islamu-event-api:8080/`, matching the Compose API service name. Operators only need to override `API_ENDPOINT` when routing the BFF to a different API host.
 
 ## First-Run Setup Secret
 
@@ -116,7 +116,7 @@ If `SETUP_SECRET` is unset and setup mode is active, the API generates a 32-char
 
 The validation endpoint is `POST /api/InstanceOnboarding/validate-secret`. The setup-secret rate-limit policy allows only a small number of attempts per minute; repeated failures should be treated as operator or credential errors, not retried blindly.
 
-If the generated secret expires before launch, restart `explore-api` and use the newly logged secret.
+If the generated secret expires before launch, restart `islamu-event-api` and use the newly logged secret.
 
 ## Keycloak Realm
 
@@ -140,7 +140,7 @@ The production Compose file does not currently start `Event.MigrationService` as
 
 ## Reverse Proxy
 
-Place TLS termination in front of `explore-blazor` and route browser traffic to port `8080` inside the container. The Blazor BFF proxies API calls; browsers should not need direct API access.
+Place TLS termination in front of `islamu-event-ui` and route browser traffic to port `8080` inside the container. The Blazor BFF proxies API calls; browsers should not need direct API access.
 
 Minimum proxy requirements:
 

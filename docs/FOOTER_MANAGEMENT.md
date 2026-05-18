@@ -113,7 +113,7 @@ Governance is managed via `InstanceFooterGovernanceSection.razor` with toggle co
 | Command | `CreateLink` | New link in group |
 | Command | `UpdateLink` | Modify link |
 | Command | `DeleteLink` | Remove link |
-| Command | `UpdateTenantSettings` | Tenant footer settings |
+| Command | `UpdateTenantFooterSettings` | Tenant footer settings |
 | Command | `UpdateGovernanceSettings` | Instance governance locks |
 
 ## Admin UI

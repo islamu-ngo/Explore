@@ -529,7 +529,7 @@ Content:
 - [ ] All test projects documented
 - [ ] TUnit framework explained
 - [ ] Per-project test execution documented
-- [ ] CLAUDE.md references TESTING.md
+- [ ] AGENTS.md references TESTING.md
 
 ---
 
@@ -551,14 +551,14 @@ Content:
 **New File**: `docs/SKILLS_AGENTS_REFERENCE.md`
 
 **Content**: Matrix showing:
-- Which skills support which CLAUDE.md rules
+- Which skills support which AGENTS.md rules
 - Which agents use which skills
 - When to use each skill/agent
 - Quick lookup by rule number
 
 **Format**:
 ```markdown
-| CLAUDE.md Rule | Skills | Agents |
+| AGENTS.md Rule | Skills | Agents |
 |----------------|--------|--------|
 | #1: Repositories → Entities | dotnet-efcore, cqrs-mediatr | code-refactor-master, code-architecture-reviewer |
 | #2: Manual Validators | clean-architecture, cqrs-mediatr | code-refactor-master |
@@ -711,7 +711,7 @@ Content:
 1. **Documentation Links**: Run script to verify all internal links
 2. **Skill Resources**: Verify each resource file is referenced and exists
 3. **Agent Functionality**: Test each project agent works
-4. **CLAUDE.md Compliance**: Verify all rules have skill/doc coverage
+4. **AGENTS.md Compliance**: Verify all rules have skill/doc coverage
 
 ---
 

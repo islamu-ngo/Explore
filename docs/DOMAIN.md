@@ -8,7 +8,7 @@ This project stores most entities directly under `Explore.Domain/` (not in an `E
 ## Core Aggregates
 
 1. Tenant and access scope:
-   `Tenant`, `TenantMember`, `TenantUser`, `TenantSetting`, `TenantSettings`, `TenantNavigationLink`, `TenantInvitation`, `TenantLifecycleLog`
+   `Tenant`, `TenantMember`, `TenantUser`, `TenantSetting`, `TenantSettingsDocument`, `TenantNavigationLink`, `TenantInvitation`, `TenantLifecycleLog`
 2. Identity and actor model:
    `User`, `Actor`, `Group`, `Organization`, `Role`, `Permission`, `RolePermission`, `PlatformUserRole`
 3. Events:
@@ -73,9 +73,12 @@ The platform provides a flexible EAV-based extension system across multiple scop
 - **Event Templates**: `EventTemplate` blueprints with `EventTemplateCustomPropertyDefinition`.
 - **Event Runtime**: `EventCustomPropertyDefinition` tied to specific events, materialized from templates or created directly.
 - **Event Values**: `EventCustomPropertyValue` stores typed runtime data with multi-value ordinal support.
-- **Projections**: `EventCustomPropertyProjection` provides a denormalized read-model for discovery/filtering.
+- **Event Session Runtime**: `EventSessionCustomPropertyDefinition` and `EventSessionCustomPropertyValue` mirror the event model for scheduled child content.
+- **Projections**: `EventCustomPropertyProjection` and `EventSessionCustomPropertyProjection` provide denormalized read models for discovery/filtering.
 
 **Key Rule**: Layer 3 exists for long-tail extensions. Standard sector fields must use Layer 2 typed schema.
+
+Explicit admin purge is the only hard-delete path for dependency-free custom-property definitions. Normal delete remains retire + soft delete so historical values, projections, and audit evidence stay recoverable.
 
 ### 4) Tenant and Soft-Delete Interfaces
 

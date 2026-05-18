@@ -141,7 +141,7 @@ EF Core global query filter on SecretBinding: `Scope == Instance || ScopeId == _
 3. Read `secrets-refactor-control-plane-tasks.md` and find the first unchecked task.
 4. Mark the task `in_progress` via `todowrite`.
 5. Follow the task's file path + acceptance criteria.
-6. Run `dotnet build --configuration Release --verbosity quiet`, then test projects individually per CLAUDE.md.
+6. Run `dotnet build --configuration Release --verbosity quiet`, then test projects individually per AGENTS.md.
 7. On PR close, update this file and the tasks file.
 
 ## Key Files - New (to be created or updated)

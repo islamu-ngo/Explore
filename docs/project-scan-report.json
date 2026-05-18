@@ -90,7 +90,7 @@
       "step": "step_11",
       "status": "completed",
       "timestamp": "2026-01-30T14:40:00Z",
-      "summary": "Validated all document links - 15 docs in docs/, CLAUDE.md, README.md, schema, .claude resources"
+      "summary": "Validated all document links - 15 docs in docs/, AGENTS.md, README.md, schema, .claude resources"
     },
     {
       "step": "step_12",
@@ -103,7 +103,14 @@
   "findings": {
     "project_classification": "Monolith, 1 part, .NET 10 Clean Architecture",
     "existing_docs_count": 50,
-    "existing_docs_categories": ["docs/", "root", ".claude/", "schema/", "dev/", ".repomix/"],
+    "existing_docs_categories": [
+      "docs/",
+      "root",
+      ".claude/",
+      "schema/",
+      "dev/",
+      ".repomix/"
+    ],
     "technology_stack": ".NET 10, ASP.NET Core, Blazor Server+WASM, PostgreSQL, EF Core 10, MediatR, Keycloak, YARP BFF",
     "controllers_count": 39,
     "domain_entities_count": 65,
@@ -126,7 +133,12 @@
   "validation_results": {
     "all_links_valid": true,
     "docs_folder_files": 21,
-    "root_docs": ["README.md", "CLAUDE.md", "CODE_OF_CONDUCT.md", "SECURITY-POLICY.md"],
+    "root_docs": [
+      "README.md",
+      "AGENTS.md",
+      "CODE_OF_CONDUCT.md",
+      "SECURITY-POLICY.md"
+    ],
     "schema_docs": ["islamu-event.md"],
     "claude_agents": 12,
     "claude_skills": 8

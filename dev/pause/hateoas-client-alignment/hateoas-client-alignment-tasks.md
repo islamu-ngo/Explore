@@ -41,7 +41,7 @@
 ## Phase 2: HalResourceExtensions — Refactor & Expand ✅ COMPLETE (2026-04-20)
 
 ### 2.1 Extract `HasHalLinkInAdditionalProperties` Private Helper
-- [x] Added `private static bool HasHalLinkInAdditionalProperties(IDictionary<string, object>? additionalProperties, string linkRel)` 
+- [x] Added `private static bool HasHalLinkInAdditionalProperties(IDictionary<string, object>? additionalProperties, string linkRel)`
 - [x] Refactored `HasHalLink(this EventListDto ...)` and `HasHalLink(this EventDto ...)` to delegate to helper
 - Build: 0 errors
 
@@ -120,8 +120,8 @@
   - [x] Testing section references all three regression layers (integration + bUnit)
 - [x] Verify docs still read cleanly ✅ docs/API.md:225-273 inserted cleanly between Authorization-Aware Links and Specification Pattern
 
-### 5.2 Update `CLAUDE.md` — Add Non-Inferable Rule #12 ✅ COMPLETE (2026-04-21)
-- [x] Added rule #12 to CLAUDE.md Non-Inferable Technical Rules section: "In the Blazor UI, HAL `_links` is the **exclusive** source of action affordance. Gate mutation buttons with `dto.HasHalLink("edit")` helpers... Never use `RoleHelper.CanManage`, `IsInRole`, or claim inspection for per-resource action gating — that logic belongs on the server. Role/claim checks are permitted only for navigation visibility (`NavMenu`), eligibility previews (`EventCreationEligibilityService`), and pre-API route guards."
+### 5.2 Update `AGENTS.md` — Add Non-Inferable Rule #12 ✅ COMPLETE (2026-04-21)
+- [x] Added rule #12 to AGENTS.md Non-Inferable Technical Rules section: "In the Blazor UI, HAL `_links` is the **exclusive** source of action affordance. Gate mutation buttons with `dto.HasHalLink("edit")` helpers... Never use `RoleHelper.CanManage`, `IsInRole`, or claim inspection for per-resource action gating — that logic belongs on the server. Role/claim checks are permitted only for navigation visibility (`NavMenu`), eligibility previews (`EventCreationEligibilityService`), and pre-API route guards."
 
 ---
 

@@ -583,7 +583,7 @@ Legend: `S` = <2h, `M` = 2-6h, `L` = 6-12h, `XL` = 12h+. Check tasks off as they
 ### 6.11 PR 6 verification
 - **Acceptance Criteria**:
   - [ ] `dotnet build --configuration Release --verbosity quiet` passes.
-  - [ ] All test projects in CLAUDE.md pass individually.
+  - [ ] All test projects in AGENTS.md pass individually.
   - [ ] Manual smoke: fresh DB, minimal deployment boots, onboarding completes, admin Secrets page lists all registry entries.
 - **Effort**: S
 

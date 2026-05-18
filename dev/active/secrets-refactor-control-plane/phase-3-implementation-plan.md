@@ -13,7 +13,7 @@
 1. **NO backward compatibility** — break/fix/iterate (dev mode)
 2. **Enterprise-grade quality** — clean architecture, design patterns, highly maintainable
 3. **Single Phase 3 commit** at the end
-4. **Follow ALL repo conventions** in CLAUDE.md + QUICK_REFERENCE.md
+4. **Follow ALL repo conventions** in AGENTS.md + QUICK_REFERENCE.md
 5. File-scoped namespaces for new C# files
 6. Every file starts with a two-line `ABOUTME:` comment summary
 7. Repositories return entities, not DTOs (map in handlers)
