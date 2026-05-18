@@ -3,6 +3,8 @@
 
 using Explore.Application.Responses;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Explore.API.Controllers;
 
@@ -34,6 +36,17 @@ internal static class ProgramValidationProblemDetails
             problemDetails.Extensions["code"] = response.FailureCode;
         }
 
-        return controller.BadRequest(problemDetails);
+        return new ContentResult
+        {
+            StatusCode = StatusCodes.Status400BadRequest,
+            ContentType = "application/problem+json",
+            Content = JsonSerializer.Serialize(
+                problemDetails,
+                new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                })
+        };
     }
 }

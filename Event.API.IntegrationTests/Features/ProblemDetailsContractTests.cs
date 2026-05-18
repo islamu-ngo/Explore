@@ -101,6 +101,33 @@ public class ProblemDetailsContractTests
     }
 
     [Test]
+    public async Task GlobalExceptionHandler_OnConcurrentUpdate_Returns409ProblemDetailsWithStableExtensions()
+    {
+        var definitionId = Guid.NewGuid();
+        const string detail = "The custom-property definition changed since it was loaded. Reload and try again.";
+
+        using var client = CreateClientThatThrows(
+            new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                detail,
+                "custom_property_definition",
+                definitionId.ToString()));
+
+        var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.Conflict, "Concurrency conflict");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("type").GetString()).IsEqualTo("/problems/concurrent_update");
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo(detail);
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+        await Assert.That(root.GetProperty("entityType").GetString()).IsEqualTo("custom_property_definition");
+        await Assert.That(root.GetProperty("entityId").GetString()).IsEqualTo(definitionId.ToString());
+    }
+
+    [Test]
     public async Task CommandResponseQuotaMapper_Returns422ProblemDetailsWithStableExtensions()
     {
         var tenantId = Guid.NewGuid();
@@ -149,6 +176,59 @@ public class ProblemDetailsContractTests
         await Assert.That(problemDetails.Extensions["attempted"]).IsEqualTo(3);
         await Assert.That(problemDetails.Extensions["scope"]).IsEqualTo("event_custom_property_options");
         await Assert.That(problemDetails.Extensions.ContainsKey("tenantId")).IsFalse();
+    }
+
+    [Test]
+    public async Task GlobalExceptionHandler_OnConcurrentUpdateException_Returns409ProblemDetailsWithStableExtensions()
+    {
+        var entityId = Guid.NewGuid();
+        const string detail = "The custom-property definition changed since it was loaded. Reload and try again.";
+        using var client = CreateClientThatThrows(
+            new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                detail,
+                "custom_property_definition",
+                entityId.ToString()));
+
+        var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.Conflict, "Concurrency conflict");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("type").GetString()).IsEqualTo("/problems/concurrent_update");
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo(detail);
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+        await Assert.That(root.GetProperty("entityType").GetString()).IsEqualTo("custom_property_definition");
+        await Assert.That(root.GetProperty("entityId").GetString()).IsEqualTo(entityId.ToString());
+    }
+
+    [Test]
+    public async Task GlobalExceptionHandler_OnStaleSyncBase_Returns409ProblemDetailsWithStableExtensions()
+    {
+        var eventId = Guid.NewGuid();
+        const string detail = "The template sync base is stale. Recompute the diff and try again.";
+
+        using var client = CreateClientThatThrows(
+            new ConcurrencyConflictException(
+                ConcurrencyConflictException.StaleSyncBase,
+                detail,
+                nameof(Explore.Domain.Event),
+                eventId.ToString()));
+
+        var response = await client.GetAsync($"/api/actor/{Guid.NewGuid()}");
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.Conflict, "Concurrency conflict");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("type").GetString()).IsEqualTo("/problems/stale_sync_base");
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo(detail);
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo(ConcurrencyConflictException.StaleSyncBase);
+        await Assert.That(root.GetProperty("entityType").GetString()).IsEqualTo(nameof(Explore.Domain.Event));
+        await Assert.That(root.GetProperty("entityId").GetString()).IsEqualTo(eventId.ToString());
     }
 
     [Test]
