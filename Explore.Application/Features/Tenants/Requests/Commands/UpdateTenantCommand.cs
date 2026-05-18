@@ -12,7 +12,7 @@ namespace Explore.Application.Features.Tenants.Requests.Commands;
 /// Command to update an existing tenant.
 /// Returns the ID of the updated tenant.
 /// </summary>
-[AuthorizeResource("tenant", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
 public class UpdateTenantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     /// <summary>

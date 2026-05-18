@@ -1,6 +1,7 @@
 namespace Explore.Application.Hateoas;
 
 using System.Collections.Generic;
+using Explore.Application.Authorization;
 
 /// <summary>
 /// Defines a link that can be generated for a resource.
@@ -18,6 +19,7 @@ using System.Collections.Generic;
 /// <param name="PermissionAction">Optional permission action used for action-level authorization.</param>
 /// <param name="PermissionResourceId">Optional explicit resource identifier for permission checks.</param>
 /// <param name="PermissionResourceAttributes">Optional resource attributes passed to authorization provider.</param>
+/// <param name="PermissionScope">Optional tenant/org authorization scope passed to authorization provider.</param>
 public sealed record LinkDefinition(
     string Rel,
     string RouteName,
@@ -30,7 +32,8 @@ public sealed record LinkDefinition(
     string? PermissionResourceKind = null,
     string? PermissionAction = null,
     string? PermissionResourceId = null,
-    IReadOnlyDictionary<string, object>? PermissionResourceAttributes = null)
+    IReadOnlyDictionary<string, object>? PermissionResourceAttributes = null,
+    AuthorizationScope? PermissionScope = null)
 {
     /// <summary>
     /// Creates a self link definition.
@@ -95,12 +98,18 @@ public sealed record LinkDefinition(
     /// <summary>
     /// Specifies resource/action metadata for link-level authorization checks.
     /// </summary>
-    public LinkDefinition WithPermission(string resourceKind, string action, string? resourceId = null, IReadOnlyDictionary<string, object>? resourceAttributes = null) =>
+    public LinkDefinition WithPermission(
+        string resourceKind,
+        string action,
+        string? resourceId = null,
+        IReadOnlyDictionary<string, object>? resourceAttributes = null,
+        AuthorizationScope? scope = null) =>
         this with
         {
             PermissionResourceKind = resourceKind,
             PermissionAction = action,
             PermissionResourceId = resourceId,
-            PermissionResourceAttributes = resourceAttributes
+            PermissionResourceAttributes = resourceAttributes,
+            PermissionScope = scope
         };
 }

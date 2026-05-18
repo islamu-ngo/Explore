@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Commands;
 
-[AuthorizeResource("custom_property_projection", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.CustomPropertyProjection, AuthorizationActions.Update)]
 public class RebuildSingleEventSessionCustomPropertyProjectionCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid EventSessionId { get; set; }

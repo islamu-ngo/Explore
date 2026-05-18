@@ -12,7 +12,7 @@ namespace Explore.Application.Features.Tenants.Requests.Commands;
 /// Command to create a new tenant.
 /// Returns the ID of the created tenant.
 /// </summary>
-[AuthorizeResource("tenant", AuthorizationActions.Create)]
+[AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Create)]
 public class CreateTenantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     /// <summary>

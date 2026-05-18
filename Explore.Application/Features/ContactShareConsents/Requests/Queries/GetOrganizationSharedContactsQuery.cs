@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.ContactShareConsents.Requests.Queries;
 
-[AuthorizeResource("event_contact_share_consent", AuthorizationActions.ViewSharedContacts)]
+[AuthorizeResource(ResourceKinds.EventContactShareConsent, AuthorizationActions.ViewSharedContacts)]
 public class GetOrganizationSharedContactsQuery : IRequest<PaginatedResult<SharedContactDto>>, ISecureRequest
 {
     public Guid RecipientActorId { get; set; }

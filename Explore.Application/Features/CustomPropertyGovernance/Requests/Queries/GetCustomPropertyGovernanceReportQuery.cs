@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.CustomPropertyGovernance.Requests.Queries;
 
-[AuthorizeResource("custom_property_governance", AuthorizationActions.View)]
+[AuthorizeResource(ResourceKinds.CustomPropertyGovernance, AuthorizationActions.View)]
 public class GetCustomPropertyGovernanceReportQuery : IRequest<PaginatedResult<CustomPropertyGovernanceRowDto>>, ISecureRequest
 {
     public Guid TenantId { get; set; }

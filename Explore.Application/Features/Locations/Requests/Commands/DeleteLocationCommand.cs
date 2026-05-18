@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Locations.Requests.Commands;
 
-[AuthorizeResource("location", AuthorizationActions.Delete)]
+[AuthorizeResource(ResourceKinds.Location, AuthorizationActions.Delete)]
 public class DeleteLocationCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }

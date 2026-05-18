@@ -964,6 +964,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
                     ["Deployment:Mode"] = "SingleTenant",
                     ["Deployment:DefaultTenantId"] = DefaultTenantId.ToString(),
                     ["Testing:HostProfile"] = TestHostProfile.Security,
+                    ["Testing:SkipJwtAuthorityWarmup"] = "true",
                     ["Cerbos:GrpcEndpoint"] = "http://localhost:19999",
                     ["Cerbos:PlaintextMode"] = "true",
                 };

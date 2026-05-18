@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Explore.Application.Features.StorageObjects.Requests.Commands;
 
-[AuthorizeResource("storage_object", AuthorizationActions.Delete)]
+[AuthorizeResource(ResourceKinds.StorageObject, AuthorizationActions.Delete)]
 public class DeleteStorageObjectCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }

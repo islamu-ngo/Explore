@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventTemplates.Requests.Commands;
 
-[AuthorizeResource("tenant", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Update)]
 public class UpdateEventTemplateCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required UpdateEventTemplateDto TemplateDto { get; set; }

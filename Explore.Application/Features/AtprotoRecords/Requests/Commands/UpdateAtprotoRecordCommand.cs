@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.AtprotoRecords.Requests.Commands;
 
-[AuthorizeResource("atproto_record", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.AtprotoRecord, AuthorizationActions.Update)]
 public class UpdateAtprotoRecordCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required UpdateAtprotoRecordDto AtprotoRecordDto { get; set; }

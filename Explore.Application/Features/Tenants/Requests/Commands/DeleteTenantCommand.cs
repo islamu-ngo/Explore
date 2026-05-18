@@ -10,7 +10,7 @@ namespace Explore.Application.Features.Tenants.Requests.Commands;
 /// Command to delete a tenant.
 /// Returns true if the tenant was successfully deleted, false if not found.
 /// </summary>
-[AuthorizeResource("tenant", AuthorizationActions.Delete)]
+[AuthorizeResource(ResourceKinds.Tenant, AuthorizationActions.Delete)]
 public class DeleteTenantCommand : IRequest<bool>, ISecureRequest
 {
     /// <summary>

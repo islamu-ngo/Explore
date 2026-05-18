@@ -10,7 +10,7 @@ using MediatR;
 /// <summary>
 /// Command to delete the Tech aspect from an event.
 /// </summary>
-[AuthorizeResource("event", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
 public class DeleteEventTechAspectCommand : IRequest<bool>, ISecureRequest
 {
     /// <summary>

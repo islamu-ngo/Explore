@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Events.Requests.Commands;
 
-[AuthorizeResource("event", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Update)]
 public class PublishEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid Id { get; set; }

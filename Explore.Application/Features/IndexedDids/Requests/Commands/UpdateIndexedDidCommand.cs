@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.IndexedDids.Requests.Commands;
 
-[AuthorizeResource("indexed_did", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.IndexedDid, AuthorizationActions.Update)]
 public class UpdateIndexedDidCommand : IRequest<BaseCommandResponse<string>>, ISecureRequest
 {
     public required UpdateIndexedDidDto IndexedDidDto { get; set; }

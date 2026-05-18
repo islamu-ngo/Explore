@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventCustomPropertyProjections.Requests.Commands;
 
-[AuthorizeResource("custom_property_projection", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.CustomPropertyProjection, AuthorizationActions.Update)]
 public class RebuildEventCustomPropertyProjectionCommand : IRequest<BaseCommandResponse<RebuildProjectionResponseDto>>, ISecureRequest
 {
     public required RebuildProjectionRequestDto RequestDto { get; set; }

@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Users.Requests.Commands;
 
-[AuthorizeResource("user", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.User, AuthorizationActions.Update)]
 public class UpdateUserCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required UpdateUserDto UpdateUserDto { get; set; }

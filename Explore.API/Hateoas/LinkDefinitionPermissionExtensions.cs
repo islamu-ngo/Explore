@@ -4,6 +4,7 @@
 namespace Explore.API.Hateoas;
 
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Hateoas;
 
 /// <summary>
@@ -21,14 +22,30 @@ public static class LinkDefinitionPermissionExtensions
         string action,
         TResource resource,
         string? resourceId = null,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null)
+        IReadOnlyDictionary<string, object>? resourceAttributes = null,
+        AuthorizationScope? scope = null)
         where TResource : class
     {
         ArgumentNullException.ThrowIfNull(resource);
 
         var resourceKind = ResourceDescriptorRegistry.ResolveResourceKind(typeof(TResource));
 
-        return definition.WithPermission(resourceKind, action, resourceId, resourceAttributes);
+        return definition.WithPermission(resourceKind, action, resourceId, resourceAttributes, scope);
+    }
+
+    /// <summary>
+    /// Attaches a permission check using an <see cref="AuthorizationActions"/> string constant.
+    /// Resolves the resource kind from the specified <paramref name="resourceType"/> via the registry.
+    /// </summary>
+    public static LinkDefinition RequirePermission(
+        this LinkDefinition definition,
+        string action,
+        string resourceKind,
+        string? resourceId = null,
+        IReadOnlyDictionary<string, object>? resourceAttributes = null,
+        AuthorizationScope? scope = null)
+    {
+        return definition.WithPermission(resourceKind, action, resourceId, resourceAttributes, scope);
     }
 
     /// <summary>
@@ -40,11 +57,12 @@ public static class LinkDefinitionPermissionExtensions
         string action,
         Type resourceType,
         string? resourceId = null,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null)
+        IReadOnlyDictionary<string, object>? resourceAttributes = null,
+        AuthorizationScope? scope = null)
     {
         var resourceKind = ResourceDescriptorRegistry.ResolveResourceKind(resourceType);
 
-        return definition.WithPermission(resourceKind, action, resourceId, resourceAttributes);
+        return definition.WithPermission(resourceKind, action, resourceId, resourceAttributes, scope);
     }
 
     /// <summary>
@@ -72,7 +90,8 @@ public static class LinkDefinitionPermissionExtensions
             descriptor.Kind,
             action,
             descriptor.GetResourceId(resource),
-            descriptor.GetResourceAttributes(resource));
+            descriptor.GetResourceAttributes(resource),
+            descriptor.GetScope(resource));
     }
 
 #pragma warning disable CS0618 // PermissionAction is obsolete — bridge overloads for gradual migration
@@ -84,7 +103,8 @@ public static class LinkDefinitionPermissionExtensions
         PermissionAction action,
         TResource resource,
         string? resourceId = null,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null)
+        IReadOnlyDictionary<string, object>? resourceAttributes = null,
+        AuthorizationScope? scope = null)
         where TResource : class
     {
         ArgumentNullException.ThrowIfNull(resource);
@@ -92,7 +112,7 @@ public static class LinkDefinitionPermissionExtensions
         var resourceKind = ResourceDescriptorRegistry.ResolveResourceKind(typeof(TResource));
         var actionName = ResourceDescriptorRegistry.ToActionString(action);
 
-        return definition.WithPermission(resourceKind, actionName, resourceId, resourceAttributes);
+        return definition.WithPermission(resourceKind, actionName, resourceId, resourceAttributes, scope);
     }
 
     /// <inheritdoc cref="RequirePermission(LinkDefinition, string, Type, string?, IReadOnlyDictionary{string, object}?)"/>
@@ -102,12 +122,13 @@ public static class LinkDefinitionPermissionExtensions
         PermissionAction action,
         Type resourceType,
         string? resourceId = null,
-        IReadOnlyDictionary<string, object>? resourceAttributes = null)
+        IReadOnlyDictionary<string, object>? resourceAttributes = null,
+        AuthorizationScope? scope = null)
     {
         var resourceKind = ResourceDescriptorRegistry.ResolveResourceKind(resourceType);
         var actionName = ResourceDescriptorRegistry.ToActionString(action);
 
-        return definition.WithPermission(resourceKind, actionName, resourceId, resourceAttributes);
+        return definition.WithPermission(resourceKind, actionName, resourceId, resourceAttributes, scope);
     }
 
 #pragma warning restore CS0618

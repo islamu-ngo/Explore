@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantMembers.Requests.Commands;
 
-[AuthorizeResource("tenant_member", AuthorizationActions.Create)]
+[AuthorizeResource(ResourceKinds.TenantMember, AuthorizationActions.Create)]
 public class CreateTenantMemberCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateTenantMemberDto TenantMemberDto { get; set; }

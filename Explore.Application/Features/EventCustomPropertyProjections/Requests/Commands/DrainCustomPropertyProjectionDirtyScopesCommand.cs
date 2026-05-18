@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventCustomPropertyProjections.Requests.Commands;
 
-[AuthorizeResource("custom_property_projection", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.CustomPropertyProjection, AuthorizationActions.Update)]
 public class DrainCustomPropertyProjectionDirtyScopesCommand : IRequest<BaseCommandResponse<DrainDirtyScopesResponseDto>>, ISecureRequest
 {
     public required DrainDirtyScopesRequestDto RequestDto { get; set; }

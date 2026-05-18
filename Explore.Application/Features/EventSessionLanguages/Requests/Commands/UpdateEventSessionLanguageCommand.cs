@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionLanguages.Requests.Commands;
 
-[AuthorizeResource("event_session", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.EventSession, AuthorizationActions.Update)]
 public class UpdateEventSessionLanguageCommand : IRequest<BaseCommandResponse<int>>, ISecureRequest
 {
     public required UpdateEventSessionLanguageDto EventSessionLanguageDto { get; set; }

@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantMembers.Requests.Commands;
 
-[AuthorizeResource("tenant_member", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.TenantMember, AuthorizationActions.Update)]
 public class UpdateTenantMemberCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required UpdateTenantMemberDto TenantMemberDto { get; set; }

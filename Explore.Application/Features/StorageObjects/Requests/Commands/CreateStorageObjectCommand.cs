@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.StorageObjects.Requests.Commands;
 
-[AuthorizeResource("storage_object", AuthorizationActions.Create)]
+[AuthorizeResource(ResourceKinds.StorageObject, AuthorizationActions.Create)]
 public class CreateStorageObjectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateStorageObjectDto StorageObjectDto { get; set; }

@@ -5,6 +5,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 
 using System.Security.Claims;
 using Explore.API.Hateoas;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Hateoas;
 using Microsoft.AspNetCore.Http;
@@ -66,7 +67,7 @@ public class HateoasAuthorizationEvaluatorTests
         var links = new List<LinkDefinition>
         {
             LinkDefinition.Edit("UpdateEvent")
-                .WithPermission("event", "update", "id-1"),
+                .WithPermission("islamuevent_event", "update", "id-1"),
         };
 
         _authProvider.IsAllowedBatchAsync(
@@ -90,9 +91,9 @@ public class HateoasAuthorizationEvaluatorTests
         var links = new List<LinkDefinition>
         {
             LinkDefinition.Edit("UpdateEvent")
-                .WithPermission("event", "update", "id-1"),
+                .WithPermission("islamuevent_event", "update", "id-1"),
             LinkDefinition.Action("add-categories", "UpdateEventCategories", "PUT")
-                .WithPermission("event", "update", "id-1"),
+                .WithPermission("islamuevent_event", "update", "id-1"),
         };
 
         _authProvider.IsAllowedBatchAsync(
@@ -110,6 +111,134 @@ public class HateoasAuthorizationEvaluatorTests
     }
 
     [Test]
+    [DisplayName("Checks with different scopes are not deduplicated")]
+    public async Task ChecksWithDifferentScopes_NotDeduplicated()
+    {
+        var tenantScope = new AuthorizationScope(TenantId: "tenant-1");
+        var orgScope = new AuthorizationScope(TenantId: "tenant-1", OrganizationId: "org-1");
+        var links = new List<LinkDefinition>
+        {
+            LinkDefinition.Edit("UpdateTenantEvent")
+                .WithPermission("islamuevent_event", "update", "event-1", scope: tenantScope),
+            LinkDefinition.Edit("UpdateOrganizationEvent")
+                .WithPermission("islamuevent_event", "update", "event-1", scope: orgScope),
+        };
+
+        _authProvider.IsAllowedBatchAsync(
+            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<CancellationToken>())
+            .Returns([true, false]);
+
+        var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
+
+        await Assert.That(result[0]).IsTrue();
+        await Assert.That(result[1]).IsFalse();
+        await _authProvider.Received(1).IsAllowedBatchAsync(
+            Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => ChecksContainScopes(checks, tenantScope, orgScope)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [DisplayName("Checks with different resource attributes are not deduplicated")]
+    public async Task ChecksWithDifferentAttributes_NotDeduplicated()
+    {
+        var links = new List<LinkDefinition>
+        {
+            LinkDefinition.Edit("UpdateTenantEvent")
+                .WithPermission(
+                    "islamuevent_event",
+                    "update",
+                    "event-1",
+                    new Dictionary<string, object> { ["tenantId"] = "tenant-1", ["ownerId"] = "owner-1" }),
+            LinkDefinition.Edit("UpdateOtherTenantEvent")
+                .WithPermission(
+                    "islamuevent_event",
+                    "update",
+                    "event-1",
+                    new Dictionary<string, object> { ["tenantId"] = "tenant-2", ["ownerId"] = "owner-1" }),
+        };
+
+        _authProvider.IsAllowedBatchAsync(
+            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<CancellationToken>())
+            .Returns([true, false]);
+
+        var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
+
+        await Assert.That(result[0]).IsTrue();
+        await Assert.That(result[1]).IsFalse();
+        await _authProvider.Received(1).IsAllowedBatchAsync(
+            Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => ChecksContainTenantAttributes(checks, "tenant-1", "tenant-2")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    [DisplayName("Dedup key canonicalizes attributes independent of insertion order")]
+    public async Task DedupKey_CanonicalizesAttributesIndependentOfInsertionOrder()
+    {
+        var first = new AuthorizationCheck(
+            "islamuevent_event",
+            "event-1",
+            "update",
+            new Dictionary<string, object> { ["tenantId"] = "tenant-1", ["ownerId"] = "owner-1" },
+            AuthorizationScope.Empty);
+        var second = new AuthorizationCheck(
+            "islamuevent_event",
+            "event-1",
+            "update",
+            new Dictionary<string, object> { ["ownerId"] = "owner-1", ["tenantId"] = "tenant-1" });
+
+        await Assert.That(first.ToDeduplicationKey()).IsEqualTo(second.ToDeduplicationKey());
+    }
+
+    [Test]
+    [DisplayName("Dedup key changes when resource attributes differ")]
+    public async Task DedupKey_ChangesWhenAttributesDiffer()
+    {
+        var first = new AuthorizationCheck(
+            "islamuevent_event",
+            "event-1",
+            "update",
+            new Dictionary<string, object> { ["tenantId"] = "tenant-1" });
+        var second = new AuthorizationCheck(
+            "islamuevent_event",
+            "event-1",
+            "update",
+            new Dictionary<string, object> { ["tenantId"] = "tenant-2" });
+
+        await Assert.That(first.ToDeduplicationKey()).IsNotEqualTo(second.ToDeduplicationKey());
+    }
+
+    [Test]
+    [DisplayName("Descriptor permission overload propagates scope to authorization provider")]
+    public async Task DescriptorPermission_PropagatesScopeToProvider()
+    {
+        var resource = new TestResource("resource-1", "tenant-1", "org-1");
+        var descriptor = new ResourceDescriptor<TestResource>(
+            "islamuevent_event",
+            static candidate => candidate.Id,
+            static candidate => new Dictionary<string, object> { ["tenantId"] = candidate.TenantId },
+            static candidate => new AuthorizationScope(candidate.TenantId, candidate.OrganizationId));
+        var links = new List<LinkDefinition>
+        {
+            LinkDefinition.Edit("UpdateResource")
+                .RequirePermission("update", descriptor, resource),
+        };
+
+        _authProvider.IsAllowedBatchAsync(
+            Arg.Any<IReadOnlyList<AuthorizationCheck>>(),
+            Arg.Any<CancellationToken>())
+            .Returns([true]);
+
+        var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
+
+        await Assert.That(result[0]).IsTrue();
+        await _authProvider.Received(1).IsAllowedBatchAsync(
+            Arg.Is<IReadOnlyList<AuthorizationCheck>>(checks => CheckContainsScopeAndAttributes(checks, "tenant-1", "org-1")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     [DisplayName("Dedup maps batch decisions correctly back to all original links")]
     public async Task DedupMapsDecisions_Correctly()
     {
@@ -117,11 +246,11 @@ public class HateoasAuthorizationEvaluatorTests
         var links = new List<LinkDefinition>
         {
             LinkDefinition.Edit("UpdateEvent")
-                .WithPermission("event", "update", "id-1"),
+                .WithPermission("islamuevent_event", "update", "id-1"),
             LinkDefinition.Action("add-tags", "UpdateEventTags", "PUT")
-                .WithPermission("event", "update", "id-1"),
+                .WithPermission("islamuevent_event", "update", "id-1"),
             LinkDefinition.Delete("DeleteEvent")
-                .WithPermission("event", "delete", "id-1"),
+                .WithPermission("islamuevent_event", "delete", "id-1"),
         };
 
         // Provider returns 2 decisions for 2 unique checks: update=allowed, delete=denied
@@ -145,9 +274,9 @@ public class HateoasAuthorizationEvaluatorTests
         {
             LinkDefinition.Self("GetEvent"),
             LinkDefinition.Edit("UpdateEvent")
-                .WithPermission("event", "update", "id-1"),
+                .WithPermission("islamuevent_event", "update", "id-1"),
             LinkDefinition.Delete("DeleteEvent")
-                .WithPermission("event", "delete", "id-1"),
+                .WithPermission("islamuevent_event", "delete", "id-1"),
         };
 
         _authProvider.IsAllowedBatchAsync(
@@ -170,7 +299,7 @@ public class HateoasAuthorizationEvaluatorTests
         {
             LinkDefinition.Edit("UpdateEvent")
                 .When(() => false)
-                .WithPermission("event", "update", "id-1"),
+                .WithPermission("islamuevent_event", "update", "id-1"),
         };
 
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser(), _httpContext);
@@ -189,7 +318,7 @@ public class HateoasAuthorizationEvaluatorTests
         {
             LinkDefinition.Action("archive", "ArchiveEvent", "POST").Authenticated() with
             {
-                PermissionResourceKind = "event",
+                PermissionResourceKind = "islamuevent_event",
                 PermissionResourceId = "id-1",
             },
         };
@@ -210,7 +339,7 @@ public class HateoasAuthorizationEvaluatorTests
         var links = new List<LinkDefinition>
         {
             LinkDefinition.Edit("UpdateEvent")
-                .WithPermission("event", "update", "id-1"),
+                .WithPermission("islamuevent_event", "update", "id-1"),
         };
 
         var result = await _sut.AreLinksAllowedAsync(links, null, _httpContext);
@@ -225,7 +354,7 @@ public class HateoasAuthorizationEvaluatorTests
         var links = new List<LinkDefinition>
         {
             LinkDefinition.Edit("UpdateEvent", roles: ["Admin"])
-                .WithPermission("event", "update", "id-1"),
+                .WithPermission("islamuevent_event", "update", "id-1"),
         };
 
         var result = await _sut.AreLinksAllowedAsync(links, AuthenticatedUser("User"), _httpContext);
@@ -240,7 +369,7 @@ public class HateoasAuthorizationEvaluatorTests
         var links = new List<LinkDefinition>
         {
             LinkDefinition.Edit("UpdateEvent", roles: ["Admin"])
-                .WithPermission("event", "update", "id-1"),
+                .WithPermission("islamuevent_event", "update", "id-1"),
         };
 
         _authProvider.IsAllowedBatchAsync(
@@ -262,11 +391,11 @@ public class HateoasAuthorizationEvaluatorTests
             LinkDefinition.Self("GetEvent"),                                   // No auth, no permission → true
             LinkDefinition.Edit("UpdateEvent")
                 .When(() => false)
-                .WithPermission("event", "update", "id-1"),                    // Condition false → false
+                .WithPermission("islamuevent_event", "update", "id-1"),                    // Condition false → false
             LinkDefinition.Delete("DeleteEvent")
-                .WithPermission("event", "delete", "id-1"),                    // Permission check → depends on provider
+                .WithPermission("islamuevent_event", "delete", "id-1"),                    // Permission check → depends on provider
             LinkDefinition.Create("CreateEvent")
-                .WithPermission("event", "create", "event"),                   // Permission check → depends on provider
+                .WithPermission("islamuevent_event", "create", "islamuevent_event"),                   // Permission check → depends on provider
         };
 
         _authProvider.IsAllowedBatchAsync(
@@ -281,4 +410,35 @@ public class HateoasAuthorizationEvaluatorTests
         await Assert.That(result[2]).IsFalse(); // Delete — provider denied
         await Assert.That(result[3]).IsTrue();  // Create — provider allowed
     }
+
+    private static bool ChecksContainScopes(
+        IReadOnlyList<AuthorizationCheck> checks,
+        AuthorizationScope first,
+        AuthorizationScope second) =>
+        checks.Count == 2 &&
+        checks.Any(check => check.Scope == first) &&
+        checks.Any(check => check.Scope == second);
+
+    private static bool ChecksContainTenantAttributes(
+        IReadOnlyList<AuthorizationCheck> checks,
+        string firstTenantId,
+        string secondTenantId) =>
+        checks.Count == 2 &&
+        checks.Any(check => HasTenantId(check, firstTenantId)) &&
+        checks.Any(check => HasTenantId(check, secondTenantId));
+
+    private static bool CheckContainsScopeAndAttributes(
+        IReadOnlyList<AuthorizationCheck> checks,
+        string tenantId,
+        string organizationId) =>
+        checks.Count == 1 &&
+        checks[0].Scope == new AuthorizationScope(tenantId, organizationId) &&
+        HasTenantId(checks[0], tenantId);
+
+    private static bool HasTenantId(AuthorizationCheck check, string tenantId) =>
+        check.ResourceAttributes is not null &&
+        check.ResourceAttributes.TryGetValue("tenantId", out var value) &&
+        string.Equals(value as string, tenantId, StringComparison.Ordinal);
+
+    private sealed record TestResource(string Id, string TenantId, string OrganizationId);
 }

@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Locations.Requests.Commands;
 
-[AuthorizeResource("location", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.Location, AuthorizationActions.Update)]
 public class UpdateLocationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required UpdateLocationDto LocationDto { get; set; }

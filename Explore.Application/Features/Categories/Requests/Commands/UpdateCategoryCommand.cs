@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Categories.Requests.Commands;
 
-[AuthorizeResource("category", AuthorizationActions.Update)]
+[AuthorizeResource(ResourceKinds.Category, AuthorizationActions.Update)]
 public class UpdateCategoryCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required UpdateCategoryDto CategoryDto { get; set; }

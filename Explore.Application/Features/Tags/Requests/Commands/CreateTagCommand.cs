@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Tags.Requests.Commands;
 
-[AuthorizeResource("tag", AuthorizationActions.Create)]
+[AuthorizeResource(ResourceKinds.Tag, AuthorizationActions.Create)]
 public class CreateTagCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateTagDto TagDto { get; set; }

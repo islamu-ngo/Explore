@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.OrganizationMembers.Requests.Commands;
 
-[AuthorizeResource("organization_member", AuthorizationActions.Delete)]
+[AuthorizeResource(ResourceKinds.OrganizationMember, AuthorizationActions.Delete)]
 public class DeleteOrganizationMemberCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid MemberId { get; set; }

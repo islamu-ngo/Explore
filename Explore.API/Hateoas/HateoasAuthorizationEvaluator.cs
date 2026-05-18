@@ -166,7 +166,7 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
             ?? definition.RouteName;
 
         var attrs = definition.PermissionResourceAttributes;
-        return new AuthorizationCheck(definition.PermissionResourceKind, resourceId, action, attrs);
+        return new AuthorizationCheck(definition.PermissionResourceKind, resourceId, action, attrs, definition.PermissionScope);
     }
 
     private static bool RequiresExplicitPermissionAction(LinkDefinition definition) =>

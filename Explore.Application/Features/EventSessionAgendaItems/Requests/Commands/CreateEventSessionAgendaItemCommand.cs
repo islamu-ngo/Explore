@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
 
-[AuthorizeResource("event_session_agenda_item", AuthorizationActions.Create)]
+[AuthorizeResource(ResourceKinds.EventSessionAgendaItem, AuthorizationActions.Create)]
 public class CreateEventSessionAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateEventSessionAgendaItemDto AgendaItemDto { get; set; }

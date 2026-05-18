@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventRegistrations.Requests.Commands;
 
-[AuthorizeResource("event_registration", AuthorizationActions.Delete)]
+[AuthorizeResource(ResourceKinds.EventRegistration, AuthorizationActions.Delete)]
 public class DeleteEventRegistrationCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }
