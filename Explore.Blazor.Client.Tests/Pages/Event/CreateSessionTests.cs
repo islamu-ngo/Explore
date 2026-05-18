@@ -54,8 +54,6 @@ public sealed class CreateSessionTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("Add a talk, workshop, panel, class, or activity");
         await Assert.That(cut.Markup).Contains("Program item title");
-        await Assert.That(cut.Markup).Contains("Program item type");
-        await Assert.That(cut.Markup).Contains("Language");
         await Assert.That(cut.Markup).Contains("Program item date");
         await Assert.That(cut.Markup).Contains("Registration mode");
         await Assert.That(cut.Markup).Contains("Open");
@@ -133,18 +131,12 @@ public sealed class CreateSessionTests : IDisposable
             && dto.LocationId == locationId
             && dto.RoomId == roomId
             && dto.EventSessionKindId == 1
+            && dto.LanguageIds.OrderBy(id => id).SequenceEqual(new[] { 1, 2 })
             && dto.RegistrationModeId == 2
             && dto.StartTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 9, 30, 0))
             && dto.EndTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 6, 1, 10, 30, 0))
             && dto.StartTime.Value.Offset == TimeSpan.Zero
             && dto.EndTime.Value.Offset == TimeSpan.Zero));
-        await _eventSessionLanguageService.Received(1).SyncLanguagesForSessionAsync(
-            sessionId,
-            Arg.Is<IEnumerable<int>>(ids => ids.OrderBy(id => id).SequenceEqual(new[] { 1, 2 })),
-            Arg.Any<CancellationToken>());
-        await _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>()
-            .Received(1)
-            .AnnouncePoliteAsync("Program item saved. Program summary will refresh on return.");
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
 
@@ -232,10 +224,7 @@ public sealed class CreateSessionTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
         await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionRequest>());
-        await _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>()
-            .Received(1)
-            .AnnounceAssertiveAsync("End time must be after start time.");
-        var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
+        var errorMessage = GetSubmitError(cut.Instance);
         await Assert.That(errorMessage).IsEqualTo("End time must be after start time.");
     }
 
@@ -256,13 +245,12 @@ public sealed class CreateSessionTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>()
-            .Received(1)
-            .AnnounceAssertiveAsync("Program item could not be saved.");
+        var errorMessage = GetSubmitError(cut.Instance);
+        await Assert.That(errorMessage).IsEqualTo("Program item could not be saved.");
     }
 
     [Test]
-    public async Task SaveSessionAsync_WhenLanguageSyncFails_AnnouncesPartialSaveError()
+    public async Task SaveSessionAsync_IncludesSelectedLanguagesInCreateRequest()
     {
         var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
@@ -272,9 +260,6 @@ public sealed class CreateSessionTests : IDisposable
             Success = true,
             Id = sessionId
         });
-        _eventSessionLanguageService.SyncLanguagesForSessionAsync(sessionId, Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
-            .Returns(false);
-
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
         var session = GetPrivateField<CreateEventSessionRequest>(cut.Instance, "_session");
         session.Title = "Opening talk";
@@ -282,9 +267,8 @@ public sealed class CreateSessionTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>()
-            .Received(1)
-            .AnnounceAssertiveAsync("Program item was saved, but its languages could not be updated.");
+        await _eventService.Received(1).CreateSessionAsync(Arg.Is<CreateEventSessionRequest>(dto =>
+            dto.LanguageIds.Single() == 1));
     }
 
     [Test]
@@ -322,7 +306,7 @@ public sealed class CreateSessionTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
         await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<CreateEventSessionRequest>());
-        var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
+        var errorMessage = GetSubmitError(cut.Instance);
         await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to add program items to this event draft.");
     }
 
@@ -454,6 +438,12 @@ public sealed class CreateSessionTests : IDisposable
         var field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException($"Field {fieldName} was not found.");
         return (T)(field.GetValue(instance) ?? throw new InvalidOperationException($"Field {fieldName} was null."));
+    }
+
+    private static string? GetSubmitError(object instance)
+    {
+        var submitState = GetPrivateField<Explore.Blazor.Client.Components.Forms.FormSubmitState>(instance, "_submitState");
+        return submitState.ErrorMessage;
     }
 
     private static void SetPrivateField<T>(object instance, string fieldName, T value)

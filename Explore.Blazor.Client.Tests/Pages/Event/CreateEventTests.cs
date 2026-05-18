@@ -460,7 +460,7 @@ public class CreateEventTests : IDisposable
 
         // Assert
         await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
-        var error = GetPrivateField<string>(cut.Instance, "errorMessage");
+        var error = GetSubmitError(cut.Instance);
         await Assert.That(error).Contains("template preview");
 
         preview.SetResult(null);
@@ -604,7 +604,7 @@ public class CreateEventTests : IDisposable
 
         // Assert
         await _eventService.DidNotReceive().CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
-        var error = GetPrivateField<string>(cut.Instance, "errorMessage");
+        var error = GetSubmitError(cut.Instance);
         await Assert.That(error).Contains("No available publisher");
     }
 
@@ -648,7 +648,7 @@ public class CreateEventTests : IDisposable
         await _eventService.Received(1).CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>());
         await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
         await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        var error = GetPrivateField<string>(cut.Instance, "errorMessage");
+        var error = GetSubmitError(cut.Instance);
         var readinessErrors = GetPrivateField<IReadOnlyList<EventPublishReadinessErrorDto>>(cut.Instance, "_publishReadinessErrors");
         await Assert.That(error).Contains("not ready to publish");
         await Assert.That(readinessErrors.Count).IsEqualTo(1);
@@ -786,7 +786,7 @@ public class CreateEventTests : IDisposable
         await _eventService.Received(1).GetEventPublishReadinessAsync(createdEventId, Arg.Any<CancellationToken>());
         await _eventService.Received(1).GetEventByIdAsync(createdEventId);
         await _eventService.DidNotReceive().PublishEventAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        var error = GetPrivateField<string>(cut.Instance, "errorMessage");
+        var error = GetSubmitError(cut.Instance);
         await Assert.That(error).Contains("draft was saved");
     }
 
@@ -1071,6 +1071,12 @@ public class CreateEventTests : IDisposable
             ?? throw new MissingFieldException(typeof(CreateEvent).FullName, fieldName);
 
         return (T)field.GetValue(component)!;
+    }
+
+    private static string GetSubmitError(CreateEvent component)
+    {
+        var submitState = GetPrivateField<Explore.Blazor.Client.Components.Forms.FormSubmitState>(component, "_submitState");
+        return submitState.ErrorMessage ?? throw new InvalidOperationException("Submit state error message was not set.");
     }
 
     private static void SetPrivateField<T>(CreateEvent component, string fieldName, T value)

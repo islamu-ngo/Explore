@@ -61,15 +61,10 @@ public sealed class EditSessionTests : IDisposable
         cut.WaitForState(() => cut.Markup.Contains("Edit program item", StringComparison.Ordinal));
 
         await Assert.That(cut.Markup).Contains("Program item title");
-        await Assert.That(cut.Markup).Contains("Program item type");
-        await Assert.That(cut.Markup).Contains("Workshop · Hands-on guided session.");
-        await Assert.That(cut.Markup).Contains("Language");
         await Assert.That(cut.Markup).Contains("Program item date");
         await Assert.That(cut.Markup).Contains("Registration mode");
         await Assert.That(cut.Markup).Contains("Open");
-        await Assert.That(cut.Markup).Contains("Program item context");
-        await Assert.That(cut.Markup).Contains("Event timezone");
-        await Assert.That(cut.Markup).Contains("Europe/Brussels");
+        await Assert.That(cut.Markup).Contains("This dedicated composer edits the saved program item without reopening the event shell drawer.");
         await Assert.That(cut.Markup).Contains("Program items are sessions, not child events.");
         await Assert.That(cut.Markup).DoesNotContain("Edit session");
     }
@@ -124,6 +119,7 @@ public sealed class EditSessionTests : IDisposable
             && dto.LocationId == locationId
             && dto.RoomId == roomId
             && dto.EventSessionKindId == 2
+            && dto.LanguageIds.OrderBy(id => id).SequenceEqual(new[] { 1, 2 })
             && dto.MaxAudienceAttendees == 50
             && dto.RegistrationModeId == 2
             && dto.IslamicAspect != null
@@ -133,10 +129,6 @@ public sealed class EditSessionTests : IDisposable
             && dto.EndTime == DateTimeHelper.ConvertLocalToUtc(new DateTime(2026, 7, 3, 15, 30, 0))
             && dto.StartTime.Value.Offset == TimeSpan.Zero
             && dto.EndTime.Value.Offset == TimeSpan.Zero));
-        await _eventSessionLanguageService.Received(1).SyncLanguagesForSessionAsync(
-            sessionId,
-            Arg.Is<IEnumerable<int>>(ids => ids.OrderBy(id => id).SequenceEqual(new[] { 1, 2 })),
-            Arg.Any<CancellationToken>());
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
 
@@ -177,7 +169,7 @@ public sealed class EditSessionTests : IDisposable
     }
 
     [Test]
-    public async Task SaveSessionAsync_WhenLanguageSyncFails_AnnouncesPartialSaveError()
+    public async Task SaveSessionAsync_IncludesSelectedLanguagesInUpdateRequest()
     {
         var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
@@ -188,9 +180,6 @@ public sealed class EditSessionTests : IDisposable
             Success = true,
             Id = sessionId
         });
-        _eventSessionLanguageService.SyncLanguagesForSessionAsync(sessionId, Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
-            .Returns(false);
-
         var cut = _ctx.Render<EditSession>(parameters => parameters
             .Add(component => component.EventId, eventId)
             .Add(component => component.SessionId, sessionId));
@@ -200,9 +189,8 @@ public sealed class EditSessionTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _ctx.Services.GetRequiredService<IAccessibilityAnnouncerService>()
-            .Received(1)
-            .AnnounceAssertiveAsync("Program item was saved, but its languages could not be updated.");
+        await _eventService.Received(1).UpdateSessionAsync(Arg.Is<UpdateEventSessionRequest>(dto =>
+            dto.LanguageIds.Single() == 1));
     }
 
     [Test]
@@ -257,7 +245,7 @@ public sealed class EditSessionTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
         await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>());
-        var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
+        var errorMessage = GetSubmitError(cut.Instance);
         await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to edit this program item.");
     }
 
@@ -276,7 +264,7 @@ public sealed class EditSessionTests : IDisposable
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
         await _eventService.DidNotReceive().UpdateSessionAsync(Arg.Any<UpdateEventSessionRequest>());
-        var errorMessage = GetPrivateField<string?>(cut.Instance, "_errorMessage");
+        var errorMessage = GetSubmitError(cut.Instance);
         await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to edit this program item.");
     }
 
@@ -431,6 +419,12 @@ public sealed class EditSessionTests : IDisposable
         var field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException($"Field {fieldName} was not found.");
         return (T)(field.GetValue(instance) ?? throw new InvalidOperationException($"Field {fieldName} was null."));
+    }
+
+    private static string? GetSubmitError(object instance)
+    {
+        var submitState = GetPrivateField<Explore.Blazor.Client.Components.Forms.FormSubmitState>(instance, "_submitState");
+        return submitState.ErrorMessage;
     }
 
     private static void SetPrivateField<T>(object instance, string fieldName, T value)

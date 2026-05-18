@@ -21,9 +21,6 @@ namespace Explore.Blazor.Client.Pages.Events;
 
 public partial class EventList : ComponentBase, IAsyncDisposable
 {
-    private const string WorkspaceDockLayoutKey = "events";
-    private static readonly TimeSpan DockLayoutAutosaveDelay = TimeSpan.FromMilliseconds(500);
-
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected IEventService EventService { get; set; } = null!;
     [Inject] protected ICategoryService CategoryService { get; set; } = null!;
@@ -93,10 +90,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private readonly Dictionary<string, string> _pendingChanges = new();
     private readonly object _pendingChangesLock = new();
     private bool _isSaving;
-    private bool _workspaceDockLayoutHydrated;
-    private bool _suppressWorkspaceDockLayoutAutosave;
-    private DockLayoutSnapshot? _lastPersistedWorkspaceDockLayoutSnapshot;
-    private CancellationTokenSource? _workspaceDockLayoutAutosaveCts;
+    private readonly EventListSelectionController _selectionController = new();
+    private EventListDockingController? _dockingController;
 
     private Virtualize<EventListDto>? _virtualize;
     private int _totalCount;
@@ -221,12 +216,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private UserDto? _regCurrentUser;
     private ICollection<EventSessionListDto>? _regAvailableSessions;
     private HashSet<Guid> _regSelectedSessionIds = new();
-    private bool _regAllSessionsSelected => _regAvailableSessions != null
-        && _regAvailableSessions.Any(s => s.Id.HasValue)
-        && _regSelectedSessionIds.Count == _regAvailableSessions.Count(s => s.Id.HasValue);
-
-    // Event navigation cache (for prev/next arrows)
-    private List<EventListDto> _loadedEvents = new();
+    private bool _regAllSessionsSelected => EventListRegistrationWorkflow.AreAllSessionsSelected(
+        _regAvailableSessions,
+        _regSelectedSessionIds);
 
     // Tag/Category management popup state
     private bool _showTagCatPopup;
@@ -254,7 +246,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     protected override async Task OnInitializedAsync()
     {
         Logger.LogDebug("OnInitializedAsync starting");
-        RegisterEventDockPanels();
+        _dockingController = new EventListDockingController(DockLayoutState, DockLayoutPersistence, Logger);
+        _dockingController.RegisterPanels(RenderCustomizeViewPanel, RenderEventPreviewPanel);
         DockLayoutState.Changed += OnDockLayoutChanged;
 
         // URL params trigger pagination mode
@@ -321,7 +314,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
         if (firstRender)
         {
-            await HydrateWorkspaceDockLayoutAsync();
+            await RequireDockingController().HydrateWorkspaceDockLayoutAsync();
         }
 
         // Virtualize's IntersectionObserver may not fire when it first appears
@@ -397,21 +390,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
                 if (user != null && user.Id.HasValue)
                 {
                     var registrations = await EventService.GetRegistrationsByUserAsync(user.Id.Value);
-                    if (registrations != null)
-                    {
-                        var eventIds = new HashSet<Guid>();
-                        var regMap = new Dictionary<Guid, Guid>();
-                        foreach (var reg in registrations)
-                        {
-                            if (reg.EventId.HasValue && reg.Id.HasValue)
-                            {
-                                eventIds.Add(reg.EventId.Value);
-                                regMap[reg.EventId.Value] = reg.Id.Value;
-                            }
-                        }
-                        _registeredEventIds = eventIds;
-                        _registrationIdByEventId = regMap;
-                    }
+                    var registrationLookup = EventListRegistrationWorkflow.BuildRegistrationLookup(registrations);
+                    _registeredEventIds = registrationLookup.RegisteredEventIds;
+                    _registrationIdByEventId = registrationLookup.RegistrationIdByEventId;
                 }
             }
         }
@@ -558,85 +539,16 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         }
     }
 
-    private async Task<PaginatedResult<EventListDto>> FetchEventsPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken)
+    private Task<PaginatedResult<EventListDto>> FetchEventsPagedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken)
     {
-        // Get filter values from _filterBar or defaults
-        var searchTerm = _filterBar?.SearchTerm ?? SearchQuery;
+        var filterState = EventListFilterState.From(
+            _filterBar,
+            SearchQuery,
+            ActorIdQuery,
+            OrganizationIdQuery,
+            GroupIdQuery);
 
-        // Multi-select filter values — pass full lists to service
-        var formatIds = _filterBar?.SelectedFormatIds?.ToList();
-        var madhabIds = _filterBar?.SelectedMadhabIds?.ToList();
-        var locationIds = _filterBar?.SelectedLocationIds?.ToList();
-        var registrationModeIds = _filterBar?.SelectedRegistrationModeIds?.ToList();
-        var languageIds = _filterBar?.SelectedLanguageIds?.ToList();
-        var eventTypeIds = _filterBar?.SelectedEventTypeIds?.ToList();
-        var audienceGenderIds = _filterBar?.SelectedAudienceGenderIds?.ToList();
-        var audienceAgeIds = _filterBar?.SelectedAudienceAgeIds?.ToList();
-        var eventStatusIds = _filterBar?.SelectedEventStatusIds?.ToList();
-
-        var sortBy = _filterBar?.SelectedSortBy ?? "date";
-        var sortDescending = _filterBar?.SortDescending ?? true;
-
-        // Islamic
-        var genderModeIds = _filterBar?.SelectedGenderModeIds?.ToList();
-        var referencePrayerIds = _filterBar?.SelectedReferencePrayerIds?.ToList();
-
-        // Tech
-        var skillLevelId = _filterBar?.SelectedSkillLevel != null ? (int?)_filterBar.SelectedSkillLevel : null;
-        var techStack = _filterBar?.TechStackTag;
-
-        // Date range from MudDateRangePicker
-        DateTimeOffset? dateFrom = null;
-        DateTimeOffset? dateTo = null;
-        if (_filterBar?.SelectedDateRange?.Start != null)
-        {
-            dateFrom = new DateTimeOffset(_filterBar.SelectedDateRange.Start.Value, TimeSpan.Zero);
-        }
-        if (_filterBar?.SelectedDateRange?.End != null)
-        {
-            dateTo = new DateTimeOffset(_filterBar.SelectedDateRange.End.Value.AddDays(1).AddTicks(-1), TimeSpan.Zero);
-        }
-
-        return await EventService.GetEventsPagedAsync(
-            pageNumber,
-            pageSize,
-            searchTerm: searchTerm,
-            includedCategoryIds: _filterBar?.GetCategoryFilter().IncludedCategoryIds,
-            excludedCategoryIds: _filterBar?.GetCategoryFilter().ExcludedCategoryIds,
-            categoryInclusionMode: _filterBar?.GetCategoryFilter().InclusionMode,
-            categoryExclusionMode: _filterBar?.GetCategoryFilter().ExclusionMode,
-            includedTagIds: _filterBar?.GetTagFilter().IncludedTagIds,
-            excludedTagIds: _filterBar?.GetTagFilter().ExcludedTagIds,
-            inclusionMode: _filterBar?.GetTagFilter().InclusionMode,
-            exclusionMode: _filterBar?.GetTagFilter().ExclusionMode,
-            formatIds: formatIds,
-            madhabIds: madhabIds,
-            locationIds: locationIds,
-            registrationModeIds: registrationModeIds,
-            languageIds: languageIds,
-            dateFrom: dateFrom,
-            dateTo: dateTo,
-            sortBy: sortBy,
-            sortDescending: sortDescending,
-            eventTypeIds: eventTypeIds,
-            audienceGenderIds: audienceGenderIds,
-            audienceAgeIds: audienceAgeIds,
-            eventStatusIds: eventStatusIds,
-            genderModeIds: genderModeIds,
-            includesQuranRecitation: null,
-            referencePrayerIds: referencePrayerIds,
-            islamicPrimaryLanguageIds: null,
-            hasIslamicAspect: null,
-            skillLevelId: skillLevelId,
-            isCodingCompetition: null,
-            isHackathon: null,
-            requiresLaptop: null,
-            techStackTag: techStack,
-            hasTechAspect: null,
-            actorId: ActorIdQuery,
-            organizationId: OrganizationIdQuery,
-            groupId: GroupIdQuery,
-            cancellationToken: cancellationToken);
+        return filterState.FetchPageAsync(EventService, pageNumber, pageSize, cancellationToken);
     }
 
     private async ValueTask<ItemsProviderResult<EventListDto>> LoadEventsAsync(ItemsProviderRequest request)
@@ -668,12 +580,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _eventsLoaded = true;
         if (isLoading) isLoading = false;
 
-        // Cache loaded events for prev/next navigation
-        foreach (var evt in result.Items)
-        {
-            if (evt.Id.HasValue && !_loadedEvents.Any(e => e.Id == evt.Id))
-                _loadedEvents.Add(evt);
-        }
+        _selectionController.TrackLoadedEvents(result.Items);
 
         StateHasChanged();
 
@@ -699,12 +606,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             _eventsLoaded = true;
             isLoading = false;
 
-            // Cache loaded events for prev/next navigation
-            foreach (var evt in result.Items)
-            {
-                if (evt.Id.HasValue && !_loadedEvents.Any(e => e.Id == evt.Id))
-                    _loadedEvents.Add(evt);
-            }
+            _selectionController.TrackLoadedEvents(result.Items);
 
             // Preload images for the new page
             await PreloadImagesAsync(result.Items);
@@ -772,7 +674,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
         if (_virtualize != null)
         {
-            _loadedEvents.Clear();
+            _selectionController.ClearLoadedEvents();
             await _virtualize.RefreshDataAsync();
         }
     }
@@ -826,7 +728,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _selectedEventSessions = null;
         _detailDrawerOpen = true;
         _isLoadingDetail = true;
-        DockLayoutState.Open(EventDockPanels.EventPreviewId);
+        RequireDockingController().OpenEventPreview();
 
         try
         {
@@ -852,7 +754,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         _detailDrawerOpen = false;
         ClearDetailPreviewTransientState();
-        CloseDockPanelIfRegistered(EventDockPanels.EventPreviewId);
+        RequireDockingController().CloseEventPreviewIfRegistered();
     }
 
     private void OnDetailDrawerOpenChanged(bool open)
@@ -860,10 +762,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _detailDrawerOpen = open;
         if (open)
         {
-            if (DockLayoutState.GetPanel(EventDockPanels.EventPreviewId) is not null)
-            {
-                DockLayoutState.Open(EventDockPanels.EventPreviewId);
-            }
+            RequireDockingController().OpenEventPreviewIfRegistered();
 
             return;
         }
@@ -871,7 +770,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         if (!open)
         {
             ClearDetailPreviewTransientState();
-            CloseDockPanelIfRegistered(EventDockPanels.EventPreviewId);
+            RequireDockingController().CloseEventPreviewIfRegistered();
         }
     }
 
@@ -965,192 +864,42 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         if (_detailDrawerOpen) CloseDetailDrawer();
         _customizationDrawerOpen = true;
-        DockLayoutState.Open(EventDockPanels.CustomizeViewId);
+        RequireDockingController().OpenCustomizationDrawer();
     }
 
     private void CloseCustomizationDrawer()
     {
         _customizationDrawerOpen = false;
-        CloseDockPanelIfRegistered(EventDockPanels.CustomizeViewId);
-    }
-
-    private void RegisterEventDockPanels()
-    {
-        if (DockLayoutState.GetPanel(EventDockPanels.CustomizeViewId) is not null)
-        {
-            DockLayoutState.Unregister(EventDockPanels.CustomizeViewId);
-        }
-
-        if (DockLayoutState.GetPanel(EventDockPanels.EventPreviewId) is not null)
-        {
-            DockLayoutState.Unregister(EventDockPanels.EventPreviewId);
-        }
-
-        DockLayoutState.Register(EventDockPanels.CustomizeView, RenderCustomizeViewPanel);
-        DockLayoutState.Register(EventDockPanels.EventPreview, RenderEventPreviewPanel);
+        RequireDockingController().CloseCustomizationDrawer();
     }
 
     private void OnDockLayoutChanged()
     {
-        var shouldRender = false;
-        var customizeOpen = DockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen == true;
-        var previewOpen = DockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen == true;
+        var change = RequireDockingController().SynchronizeAfterDockLayoutChanged(
+            _customizationDrawerOpen,
+            _detailDrawerOpen);
 
-        if (!_customizationDrawerOpen && customizeOpen)
-        {
-            _customizationDrawerOpen = true;
-            shouldRender = true;
-        }
+        _customizationDrawerOpen = change.CustomizationDrawerOpen;
+        _detailDrawerOpen = change.DetailDrawerOpen;
 
-        if (_customizationDrawerOpen && !customizeOpen)
+        if (change.ShouldClearDetailPreview)
         {
-            _customizationDrawerOpen = false;
-            shouldRender = true;
-        }
-
-        if (_detailDrawerOpen && !previewOpen)
-        {
-            _detailDrawerOpen = false;
             ClearDetailPreviewTransientState();
-            shouldRender = true;
         }
 
-        if (shouldRender)
+        if (change.ShouldRender)
         {
             _ = InvokeAsync(StateHasChanged);
-        }
-
-        if (ShouldAutosaveWorkspaceDockLayout())
-        {
-            ScheduleWorkspaceDockLayoutAutosave();
-        }
-    }
-
-    private bool ShouldAutosaveWorkspaceDockLayout()
-    {
-        return DockLayoutState.LastChangeReason is DockLayoutChangeReason.UserAction or DockLayoutChangeReason.Reset;
-    }
-
-    private async Task HydrateWorkspaceDockLayoutAsync()
-    {
-        _suppressWorkspaceDockLayoutAutosave = true;
-
-        try
-        {
-            var snapshot = await DockLayoutPersistence.LoadAsync(WorkspaceDockLayoutKey);
-            if (snapshot is not null)
-            {
-                DockLayoutState.RestoreSnapshot(snapshot, WorkspaceDockLayoutKey, DockScope.Workspace);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to hydrate event workspace dock layout.");
-        }
-        finally
-        {
-            _lastPersistedWorkspaceDockLayoutSnapshot = CreateWorkspaceDockLayoutSnapshot();
-            _workspaceDockLayoutHydrated = true;
-            _suppressWorkspaceDockLayoutAutosave = false;
-        }
-    }
-
-    private void ScheduleWorkspaceDockLayoutAutosave()
-    {
-        if (!_workspaceDockLayoutHydrated || _suppressWorkspaceDockLayoutAutosave || !HasWorkspaceDockLayoutChanged())
-        {
-            return;
-        }
-
-        _workspaceDockLayoutAutosaveCts?.Cancel();
-        _workspaceDockLayoutAutosaveCts?.Dispose();
-
-        var autosaveCts = new CancellationTokenSource();
-        _workspaceDockLayoutAutosaveCts = autosaveCts;
-        _ = PersistWorkspaceDockLayoutAfterDelayAsync(autosaveCts);
-    }
-
-    private async Task PersistWorkspaceDockLayoutAfterDelayAsync(CancellationTokenSource autosaveCts)
-    {
-        try
-        {
-            await Task.Delay(DockLayoutAutosaveDelay, autosaveCts.Token);
-            var snapshot = CreateWorkspaceDockLayoutSnapshot();
-            if (SnapshotPanelsEqual(_lastPersistedWorkspaceDockLayoutSnapshot, snapshot))
-            {
-                return;
-            }
-
-            await DockLayoutPersistence.SaveAsync(snapshot, autosaveCts.Token);
-            _lastPersistedWorkspaceDockLayoutSnapshot = snapshot;
-        }
-        catch (OperationCanceledException) when (autosaveCts.IsCancellationRequested)
-        {
-            // A newer dock layout change superseded this pending autosave.
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to save event workspace dock layout.");
         }
     }
 
     private async Task ResetWorkspaceDockLayoutAsync()
     {
-        _suppressWorkspaceDockLayoutAutosave = true;
-
-        try
+        if (await RequireDockingController().ResetWorkspaceDockLayoutAsync())
         {
-            ResetWorkspacePanelToDefaults(EventDockPanels.CustomizeView);
-            await DockLayoutPersistence.DeleteAsync(WorkspaceDockLayoutKey);
-            _lastPersistedWorkspaceDockLayoutSnapshot = CreateWorkspaceDockLayoutSnapshot();
             _customizationDrawerOpen = false;
             await InvokeAsync(StateHasChanged);
         }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to reset event workspace dock layout.");
-        }
-        finally
-        {
-            _suppressWorkspaceDockLayoutAutosave = false;
-            _workspaceDockLayoutHydrated = true;
-        }
-    }
-
-    private void ResetWorkspacePanelToDefaults(DockPanelDescriptor descriptor)
-    {
-        var entry = DockLayoutState.GetPanel(descriptor.Id);
-        if (entry is null)
-        {
-            return;
-        }
-
-        if (entry.State.IsOpen && descriptor.CanClose)
-        {
-            DockLayoutState.Close(descriptor.Id);
-        }
-
-        DockLayoutState.SetMode(descriptor.Id, descriptor.DefaultMode);
-
-        if (descriptor.IsResizable)
-        {
-            DockLayoutState.Resize(descriptor.Id, descriptor.DefaultWidth);
-        }
-    }
-
-    private DockLayoutSnapshot CreateWorkspaceDockLayoutSnapshot()
-    {
-        return DockLayoutState.CreateSnapshot(WorkspaceDockLayoutKey, DockScope.Workspace);
-    }
-
-    private bool HasWorkspaceDockLayoutChanged()
-    {
-        return !SnapshotPanelsEqual(_lastPersistedWorkspaceDockLayoutSnapshot, CreateWorkspaceDockLayoutSnapshot());
-    }
-
-    private static bool SnapshotPanelsEqual(DockLayoutSnapshot? previous, DockLayoutSnapshot current)
-    {
-        return previous is not null && previous.Panels.SequenceEqual(current.Panels);
     }
 
     private RenderFragment RenderCustomizeViewPanel => builder =>
@@ -1164,12 +913,10 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         builder.CloseComponent();
     };
 
-    private void CloseDockPanelIfRegistered(DockPanelId panelId)
+    private EventListDockingController RequireDockingController()
     {
-        if (DockLayoutState.GetPanel(panelId) is not null)
-        {
-            DockLayoutState.Close(panelId);
-        }
+        return _dockingController
+            ?? throw new InvalidOperationException("EventList docking controller has not been initialized.");
     }
 
     private Task HandleSettingsChanged(Dictionary<string, string> changes)
@@ -1627,39 +1374,33 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private bool CanNavigatePrevEvent()
     {
-        if (_selectedEvent?.Id == null) return false;
-        var idx = _loadedEvents.FindIndex(e => e.Id == _selectedEvent.Id);
-        return idx > 0;
+        return _selectionController.CanNavigatePrevious(_selectedEvent);
     }
 
     private bool CanNavigateNextEvent()
     {
-        if (_selectedEvent?.Id == null) return false;
-        var idx = _loadedEvents.FindIndex(e => e.Id == _selectedEvent.Id);
-        return idx >= 0 && idx < _loadedEvents.Count - 1;
+        return _selectionController.CanNavigateNext(_selectedEvent);
     }
 
     private async Task NavigatePrevEvent()
     {
-        if (_selectedEvent?.Id == null) return;
-        var idx = _loadedEvents.FindIndex(e => e.Id == _selectedEvent.Id);
-        if (idx > 0)
+        var previousEvent = _selectionController.GetPreviousEvent(_selectedEvent);
+        if (previousEvent is not null)
         {
             _showInlineRegistration = false;
             _showTagCatPopup = false;
-            await SelectEvent(_loadedEvents[idx - 1]);
+            await SelectEvent(previousEvent);
         }
     }
 
     private async Task NavigateNextEvent()
     {
-        if (_selectedEvent?.Id == null) return;
-        var idx = _loadedEvents.FindIndex(e => e.Id == _selectedEvent.Id);
-        if (idx >= 0 && idx < _loadedEvents.Count - 1)
+        var nextEvent = _selectionController.GetNextEvent(_selectedEvent);
+        if (nextEvent is not null)
         {
             _showInlineRegistration = false;
             _showTagCatPopup = false;
-            await SelectEvent(_loadedEvents[idx + 1]);
+            await SelectEvent(nextEvent);
         }
     }
 
@@ -1701,11 +1442,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             _regAvailableSessions = _selectedEventSessions;
 
             // Pre-select all sessions
-            if (_regAvailableSessions != null)
-            {
-                foreach (var s in _regAvailableSessions.Where(s => s.Id.HasValue))
-                    _regSelectedSessionIds.Add(s.Id!.Value);
-            }
+            _regSelectedSessionIds = EventListRegistrationWorkflow.GetSelectableSessionIds(_regAvailableSessions);
 
             // Get current user
             _regCurrentUser = await UserService.GetCurrentUserAsync();
@@ -1747,18 +1484,14 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private void ToggleRegSession(Guid sessionId)
     {
-        if (!_regSelectedSessionIds.Remove(sessionId))
-            _regSelectedSessionIds.Add(sessionId);
+        _regSelectedSessionIds = EventListRegistrationWorkflow.ToggleSession(_regSelectedSessionIds, sessionId);
     }
 
     private void ToggleRegAllSessions()
     {
-        if (_regAvailableSessions == null) return;
-        var allIds = _regAvailableSessions.Where(s => s.Id.HasValue).Select(s => s.Id!.Value).ToList();
-        if (_regAllSessionsSelected)
-            _regSelectedSessionIds.Clear();
-        else
-            _regSelectedSessionIds = new HashSet<Guid>(allIds);
+        _regSelectedSessionIds = EventListRegistrationWorkflow.ToggleAllSessions(
+            _regAvailableSessions,
+            _regSelectedSessionIds);
     }
 
     private async Task HandleInlineRegistrationSubmit()
@@ -1769,23 +1502,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
         try
         {
-            var consentText = _regShareEmail
-                ? $"Share my email address with {_regOrganizerName} so they can contact me about future events and related updates."
-                : null;
-
-            var dto = new CreateEventRegistrationDto
-            {
-                EventId = _selectedEvent!.Id!.Value,
-                UserId = _regCurrentUser.Id,
-                RegistrationScopeId = 3, // SessionSelection
-                SelectedSessionIds = _regSelectedSessionIds.ToList(),
-            };
-            if (_regShareEmail && consentText != null)
-            {
-                dto.ShareEmailWithOrganizer = true;
-                dto.ConsentTextAcknowledged = consentText;
-                dto.ConsentUiVersion = "v1";
-            }
+            var dto = EventListRegistrationWorkflow.BuildSessionRegistrationRequest(
+                _selectedEvent!.Id!.Value,
+                _regCurrentUser.Id,
+                _regSelectedSessionIds,
+                _regShareEmail,
+                _regOrganizerName);
 
             bool allSucceeded = true;
             var response = await EventService.RegisterForEventSessionAsync(dto);
@@ -1797,7 +1519,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
             if (allSucceeded)
             {
-                _regIsWaitlisted = IsWaitlistResponse(response?.Message);
+                _regIsWaitlisted = EventListRegistrationWorkflow.IsWaitlistResponse(response?.Message);
                 _regIsComplete = true;
                 Snackbar.Add(
                     _regIsWaitlisted
@@ -1810,17 +1532,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error during inline registration");
-            Snackbar.Add($"Registration error: {ex.Message}", Severity.Error);
+            Snackbar.Add("Registration failed. Please try again.", Severity.Error);
         }
         finally
         {
             _regIsSubmitting = false;
         }
-    }
-
-    private static bool IsWaitlistResponse(string? message)
-    {
-        return message?.Contains("waitlist", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     // ── Tag/Category management ──
@@ -1896,11 +1613,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        _workspaceDockLayoutAutosaveCts?.Cancel();
-        _workspaceDockLayoutAutosaveCts?.Dispose();
         DockLayoutState.Changed -= OnDockLayoutChanged;
-        DockLayoutState.Unregister(EventDockPanels.CustomizeViewId);
-        DockLayoutState.Unregister(EventDockPanels.EventPreviewId);
+        if (_dockingController is not null)
+        {
+            await _dockingController.DisposeAsync();
+            _dockingController = null;
+        }
 
         // Flush any pending autosave before disposing
         if (_autosaveTimer is not null)

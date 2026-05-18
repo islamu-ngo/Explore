@@ -63,106 +63,61 @@
                     <FormSubmissionGuard State="@_submitState">
                     <AppValidationSummary />
 
-                    <div class="create-session__form-grid">
-                        <MudTextField Variant="Variant.Outlined" T="string"
-                                      Value="@_session.Title"
-                                      ValueChanged="@(value => _session.Title = value)"
-                                      For="@(() => _session.Title)"
-                                      Required="true"
-                                      FullWidth="true"
-                                      Placeholder="Program item title"
-                                      aria-label="Program item title" />
-
-                        <MudTextField Variant="Variant.Outlined" T="string"
-                                      Value="@_session.Description"
-                                      ValueChanged="@(value => _session.Description = value)"
-                                      For="@(() => _session.Description)"
-                                      FullWidth="true"
-                                      Lines="4"
-                                      Placeholder="What will attendees learn or do?"
-                                      aria-label="Program item description" />
-
-                        <MudDatePicker Label="Program item date"
-                                       Date="@_sessionDate"
-                                       DateChanged="@(value => _sessionDate = value)"
-                                       Required="true"
-                                       Variant="Variant.Outlined" />
-
-                        <div class="create-session__time-grid">
-                            <MudTimePicker Label="Start time"
-                                           Time="@_startTime"
-                                           TimeChanged="@(value => _startTime = value)"
-                                           Required="true"
-                                           Variant="Variant.Outlined" />
-                            <MudTimePicker Label="End time"
-                                           Time="@_endTime"
-                                           TimeChanged="@(value => _endTime = value)"
-                                           Required="true"
-                                           Variant="Variant.Outlined" />
-                        </div>
-
-                        <MudSelect T="Guid?"
-                                   Label="Location"
-                                   Value="@_session.LocationId"
-                                   ValueChanged="OnLocationChangedAsync"
-                                   Variant="Variant.Outlined"
-                                   AnchorOrigin="Origin.BottomCenter">
+                    <EventSessionForm FormGridClass="create-session__form-grid"
+                                      TimeGridClass="create-session__time-grid"
+                                      Title="@_session.Title"
+                                      TitleChanged="@(value => _session.Title = value)"
+                                      TitleFor="@(() => _session.Title)"
+                                      Description="@_session.Description"
+                                      DescriptionChanged="@(value => _session.Description = value)"
+                                      DescriptionFor="@(() => _session.Description)"
+                                      SessionDate="@_sessionDate"
+                                      SessionDateChanged="@(value => _sessionDate = value)"
+                                      StartTime="@_startTime"
+                                      StartTimeChanged="@(value => _startTime = value)"
+                                      EndTime="@_endTime"
+                                      EndTimeChanged="@(value => _endTime = value)"
+                                      LocationId="@_session.LocationId"
+                                      LocationIdChanged="OnLocationChangedAsync"
+                                      RoomId="@_session.RoomId"
+                                      RoomIdChanged="@(value => _session.RoomId = value)"
+                                      RoomDisabled="@(!_session.LocationId.HasValue || !_rooms.Any())"
+                                      ProgramSectionId="@_selectedSessionGroupId"
+                                      ProgramSectionIdChanged="@(value => _selectedSessionGroupId = value)"
+                                      ProgramSectionDisabled="@(!_sessionGroups.Any())"
+                                      Capacity="@_session.MaxAudienceAttendees"
+                                      CapacityChanged="@(value => _session.MaxAudienceAttendees = value)"
+                                      RegistrationModeId="@_session.RegistrationModeId"
+                                      RegistrationModeIdChanged="@(value => _session.RegistrationModeId = value)"
+                                      RegistrationModeDisabled="@(!_registrationModes.Any())">
+                        <LocationOptions>
                             <MudSelectItem T="Guid?" Value="@((Guid?)null)">No location yet</MudSelectItem>
                             @foreach (var location in _locations)
                             {
                                 <MudSelectItem T="Guid?" Value="@location.Id">@FormatLocation(location)</MudSelectItem>
                             }
-                        </MudSelect>
-
-                        <MudSelect T="Guid?"
-                                   Label="Room"
-                                   Value="@_session.RoomId"
-                                   ValueChanged="@(value => _session.RoomId = value)"
-                                   Variant="Variant.Outlined"
-                                   Disabled="@(!_session.LocationId.HasValue || !_rooms.Any())"
-                                   AnchorOrigin="Origin.BottomCenter">
+                        </LocationOptions>
+                        <RoomOptions>
                             <MudSelectItem T="Guid?" Value="@((Guid?)null)">No room yet</MudSelectItem>
                             @foreach (var room in _rooms)
                             {
                                 <MudSelectItem T="Guid?" Value="@room.Id">@FormatRoom(room)</MudSelectItem>
                             }
-                        </MudSelect>
-
-                        <MudSelect T="Guid?"
-                                   Label="Program section"
-                                   Value="@_selectedSessionGroupId"
-                                   ValueChanged="@(value => _selectedSessionGroupId = value)"
-                                   Variant="Variant.Outlined"
-                                   Disabled="@(!_sessionGroups.Any())"
-                                   AnchorOrigin="Origin.BottomCenter">
+                        </RoomOptions>
+                        <ProgramSectionOptions>
                             <MudSelectItem T="Guid?" Value="@((Guid?)null)">No program section yet</MudSelectItem>
                             @foreach (var group in _sessionGroups.OrderBy(group => group.SortOrder).ThenBy(group => group.Name))
                             {
                                 <MudSelectItem T="Guid?" Value="@group.Id">@FormatSessionGroup(group)</MudSelectItem>
                             }
-                        </MudSelect>
-
-                        <MudNumericField T="int?"
-                                         Label="Capacity"
-                                         Value="@_session.MaxAudienceAttendees"
-                                         ValueChanged="@(value => _session.MaxAudienceAttendees = value)"
-                                         Variant="Variant.Outlined"
-                                         Min="1"
-                                         Placeholder="Optional" />
-
-                        <MudSelect T="int?"
-                                   Label="Registration mode"
-                                   Value="@_session.RegistrationModeId"
-                                   ValueChanged="@(value => _session.RegistrationModeId = value)"
-                                   Variant="Variant.Outlined"
-                                   Disabled="@(!_registrationModes.Any())"
-                                   AnchorOrigin="Origin.BottomCenter">
+                        </ProgramSectionOptions>
+                        <RegistrationModeOptions>
                             @foreach (var mode in _registrationModes.Where(mode => mode.Id.HasValue).OrderBy(mode => mode.Id))
                             {
                                 <MudSelectItem T="int?" Value="@mode.Id">@FormatRegistrationMode(mode)</MudSelectItem>
                             }
-                        </MudSelect>
-                    </div>
+                        </RegistrationModeOptions>
+                    </EventSessionForm>
 
                     <div class="create-session__actions">
                         <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToEventDraft" Disabled="@_submitState.IsSubmitting">
@@ -245,34 +200,15 @@
 
     private void ApplyCreateContext(EventSessionCreateContextDto context)
     {
-        _locations = context.Locations ?? new List<EventSessionCreateLocationOptionDto>();
-        _sessionGroups = context.SessionGroups ?? new List<EventSessionCreateGroupOptionDto>();
-        _session.RegistrationModeId = context.Defaults?.RegistrationModeId > 0
-            ? context.Defaults.RegistrationModeId
-            : FallbackRegistrationModeId;
-
-        if (context.Defaults?.SessionDate is { } sessionDate)
-        {
-            _sessionDate = sessionDate.DateTime;
-        }
-
-        if (TryParseDefaultTime(context.Defaults?.StartTime, out var startTime))
-        {
-            _startTime = startTime;
-        }
-
-        if (TryParseDefaultTime(context.Defaults?.EndTime, out var endTime))
-        {
-            _endTime = endTime;
-        }
-    }
-
-    private static bool TryParseDefaultTime(string? value, out TimeSpan time)
-    {
-        return TimeSpan.TryParse(
-            value,
-            System.Globalization.CultureInfo.InvariantCulture,
-            out time);
+        var formState = EventSessionFormModelMapper.ApplyCreateContext(
+            _session,
+            context,
+            FallbackRegistrationModeId);
+        _locations = formState.Locations;
+        _sessionGroups = formState.SessionGroups;
+        _sessionDate = formState.SessionDate ?? _sessionDate;
+        _startTime = formState.StartTime ?? _startTime;
+        _endTime = formState.EndTime ?? _endTime;
     }
 
     private Task OnLocationChangedAsync(Guid? locationId)
@@ -317,23 +253,24 @@
         _submitState.Start();
         try
         {
-            if (!_savedSessionId.HasValue || _savedSessionId.Value == Guid.Empty)
+            var result = await EventSessionSaveCoordinator.SaveCreateSessionAsync(
+                EventService,
+                _session,
+                EventId,
+                _selectedSessionGroupId,
+                _savedSessionId);
+            if (result.SessionId.HasValue && result.SessionId.Value != Guid.Empty)
             {
-                var result = await EventService.CreateSessionAsync(_session);
-                if (result.Success != true || !result.Id.HasValue || result.Id.Value == Guid.Empty)
-                {
-                    _submitState.Fail(result.Message ?? "Program item could not be saved. Check the details and try again.");
-                    return;
-                }
-
-                _savedSessionId = result.Id.Value;
+                _savedSessionId = result.SessionId;
             }
 
-            if (!await AssignSelectedProgramSectionAsync(_savedSessionId.Value))
+            if (!result.Success)
+            {
+                _submitState.Fail(result.ErrorMessage!);
                 return;
-
+            }
             _successMessage = "Program item saved. Returning to the event draft.";
-            Navigation.NavigateTo($"/events/{EventId}/edit");
+            Navigation.NavigateTo($"/events/{EventId}/edit?programUpdated=1");
         }
         catch (ApiException ex)
         {
@@ -362,61 +299,20 @@
     private bool TryPrepareSession(out string? validationError)
     {
         validationError = null;
-        if (_event?.TenantId is null || _event.TenantId == Guid.Empty)
-        {
-            validationError = "The event draft is missing tenant context. Return to the draft and try again.";
-            return false;
-        }
-
         if (!_canAddSession)
         {
             validationError = "You do not currently have permission to add program items to this event draft.";
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(_session.Title))
-        {
-            validationError = "Program item title is required.";
-            return false;
-        }
-
-        if (!_sessionDate.HasValue || !_startTime.HasValue || !_endTime.HasValue)
-        {
-            validationError = "Program item date, start time, and end time are required.";
-            return false;
-        }
-
-        var start = _sessionDate.Value.Date + _startTime.Value;
-        var end = _sessionDate.Value.Date + _endTime.Value;
-        if (end <= start)
-        {
-            validationError = "End time must be after start time.";
-            return false;
-        }
-
-        _session.EventId = EventId;
-        _session.TenantId = _event.TenantId;
-        _session.Title = _session.Title.Trim();
-        _session.MaxAudienceAttendees = _session.MaxAudienceAttendees > 0 ? _session.MaxAudienceAttendees : null;
-        _session.StartTime = DateTimeHelper.ConvertLocalToUtc(start);
-        _session.EndTime = DateTimeHelper.ConvertLocalToUtc(end);
-        return true;
-    }
-
-    private async Task<bool> AssignSelectedProgramSectionAsync(Guid sessionId)
-    {
-        if (!_selectedSessionGroupId.HasValue || _selectedSessionGroupId.Value == Guid.Empty)
-            return true;
-
-        var result = await EventService.AssignSessionToGroupAsync(
+        return EventSessionFormModelMapper.TryPrepareCreateRequest(
+            _session,
             EventId,
-            _selectedSessionGroupId.Value,
-            sessionId);
-        if (result.Success == true)
-            return true;
-
-        _submitState.Fail(result.Message ?? "Session was saved, but it could not be assigned to the selected program section.");
-        return false;
+            _event?.TenantId,
+            _sessionDate,
+            _startTime,
+            _endTime,
+            out validationError);
     }
 
     private static string FormatLocation(EventSessionCreateLocationOptionDto location)

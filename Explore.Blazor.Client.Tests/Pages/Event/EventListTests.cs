@@ -769,4 +769,36 @@ public class EventListTests : IDisposable
         await Assert.That(cut.Markup).Contains("View My Registrations");
         await Assert.That(cut.Markup).Contains("href=\"/my/registrations\"");
     }
+
+    [Test]
+    public async Task InlineRegistrationSubmit_WhenRegistrationThrows_ShowsGenericErrorOnly()
+    {
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var snackbar = _ctx.Services.GetRequiredService<ISnackbar>();
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        _eventService.RegisterForEventSessionAsync(Arg.Any<CreateEventRegistrationDto>())
+            .Returns(_ => Task.FromException<BaseCommandResponseOfGuid>(new InvalidOperationException("database exploded")));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+        SetPrivateField(cut.Instance, "_selectedEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Registration Error Event"
+        });
+        SetPrivateField(cut.Instance, "_regCurrentUser", new UserDto
+        {
+            Id = userId,
+            Email = "registrant@example.com",
+            FirstName = "Test",
+            LastName = "Registrant"
+        });
+        SetPrivateField(cut.Instance, "_regSelectedSessionIds", new HashSet<Guid> { sessionId });
+
+        await InvokePrivateTaskAsync(cut, "HandleInlineRegistrationSubmit");
+
+        snackbar.Received().Add("Registration failed. Please try again.", Severity.Error);
+        snackbar.DidNotReceive().Add(Arg.Is<string>(message => message.Contains("database exploded", StringComparison.OrdinalIgnoreCase)), Severity.Error);
+    }
 }

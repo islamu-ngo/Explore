@@ -53,7 +53,7 @@ public sealed class EventEditTests : IDisposable
 
         await eventService.Received(1).UpdateEventAsync(eventId, Arg.Any<UpdateEventDraftRequestDto>());
         await Assert.That(navigation.Uri).IsEqualTo(originalUri);
-        await Assert.That(GetPrivateField<string>(component, "errorMessage"))
+        await Assert.That(GetSubmitError(component))
             .IsEqualTo("Draft could not be saved.");
     }
 
@@ -68,7 +68,7 @@ public sealed class EventEditTests : IDisposable
         await InvokePrivateAsync(component, "AddSession");
 
         await Assert.That(navigation.Uri).IsEqualTo(originalUri);
-        await Assert.That(GetPrivateField<string>(component, "errorMessage"))
+        await Assert.That(GetSubmitError(component))
             .IsEqualTo("You do not currently have permission to add sessions to this event.");
     }
 
@@ -111,7 +111,7 @@ public sealed class EventEditTests : IDisposable
         InvokePrivate(component, "EditSession", 0);
 
         await Assert.That(navigation.Uri).IsEqualTo(originalUri);
-        await Assert.That(GetPrivateField<string>(component, "errorMessage"))
+        await Assert.That(GetSubmitError(component))
             .IsEqualTo("Save the session before editing it in the dedicated composer.");
     }
 
@@ -122,7 +122,7 @@ public sealed class EventEditTests : IDisposable
 
         InvokePrivate(component, "ShowDuplicateUnavailable");
 
-        await Assert.That(GetPrivateField<string>(component, "errorMessage"))
+        await Assert.That(GetSubmitError(component))
             .IsEqualTo("Duplicate session will be available from the dedicated session composer.");
     }
 
@@ -133,7 +133,7 @@ public sealed class EventEditTests : IDisposable
 
         await InvokePrivateAsync(component, "OpenProgramSectionsDialogAsync");
 
-        await Assert.That(GetPrivateField<string>(component, "errorMessage"))
+        await Assert.That(GetSubmitError(component))
             .IsEqualTo("You do not currently have permission to manage program sections for this event.");
     }
 
@@ -317,7 +317,7 @@ public sealed class EventEditTests : IDisposable
 
         await InvokePrivateAsync(component, "HandleSubmit");
 
-        await Assert.That(GetPrivateField<string>(component, "errorMessage"))
+        await Assert.That(GetSubmitError(component))
             .Contains("The event draft changed since it was loaded");
     }
 
@@ -404,6 +404,12 @@ public sealed class EventEditTests : IDisposable
         var field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException($"Field {fieldName} was not found.");
         return (T)(field.GetValue(instance) ?? throw new InvalidOperationException($"Field {fieldName} was null."));
+    }
+
+    private static string GetSubmitError(object instance)
+    {
+        var submitState = GetPrivateField<Explore.Blazor.Client.Components.Forms.FormSubmitState>(instance, "_submitState");
+        return submitState.ErrorMessage ?? throw new InvalidOperationException("Submit state error message was not set.");
     }
 
     private static T GetPrivateProperty<T>(object instance, string propertyName)
