@@ -1,8 +1,7 @@
 // ABOUTME: Client service for tenant onboarding status and tenant policy settings workflows.
 // ABOUTME: Supports startup gating and tenant policy questionnaire submission through BFF endpoints.
 
-using System.Net.Http.Json;
-
+using Refit;
 namespace Explore.Blazor.Client.Services;
 
 public interface ITenantOnboardingService
@@ -15,14 +14,14 @@ public interface ITenantOnboardingService
 
 public class TenantOnboardingService : ITenantOnboardingService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ITenantOnboardingApi _api;
     private readonly ILogger<TenantOnboardingService> _logger;
 
     public TenantOnboardingService(
-        IHttpClientFactory httpClientFactory,
+        ITenantOnboardingApi api,
         ILogger<TenantOnboardingService> logger)
     {
-        _httpClientFactory = httpClientFactory;
+        _api = api;
         _logger = logger;
     }
 
@@ -30,7 +29,8 @@ public class TenantOnboardingService : ITenantOnboardingService
     {
         try
         {
-            return await CreateClient().GetFromJsonAsync<TenantOnboardingStatusModel>("api/TenantOnboarding/status");
+            var response = await _api.GetStatusAsync(CancellationToken.None);
+            return response.IsSuccessStatusCode ? response.Content : null;
         }
         catch (Exception ex)
         {
@@ -43,8 +43,8 @@ public class TenantOnboardingService : ITenantOnboardingService
     {
         try
         {
-            var result = await CreateClient().GetFromJsonAsync<TenantPolicySettingsModel>("api/TenantOnboarding/settings");
-            return result ?? new TenantPolicySettingsModel();
+            var response = await _api.GetSettingsAsync(CancellationToken.None);
+            return response.IsSuccessStatusCode ? response.Content! : new TenantPolicySettingsModel();
         }
         catch (Exception ex)
         {
@@ -54,41 +54,33 @@ public class TenantOnboardingService : ITenantOnboardingService
     }
 
     public Task<InstanceCommandResponseModel> CompleteAsync(TenantPolicySettingsModel settings) =>
-        SendCommandAsync(HttpMethod.Post, "api/TenantOnboarding/complete", settings);
+        SendCommandAsync(() => _api.CompleteAsync(settings, CancellationToken.None));
 
     public Task<InstanceCommandResponseModel> UpdateSettingsAsync(TenantPolicySettingsModel settings) =>
-        SendCommandAsync(HttpMethod.Put, "api/TenantOnboarding/settings", settings);
-
-    private HttpClient CreateClient() => _httpClientFactory.CreateClient("BffClient");
+        SendCommandAsync(() => _api.UpdateSettingsAsync(settings, CancellationToken.None));
 
     private async Task<InstanceCommandResponseModel> SendCommandAsync(
-        HttpMethod method, string path, TenantPolicySettingsModel settings)
+        Func<Task<IApiResponse<InstanceCommandResponseModel>>> sendFunc)
     {
         try
         {
-            using var request = new HttpRequestMessage(method, path)
-            {
-                Content = JsonContent.Create(settings)
-            };
+            var response = await sendFunc();
 
-            var response = await CreateClient().SendAsync(request);
-            var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
-            if (payload is not null)
+            if (response.IsSuccessStatusCode && response.Content is not null)
             {
-                return payload;
+                return response.Content;
             }
 
             return new InstanceCommandResponseModel
             {
-                Success = response.IsSuccessStatusCode,
-                Message = response.IsSuccessStatusCode
-                    ? "Operation completed successfully."
-                    : $"Operation failed with status {(int)response.StatusCode}."
+                Success = false,
+                StatusCode = (int)response.StatusCode,
+                Message = response.Error?.Content ?? $"Request failed with status {(int)response.StatusCode}."
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to call tenant onboarding endpoint {Path}.", path);
+            _logger.LogError(ex, "Failed to call tenant onboarding endpoint.");
             return new InstanceCommandResponseModel
             {
                 Success = false,
@@ -119,15 +111,10 @@ public class TenantPolicySettingsModel
     public bool RequireEventApproval { get; set; }
     public bool RequireOrganizationVerification { get; set; } = true;
     public bool CanTenantOmitVerification { get; set; }
-    public bool IsTenantWhiteLabelingEnabled { get; set; }
     public string PreferredHomePage { get; set; } = "EventList";
     public string InstanceBaseDomain { get; set; } = string.Empty;
     public string Subdomain { get; set; } = string.Empty;
     public string CustomDomain { get; set; } = string.Empty;
-    public string BrandDisplayName { get; set; } = string.Empty;
-    public string BrandLogoUrl { get; set; } = string.Empty;
-    public string BrandFaviconUrl { get; set; } = string.Empty;
-    public string BrandCustomCssUrl { get; set; } = string.Empty;
     public bool AnnouncementBarEnabled { get; set; }
     public string AnnouncementBarMessage { get; set; } = string.Empty;
     public string AnnouncementBarLinkText { get; set; } = string.Empty;
@@ -137,17 +124,9 @@ public class TenantPolicySettingsModel
     public bool CanOverrideHomePagePreference { get; set; } = true;
     public bool CanOverrideSubdomain { get; set; } = true;
     public bool CanOverrideCustomDomain { get; set; } = true;
-    public bool CanOverrideBrandDisplayName { get; set; } = true;
-    public bool CanOverrideBrandLogoUrl { get; set; } = true;
-    public bool CanOverrideBrandFaviconUrl { get; set; } = true;
-    public bool CanOverrideBrandCustomCssUrl { get; set; } = true;
     public bool CanOverrideEventCardClickBehavior { get; set; } = true;
-
-    // Community guidelines
     public string CommunityGuidelinesContent { get; set; } = string.Empty;
     public bool CanOverrideCommunityGuidelines { get; set; } = true;
-
-    // Render policy tenant overrides
     public string RenderPolicyPreset { get; set; } = string.Empty;
     public bool EnableAdvancedRenderPolicyOverrides { get; set; }
     public string GlobalRenderMode { get; set; } = string.Empty;
@@ -162,12 +141,9 @@ public class TenantPolicySettingsModel
     public bool CanOverridePublicSeoRenderPolicy { get; set; }
     public bool CanOverrideOperationalRenderPolicy { get; set; }
     public bool CanOverrideAdminRenderPolicy { get; set; }
-    // Category-level override flags
     public bool CanOverrideSmtp { get; set; }
     public bool CanOverrideStorage { get; set; }
     public bool CanOverrideAnalytics { get; set; }
-
-    // AI Assistant
     public bool AiAssistantEnabled { get; set; }
     public string AiAssistantEndpointUrl { get; set; } = string.Empty;
     public string AiAssistantApiKey { get; set; } = string.Empty;

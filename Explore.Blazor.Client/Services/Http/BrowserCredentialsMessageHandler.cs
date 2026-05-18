@@ -45,14 +45,7 @@ public class BrowserCredentialsMessageHandler : DelegatingHandler
         // Ensure the request mode allows requests (SameOrigin for BFF)
         request.SetBrowserRequestMode(BrowserRequestMode.SameOrigin);
 
-        if (IsMutatingMethod(request.Method) && !request.Headers.Contains("X-CSRF-TOKEN"))
-        {
-            var token = await TryGetXsrfAsync(cancellationToken);
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                request.Headers.Add("X-CSRF-TOKEN", token);
-            }
-        }
+        // Removed anti-forgery token logic to BffAntiforgeryMessageHandler
 
         _logger?.LogDebug("[WASM HTTP] {Method} {Uri} - Credentials: Include, Mode: SameOrigin",
             request.Method, request.RequestUri?.PathAndQuery);
@@ -78,28 +71,6 @@ public class BrowserCredentialsMessageHandler : DelegatingHandler
             _logger?.LogError(ex, "[WASM HTTP] {Method} {Uri} - Request failed",
                 request.Method, request.RequestUri?.PathAndQuery);
             throw;
-        }
-    }
-
-    private static bool IsMutatingMethod(HttpMethod method)
-        => method == HttpMethod.Post || method == HttpMethod.Put || method == HttpMethod.Patch || method == HttpMethod.Delete;
-
-    private async Task<string?> TryGetXsrfAsync(CancellationToken cancellationToken)
-    {
-        if (_jsRuntime is null)
-        {
-            return null;
-        }
-
-        try
-        {
-            _module ??= await _jsRuntime.InvokeAsync<IJSObjectReference>("import", cancellationToken, "/js/bff.js");
-            return await _module.InvokeAsync<string?>("getCookie", cancellationToken, "XSRF-TOKEN");
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "[WASM HTTP] Could not read XSRF-TOKEN cookie for antiforgery header injection.");
-            return null;
         }
     }
 }

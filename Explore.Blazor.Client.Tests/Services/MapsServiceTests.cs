@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using Refit;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -82,7 +83,8 @@ public class MapsServiceTests
             BaseAddress = new Uri("https://test.local")
         };
 
-        return new MapsService(httpClient, _logger);
+        var api = RestService.For<IMapsApi>(httpClient);
+        return new MapsService(api, _logger);
     }
 
     private sealed class MockHttpMessageHandler : HttpMessageHandler

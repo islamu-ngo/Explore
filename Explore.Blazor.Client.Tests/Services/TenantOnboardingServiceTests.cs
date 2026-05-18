@@ -1,20 +1,25 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Refit;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
 public class TenantOnboardingServiceTests
 {
-    private readonly System.Net.Http.IHttpClientFactory _httpClientFactory;
+    private Func<HttpRequestMessage, Task<HttpResponseMessage>> _bffHandler = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
     private readonly ILogger<TenantOnboardingService> _logger;
     private readonly TenantOnboardingService _service;
 
     public TenantOnboardingServiceTests()
     {
-        _httpClientFactory = Substitute.For<System.Net.Http.IHttpClientFactory>();
         _logger = Substitute.For<ILogger<TenantOnboardingService>>();
-        _service = new TenantOnboardingService(_httpClientFactory, _logger);
+        var client = new HttpClient(new MockHttpMessageHandler(request => _bffHandler(request)))
+        {
+            BaseAddress = new Uri("https://test.local")
+        };
+        var api = RestService.For<ITenantOnboardingApi>(client);
+        _service = new TenantOnboardingService(api, _logger);
     }
 
     #region GetStatusAsync
@@ -67,9 +72,7 @@ public class TenantOnboardingServiceTests
         {
             AllowUserSubmittedEvents = false,
             RequireEventApproval = true,
-            IsTenantWhiteLabelingEnabled = true,
-            PreferredHomePage = "Dashboard",
-            BrandDisplayName = "Tenant Brand"
+            PreferredHomePage = "Dashboard"
         };
         SetupBffClient(CreateJsonResponse(expected));
 
@@ -78,9 +81,7 @@ public class TenantOnboardingServiceTests
 
         // Assert
         await Assert.That(result.RequireEventApproval).IsTrue();
-        await Assert.That(result.IsTenantWhiteLabelingEnabled).IsTrue();
         await Assert.That(result.PreferredHomePage).IsEqualTo("Dashboard");
-        await Assert.That(result.BrandDisplayName).IsEqualTo("Tenant Brand");
     }
 
     [Test]
@@ -95,7 +96,6 @@ public class TenantOnboardingServiceTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result.PreferredHomePage).IsEqualTo("EventList");
-        await Assert.That(result.BrandDisplayName).IsEqualTo(string.Empty);
     }
 
     #endregion
@@ -174,7 +174,7 @@ public class TenantOnboardingServiceTests
 
         // Assert
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).IsEqualTo("Operation failed with status 400.");
+        await Assert.That(result.Message).IsEqualTo("Request failed.");
     }
 
     #endregion
@@ -190,16 +190,12 @@ public class TenantOnboardingServiceTests
 
     private void SetupBffClient(HttpResponseMessage response)
     {
-        var handler = new MockHttpMessageHandler(response);
-        var client = new HttpClient(handler) { BaseAddress = new Uri("https://test.local") };
-        _httpClientFactory.CreateClient("BffClient").Returns(client);
+        _bffHandler = _ => Task.FromResult(response);
     }
 
     private void SetupBffClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
     {
-        var httpHandler = new MockHttpMessageHandler(handler);
-        var client = new HttpClient(httpHandler) { BaseAddress = new Uri("https://test.local") };
-        _httpClientFactory.CreateClient("BffClient").Returns(client);
+        _bffHandler = handler;
     }
 
     private class MockHttpMessageHandler : HttpMessageHandler

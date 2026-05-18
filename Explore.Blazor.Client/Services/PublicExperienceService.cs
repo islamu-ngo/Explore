@@ -1,7 +1,6 @@
 // ABOUTME: Client service for anonymous-safe public experience settings used by startup routing and white-label UI.
 // ABOUTME: Provides a single route-resolution helper for event-list versus landing-page entry behavior.
 
-using System.Net.Http.Json;
 using Explore.Blazor.Client.Models.Analytics;
 
 namespace Explore.Blazor.Client.Services;
@@ -21,7 +20,7 @@ public interface IPublicExperienceService
 
 public class PublicExperienceService : IPublicExperienceService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IPublicExperienceApi _api;
     private readonly ILogger<PublicExperienceService> _logger;
     private PublicExperienceSettingsModel? _cachedSettings;
     private DateTimeOffset _settingsCacheExpiresAt;
@@ -32,10 +31,10 @@ public class PublicExperienceService : IPublicExperienceService
     public event Action? SettingsChanged;
 
     public PublicExperienceService(
-        IHttpClientFactory httpClientFactory,
+        IPublicExperienceApi api,
         ILogger<PublicExperienceService> logger)
     {
-        _httpClientFactory = httpClientFactory;
+        _api = api;
         _logger = logger;
     }
 
@@ -43,8 +42,16 @@ public class PublicExperienceService : IPublicExperienceService
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            var settings = await client.GetFromJsonAsync<PublicExperienceSettingsModel>("api/PublicExperience/settings");
+            var response = await _api.GetSettingsAsync(CancellationToken.None);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to load public experience settings, falling back to event list. Status: {StatusCode}.",
+                    (int)response.StatusCode);
+                return null;
+            }
+
+            var settings = response.Content!;
             CacheSettings(settings);
             return settings;
         }
@@ -59,8 +66,16 @@ public class PublicExperienceService : IPublicExperienceService
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            var shell = await client.GetFromJsonAsync<PublicExperienceShellModel>("api/PublicExperience/shell");
+            var response = await _api.GetShellAsync(CancellationToken.None);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to load public experience shell, falling back to event list. Status: {StatusCode}.",
+                    (int)response.StatusCode);
+                return null;
+            }
+
+            var shell = response.Content!;
             CacheShell(shell);
             return shell;
         }
@@ -271,8 +286,6 @@ public class PublicExperienceSettingsModel
     public bool AiAssistantAllowAnonymousAccess { get; set; }
     public FooterConfigModel FooterConfig { get; set; } = new();
 }
-
-// ── Footer client-side models (mirror server DTOs for JSON deserialization) ──
 
 public class FooterConfigModel
 {

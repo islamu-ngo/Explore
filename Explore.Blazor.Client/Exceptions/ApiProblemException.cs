@@ -181,6 +181,65 @@ public sealed class ApiProblemException : Exception
         return CreateFallback(statusCode, fallbackMessage, serviceName, traceId);
     }
 
+    public static ApiProblemException FromRefitException(Refit.ApiException exception, string serviceName)
+    {
+        var traceId = exception.Headers is not null && exception.Headers.TryGetValues("traceparent", out var traceparentValues)
+            ? traceparentValues.FirstOrDefault()
+            : null;
+
+        var statusCode = exception.StatusCode;
+        var body = exception.Content;
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(body))
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(body);
+                var root = document.RootElement;
+
+                var problemDetails = new ApiProblemDetails
+                {
+                    Status = root.TryGetProperty("status", out var statusProp) && statusProp.TryGetInt32(out var parsedStatus)
+                        ? parsedStatus
+                        : (int)exception.StatusCode,
+                    Title = root.TryGetProperty("title", out var titleProp)
+                        ? titleProp.GetString() ?? exception.Message
+                        : root.TryGetProperty("error", out var errorProp)
+                            ? errorProp.GetString() ?? exception.Message
+                            : exception.Message,
+                    Detail = root.TryGetProperty("detail", out var detailProp)
+                        ? detailProp.GetString()
+                        : root.TryGetProperty("error", out var legacyErrorProp)
+                            ? legacyErrorProp.GetString()
+                            : exception.Content,
+                    Type = root.TryGetProperty("type", out var typeProp) ? typeProp.GetString() : null,
+                    Instance = root.TryGetProperty("instance", out var instanceProp) ? instanceProp.GetString() : null
+                };
+
+                if (root.TryGetProperty("traceId", out var traceIdProp))
+                {
+                    traceId = traceIdProp.GetString() ?? traceId;
+                }
+
+                if (traceId is not null)
+                {
+                    problemDetails.Extensions["traceId"] = traceId;
+                }
+
+                return new ApiProblemException(statusCode, problemDetails, serviceName, ReadValidationErrors(root), traceId);
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+        }
+
+        var fallbackMessage = !string.IsNullOrWhiteSpace(exception.Content)
+            ? exception.Content
+            : exception.Message;
+
+        return CreateFallback(statusCode, fallbackMessage, serviceName, traceId);
+    }
+
     private static IReadOnlyDictionary<string, string[]> ReadValidationErrors(System.Text.Json.JsonElement root)
     {
         if (!root.TryGetProperty("errors", out var errorsProp) || errorsProp.ValueKind != System.Text.Json.JsonValueKind.Object)

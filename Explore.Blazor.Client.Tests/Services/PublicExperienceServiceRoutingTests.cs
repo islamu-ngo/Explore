@@ -1,8 +1,9 @@
 // ABOUTME: Unit tests for PublicExperienceService covering settings retrieval and route decision logic.
-// Verifies HTTP exception fallback to null and deterministic route resolution for home page modes.
+// Verifies typed BFF exception fallback to null and deterministic route resolution for home page modes.
 
 using System.Net;
 using System.Net.Http.Json;
+using Refit;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -11,22 +12,26 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </summary>
 /// <remarks>
 /// These tests verify:
-/// - GetSettingsAsync returns model when BffClient returns valid JSON
-/// - GetSettingsAsync returns null when HTTP pipeline throws
+/// - GetSettingsAsync returns model when the typed BFF API returns valid JSON
+/// - GetSettingsAsync returns null when the HTTP pipeline throws
 /// - ResolveHomeRoute returns /home for LandingPage
 /// - ResolveHomeRoute returns /events for EventList and null settings
 /// </remarks>
 public class PublicExperienceServiceRoutingTests
 {
-    private readonly System.Net.Http.IHttpClientFactory _httpClientFactory;
+    private Func<HttpRequestMessage, HttpResponseMessage> _bffHandler = _ => new HttpResponseMessage(HttpStatusCode.NotFound);
     private readonly ILogger<PublicExperienceService> _logger;
     private readonly PublicExperienceService _service;
 
     public PublicExperienceServiceRoutingTests()
     {
-        _httpClientFactory = Substitute.For<System.Net.Http.IHttpClientFactory>();
         _logger = Substitute.For<ILogger<PublicExperienceService>>();
-        _service = new PublicExperienceService(_httpClientFactory, _logger);
+        var client = new HttpClient(new StubHttpMessageHandler(request => _bffHandler(request)))
+        {
+            BaseAddress = new Uri("https://example.test/")
+        };
+        var api = RestService.For<IPublicExperienceApi>(client);
+        _service = new PublicExperienceService(api, _logger);
     }
 
     // ========== GetSettingsAsync ==========
@@ -45,13 +50,10 @@ public class PublicExperienceServiceRoutingTests
             BrandDisplayName = "Explore"
         };
 
-        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        SetupBffClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = JsonContent.Create(settings)
         });
-
-        var client = new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") };
-        _httpClientFactory.CreateClient("BffClient").Returns(client);
 
         // Act
         var result = await _service.GetSettingsAsync();
@@ -66,8 +68,7 @@ public class PublicExperienceServiceRoutingTests
     public async Task GetSettingsAsync_ReturnsNull_WhenFactoryThrows()
     {
         // Arrange
-        _httpClientFactory.CreateClient("BffClient")
-            .Returns(_ => throw new HttpRequestException("factory unavailable"));
+        SetupBffClient(_ => throw new HttpRequestException("factory unavailable"));
 
         // Act
         var result = await _service.GetSettingsAsync();
@@ -119,6 +120,11 @@ public class PublicExperienceServiceRoutingTests
     }
 
     #endregion
+
+    private void SetupBffClient(Func<HttpRequestMessage, HttpResponseMessage> handler)
+    {
+        _bffHandler = handler;
+    }
 
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {

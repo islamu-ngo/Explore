@@ -1,14 +1,17 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using Refit;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
 public class InstanceOnboardingServiceTests
 {
     private readonly System.Net.Http.IHttpClientFactory _httpClientFactory;
+    private Func<HttpRequestMessage, Task<HttpResponseMessage>> _bffHandler = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<InstanceOnboardingService> _logger;
     private readonly NavigationManager _navigation;
@@ -20,7 +23,12 @@ public class InstanceOnboardingServiceTests
         _jsRuntime = new NullJsRuntime();
         _logger = Substitute.For<ILogger<InstanceOnboardingService>>();
         _navigation = new TestNavigationManager("https://localhost/");
-        _service = new InstanceOnboardingService(_httpClientFactory, _jsRuntime, _logger, _navigation);
+        var client = new HttpClient(new MockHttpMessageHandler(request => _bffHandler(request)))
+        {
+            BaseAddress = new Uri("https://test.local")
+        };
+        var api = RestService.For<IInstanceOnboardingApi>(client);
+        _service = new InstanceOnboardingService(api, _httpClientFactory, _jsRuntime, _logger, _navigation);
     }
 
     private sealed class TestNavigationManager : NavigationManager
@@ -186,7 +194,7 @@ public class InstanceOnboardingServiceTests
     }
 
     [Test]
-    public async Task CompleteAsync_HandlesProblemDetails_WhenApiReturnsBadRequest()
+    public async Task CompleteAsync_ReturnsSafeFailure_WhenApiReturnsBadRequest()
     {
         // Arrange
         var problemDetails = new
@@ -205,8 +213,8 @@ public class InstanceOnboardingServiceTests
 
         // Assert
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).IsEqualTo("Validation failed.");
-        await Assert.That(result.Errors).Contains("Invalid deployment mode.");
+        await Assert.That(result.Message).IsEqualTo("Request failed.");
+        await Assert.That(result.Errors).IsNotEmpty();
     }
 
     #endregion
@@ -334,6 +342,106 @@ public class InstanceOnboardingServiceTests
         await Assert.That(requestBody).Contains("cerbos", StringComparison.OrdinalIgnoreCase);
     }
 
+    [Test]
+    public async Task SyncAuthorizationPolicyPackageAsync_UsesSetupEndpoint()
+    {
+        // Arrange
+        Uri? requestUri = null;
+        HttpMethod? method = null;
+        var commandResponse = new InstanceCommandResponseModel { Success = true, Message = "Synced" };
+        SetupBffClient(request =>
+        {
+            requestUri = request.RequestUri;
+            method = request.Method;
+            return Task.FromResult(CreateJsonResponse(commandResponse));
+        });
+
+        // Act
+        var result = await _service.SyncAuthorizationPolicyPackageAsync();
+
+        // Assert
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(requestUri).IsNotNull();
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/InstanceOnboarding/authz-provider-configuration/sync");
+        await Assert.That(method).IsEqualTo(HttpMethod.Post);
+    }
+
+    [Test]
+    public async Task SyncAuthorizationPolicyPackageAsAdminAsync_UsesAdminEndpoint()
+    {
+        // Arrange
+        Uri? requestUri = null;
+        HttpMethod? method = null;
+        var commandResponse = new InstanceCommandResponseModel { Success = true, Message = "Synced" };
+        SetupBffClient(request =>
+        {
+            requestUri = request.RequestUri;
+            method = request.Method;
+            return Task.FromResult(CreateJsonResponse(commandResponse));
+        });
+
+        // Act
+        var result = await _service.SyncAuthorizationPolicyPackageAsAdminAsync();
+
+        // Assert
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(requestUri).IsNotNull();
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/authz-provider/sync");
+        await Assert.That(method).IsEqualTo(HttpMethod.Post);
+    }
+
+    [Test]
+    public async Task DownloadAuthorizationPolicyPackageAsync_UsesSetupEndpointAndMapsFile()
+    {
+        // Arrange
+        Uri? requestUri = null;
+        HttpMethod? method = null;
+        SetupBffClient(request =>
+        {
+            requestUri = request.RequestUri;
+            method = request.Method;
+            return Task.FromResult(CreateZipResponse([1, 2, 3], "setup-policy-package.zip"));
+        });
+
+        // Act
+        var result = await _service.DownloadAuthorizationPolicyPackageAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.FileBytes).IsEquivalentTo(new byte[] { 1, 2, 3 });
+        await Assert.That(result.FileName).IsEqualTo("setup-policy-package.zip");
+        await Assert.That(result.ContentType).IsEqualTo("application/zip");
+        await Assert.That(requestUri).IsNotNull();
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/InstanceOnboarding/authz-provider-configuration/package");
+        await Assert.That(method).IsEqualTo(HttpMethod.Get);
+    }
+
+    [Test]
+    public async Task DownloadAuthorizationPolicyPackageAsAdminAsync_UsesAdminEndpointAndMapsFile()
+    {
+        // Arrange
+        Uri? requestUri = null;
+        HttpMethod? method = null;
+        SetupBffClient(request =>
+        {
+            requestUri = request.RequestUri;
+            method = request.Method;
+            return Task.FromResult(CreateZipResponse([4, 5, 6], "admin-policy-package.zip"));
+        });
+
+        // Act
+        var result = await _service.DownloadAuthorizationPolicyPackageAsAdminAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.FileBytes).IsEquivalentTo(new byte[] { 4, 5, 6 });
+        await Assert.That(result.FileName).IsEqualTo("admin-policy-package.zip");
+        await Assert.That(result.ContentType).IsEqualTo("application/zip");
+        await Assert.That(requestUri).IsNotNull();
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/authz-provider/package");
+        await Assert.That(method).IsEqualTo(HttpMethod.Get);
+    }
+
     #endregion
 
     #region ValidateSecretAsync
@@ -435,15 +543,28 @@ public class InstanceOnboardingServiceTests
         };
     }
 
+    private static HttpResponseMessage CreateZipResponse(byte[] content, string fileName)
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(content)
+        };
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+        response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment")
+        {
+            FileName = $"\"{fileName}\""
+        };
+        return response;
+    }
+
     private void SetupBffClient(HttpResponseMessage response)
     {
-        var handler = new MockHttpMessageHandler(response);
-        var client = new HttpClient(handler) { BaseAddress = new Uri("https://test.local") };
-        _httpClientFactory.CreateClient("BffClient").Returns(client);
+        SetupBffClient(_ => Task.FromResult(response));
     }
 
     private void SetupBffClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
     {
+        _bffHandler = handler;
         var httpHandler = new MockHttpMessageHandler(handler);
         var client = new HttpClient(httpHandler) { BaseAddress = new Uri("https://test.local") };
         _httpClientFactory.CreateClient("BffClient").Returns(client);

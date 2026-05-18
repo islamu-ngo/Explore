@@ -40,6 +40,9 @@ builder.Services.AddScoped<GroupAdminRouteGuard>();
 // Register the message handler that adds credentials to requests
 builder.Services.AddTransient<BrowserCredentialsMessageHandler>();
 
+// Register the message handler that adds anti-forgery tokens to mutating requests
+builder.Services.AddTransient<BffAntiforgeryMessageHandler>();
+
 // Register handler for 401 responses that triggers a server-side login
 builder.Services.AddTransient<BffUnauthorizedHandler>();
 
@@ -50,6 +53,7 @@ builder.Services.AddHttpClient("BffClient", client =>
     client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
 })
 .AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
+.AddHttpMessageHandler<BffAntiforgeryMessageHandler>()
 .AddHttpMessageHandler<BffUnauthorizedHandler>();
 
 // Register a default HttpClient for general use (also with credentials)
@@ -117,6 +121,8 @@ builder.Services.AddHttpClient("S3Upload", client =>
 .AddHttpMessageHandler<S3UploadMessageHandler>();
 
 builder.Services.AddScoped<Explore.Blazor.Client.Services.Http.BffClient>();
+builder.Services.AddScoped<Explore.Blazor.Client.Services.Http.IBffClient>(sp =>
+    sp.GetRequiredService<Explore.Blazor.Client.Services.Http.BffClient>());
 
 builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();

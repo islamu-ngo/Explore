@@ -7,7 +7,19 @@ namespace Explore.Blazor.Client.Services.Http;
 /// BFF HTTP facade for browser-side same-origin calls that rely on the shared WASM handler pipeline.
 /// BrowserCredentialsMessageHandler adds credentials and antiforgery headers for mutating requests.
 /// </summary>
-public sealed class BffClient
+public interface IBffClient
+{
+    Task<T?> GetAsync<T>(string path, CancellationToken ct = default);
+    Task<HttpResponseMessage> PostAsync<T>(string path, T body, CancellationToken ct = default);
+    Task<HttpResponseMessage> PostAsync(string path, CancellationToken ct = default);
+    Task<HttpResponseMessage> PutAsync<T>(string path, T body, CancellationToken ct = default);
+    Task<HttpResponseMessage> PatchAsync<T>(string path, T body, CancellationToken ct = default);
+    Task<HttpResponseMessage> DeleteAsync(string path, CancellationToken ct = default);
+    Task<HttpResponseMessage> PostMultipartAsync(string path, MultipartFormDataContent content, CancellationToken ct = default);
+    Task<TResponse?> SendAsync<TBody, TResponse>(HttpMethod method, string path, TBody body, CancellationToken ct = default);
+}
+
+public sealed class BffClient : IBffClient
 {
     private readonly HttpClient _http;
 

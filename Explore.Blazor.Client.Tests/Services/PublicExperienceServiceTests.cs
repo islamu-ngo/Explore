@@ -1,8 +1,9 @@
 // ABOUTME: Unit tests for PublicExperienceService covering settings fetch and home route resolution.
-// Verifies HTTP fallback behavior and route selection rules for preferred home page configuration.
+// Verifies typed BFF fallback behavior and route selection rules for preferred home page configuration.
 
 using System.Net;
 using System.Net.Http.Json;
+using Refit;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -11,15 +12,19 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </summary>
 public class PublicExperienceServiceTests
 {
-    private readonly System.Net.Http.IHttpClientFactory _httpClientFactory;
+    private Func<HttpRequestMessage, HttpResponseMessage> _bffHandler = _ => new HttpResponseMessage(HttpStatusCode.NotFound);
     private readonly ILogger<PublicExperienceService> _logger;
     private readonly PublicExperienceService _service;
 
     public PublicExperienceServiceTests()
     {
-        _httpClientFactory = Substitute.For<System.Net.Http.IHttpClientFactory>();
         _logger = Substitute.For<ILogger<PublicExperienceService>>();
-        _service = new PublicExperienceService(_httpClientFactory, _logger);
+        var client = new HttpClient(new StubHttpMessageHandler(request => _bffHandler(request)))
+        {
+            BaseAddress = new Uri("https://example.test/")
+        };
+        var api = RestService.For<IPublicExperienceApi>(client);
+        _service = new PublicExperienceService(api, _logger);
     }
 
     // ========== GetSettingsAsync ==========
@@ -37,18 +42,10 @@ public class PublicExperienceServiceTests
             PreferredHomePage = "LandingPage"
         };
 
-        var handler = new StubHttpMessageHandler(_ =>
-            new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = JsonContent.Create(expected)
-            });
-
-        var client = new HttpClient(handler)
+        SetupBffClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
-            BaseAddress = new Uri("https://example.test/")
-        };
-
-        _httpClientFactory.CreateClient("BffClient").Returns(client);
+            Content = JsonContent.Create(expected)
+        });
 
         // Act
         var result = await _service.GetSettingsAsync();
@@ -63,8 +60,7 @@ public class PublicExperienceServiceTests
     public async Task GetSettingsAsync_ReturnsNull_WhenFactoryThrows()
     {
         // Arrange
-        _httpClientFactory.CreateClient("BffClient")
-            .Returns(_ => throw new HttpRequestException("factory failure"));
+        SetupBffClient(_ => throw new HttpRequestException("factory failure"));
 
         // Act
         var result = await _service.GetSettingsAsync();
@@ -77,15 +73,7 @@ public class PublicExperienceServiceTests
     public async Task GetSettingsAsync_ReturnsNull_WhenHttpFails()
     {
         // Arrange
-        var handler = new StubHttpMessageHandler(_ =>
-            new HttpResponseMessage(HttpStatusCode.InternalServerError));
-
-        var client = new HttpClient(handler)
-        {
-            BaseAddress = new Uri("https://example.test/")
-        };
-
-        _httpClientFactory.CreateClient("BffClient").Returns(client);
+        SetupBffClient(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
 
         // Act
         var result = await _service.GetSettingsAsync();
@@ -120,7 +108,7 @@ public class PublicExperienceServiceTests
         };
 
         string? requestedPath = null;
-        var handler = new StubHttpMessageHandler(request =>
+        SetupBffClient(request =>
         {
             requestedPath = request.RequestUri?.PathAndQuery;
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -128,13 +116,6 @@ public class PublicExperienceServiceTests
                 Content = JsonContent.Create(expected)
             };
         });
-
-        var client = new HttpClient(handler)
-        {
-            BaseAddress = new Uri("https://example.test/")
-        };
-
-        _httpClientFactory.CreateClient("BffClient").Returns(client);
 
         // Act
         var result = await _service.GetShellAsync();
@@ -151,13 +132,7 @@ public class PublicExperienceServiceTests
     public async Task GetShellAsync_ReturnsNull_WhenHttpFails()
     {
         // Arrange
-        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
-        var client = new HttpClient(handler)
-        {
-            BaseAddress = new Uri("https://example.test/")
-        };
-
-        _httpClientFactory.CreateClient("BffClient").Returns(client);
+        SetupBffClient(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
 
         // Act
         var result = await _service.GetShellAsync();
@@ -281,6 +256,11 @@ public class PublicExperienceServiceTests
     }
 
     #endregion
+
+    private void SetupBffClient(Func<HttpRequestMessage, HttpResponseMessage> handler)
+    {
+        _bffHandler = handler;
+    }
 
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {

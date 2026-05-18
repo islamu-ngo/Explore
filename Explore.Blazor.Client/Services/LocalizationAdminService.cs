@@ -1,28 +1,23 @@
 // ABOUTME: HTTP service for the localization admin endpoints — test connection, export, governance update.
-// ABOUTME: Typed HttpClient registered via AddTypedApiClient (matches FooterAdminService pattern).
+// ABOUTME: Refit-based typed API client registered via server-side AddTypedApiRefitClient.
 
-using System.Net.Http.Json;
+using Refit;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Models.Admin;
-using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
 public sealed class LocalizationAdminService : ILocalizationAdminService
 {
-    private const string ConfigurationEndpoint = "/api/admin/localization/configuration";
-    private const string TestConnectionEndpoint = "/api/admin/localization/test-connection";
-    private const string ExportEndpoint = "/api/admin/localization/export-from-tms";
-    private const string GovernanceEndpoint = "/api/admin/localization/governance";
-    private const string BundleHealthEndpoint = "/api/admin/localization/bundle-health";
-
-    private readonly HttpClient _httpClient;
+    private readonly ILocalizationAdminApi _api;
     private readonly ILogger<LocalizationAdminService> _logger;
 
-    public LocalizationAdminService(HttpClient httpClient, ILogger<LocalizationAdminService> logger)
+    public LocalizationAdminService(
+        ILocalizationAdminApi api,
+        ILogger<LocalizationAdminService> logger)
     {
-        _httpClient = httpClient;
+        _api = api;
         _logger = logger;
     }
 
@@ -30,13 +25,13 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var response = await _httpClient.GetAsync(ConfigurationEndpoint, ct);
+            var response = await _api.GetConfigurationAsync(ct);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("[LOCALIZATION ADMIN] GET configuration returned {Status}", (int)response.StatusCode);
                 return null;
             }
-            return await response.Content.ReadFromJsonAsync<LocalizationConfigDto>(ct);
+            return response.Content;
         }
         catch (Exception ex)
         {
@@ -49,8 +44,8 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var response = await _httpClient.PostAsync(TestConnectionEndpoint, content: null, ct);
-            return await BuildResultAsync(response, successFallback: "TMS connection OK.", failureFallback: "TMS connection failed.", ct);
+            var response = await _api.TestConnectionAsync(ct);
+            return MapCommandResult(response, "TMS connection OK.", "TMS connection failed.");
         }
         catch (Exception ex)
         {
@@ -63,13 +58,8 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var url = $"{ExportEndpoint}?languageCode={Uri.EscapeDataString(languageCode)}";
-            var response = await _httpClient.PostAsync(url, content: null, ct);
-            return await BuildResultAsync(
-                response,
-                successFallback: $"Exported translations for '{languageCode}'.",
-                failureFallback: $"Export failed for '{languageCode}'.",
-                ct);
+            var response = await _api.ExportFromTmsAsync(languageCode, ct);
+            return MapCommandResult(response, $"Exported translations for '{languageCode}'.", $"Export failed for '{languageCode}'.");
         }
         catch (Exception ex)
         {
@@ -82,12 +72,8 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var response = await _httpClient.PutAsJsonAsync(GovernanceEndpoint, payload, ct);
-            return await BuildResultAsync(
-                response,
-                successFallback: "Localization governance saved.",
-                failureFallback: "Localization governance save failed.",
-                ct);
+            var response = await _api.UpdateGovernanceAsync(payload, ct);
+            return MapCommandResult(response, "Localization governance saved.", "Localization governance save failed.");
         }
         catch (Exception ex)
         {
@@ -100,13 +86,13 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
     {
         try
         {
-            var response = await _httpClient.GetAsync(BundleHealthEndpoint, ct);
+            var response = await _api.GetBundlePathHealthAsync(ct);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("[LOCALIZATION ADMIN] GET bundle-health returned {Status}", (int)response.StatusCode);
                 return null;
             }
-            return await response.Content.ReadFromJsonAsync<BundlePathHealthResult>(ct);
+            return response.Content;
         }
         catch (Exception ex)
         {
@@ -115,46 +101,26 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
         }
     }
 
-    private async Task<LocalizationAdminCommandResult> BuildResultAsync(
-        HttpResponseMessage response,
+    private LocalizationAdminCommandResult MapCommandResult(
+        IApiResponse<LocalizationAdminCommandResponse> response,
         string successFallback,
-        string failureFallback,
-        CancellationToken ct)
+        string failureFallback)
     {
-        try
+        if (!response.IsSuccessStatusCode)
         {
-            var raw = await response.Content.ReadAsStringAsync(ct);
-            if (!string.IsNullOrWhiteSpace(raw))
-            {
-                using var doc = System.Text.Json.JsonDocument.Parse(raw);
-                var root = doc.RootElement;
-                var success = response.IsSuccessStatusCode;
-                string? message = null;
-                if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
-                {
-                    if (root.TryGetProperty("success", out var sEl) && sEl.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
-                    {
-                        success = success && sEl.GetBoolean();
-                    }
-                    if (root.TryGetProperty("message", out var mEl) && mEl.ValueKind == System.Text.Json.JsonValueKind.String)
-                    {
-                        message = mEl.GetString();
-                    }
-                }
-                return new LocalizationAdminCommandResult(
-                    success,
-                    string.IsNullOrWhiteSpace(message)
-                        ? (response.IsSuccessStatusCode ? successFallback : failureFallback)
-                        : message);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "[LOCALIZATION ADMIN] Response body parse failed");
+            return new LocalizationAdminCommandResult(false, failureFallback);
         }
 
-        return new LocalizationAdminCommandResult(
-            response.IsSuccessStatusCode,
-            response.IsSuccessStatusCode ? successFallback : failureFallback);
+        var content = response.Content;
+        if (content is not null)
+        {
+            return new LocalizationAdminCommandResult(
+                content.Success,
+                string.IsNullOrWhiteSpace(content.Message)
+                    ? successFallback
+                    : content.Message);
+        }
+
+        return new LocalizationAdminCommandResult(true, successFallback);
     }
 }

@@ -1,28 +1,22 @@
-using System.Net.Http.Json;
-using Microsoft.Extensions.Logging;
+// ABOUTME: Service for maps-related operations.
+// ABOUTME: Resolves map embed URLs through the BFF proxy.
 
 namespace Explore.Blazor.Client.Services;
 
-/// <summary>
-/// Service for maps-related operations.
-/// </summary>
 public interface IMapsService
 {
     Task<string> GetEmbedUrlAsync(string query);
 }
 
-/// <summary>
-/// Implementation of maps service.
-/// </summary>
 public class MapsService : IMapsService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IMapsApi _api;
     private readonly ILogger<MapsService> _logger;
 
-    public MapsService(HttpClient httpClient, ILogger<MapsService> logger)
+    public MapsService(IMapsApi api, ILogger<MapsService> logger)
     {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _api = api;
+        _logger = logger;
     }
 
     public async Task<string> GetEmbedUrlAsync(string query)
@@ -34,17 +28,14 @@ public class MapsService : IMapsService
                 return string.Empty;
             }
 
-            var encodedQuery = Uri.EscapeDataString(query);
-            var response = await _httpClient.GetAsync($"/bff/api/Maps/embed-url?query={encodedQuery}");
+            var response = await _api.GetEmbedUrlAsync(query, CancellationToken.None);
 
-            if (response.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode && response.Content is not null)
             {
-                var embedUrl = await response.Content.ReadAsStringAsync();
-                // Remove quotes from JSON response
-                return embedUrl?.Trim('"') ?? string.Empty;
+                return response.Content.Trim('"');
             }
 
-            _logger.LogWarning("Error getting map embed URL: {StatusCode}", response.StatusCode);
+            _logger.LogWarning("Error getting map embed URL: {StatusCode}", (int)response.StatusCode);
             return string.Empty;
         }
         catch (Exception ex)

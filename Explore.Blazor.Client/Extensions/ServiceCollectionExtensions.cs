@@ -12,6 +12,7 @@ using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Accessibility;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Client.Services.Lookup;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +28,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddSharedApplicationServices(this IServiceCollection services)
     {
         // Domain services (NSwag IEventApiClient consumers)
+        services.AddScoped<IApiClientExecutor, ApiClientExecutor>();
         services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
@@ -40,7 +42,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILandingPageService, LandingPageService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
+        services.AddBffRefitClient<IMapsApi>();
         services.AddScoped<IMapsService, MapsService>();
+        services.AddScoped<IImageContentClassifier, ImageContentClassifier>();
+        services.AddScoped<IImageFileReaderService, ImageFileReaderService>();
+        services.AddScoped<IImagePreviewService, ImagePreviewService>();
+        services.AddScoped<IImageUploadClient, ImageUploadClient>();
+        services.AddScoped<IImageStorageRecordClient, ImageStorageRecordClient>();
         services.AddScoped<IImageStorageService, ImageStorageService>();
 
         // Lookup / reference data services
@@ -76,10 +84,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INotificationService, NotificationService>();
 
         // BFF / onboarding services (use named HttpClient "BffClient")
+        services.AddBffRefitClient<IInstanceOnboardingApi>();
+        services.AddBffRefitClient<ITenantOnboardingApi>();
+        services.AddBffRefitClient<IPublicExperienceApi>();
         services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
         services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
         services.AddScoped<IPublicExperienceService, PublicExperienceService>();
         services.AddScoped<ITenantPublicExperienceAdminService, TenantPublicExperienceAdminService>();
+        services.AddBffRefitClient<ITenantBrandingSettingsApi>();
+        services.AddScoped<ITenantBrandingSettingsAdminService, TenantBrandingSettingsAdminService>();
         services.AddScoped<IAppearanceThemeService, AppearanceThemeService>();
         services.AddScoped<IUserAppearancePreferencesService, UserAppearancePreferencesService>();
 
@@ -92,6 +105,7 @@ public static class ServiceCollectionExtensions
 
         // Localization
         services.AddScoped<ITranslationService, TranslationService>();
+        services.AddBffRefitClient<ILanguagePreferenceApi>();
         services.AddScoped<ILanguagePreferenceService, LanguagePreferenceService>();
         services.AddTransient<MudBlazor.MudLocalizer, MudBlazorLocalizer>();
 
@@ -112,6 +126,7 @@ public static class ServiceCollectionExtensions
 
         // Feature flags (hydrated from API, no OpenFeature SDK dependency)
         services.AddScoped<FeatureStateContainer>();
+        services.AddBffRefitClient<IFeatureFlagApi>();
         services.AddScoped<IFeatureFlagClientService, FeatureFlagClientService>();
 
         return services;

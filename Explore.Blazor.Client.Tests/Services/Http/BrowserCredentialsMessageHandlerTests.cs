@@ -5,14 +5,14 @@ using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Tests.Services.Http;
 
-public class BrowserCredentialsMessageHandlerTests
+public class BffAntiforgeryMessageHandlerTests
 {
     [Test]
     public async Task SendAsync_AddsXsrfHeader_ForMutatingRequests()
     {
-        var logger = Substitute.For<ILogger<BrowserCredentialsMessageHandler>>();
+        var logger = Substitute.For<ILogger<BffAntiforgeryMessageHandler>>();
         var jsRuntime = new FakeJsRuntime("test-xsrf-token");
-        var handler = new BrowserCredentialsMessageHandler(logger, jsRuntime)
+        var handler = new BffAntiforgeryMessageHandler(logger, jsRuntime)
         {
             InnerHandler = new CaptureHandler()
         };
@@ -33,7 +33,7 @@ public class BrowserCredentialsMessageHandlerTests
     [Test]
     public async Task SendAsync_DoesNotAddXsrfHeader_ForGetRequests()
     {
-        var handler = new BrowserCredentialsMessageHandler(Substitute.For<ILogger<BrowserCredentialsMessageHandler>>(), new FakeJsRuntime("token"))
+        var handler = new BffAntiforgeryMessageHandler(Substitute.For<ILogger<BffAntiforgeryMessageHandler>>(), new FakeJsRuntime("token"))
         {
             InnerHandler = new CaptureHandler()
         };
