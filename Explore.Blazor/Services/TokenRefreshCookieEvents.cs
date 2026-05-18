@@ -191,14 +191,15 @@ public sealed class TokenRefreshCookieEvents : CookieAuthenticationEvents
             return;
         }
 
+        var tokenStore = context.HttpContext.RequestServices.GetService<ICircuitTokenStore>();
         var sessionId = context.Principal?.FindFirst("sid")?.Value;
         if (string.IsNullOrWhiteSpace(sessionId))
         {
-            CircuitAccessTokenService.ClearTokensForUser(userId);
+            tokenStore?.ClearUser(userId);
         }
         else
         {
-            CircuitAccessTokenService.ClearTokenForUserSession(userId, sessionId);
+            tokenStore?.ClearSession(userId, sessionId);
         }
     }
 

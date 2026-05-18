@@ -8,6 +8,7 @@ using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -16,6 +17,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Blazor.IntegrationTests.Fixtures;
 
@@ -67,6 +69,9 @@ public class BlazorBffWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
+            services.RemoveAll<DataProtectionKeyContext>();
+            services.RemoveAll<DbContextOptions<DataProtectionKeyContext>>();
+            services.RemoveAll<IConfigureOptions<KeyManagementOptions>>();
             services.AddDataProtection().UseEphemeralDataProtectionProvider();
 
             services.AddAuthentication(TestAuthHandler.SchemeName)

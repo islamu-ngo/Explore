@@ -11,6 +11,8 @@ using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Routing.Guards;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Http;
+using Explore.Blazor.Services.Preferences;
 using Explore.Blazor.Services;
 using Explore.Infrastructure.Services;
 using Explore.Persistence;
@@ -34,7 +36,20 @@ public static class ServiceRegistrationExtensions
     /// </summary>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddTransient<BrowserCredentialsMessageHandler>();
+        services.AddTransient<BffAntiforgeryMessageHandler>();
+        services.AddTransient<BffUnauthorizedHandler>();
+
         services.AddSharedApplicationServices();
+        services.AddScoped<BffClient>(sp =>
+        {
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var navigation = sp.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+            var http = factory.CreateClient("BffSelfClient");
+            http.BaseAddress = new Uri(navigation.BaseUri);
+            return new BffClient(http);
+        });
+        services.AddScoped<IBffClient>(sp => sp.GetRequiredService<BffClient>());
         services.AddScoped<AuthenticatedRouteGuard>();
         services.AddScoped<MultiTenantOnboardingRouteGuard>();
         services.AddScoped<AdminRouteGuard>();
@@ -59,6 +74,7 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<Explore.Blazor.Client.Services.CookieConsentStateService>();
         services.AddScoped<ICircuitUserContext, CircuitUserContext>();
         services.AddScoped<IBffAuthCookieStore, BffAuthCookieStore>();
+        services.AddSingleton<ICircuitTokenStore, CircuitTokenStore>();
         services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
         services.AddSingleton<SetupSecretSessionService>();
         services.AddSingleton<ISetupSecretSessionService>(sp => sp.GetRequiredService<SetupSecretSessionService>());
@@ -71,6 +87,9 @@ public static class ServiceRegistrationExtensions
         services.AddSingleton<ISetupSecretCookieProtector, SetupSecretCookieProtector>();
         services.AddScoped<ISetupSecretResolver, SetupSecretResolver>();
         services.AddScoped<IStorageUploadSessionStore, StorageUploadSessionStore>();
+        services.AddSingleton<IBffPreferenceCookieService, BffPreferenceCookieService>();
+        services.AddSingleton<IBffPreferenceValidationService, BffPreferenceValidationService>();
+        services.AddSingleton<IBffPreferenceForwardingService, BffPreferenceForwardingService>();
         services.AddMemoryCache();
         RegisterResolverConfigDataServices(services, configuration);
         services.AddScoped<IResolverConfigService, ResolverConfigService>();

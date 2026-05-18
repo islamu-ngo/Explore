@@ -148,7 +148,9 @@ else
     app.UseHsts();
 }
 
-app.UseStatusCodePagesWithReExecute("/errors/{0}", createScopeForStatusCodePages: true);
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/bff", StringComparison.OrdinalIgnoreCase),
+    branch => branch.UseStatusCodePagesWithReExecute("/errors/{0}", createScopeForStatusCodePages: true));
 app.UseHttpsRedirection();
 app.UseAntiforgeryTokenMiddleware();
 app.UseStartupRedirectMiddleware();

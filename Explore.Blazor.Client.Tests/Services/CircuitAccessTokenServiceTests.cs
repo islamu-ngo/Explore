@@ -1,29 +1,34 @@
+// ABOUTME: Tests for CircuitAccessTokenService and AccessTokenForwardingHandler using the bounded ICircuitTokenStore.
+// ABOUTME: Verifies cross-user isolation, session scoping, token refresh propagation, and deterministic cleanup.
+
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Reflection;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Options = Microsoft.Extensions.Options.Options;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
-[NotInParallel("CircuitAccessTokenStore")]
 public class CircuitAccessTokenServiceTests
 {
+    private readonly ICircuitTokenStore _tokenStore = new CircuitTokenStore(
+        NullLogger<CircuitTokenStore>.Instance);
+
     [Test]
     public async Task AccessTokenForwardingHandler_UsesHttpContextToken_WhenAvailable()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var storeToken = CreateJwt(userId);
         var contextToken = CreateJwt(userId);
 
         var storeContext = CreateHttpContext(userId);
         var storeService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = storeContext },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         storeService.SetToken(storeToken);
 
         var requestContext = CreateHttpContext(userId, contextToken);
@@ -32,7 +37,8 @@ public class CircuitAccessTokenServiceTests
             accessor,
             Substitute.For<ICircuitAccessTokenService>(),
             Substitute.For<ICircuitUserContext>(),
-            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+            _tokenStore,
+            NullLogger<AccessTokenForwardingHandler>.Instance);
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
@@ -46,15 +52,14 @@ public class CircuitAccessTokenServiceTests
     [Test]
     public async Task AccessTokenForwardingHandler_UsesUserStoreToken_WhenHttpContextTokenMissing()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var storeToken = CreateJwt(userId);
 
         var storeContext = CreateHttpContext(userId);
         var storeService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = storeContext },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         storeService.SetToken(storeToken);
 
         var requestContext = CreateHttpContext(userId);
@@ -63,7 +68,8 @@ public class CircuitAccessTokenServiceTests
             accessor,
             Substitute.For<ICircuitAccessTokenService>(),
             Substitute.For<ICircuitUserContext>(),
-            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+            _tokenStore,
+            NullLogger<AccessTokenForwardingHandler>.Instance);
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
@@ -77,16 +83,15 @@ public class CircuitAccessTokenServiceTests
     [Test]
     public async Task AccessTokenForwardingHandler_DoesNotUseOtherUsersToken()
     {
-        ClearTokenStore();
-
         var ownerUserId = Guid.NewGuid().ToString();
         var requesterUserId = Guid.NewGuid().ToString();
         var ownerToken = CreateJwt(ownerUserId);
 
         var storeContext = CreateHttpContext(ownerUserId);
         var storeService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = storeContext },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         storeService.SetToken(ownerToken);
 
         var requestContext = CreateHttpContext(requesterUserId);
@@ -95,7 +100,8 @@ public class CircuitAccessTokenServiceTests
             accessor,
             Substitute.For<ICircuitAccessTokenService>(),
             Substitute.For<ICircuitUserContext>(),
-            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+            _tokenStore,
+            NullLogger<AccessTokenForwardingHandler>.Instance);
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
@@ -109,15 +115,14 @@ public class CircuitAccessTokenServiceTests
     [Test]
     public async Task AccessTokenForwardingHandler_UsesCircuitUserContext_WhenHttpContextIsNull()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var storeToken = CreateJwt(userId);
 
         var storeContext = CreateHttpContext(userId);
         var storeService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = storeContext },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         storeService.SetToken(storeToken);
 
         var accessor = new HttpContextAccessor { HttpContext = null };
@@ -128,7 +133,8 @@ public class CircuitAccessTokenServiceTests
             accessor,
             Substitute.For<ICircuitAccessTokenService>(),
             circuitUserContext,
-            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+            _tokenStore,
+            NullLogger<AccessTokenForwardingHandler>.Instance);
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
@@ -142,16 +148,15 @@ public class CircuitAccessTokenServiceTests
     [Test]
     public async Task AccessTokenForwardingHandler_WithHttpContextUserSession_UsesOnlyMatchingSessionStoredToken()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var sessionA = Guid.NewGuid().ToString();
         var sessionB = Guid.NewGuid().ToString();
         var tokenA = CreateJwt(userId, sessionId: sessionA);
 
         var storeService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionA) },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         storeService.SetToken(tokenA);
 
         var accessor = new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionB) };
@@ -159,7 +164,8 @@ public class CircuitAccessTokenServiceTests
             accessor,
             Substitute.For<ICircuitAccessTokenService>(),
             Substitute.For<ICircuitUserContext>(),
-            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+            _tokenStore,
+            NullLogger<AccessTokenForwardingHandler>.Instance);
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
@@ -172,15 +178,14 @@ public class CircuitAccessTokenServiceTests
     [Test]
     public async Task AccessTokenForwardingHandler_AfterClear_DoesNotForwardStaticToken()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var sessionId = Guid.NewGuid().ToString();
         var token = CreateJwt(userId, sessionId: sessionId);
         var context = CreateHttpContextWithSession(userId, sessionId);
         var storeService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = context },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         storeService.SetToken(token);
         storeService.ClearToken();
 
@@ -188,7 +193,8 @@ public class CircuitAccessTokenServiceTests
             new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionId) },
             Substitute.For<ICircuitAccessTokenService>(),
             Substitute.For<ICircuitUserContext>(),
-            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+            _tokenStore,
+            NullLogger<AccessTokenForwardingHandler>.Instance);
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
@@ -199,46 +205,45 @@ public class CircuitAccessTokenServiceTests
     }
 
     [Test]
-    public async Task CircuitAccessTokenService_GetTokenForUser_ReturnsOnlyMatchingUserToken()
+    public async Task CircuitTokenStore_Resolve_ReturnsOnlyMatchingUserToken()
     {
-        ClearTokenStore();
-
         var userA = Guid.NewGuid().ToString();
         var userB = Guid.NewGuid().ToString();
         var tokenA = CreateJwt(userA);
 
         var context = CreateHttpContext(userA);
         var service = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = context },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         service.SetToken(tokenA);
 
-        var forA = CircuitAccessTokenService.GetTokenForUser(userA);
-        var forB = CircuitAccessTokenService.GetTokenForUser(userB);
+        var forA = _tokenStore.Resolve(userA, null);
+        var forB = _tokenStore.Resolve(userB, null);
 
-        await Assert.That(forA).IsEqualTo(tokenA);
-        await Assert.That(forB).IsNull();
+        await Assert.That(forA.Token).IsEqualTo(tokenA);
+        await Assert.That(forB.Found).IsFalse();
     }
 
     [Test]
     public async Task CircuitAccessTokenService_AccessToken_PrefersSharedStoreTokenOverStaleLocalToken()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var staleToken = CreateJwt(userId);
         var refreshedToken = CreateJwt(userId, DateTime.UtcNow.AddMinutes(30));
 
         var circuitContext = CreateHttpContext(userId);
         var circuitService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = circuitContext },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         circuitService.SetToken(staleToken);
 
         var refreshRequestContext = CreateHttpContext(userId);
         var refreshScopeService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = refreshRequestContext },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         refreshScopeService.SetToken(refreshedToken);
 
         await Assert.That(circuitService.AccessToken).IsEqualTo(refreshedToken);
@@ -247,45 +252,45 @@ public class CircuitAccessTokenServiceTests
     [Test]
     public async Task CircuitAccessTokenService_SetToken_PersistsSidFallbackToSharedStore()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var sidToken = CreateJwtWithSid(userId);
         var context = CreateHttpContextWithSid(userId);
         var service = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = context },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
 
         service.SetToken(sidToken);
 
-        await Assert.That(CircuitAccessTokenService.GetTokenForUser(userId)).IsEqualTo(sidToken);
+        // When a JWT has only a `sid` claim, TryResolveUserId falls back to sid as userId,
+        // and TryResolveSessionId also extracts sid as sessionId. The store key includes both.
+        var resolution = _tokenStore.Resolve(userId, userId);
+        await Assert.That(resolution.Token).IsEqualTo(sidToken);
     }
 
     [Test]
     public async Task CircuitAccessTokenService_SetTokenNull_ClearsLocalAndSharedSessionToken()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var sessionId = Guid.NewGuid().ToString();
         var token = CreateJwt(userId, sessionId: sessionId);
         var context = CreateHttpContextWithSession(userId, sessionId);
         var service = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = context },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
 
         service.SetToken(token);
         service.SetToken(null);
 
         await Assert.That(service.AccessToken).IsNull();
-        await Assert.That(CircuitAccessTokenService.GetTokenForUserSession(userId, sessionId)).IsNull();
+        var resolution = _tokenStore.Resolve(userId, sessionId);
+        await Assert.That(resolution.Found).IsFalse();
     }
 
     [Test]
     public async Task CircuitAccessTokenService_ClearToken_DoesNotClearOtherSessionForSameUser()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var sessionA = Guid.NewGuid().ToString();
         var sessionB = Guid.NewGuid().ToString();
@@ -293,38 +298,42 @@ public class CircuitAccessTokenServiceTests
         var tokenB = CreateJwt(userId, sessionId: sessionB);
 
         var serviceA = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionA) },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         var serviceB = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionB) },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
 
         serviceA.SetToken(tokenA);
         serviceB.SetToken(tokenB);
         serviceA.ClearToken();
 
-        await Assert.That(CircuitAccessTokenService.GetTokenForUserSession(userId, sessionA)).IsNull();
-        await Assert.That(CircuitAccessTokenService.GetTokenForUserSession(userId, sessionB)).IsEqualTo(tokenB);
+        var resA = _tokenStore.Resolve(userId, sessionA);
+        var resB = _tokenStore.Resolve(userId, sessionB);
+        await Assert.That(resA.Found).IsFalse();
+        await Assert.That(resB.Token).IsEqualTo(tokenB);
     }
 
     [Test]
     public async Task CircuitAccessTokenService_AccessToken_DoesNotUseTokenFromDifferentSessionForSameUser()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var sessionA = Guid.NewGuid().ToString();
         var sessionB = Guid.NewGuid().ToString();
         var tokenA = CreateJwt(userId, sessionId: sessionA);
 
         var ownerService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionA) },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         ownerService.SetToken(tokenA);
 
         var requesterService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionB) },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
 
         await Assert.That(requesterService.AccessToken).IsNull();
     }
@@ -332,21 +341,21 @@ public class CircuitAccessTokenServiceTests
     [Test]
     public async Task CircuitAccessTokenService_SetTokenRefreshSuccess_UpdatesSharedSessionTokenAndExistingCircuitSeesNewToken()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var sessionId = Guid.NewGuid().ToString();
         var staleToken = CreateJwt(userId, expires: DateTime.UtcNow.AddMinutes(20), sessionId: sessionId);
         var refreshedToken = CreateJwt(userId, expires: DateTime.UtcNow.AddMinutes(40), sessionId: sessionId);
 
         var circuitService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionId) },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         circuitService.SetToken(staleToken);
 
         var refreshScopeService = new CircuitAccessTokenService(
+            _tokenStore,
             new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionId) },
-            Substitute.For<ILogger<CircuitAccessTokenService>>());
+            NullLogger<CircuitAccessTokenService>.Instance);
         refreshScopeService.SetToken(refreshedToken);
 
         await Assert.That(circuitService.AccessToken).IsEqualTo(refreshedToken);
@@ -357,8 +366,6 @@ public class CircuitAccessTokenServiceTests
     {
         // Setup-secret forwarding is now handled by SetupSecretForwardingHandler.
         // AccessTokenForwardingHandler should NOT add X-Setup-Secret headers.
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var context = CreateHttpContext(userId);
         context.Request.Headers.Cookie = "setup-secret=test-setup-secret";
@@ -368,7 +375,8 @@ public class CircuitAccessTokenServiceTests
             accessor,
             Substitute.For<ICircuitAccessTokenService>(),
             Substitute.For<ICircuitUserContext>(),
-            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+            _tokenStore,
+            NullLogger<AccessTokenForwardingHandler>.Instance);
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
@@ -381,8 +389,6 @@ public class CircuitAccessTokenServiceTests
     [Test]
     public async Task AccessTokenForwardingHandler_DoesNotForwardSetupSecret_ForUnrelatedEndpoints()
     {
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var context = CreateHttpContext(userId);
         context.Request.Headers.Cookie = "setup-secret=test-setup-secret";
@@ -392,7 +398,8 @@ public class CircuitAccessTokenServiceTests
             accessor,
             Substitute.For<ICircuitAccessTokenService>(),
             Substitute.For<ICircuitUserContext>(),
-            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+            _tokenStore,
+            NullLogger<AccessTokenForwardingHandler>.Instance);
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
@@ -406,8 +413,6 @@ public class CircuitAccessTokenServiceTests
     public async Task AccessTokenForwardingHandler_DoesNotAddSetupSecret_WhenCookieMissing()
     {
         // Setup-secret forwarding is now handled by SetupSecretForwardingHandler.
-        ClearTokenStore();
-
         var userId = Guid.NewGuid().ToString();
         var context = CreateHttpContext(userId);
 
@@ -416,7 +421,8 @@ public class CircuitAccessTokenServiceTests
             accessor,
             Substitute.For<ICircuitAccessTokenService>(),
             Substitute.For<ICircuitUserContext>(),
-            Substitute.For<ILogger<AccessTokenForwardingHandler>>());
+            _tokenStore,
+            NullLogger<AccessTokenForwardingHandler>.Instance);
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
 
@@ -490,22 +496,15 @@ public class CircuitAccessTokenServiceTests
         return new JwtSecurityTokenHandler().WriteToken(jwt);
     }
 
-    private static void ClearTokenStore()
-    {
-        var storeField = typeof(CircuitAccessTokenService).GetField("_tokenStore", BindingFlags.NonPublic | BindingFlags.Static);
-        var store = storeField?.GetValue(null);
-        var clearMethod = store?.GetType().GetMethod("Clear");
-        clearMethod?.Invoke(store, null);
-    }
-
     private sealed class TestableAccessTokenForwardingHandler : AccessTokenForwardingHandler
     {
         public TestableAccessTokenForwardingHandler(
             IHttpContextAccessor httpContextAccessor,
             ICircuitAccessTokenService circuitAccessTokenService,
             ICircuitUserContext circuitUserContext,
+            ICircuitTokenStore tokenStore,
             ILogger<AccessTokenForwardingHandler> logger)
-            : base(httpContextAccessor, circuitAccessTokenService, circuitUserContext, logger)
+            : base(httpContextAccessor, circuitAccessTokenService, circuitUserContext, tokenStore, logger)
         {
         }
 

@@ -13,6 +13,9 @@ namespace Explore.Blazor.IntegrationTests.Handlers;
 
 public class AccessTokenForwardingHandlerTests
 {
+    private readonly ICircuitTokenStore _tokenStore = new CircuitTokenStore(
+        NullLogger<CircuitTokenStore>.Instance);
+
     [Test]
     public async Task SendAsync_WithAccessTokenInHttpContext_AddsAuthorizationHeader()
     {
@@ -23,7 +26,9 @@ public class AccessTokenForwardingHandlerTests
         var innerHandler = new CapturingHandler();
         var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
         var circuitUserContext = Substitute.For<ICircuitUserContext>();
-        var handler = new AccessTokenForwardingHandler(httpContextAccessor, circuitTokenService, circuitUserContext, NullLogger<AccessTokenForwardingHandler>.Instance)
+        var handler = new AccessTokenForwardingHandler(
+            httpContextAccessor, circuitTokenService, circuitUserContext,
+            _tokenStore, NullLogger<AccessTokenForwardingHandler>.Instance)
         {
             InnerHandler = innerHandler
         };
@@ -48,7 +53,9 @@ public class AccessTokenForwardingHandlerTests
         var innerHandler = new CapturingHandler();
         var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
         var circuitUserContext = Substitute.For<ICircuitUserContext>();
-        var handler = new AccessTokenForwardingHandler(httpContextAccessor, circuitTokenService, circuitUserContext, NullLogger<AccessTokenForwardingHandler>.Instance)
+        var handler = new AccessTokenForwardingHandler(
+            httpContextAccessor, circuitTokenService, circuitUserContext,
+            _tokenStore, NullLogger<AccessTokenForwardingHandler>.Instance)
         {
             InnerHandler = innerHandler
         };
@@ -71,7 +78,9 @@ public class AccessTokenForwardingHandlerTests
         var innerHandler = new CapturingHandler();
         var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
         var circuitUserContext = Substitute.For<ICircuitUserContext>();
-        var handler = new AccessTokenForwardingHandler(httpContextAccessor, circuitTokenService, circuitUserContext, NullLogger<AccessTokenForwardingHandler>.Instance)
+        var handler = new AccessTokenForwardingHandler(
+            httpContextAccessor, circuitTokenService, circuitUserContext,
+            _tokenStore, NullLogger<AccessTokenForwardingHandler>.Instance)
         {
             InnerHandler = innerHandler
         };
@@ -96,6 +105,7 @@ public class AccessTokenForwardingHandlerTests
         var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
 
         var tokenStoreService = new CircuitAccessTokenService(
+            _tokenStore,
             httpContextAccessor,
             NullLogger<CircuitAccessTokenService>.Instance);
         tokenStoreService.SetToken(freshStoredToken);
@@ -103,7 +113,9 @@ public class AccessTokenForwardingHandlerTests
         var innerHandler = new CapturingHandler();
         var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
         var circuitUserContext = Substitute.For<ICircuitUserContext>();
-        var handler = new AccessTokenForwardingHandler(httpContextAccessor, circuitTokenService, circuitUserContext, NullLogger<AccessTokenForwardingHandler>.Instance)
+        var handler = new AccessTokenForwardingHandler(
+            httpContextAccessor, circuitTokenService, circuitUserContext,
+            _tokenStore, NullLogger<AccessTokenForwardingHandler>.Instance)
         {
             InnerHandler = innerHandler
         };
@@ -125,6 +137,7 @@ public class AccessTokenForwardingHandlerTests
         var httpContextAccessor = new HttpContextAccessor();
 
         var tokenStoreService = new CircuitAccessTokenService(
+            _tokenStore,
             httpContextAccessor,
             NullLogger<CircuitAccessTokenService>.Instance);
         tokenStoreService.SetToken(token);
@@ -140,6 +153,7 @@ public class AccessTokenForwardingHandlerTests
                 httpContextAccessor,
                 Substitute.For<ICircuitAccessTokenService>(),
                 new CircuitUserContext(),
+                _tokenStore,
                 NullLogger<AccessTokenForwardingHandler>.Instance)
             {
                 InnerHandler = innerHandler

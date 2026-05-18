@@ -70,6 +70,13 @@ public static class AuthenticationExtensions
 
         // DynamicAuthSchemeManager is a singleton — it holds the set of registered schemes
         // and uses IAuthenticationSchemeProvider + IOptionsMonitorCache for runtime registration.
+        services.AddSingleton<Services.Auth.IBffReturnUrlService, Services.Auth.BffReturnUrlService>();
+        services.AddSingleton<Services.Auth.IBffProviderReadinessService, Services.Auth.BffProviderReadinessService>();
+        services.AddSingleton<Services.Auth.IBffAccessTokenAssessmentService, Services.Auth.BffAccessTokenAssessmentService>();
+        services.AddOptions<Services.Auth.BffAuthDiagnosticsOptions>()
+            .Bind(configuration.GetSection("Keycloak"));
+        services.AddScoped<Services.Auth.IBffSessionRefreshService, Services.Auth.BffSessionRefreshService>();
+        services.AddScoped<Services.Auth.IBffAuthDiagnosticsService, Services.Auth.BffAuthDiagnosticsService>();
         services.AddSingleton<ISafeAuthDiagnosticsPolicy, SafeAuthDiagnosticsPolicy>();
         services.AddSingleton<IDynamicAuthSchemeManager, DynamicAuthSchemeManager>();
 
