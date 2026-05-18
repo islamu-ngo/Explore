@@ -65,7 +65,7 @@ public sealed class ApiContractInventoryGeneratorTests
         var repoRoot = FindRepoRoot()
             ?? throw new InvalidOperationException(
                 "Could not locate repository root from AppContext.BaseDirectory. " +
-                "Expected to find a parent directory containing CLAUDE.md and Explore.API/.");
+                "Expected to find a parent directory containing AGENTS.md and Explore.API/.");
 
         var outputPath = Path.Combine(
             repoRoot,
@@ -229,7 +229,7 @@ public sealed class ApiContractInventoryGeneratorTests
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            var marker = Path.Combine(dir.FullName, "CLAUDE.md");
+            var marker = Path.Combine(dir.FullName, "AGENTS.md");
             var exploreApi = Path.Combine(dir.FullName, "Explore.API");
             if (File.Exists(marker) && Directory.Exists(exploreApi))
             {
