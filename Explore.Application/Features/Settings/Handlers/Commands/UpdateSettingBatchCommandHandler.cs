@@ -23,6 +23,7 @@ public class UpdateSettingBatchCommandHandler
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAdminContext _adminContext;
+    private readonly ICerbosConfigResolver? _cerbosConfigResolver;
     private readonly IMediator _mediator;
     private readonly ILogger<UpdateSettingBatchCommandHandler> _logger;
 
@@ -33,13 +34,15 @@ public class UpdateSettingBatchCommandHandler
         ICurrentUserService currentUserService,
         IAdminContext adminContext,
         IMediator mediator,
-        ILogger<UpdateSettingBatchCommandHandler> logger)
+        ILogger<UpdateSettingBatchCommandHandler> logger,
+        ICerbosConfigResolver? cerbosConfigResolver = null)
     {
         _resolver = resolver;
         _userPreferenceRepository = userPreferenceRepository;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _adminContext = adminContext;
+        _cerbosConfigResolver = cerbosConfigResolver;
         _mediator = mediator;
         _logger = logger;
     }
@@ -223,7 +226,14 @@ public class UpdateSettingBatchCommandHandler
             if (request.Scope == SettingScope.User)
                 _resolver.InvalidateUserCache(_tenantContext.TenantId, actorId);
             else
+            {
                 _resolver.InvalidateCache(request.Scope, scopeId);
+                CerbosSettingsCacheInvalidation.InvalidateIfAnyCerbosSettingChanged(
+                    _cerbosConfigResolver,
+                    results.Where(result => result.Applied).Select(result => result.Key),
+                    request.Scope,
+                    scopeId);
+            }
         }
 
         var skippedCount = results.Count - appliedCount;

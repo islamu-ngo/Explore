@@ -23,6 +23,7 @@ public class UpdateSettingCommandHandler
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAdminContext _adminContext;
+    private readonly ICerbosConfigResolver? _cerbosConfigResolver;
     private readonly IMediator _mediator;
     private readonly ILogger<UpdateSettingCommandHandler> _logger;
 
@@ -33,13 +34,15 @@ public class UpdateSettingCommandHandler
         ICurrentUserService currentUserService,
         IAdminContext adminContext,
         IMediator mediator,
-        ILogger<UpdateSettingCommandHandler> logger)
+        ILogger<UpdateSettingCommandHandler> logger,
+        ICerbosConfigResolver? cerbosConfigResolver = null)
     {
         _resolver = resolver;
         _userPreferenceRepository = userPreferenceRepository;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _adminContext = adminContext;
+        _cerbosConfigResolver = cerbosConfigResolver;
         _mediator = mediator;
         _logger = logger;
     }
@@ -129,6 +132,8 @@ public class UpdateSettingCommandHandler
             await _resolver.SetValueAsync(
                 request.Key, serializedValue!, request.Scope, scopeId, actorId, cancellationToken);
             _resolver.InvalidateCache(request.Scope, scopeId);
+            CerbosSettingsCacheInvalidation.InvalidateIfCerbosSettingChanged(
+                _cerbosConfigResolver, request.Key, request.Scope, scopeId);
         }
 
         _logger.LogInformation(

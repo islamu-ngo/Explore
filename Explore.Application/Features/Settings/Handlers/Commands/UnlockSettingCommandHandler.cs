@@ -19,6 +19,7 @@ public class UnlockSettingCommandHandler
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAdminContext _adminContext;
+    private readonly ICerbosConfigResolver? _cerbosConfigResolver;
     private readonly IMediator _mediator;
     private readonly ILogger<UnlockSettingCommandHandler> _logger;
 
@@ -28,12 +29,14 @@ public class UnlockSettingCommandHandler
         ICurrentUserService currentUserService,
         IAdminContext adminContext,
         IMediator mediator,
-        ILogger<UnlockSettingCommandHandler> logger)
+        ILogger<UnlockSettingCommandHandler> logger,
+        ICerbosConfigResolver? cerbosConfigResolver = null)
     {
         _resolver = resolver;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _adminContext = adminContext;
+        _cerbosConfigResolver = cerbosConfigResolver;
         _mediator = mediator;
         _logger = logger;
     }
@@ -77,6 +80,8 @@ public class UnlockSettingCommandHandler
             request.Key, request.Scope, scopeId, actorId, cancellationToken);
 
         _resolver.InvalidateCache(request.Scope, scopeId);
+        CerbosSettingsCacheInvalidation.InvalidateIfCerbosSettingChanged(
+            _cerbosConfigResolver, request.Key, request.Scope, scopeId);
 
         var unlockSource = request.Scope == SettingScope.Instance
             ? SettingSource.SystemDefault

@@ -22,6 +22,7 @@ public class ResetSettingCommandHandler
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAdminContext _adminContext;
+    private readonly ICerbosConfigResolver? _cerbosConfigResolver;
     private readonly IMediator _mediator;
     private readonly ILogger<ResetSettingCommandHandler> _logger;
 
@@ -32,13 +33,15 @@ public class ResetSettingCommandHandler
         ICurrentUserService currentUserService,
         IAdminContext adminContext,
         IMediator mediator,
-        ILogger<ResetSettingCommandHandler> logger)
+        ILogger<ResetSettingCommandHandler> logger,
+        ICerbosConfigResolver? cerbosConfigResolver = null)
     {
         _resolver = resolver;
         _userPreferenceRepository = userPreferenceRepository;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _adminContext = adminContext;
+        _cerbosConfigResolver = cerbosConfigResolver;
         _mediator = mediator;
         _logger = logger;
     }
@@ -104,6 +107,8 @@ public class ResetSettingCommandHandler
             await _resolver.RemoveOverrideAsync(
                 request.Key, request.Scope, scopeId, actorId, cancellationToken);
             _resolver.InvalidateCache(request.Scope, scopeId);
+            CerbosSettingsCacheInvalidation.InvalidateIfCerbosSettingChanged(
+                _cerbosConfigResolver, request.Key, request.Scope, scopeId);
         }
 
         _logger.LogInformation(

@@ -19,6 +19,7 @@ public class LockSettingCommandHandler
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAdminContext _adminContext;
+    private readonly ICerbosConfigResolver? _cerbosConfigResolver;
     private readonly IMediator _mediator;
     private readonly ILogger<LockSettingCommandHandler> _logger;
 
@@ -28,12 +29,14 @@ public class LockSettingCommandHandler
         ICurrentUserService currentUserService,
         IAdminContext adminContext,
         IMediator mediator,
-        ILogger<LockSettingCommandHandler> logger)
+        ILogger<LockSettingCommandHandler> logger,
+        ICerbosConfigResolver? cerbosConfigResolver = null)
     {
         _resolver = resolver;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _adminContext = adminContext;
+        _cerbosConfigResolver = cerbosConfigResolver;
         _mediator = mediator;
         _logger = logger;
     }
@@ -85,6 +88,8 @@ public class LockSettingCommandHandler
             request.Key, request.Scope, scopeId, actorId, cancellationToken);
 
         _resolver.InvalidateCache(request.Scope, scopeId);
+        CerbosSettingsCacheInvalidation.InvalidateIfCerbosSettingChanged(
+            _cerbosConfigResolver, request.Key, request.Scope, scopeId);
 
         var lockSource = request.Scope == SettingScope.Instance
             ? SettingSource.SystemLocked
