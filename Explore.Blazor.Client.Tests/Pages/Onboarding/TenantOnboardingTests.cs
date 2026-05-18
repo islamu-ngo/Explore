@@ -108,13 +108,11 @@ public class TenantOnboardingTests : IDisposable
 
     private static TenantPolicySettingsModel CreateSettingsModel() => new()
     {
-        BrandDisplayName = "Community Hub",
         PreferredHomePage = "EventList",
         CanOverrideHomePagePreference = true,
         CanOverrideEventCardClickBehavior = true,
         CanOverrideSubdomain = true,
         CanOverrideCustomDomain = true,
-        CanOverrideBrandDisplayName = true,
         CanTenantOmitVerification = true
     };
 

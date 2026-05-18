@@ -85,8 +85,7 @@
                                     !_model.CanOverrideHomePagePreference ||
                                     !_model.CanOverrideEventCardClickBehavior ||
                                     !_model.CanOverrideSubdomain ||
-                                    !_model.CanOverrideCustomDomain ||
-                                    !_model.CanOverrideBrandDisplayName;
+                                    !_model.CanOverrideCustomDomain;
                 }
 
                 @if (hasLocks)
@@ -151,32 +150,9 @@
                     </MudExpansionPanel>
 
                     <MudExpansionPanel Text="Platform Identity">
-                        <MudStack Spacing="3">
-                            <MudTextField T="string" Label="@("Brand Display Name" + (!_model.CanOverrideBrandDisplayName ? " 🔒" : " (Required)"))"
-                                          Variant="Variant.Outlined"
-                                          Required="true"
-                                          RequiredError="Brand display name is required."
-                                          @bind-Value="_model.BrandDisplayName"
-                                          Disabled="@(!_model.CanOverrideBrandDisplayName)" />
-
-                            @if (_model.IsTenantWhiteLabelingEnabled)
-                            {
-                                <MudTextField T="string" Label="@("Brand Logo URL (Optional)" + (!_model.CanOverrideBrandLogoUrl ? " 🔒" : ""))"
-                                              Variant="Variant.Outlined"
-                                              @bind-Value="_model.BrandLogoUrl"
-                                              Disabled="@(!_model.CanOverrideBrandLogoUrl)" />
-                                <MudTextField T="string" Label="@("Brand Favicon URL (Optional)" + (!_model.CanOverrideBrandFaviconUrl ? " 🔒" : ""))"
-                                              Variant="Variant.Outlined"
-                                              @bind-Value="_model.BrandFaviconUrl"
-                                              Disabled="@(!_model.CanOverrideBrandFaviconUrl)" />
-                                <MudExpansionPanel Text="Advanced Branding" DisableGutters="true" Class="elevation-0">
-                                    <MudTextField T="string" Label="@("Custom CSS URL (Optional)" + (!_model.CanOverrideBrandCustomCssUrl ? " 🔒" : ""))"
-                                                  Variant="Variant.Outlined"
-                                                  @bind-Value="_model.BrandCustomCssUrl"
-                                                  Disabled="@(!_model.CanOverrideBrandCustomCssUrl)" />
-                                </MudExpansionPanel>
-                            }
-                        </MudStack>
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                            Tenant branding is configured after onboarding from Tenant Admin settings.
+                        </MudAlert>
                     </MudExpansionPanel>
                 </MudExpansionPanels>
 
