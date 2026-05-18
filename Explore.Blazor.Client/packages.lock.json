@@ -130,6 +130,16 @@
           "NSwag.MSBuild": "14.4.0"
         }
       },
+      "Refit.HttpClientFactory": {
+        "type": "Direct",
+        "requested": "[10.1.6, )",
+        "resolved": "10.1.6",
+        "contentHash": "brVgMXHX2pp6pMji7tJijygbMwxccIy2vSsPurPmOZ7jSChBjYpiT9bBbJkBDc0hhnNyzvLkkbx0uiHhJuTTEQ==",
+        "dependencies": {
+          "Microsoft.Extensions.Http": "9.0.3",
+          "Refit": "10.1.6"
+        }
+      },
       "Microsoft.AspNetCore.Authorization": {
         "type": "Transitive",
         "resolved": "10.0.7",
@@ -357,6 +367,11 @@
         "type": "Transitive",
         "resolved": "14.4.0",
         "contentHash": "B3E3iGDzTE6jTUHnRiitlXQSGh0NGl0c1wI5zr2/OGS1/oXoxrbKZw3xgNF2opPpDei5pRNbxFJeo7RDMh9log=="
+      },
+      "Refit": {
+        "type": "Transitive",
+        "resolved": "10.1.6",
+        "contentHash": "j82mHFcXJpiJiaLqQgiikmLAu+oYKcIM8ZafipX2s2b2soOS0OGN+Oc+BXkhsG8x6j2M1J23Eac3068yOKLPFA=="
       },
       "explore.domain": {
         "type": "Project",
