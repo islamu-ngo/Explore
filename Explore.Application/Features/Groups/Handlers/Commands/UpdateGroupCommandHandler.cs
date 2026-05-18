@@ -72,19 +72,84 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
             return response;
         }
 
-        group.FullName = request.GroupDto.FullName;
-        group.Description = request.GroupDto.Description;
-        group.UpdatedAt = DateTime.UtcNow;
-        group.UpdatedBy = currentUserId;
+        return await _groupRepository.ExecuteWithHierarchyMutationLock(
+            _tenantContext.TenantId,
+            async lockedCancellationToken =>
+            {
+                var hierarchyErrors = await ValidateHierarchy(
+                    request.Id,
+                    request.GroupDto.ParentOrganizationId,
+                    request.GroupDto.ParentGroupId,
+                    lockedCancellationToken);
+                if (hierarchyErrors.Count > 0)
+                {
+                    response.Success = false;
+                    response.Message = "Validation failed.";
+                    response.Errors = hierarchyErrors;
+                    return response;
+                }
 
-        await _groupRepository.Update(group);
+                group.FullName = request.GroupDto.FullName;
+                group.Description = request.GroupDto.Description;
+                group.ParentOrganizationId = request.GroupDto.ParentOrganizationId;
+                group.ParentGroupId = request.GroupDto.ParentGroupId;
+                group.UpdatedAt = DateTime.UtcNow;
+                group.UpdatedBy = currentUserId;
 
-        await _cache.RemoveAsync($"group:detail:{group.Id}", cancellationToken);
+                await _groupRepository.Update(group);
 
-        response.Success = true;
-        response.Message = "Group updated successfully.";
-        response.Id = group.Id;
+                await _cache.RemoveAsync($"group:detail:{group.Id}", lockedCancellationToken);
 
-        return response;
+                response.Success = true;
+                response.Message = "Group updated successfully.";
+                response.Id = group.Id;
+
+                return response;
+            },
+            cancellationToken);
+    }
+
+    private async Task<List<string>> ValidateHierarchy(Guid groupId, Guid? parentOrganizationId, Guid? parentGroupId, CancellationToken cancellationToken)
+    {
+        var errors = new List<string>();
+        var tenantId = _tenantContext.TenantId;
+
+        if (parentOrganizationId.HasValue)
+        {
+            var exists = await _groupRepository.OrganizationExistsInTenant(parentOrganizationId.Value, tenantId, cancellationToken);
+            if (!exists)
+            {
+                errors.Add("Parent organization does not exist in the current tenant.");
+            }
+        }
+
+        if (parentGroupId.HasValue)
+        {
+            if (parentGroupId.Value == groupId)
+            {
+                errors.Add("A group cannot be its own parent.");
+                return errors;
+            }
+
+            var exists = await _groupRepository.GroupExistsInTenant(parentGroupId.Value, tenantId, cancellationToken);
+            if (!exists)
+            {
+                errors.Add("Parent group does not exist in the current tenant.");
+            }
+            else
+            {
+                if (await _groupRepository.WouldCreateHierarchyCycle(groupId, parentGroupId.Value, tenantId, cancellationToken))
+                {
+                    errors.Add("Parent group would create a hierarchy cycle.");
+                }
+
+                if (await _groupRepository.WouldExceedHierarchyDepthForMove(groupId, parentGroupId, tenantId, GroupHierarchyRules.MaxDepth, cancellationToken))
+                {
+                    errors.Add("Parent group hierarchy exceeds the maximum supported depth.");
+                }
+            }
+        }
+
+        return errors;
     }
 }

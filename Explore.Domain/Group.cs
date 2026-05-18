@@ -30,6 +30,14 @@ public class Group : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public Guid? ActorId { get; set; }
     public Actor? Actor { get; set; }
 
+    [ForeignKey("ParentOrganization")]
+    public Guid? ParentOrganizationId { get; set; }
+    public Organization? ParentOrganization { get; set; }
+
+    [ForeignKey("ParentGroup")]
+    public Guid? ParentGroupId { get; set; }
+    public Group? ParentGroup { get; set; }
+
     // Audit fields
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }

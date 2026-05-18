@@ -15,5 +15,9 @@ public class UpdateGroupDtoValidator : AbstractValidator<UpdateGroupDto>
             .MaximumLength(5000)
             .When(p => !string.IsNullOrEmpty(p.Description))
             .WithMessage("{PropertyName} must not exceed 5000 characters.");
+
+        RuleFor(p => p)
+            .Must(p => !p.ParentOrganizationId.HasValue || !p.ParentGroupId.HasValue)
+            .WithMessage("A group can have either a parent organization or a parent group, not both.");
     }
 }
