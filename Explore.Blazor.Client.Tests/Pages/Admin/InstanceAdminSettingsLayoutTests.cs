@@ -197,6 +197,139 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         await _instanceOnboardingService.Received(1).RefreshAuthSchemesAsync();
     }
 
+    [Test]
+    public async Task InstanceAdminSettingsLayout_CerbosPolicySync_InvokesAdminBffSync()
+    {
+        // Arrange
+        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
+            .Returns(new AuthorizationProviderConfigurationModel
+            {
+                Provider = "cerbos",
+                CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
+                CerbosEndpointVerified = true
+            });
+        _instanceOnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync()
+            .Returns(new InstanceCommandResponseModel
+            {
+                Success = true,
+                Message = "Authorization policy package synced."
+            });
+
+        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+
+        // Act
+        cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Sync Policies", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Authorization policy package synced.", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Policy sync success message was not rendered.");
+            }
+        });
+        await _instanceOnboardingService.Received(1).SyncAuthorizationPolicyPackageAsAdminAsync();
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_CerbosPolicySync_FailureShowsSafeMessage()
+    {
+        // Arrange
+        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
+            .Returns(new AuthorizationProviderConfigurationModel
+            {
+                Provider = "cerbos",
+                CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
+                CerbosEndpointVerified = true
+            });
+        _instanceOnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync()
+            .Returns(new InstanceCommandResponseModel
+            {
+                Success = false,
+                Message = "secret-token leaked by backend",
+                Errors = ["stack trace"]
+            });
+
+        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+
+        // Act
+        cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Sync Policies", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Authorization policy package sync failed. Check Admin API settings and retry.", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Safe policy sync failure message was not rendered.");
+            }
+        });
+        await Assert.That(cut.Markup).DoesNotContain("secret-token", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).DoesNotContain("stack trace", StringComparison.OrdinalIgnoreCase);
+        await _instanceOnboardingService.Received(1).SyncAuthorizationPolicyPackageAsAdminAsync();
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_CerbosPolicySync_DisabledUntilEndpointVerified()
+    {
+        // Arrange
+        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
+            .Returns(new AuthorizationProviderConfigurationModel
+            {
+                Provider = "cerbos",
+                CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
+                CerbosEndpointVerified = false
+            });
+
+        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+
+        // Act
+        var syncButton = cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Sync Policies", StringComparison.OrdinalIgnoreCase));
+
+        // Assert
+        await Assert.That(syncButton.HasAttribute("disabled")).IsTrue();
+        await Assert.That(cut.Markup).Contains("Save and verify the Cerbos endpoint before syncing authorization policies.", StringComparison.OrdinalIgnoreCase);
+        await _instanceOnboardingService.DidNotReceive().SyncAuthorizationPolicyPackageAsAdminAsync();
+    }
+
+    [Test]
+    public async Task InstanceAdminSettingsLayout_CerbosPolicyDownload_AvailableWithoutVerifiedEndpointAndShowsSafeFailure()
+    {
+        // Arrange
+        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
+            .Returns(new AuthorizationProviderConfigurationModel
+            {
+                Provider = "cerbos",
+                CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
+                CerbosEndpointVerified = false
+            });
+        _instanceOnboardingService.DownloadAuthorizationPolicyPackageAsAdminAsync()
+            .Returns(Task.FromResult<PolicyPackageDownloadModel?>(null));
+
+        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+
+        // Act
+        var downloadButton = cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Download ZIP", StringComparison.OrdinalIgnoreCase));
+        downloadButton.Click();
+
+        // Assert
+        await Assert.That(downloadButton.HasAttribute("disabled")).IsFalse();
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Authorization policy package download failed. Try again or check server logs.", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Safe policy package download failure message was not rendered.");
+            }
+        });
+        await _instanceOnboardingService.Received(1).DownloadAuthorizationPolicyPackageAsAdminAsync();
+        await _instanceOnboardingService.DidNotReceive().SyncAuthorizationPolicyPackageAsAdminAsync();
+    }
+
     private void ConfigureSingleTenantInstanceDefaults()
     {
         _instanceOnboardingService.GetStatusAsync()
@@ -248,6 +381,36 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
 
     private static object GetRenderedLayout(IRenderedComponent<DynamicComponent> cut) => cut.Instance.Instance
         ?? throw new InvalidOperationException("Dynamic component did not expose the rendered layout instance.");
+
+    private async Task<IRenderedComponent<DynamicComponent>> RenderAuthProvidersSectionAsync()
+    {
+        Type componentType = GetLayoutComponentType();
+        IRenderedComponent<DynamicComponent> cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
+            parameters.Add(component => component.Type, componentType));
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Provider navigation item was not rendered.");
+            }
+        });
+
+        object layout = GetRenderedLayout(cut);
+        SetPrivateField(layout, "_currentSection", "auth-providers");
+        SetPrivateField(layout, "_showMobileMenu", false);
+        await InvokeStateHasChangedAsync(cut, layout);
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Policy package sync", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Policy sync affordance was not rendered.");
+            }
+        });
+
+        return cut;
+    }
 
     private static void SetPrivateField(object instance, string fieldName, object value) => instance.GetType()
         .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!

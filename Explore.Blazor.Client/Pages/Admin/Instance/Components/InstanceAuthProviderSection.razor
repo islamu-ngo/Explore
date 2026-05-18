@@ -2,9 +2,11 @@
 @* ABOUTME: Uses explicit enable/disable actions while preserving onboarding provider configuration state. *@
 
 @using Explore.Blazor.Client.Services
+@using Microsoft.JSInterop
 @using MudBlazor
 
 @inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
 
 <div class="settings-section">
     <div class="settings-section-header">
@@ -204,6 +206,58 @@
                                     Saving with Cerbos enabled will test the endpoint before changing the active authorization provider.
                                 </MudAlert>
                             }
+
+                            <MudPaper Outlined="true" Class="pa-4 mt-2">
+                                <MudStack Spacing="2">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2">Policy package sync</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                Publish the latest embedded authorization policy bundle to the configured Cerbos Admin API through the BFF, or download the same package for manual cerbosctl put installation.
+                                            </MudText>
+                                        </div>
+                                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                            <MudButton Elevation="0"
+                                                       Variant="Variant.Outlined"
+                                                       Color="Color.Secondary"
+                                                       StartIcon="@(_isDownloadingPackage ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Download)"
+                                                       Disabled="@(!CanDownloadCerbosPackage)"
+                                                       OnClick="DownloadCerbosPolicyPackageAsync">
+                                                @(_isDownloadingPackage ? "Preparing ZIP..." : "Download ZIP")
+                                            </MudButton>
+                                            <MudButton Elevation="0"
+                                                       Variant="Variant.Outlined"
+                                                       Color="Color.Primary"
+                                                       StartIcon="@(_isSyncing ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Sync)"
+                                                       Disabled="@(!CanSyncCerbosPolicies)"
+                                                       OnClick="SyncCerbosPoliciesAsync">
+                                                @(_isSyncing ? "Syncing..." : "Sync Policies")
+                                            </MudButton>
+                                        </MudStack>
+                                    </MudStack>
+
+                                    @if (!AuthorizationModel.CerbosEndpointVerified)
+                                    {
+                                        <MudAlert Severity="Severity.Info" Dense="true">
+                                            Save and verify the Cerbos endpoint before syncing authorization policies.
+                                        </MudAlert>
+                                    }
+
+                                    @if (_syncResult is not null)
+                                    {
+                                        <MudAlert Severity="@(_syncResult.Success ? Severity.Success : Severity.Error)" Dense="true">
+                                            @_syncResult.Message
+                                        </MudAlert>
+                                    }
+
+                                    @if (_downloadResult is not null)
+                                    {
+                                        <MudAlert Severity="@(_downloadResult.Success ? Severity.Success : Severity.Error)" Dense="true">
+                                            @_downloadResult.Message
+                                        </MudAlert>
+                                    }
+                                </MudStack>
+                            </MudPaper>
                         }
                     </MudStack>
                 </MudPaper>
@@ -224,6 +278,14 @@
 
     [Parameter]
     public bool IsSingleTenant { get; set; }
+
+    [Parameter]
+    public IInstanceOnboardingService? OnboardingService { get; set; }
+
+    private bool _isSyncing;
+    private bool _isDownloadingPackage;
+    private InstanceCommandResponseModel? _syncResult;
+    private InstanceCommandResponseModel? _downloadResult;
 
     private bool HasAnyAuthenticationProviderEnabled =>
         Model.KeycloakEnabled || Model.AtprotoLoginEnabled || Model.GoogleSsoEnabled;
@@ -288,6 +350,17 @@
             ? "border: 2px solid var(--mud-palette-primary);"
             : string.Empty;
 
+    private bool CanSyncCerbosPolicies =>
+        !_isSyncing
+        && OnboardingService is not null
+        && IsAuthorizationProviderSelected(CerbosProvider)
+        && AuthorizationModel.CerbosEndpointVerified;
+
+    private bool CanDownloadCerbosPackage =>
+        !_isDownloadingPackage
+        && OnboardingService is not null
+        && IsAuthorizationProviderSelected(CerbosProvider);
+
     private async Task SelectAuthorizationProviderAsync(string provider)
     {
         if (IsAuthorizationProviderSelected(provider))
@@ -319,6 +392,99 @@
         if (endpointChanged)
         {
             AuthorizationModel.CerbosEndpointVerified = false;
+            _syncResult = null;
+            _downloadResult = null;
+        }
+    }
+
+    private async Task DownloadCerbosPolicyPackageAsync()
+    {
+        if (!CanDownloadCerbosPackage || OnboardingService is null)
+        {
+            return;
+        }
+
+        _isDownloadingPackage = true;
+        _downloadResult = null;
+        StateHasChanged();
+
+        try
+        {
+            var package = await OnboardingService.DownloadAuthorizationPolicyPackageAsAdminAsync();
+            if (package is null || package.FileBytes.Length == 0)
+            {
+                _downloadResult = new InstanceCommandResponseModel
+                {
+                    Success = false,
+                    Message = "Authorization policy package download failed. Try again or check server logs."
+                };
+                return;
+            }
+
+            await JSRuntime.InvokeVoidAsync(
+                "downloadFileFromBase64",
+                Convert.ToBase64String(package.FileBytes),
+                package.FileName,
+                package.ContentType);
+            _downloadResult = new InstanceCommandResponseModel
+            {
+                Success = true,
+                Message = "Authorization policy package ZIP downloaded."
+            };
+        }
+        catch
+        {
+            _downloadResult = new InstanceCommandResponseModel
+            {
+                Success = false,
+                Message = "Authorization policy package download failed. Try again or check server logs."
+            };
+        }
+        finally
+        {
+            _isDownloadingPackage = false;
+        }
+    }
+
+    private async Task SyncCerbosPoliciesAsync()
+    {
+        if (!CanSyncCerbosPolicies || OnboardingService is null)
+        {
+            return;
+        }
+
+        _isSyncing = true;
+        _syncResult = null;
+        StateHasChanged();
+
+        try
+        {
+            var response = await OnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync();
+            _syncResult = response.Success
+                ? new InstanceCommandResponseModel
+                {
+                    Success = true,
+                    Message = string.IsNullOrWhiteSpace(response.Message)
+                        ? "Authorization policy package synced."
+                        : response.Message
+                }
+                : new InstanceCommandResponseModel
+                {
+                    Success = false,
+                    Message = "Authorization policy package sync failed. Check Admin API settings and retry."
+                };
+        }
+        catch
+        {
+            _syncResult = new InstanceCommandResponseModel
+            {
+                Success = false,
+                Message = "Authorization policy package sync failed. Check Admin API settings and retry."
+            };
+        }
+        finally
+        {
+            _isSyncing = false;
         }
     }
 }

@@ -35,6 +35,28 @@
                 <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
             }
 
+            @if (_canContinueAfterManualPolicyPackageFallback)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.body2">
+                            Admin API sync did not complete. If you installed the downloaded policy package manually with <code>cerbosctl put</code>, acknowledge it here to continue setup.
+                        </MudText>
+                        <MudCheckBox T="bool"
+                                     @bind-Value="_manualPolicyPackageInstalled"
+                                     Color="Color.Primary"
+                                     Label="I installed the downloaded authorization policy package in Cerbos." />
+                        <MudButton Elevation="0"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="@(!_manualPolicyPackageInstalled)"
+                                   OnClick="ContinueAfterManualPolicyPackageFallbackAsync">
+                            Continue after manual install
+                        </MudButton>
+                    </MudStack>
+                </MudAlert>
+            }
+
             @if (!string.IsNullOrWhiteSpace(_successMessage))
             {
                 <MudAlert Severity="Severity.Success" Class="mb-4">@_successMessage</MudAlert>
@@ -50,7 +72,7 @@
                         @if (_submitState.IsSubmitting)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                            @:Continuing...
+                            @(_isSyncing ? "Syncing policies..." : "Continuing...")
                         }
                         else
                         {
@@ -149,6 +171,25 @@
                                     </MudText>
                                 }
                             </MudStack>
+
+                            <MudPaper Outlined="true" Class="pa-4 mt-2">
+                                <MudStack Spacing="2">
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2">Manual policy package fallback</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            Download a ZIP with policies, schemas, and cerbosctl put instructions when Admin API sync is unavailable.
+                                        </MudText>
+                                    </div>
+                                    <MudButton Elevation="0"
+                                               Variant="Variant.Outlined"
+                                               Color="Color.Secondary"
+                                               Href="/api/InstanceOnboarding/authz-provider-configuration/package"
+                                               Target="_blank"
+                                               StartIcon="@Icons.Material.Filled.Download">
+                                        Download Policy ZIP
+                                    </MudButton>
+                                </MudStack>
+                            </MudPaper>
                         }
                     </MudStack>
                 </MudPaper>
@@ -166,7 +207,7 @@
                         @if (_submitState.IsSubmitting)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                            @:Saving...
+                            @(_isSyncing ? "Syncing policies..." : "Saving...")
                         }
                         else
                         {
@@ -192,6 +233,9 @@
     private bool _shouldLoadConfiguration = true;
     private IJSObjectReference? _bffModule;
     private bool _showAdvancedConfig = false;
+    private bool _isSyncing;
+    private bool _canContinueAfterManualPolicyPackageFallback;
+    private bool _manualPolicyPackageInstalled;
 
     private bool IsEndpointLocked =>
         _model.CerbosDetectedFromEnvironment && _model.CerbosEndpointVerified;
@@ -275,6 +319,8 @@
         _model.Provider = provider;
         _errorMessage = null;
         _successMessage = null;
+        _canContinueAfterManualPolicyPackageFallback = false;
+        _manualPolicyPackageInstalled = false;
     }
 
     private bool IsSelected(string provider) =>
@@ -334,6 +380,8 @@
         _submitState.Start();
         _errorMessage = null;
         _successMessage = null;
+        _canContinueAfterManualPolicyPackageFallback = false;
+        _manualPolicyPackageInstalled = false;
 
         var bffModule = await GetBffModuleAsync();
         var response = await bffModule.InvokeAsync<InstanceCommandResponseModel>(
@@ -341,10 +389,9 @@
             "PUT",
             "/api/InstanceOnboarding/authz-provider-configuration",
             _model);
-        _submitState.Complete();
-
         if (!response.Success)
         {
+            _submitState.Complete();
             _errorMessage = string.IsNullOrWhiteSpace(response.Message)
                 ? "Failed to save authorization provider configuration."
                 : response.Message;
@@ -356,6 +403,37 @@
 
             return;
         }
+
+        if (_model.Provider.Equals(CerbosProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            _isSyncing = true;
+            var syncResponse = await bffModule.InvokeAsync<InstanceCommandResponseModel>(
+                "sendCommand",
+                "POST",
+                "/api/InstanceOnboarding/authz-provider-configuration/sync",
+                new { });
+            _isSyncing = false;
+
+            if (!syncResponse.Success)
+            {
+                _submitState.Complete();
+                _model.CerbosAdminPassword = null;
+                _canContinueAfterManualPolicyPackageFallback = true;
+                _errorMessage = string.IsNullOrWhiteSpace(syncResponse.Message)
+                    ? "Authorization policy package sync failed."
+                    : syncResponse.Message;
+
+                if (syncResponse.Errors.Count > 0)
+                {
+                    _errorMessage += " " + string.Join(" ", syncResponse.Errors);
+                }
+
+                return;
+            }
+        }
+
+        _submitState.Complete();
+        _model.CerbosAdminPassword = null;
 
         _successMessage = response.Message;
 
@@ -369,6 +447,25 @@
             : "/login?returnUrl=/onboarding/instance";
 
         Navigation.NavigateTo(destination, forceLoad: true);
+    }
+
+    private Task ContinueAfterManualPolicyPackageFallbackAsync()
+    {
+        if (!_canContinueAfterManualPolicyPackageFallback || !_manualPolicyPackageInstalled)
+        {
+            return Task.CompletedTask;
+        }
+
+        _errorMessage = null;
+        _successMessage = "Authorization provider saved. Continuing after manual policy package installation.";
+        _model.CerbosAdminPassword = null;
+
+        var destination = _isAuthenticated
+            ? "/onboarding/instance"
+            : "/login?returnUrl=/onboarding/instance";
+
+        Navigation.NavigateTo(destination, forceLoad: true);
+        return Task.CompletedTask;
     }
 
     private async Task<IJSObjectReference> GetBffModuleAsync()
