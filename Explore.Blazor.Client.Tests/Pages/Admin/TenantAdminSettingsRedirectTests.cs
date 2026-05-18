@@ -21,6 +21,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _onboardingService = _ctx.AddMockService<IInstanceOnboardingService>();
         _ctx.AddMockService<ITenantOnboardingService>();
         _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
+        _ctx.AddMockService<ITenantBrandingSettingsAdminService>();
         _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new TenantPublicExperienceAdminModel());
 

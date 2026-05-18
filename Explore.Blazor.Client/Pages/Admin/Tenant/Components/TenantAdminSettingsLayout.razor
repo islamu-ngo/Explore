@@ -10,6 +10,7 @@
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IPublicExperienceService PublicExperienceService
 @inject ITenantPublicExperienceAdminService TenantPublicExperienceAdminService
+@inject ITenantBrandingSettingsAdminService TenantBrandingSettingsAdminService
 @inject AiAssistantState AiAssistantState
 @inject ISnackbar Snackbar
 
@@ -172,7 +173,7 @@
                         }
                         else if (_currentSection == "branding")
                         {
-                            <TenantBrandingSection Model="_model" />
+                            <TenantBrandingSection Model="_brandingModel" IsSaving="_submitState.IsSubmitting" />
                         }
                         else if (_currentSection == "announcement-bar")
                         {
@@ -337,7 +338,7 @@
                             {
                                 <MudStack Row="true" Justify="Justify.FlexEnd">
                                     <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync"
-                                               Disabled="_submitState.IsSubmitting"
+                                               Disabled="_submitState.IsSubmitting || !CanSaveCurrentSection"
                                                StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
                                         @(_submitState.IsSubmitting ? "Saving..." : "Save Tenant Settings")
                                     </MudButton>
@@ -353,6 +354,7 @@
 
 @code {
     private TenantPolicySettingsModel _model = new();
+    private TenantBrandingSettingsAdminModel _brandingModel = new();
     private TenantPublicExperienceAdminModel _publicExperienceModel = new();
     private TenantPublicExperienceSection? _publicExperienceSection;
     private bool _isLoading = true;
@@ -386,6 +388,7 @@
         _model = await TenantOnboardingService.GetSettingsAsync();
         await TenantPublicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(_model);
         _hasAnnouncementBar = HasUsableAnnouncementBar(_model);
+        _brandingModel = await TenantBrandingSettingsAdminService.GetAsync();
         _publicExperienceModel = await TenantPublicExperienceAdminService.GetSettingsAsync();
         _isLoading = false;
     }
@@ -397,6 +400,12 @@
         if (_currentSection == "public-experience")
         {
             await SavePublicExperienceAsync();
+            return;
+        }
+
+        if (_currentSection == "branding")
+        {
+            await SaveBrandingAsync();
             return;
         }
 
@@ -494,6 +503,27 @@
             : response.Message;
     }
 
+    private async Task SaveBrandingAsync()
+    {
+        _submitState.Start();
+        _errorMessage = null;
+
+        TenantBrandingSettingsSaveResult response = await TenantBrandingSettingsAdminService.SaveAsync(_brandingModel);
+        _submitState.Complete();
+
+        if (response.Success && response.Model is not null)
+        {
+            _brandingModel = response.Model;
+            await RefreshShellExperienceAsync();
+            Snackbar.Add("Tenant branding settings saved.", Severity.Success);
+            return;
+        }
+
+        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+            ? "Failed to save tenant branding settings."
+            : response.Message;
+    }
+
     private void SelectSection(string section)
     {
         _currentSection = section;
@@ -504,6 +534,8 @@
     {
         _showMobileMenu = true;
     }
+
+    private bool CanSaveCurrentSection => _currentSection != "branding" || (_brandingModel.Exists && _brandingModel.CanReplace);
 
     private async Task RefreshShellExperienceAsync()
     {
