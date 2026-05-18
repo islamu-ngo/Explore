@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.GroupMember;
+using Explore.Application.Hateoas;
 using Explore.Application.Features.GroupMembers.Requests.Commands;
 using Explore.Application.Features.GroupMembers.Requests.Queries;
 using Explore.Application.Responses;
@@ -19,37 +20,53 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
+[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class GroupMemberController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IResourceAssembler<GroupMemberDto, GroupMemberDto> _resourceAssembler;
 
-    public GroupMemberController(IMediator mediator)
+    public GroupMemberController(
+        IMediator mediator,
+        IResourceAssembler<GroupMemberDto, GroupMemberDto> resourceAssembler)
     {
         _mediator = mediator;
+        _resourceAssembler = resourceAssembler;
     }
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{groupId:guid}", Name = RouteNames.GetGroupMembers)]
     [OutputCache(PolicyName = "ListData")]
-    [ProducesResponseType(typeof(List<GroupMemberDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<GroupMemberDto>>> GetByGroupId(Guid groupId, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(HalCollectionResource<GroupMemberDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HalCollectionResource<GroupMemberDto>>> GetByGroupId(Guid groupId, CancellationToken cancellationToken = default)
     {
         var members = await _mediator.Send(new GetGroupMembersRequest { GroupId = groupId }, cancellationToken);
-        return Ok(members);
+        var halResource = await _resourceAssembler.ToCollectionResource(
+            members,
+            RouteNames.GetGroupMembers,
+            new { groupId },
+            HttpContext);
+
+        return Ok(halResource);
     }
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet("member/{id:guid}", Name = RouteNames.GetGroupMemberById)]
     [OutputCache(PolicyName = "DetailData")]
-    [ProducesResponseType(typeof(GroupMemberDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HalResource<GroupMemberDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<GroupMemberDto>> GetById(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<HalResource<GroupMemberDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var member = await _mediator.Send(new GetGroupMemberDetailsRequest { Id = id }, cancellationToken);
+        if (member is null)
+        {
+            return NotFound();
+        }
 
-        return Ok(member);
+        var halResource = await _resourceAssembler.ToResource(member, HttpContext);
+        return Ok(halResource);
     }
 
     [EndpointClassification(EndpointClass.Authenticated)]

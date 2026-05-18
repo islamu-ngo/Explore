@@ -32,7 +32,7 @@
         </MudAlert>
     }
 
-    @if (_canManage)
+    @if (_canCreateMembers)
     {
         <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-3">
             <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd"
@@ -54,7 +54,7 @@
             <HeaderContent>
                 <MudTh>Member</MudTh>
                 <MudTh>Role</MudTh>
-                @if (_canManage)
+                @if (HasAnyMemberActions)
                 {
                     <MudTh Style="text-align:right">Actions</MudTh>
                 }
@@ -86,18 +86,24 @@
                         @RoleHelper.GetRoleName(context.RoleId)
                     </MudChip>
                 </MudTd>
-                @if (_canManage)
+                @if (HasAnyMemberActions)
                 {
                     <MudTd DataLabel="Actions" Style="text-align:right">
-                        @if (context.RoleId != RoleHelper.OrgCreator)
+                        @if (CanEditMember(context) || CanDeleteMember(context))
                         {
                             <MudMenu Icon="@Icons.Material.Filled.MoreVert"
                                      Size="Size.Small"
                                      Dense="true"
                                      AnchorOrigin="Origin.BottomRight"
                                      TransformOrigin="Origin.TopRight">
-                                <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))" Icon="@Icons.Material.Filled.Edit">Change Role</MudMenuItem>
-                                <MudMenuItem OnClick="@(() => RemoveMember(context))" Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error">Remove</MudMenuItem>
+                                @if (CanEditMember(context))
+                                {
+                                    <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))" Icon="@Icons.Material.Filled.Edit">Change Role</MudMenuItem>
+                                }
+                                @if (CanDeleteMember(context))
+                                {
+                                    <MudMenuItem OnClick="@(() => RemoveMember(context))" Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error">Remove</MudMenuItem>
+                                }
                             </MudMenu>
                         }
                     </MudTd>
@@ -121,7 +127,7 @@
 
     private List<OrganizationMemberDto> _members = new();
     private bool _loading = true;
-    private bool _canManage;
+    private bool _canCreateMembers;
     private Guid? _currentUserId;
     private string? _errorMessage;
 
@@ -136,6 +142,21 @@
         return string.IsNullOrEmpty(name) ? "?" : name[..1].ToUpperInvariant();
     }
 
+    private bool HasAnyMemberActions => _members.Any(member => CanEditMember(member) || CanDeleteMember(member));
+
+    private static bool CanEditMember(OrganizationMemberDto member)
+    {
+        return member.RoleId != RoleHelper.OrgCreator
+            && member.HasHalLink("edit");
+    }
+
+    private bool CanDeleteMember(OrganizationMemberDto member)
+    {
+        return member.RoleId != RoleHelper.OrgCreator
+            && member.UserId != _currentUserId
+            && member.HasHalLink("delete");
+    }
+
     private async Task LoadMembers()
     {
         _loading = true;
@@ -145,11 +166,9 @@
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             _currentUserId = ExtractUserId(authState.User);
 
-            var result = await MemberService.GetMembersAsync(OrganizationId);
-            _members = result?.ToList() ?? new List<OrganizationMemberDto>();
-
-            var me = _members.FirstOrDefault(m => m.UserId == _currentUserId);
-            _canManage = RoleHelper.CanManage(me?.RoleId);
+            var result = await MemberService.GetMembersWithAffordancesAsync(OrganizationId);
+            _members = result.Members.ToList();
+            _canCreateMembers = result.CanCreate;
         }
         catch (Exception ex)
         {
@@ -163,7 +182,7 @@
 
     private async Task OpenInviteDialog()
     {
-        if (!_canManage)
+        if (!_canCreateMembers)
         {
             return;
         }
@@ -184,7 +203,7 @@
 
     private async Task OpenEditRoleDialog(OrganizationMemberDto member)
     {
-        if (!_canManage)
+        if (!CanEditMember(member))
         {
             return;
         }
@@ -206,7 +225,7 @@
 
     private async Task RemoveMember(OrganizationMemberDto member)
     {
-        if (!_canManage || !member.Id.HasValue)
+        if (!CanDeleteMember(member) || !member.Id.HasValue)
         {
             return;
         }

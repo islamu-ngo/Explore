@@ -1,5 +1,5 @@
-// ABOUTME: HATEOAS contract coverage for organization member collection and detail affordances.
-// ABOUTME: Protects HAL-gated Blazor organization member actions from route, scope, or permission drift.
+// ABOUTME: HATEOAS contract coverage for group member collection and detail affordances.
+// ABOUTME: Protects HAL-gated Blazor group member actions from route, scope, or permission drift.
 
 using System.Security.Claims;
 using Event.Api.IntegrationTests.Fixtures;
@@ -8,39 +8,43 @@ using Explore.API.Hateoas.Assemblers;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.DTOs.OrganizationMember;
+using Explore.Application.DTOs.GroupMember;
 using Explore.Application.Hateoas;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using TUnit.Assertions;
+using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features.Hateoas;
 
-public sealed class OrganizationMemberHateoasTests
+public sealed class GroupMemberHateoasTests
 {
     [Test]
     public async Task CollectionItemLinks_ShouldExposeEditAndDeleteAffordances()
     {
         var memberId = Guid.NewGuid();
         var dto = CreateMember(memberId);
-        var policy = new OrganizationMemberCollectionLinkPolicy();
+        var policy = new GroupMemberCollectionLinkPolicy();
 
         var links = policy.GetItemLinks(dto, user: null).ToList();
 
         var editLink = links.Single(link => link.Rel == LinkRelations.Edit);
-        await Assert.That(editLink.RouteName).IsEqualTo(RouteNames.UpdateOrganizationMemberRole);
+        await Assert.That(editLink.RouteName).IsEqualTo(RouteNames.UpdateGroupMember);
         await Assert.That(editLink.Method).IsEqualTo("PUT");
+        await Assert.That(editLink.Title).IsEqualTo("Update membership");
         await Assert.That(editLink.RequiresAuth).IsTrue();
-        await Assert.That(editLink.PermissionResourceKind).IsEqualTo(ResourceKinds.OrganizationMember);
+        await Assert.That(editLink.PermissionResourceKind).IsEqualTo(ResourceKinds.GroupMember);
         await Assert.That(editLink.PermissionAction).IsEqualTo(AuthorizationActions.Update);
         await Assert.That(GetRouteValue<Guid>(editLink.RouteValues, "id")).IsEqualTo(memberId);
 
         var deleteLink = links.Single(link => link.Rel == LinkRelations.Delete);
-        await Assert.That(deleteLink.RouteName).IsEqualTo(RouteNames.DeleteOrganizationMember);
+        await Assert.That(deleteLink.RouteName).IsEqualTo(RouteNames.DeleteGroupMember);
         await Assert.That(deleteLink.Method).IsEqualTo("DELETE");
+        await Assert.That(deleteLink.Title).IsEqualTo("Remove member");
         await Assert.That(deleteLink.RequiresAuth).IsTrue();
-        await Assert.That(deleteLink.PermissionResourceKind).IsEqualTo(ResourceKinds.OrganizationMember);
+        await Assert.That(deleteLink.PermissionResourceKind).IsEqualTo(ResourceKinds.GroupMember);
         await Assert.That(deleteLink.PermissionAction).IsEqualTo(AuthorizationActions.Delete);
         await Assert.That(GetRouteValue<Guid>(deleteLink.RouteValues, "id")).IsEqualTo(memberId);
     }
@@ -48,7 +52,7 @@ public sealed class OrganizationMemberHateoasTests
     [Test]
     public async Task CollectionPolicy_ShouldNotExposeUnscopedCreateAffordance()
     {
-        var policy = new OrganizationMemberCollectionLinkPolicy();
+        var policy = new GroupMemberCollectionLinkPolicy();
 
         var links = policy.GetCollectionLinks(user: null).ToList();
 
@@ -56,17 +60,18 @@ public sealed class OrganizationMemberHateoasTests
     }
 
     [Test]
-    public async Task CollectionResource_OrganizationAdmin_ShouldExposeScopedCreateEditAndDeleteAffordances()
+    public async Task CollectionResource_GroupAdmin_ShouldExposeScopedCreateEditAndDeleteAffordances()
     {
-        var organizationId = Guid.NewGuid();
-        var member = CreateMember(Guid.NewGuid(), organizationId);
-        var assembler = CreateAssembler(check => IsOrganizationMemberActionForOrganization(check, organizationId));
-        var context = CreateHttpContext(authenticated: true);
+        var groupId = Guid.NewGuid();
+        var member = CreateMember(Guid.NewGuid(), groupId);
+        var assembler = CreateAssembler(check => IsGroupMemberActionForGroup(check, groupId));
+        var context = CreateHttpContext(authenticated: true, assembler.LinkGenerator);
 
-        var resource = await assembler.ToCollectionResource([member], RouteNames.GetOrganizationMembersByOrganization, new { organizationId }, context);
+        var resource = await assembler.ToCollectionResource([member], RouteNames.GetGroupMembers, new { groupId }, context);
         var item = resource.Embedded!.Items.Single();
 
         await Assert.That(resource.Links.ContainsKey(LinkRelations.Create)).IsTrue();
+        await Assert.That(resource.Links[LinkRelations.Create].Href).IsEqualTo("/create");
         await Assert.That(item.Links.ContainsKey(LinkRelations.Edit)).IsTrue();
         await Assert.That(item.Links.ContainsKey(LinkRelations.Delete)).IsTrue();
     }
@@ -74,12 +79,12 @@ public sealed class OrganizationMemberHateoasTests
     [Test]
     public async Task CollectionResource_RegularMember_ShouldHideCreateEditAndDeleteAffordances()
     {
-        var organizationId = Guid.NewGuid();
-        var member = CreateMember(Guid.NewGuid(), organizationId);
+        var groupId = Guid.NewGuid();
+        var member = CreateMember(Guid.NewGuid(), groupId);
         var assembler = CreateAssembler(_ => false);
-        var context = CreateHttpContext(authenticated: true);
+        var context = CreateHttpContext(authenticated: true, assembler.LinkGenerator);
 
-        var resource = await assembler.ToCollectionResource([member], RouteNames.GetOrganizationMembersByOrganization, new { organizationId }, context);
+        var resource = await assembler.ToCollectionResource([member], RouteNames.GetGroupMembers, new { groupId }, context);
         var item = resource.Embedded!.Items.Single();
 
         await Assert.That(resource.Links.ContainsKey(LinkRelations.Create)).IsFalse();
@@ -88,21 +93,40 @@ public sealed class OrganizationMemberHateoasTests
     }
 
     [Test]
-    public async Task DetailPolicy_ShouldUseCurrentOrganizationMemberRoutes()
+    public async Task CollectionResource_AuthenticatedNonMember_ShouldHideCreateEditAndDeleteAffordances()
     {
-        var member = CreateMember(Guid.NewGuid());
-        var policy = new OrganizationMemberDetailLinkPolicy();
+        var groupId = Guid.NewGuid();
+        var member = CreateMember(Guid.NewGuid(), groupId);
+        var assembler = CreateAssembler(_ => false);
+        var context = CreateHttpContext(authenticated: true, assembler.LinkGenerator);
 
-        var links = policy.GetLinks(member, user: null).ToList();
+        var resource = await assembler.ToCollectionResource([member], RouteNames.GetGroupMembers, new { groupId }, context);
+        var item = resource.Embedded!.Items.Single();
 
-        await Assert.That(links.Single(link => link.Rel == LinkRelations.Self).RouteName).IsEqualTo(RouteNames.GetOrganizationMemberById);
-        await Assert.That(links.Single(link => link.Rel == LinkRelations.Edit).RouteName).IsEqualTo(RouteNames.UpdateOrganizationMemberRole);
-        await Assert.That(links.Single(link => link.Rel == LinkRelations.Delete).RouteName).IsEqualTo(RouteNames.DeleteOrganizationMember);
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Create)).IsFalse();
+        await Assert.That(item.Links.ContainsKey(LinkRelations.Edit)).IsFalse();
+        await Assert.That(item.Links.ContainsKey(LinkRelations.Delete)).IsFalse();
     }
 
-    private static bool IsOrganizationMemberActionForOrganization(AuthorizationCheck check, Guid organizationId)
+    [Test]
+    public async Task CollectionResource_AnonymousUser_ShouldHideCreateEditAndDeleteAffordances()
     {
-        if (check.ResourceKind != ResourceKinds.OrganizationMember)
+        var groupId = Guid.NewGuid();
+        var member = CreateMember(Guid.NewGuid(), groupId);
+        var assembler = CreateAssembler(_ => true);
+        var context = CreateHttpContext(authenticated: false, assembler.LinkGenerator);
+
+        var resource = await assembler.ToCollectionResource([member], RouteNames.GetGroupMembers, new { groupId }, context);
+        var item = resource.Embedded!.Items.Single();
+
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Create)).IsFalse();
+        await Assert.That(item.Links.ContainsKey(LinkRelations.Edit)).IsFalse();
+        await Assert.That(item.Links.ContainsKey(LinkRelations.Delete)).IsFalse();
+    }
+
+    private static bool IsGroupMemberActionForGroup(AuthorizationCheck check, Guid groupId)
+    {
+        if (check.ResourceKind != ResourceKinds.GroupMember)
         {
             return false;
         }
@@ -112,8 +136,8 @@ public sealed class OrganizationMemberHateoasTests
             return false;
         }
 
-        return check.ResourceId == organizationId.ToString()
-            || (check.ResourceAttributes?.TryGetValue("organizationId", out var value) == true && value?.ToString() == organizationId.ToString());
+        return check.ResourceId == groupId.ToString()
+            || (check.ResourceAttributes?.TryGetValue("groupId", out var value) == true && value?.ToString() == groupId.ToString());
     }
 
     private static TestAssembler CreateAssembler(Func<AuthorizationCheck, bool> predicate)
@@ -133,19 +157,22 @@ public sealed class OrganizationMemberHateoasTests
                 Title = call.Arg<LinkDefinition>().Title
             });
 
-        var assembler = new OrganizationMemberResourceAssembler(
+        var assembler = new GroupMemberResourceAssembler(
             linkGenerator,
-            new OrganizationMemberDetailLinkPolicy(),
-            new OrganizationMemberCollectionLinkPolicy());
+            new GroupMemberDetailLinkPolicy(),
+            new GroupMemberCollectionLinkPolicy());
 
-        return new TestAssembler(assembler, evaluator);
+        return new TestAssembler(assembler, evaluator, linkGenerator);
     }
 
-    private static DefaultHttpContext CreateHttpContext(bool authenticated)
+    private static DefaultHttpContext CreateHttpContext(bool authenticated, IHateoasLinkGenerator linkGenerator)
     {
         var services = new ServiceCollection();
-        services.AddSingleton<IHateoasAuthorizationEvaluator>(_ => CurrentEvaluator.Value!);
-        var context = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+        services.AddSingleton(Substitute.For<IHateoasLinkGenerator>());
+        services.AddSingleton<IHateoasAuthorizationEvaluator>(sp => CurrentEvaluator.Value!);
+        var serviceProvider = services.BuildServiceProvider();
+
+        var context = new DefaultHttpContext { RequestServices = serviceProvider };
         context.User = authenticated
             ? new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "Test"))
             : new ClaimsPrincipal(new ClaimsIdentity());
@@ -154,15 +181,15 @@ public sealed class OrganizationMemberHateoasTests
 
     private static readonly AsyncLocal<IHateoasAuthorizationEvaluator?> CurrentEvaluator = new();
 
-    private static OrganizationMemberDto CreateMember(Guid memberId, Guid? organizationId = null)
+    private static GroupMemberDto CreateMember(Guid memberId, Guid? groupId = null)
     {
-        return new OrganizationMemberDto
+        return new GroupMemberDto
         {
             Id = memberId,
-            OrganizationId = organizationId ?? Guid.NewGuid(),
+            GroupId = groupId ?? Guid.NewGuid(),
             UserId = Guid.NewGuid(),
             UserEmail = "member@example.com",
-            UserFullName = "Organization Member",
+            UserFullName = "Group Member",
             RoleId = 2,
             RoleName = "Admin"
         };
@@ -182,18 +209,22 @@ public sealed class OrganizationMemberHateoasTests
 
     private sealed class TestAssembler
     {
-        private readonly OrganizationMemberResourceAssembler _assembler;
-
-        public TestAssembler(OrganizationMemberResourceAssembler assembler, IHateoasAuthorizationEvaluator evaluator)
+        private readonly GroupMemberResourceAssembler _assembler;
+        public TestAssembler(
+            GroupMemberResourceAssembler assembler,
+            IHateoasAuthorizationEvaluator evaluator,
+            IHateoasLinkGenerator linkGenerator)
         {
             _assembler = assembler;
             Evaluator = evaluator;
+            LinkGenerator = linkGenerator;
         }
 
-        private IHateoasAuthorizationEvaluator Evaluator { get; }
+        public IHateoasAuthorizationEvaluator Evaluator { get; }
+        public IHateoasLinkGenerator LinkGenerator { get; }
 
-        public async Task<HalCollectionResource<OrganizationMemberDto>> ToCollectionResource(
-            IEnumerable<OrganizationMemberDto> items,
+        public async Task<HalCollectionResource<GroupMemberDto>> ToCollectionResource(
+            IEnumerable<GroupMemberDto> items,
             string routeName,
             object? additionalRouteValues,
             HttpContext context)

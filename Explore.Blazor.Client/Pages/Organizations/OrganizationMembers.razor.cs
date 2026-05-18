@@ -24,7 +24,7 @@ public partial class OrganizationMembers
     private List<OrganizationMemberDto> Members = new();
     private bool _loading = true;
     private string? currentUserId;
-    private int? currentUserRole;
+    private bool _canCreateMembers;
     private string? _errorMessage;
 
     private string _searchString = "";
@@ -36,6 +36,8 @@ public partial class OrganizationMembers
                         (x.UserFullName?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
                         (x.UserEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false))
             .Where(x => _roleFilter == null || x.RoleId == _roleFilter);
+
+    private bool HasAnyMemberActions => Members.Any(member => CanEditMember(member) || CanDeleteMember(member));
 
     protected override async Task OnInitializedAsync()
     {
@@ -54,16 +56,23 @@ public partial class OrganizationMembers
         await LoadMembers();
     }
 
-    private void DetermineCurrentUserRole()
+    private static bool CanEditMember(OrganizationMemberDto member)
     {
-        if (currentUserId != null)
-        {
-            var me = Members.FirstOrDefault(m => m.UserId.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase));
-            if (me != null)
-            {
-                currentUserRole = me.RoleId;
-            }
-        }
+        return member.RoleId != RoleHelper.OrgCreator
+            && member.HasHalLink("edit");
+    }
+
+    private bool CanDeleteMember(OrganizationMemberDto member)
+    {
+        return member.RoleId != RoleHelper.OrgCreator
+            && !IsCurrentUser(member)
+            && member.HasHalLink("delete");
+    }
+
+    private bool IsCurrentUser(OrganizationMemberDto member)
+    {
+        return currentUserId != null
+            && member.UserId?.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private async Task LoadMembers()
@@ -72,8 +81,9 @@ public partial class OrganizationMembers
         _errorMessage = null;
         try
         {
-            Members = (await MemberService.GetMembersAsync(Id))?.ToList() ?? new List<OrganizationMemberDto>();
-            DetermineCurrentUserRole();
+            var result = await MemberService.GetMembersWithAffordancesAsync(Id);
+            Members = result.Members.ToList();
+            _canCreateMembers = result.CanCreate;
         }
         catch (Exception ex)
         {
@@ -97,6 +107,11 @@ public partial class OrganizationMembers
 
     private async Task OpenInviteDialog()
     {
+        if (!_canCreateMembers)
+        {
+            return;
+        }
+
         var parameters = new DialogParameters { ["OrganizationId"] = Id };
         await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await InviteMemberDialog.ShowAsync(DialogService, "Invite Member", parameters);
@@ -111,6 +126,11 @@ public partial class OrganizationMembers
 
     private async Task OpenEditRoleDialog(OrganizationMemberDto member)
     {
+        if (!CanEditMember(member))
+        {
+            return;
+        }
+
         var parameters = new DialogParameters { ["Member"] = member, ["OrganizationId"] = Id };
         await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await EditMemberRoleDialog.ShowAsync(DialogService, "Edit Role", parameters);
@@ -125,6 +145,11 @@ public partial class OrganizationMembers
 
     private async Task RemoveMember(OrganizationMemberDto member)
     {
+        if (!CanDeleteMember(member))
+        {
+            return;
+        }
+
         await AccessibilityFocusService.SaveFocusAsync();
         bool? result = await DialogService.ShowMessageBoxAsync(
             "Remove Member",

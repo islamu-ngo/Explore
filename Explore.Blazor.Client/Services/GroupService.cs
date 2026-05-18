@@ -4,6 +4,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -14,9 +15,15 @@ public interface IGroupService
     Task<GroupAdminDetailsModel?> GetGroupDetailsAsync(Guid groupId);
     Task<BaseCommandResponseOfGuid?> UpdateGroupAsync(Guid groupId, UpdateGroupDto group);
     Task<ICollection<GroupMemberDto>> GetGroupMembersAsync(Guid groupId);
+    Task<GroupMembersResult> GetGroupMembersWithAffordancesAsync(Guid groupId);
     Task<BaseCommandResponseOfGuid?> AddGroupMemberAsync(AddGroupMemberDto member);
     Task<BaseCommandResponseOfGuid?> UpdateGroupMemberRoleAsync(UpdateGroupMemberRoleDto updateDto);
     Task<BaseCommandResponseOfGuid?> DeleteGroupMemberAsync(Guid memberId);
+}
+
+public sealed record GroupMembersResult(ICollection<GroupMemberDto> Members, bool CanCreate)
+{
+    public static GroupMembersResult Empty { get; } = new([], false);
 }
 
 public class GroupService : IGroupService
@@ -156,19 +163,33 @@ public class GroupService : IGroupService
 
     public async Task<ICollection<GroupMemberDto>> GetGroupMembersAsync(Guid groupId)
     {
+        var result = await GetGroupMembersWithAffordancesAsync(groupId);
+        return result.Members;
+    }
+
+    public async Task<GroupMembersResult> GetGroupMembersWithAffordancesAsync(Guid groupId)
+    {
         try
         {
-            return await _apiClient.GetGroupMembersAsync(groupId) ?? new List<GroupMemberDto>();
+            var response = await _apiClient.GetGroupMembersAsync(groupId);
+            if (response is null)
+            {
+                return GroupMembersResult.Empty;
+            }
+
+            return new GroupMembersResult(
+                response.GetItems().ToList(),
+                response.HasLink("create"));
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "[GroupService.GetGroupMembersAsync] API error fetching group members. GroupId: {GroupId}, StatusCode: {StatusCode}", groupId, ex.StatusCode);
-            return new List<GroupMemberDto>();
+            return GroupMembersResult.Empty;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[GroupService.GetGroupMembersAsync] Unexpected error fetching group members. GroupId: {GroupId}", groupId);
-            return new List<GroupMemberDto>();
+            return GroupMembersResult.Empty;
         }
     }
 

@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -9,12 +10,18 @@ namespace Explore.Blazor.Client.Services;
 public interface IOrganizationMemberService
 {
     Task<ICollection<OrganizationMemberDto>> GetMembersAsync(Guid organizationId);
+    Task<OrganizationMembersResult> GetMembersWithAffordancesAsync(Guid organizationId);
     Task<BaseCommandResponseOfGuid?> InviteMemberAsync(AddOrganizationMemberDto member);
     Task<BaseCommandResponseOfGuid?> UpdateMemberRoleAsync(UpdateOrganizationMemberRoleDto updateDto);
     Task<ICollection<OrganizationInvitationDto>> GetMyInvitationsAsync();
     Task<BaseCommandResponseOfGuid?> AcceptInvitationAsync(Guid invitationId);
     Task<BaseCommandResponseOfGuid?> DeclineInvitationAsync(Guid invitationId);
     Task<BaseCommandResponseOfGuid?> DeleteMemberAsync(Guid memberId);
+}
+
+public sealed record OrganizationMembersResult(ICollection<OrganizationMemberDto> Members, bool CanCreate)
+{
+    public static OrganizationMembersResult Empty { get; } = new([], false);
 }
 
 /// <summary>
@@ -33,20 +40,33 @@ public class OrganizationMemberService : IOrganizationMemberService
 
     public async Task<ICollection<OrganizationMemberDto>> GetMembersAsync(Guid organizationId)
     {
+        var result = await GetMembersWithAffordancesAsync(organizationId);
+        return result.Members;
+    }
+
+    public async Task<OrganizationMembersResult> GetMembersWithAffordancesAsync(Guid organizationId)
+    {
         try
         {
             var response = await _apiClient.GetOrganizationMembersByOrganizationAsync(organizationId);
-            return response ?? new List<OrganizationMemberDto>();
+            if (response is null)
+            {
+                return OrganizationMembersResult.Empty;
+            }
+
+            return new OrganizationMembersResult(
+                response.GetItems().ToList(),
+                response.HasLink("create"));
         }
         catch (ApiException ex)
         {
             _logger.LogError(ex, "API error fetching organization members: {StatusCode}", ex.StatusCode);
-            return new List<OrganizationMemberDto>();
+            return OrganizationMembersResult.Empty;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching organization members");
-            return new List<OrganizationMemberDto>();
+            return OrganizationMembersResult.Empty;
         }
     }
 

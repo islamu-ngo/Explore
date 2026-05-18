@@ -1,13 +1,11 @@
-// ABOUTME: Unit tests for OrganizationMemberService covering member management, invitations,
-// role updates, and delete operations with proper error handling verification.
+// ABOUTME: Unit tests for OrganizationMemberService covering HAL membership affordances and write error behavior.
+// ABOUTME: Ensures organization member collection/item links survive compatibility mapping.
+
+using System.Text.Json;
+using Explore.Blazor.Client.Helpers;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
-/// <summary>
-/// Tests OrganizationMemberService behavior patterns:
-/// - Read operations (GetMembers, GetMyInvitations) return empty collections on error
-/// - Write operations (Invite, UpdateRole, Accept, Decline, Delete) throw on error
-/// </summary>
 public class OrganizationMemberServiceTests
 {
     private readonly IEventApiClient _apiClient;
@@ -20,69 +18,54 @@ public class OrganizationMemberServiceTests
         _service = new OrganizationMemberService(_apiClient, logger);
     }
 
-    // ========== Read Operations (return empty on error) ==========
-
-    #region GetMembersAsync Tests
-
     [Test]
-    public async Task GetMembersAsync_ReturnsMembers_WhenApiSucceeds()
+    public async Task GetMembersWithAffordancesAsync_PreservesCollectionCreateAndItemLinks()
     {
-        // Arrange
         var organizationId = Guid.NewGuid();
-        var members = new List<OrganizationMemberDto>
-         {
-             new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), OrganizationId = organizationId },
-             new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), OrganizationId = organizationId }
-         };
-
+        var memberId = Guid.NewGuid();
         _apiClient.GetOrganizationMembersByOrganizationAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(members);
+            .Returns(CreateOrganizationMemberCollection(memberId, withCreateLink: true, withItemLinks: true));
 
-        // Act
-        var result = await _service.GetMembersAsync(organizationId);
+        var result = await _service.GetMembersWithAffordancesAsync(organizationId);
 
-        // Assert
-        await Assert.That(result.Count).IsEqualTo(2);
+        await Assert.That(result.CanCreate).IsTrue();
+        await Assert.That(result.Members.Count).IsEqualTo(1);
+        var member = result.Members.Single();
+        await Assert.That(member.Id).IsEqualTo(memberId);
+        await Assert.That(member.HasHalLink("edit")).IsTrue();
+        await Assert.That(member.HasHalLink("delete")).IsTrue();
     }
 
     [Test]
-    public async Task GetMembersAsync_ReturnsEmptyList_WhenApiThrows()
+    public async Task GetMembersAsync_ReturnsMembersForExistingCompatibilityCallers()
     {
-        // Arrange
+        var organizationId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        _apiClient.GetOrganizationMembersByOrganizationAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(CreateOrganizationMemberCollection(memberId, withCreateLink: false, withItemLinks: false));
+
+        var result = await _service.GetMembersAsync(organizationId);
+
+        await Assert.That(result.Count).IsEqualTo(1);
+        await Assert.That(result.Single().Id).IsEqualTo(memberId);
+    }
+
+    [Test]
+    public async Task GetMembersWithAffordancesAsync_ReturnsEmptyResult_WhenApiThrows()
+    {
         var organizationId = Guid.NewGuid();
         _apiClient.GetOrganizationMembersByOrganizationAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("API Error", 500, null, null, null));
 
-        // Act
-        var result = await _service.GetMembersAsync(organizationId);
+        var result = await _service.GetMembersWithAffordancesAsync(organizationId);
 
-        // Assert
-        await Assert.That(result).IsEmpty();
+        await Assert.That(result.CanCreate).IsFalse();
+        await Assert.That(result.Members).IsEmpty();
     }
-
-    [Test]
-    public async Task GetMembersAsync_ReturnsEmptyList_WhenResponseIsNull()
-    {
-        // Arrange
-        var organizationId = Guid.NewGuid();
-        _apiClient.GetOrganizationMembersByOrganizationAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns((ICollection<OrganizationMemberDto>?)null);
-
-        // Act
-        var result = await _service.GetMembersAsync(organizationId);
-
-        // Assert
-        await Assert.That(result).IsEmpty();
-    }
-
-    #endregion
-
-    #region GetMyInvitationsAsync Tests
 
     [Test]
     public async Task GetMyInvitationsAsync_ReturnsInvitations_WhenApiSucceeds()
     {
-        // Arrange
         var invitations = new List<OrganizationInvitationDto>
         {
             new() { Id = Guid.NewGuid(), OrganizationId = Guid.NewGuid(), Email = "user1@example.com" },
@@ -91,37 +74,25 @@ public class OrganizationMemberServiceTests
 
         _apiClient.GetMyOrganizationInvitationsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(invitations);
 
-        // Act
         var result = await _service.GetMyInvitationsAsync();
 
-        // Assert
         await Assert.That(result.Count).IsEqualTo(2);
     }
 
     [Test]
     public async Task GetMyInvitationsAsync_ReturnsEmptyList_WhenApiThrows()
     {
-        // Arrange
         _apiClient.GetMyOrganizationInvitationsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("API Error", 500, null, null, null));
 
-        // Act
         var result = await _service.GetMyInvitationsAsync();
 
-        // Assert
         await Assert.That(result).IsEmpty();
     }
-
-    #endregion
-
-    // ========== Write Operations (throw on error) ==========
-
-    #region InviteMemberAsync Tests
 
     [Test]
     public async Task InviteMemberAsync_ReturnsResponse_WhenApiSucceeds()
     {
-        // Arrange
         var dto = new AddOrganizationMemberDto
         {
             OrganizationId = Guid.NewGuid(),
@@ -131,10 +102,8 @@ public class OrganizationMemberServiceTests
 
         _apiClient.AddOrganizationMemberAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(expected);
 
-        // Act
         var result = await _service.InviteMemberAsync(dto);
 
-        // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsTrue();
     }
@@ -142,7 +111,6 @@ public class OrganizationMemberServiceTests
     [Test]
     public async Task InviteMemberAsync_Throws_WhenApiThrows()
     {
-        // Arrange
         var dto = new AddOrganizationMemberDto
         {
             OrganizationId = Guid.NewGuid(),
@@ -151,57 +119,71 @@ public class OrganizationMemberServiceTests
         _apiClient.AddOrganizationMemberAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, null, null, null));
 
-        // Act & Assert
         await Assert.ThrowsAsync<ApiException>(async () => await _service.InviteMemberAsync(dto));
     }
-
-    #endregion
-
-    #region AcceptInvitationAsync Tests
 
     [Test]
     public async Task AcceptInvitationAsync_Throws_WhenApiThrows()
     {
-        // Arrange
         var invitationId = Guid.NewGuid();
         _apiClient.AcceptOrganizationInvitationAsync(invitationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
-        // Act & Assert
         await Assert.ThrowsAsync<ApiException>(async () => await _service.AcceptInvitationAsync(invitationId));
     }
-
-    #endregion
-
-    #region DeclineInvitationAsync Tests
 
     [Test]
     public async Task DeclineInvitationAsync_Throws_WhenApiThrows()
     {
-        // Arrange
         var invitationId = Guid.NewGuid();
         _apiClient.DeclineOrganizationInvitationAsync(invitationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
-        // Act & Assert
         await Assert.ThrowsAsync<ApiException>(async () => await _service.DeclineInvitationAsync(invitationId));
     }
-
-    #endregion
-
-    #region DeleteMemberAsync Tests
 
     [Test]
     public async Task DeleteMemberAsync_Throws_WhenApiThrows()
     {
-        // Arrange
         var memberId = Guid.NewGuid();
         _apiClient.DeleteOrganizationMemberAsync(memberId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Forbidden", 403, null, null, null));
 
-        // Act & Assert
         await Assert.ThrowsAsync<ApiException>(async () => await _service.DeleteMemberAsync(memberId));
     }
 
-    #endregion
+    private static HalCollectionResourceOfOrganizationMemberDto CreateOrganizationMemberCollection(Guid memberId, bool withCreateLink, bool withItemLinks)
+    {
+        var collection = new HalCollectionResourceOfOrganizationMemberDto
+        {
+            _links = withCreateLink
+                ? new Dictionary<string, HalLink>
+                {
+                    ["create"] = new() { Href = "/api/organizationmember", Method = "POST" }
+                }
+                : new Dictionary<string, HalLink>(),
+            _embedded = new HalCollectionEmbeddedOfOrganizationMemberDto
+            {
+                Items =
+                [
+                    new HalResourceOfOrganizationMemberDto
+                    {
+                        Id = memberId,
+                        OrganizationId = Guid.NewGuid(),
+                        UserId = Guid.NewGuid(),
+                        UserEmail = "member@example.com",
+                        RoleId = RoleHelper.OrgAdmin
+                    }
+                ]
+            }
+        };
+
+        if (withItemLinks)
+        {
+            using var links = JsonDocument.Parse("{\"edit\":{\"href\":\"/api/organizationmember/role\",\"method\":\"PUT\"},\"delete\":{\"href\":\"/api/organizationmember/1\",\"method\":\"DELETE\"}}");
+            collection._embedded.Items.Single().AdditionalProperties["_links"] = links.RootElement.Clone();
+        }
+
+        return collection;
+    }
 }

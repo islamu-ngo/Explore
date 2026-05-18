@@ -72,17 +72,25 @@ public sealed class GroupMemberCollectionLinkPolicy : ICollectionLinkPolicy<Grou
             new { id = dto.UserId },
             "GET",
             dto.UserFullName);
+
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
+            RouteNames.UpdateGroupMember,
+            new { id = dto.Id },
+            "PUT",
+            "Update membership",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.GroupMember, dto);
+
+        yield return new LinkDefinition(
+            LinkRelations.Delete,
+            RouteNames.DeleteGroupMember,
+            new { id = dto.Id },
+            "DELETE",
+            "Remove member",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.GroupMember, dto);
     }
 
-    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
-    {
-        yield return new LinkDefinition(
-            "create",
-            RouteNames.CreateGroupMember,
-            null,
-            "POST",
-            "Add group member",
-            RequiresAuth: true)
-            .RequirePermission(AuthorizationActions.Create, typeof(GroupMemberDto), "group_member");
-    }
+    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user) => [];
 }

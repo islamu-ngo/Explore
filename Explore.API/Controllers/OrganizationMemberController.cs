@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.OrganizationMember;
+using Explore.Application.Hateoas;
 using Explore.Application.Features.OrganizationMembers.Requests.Commands;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
 using Explore.Application.Responses;
@@ -19,23 +20,53 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
+[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class OrganizationMemberController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IResourceAssembler<OrganizationMemberDto, OrganizationMemberDto> _resourceAssembler;
 
-    public OrganizationMemberController(IMediator mediator)
+    public OrganizationMemberController(
+        IMediator mediator,
+        IResourceAssembler<OrganizationMemberDto, OrganizationMemberDto> resourceAssembler)
     {
         _mediator = mediator;
+        _resourceAssembler = resourceAssembler;
     }
 
     [HttpGet("{organizationId:guid}", Name = RouteNames.GetOrganizationMembersByOrganization)]
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [OutputCache(PolicyName = "ListData")]
-    public async Task<ActionResult<List<OrganizationMemberDto>>> Get(Guid organizationId, CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(HalCollectionResource<OrganizationMemberDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HalCollectionResource<OrganizationMemberDto>>> Get(Guid organizationId, CancellationToken cancellationToken = default)
     {
         var members = await _mediator.Send(new GetOrganizationMembersRequest { OrganizationId = organizationId }, cancellationToken);
-        return Ok(members);
+        var halResource = await _resourceAssembler.ToCollectionResource(
+            members,
+            RouteNames.GetOrganizationMembersByOrganization,
+            new { organizationId },
+            HttpContext);
+
+        return Ok(halResource);
+    }
+
+    [HttpGet("member/{id:guid}", Name = RouteNames.GetOrganizationMemberById)]
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [OutputCache(PolicyName = "DetailData")]
+    [ProducesResponseType(typeof(HalResource<OrganizationMemberDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<OrganizationMemberDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
+    {
+        var member = await _mediator.Send(new GetOrganizationMemberDetailsRequest { Id = id }, cancellationToken);
+        if (member is null)
+        {
+            return NotFound();
+        }
+
+        var halResource = await _resourceAssembler.ToResource(member, HttpContext);
+        return Ok(halResource);
     }
 
     [EndpointClassification(EndpointClass.Authenticated)]

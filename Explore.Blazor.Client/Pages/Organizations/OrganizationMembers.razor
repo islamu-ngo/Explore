@@ -1,6 +1,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Helpers
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components
 @using Blazouter.Services
@@ -19,7 +20,7 @@
             </div>
         </MudStack>
 
-        @if (RoleHelper.CanManage(currentUserRole))
+        @if (_canCreateMembers)
         {
             <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="OpenInviteDialog" StartIcon="@Icons.Material.Filled.PersonAdd" Class="rounded-pill">
                 Invite Member
@@ -59,7 +60,7 @@
                 <MudTh>User</MudTh>
                 <MudTh>Email</MudTh>
                 <MudTh>Role</MudTh>
-                @if (RoleHelper.CanManage(currentUserRole))
+                @if (HasAnyMemberActions)
                 {
                     <MudTh Style="text-align:right">Actions</MudTh>
                 }
@@ -84,14 +85,20 @@
                 <MudTd DataLabel="Role">
                     <MudChip T="string" Color="@GetRoleColor(context.RoleId ?? 0)" Size="Size.Small" Variant="Variant.Filled">@GetRoleName(context.RoleId ?? 0)</MudChip>
                 </MudTd>
-                @if (RoleHelper.CanManage(currentUserRole))
+                @if (HasAnyMemberActions)
                 {
                     <MudTd DataLabel="Actions" Style="text-align:right">
-                        @if (context.RoleId != RoleHelper.OrgCreator)
+                        @if (CanEditMember(context) || CanDeleteMember(context))
                         {
                             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-                                <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))" Icon="@Icons.Material.Filled.Edit">Change Role</MudMenuItem>
-                                <MudMenuItem OnClick="@(() => RemoveMember(context))" Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error">Remove</MudMenuItem>
+                                @if (CanEditMember(context))
+                                {
+                                    <MudMenuItem OnClick="@(() => OpenEditRoleDialog(context))" Icon="@Icons.Material.Filled.Edit">Change Role</MudMenuItem>
+                                }
+                                @if (CanDeleteMember(context))
+                                {
+                                    <MudMenuItem OnClick="@(() => RemoveMember(context))" Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error">Remove</MudMenuItem>
+                                }
                             </MudMenu>
                         }
                     </MudTd>

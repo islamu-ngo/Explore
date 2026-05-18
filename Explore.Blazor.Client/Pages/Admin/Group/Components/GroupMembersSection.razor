@@ -1,5 +1,5 @@
 @* ABOUTME: Group member management section for inviting, role updates, and removals. *@
-@* ABOUTME: Allows actions only to GroupCreator and GroupAdmin members of the current group. *@
+@* ABOUTME: Uses HAL member links to decide which membership actions are available. *@
 
 @using System.Security.Claims
 @using MudBlazor
@@ -31,7 +31,7 @@
     }
     else
     {
-        @if (_canManage)
+        @if (_canCreateMember)
         {
             <MudPaper Elevation="0" Class="pa-4 mb-4 rounded-lg border-solid border-1 mud-border-lines-default">
                 <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight: 600;">Invite Member</MudText>
@@ -69,7 +69,7 @@
         else
         {
             <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4">
-                You can view members, but only group administrators can make changes.
+                You can view members, but this group did not expose management actions for your account.
             </MudAlert>
         }
 
@@ -78,7 +78,7 @@
                 <MudTh>Member</MudTh>
                 <MudTh>Email</MudTh>
                 <MudTh>Role</MudTh>
-                @if (_canManage)
+                @if (HasAnyMemberActions)
                 {
                     <MudTh Style="text-align:right">Actions</MudTh>
                 }
@@ -103,7 +103,7 @@
                         @RoleHelper.GetGroupRoleName(context.RoleId)
                     </MudChip>
                 </MudTd>
-                @if (_canManage)
+                @if (HasAnyMemberActions)
                 {
                     <MudTd DataLabel="Actions" Style="text-align:right">
                         @if (context.Id.HasValue)
@@ -113,7 +113,7 @@
                                            Value="@GetPendingRole(context)"
                                            ValueChanged="@((value) => SetPendingRole(context, value))"
                                            Dense="true"
-                                           Disabled="@IsCreator(context)"
+                                           Disabled="@(!CanEditMember(context) || IsCreator(context))"
                                            Variant="Variant.Outlined"
                                            Style="min-width: 150px;">
                                     <MudSelectItem Value="@RoleHelper.GroupCreator">Creator</MudSelectItem>
@@ -124,12 +124,12 @@
                                 </MudSelect>
                                 <MudIconButton Icon="@Icons.Material.Filled.Save"
                                                Color="Color.Primary"
-                                               Disabled="@(!IsRoleChanged(context) || IsCreator(context) || _busyMemberId == context.Id)"
+                                               Disabled="@(!CanEditMember(context) || !IsRoleChanged(context) || IsCreator(context) || _busyMemberId == context.Id)"
                                                OnClick="@(() => SaveRoleAsync(context))"
                                                Title="Save role" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                Color="Color.Error"
-                                               Disabled="@(IsCreator(context) || _busyMemberId == context.Id)"
+                                               Disabled="@(!CanDeleteMember(context) || IsCreator(context) || _busyMemberId == context.Id)"
                                                OnClick="@(() => RemoveMemberAsync(context))"
                                                Title="Remove member" />
                             </MudStack>
@@ -154,13 +154,15 @@
     private readonly Dictionary<Guid, int> _pendingRoles = [];
     private bool _isLoading = true;
     private bool _isInviting;
-    private bool _canManage;
+    private bool _canCreateMember;
     private string? _errorMessage;
     private Guid? _currentUserId;
     private Guid? _busyMemberId;
 
     private string _inviteEmail = string.Empty;
     private int _inviteRole = RoleHelper.GroupMember;
+
+    private bool HasAnyMemberActions => _members.Any(member => CanEditMember(member) || CanDeleteMember(member));
 
     protected override async Task OnInitializedAsync()
     {
@@ -176,8 +178,11 @@
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             _currentUserId = ExtractUserId(authState.User);
 
+            var membersResult = await GroupService.GetGroupMembersWithAffordancesAsync(GroupId);
+
             _members.Clear();
-            _members.AddRange(await GroupService.GetGroupMembersAsync(GroupId));
+            _members.AddRange(membersResult.Members);
+            _canCreateMember = membersResult.CanCreate;
 
             _pendingRoles.Clear();
             foreach (var member in _members.Where(m => m.Id.HasValue))
@@ -185,8 +190,6 @@
                 _pendingRoles[member.Id!.Value] = member.RoleId ?? RoleHelper.GroupMember;
             }
 
-            var me = _members.FirstOrDefault(m => m.UserId == _currentUserId);
-            _canManage = RoleHelper.CanManageGroup(me?.RoleId);
         }
         catch (Exception ex)
         {
@@ -200,7 +203,7 @@
 
     private async Task InviteMemberAsync()
     {
-        if (!_canManage)
+        if (!_canCreateMember)
         {
             return;
         }
@@ -247,7 +250,7 @@
 
     private async Task SaveRoleAsync(GroupMemberDto member)
     {
-        if (!_canManage || !member.Id.HasValue)
+        if (!CanEditMember(member) || !member.Id.HasValue)
         {
             return;
         }
@@ -285,7 +288,7 @@
 
     private async Task RemoveMemberAsync(GroupMemberDto member)
     {
-        if (!_canManage || !member.Id.HasValue)
+        if (!CanDeleteMember(member) || !member.Id.HasValue)
         {
             return;
         }
@@ -359,6 +362,17 @@
         return member.Id.HasValue
             && _pendingRoles.TryGetValue(member.Id.Value, out var pending)
             && pending != (member.RoleId ?? RoleHelper.GroupMember);
+    }
+
+
+    private static bool CanEditMember(GroupMemberDto member)
+    {
+        return member.HasHalLink("edit");
+    }
+
+    private static bool CanDeleteMember(GroupMemberDto member)
+    {
+        return member.HasHalLink("delete");
     }
 
     private static bool IsCreator(GroupMemberDto member)
