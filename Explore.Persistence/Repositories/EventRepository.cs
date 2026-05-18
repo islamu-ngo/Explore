@@ -9,12 +9,6 @@ namespace Explore.Persistence.Repositories;
 
 public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 {
-    private static readonly Func<ExploreDbContext, Guid, Task<Event?>> GetByIdCompiled =
-        EF.CompileAsyncQuery((ExploreDbContext ctx, Guid id) =>
-            ctx.Events
-                .AsNoTracking()
-                .FirstOrDefault(e => e.Id == id));
-
     private readonly ExploreDbContext _dbContext;
 
     public EventRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -24,7 +18,9 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
     public new async Task<Event?> GetById(Guid id)
     {
-        return await GetByIdCompiled(_dbContext, id);
+        return await _dbContext.Events
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == id);
     }
 
     public async Task<List<Event>> GetEventsWithDetails()
