@@ -191,7 +191,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         try
         {
             var response = await _apiClient.GetCustomPropertyProjectionStatusAsync(tenantId, cancellationToken: cancellationToken);
-            return response?.Id?.Select(MapStatus).ToList() ?? new List<ProjectionStatusModel>();
+            return response?._embedded?.Items?.Select(MapStatus).ToList() ?? new List<ProjectionStatusModel>();
         }
         catch (Exception ex)
         {
@@ -207,7 +207,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         try
         {
             var response = await _apiClient.GetSessionCustomPropertyProjectionStatusAsync(tenantId, cancellationToken: cancellationToken);
-            return response?.Id?.Select(MapStatus).ToList() ?? new List<ProjectionStatusModel>();
+            return response?._embedded?.Items?.Select(MapStatus).ToList() ?? new List<ProjectionStatusModel>();
         }
         catch (Exception ex)
         {
@@ -237,7 +237,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
 
             return new PaginatedResult<ProjectionDirtyScopeModel>
             {
-                Items = response.Items?.Select(MapDirtyScope).ToList() ?? [],
+                Items = response._embedded?.Items?.Select(MapDirtyScope).ToList() ?? [],
                 PageNumber = response.PageNumber ?? pageNumber,
                 PageSize = response.PageSize ?? pageSize,
                 TotalCount = response.TotalCount ?? 0
@@ -447,7 +447,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
         };
     }
 
-    private static ProjectionStatusModel MapStatus(ProjectionStatusDto dto)
+    private static ProjectionStatusModel MapStatus(HalResourceOfProjectionStatusDto dto)
     {
         return new ProjectionStatusModel
         {
@@ -460,11 +460,12 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
             RowsProcessed = dto.RowsProcessed ?? 0,
             RowsFailed = dto.RowsFailed ?? 0,
             LastCheckpoint = dto.LastCheckpoint,
-            LastErrorMessage = dto.LastErrorMessage
+            LastErrorMessage = dto.LastErrorMessage,
+            LinkRelations = CaptureLinkRelations(dto._links?.Keys)
         };
     }
 
-    private static ProjectionDirtyScopeModel MapDirtyScope(ProjectionDirtyScopeDto dto)
+    private static ProjectionDirtyScopeModel MapDirtyScope(HalResourceOfProjectionDirtyScopeDto dto)
     {
         return new ProjectionDirtyScopeModel
         {
@@ -477,8 +478,16 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
             DefinitionId = dto.DefinitionId,
             Reason = dto.Reason,
             CreatedAt = dto.CreatedAt,
-            DrainedAt = dto.DrainedAt
+            DrainedAt = dto.DrainedAt,
+            LinkRelations = CaptureLinkRelations(dto._links?.Keys)
         };
+    }
+
+    private static IReadOnlySet<string> CaptureLinkRelations(IEnumerable<string>? rels)
+    {
+        return rels is null
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : rels.ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     private static CustomPropertyGovernanceRowModel MapGovernanceRow(CustomPropertyGovernanceRowDto dto)

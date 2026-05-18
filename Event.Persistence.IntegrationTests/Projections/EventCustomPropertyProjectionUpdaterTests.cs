@@ -251,6 +251,67 @@ public class EventCustomPropertyProjectionUpdaterTests
     }
 
     [Test]
+    public async Task RebuildForTenantAsync_WithOptionValueMatchesRefreshProjection_WhenOptionIsNotTracked()
+    {
+        EventCustomPropertyProjection refreshed;
+
+        using (var seedContext = _fixture.CreateDbContext())
+        {
+            var scope = await SeedEventWithDefinitionAsync(seedContext, PropertyType.Option);
+            var option = new EventCustomPropertyOption
+            {
+                EventCustomPropertyDefinitionId = scope.DefinitionId,
+                Namespace = "tenant.community",
+                Key = "premium_access",
+                DisplayName = "Premium Access",
+                Value = "Premium Access",
+                IsActive = true,
+                IsDefault = true,
+                SortOrder = 1,
+                ConcurrencyStamp = Guid.NewGuid(),
+            };
+            seedContext.EventCustomPropertyOptions.Add(option);
+            await seedContext.SaveChangesAsync();
+
+            seedContext.EventCustomPropertyValues.Add(new EventCustomPropertyValue
+            {
+                EventCustomPropertyDefinitionId = scope.DefinitionId,
+                EventId = scope.EventId,
+                TenantId = scope.TenantId,
+                OptionId = option.Id,
+                Ordinal = 0,
+            });
+            await seedContext.SaveChangesAsync();
+
+            using (var refreshContext = _fixture.CreateDbContext())
+            {
+                await CreateUpdater(refreshContext).RefreshForEventAsync(scope.EventId, CancellationToken.None);
+            }
+
+            using (var verifyRefresh = _fixture.CreateDbContext())
+            {
+                refreshed = await verifyRefresh.EventCustomPropertyProjections
+                    .AsNoTracking()
+                    .SingleAsync(p => p.EventId == scope.EventId);
+            }
+
+            using var rebuildContext = _fixture.CreateDbContext();
+            var result = await CreateUpdater(rebuildContext)
+                .RebuildForTenantAsync(scope.TenantId, batchSize: null, CancellationToken.None);
+            await Assert.That(result.LockAcquired).IsTrue();
+            await Assert.That(result.RowsFailed).IsEqualTo(0);
+
+            using var verifyRebuild = _fixture.CreateDbContext();
+            var rebuilt = await verifyRebuild.EventCustomPropertyProjections
+                .AsNoTracking()
+                .SingleAsync(p => p.EventId == scope.EventId);
+
+            await AssertProjectionIdentityAsync(refreshed, rebuilt);
+            await Assert.That(rebuilt.NormalizedValue).IsEqualTo("premium access");
+        }
+    }
+
+    [Test]
     public async Task UpdateForDefinitionAsync_WhenDirtyScopeBacklogQuotaExceeded_ThrowsQuotaExceededException()
     {
         using var seedContext = _fixture.CreateDbContext();
@@ -445,6 +506,32 @@ public class EventCustomPropertyProjectionUpdaterTests
 
             return hash;
         }
+    }
+
+    private static async Task AssertProjectionIdentityAsync(
+        EventCustomPropertyProjection expected,
+        EventCustomPropertyProjection actual)
+    {
+        await Assert.That(actual.EventCustomPropertyDefinitionId).IsEqualTo(expected.EventCustomPropertyDefinitionId);
+        await Assert.That(actual.EventCustomPropertyValueId).IsEqualTo(expected.EventCustomPropertyValueId);
+        await Assert.That(actual.EventId).IsEqualTo(expected.EventId);
+        await Assert.That(actual.TenantId).IsEqualTo(expected.TenantId);
+        await Assert.That(actual.Namespace).IsEqualTo(expected.Namespace);
+        await Assert.That(actual.Key).IsEqualTo(expected.Key);
+        await Assert.That(actual.PropertyType).IsEqualTo(expected.PropertyType);
+        await Assert.That(actual.ExposureLevel).IsEqualTo(expected.ExposureLevel);
+        await Assert.That(actual.IsSearchable).IsEqualTo(expected.IsSearchable);
+        await Assert.That(actual.IsFilterable).IsEqualTo(expected.IsFilterable);
+        await Assert.That(actual.IsExportable).IsEqualTo(expected.IsExportable);
+        await Assert.That(actual.IsModerationRelevant).IsEqualTo(expected.IsModerationRelevant);
+        await Assert.That(actual.IsAnalyticsRelevant).IsEqualTo(expected.IsAnalyticsRelevant);
+        await Assert.That(actual.Ordinal).IsEqualTo(expected.Ordinal);
+        await Assert.That(actual.OptionId).IsEqualTo(expected.OptionId);
+        await Assert.That(actual.TextValue).IsEqualTo(expected.TextValue);
+        await Assert.That(actual.NumberValue).IsEqualTo(expected.NumberValue);
+        await Assert.That(actual.BooleanValue).IsEqualTo(expected.BooleanValue);
+        await Assert.That(actual.DateTimeValue).IsEqualTo(expected.DateTimeValue);
+        await Assert.That(actual.NormalizedValue).IsEqualTo(expected.NormalizedValue);
     }
 
     private sealed record ProjectionTestScope(Guid TenantId, Guid EventId, Guid DefinitionId);

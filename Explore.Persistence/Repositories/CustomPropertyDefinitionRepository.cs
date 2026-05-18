@@ -205,4 +205,66 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
         await _dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    public async Task<CustomPropertyPurgeDependencySummary?> GetPurgeDependencies(Guid id, CancellationToken cancellationToken)
+    {
+        var definition = await _dbContext.CustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AsNoTracking()
+            .Select(x => new { x.Id, x.TenantId })
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        if (definition is null)
+        {
+            return null;
+        }
+
+        var optionCount = await _dbContext.CustomPropertyOptions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .CountAsync(x => x.CustomPropertyDefinitionId == id, cancellationToken);
+        var valueCount = await _dbContext.CustomPropertyValues
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .CountAsync(x => x.CustomPropertyDefinitionId == id, cancellationToken);
+        var auditCount = await _dbContext.AuditLogs
+            .CountAsync(x => x.EntityType == nameof(CustomPropertyDefinition) && x.EntityId == id.ToString(), cancellationToken);
+
+        return new CustomPropertyPurgeDependencySummary(
+            id,
+            definition.TenantId,
+            "custom_property_definition",
+            optionCount,
+            valueCount,
+            ProjectionCount: 0,
+            auditCount,
+            SyncProvenanceCount: 0);
+    }
+
+    public async Task<bool> PurgeDefinition(Guid id, CancellationToken cancellationToken)
+    {
+        var exists = await _dbContext.CustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AnyAsync(x => x.Id == id, cancellationToken);
+
+        if (!exists)
+        {
+            return false;
+        }
+
+        await _dbContext.CustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .Where(x => x.Id == id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.DefaultOptionId, (Guid?)null), cancellationToken);
+
+        await _dbContext.CustomPropertyOptions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .Where(x => x.CustomPropertyDefinitionId == id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var deleted = await _dbContext.CustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .Where(x => x.Id == id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        return deleted > 0;
+    }
 }

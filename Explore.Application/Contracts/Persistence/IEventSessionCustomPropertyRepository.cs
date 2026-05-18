@@ -35,6 +35,8 @@ public interface IEventSessionCustomPropertyRepository : IGenericRepository<Even
         CancellationToken cancellationToken);
 
     Task<bool> DeleteDefinition(Guid id, CancellationToken cancellationToken);
+    Task<CustomPropertyPurgeDependencySummary?> GetPurgeDependencies(Guid id, CancellationToken cancellationToken);
+    Task<bool> PurgeDefinition(Guid id, CancellationToken cancellationToken);
 
     Task<List<EventSessionCustomPropertyValue>> GetValuesForSession(Guid eventSessionId);
     Task<List<EventSessionCustomPropertyValue>> GetValuesForDefinition(Guid definitionId);

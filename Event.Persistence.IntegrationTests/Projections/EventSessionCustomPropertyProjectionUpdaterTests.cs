@@ -157,6 +157,67 @@ public class EventSessionCustomPropertyProjectionUpdaterTests
     }
 
     [Test]
+    public async Task RebuildForTenantAsync_WithOptionValueMatchesRefreshProjection_WhenOptionIsNotTracked()
+    {
+        EventSessionCustomPropertyProjection refreshed;
+
+        using (var seedContext = _fixture.CreateDbContext())
+        {
+            var scope = await SeedSessionWithDefinitionAsync(seedContext, PropertyType.Option);
+            var option = new EventSessionCustomPropertyOption
+            {
+                EventSessionCustomPropertyDefinitionId = scope.DefinitionId,
+                Namespace = "tenant.community",
+                Key = "vip_room",
+                DisplayName = "VIP Room",
+                Value = "VIP Room",
+                IsActive = true,
+                IsDefault = true,
+                SortOrder = 1,
+                ConcurrencyStamp = Guid.NewGuid(),
+            };
+            seedContext.EventSessionCustomPropertyOptions.Add(option);
+            await seedContext.SaveChangesAsync();
+
+            seedContext.EventSessionCustomPropertyValues.Add(new EventSessionCustomPropertyValue
+            {
+                EventSessionCustomPropertyDefinitionId = scope.DefinitionId,
+                EventSessionId = scope.EventSessionId,
+                TenantId = scope.TenantId,
+                OptionId = option.Id,
+                Ordinal = 0,
+            });
+            await seedContext.SaveChangesAsync();
+
+            using (var refreshContext = _fixture.CreateDbContext())
+            {
+                await CreateUpdater(refreshContext).RefreshForEventSessionAsync(scope.EventSessionId, CancellationToken.None);
+            }
+
+            using (var verifyRefresh = _fixture.CreateDbContext())
+            {
+                refreshed = await verifyRefresh.EventSessionCustomPropertyProjections
+                    .AsNoTracking()
+                    .SingleAsync(p => p.EventSessionId == scope.EventSessionId);
+            }
+
+            using var rebuildContext = _fixture.CreateDbContext();
+            var result = await CreateUpdater(rebuildContext)
+                .RebuildForTenantAsync(scope.TenantId, batchSize: null, CancellationToken.None);
+            await Assert.That(result.LockAcquired).IsTrue();
+            await Assert.That(result.RowsFailed).IsEqualTo(0);
+
+            using var verifyRebuild = _fixture.CreateDbContext();
+            var rebuilt = await verifyRebuild.EventSessionCustomPropertyProjections
+                .AsNoTracking()
+                .SingleAsync(p => p.EventSessionId == scope.EventSessionId);
+
+            await AssertProjectionIdentityAsync(refreshed, rebuilt);
+            await Assert.That(rebuilt.NormalizedValue).IsEqualTo("vip room");
+        }
+    }
+
+    [Test]
     public async Task UpdateForDefinitionAsync_WhenDirtyScopeBacklogQuotaExceeded_ThrowsQuotaExceededException()
     {
         using var seedContext = _fixture.CreateDbContext();
@@ -366,6 +427,32 @@ public class EventSessionCustomPropertyProjectionUpdaterTests
 
             return hash;
         }
+    }
+
+    private static async Task AssertProjectionIdentityAsync(
+        EventSessionCustomPropertyProjection expected,
+        EventSessionCustomPropertyProjection actual)
+    {
+        await Assert.That(actual.EventSessionCustomPropertyDefinitionId).IsEqualTo(expected.EventSessionCustomPropertyDefinitionId);
+        await Assert.That(actual.EventSessionCustomPropertyValueId).IsEqualTo(expected.EventSessionCustomPropertyValueId);
+        await Assert.That(actual.EventSessionId).IsEqualTo(expected.EventSessionId);
+        await Assert.That(actual.TenantId).IsEqualTo(expected.TenantId);
+        await Assert.That(actual.Namespace).IsEqualTo(expected.Namespace);
+        await Assert.That(actual.Key).IsEqualTo(expected.Key);
+        await Assert.That(actual.PropertyType).IsEqualTo(expected.PropertyType);
+        await Assert.That(actual.ExposureLevel).IsEqualTo(expected.ExposureLevel);
+        await Assert.That(actual.IsSearchable).IsEqualTo(expected.IsSearchable);
+        await Assert.That(actual.IsFilterable).IsEqualTo(expected.IsFilterable);
+        await Assert.That(actual.IsExportable).IsEqualTo(expected.IsExportable);
+        await Assert.That(actual.IsModerationRelevant).IsEqualTo(expected.IsModerationRelevant);
+        await Assert.That(actual.IsAnalyticsRelevant).IsEqualTo(expected.IsAnalyticsRelevant);
+        await Assert.That(actual.Ordinal).IsEqualTo(expected.Ordinal);
+        await Assert.That(actual.OptionId).IsEqualTo(expected.OptionId);
+        await Assert.That(actual.TextValue).IsEqualTo(expected.TextValue);
+        await Assert.That(actual.NumberValue).IsEqualTo(expected.NumberValue);
+        await Assert.That(actual.BooleanValue).IsEqualTo(expected.BooleanValue);
+        await Assert.That(actual.DateTimeValue).IsEqualTo(expected.DateTimeValue);
+        await Assert.That(actual.NormalizedValue).IsEqualTo(expected.NormalizedValue);
     }
 
     private sealed record SessionProjectionTestScope(Guid TenantId, Guid EventSessionId, Guid DefinitionId);

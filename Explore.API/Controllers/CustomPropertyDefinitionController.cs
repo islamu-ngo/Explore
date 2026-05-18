@@ -184,4 +184,37 @@ public class CustomPropertyDefinitionController : ControllerBase
 
         return NoContent();
     }
+
+    /// <summary>
+    /// Permanently purge a dependency-free shared custom-property definition.
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpDelete("{id:guid}/purge", Name = RouteNames.PurgeCustomPropertyDefinition)]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<CustomPropertyPurgeResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<CustomPropertyPurgeResultDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<CustomPropertyPurgeResultDto>>> Purge(
+        Guid id,
+        [FromBody] PurgeCustomPropertyDefinitionDto purgeDto,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new PurgeCustomPropertyDefinitionCommand
+        {
+            Id = id,
+            Reason = purgeDto.Reason
+        }, cancellationToken);
+
+        if (result.Success)
+        {
+            return Ok(result);
+        }
+
+        return string.Equals(result.Message, "Custom-property definition not found.", StringComparison.Ordinal)
+            ? NotFound(result)
+            : BadRequest(result);
+    }
 }

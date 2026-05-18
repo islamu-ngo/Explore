@@ -7,12 +7,14 @@ using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.CustomPropertyGovernance;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.Features.CustomPropertyGovernance.Requests.Queries;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Commands;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Commands;
 using Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using Explore.Domain.Enums;
 using MediatR;
@@ -29,13 +31,21 @@ namespace Explore.API.Controllers;
 [ApiController]
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
+[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class CustomPropertyProjectionAdminController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IResourceAssembler<ProjectionStatusDto, ProjectionStatusDto> _statusAssembler;
+    private readonly IResourceAssembler<ProjectionDirtyScopeDto, ProjectionDirtyScopeDto> _dirtyScopeAssembler;
 
-    public CustomPropertyProjectionAdminController(IMediator mediator)
+    public CustomPropertyProjectionAdminController(
+        IMediator mediator,
+        IResourceAssembler<ProjectionStatusDto, ProjectionStatusDto> statusAssembler,
+        IResourceAssembler<ProjectionDirtyScopeDto, ProjectionDirtyScopeDto> dirtyScopeAssembler)
     {
         _mediator = mediator;
+        _statusAssembler = statusAssembler;
+        _dirtyScopeAssembler = dirtyScopeAssembler;
     }
 
     /// <summary>
@@ -44,9 +54,9 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     [HttpGet("status", Name = RouteNames.GetCustomPropertyProjectionStatus)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HalCollectionResource<ProjectionStatusDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>>> GetProjectionStatus(
+    public async Task<ActionResult<HalCollectionResource<ProjectionStatusDto>>> GetProjectionStatus(
         [FromQuery] Guid tenantId,
         CancellationToken cancellationToken = default)
     {
@@ -54,7 +64,18 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new GetEventCustomPropertyProjectionStatusQuery { TenantId = tenantId },
             cancellationToken);
 
-        return result.Success ? Ok(result) : BadRequest(result);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
+        var halResource = await _statusAssembler.ToCollectionResource(
+            result.Id ?? [],
+            RouteNames.GetCustomPropertyProjectionStatus,
+            new { tenantId },
+            HttpContext);
+
+        return Ok(halResource);
     }
 
     /// <summary>
@@ -121,8 +142,8 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     [HttpGet("dirty-scopes", Name = RouteNames.GetCustomPropertyProjectionDirtyScopes)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
-    [ProducesResponseType(typeof(PaginatedResult<ProjectionDirtyScopeDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PaginatedResult<ProjectionDirtyScopeDto>>> GetDirtyScopes(
+    [ProducesResponseType(typeof(HalCollectionResource<ProjectionDirtyScopeDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HalCollectionResource<ProjectionDirtyScopeDto>>> GetDirtyScopes(
         [FromQuery] Guid tenantId,
         [FromQuery] string projectionName,
         [FromQuery] int pageNumber = 1,
@@ -139,7 +160,13 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             },
             cancellationToken);
 
-        return Ok(result);
+        var halResource = await _dirtyScopeAssembler.ToCollectionResource(
+            result,
+            RouteNames.GetCustomPropertyProjectionDirtyScopes,
+            new { tenantId, projectionName },
+            HttpContext);
+
+        return Ok(halResource);
     }
 
     /// <summary>
@@ -174,9 +201,9 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     [HttpGet("sessions/status", Name = RouteNames.GetSessionCustomPropertyProjectionStatus)]
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
-    [ProducesResponseType(typeof(BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HalCollectionResource<ProjectionStatusDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>>> GetSessionProjectionStatus(
+    public async Task<ActionResult<HalCollectionResource<ProjectionStatusDto>>> GetSessionProjectionStatus(
         [FromQuery] Guid tenantId,
         CancellationToken cancellationToken = default)
     {
@@ -184,7 +211,18 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             new GetEventSessionCustomPropertyProjectionStatusQuery { TenantId = tenantId },
             cancellationToken);
 
-        return result.Success ? Ok(result) : BadRequest(result);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
+        var halResource = await _statusAssembler.ToCollectionResource(
+            result.Id ?? [],
+            RouteNames.GetSessionCustomPropertyProjectionStatus,
+            new { tenantId },
+            HttpContext);
+
+        return Ok(halResource);
     }
 
     /// <summary>

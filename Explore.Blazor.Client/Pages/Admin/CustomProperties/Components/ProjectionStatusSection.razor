@@ -22,28 +22,39 @@
         <MudItem xs="12" md="6">
             <MudPaper Elevation="0" Class="pa-4 rounded-lg border-solid border-1 mud-border-lines-default">
                 <MudText Typo="Typo.h6" Class="mb-2">Event Projection</MudText>
-                @RenderStatusBody(_eventStatus.FirstOrDefault())
+                @{ var eventStatus = _eventStatus.FirstOrDefault(); }
+                @RenderStatusBody(eventStatus)
                 <MudStack Row="true" Spacing="2" Class="mt-3">
-                    <MudButton Color="Color.Primary" Variant="Variant.Filled"
-                               StartIcon="@Icons.Material.Filled.Cached"
-                               OnClick="() => RebuildAsync(true)"
-                               Disabled="_isRebuildingEvent">Rebuild</MudButton>
-                    <MudButton Color="Color.Warning" Variant="Variant.Outlined"
-                               StartIcon="@Icons.Material.Filled.WaterDrop"
-                               OnClick="DrainAsync"
-                               Disabled="_isDraining">Drain dirty scopes</MudButton>
+                    @if (eventStatus?.HasLink("rebuild") == true)
+                    {
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Cached"
+                                   OnClick="() => RebuildAsync(true)"
+                                   Disabled="_isRebuildingEvent">Rebuild</MudButton>
+                    }
+                    @if (eventStatus?.HasLink("drain-dirty-scopes") == true)
+                    {
+                        <MudButton Color="Color.Warning" Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.WaterDrop"
+                                   OnClick="() => DrainAsync(eventStatus)"
+                                   Disabled="_isDraining">Drain dirty scopes</MudButton>
+                    }
                 </MudStack>
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="6">
             <MudPaper Elevation="0" Class="pa-4 rounded-lg border-solid border-1 mud-border-lines-default">
                 <MudText Typo="Typo.h6" Class="mb-2">Session Projection</MudText>
-                @RenderStatusBody(_sessionStatus.FirstOrDefault())
+                @{ var sessionStatus = _sessionStatus.FirstOrDefault(); }
+                @RenderStatusBody(sessionStatus)
                 <MudStack Row="true" Spacing="2" Class="mt-3">
-                    <MudButton Color="Color.Primary" Variant="Variant.Filled"
-                               StartIcon="@Icons.Material.Filled.Cached"
-                               OnClick="() => RebuildAsync(false)"
-                               Disabled="_isRebuildingSession">Rebuild</MudButton>
+                    @if (sessionStatus?.HasLink("rebuild") == true)
+                    {
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Cached"
+                                   OnClick="() => RebuildAsync(false)"
+                                   Disabled="_isRebuildingSession">Rebuild</MudButton>
+                    }
                 </MudStack>
             </MudPaper>
         </MudItem>
@@ -54,7 +65,7 @@
             <MudText Typo="Typo.h6">Dirty Scopes</MudText>
             <MudSpacer />
             <MudIconButton Icon="@Icons.Material.Filled.Refresh"
-                           OnClick="ReloadDirtyScopesAsync"
+                           OnClick="() => ReloadDirtyScopesAsync(GetEventDirtyScopeProjectionName())"
                            Disabled="_isLoadingDirty"
                            aria-label="Reload dirty scopes" />
         </MudStack>
@@ -112,7 +123,8 @@
             if (Guid.TryParse(tidClaim, out var tid))
                 _tenantId = tid;
         }
-        await Task.WhenAll(ReloadEventStatusAsync(), ReloadSessionStatusAsync(), ReloadDirtyScopesAsync());
+        await Task.WhenAll(ReloadEventStatusAsync(), ReloadSessionStatusAsync());
+        await ReloadDirtyScopesAsync(GetEventDirtyScopeProjectionName());
     }
 
     private async Task ReloadEventStatusAsync()
@@ -127,12 +139,12 @@
         catch (Exception ex) { _errorMessage = $"Failed to load session projection status: {ex.Message}"; }
     }
 
-    private async Task ReloadDirtyScopesAsync()
+    private async Task ReloadDirtyScopesAsync(string? projectionName = null)
     {
         _isLoadingDirty = true;
         try
         {
-            var page = await AdminService.GetDirtyScopesAsync(_tenantId, null, 1, 100);
+            var page = await AdminService.GetDirtyScopesAsync(_tenantId, projectionName ?? GetEventDirtyScopeProjectionName(), 1, 100);
             _dirtyScopes = page.Items.ToList();
         }
         catch (Exception ex)
@@ -174,7 +186,7 @@
             }
             Snackbar.Add("Rebuild complete.", Severity.Success);
             if (isEvent) await ReloadEventStatusAsync(); else await ReloadSessionStatusAsync();
-            await ReloadDirtyScopesAsync();
+            await ReloadDirtyScopesAsync(GetEventDirtyScopeProjectionName());
         }
         catch (Exception ex)
         {
@@ -187,17 +199,25 @@
         }
     }
 
-    private async Task DrainAsync()
+    private async Task DrainAsync(ProjectionStatusModel? status)
     {
         if (_tenantId is null)
         {
             Snackbar.Add("Tenant context unavailable.", Severity.Warning);
             return;
         }
+
+        var projectionName = status?.ProjectionName;
+        if (string.IsNullOrWhiteSpace(projectionName))
+        {
+            Snackbar.Add("Projection context unavailable.", Severity.Warning);
+            return;
+        }
+
         _isDraining = true;
         try
         {
-            var response = await AdminService.DrainDirtyScopesAsync(_tenantId.Value, null);
+            var response = await AdminService.DrainDirtyScopesAsync(_tenantId.Value, projectionName);
             if (response is null || !response.Success)
             {
                 _errorMessage = response?.Message ?? "Drain failed.";
@@ -205,7 +225,7 @@
                 return;
             }
             Snackbar.Add($"Drained {response.Id?.DrainedCount ?? 0} dirty scopes.", Severity.Success);
-            await ReloadDirtyScopesAsync();
+            await ReloadDirtyScopesAsync(projectionName);
         }
         catch (Exception ex)
         {
@@ -214,6 +234,10 @@
         }
         finally { _isDraining = false; }
     }
+
+    private string? GetEventDirtyScopeProjectionName()
+        => _eventStatus.FirstOrDefault(status => status.HasLink("dirty-scopes") || status.HasLink("drain-dirty-scopes"))?.ProjectionName
+            ?? _eventStatus.FirstOrDefault()?.ProjectionName;
 
     private static string FormatDateOrDash(DateTimeOffset? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-dd HH:mm") : "—";
 

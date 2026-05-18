@@ -15,6 +15,7 @@ public class CustomPropertyGovernanceTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly ICustomPropertyAdminService _adminService;
+    private readonly Guid _tenantId = Guid.NewGuid();
 
     public CustomPropertyGovernanceTests()
     {
@@ -25,7 +26,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
         _ctx.Services.AddSingleton(Substitute.For<ISnackbar>());
 
-        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Admin User", "admin@example.com");
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Admin User", "admin@example.com", _tenantId);
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -213,6 +214,135 @@ public class CustomPropertyGovernanceTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("Event Projection");
         await Assert.That(cut.Markup).Contains("Session Projection");
+    }
+
+
+    [Test]
+    public async Task ProjectionStatus_HidesActions_WhenHalLinksAreMissing()
+    {
+        _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProjectionStatusModel>
+            {
+                new()
+                {
+                    ProjectionName = "event_custom_property_projection",
+                    ProjectionVersion = 1,
+                    RowsProcessed = 100
+                }
+            });
+        _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProjectionStatusModel>
+            {
+                new()
+                {
+                    ProjectionName = "event_session_custom_property_projection",
+                    ProjectionVersion = 1,
+                    RowsProcessed = 50
+                }
+            });
+        _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+
+        var cut = Render("ProjectionStatusSection");
+        cut.WaitForState(() => cut.Markup.Contains("Event Projection") && cut.Markup.Contains("Session Projection"),
+            TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).DoesNotContain("Rebuild</button>");
+        await Assert.That(cut.Markup).DoesNotContain("Drain dirty scopes");
+    }
+
+    [Test]
+    public async Task ProjectionStatus_RendersActions_WhenHalLinksArePresent()
+    {
+        _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProjectionStatusModel>
+            {
+                new()
+                {
+                    ProjectionName = "event_custom_property_projection",
+                    ProjectionVersion = 1,
+                    RowsProcessed = 100,
+                    LinkRelations = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "rebuild", "drain-dirty-scopes" }
+                }
+            });
+        _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProjectionStatusModel>
+            {
+                new()
+                {
+                    ProjectionName = "event_session_custom_property_projection",
+                    ProjectionVersion = 1,
+                    RowsProcessed = 50,
+                    LinkRelations = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "rebuild" }
+                }
+            });
+        _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+
+        var cut = Render("ProjectionStatusSection");
+        cut.WaitForState(() => cut.Markup.Contains("Drain dirty scopes"), TimeSpan.FromSeconds(3));
+
+        await Assert.That(cut.Markup).Contains("Drain dirty scopes");
+        await Assert.That(cut.FindAll("button").Count(button => button.TextContent.Contains("Rebuild", StringComparison.OrdinalIgnoreCase))).IsEqualTo(2);
+    }
+
+
+    [Test]
+    public async Task ProjectionStatus_LoadsDirtyScopes_ForEventProjectionName()
+    {
+        const string projectionName = "event_custom_property_projection";
+        _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProjectionStatusModel>
+            {
+                new()
+                {
+                    ProjectionName = projectionName,
+                    ProjectionVersion = 1,
+                    LinkRelations = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "dirty-scopes" }
+                }
+            });
+        _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProjectionStatusModel>());
+        _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+
+        var cut = Render("ProjectionStatusSection");
+        cut.WaitForState(() => cut.Markup.Contains("Event Projection"), TimeSpan.FromSeconds(3));
+
+        await _adminService.Received().GetDirtyScopesAsync(_tenantId, projectionName, 1, 100, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProjectionStatus_DrainAction_UsesEventProjectionName()
+    {
+        const string projectionName = "event_custom_property_projection";
+        _adminService.GetEventProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProjectionStatusModel>
+            {
+                new()
+                {
+                    ProjectionName = projectionName,
+                    ProjectionVersion = 1,
+                    LinkRelations = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "drain-dirty-scopes", "dirty-scopes" }
+                }
+            });
+        _adminService.GetSessionProjectionStatusAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ProjectionStatusModel>());
+        _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(PaginatedResult<ProjectionDirtyScopeModel>.Empty());
+        _adminService.DrainDirtyScopesAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<DrainDirtyScopesResult>
+            {
+                Success = true,
+                Id = new DrainDirtyScopesResult { DrainedCount = 3 }
+            });
+
+        var cut = Render("ProjectionStatusSection");
+        cut.WaitForState(() => cut.Markup.Contains("Drain dirty scopes"), TimeSpan.FromSeconds(3));
+
+        cut.FindAll("button").First(button => button.TextContent.Contains("Drain dirty scopes", StringComparison.OrdinalIgnoreCase)).Click();
+
+        await _adminService.Received().DrainDirtyScopesAsync(_tenantId, projectionName, Arg.Any<CancellationToken>());
     }
 
     [Test]

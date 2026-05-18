@@ -35,6 +35,8 @@ public interface IEventCustomPropertyRepository : IGenericRepository<EventCustom
         CancellationToken cancellationToken);
 
     Task<bool> DeleteDefinition(Guid id, CancellationToken cancellationToken);
+    Task<CustomPropertyPurgeDependencySummary?> GetPurgeDependencies(Guid id, CancellationToken cancellationToken);
+    Task<bool> PurgeDefinition(Guid id, CancellationToken cancellationToken);
 
     Task<List<EventCustomPropertyValue>> GetValuesForEvent(Guid eventId);
     Task<List<EventCustomPropertyValue>> GetValuesForDefinition(Guid definitionId);

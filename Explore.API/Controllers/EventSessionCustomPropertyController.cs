@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
 using Explore.Application.Features.EventSessionCustomProperties.Requests.Queries;
@@ -185,6 +186,39 @@ public class EventSessionCustomPropertyController : ControllerBase
         await _mediator.Send(command, cancellationToken);
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Permanently purge a dependency-free event-session-local custom property definition.
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpDelete("{id:guid}/purge", Name = RouteNames.PurgeEventSessionCustomPropertyDefinition)]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<CustomPropertyPurgeResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<CustomPropertyPurgeResultDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<CustomPropertyPurgeResultDto>>> Purge(
+        Guid id,
+        [FromBody] PurgeCustomPropertyDefinitionDto purgeDto,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new PurgeEventSessionCustomPropertyDefinitionCommand
+        {
+            Id = id,
+            Reason = purgeDto.Reason
+        }, cancellationToken);
+
+        if (result.Success)
+        {
+            return Ok(result);
+        }
+
+        return string.Equals(result.Message, "Session custom-property definition not found.", StringComparison.Ordinal)
+            ? NotFound(result)
+            : BadRequest(result);
     }
 
     /// <summary>

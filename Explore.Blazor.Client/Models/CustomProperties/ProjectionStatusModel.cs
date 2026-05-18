@@ -18,4 +18,7 @@ public sealed class ProjectionStatusModel
     public long RowsFailed { get; set; }
     public string? LastCheckpoint { get; set; }
     public string? LastErrorMessage { get; set; }
+    public IReadOnlySet<string> LinkRelations { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    public bool HasLink(string rel) => LinkRelations.Contains(rel);
 }

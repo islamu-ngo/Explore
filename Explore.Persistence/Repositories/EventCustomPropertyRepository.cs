@@ -232,6 +232,71 @@ public class EventCustomPropertyRepository : GenericRepository<EventCustomProper
         return true;
     }
 
+    public async Task<CustomPropertyPurgeDependencySummary?> GetPurgeDependencies(Guid id, CancellationToken cancellationToken)
+    {
+        var definition = await _dbContext.EventCustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AsNoTracking()
+            .Select(x => new { x.Id, x.TenantId, x.SourceTemplateId, x.SourceTemplateDefinitionId })
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        if (definition is null)
+        {
+            return null;
+        }
+
+        var optionCount = await _dbContext.EventCustomPropertyOptions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .CountAsync(x => x.EventCustomPropertyDefinitionId == id, cancellationToken);
+        var valueCount = await _dbContext.EventCustomPropertyValues
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .CountAsync(x => x.EventCustomPropertyDefinitionId == id, cancellationToken);
+        var projectionCount = await _dbContext.EventCustomPropertyProjections
+            .CountAsync(x => x.EventCustomPropertyDefinitionId == id, cancellationToken);
+        var auditCount = await _dbContext.AuditLogs
+            .CountAsync(x => x.EntityType == nameof(EventCustomPropertyDefinition) && x.EntityId == id.ToString(), cancellationToken);
+        var syncProvenanceCount = definition.SourceTemplateId.HasValue || definition.SourceTemplateDefinitionId.HasValue ? 1 : 0;
+
+        return new CustomPropertyPurgeDependencySummary(
+            id,
+            definition.TenantId,
+            "event_custom_property_definition",
+            optionCount,
+            valueCount,
+            projectionCount,
+            auditCount,
+            syncProvenanceCount);
+    }
+
+    public async Task<bool> PurgeDefinition(Guid id, CancellationToken cancellationToken)
+    {
+        var exists = await _dbContext.EventCustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AnyAsync(x => x.Id == id, cancellationToken);
+
+        if (!exists)
+        {
+            return false;
+        }
+
+        await _dbContext.EventCustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .Where(x => x.Id == id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.DefaultOptionId, (Guid?)null), cancellationToken);
+
+        await _dbContext.EventCustomPropertyOptions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .Where(x => x.EventCustomPropertyDefinitionId == id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var deleted = await _dbContext.EventCustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .Where(x => x.Id == id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        return deleted > 0;
+    }
+
     public async Task<List<EventCustomPropertyValue>> GetValuesForEvent(Guid eventId)
     {
         return await _dbContext.EventCustomPropertyValues

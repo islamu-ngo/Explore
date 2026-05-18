@@ -18,4 +18,7 @@ public sealed class ProjectionDirtyScopeModel
     public string? Reason { get; set; }
     public DateTimeOffset? CreatedAt { get; set; }
     public DateTimeOffset? DrainedAt { get; set; }
+    public IReadOnlySet<string> LinkRelations { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    public bool HasLink(string rel) => LinkRelations.Contains(rel);
 }

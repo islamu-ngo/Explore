@@ -128,7 +128,7 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
                 continue;
             }
 
-            var row = BuildProjectionRow(value, value.Definition);
+            var row = await BuildProjectionRowAsync(value, value.Definition, cancellationToken);
             _dbContext.EventCustomPropertyProjections.Add(row);
         }
 
@@ -281,11 +281,12 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
 
         if (existing is null)
         {
-            _dbContext.EventCustomPropertyProjections.Add(BuildProjectionRow(value, definition));
+            _dbContext.EventCustomPropertyProjections.Add(
+                await BuildProjectionRowAsync(value, definition, cancellationToken));
             return;
         }
 
-        ApplyProjectionFields(existing, value, definition);
+        await ApplyProjectionFieldsAsync(existing, value, definition, cancellationToken);
     }
 
     private async Task RemoveProjectionForValueAsync(Guid valueId, CancellationToken cancellationToken)
@@ -336,9 +337,10 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
             cancellationToken);
     }
 
-    private EventCustomPropertyProjection BuildProjectionRow(
+    private async Task<EventCustomPropertyProjection> BuildProjectionRowAsync(
         EventCustomPropertyValue value,
-        EventCustomPropertyDefinition definition)
+        EventCustomPropertyDefinition definition,
+        CancellationToken cancellationToken)
     {
         var row = new EventCustomPropertyProjection
         {
@@ -350,14 +352,15 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
             Key = definition.Key,
         };
 
-        ApplyProjectionFields(row, value, definition);
+        await ApplyProjectionFieldsAsync(row, value, definition, cancellationToken);
         return row;
     }
 
-    private void ApplyProjectionFields(
+    private async Task ApplyProjectionFieldsAsync(
         EventCustomPropertyProjection row,
         EventCustomPropertyValue value,
-        EventCustomPropertyDefinition definition)
+        EventCustomPropertyDefinition definition,
+        CancellationToken cancellationToken)
     {
         row.PropertyType = definition.PropertyType;
         row.ExposureLevel = definition.ExposureLevel;
@@ -376,11 +379,7 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
         row.Key = definition.Key;
         row.UpdatedAt = DateTime.UtcNow;
 
-        var optionText = value.OptionId is { } optionId
-            ? _dbContext.EventCustomPropertyOptions
-                .Local
-                .FirstOrDefault(o => o.Id == optionId)?.Value
-            : null;
+        var optionText = await ResolveOptionTextAsync(value.OptionId, cancellationToken);
 
         row.NormalizedValue = CustomPropertyProjectionNormalizer.Compute(
             definition.PropertyType,
@@ -389,6 +388,26 @@ public class EventCustomPropertyProjectionUpdater : IEventCustomPropertyProjecti
             value.BooleanValue,
             value.DateTimeValue,
             optionText);
+    }
+
+    private async Task<string?> ResolveOptionTextAsync(Guid? optionId, CancellationToken cancellationToken)
+    {
+        if (optionId is not { } id)
+        {
+            return null;
+        }
+
+        var tracked = _dbContext.EventCustomPropertyOptions.Local.FirstOrDefault(o => o.Id == id);
+        if (tracked is not null)
+        {
+            return tracked.Value;
+        }
+
+        return await _dbContext.EventCustomPropertyOptions
+            .AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(o => o.Value)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private Task<bool> TryAcquireSharedLockAsync(Guid tenantId, CancellationToken cancellationToken)
