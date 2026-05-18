@@ -47,6 +47,19 @@ public static class DialogOptionsFactory
     };
 
     /// <summary>
+    /// Borderless sign-in prompt — no title chrome and custom backdrop.
+    /// </summary>
+    public static DialogOptions LoginPrompt() => new()
+    {
+        CloseOnEscapeKey = true,
+        MaxWidth = MaxWidth.ExtraSmall,
+        FullWidth = true,
+        CloseButton = false,
+        NoHeader = true,
+        BackgroundClass = "login-prompt-backdrop"
+    };
+
+    /// <summary>
     /// Editor dialog — description editing, rich content.
     /// Medium + CloseButton + BackdropClick.
     /// </summary>

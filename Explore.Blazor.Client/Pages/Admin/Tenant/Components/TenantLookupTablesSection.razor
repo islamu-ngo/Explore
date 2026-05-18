@@ -413,112 +413,51 @@
     private async Task LoadDidCustodyTypesAsync() => _didCustodyTypes = await AdminService.GetDidCustodyTypesAsync();
 
     private async Task OpenCreateCategoryDialogAsync()
-    {
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await CreateCategoryDialog.ShowAsync(DialogService, "Create Category", options: options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: CreateCategoryDto createDto })
-        {
-            var success = await AdminService.CreateCategoryAsync(createDto);
-            if (success)
-            {
-                Snackbar.Add($"Category '{createDto.FullName}' created.", Severity.Success);
-                await LoadCategoriesAsync();
-            }
-            else
-            {
-                Snackbar.Add("Failed to create category.", Severity.Error);
-            }
-        }
-    }
+        => await RunLookupCreateAsync<CreateCategoryDto>(
+            options => CreateCategoryDialog.ShowAsync(DialogService, "Create Category", options: options),
+            AdminService.CreateCategoryAsync,
+            dto => dto.FullName,
+            "Category",
+            LoadCategoriesAsync);
 
     private async Task OpenEditCategoryDialogAsync(CategoryListDto category)
     {
         if (!category.Id.HasValue)
-        {
             return;
-        }
 
         var parameters = new DialogParameters<EditCategoryDialog>
         {
             { x => x.ExistingCategory, category }
         };
 
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await EditCategoryDialog.ShowAsync(DialogService, "Edit Category", parameters, options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: UpdateCategoryDto updateDto })
-        {
-            var success = await AdminService.UpdateCategoryAsync(updateDto);
-            if (success)
-            {
-                Snackbar.Add($"Category '{updateDto.FullName}' updated.", Severity.Success);
-                await LoadCategoriesAsync();
-            }
-            else
-            {
-                Snackbar.Add("Failed to update category.", Severity.Error);
-            }
-        }
+        await RunLookupEditAsync<UpdateCategoryDto>(
+            options => EditCategoryDialog.ShowAsync(DialogService, "Edit Category", parameters, options),
+            AdminService.UpdateCategoryAsync,
+            dto => dto.FullName,
+            "Category",
+            LoadCategoriesAsync);
     }
 
     private async Task DeleteCategoryAsync(CategoryListDto category)
-    {
-        if (!category.Id.HasValue)
-        {
-            return;
-        }
-
-        var confirm = await DialogService.ShowMessageBoxAsync(
-            "Confirm Delete",
-            $"Are you sure you want to delete the category '{category.FullName}'? This action cannot be undone.",
-            yesText: "Delete",
-            cancelText: "Cancel");
-
-        if (confirm == true)
-        {
-            var success = await AdminService.DeleteCategoryAsync(category.Id.Value);
-            if (success)
-            {
-                Snackbar.Add($"Category '{category.FullName}' deleted.", Severity.Success);
-                await LoadCategoriesAsync();
-            }
-            else
-            {
-                Snackbar.Add($"Failed to delete category '{category.FullName}'.", Severity.Error);
-            }
-        }
-    }
+        => await RunLookupDeleteAsync(
+            category.Id,
+            category.FullName,
+            "category",
+            AdminService.DeleteCategoryAsync,
+            LoadCategoriesAsync);
 
     private async Task OpenCreateTagDialogAsync()
-    {
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await CreateTagDialog.ShowAsync(DialogService, "Create Tag", options: options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: CreateTagDto createDto })
-        {
-            var success = await AdminService.CreateTagAsync(createDto);
-            if (success)
-            {
-                Snackbar.Add($"Tag '{createDto.FullName}' created.", Severity.Success);
-                await LoadTagsAsync();
-            }
-            else
-            {
-                Snackbar.Add("Failed to create tag.", Severity.Error);
-            }
-        }
-    }
+        => await RunLookupCreateAsync<CreateTagDto>(
+            options => CreateTagDialog.ShowAsync(DialogService, "Create Tag", options: options),
+            AdminService.CreateTagAsync,
+            dto => dto.FullName,
+            "Tag",
+            LoadTagsAsync);
 
     private async Task OpenEditTagDialogAsync(TagListDto tag)
     {
         if (!tag.Id.HasValue)
-        {
             return;
-        }
 
         var tagDetails = await AdminService.GetTagByIdAsync(tag.Id.Value);
         if (tagDetails == null)
@@ -532,80 +471,34 @@
             { x => x.ExistingTag, tagDetails }
         };
 
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await EditTagDialog.ShowAsync(DialogService, "Edit Tag", parameters, options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: UpdateTagDto updateDto })
-        {
-            var success = await AdminService.UpdateTagAsync(updateDto);
-            if (success)
-            {
-                Snackbar.Add($"Tag '{updateDto.FullName}' updated.", Severity.Success);
-                await LoadTagsAsync();
-            }
-            else
-            {
-                Snackbar.Add("Failed to update tag.", Severity.Error);
-            }
-        }
+        await RunLookupEditAsync<UpdateTagDto>(
+            options => EditTagDialog.ShowAsync(DialogService, "Edit Tag", parameters, options),
+            AdminService.UpdateTagAsync,
+            dto => dto.FullName,
+            "Tag",
+            LoadTagsAsync);
     }
 
     private async Task DeleteTagAsync(TagListDto tag)
-    {
-        if (!tag.Id.HasValue)
-        {
-            return;
-        }
-
-        var confirm = await DialogService.ShowMessageBoxAsync(
-            "Confirm Delete",
-            $"Are you sure you want to delete the tag '{tag.FullName}'? This action cannot be undone.",
-            yesText: "Delete",
-            cancelText: "Cancel");
-
-        if (confirm == true)
-        {
-            var success = await AdminService.DeleteTagAsync(tag.Id.Value);
-            if (success)
-            {
-                Snackbar.Add($"Tag '{tag.FullName}' deleted.", Severity.Success);
-                await LoadTagsAsync();
-            }
-            else
-            {
-                Snackbar.Add($"Failed to delete tag '{tag.FullName}'.", Severity.Error);
-            }
-        }
-    }
+        => await RunLookupDeleteAsync(
+            tag.Id,
+            tag.FullName,
+            "tag",
+            AdminService.DeleteTagAsync,
+            LoadTagsAsync);
 
     private async Task OpenCreateLocationDialogAsync()
-    {
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await CreateLocationDialog.ShowAsync(DialogService, "Create Location", options: options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: CreateLocationDto createDto })
-        {
-            var success = await AdminService.CreateLocationAsync(createDto);
-            if (success)
-            {
-                Snackbar.Add($"Location '{createDto.FullName}' created.", Severity.Success);
-                await LoadLocationsAsync();
-            }
-            else
-            {
-                Snackbar.Add("Failed to create location.", Severity.Error);
-            }
-        }
-    }
+        => await RunLookupCreateAsync<CreateLocationDto>(
+            options => CreateLocationDialog.ShowAsync(DialogService, "Create Location", options: options),
+            AdminService.CreateLocationAsync,
+            dto => dto.FullName,
+            "Location",
+            LoadLocationsAsync);
 
     private async Task OpenEditLocationDialogAsync(LocationListDto location)
     {
         if (!location.Id.HasValue)
-        {
             return;
-        }
 
         var locationDetails = await AdminService.GetLocationByIdAsync(location.Id.Value);
         if (locationDetails == null)
@@ -619,50 +512,101 @@
             { x => x.ExistingLocation, locationDetails }
         };
 
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await EditLocationDialog.ShowAsync(DialogService, "Edit Location", parameters, options);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: UpdateLocationDto updateDto })
-        {
-            var success = await AdminService.UpdateLocationAsync(updateDto);
-            if (success)
-            {
-                Snackbar.Add($"Location '{updateDto.FullName}' updated.", Severity.Success);
-                await LoadLocationsAsync();
-            }
-            else
-            {
-                Snackbar.Add("Failed to update location.", Severity.Error);
-            }
-        }
+        await RunLookupEditAsync<UpdateLocationDto>(
+            options => EditLocationDialog.ShowAsync(DialogService, "Edit Location", parameters, options),
+            AdminService.UpdateLocationAsync,
+            dto => dto.FullName,
+            "Location",
+            LoadLocationsAsync);
     }
 
     private async Task DeleteLocationAsync(LocationListDto location)
+        => await RunLookupDeleteAsync(
+            location.Id,
+            location.FullName,
+            "location",
+            AdminService.DeleteLocationAsync,
+            LoadLocationsAsync);
+
+    private async Task RunLookupCreateAsync<TCreateDto>(
+        Func<DialogOptions, Task<IDialogReference>> showDialogAsync,
+        Func<TCreateDto, Task<bool>> createAsync,
+        Func<TCreateDto, string?> getName,
+        string entityName,
+        Func<Task> reloadAsync)
     {
-        if (!location.Id.HasValue)
+        var dialog = await showDialogAsync(DialogOptionsFactory.Small());
+        var result = await dialog.Result;
+
+        if (result is not { Canceled: false, Data: TCreateDto createDto })
+            return;
+
+        var success = await createAsync(createDto);
+        if (success)
         {
+            Snackbar.Add($"{entityName} '{getName(createDto)}' created.", Severity.Success);
+            await reloadAsync();
             return;
         }
 
+        Snackbar.Add($"Failed to create {entityName.ToLowerInvariant()}.", Severity.Error);
+    }
+
+    private async Task RunLookupEditAsync<TUpdateDto>(
+        Func<DialogOptions, Task<IDialogReference>> showDialogAsync,
+        Func<TUpdateDto, Task<bool>> updateAsync,
+        Func<TUpdateDto, string?> getName,
+        string entityName,
+        Func<Task> reloadAsync)
+    {
+        var dialog = await showDialogAsync(DialogOptionsFactory.Small());
+        var result = await dialog.Result;
+
+        if (result is not { Canceled: false, Data: TUpdateDto updateDto })
+            return;
+
+        var success = await updateAsync(updateDto);
+        if (success)
+        {
+            Snackbar.Add($"{entityName} '{getName(updateDto)}' updated.", Severity.Success);
+            await reloadAsync();
+            return;
+        }
+
+        Snackbar.Add($"Failed to update {entityName.ToLowerInvariant()}.", Severity.Error);
+    }
+
+    private async Task RunLookupDeleteAsync(
+        Guid? id,
+        string? name,
+        string entityName,
+        Func<Guid, Task<bool>> deleteAsync,
+        Func<Task> reloadAsync)
+    {
+        if (!id.HasValue)
+            return;
+
         var confirm = await DialogService.ShowMessageBoxAsync(
             "Confirm Delete",
-            $"Are you sure you want to delete the location '{location.FullName}'? This action cannot be undone.",
+            $"Are you sure you want to delete the {entityName} '{name}'? This action cannot be undone.",
             yesText: "Delete",
             cancelText: "Cancel");
 
-        if (confirm == true)
+        if (confirm != true)
+            return;
+
+        var success = await deleteAsync(id.Value);
+        if (success)
         {
-            var success = await AdminService.DeleteLocationAsync(location.Id.Value);
-            if (success)
-            {
-                Snackbar.Add($"Location '{location.FullName}' deleted.", Severity.Success);
-                await LoadLocationsAsync();
-            }
-            else
-            {
-                Snackbar.Add($"Failed to delete location '{location.FullName}'.", Severity.Error);
-            }
+            Snackbar.Add($"{UppercaseFirst(entityName)} '{name}' deleted.", Severity.Success);
+            await reloadAsync();
+            return;
         }
+
+        Snackbar.Add($"Failed to delete {entityName} '{name}'.", Severity.Error);
     }
+
+    private static string UppercaseFirst(string value) => string.IsNullOrEmpty(value)
+        ? value
+        : value[..1].ToUpperInvariant() + value[1..];
 }
