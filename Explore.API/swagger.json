@@ -3326,6 +3326,142 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/custompropertydefinition/{id}/purge": {
+      "delete": {
+        "tags": [
+          "CustomPropertyDefinition"
+        ],
+        "operationId": "PurgeCustomPropertyDefinition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin"
+      }
+    },
     "/api/admin/custom-property-definitions/governance-report": {
       "get": {
         "tags": [
@@ -3455,41 +3591,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfProjectionStatusDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfProjectionStatusDto"
+                  "$ref": "#/components/schemas/HalCollectionResourceOfProjectionStatusDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfProjectionStatusDto"
+                  "$ref": "#/components/schemas/HalCollectionResourceOfProjectionStatusDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -3542,61 +3672,52 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfRebuildProjectionResponseDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfRebuildProjectionResponseDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfRebuildProjectionResponseDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -3649,41 +3770,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -3736,41 +3851,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfDrainDirtyScopesResponseDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfDrainDirtyScopesResponseDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfDrainDirtyScopesResponseDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -3844,21 +3953,18 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedResultOfProjectionDirtyScopeDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResultOfProjectionDirtyScopeDto"
+                  "$ref": "#/components/schemas/HalCollectionResourceOfProjectionDirtyScopeDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResultOfProjectionDirtyScopeDto"
+                  "$ref": "#/components/schemas/HalCollectionResourceOfProjectionDirtyScopeDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -3907,41 +4013,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfEventCustomPropertyProjectionDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfEventCustomPropertyProjectionDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfEventCustomPropertyProjectionDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -3982,41 +4082,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfProjectionStatusDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfProjectionStatusDto"
+                  "$ref": "#/components/schemas/HalCollectionResourceOfProjectionStatusDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfProjectionStatusDto"
+                  "$ref": "#/components/schemas/HalCollectionResourceOfProjectionStatusDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -4069,61 +4163,52 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfRebuildProjectionResponseDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfRebuildProjectionResponseDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfRebuildProjectionResponseDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "422": {
             "description": "Unprocessable Entity",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -4176,41 +4261,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -4259,41 +4338,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfEventSessionCustomPropertyProjectionDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfEventSessionCustomPropertyProjectionDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfEventSessionCustomPropertyProjectionDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -7632,6 +7705,142 @@
           }
         },
         "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventcustomproperty/{id}/purge": {
+      "delete": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "operationId": "PurgeEventCustomPropertyDefinition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin"
       }
     },
     "/api/eventcustomproperty/values": {
@@ -10985,6 +11194,142 @@
           }
         },
         "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventsessioncustomproperty/{id}/purge": {
+      "delete": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "operationId": "PurgeEventSessionCustomPropertyDefinition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfCustomPropertyPurgeResultDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin"
       }
     },
     "/api/eventsessioncustomproperty/values": {
@@ -16456,30 +16801,18 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/GroupMemberDto"
-                  }
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/GroupMemberDto"
-                  }
+                  "$ref": "#/components/schemas/HalCollectionResourceOfGroupMemberDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/GroupMemberDto"
-                  }
+                  "$ref": "#/components/schemas/HalCollectionResourceOfGroupMemberDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -16521,41 +16854,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/GroupMemberDto"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GroupMemberDto"
+                  "$ref": "#/components/schemas/HalResourceOfGroupMemberDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/GroupMemberDto"
+                  "$ref": "#/components/schemas/HalResourceOfGroupMemberDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "404": {
             "description": "Not Found",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -16608,41 +16935,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "401": {
             "description": "Unauthorized",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -16695,41 +17016,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "401": {
             "description": "Unauthorized",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -16771,41 +17086,35 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           },
           "401": {
             "description": "Unauthorized",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -17762,6 +18071,110 @@
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/instanceonboarding/authz-provider-configuration/sync": {
+      "post": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Sync Authorization Policy Package (Setup)",
+        "description": "Publishes the authorization policy package during instance setup. Protected by setup token.",
+        "operationId": "SyncInstanceOnboardingAuthorizationPolicyPackage",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/instanceonboarding/authz-provider-configuration/package": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Download Authorization Policy Package (Setup)",
+        "description": "Downloads a ZIP archive containing the authorization policy package and manual cerbosctl instructions. Protected by setup token.",
+        "operationId": "DownloadInstanceOnboardingAuthorizationPolicyPackage",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/zip": { }
             }
           }
         },
@@ -20638,6 +21051,141 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/instance/settings/authz-provider/sync": {
+      "post": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Sync Authorization Policy Package",
+        "description": "Publishes the authorization policy package. Requires instance administrator.",
+        "operationId": "SyncInstanceAuthorizationPolicyPackage",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/instance/settings/authz-provider/package": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Download Authorization Policy Package",
+        "description": "Downloads a ZIP archive containing the authorization policy package and manual cerbosctl instructions. Requires instance administrator.",
+        "operationId": "DownloadInstanceAuthorizationPolicyPackage",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/zip": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/zip; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/zip": { }
             }
           }
         },
@@ -24262,30 +24810,88 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationMemberDto"
-                  }
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationMemberDto"
-                  }
+                  "$ref": "#/components/schemas/HalCollectionResourceOfOrganizationMemberDto"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationMemberDto"
-                  }
+                  "$ref": "#/components/schemas/HalCollectionResourceOfOrganizationMemberDto"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/organizationmember/member/{id}": {
+      "get": {
+        "tags": [
+          "OrganizationMember"
+        ],
+        "operationId": "GetOrganizationMemberById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfOrganizationMemberDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfOrganizationMemberDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -24338,21 +24944,18 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -24405,21 +25008,18 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -24452,14 +25052,6 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationInvitationDto"
-                  }
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "type": "array",
@@ -24468,14 +25060,16 @@
                   }
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/OrganizationInvitationDto"
                   }
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -24517,21 +25111,18 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -24573,21 +25164,18 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -24629,21 +25217,18 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
               "application/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
               },
-              "text/json; v=0.1": {
+              "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
                 }
-              }
+              },
+              "application/json": { },
+              "application/hal+json": { }
             }
           }
         },
@@ -30131,6 +30716,257 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/tenant/settings/documents/branding": {
+      "get": {
+        "tags": [
+          "TenantSettingsDocuments"
+        ],
+        "summary": "Get Tenant Branding Settings Document",
+        "description": "Returns the current tenant branding typed settings document, provisioning the default typed row when it is missing.",
+        "operationId": "GetTenantBrandingSettingsDocument",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantBrandingSettingsDocumentDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantBrandingSettingsDocumentDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantBrandingSettingsDocumentDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "put": {
+        "tags": [
+          "TenantSettingsDocuments"
+        ],
+        "summary": "Replace Tenant Branding Settings Document",
+        "description": "Fully replaces the current tenant branding typed settings document. Uses optimistic concurrency and writes only tenant JSONB settings documents.",
+        "operationId": "ReplaceTenantBrandingSettingsDocument",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceTenantBrandingSettingsDocumentDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceTenantBrandingSettingsDocumentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantBrandingSettingsDocumentDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantBrandingSettingsDocumentDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantBrandingSettingsDocumentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/translation/{languageCode}": {
       "get": {
         "tags": [
@@ -34419,6 +35255,27 @@
           "cerbosGrpcEndpoint": {
             "type": "string"
           },
+          "cerbosAdminEndpoint": {
+            "type": "string"
+          },
+          "cerbosAdminUsername": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cerbosAdminPassword": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cerbosAdminUsernameConfigured": {
+            "type": "boolean"
+          },
+          "cerbosAdminPasswordConfigured": {
+            "type": "boolean"
+          },
           "cerbosDetectedFromEnvironment": {
             "type": "boolean"
           },
@@ -34531,6 +35388,55 @@
         "properties": {
           "id": {
             "type": "boolean"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quotaExceeded": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QuotaExceededDetails"
+              }
+            ]
+          }
+        }
+      },
+      "BaseCommandResponseOfCustomPropertyPurgeResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CustomPropertyPurgeResultDto"
+              }
+            ]
           },
           "success": {
             "type": "boolean"
@@ -34765,54 +35671,6 @@
             ],
             "items": {
               "$ref": "#/components/schemas/EventSessionCustomPropertyProjectionDto"
-            }
-          },
-          "success": {
-            "type": "boolean"
-          },
-          "message": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "errors": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "failureCode": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "quotaExceeded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/QuotaExceededDetails"
-              }
-            ]
-          }
-        }
-      },
-      "BaseCommandResponseOfIReadOnlyListOfProjectionStatusDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/ProjectionStatusDto"
             }
           },
           "success": {
@@ -37385,6 +38243,20 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "parentOrganizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "parentGroupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -38419,11 +39291,90 @@
           }
         }
       },
-      "CustomPropertyProjectionScopeType": {
-        "type": "integer"
-      },
-      "CustomPropertyProjectionState": {
-        "type": "integer"
+      "CustomPropertyPurgeResultDto": {
+        "required": [
+          "definitionId",
+          "tenantId",
+          "scope",
+          "purged",
+          "auditLogId",
+          "reason",
+          "optionCount",
+          "valueCount",
+          "projectionCount",
+          "auditLogCount",
+          "syncProvenanceCount"
+        ],
+        "type": "object",
+        "properties": {
+          "definitionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "purged": {
+            "type": "boolean"
+          },
+          "auditLogId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "optionCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "valueCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "projectionCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "auditLogCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "syncProvenanceCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasBlockingDependencies": {
+            "type": "boolean"
+          }
+        }
       },
       "DeclineBehavior": {
         "type": "integer"
@@ -44852,6 +45803,17 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfGroupMemberDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfGroupMemberDto"
+            }
+          }
+        }
+      },
       "HalCollectionEmbeddedOfIndexedDidListDto": {
         "type": "object",
         "properties": {
@@ -44896,6 +45858,17 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfOrganizationMemberDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfOrganizationMemberDto"
+            }
+          }
+        }
+      },
       "HalCollectionEmbeddedOfOrganizationReviewDto": {
         "type": "object",
         "properties": {
@@ -44903,6 +45876,28 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HalResourceOfOrganizationReviewDto"
+            }
+          }
+        }
+      },
+      "HalCollectionEmbeddedOfProjectionDirtyScopeDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfProjectionDirtyScopeDto"
+            }
+          }
+        }
+      },
+      "HalCollectionEmbeddedOfProjectionStatusDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfProjectionStatusDto"
             }
           }
         }
@@ -45594,6 +46589,58 @@
           }
         }
       },
+      "HalCollectionResourceOfGroupMemberDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfGroupMemberDto"
+          }
+        }
+      },
       "HalCollectionResourceOfIndexedDidListDto": {
         "type": "object",
         "properties": {
@@ -45802,6 +46849,58 @@
           }
         }
       },
+      "HalCollectionResourceOfOrganizationMemberDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfOrganizationMemberDto"
+          }
+        }
+      },
       "HalCollectionResourceOfOrganizationReviewDto": {
         "type": "object",
         "properties": {
@@ -45851,6 +46950,110 @@
           },
           "_embedded": {
             "$ref": "#/components/schemas/HalCollectionEmbeddedOfOrganizationReviewDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfProjectionDirtyScopeDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfProjectionDirtyScopeDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfProjectionStatusDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfProjectionStatusDto"
           }
         }
       },
@@ -50795,6 +51998,101 @@
           }
         }
       },
+      "HalResourceOfGroupMemberDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "groupFullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userEmail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "userFullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "roleName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "groupPositionId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "groupPositionFullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "href": {
+                  "type": "string",
+                  "description": "Link URL"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "HTTP method"
+                },
+                "title": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "description": "Link title"
+                }
+              }
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfIndexedDidDto": {
         "required": [
           "did",
@@ -51572,6 +52870,101 @@
           }
         }
       },
+      "HalResourceOfOrganizationMemberDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationFullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userEmail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "userFullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "roleName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "organizationPositionId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "organizationPositionFullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "href": {
+                  "type": "string",
+                  "description": "Link URL"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "HTTP method"
+                },
+                "title": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "description": "Link title"
+                }
+              }
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfOrganizationReviewDto": {
         "type": "object",
         "properties": {
@@ -51616,6 +53009,189 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "href": {
+                  "type": "string",
+                  "description": "Link URL"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "HTTP method"
+                },
+                "title": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "description": "Link title"
+                }
+              }
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfProjectionDirtyScopeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "projectionName": {
+            "type": "string"
+          },
+          "projectionVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scopeType": {
+            "type": "integer"
+          },
+          "scopeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "definitionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "drainedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "href": {
+                  "type": "string",
+                  "description": "Link URL"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "HTTP method"
+                },
+                "title": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "description": "Link title"
+                }
+              }
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfProjectionStatusDto": {
+        "type": "object",
+        "properties": {
+          "projectionName": {
+            "type": "string"
+          },
+          "projectionVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "integer"
+          },
+          "lastRebuildStartedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastRebuildCompletedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "rowsProcessed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "rowsFailed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "lastCheckpoint": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastErrorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "_links": {
             "type": "object",
@@ -51825,6 +53401,115 @@
             "items": {
               "$ref": "#/components/schemas/UntouchedLocalDefinitionDto"
             }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "href": {
+                  "type": "string",
+                  "description": "Link URL"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "HTTP method"
+                },
+                "title": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "description": "Link title"
+                }
+              }
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfTenantBrandingSettingsDocumentDto": {
+        "required": [
+          "documentKey",
+          "schemaVersion",
+          "defaultsVersion",
+          "payload",
+          "source",
+          "sourceScopeId",
+          "concurrencyStamp"
+        ],
+        "type": "object",
+        "properties": {
+          "documentKey": {
+            "type": "string"
+          },
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "defaultsVersion": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "displayName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "logoUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "faviconUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "customCssUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "sourceScopeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isLockedByInstance": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "_links": {
             "type": "object",
@@ -53738,55 +55423,6 @@
           }
         }
       },
-      "PaginatedResultOfProjectionDirtyScopeDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProjectionDirtyScopeDto"
-            }
-          },
-          "pageNumber": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "pageSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "totalPages": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "hasPreviousPage": {
-            "type": "boolean"
-          },
-          "hasNextPage": {
-            "type": "boolean"
-          }
-        }
-      },
       "PaginatedResultOfSharedContactDto": {
         "type": "object",
         "properties": {
@@ -54001,7 +55637,7 @@
             "format": "uuid"
           },
           "scopeType": {
-            "$ref": "#/components/schemas/CustomPropertyProjectionScopeType"
+            "type": "integer"
           },
           "scopeId": {
             "type": "string",
@@ -54049,7 +55685,7 @@
             "format": "uuid"
           },
           "state": {
-            "$ref": "#/components/schemas/CustomPropertyProjectionState"
+            "type": "integer"
           },
           "lastRebuildStartedAt": {
             "type": [
@@ -54554,6 +56190,17 @@
           }
         }
       },
+      "PurgeCustomPropertyDefinitionDto": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
       "QuotaExceededDetails": {
         "required": [
           "quotaKey",
@@ -54852,6 +56499,22 @@
           },
           "lockTenantAdminRenderPolicy": {
             "type": "boolean"
+          }
+        }
+      },
+      "ReplaceTenantBrandingSettingsDocumentDto": {
+        "required": [
+          "expectedConcurrencyStamp",
+          "payload"
+        ],
+        "type": "object",
+        "properties": {
+          "expectedConcurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/TenantBrandingSettingsPayloadDto"
           }
         }
       },
@@ -56046,6 +57709,113 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "TenantBrandingSettingsDocumentDto": {
+        "required": [
+          "documentKey",
+          "schemaVersion",
+          "defaultsVersion",
+          "payload",
+          "source",
+          "sourceScopeId",
+          "concurrencyStamp"
+        ],
+        "type": "object",
+        "properties": {
+          "documentKey": {
+            "type": "string"
+          },
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "defaultsVersion": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "displayName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "logoUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "faviconUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "customCssUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "sourceScopeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isLockedByInstance": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "TenantBrandingSettingsPayloadDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "logoUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "faviconUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customCssUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -58372,6 +60142,20 @@
               "null",
               "string"
             ]
+          },
+          "parentOrganizationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "parentGroupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -58968,18 +60752,6 @@
             "type": "string"
           },
           "customDomain": {
-            "type": "string"
-          },
-          "brandDisplayName": {
-            "type": "string"
-          },
-          "brandLogoUrl": {
-            "type": "string"
-          },
-          "brandFaviconUrl": {
-            "type": "string"
-          },
-          "brandCustomCssUrl": {
             "type": "string"
           },
           "announcementBarEnabled": {
@@ -60044,6 +61816,9 @@
     },
     {
       "name": "TenantOnboarding"
+    },
+    {
+      "name": "TenantSettingsDocuments"
     },
     {
       "name": "Translation"
