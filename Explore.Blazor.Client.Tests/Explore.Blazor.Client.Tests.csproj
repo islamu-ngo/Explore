@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Explore.Blazor\Services\CircuitTokenStore.cs" Link="Server\CircuitTokenStore.cs" />
     <Compile Include="..\Explore.Blazor\Services\CircuitAccessTokenService.cs" Link="Server\CircuitAccessTokenService.cs" />
     <Compile Include="..\Explore.Blazor\Services\CircuitUserContext.cs" Link="Server\CircuitUserContext.cs" />
     <Compile Include="..\Explore.Blazor\Services\BffAuthCookieStore.cs" Link="Server\BffAuthCookieStore.cs" />
