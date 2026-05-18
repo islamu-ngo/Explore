@@ -66,7 +66,7 @@ public class CerbosPrincipalBuilder
             .ToDictionary(id => id.ToString(), _ => AttributeValue.StringValue("admin"));
 
         return Principal
-            .NewInstance(userId.ToString(), "authenticated_user")
+            .NewInstance(userId.ToString(), "islamuevent_authenticated_user")
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(isInstanceAdmin))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(tenantMemberships))
             .WithAttribute("orgMemberships", AttributeValue.MapValue(orgMemberships));
@@ -93,7 +93,7 @@ public class CerbosPrincipalBuilder
             .ToArray();
 
         var principal = Principal
-            .NewInstance($"api_key:{machineContext.KeyId}", "authenticated_user")
+            .NewInstance($"api_key:{machineContext.KeyId}", "islamuevent_authenticated_user")
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(isInstanceAdmin))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(tenantMemberships))
             .WithAttribute("orgMemberships", AttributeValue.MapValue(orgMemberships))

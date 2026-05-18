@@ -4,8 +4,8 @@
 namespace Explore.Infrastructure.Services;
 
 /// <summary>
-/// Configuration for Cerbos Admin API access. Used by PolicySyncService to push
-/// dynamically-generated policies and broadcast reload commands to Cerbos instances.
+/// Configuration for Cerbos Admin API access. Used by the policy package publisher
+/// to upload policy/schema bundles and broadcast reload commands to Cerbos instances.
 /// </summary>
 public class CerbosAdminApiSettings
 {

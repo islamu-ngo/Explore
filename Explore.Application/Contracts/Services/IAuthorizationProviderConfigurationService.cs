@@ -31,4 +31,6 @@ public interface IAuthorizationProviderConfigurationService
     /// Returns true if the endpoint responds, false otherwise.
     /// </summary>
     Task<bool> VerifyCerbosEndpointAsync(string grpcEndpoint, CancellationToken cancellationToken = default);
+
+    Task<bool> VerifyCerbosAdminEndpointAsync(string adminEndpoint, CancellationToken cancellationToken = default);
 }

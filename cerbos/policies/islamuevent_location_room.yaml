@@ -1,0 +1,38 @@
+# ABOUTME: Cerbos resource policy for location_room resources.
+# Rooms are location-scoped: tenant admins manage rooms within their tenant.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_location_room"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_location_room.json
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+
+    # Tenant admins can manage all rooms within their tenant
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+
+    # Org admins can manage rooms for their locations
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_org_admin
+
+    # All authenticated users can view rooms
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user

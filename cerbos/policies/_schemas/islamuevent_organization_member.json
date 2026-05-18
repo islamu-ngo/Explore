@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for organization_member resources. Populated by ResourceDescriptors.OrganizationMember.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+    },
+    "organizationId": {
+      "type": "string",
+      "description": "Parent organization identifier. Used by islamuevent_org_admin derived role."
+    },
+    "userId": {
+      "type": "string",
+      "description": "Member user identifier."
+    }
+  },
+  "required": ["tenantId", "organizationId", "userId"]
+}

@@ -5,6 +5,7 @@
 using System.Net.Security;
 using System.Net.Sockets;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Constants;
 using Explore.Persistence;
@@ -56,7 +57,7 @@ public class AuthorizationProductionGuardrailTests
 
         var provider = scope.ServiceProvider.GetRequiredService<IAuthorizationProvider>();
 
-        var result = await provider.IsAllowedAsync("event", "test-resource", "create");
+        var result = await provider.IsAllowedAsync(ResourceKinds.Event, "test-resource", AuthorizationActions.Create);
 
         result.Should().BeFalse(
             "with no Cerbos endpoint and authorization.provider unset, " +

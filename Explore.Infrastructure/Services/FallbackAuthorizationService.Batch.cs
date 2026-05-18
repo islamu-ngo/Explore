@@ -77,7 +77,7 @@ public partial class FallbackAuthorizationService
     {
         if (profile.IsInstanceAdmin)
         {
-            LogDecision("allow", "instance_admin", resourceKind, resourceId, action);
+            LogDecision("allow", "is_instance_admin", resourceKind, resourceId, action);
             return true;
         }
 
@@ -89,38 +89,38 @@ public partial class FallbackAuthorizationService
 
         var decision = resourceKind switch
         {
-            "instance_setting" => false,
-            "tenant_setting" => EvaluateTenantSettingWithProfile(profile, resourceId, action, resourceAttributes),
-            "tenant" => false,
-            "tenant_member" or "category" or "tag" or "location" or "location_room"
+            "islamuevent_instance_setting" => false,
+            "islamuevent_tenant_setting" => EvaluateTenantSettingWithProfile(profile, resourceId, action, resourceAttributes),
+            "islamuevent_tenant" => false,
+            "islamuevent_tenant_member" or "islamuevent_category" or "islamuevent_tag" or "islamuevent_location" or "islamuevent_location_room"
                 => profile.IsTenantAdmin,
-            "custom_property_definition" or "custom_property_template" or "actor"
+            "islamuevent_custom_property_definition" or "islamuevent_custom_property_template" or "islamuevent_actor"
                 => action is "view" || profile.IsTenantAdmin,
-            "custom_property_value"
+            "islamuevent_custom_property_value"
                 => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "custom_property_projection" or "custom_property_governance"
+            "islamuevent_custom_property_projection" or "islamuevent_custom_property_governance"
                 => profile.IsTenantAdmin,
-            "platform_namespace" => action is "view",
-            "organization" => profile.IsTenantAdmin || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId),
-            "organization_member" => IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "organization_review" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "group" => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "group_member" => action is "view" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "event" or "event_session" or "event_session_group" or "event_session_agenda_item" or "event_day" or "event_agenda_item"
+            "islamuevent_platform_namespace" => action is "view",
+            "islamuevent_organization" => profile.IsTenantAdmin || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId),
+            "islamuevent_organization_member" => IsAdminForOrgScope(profile, resourceAttributes, resourceId),
+            "islamuevent_organization_review" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
+            "islamuevent_group" => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
+            "islamuevent_group_member" => action is "view" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
+            "islamuevent_event" or "islamuevent_event_session" or "islamuevent_event_session_group" or "islamuevent_event_session_agenda_item" or "islamuevent_event_day" or "islamuevent_event_agenda_item"
                 => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                     && (IsTenantAdminForResourceTenant(profile, resourceKind, resourceId, resourceAttributes)
                         || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId)
                         || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
-            "event_registration" => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
+            "islamuevent_event_registration" => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
                 && (action is "create" or "view"
                     || IsAdminForOrgScope(profile, resourceAttributes, resourceId)
                     || HasEventRolePermission(eventAuthority, resourceKind, resourceId, action, resourceAttributes)),
-            "event_contact_share_consent" => action is "viewsharedcontacts" or "exportsharedcontacts"
+            "islamuevent_event_contact_share_consent" => action is "viewsharedcontacts" or "exportsharedcontacts"
                 && IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "storage_object" => action is "create" or "view" || profile.IsTenantAdmin,
-            "user" => EvaluateUserWithProfile(profile, resourceId, action),
-            "notification" => true,
-            "atproto_record" or "indexed_did" => false,
+            "islamuevent_storage_object" => action is "create" or "view" || profile.IsTenantAdmin,
+            "islamuevent_user" => EvaluateUserWithProfile(profile, resourceId, action),
+            "islamuevent_notification" => true,
+            "islamuevent_atproto_record" or "islamuevent_indexed_did" => false,
             _ => false
         };
 
@@ -134,8 +134,12 @@ public partial class FallbackAuthorizationService
         string action,
         IDictionary<string, object>? resourceAttributes)
     {
-        if (resourceAttributes?.TryGetValue("isLockedByInstance", out var lockedObj) == true && lockedObj is true)
+        if (!IsTenantBrandingDocument(resourceAttributes)
+            && resourceAttributes?.TryGetValue("isLockedByInstance", out var lockedObj) == true
+            && lockedObj is true)
+        {
             return false;
+        }
 
         return profile.IsTenantAdmin;
     }

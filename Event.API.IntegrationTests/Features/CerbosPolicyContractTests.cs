@@ -32,31 +32,31 @@ public class CerbosPolicyContractTests : IDisposable
 
     public static IEnumerable<(string ResourceKind, string[] Actions)> GetInstanceAdminFullAccessCases()
     {
-        yield return ("event", (string[])["view", "create", "update", "delete"]);
-        yield return ("organization", (string[])["view", "create", "update", "delete", "manage_members"]);
-        yield return ("tenant", (string[])["view", "create", "update", "delete"]);
-        yield return ("user", (string[])["view", "create", "update", "delete"]);
-        yield return ("category", (string[])["view", "create", "update", "delete"]);
-        yield return ("tag", (string[])["view", "create", "update", "delete"]);
-        yield return ("location", (string[])["view", "create", "update", "delete"]);
-        yield return ("location_room", (string[])["view", "create", "update", "delete"]);
-        yield return ("actor", (string[])["view", "create", "update", "delete"]);
-        yield return ("tenant_member", (string[])["view", "create", "update", "delete"]);
-        yield return ("organization_member", (string[])["view", "create", "update", "delete", "manage_members"]);
-        yield return ("group", (string[])["view", "create", "update", "delete"]);
-        yield return ("group_member", (string[])["view", "create", "update", "delete"]);
-        yield return ("storage_object", (string[])["view", "create", "update", "delete"]);
-        yield return ("instance_setting", (string[])["view", "update", "delete", "lock", "unlock"]);
-        yield return ("tenant_setting", (string[])["view", "update", "delete"]);
-        yield return ("event_session", (string[])["view", "create", "update", "delete"]);
-        yield return ("event_day", (string[])["view", "create", "update", "delete"]);
-        yield return ("event_agenda_item", (string[])["view", "create", "update", "delete"]);
-        yield return ("event_session_agenda_item", (string[])["view", "create", "update", "delete"]);
-        yield return ("event_registration", (string[])["view", "create", "update", "delete"]);
-        yield return ("organization_review", (string[])["view", "create", "update", "delete"]);
-        yield return ("notification", (string[])["view", "create", "update", "delete"]);
-        yield return ("custom_property_definition", (string[])["view", "create", "update", "delete"]);
-        yield return ("custom_property_value", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_event", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_organization", (string[])["view", "create", "update", "delete", "manage_members"]);
+        yield return ("islamuevent_tenant", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_user", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_category", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_tag", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_location", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_location_room", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_actor", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_tenant_member", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_organization_member", (string[])["view", "create", "update", "delete", "manage_members"]);
+        yield return ("islamuevent_group", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_group_member", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_storage_object", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_instance_setting", (string[])["view", "update", "delete", "lock", "unlock"]);
+        yield return ("islamuevent_tenant_setting", (string[])["view", "update", "delete"]);
+        yield return ("islamuevent_event_session", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_event_day", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_event_agenda_item", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_event_session_agenda_item", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_event_registration", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_organization_review", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_notification", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_custom_property_definition", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_custom_property_value", (string[])["view", "create", "update", "delete"]);
     }
 
     [Test]
@@ -66,7 +66,7 @@ public class CerbosPolicyContractTests : IDisposable
         var (resourceKind, actions) = testCase;
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-instance-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = true, tenantMemberships = new { }, orgMemberships = new { } },
             resourceKind: resourceKind,
             resourceId: "resource-1",
@@ -89,14 +89,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-tenant-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
                 orgMemberships = new { }
             },
-            resourceKind: "event",
+            resourceKind: "islamuevent_event",
             resourceId: "event-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update", "delete"]);
@@ -112,14 +112,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-other-tenant-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new Dictionary<string, string> { ["tenant-other"] = "admin" },
                 orgMemberships = new { }
             },
-            resourceKind: "event",
+            resourceKind: "islamuevent_event",
             resourceId: "event-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "update", "delete"]);
@@ -134,14 +134,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-tenant-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
                 orgMemberships = new { }
             },
-            resourceKind: "organization",
+            resourceKind: "islamuevent_organization",
             resourceId: "org-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "update", "delete", "manage_members"]);
@@ -157,14 +157,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-other-tenant-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new Dictionary<string, string> { ["tenant-other"] = "admin" },
                 orgMemberships = new { }
             },
-            resourceKind: "organization",
+            resourceKind: "islamuevent_organization",
             resourceId: "org-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "update", "delete"]);
@@ -179,14 +179,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-tenant-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
                 orgMemberships = new { }
             },
-            resourceKind: "tenant",
+            resourceKind: "islamuevent_tenant",
             resourceId: "tenant-1",
             resourceAttrs: new { tenantId = "tenant-1" },
             actions: ["view", "update"]);
@@ -200,14 +200,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-tenant-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
                 orgMemberships = new { }
             },
-            resourceKind: "tenant_setting",
+            resourceKind: "islamuevent_tenant_setting",
             resourceId: "setting-1",
             resourceAttrs: new { tenantId = "tenant-1", isLockedByInstance = true },
             actions: ["update"]);
@@ -221,20 +221,42 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-tenant-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
                 orgMemberships = new { }
             },
-            resourceKind: "tenant_setting",
+            resourceKind: "islamuevent_tenant_setting",
             resourceId: "setting-1",
             resourceAttrs: new { tenantId = "tenant-1", isLockedByInstance = false },
             actions: ["view", "update"]);
 
         result.Should().ContainKey("view").WhoseValue.Should().Be("EFFECT_ALLOW");
         result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW");
+    }
+
+
+    [Test]
+    public async Task TenantAdmin_ShouldBeAllowed_ManageTenantBrandingDocument_WhenLockedForHandlerValidation()
+    {
+        var result = await _cerbos.CheckResourceAsync(
+            principalId: "user-tenant-admin",
+            principalRoles: ["islamuevent_authenticated_user"],
+            principalAttrs: new
+            {
+                isInstanceAdmin = false,
+                tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
+                orgMemberships = new { }
+            },
+            resourceKind: "islamuevent_tenant_setting",
+            resourceId: "setting-1",
+            resourceAttrs: new { tenantId = "tenant-1", documentKey = "tenant.branding", isLockedByInstance = true },
+            actions: ["update"]);
+
+        result.Should().ContainKey("update").WhoseValue.Should().Be("EFFECT_ALLOW",
+            "tenant.branding field-level locks are enforced by the replacement handler after authorization");
     }
 
     #endregion
@@ -246,14 +268,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new { },
                 orgMemberships = new Dictionary<string, string> { ["org-1"] = "admin" }
             },
-            resourceKind: "event",
+            resourceKind: "islamuevent_event",
             resourceId: "event-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update", "delete"]);
@@ -269,14 +291,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-other-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new { },
                 orgMemberships = new Dictionary<string, string> { ["org-other"] = "admin" }
             },
-            resourceKind: "event",
+            resourceKind: "islamuevent_event",
             resourceId: "event-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "update", "delete"]);
@@ -291,14 +313,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new { },
                 orgMemberships = new Dictionary<string, string> { ["org-1"] = "admin" }
             },
-            resourceKind: "organization",
+            resourceKind: "islamuevent_organization",
             resourceId: "org-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "update", "manage_members"]);
@@ -313,14 +335,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new { },
                 orgMemberships = new Dictionary<string, string> { ["org-1"] = "admin" }
             },
-            resourceKind: "organization",
+            resourceKind: "islamuevent_organization",
             resourceId: "org-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["delete"]);
@@ -334,14 +356,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new { },
                 orgMemberships = new Dictionary<string, string> { ["org-1"] = "admin" }
             },
-            resourceKind: "organization_member",
+            resourceKind: "islamuevent_organization_member",
             resourceId: "member-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update", "delete", "manage_members"]);
@@ -358,14 +380,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new { },
                 orgMemberships = new Dictionary<string, string> { ["org-1"] = "admin" }
             },
-            resourceKind: "group",
+            resourceKind: "islamuevent_group",
             resourceId: "group-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update", "delete"]);
@@ -381,14 +403,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new { },
                 orgMemberships = new Dictionary<string, string> { ["org-1"] = "admin" }
             },
-            resourceKind: "event_registration",
+            resourceKind: "islamuevent_event_registration",
             resourceId: "reg-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "update", "delete"]);
@@ -403,14 +425,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new { },
                 orgMemberships = new Dictionary<string, string> { ["org-1"] = "admin" }
             },
-            resourceKind: "actor",
+            resourceKind: "islamuevent_actor",
             resourceId: "actor-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create"]);
@@ -429,9 +451,9 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
-            resourceKind: "event",
+            resourceKind: "islamuevent_event",
             resourceId: "event-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view"]);
@@ -444,9 +466,9 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
-            resourceKind: "event",
+            resourceKind: "islamuevent_event",
             resourceId: "event-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "update", "delete"]);
@@ -461,9 +483,9 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
-            resourceKind: "event_registration",
+            resourceKind: "islamuevent_event_registration",
             resourceId: "reg-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "view"]);
@@ -477,9 +499,9 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
-            resourceKind: "storage_object",
+            resourceKind: "islamuevent_storage_object",
             resourceId: "obj-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create"]);
@@ -493,9 +515,9 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
-            resourceKind: "storage_object",
+            resourceKind: "islamuevent_storage_object",
             resourceId: "obj-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["delete", "update"]);
@@ -506,29 +528,29 @@ public class CerbosPolicyContractTests : IDisposable
 
     public static IEnumerable<string> GetAllViewableResources()
     {
-        yield return "event";
-        yield return "organization";
-        yield return "tenant";
-        yield return "user";
-        yield return "category";
-        yield return "tag";
-        yield return "location";
-        yield return "actor";
-        yield return "tenant_member";
-        yield return "organization_member";
-        yield return "group";
-        yield return "group_member";
-        yield return "storage_object";
-        yield return "instance_setting";
-        yield return "event_session";
-        yield return "event_day";
-        yield return "event_agenda_item";
-        yield return "event_session_agenda_item";
-        yield return "event_registration";
-        yield return "organization_review";
-        yield return "notification";
-        yield return "custom_property_definition";
-        yield return "custom_property_value";
+        yield return "islamuevent_event";
+        yield return "islamuevent_organization";
+        yield return "islamuevent_tenant";
+        yield return "islamuevent_user";
+        yield return "islamuevent_category";
+        yield return "islamuevent_tag";
+        yield return "islamuevent_location";
+        yield return "islamuevent_actor";
+        yield return "islamuevent_tenant_member";
+        yield return "islamuevent_organization_member";
+        yield return "islamuevent_group";
+        yield return "islamuevent_group_member";
+        yield return "islamuevent_storage_object";
+        yield return "islamuevent_instance_setting";
+        yield return "islamuevent_event_session";
+        yield return "islamuevent_event_day";
+        yield return "islamuevent_event_agenda_item";
+        yield return "islamuevent_event_session_agenda_item";
+        yield return "islamuevent_event_registration";
+        yield return "islamuevent_organization_review";
+        yield return "islamuevent_notification";
+        yield return "islamuevent_custom_property_definition";
+        yield return "islamuevent_custom_property_value";
     }
 
     [Test]
@@ -537,7 +559,7 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
             resourceKind: resourceKind,
             resourceId: "resource-1",
@@ -557,9 +579,9 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
-            resourceKind: "instance_setting",
+            resourceKind: "islamuevent_instance_setting",
             resourceId: "setting-1",
             resourceAttrs: new { tenantId = "tenant-1" },
             actions: ["update", "delete", "lock", "unlock"]);
@@ -575,14 +597,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-tenant-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new Dictionary<string, string> { ["tenant-1"] = "admin" },
                 orgMemberships = new { }
             },
-            resourceKind: "instance_setting",
+            resourceKind: "islamuevent_instance_setting",
             resourceId: "setting-1",
             resourceAttrs: new { tenantId = "tenant-1" },
             actions: ["update", "lock", "unlock"]);
@@ -599,9 +621,9 @@ public class CerbosPolicyContractTests : IDisposable
 
     public static IEnumerable<string> GetTenantScopedLookupResources()
     {
-        yield return "category";
-        yield return "tag";
-        yield return "location";
+        yield return "islamuevent_category";
+        yield return "islamuevent_tag";
+        yield return "islamuevent_location";
     }
 
     [Test]
@@ -610,7 +632,7 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-tenant-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
@@ -635,7 +657,7 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
             resourceKind: resourceKind,
             resourceId: "resource-1",
@@ -655,10 +677,10 @@ public class CerbosPolicyContractTests : IDisposable
 
     public static IEnumerable<string> GetOrgScopedEventSubResources()
     {
-        yield return "event_session";
-        yield return "event_day";
-        yield return "event_agenda_item";
-        yield return "event_session_agenda_item";
+        yield return "islamuevent_event_session";
+        yield return "islamuevent_event_day";
+        yield return "islamuevent_event_agenda_item";
+        yield return "islamuevent_event_session_agenda_item";
     }
 
     [Test]
@@ -667,7 +689,7 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
@@ -692,7 +714,7 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
             resourceKind: resourceKind,
             resourceId: "sub-1",
@@ -713,9 +735,9 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
-            resourceKind: "organization_review",
+            resourceKind: "islamuevent_organization_review",
             resourceId: "review-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["create", "view"]);
@@ -730,9 +752,9 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
-            resourceKind: "organization_review",
+            resourceKind: "islamuevent_organization_review",
             resourceId: "review-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["delete", "update"]);
@@ -750,9 +772,9 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
-            resourceKind: "notification",
+            resourceKind: "islamuevent_notification",
             resourceId: "notif-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update", "delete"]);
@@ -773,9 +795,9 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-regular",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new { isInstanceAdmin = false, tenantMemberships = new { }, orgMemberships = new { } },
-            resourceKind: "custom_property_definition",
+            resourceKind: "islamuevent_custom_property_definition",
             resourceId: "cpd-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create"]);
@@ -790,14 +812,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new { },
                 orgMemberships = new Dictionary<string, string> { ["org-1"] = "admin" }
             },
-            resourceKind: "custom_property_value",
+            resourceKind: "islamuevent_custom_property_value",
             resourceId: "cpv-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update", "delete"]);
@@ -818,14 +840,14 @@ public class CerbosPolicyContractTests : IDisposable
     {
         var result = await _cerbos.CheckResourceAsync(
             principalId: "user-org-admin",
-            principalRoles: ["authenticated_user"],
+            principalRoles: ["islamuevent_authenticated_user"],
             principalAttrs: new
             {
                 isInstanceAdmin = false,
                 tenantMemberships = new { },
                 orgMemberships = new Dictionary<string, string> { ["org-1"] = "admin" }
             },
-            resourceKind: "location_room",
+            resourceKind: "islamuevent_location_room",
             resourceId: "room-1",
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update", "delete"]);

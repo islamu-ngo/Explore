@@ -29,7 +29,8 @@ public class SetupSecretRequiredAttribute : TypeFilterAttribute
             {
                 context.Result = new ObjectResult(new { error = "Setup already completed." })
                 {
-                    StatusCode = StatusCodes.Status410Gone
+                    StatusCode = StatusCodes.Status410Gone,
+                    ContentTypes = { "application/json" }
                 };
                 return;
             }
@@ -39,7 +40,8 @@ public class SetupSecretRequiredAttribute : TypeFilterAttribute
             {
                 context.Result = new ObjectResult(new { error = "Invalid setup secret." })
                 {
-                    StatusCode = StatusCodes.Status403Forbidden
+                    StatusCode = StatusCodes.Status403Forbidden,
+                    ContentTypes = { "application/json" }
                 };
                 return;
             }

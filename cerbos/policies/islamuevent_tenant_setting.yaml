@@ -1,0 +1,37 @@
+# ABOUTME: Cerbos resource policy for tenant-level settings.
+# Tenant admins can update scalar settings ONLY IF not locked by instance admin.
+# tenant.branding is a typed document whose field-level locks are enforced by the handler.
+# Instance admins bypass all lock checks.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_tenant_setting"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_tenant_setting.json
+  rules:
+    # Instance admins can do everything regardless of locks
+    - actions: ["view", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+
+    # Tenant admins can view their tenant settings
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+
+    # Tenant admins can update ONLY if not locked by instance
+    - actions: ["update"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+      condition:
+        match:
+          expr: (has(request.resource.attr.documentKey) && request.resource.attr.documentKey == "tenant.branding") || request.resource.attr.isLockedByInstance != true

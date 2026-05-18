@@ -1,0 +1,26 @@
+# ABOUTME: Cerbos resource policy for instance-level settings.
+# Only instance admins can view and modify instance settings.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_instance_setting"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_instance_setting.json
+  rules:
+    # Instance admins can do everything with instance settings
+    - actions: ["view", "update", "delete", "lock", "unlock"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+
+    # All authenticated users can view instance settings (read-only)
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user

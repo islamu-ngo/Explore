@@ -49,8 +49,8 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService();
         var checks = new List<AuthorizationCheck>
         {
-            new("organization", "org-1", "update", null),
-            new("tenant_setting", "setting-key", "read", null)
+            new("islamuevent_organization", "org-1", "update", null),
+            new("islamuevent_tenant_setting", "setting-key", "read", null)
         };
 
         var result = await service.IsAllowedBatchAsync(checks);
@@ -72,8 +72,8 @@ public class CerbosAuthorizationServiceTests
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
 
         var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
-        protoResponse.Results.Add(CreateResultEntry("org-1", "organization", "update", Effect.Allow));
-        protoResponse.Results.Add(CreateResultEntry("org-2", "organization", "delete", Effect.Deny));
+        protoResponse.Results.Add(CreateResultEntry("org-1", "islamuevent_organization", "update", Effect.Allow));
+        protoResponse.Results.Add(CreateResultEntry("org-2", "islamuevent_organization", "delete", Effect.Deny));
 
         _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
             .Returns(new CheckResourcesResponse(protoResponse));
@@ -81,8 +81,8 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService();
         var checks = new List<AuthorizationCheck>
         {
-            new("organization", "org-1", "update", null),
-            new("organization", "org-2", "delete", null)
+            new("islamuevent_organization", "org-1", "update", null),
+            new("islamuevent_organization", "org-2", "delete", null)
         };
 
         var result = await service.IsAllowedBatchAsync(checks);
@@ -92,6 +92,37 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(result[1]).IsFalse();
         await _cerbosClient.Received(1)
             .CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithSameResourceIdAcrossKinds_MapsDecisionByKindAndId()
+    {
+        var userId = Guid.NewGuid();
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+
+        const string sharedId = "shared-1";
+        var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
+        protoResponse.Results.Add(CreateResultEntry(sharedId, "islamuevent_tenant", "update", Effect.Allow));
+        protoResponse.Results.Add(CreateResultEntry(sharedId, "islamuevent_organization", "update", Effect.Deny));
+
+        _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .Returns(new CheckResourcesResponse(protoResponse));
+
+        var service = CreateService();
+        var checks = new List<AuthorizationCheck>
+        {
+            new("islamuevent_organization", sharedId, "update", null),
+            new("islamuevent_tenant", sharedId, "update", null)
+        };
+
+        var result = await service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(result.Count).IsEqualTo(2);
+        await Assert.That(result[0]).IsFalse();
+        await Assert.That(result[1]).IsTrue();
     }
 
     [Test]
@@ -109,8 +140,8 @@ public class CerbosAuthorizationServiceTests
         var service = CreateService();
         var checks = new List<AuthorizationCheck>
         {
-            new("organization", "org-1", "update", null),
-            new("tenant_setting", "setting-1", "update", null)
+            new("islamuevent_organization", "org-1", "update", null),
+            new("islamuevent_tenant_setting", "setting-1", "update", null)
         };
 
         var result = await service.IsAllowedBatchAsync(checks);
@@ -118,6 +149,43 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(result.Count).IsEqualTo(2);
         await Assert.That(result[0]).IsFalse();
         await Assert.That(result[1]).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_GrpcFailure_LogsOnlySafeFailureMetadata()
+    {
+        var userId = Guid.NewGuid();
+        const string rawEndpoint = "https://tenant-pdp.example.com:443";
+        const string exceptionMessage = "PDP unreachable at https://secret-pdp.example.com:443 with token abc123";
+
+        _adminContext.UserId.Returns(userId);
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
+            .ThrowsAsync(new RpcException(new Status(StatusCode.Unavailable, exceptionMessage)));
+
+        var service = CreateService(rawEndpoint);
+        var result = await service.IsAllowedAsync("islamuevent_organization", "org-1", "update");
+
+        await Assert.That(result).IsFalse();
+        _logger.Received(1).Log(
+            LogLevel.Error,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => LogStateIsRedacted(state, rawEndpoint, exceptionMessage)),
+            Arg.Is<Exception?>(ex => ex == null),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    private static bool LogStateIsRedacted(object state, string rawEndpoint, string exceptionMessage)
+    {
+        var rendered = state.ToString();
+        return rendered is not null &&
+               rendered.Contains("FailureType=RpcException", StringComparison.Ordinal) &&
+               !rendered.Contains(rawEndpoint, StringComparison.Ordinal) &&
+               !rendered.Contains(exceptionMessage, StringComparison.Ordinal) &&
+               !rendered.Contains("secret-pdp", StringComparison.Ordinal) &&
+               !rendered.Contains("abc123", StringComparison.Ordinal);
     }
 
     [Test]
@@ -136,7 +204,7 @@ public class CerbosAuthorizationServiceTests
         Cerbos.Api.V1.Request.CheckResourcesRequest? capturedRequest = null;
 
         var protoResponse = new Cerbos.Api.V1.Response.CheckResourcesResponse();
-        protoResponse.Results.Add(CreateResultEntry("events.require_approval", "tenant_setting", "update", Effect.Deny));
+        protoResponse.Results.Add(CreateResultEntry("events.require_approval", "islamuevent_tenant_setting", "update", Effect.Deny));
 
         _cerbosClient.CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>())
             .Returns(call =>
@@ -152,7 +220,7 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(capturedRequest).IsNotNull();
 
         var resource = capturedRequest!.Resources[0];
-        await Assert.That(resource.Resource.Kind).IsEqualTo("tenant_setting");
+        await Assert.That(resource.Resource.Kind).IsEqualTo("islamuevent_tenant_setting");
         await Assert.That(resource.Resource.Id).IsEqualTo("events.require_approval");
 
         var attrs = resource.Resource.Attr;
@@ -186,7 +254,7 @@ public class CerbosAuthorizationServiceTests
         await Assert.That(intVal).IsNotNull();
     }
 
-    private CerbosAuthorizationService CreateService()
+    private CerbosAuthorizationService CreateService(string grpcEndpoint = "http://localhost:3593")
     {
         return new CerbosAuthorizationService(
             _cerbosClient,
@@ -196,7 +264,7 @@ public class CerbosAuthorizationServiceTests
             _settingsResolver,
             _tenantContext,
             _clientFactory,
-            Options.Create(new CerbosSettings { GrpcEndpoint = "http://localhost:3593", PlaintextMode = true }),
+            Options.Create(new CerbosSettings { GrpcEndpoint = grpcEndpoint, PlaintextMode = true }),
             _logger);
     }
 

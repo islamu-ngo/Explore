@@ -27,7 +27,7 @@ using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.DTOs.TenantMember;
-using Explore.Application.DTOs.TenantSettings;
+using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.User;
 
 namespace Explore.Application.Authorization;
@@ -103,14 +103,16 @@ public static class ResourceDescriptors
         },
         dto => new AuthorizationScope(TenantId: dto.Id.ToString()));
 
-    public static readonly ResourceDescriptor<TenantSettingsDto> TenantSettings = new(
+    public static readonly ResourceDescriptor<TenantBrandingSettingsDocumentDto> TenantBrandingSettingsDocument = new(
         ResourceKinds.TenantSetting,
-        dto => dto.Id.ToString(),
+        dto => $"{dto.SourceScopeId}:{dto.DocumentKey}",
         dto => new Dictionary<string, object>
         {
-            ["tenantId"] = dto.TenantId.ToString()
+            ["tenantId"] = dto.SourceScopeId.ToString(),
+            ["documentKey"] = dto.DocumentKey,
+            ["isLockedByInstance"] = dto.IsLockedByInstance
         },
-        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+        dto => new AuthorizationScope(TenantId: dto.SourceScopeId.ToString()));
 
     public static readonly ResourceDescriptor<TenantMemberDto> TenantMember = new(
         ResourceKinds.TenantMember,
@@ -320,12 +322,12 @@ public static class ResourceDescriptors
     #region Sub-resources piggybacking on parent tenant authorization
 
     // These use ResourceKinds.Tenant because their commands authorize via
-    // [AuthorizeResource("tenant", ...)], not their own resource kind.
+    // [AuthorizeResource(ResourceKinds.Tenant, ...)], not their own resource kind.
     // This aligns HATEOAS link authorization with command-level authorization.
     // Note: Also fixes a latent bug where these DTO types were not registered
     // in ResourceDescriptorRegistry, causing link generation to throw.
 
-    /// <summary>Piggybacks on tenant authorization. Commands use [AuthorizeResource("tenant", ...)].</summary>
+    /// <summary>Piggybacks on tenant authorization. Commands use [AuthorizeResource(ResourceKinds.Tenant, ...)].</summary>
     public static readonly ResourceDescriptor<EventTemplateDto> EventTemplate = new(
         ResourceKinds.Tenant,
         dto => dto.TenantId.ToString(),
@@ -335,7 +337,7 @@ public static class ResourceDescriptors
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
-    /// <summary>Piggybacks on tenant authorization. Commands use [AuthorizeResource("tenant", ...)].</summary>
+    /// <summary>Piggybacks on tenant authorization. Commands use [AuthorizeResource(ResourceKinds.Tenant, ...)].</summary>
     public static readonly ResourceDescriptor<EventSessionTemplateDto> EventSessionTemplate = new(
         ResourceKinds.Tenant,
         dto => dto.TenantId.ToString(),
@@ -345,7 +347,7 @@ public static class ResourceDescriptors
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
-    /// <summary>Piggybacks on tenant authorization. Commands use [AuthorizeResource("tenant", ...)].</summary>
+    /// <summary>Piggybacks on tenant authorization. Commands use [AuthorizeResource(ResourceKinds.Tenant, ...)].</summary>
     public static readonly ResourceDescriptor<EventCustomPropertyDefinitionDto> EventCustomPropertyDefinition = new(
         ResourceKinds.Tenant,
         dto => dto.TenantId.ToString(),
@@ -355,7 +357,7 @@ public static class ResourceDescriptors
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
-    /// <summary>Piggybacks on tenant authorization. Commands use [AuthorizeResource("tenant", ...)].</summary>
+    /// <summary>Piggybacks on tenant authorization. Commands use [AuthorizeResource(ResourceKinds.Tenant, ...)].</summary>
     public static readonly ResourceDescriptor<EventSessionCustomPropertyDefinitionDto> EventSessionCustomPropertyDefinition = new(
         ResourceKinds.Tenant,
         dto => dto.TenantId.ToString(),

@@ -12,7 +12,7 @@ namespace Explore.Application.Authorization;
 public sealed class AuthorizeResourceAttribute : Attribute
 {
     /// <summary>
-    /// The resource kind (e.g., "instance_setting", "tenant_setting").
+    /// The resource kind (e.g., <see cref="ResourceKinds.InstanceSetting"/>, <see cref="ResourceKinds.TenantSetting"/>).
     /// </summary>
     public string Resource { get; }
 

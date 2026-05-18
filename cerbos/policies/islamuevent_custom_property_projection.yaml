@@ -1,0 +1,26 @@
+# ABOUTME: Cerbos resource policy for custom_property_projection resources.
+# ABOUTME: Projection admin operations (rebuild, drain, status) are tenant-scoped admin actions.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_custom_property_projection"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_custom_property_projection.json
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+
+    # Tenant admins can view status and trigger rebuild/drain within their tenant
+    - actions: ["view", "update"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin

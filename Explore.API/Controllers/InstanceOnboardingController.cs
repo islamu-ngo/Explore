@@ -219,6 +219,39 @@ public class InstanceOnboardingController : ExploreControllerBase
     [AllowAnonymous]
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
+    [HttpPost("authz-provider-configuration/sync", Name = RouteNames.SyncInstanceOnboardingAuthorizationPolicyPackage)]
+    [EndpointSummary("Sync Authorization Policy Package (Setup)")]
+    [EndpointDescription("Publishes the authorization policy package during instance setup. Protected by setup token.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncAuthorizationPolicyPackage(CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new SyncAuthorizationPolicyPackageCommand(), cancellationToken);
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [AllowAnonymous]
+    [SetupSecretRequired]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpGet("authz-provider-configuration/package", Name = RouteNames.DownloadInstanceOnboardingAuthorizationPolicyPackage)]
+    [EndpointSummary("Download Authorization Policy Package (Setup)")]
+    [EndpointDescription("Downloads a ZIP archive containing the authorization policy package and manual cerbosctl instructions. Protected by setup token.")]
+    [Produces("application/zip")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> DownloadAuthorizationPolicyPackage(CancellationToken cancellationToken = default)
+    {
+        var archive = await _mediator.Send(new DownloadAuthorizationPolicyPackageQuery(), cancellationToken);
+        return File(archive.Content, archive.ContentType, archive.FileName);
+    }
+
+    [AllowAnonymous]
+    [SetupSecretRequired]
+    [EndpointClassification(EndpointClass.Admin)]
     [HttpPost("authz-provider-configuration/verify", Name = RouteNames.VerifyInstanceOnboardingAuthorizationProviderEndpoint)]
     [EndpointSummary("Verify Cerbos Authorization Endpoint")]
     [EndpointDescription("Verifies a Cerbos gRPC endpoint by calling its gRPC health service. Protected by setup token.")]

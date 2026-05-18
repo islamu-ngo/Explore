@@ -1,0 +1,32 @@
+# ABOUTME: Cerbos resource policy for user resources.
+# Users: instance admins manage all, tenant admins manage users in their tenant.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_user"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_user.json
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+
+    # Tenant admins can manage users within their tenant
+    - actions: ["view", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+
+    # All authenticated users can view user profiles
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user

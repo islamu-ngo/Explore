@@ -4,6 +4,8 @@
 namespace Explore.Application.Contracts.Infrastructure;
 
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 using Explore.Application.Authorization;
 
 /// <summary>
@@ -74,8 +76,66 @@ public sealed record AuthorizationCheck(
     /// <summary>
     /// Generates a deduplication key for batch authorization requests.
     /// Two checks with the same key are semantically identical and only need
-    /// to be evaluated once. Key is based on resource kind, id, and action —
-    /// the triple that uniquely identifies a Cerbos check.
+    /// to be evaluated once. Key includes resource identity, action, scope,
+    /// and canonical resource attributes so scoped/attribute-sensitive checks
+    /// cannot collapse into each other.
     /// </summary>
-    public string ToDeduplicationKey() => $"{ResourceKind}|{ResourceId}|{Action}";
+    public string ToDeduplicationKey()
+    {
+        var builder = new StringBuilder();
+
+        AppendSegment(builder, ResourceKind);
+        AppendSegment(builder, ResourceId);
+        AppendSegment(builder, Action);
+        AppendScope(builder, Scope);
+        AppendAttributes(builder, ResourceAttributes);
+
+        return builder.ToString();
+    }
+
+    private static void AppendScope(StringBuilder builder, AuthorizationScope? scope)
+    {
+        AppendSegment(builder, scope?.TenantId ?? string.Empty);
+        AppendSegment(builder, scope?.OrganizationId ?? string.Empty);
+    }
+
+    private static void AppendAttributes(StringBuilder builder, IReadOnlyDictionary<string, object>? attributes)
+    {
+        if (attributes is null || attributes.Count == 0)
+        {
+            AppendSegment(builder, string.Empty);
+            return;
+        }
+
+        AppendSegment(builder, attributes.Count.ToString(CultureInfo.InvariantCulture));
+        foreach (var pair in attributes.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            AppendSegment(builder, pair.Key);
+            AppendSegment(builder, NormalizeAttributeValue(pair.Value));
+        }
+    }
+
+    private static string NormalizeAttributeValue(object? value)
+    {
+        if (value is null)
+            return "<null>";
+
+        var rendered = value switch
+        {
+            DateTime dateTime => dateTime.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+            DateTimeOffset dateTimeOffset => dateTimeOffset.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? string.Empty
+        };
+
+        return $"{value.GetType().FullName}:{rendered}";
+    }
+
+    private static void AppendSegment(StringBuilder builder, string value)
+    {
+        builder.Append(value.Length.ToString(CultureInfo.InvariantCulture));
+        builder.Append(':');
+        builder.Append(value);
+        builder.Append('|');
+    }
 }

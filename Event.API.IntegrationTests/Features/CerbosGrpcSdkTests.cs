@@ -55,13 +55,13 @@ public class CerbosGrpcSdkTests : IDisposable
     public async Task GrpcSdk_InstanceAdmin_ShouldBeAllowedAllEventActions()
     {
         var principal = Principal
-            .NewInstance("user-instance-admin", "authenticated_user")
+            .NewInstance("user-instance-admin", "islamuevent_authenticated_user")
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(true))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()))
             .WithAttribute("orgMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()));
 
         var resource = ResourceEntry
-            .NewInstance("event", "event-grpc-1")
+            .NewInstance("islamuevent_event", "event-grpc-1")
             .WithActions("view", "create", "update", "delete");
 
         var response = await SendCheckResourcesAsync(principal, resource);
@@ -83,7 +83,7 @@ public class CerbosGrpcSdkTests : IDisposable
     {
         var principal = BuildRegularUserPrincipal();
         var resource = ResourceEntry
-            .NewInstance("event", "event-grpc-2")
+            .NewInstance("islamuevent_event", "event-grpc-2")
             .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
             .WithAttribute("organizationId", AttributeValue.StringValue("org-1"))
             .WithActions("view", "create", "update", "delete");
@@ -106,7 +106,7 @@ public class CerbosGrpcSdkTests : IDisposable
     {
         var principal = BuildTenantAdminPrincipal("tenant-1");
         var resource = ResourceEntry
-            .NewInstance("event", "event-grpc-3")
+            .NewInstance("islamuevent_event", "event-grpc-3")
             .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
             .WithAttribute("organizationId", AttributeValue.StringValue("org-1"))
             .WithActions("view", "create", "update");
@@ -124,7 +124,7 @@ public class CerbosGrpcSdkTests : IDisposable
     {
         var principal = BuildTenantAdminPrincipal("tenant-1");
         var resource = ResourceEntry
-            .NewInstance("event", "event-grpc-4")
+            .NewInstance("islamuevent_event", "event-grpc-4")
             .WithAttribute("tenantId", AttributeValue.StringValue("tenant-other"))
             .WithAttribute("organizationId", AttributeValue.StringValue("org-1"))
             .WithActions("create", "update", "delete");
@@ -146,7 +146,7 @@ public class CerbosGrpcSdkTests : IDisposable
     {
         var principal = BuildOrgAdminPrincipal("org-1");
         var resource = ResourceEntry
-            .NewInstance("event", "event-grpc-5")
+            .NewInstance("islamuevent_event", "event-grpc-5")
             .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
             .WithAttribute("organizationId", AttributeValue.StringValue("org-1"))
             .WithActions("view", "create", "update", "delete");
@@ -165,7 +165,7 @@ public class CerbosGrpcSdkTests : IDisposable
     {
         var principal = BuildOrgAdminPrincipal("org-1");
         var resource = ResourceEntry
-            .NewInstance("event", "event-grpc-6")
+            .NewInstance("islamuevent_event", "event-grpc-6")
             .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
             .WithAttribute("organizationId", AttributeValue.StringValue("org-other"))
             .WithActions("create", "update", "delete");
@@ -188,13 +188,13 @@ public class CerbosGrpcSdkTests : IDisposable
         var principal = BuildRegularUserPrincipal();
 
         var eventResource = ResourceEntry
-            .NewInstance("event", "batch-event-1")
+            .NewInstance("islamuevent_event", "batch-event-1")
             .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
             .WithAttribute("organizationId", AttributeValue.StringValue("org-1"))
             .WithActions("view");
 
         var orgResource = ResourceEntry
-            .NewInstance("organization", "batch-org-1")
+            .NewInstance("islamuevent_organization", "batch-org-1")
             .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
             .WithAttribute("organizationId", AttributeValue.StringValue("org-1"))
             .WithActions("view");
@@ -223,7 +223,7 @@ public class CerbosGrpcSdkTests : IDisposable
     {
         var principal = BuildTenantAdminPrincipal("tenant-1");
         var resource = ResourceEntry
-            .NewInstance("tenant_setting", "setting-grpc-1")
+            .NewInstance("islamuevent_tenant_setting", "setting-grpc-1")
             .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
             .WithAttribute("isLockedByInstance", AttributeValue.BoolValue(true))
             .WithActions("update");
@@ -233,6 +233,25 @@ public class CerbosGrpcSdkTests : IDisposable
 
         AssertEffect(result, "update", Effect.Deny,
             "tenant admin must be denied update when isLockedByInstance=true");
+    }
+
+
+    [Test]
+    public async Task GrpcSdk_TenantAdmin_ShouldBeAllowedTenantBrandingDocumentUpdateWhenLockedForHandlerValidation()
+    {
+        var principal = BuildTenantAdminPrincipal("tenant-1");
+        var resource = ResourceEntry
+            .NewInstance("islamuevent_tenant_setting", "setting-grpc-tenant-branding")
+            .WithAttribute("tenantId", AttributeValue.StringValue("tenant-1"))
+            .WithAttribute("documentKey", AttributeValue.StringValue("tenant.branding"))
+            .WithAttribute("isLockedByInstance", AttributeValue.BoolValue(true))
+            .WithActions("update");
+
+        var response = await SendCheckResourcesAsync(principal, resource);
+        var result = response.Find("setting-grpc-tenant-branding")!;
+
+        AssertEffect(result, "update", Effect.Allow,
+            "tenant.branding uses handler-level field locks after resource authorization");
     }
 
     #endregion
@@ -264,14 +283,14 @@ public class CerbosGrpcSdkTests : IDisposable
 
     private static Principal BuildRegularUserPrincipal() =>
         Principal
-            .NewInstance("user-regular-grpc", "authenticated_user")
+            .NewInstance("user-regular-grpc", "islamuevent_authenticated_user")
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(false))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()))
             .WithAttribute("orgMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()));
 
     private static Principal BuildTenantAdminPrincipal(string tenantId) =>
         Principal
-            .NewInstance("user-tenant-admin-grpc", "authenticated_user")
+            .NewInstance("user-tenant-admin-grpc", "islamuevent_authenticated_user")
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(false))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>
             {
@@ -281,7 +300,7 @@ public class CerbosGrpcSdkTests : IDisposable
 
     private static Principal BuildOrgAdminPrincipal(string orgId) =>
         Principal
-            .NewInstance("user-org-admin-grpc", "authenticated_user")
+            .NewInstance("user-org-admin-grpc", "islamuevent_authenticated_user")
             .WithAttribute("isInstanceAdmin", AttributeValue.BoolValue(false))
             .WithAttribute("tenantMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>()))
             .WithAttribute("orgMemberships", AttributeValue.MapValue(new Dictionary<string, AttributeValue>

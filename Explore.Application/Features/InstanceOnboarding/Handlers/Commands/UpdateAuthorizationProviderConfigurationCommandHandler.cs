@@ -62,6 +62,21 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler : IRequestHa
                 return response;
             }
 
+            if (!string.IsNullOrWhiteSpace(request.Configuration.CerbosAdminEndpoint))
+            {
+                var isAdminEndpointAllowed = await _configurationService.VerifyCerbosAdminEndpointAsync(
+                    request.Configuration.CerbosAdminEndpoint,
+                    cancellationToken);
+
+                if (!isAdminEndpointAllowed)
+                {
+                    response.Success = false;
+                    response.Message = "Cerbos Admin API endpoint is not allowed.";
+                    response.Errors = ["Use an HTTPS Admin API endpoint without credentials, query, fragment, or local/private network address components."];
+                    return response;
+                }
+            }
+
             request.Configuration.CerbosEndpointVerified = true;
         }
 

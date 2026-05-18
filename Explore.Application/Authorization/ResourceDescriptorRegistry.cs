@@ -24,7 +24,7 @@ using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.DTOs.TenantMember;
-using Explore.Application.DTOs.TenantSettings;
+using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.User;
 
 /// <summary>
@@ -37,93 +37,92 @@ public static class ResourceDescriptorRegistry
     private static readonly IReadOnlyDictionary<Type, string> ResourceKinds = new Dictionary<Type, string>
     {
         // Organization
-        [typeof(OrganizationDto)] = "organization",
-        [typeof(OrganizationListDto)] = "organization",
+        [typeof(OrganizationDto)] = global::Explore.Application.Authorization.ResourceKinds.Organization,
+        [typeof(OrganizationListDto)] = global::Explore.Application.Authorization.ResourceKinds.Organization,
 
         // Group
-        [typeof(GroupDto)] = "group",
-        [typeof(GroupListDto)] = "group",
+        [typeof(GroupDto)] = global::Explore.Application.Authorization.ResourceKinds.Group,
+        [typeof(GroupListDto)] = global::Explore.Application.Authorization.ResourceKinds.Group,
 
         // Group Member
-        [typeof(GroupMemberDto)] = "group_member",
-        [typeof(GroupMemberListDto)] = "group_member",
+        [typeof(GroupMemberDto)] = global::Explore.Application.Authorization.ResourceKinds.GroupMember,
+        [typeof(GroupMemberListDto)] = global::Explore.Application.Authorization.ResourceKinds.GroupMember,
 
         // Tenant Settings
-        [typeof(TenantSettingsDto)] = "tenant_setting",
-        [typeof(TenantSettingsListDto)] = "tenant_setting",
+        [typeof(TenantBrandingSettingsDocumentDto)] = global::Explore.Application.Authorization.ResourceKinds.TenantSetting,
 
         // Event
-        [typeof(EventDto)] = "event",
-        [typeof(EventListDto)] = "event",
+        [typeof(EventDto)] = global::Explore.Application.Authorization.ResourceKinds.Event,
+        [typeof(EventListDto)] = global::Explore.Application.Authorization.ResourceKinds.Event,
 
         // Tenant
-        [typeof(TenantDto)] = "tenant",
-        [typeof(TenantListDto)] = "tenant",
+        [typeof(TenantDto)] = global::Explore.Application.Authorization.ResourceKinds.Tenant,
+        [typeof(TenantListDto)] = global::Explore.Application.Authorization.ResourceKinds.Tenant,
 
         // User
-        [typeof(UserDto)] = "user",
+        [typeof(UserDto)] = global::Explore.Application.Authorization.ResourceKinds.User,
 
         // Tenant Member
-        [typeof(TenantMemberDto)] = "tenant_member",
-        [typeof(TenantMemberListDto)] = "tenant_member",
+        [typeof(TenantMemberDto)] = global::Explore.Application.Authorization.ResourceKinds.TenantMember,
+        [typeof(TenantMemberListDto)] = global::Explore.Application.Authorization.ResourceKinds.TenantMember,
 
         // Tag
-        [typeof(TagDto)] = "tag",
-        [typeof(TagListDto)] = "tag",
+        [typeof(TagDto)] = global::Explore.Application.Authorization.ResourceKinds.Tag,
+        [typeof(TagListDto)] = global::Explore.Application.Authorization.ResourceKinds.Tag,
 
         // Storage Object
-        [typeof(StorageObjectDto)] = "storage_object",
-        [typeof(StorageObjectListDto)] = "storage_object",
+        [typeof(StorageObjectDto)] = global::Explore.Application.Authorization.ResourceKinds.StorageObject,
+        [typeof(StorageObjectListDto)] = global::Explore.Application.Authorization.ResourceKinds.StorageObject,
 
         // Organization Review
-        [typeof(OrganizationReviewDto)] = "organization_review",
+        [typeof(OrganizationReviewDto)] = global::Explore.Application.Authorization.ResourceKinds.OrganizationReview,
 
         // Organization Member
-        [typeof(OrganizationMemberDto)] = "organization_member",
+        [typeof(OrganizationMemberDto)] = global::Explore.Application.Authorization.ResourceKinds.OrganizationMember,
 
         // Location
-        [typeof(LocationDto)] = "location",
-        [typeof(LocationListDto)] = "location",
+        [typeof(LocationDto)] = global::Explore.Application.Authorization.ResourceKinds.Location,
+        [typeof(LocationListDto)] = global::Explore.Application.Authorization.ResourceKinds.Location,
 
         // Indexed DID
-        [typeof(IndexedDidDto)] = "indexed_did",
-        [typeof(IndexedDidListDto)] = "indexed_did",
+        [typeof(IndexedDidDto)] = global::Explore.Application.Authorization.ResourceKinds.IndexedDid,
+        [typeof(IndexedDidListDto)] = global::Explore.Application.Authorization.ResourceKinds.IndexedDid,
 
         // Event Session
-        [typeof(EventSessionDto)] = "event_session",
-        [typeof(EventSessionListDto)] = "event_session",
+        [typeof(EventSessionDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSession,
+        [typeof(EventSessionListDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSession,
 
         // Event Session Group
-        [typeof(EventSessionGroupDto)] = "event_session_group",
-        [typeof(EventSessionGroupListDto)] = "event_session_group",
+        [typeof(EventSessionGroupDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSessionGroup,
+        [typeof(EventSessionGroupListDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSessionGroup,
 
         // Event Session Agenda Item
-        [typeof(EventSessionAgendaItemDto)] = "event_session_agenda_item",
-        [typeof(EventSessionAgendaItemListDto)] = "event_session_agenda_item",
+        [typeof(EventSessionAgendaItemDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSessionAgendaItem,
+        [typeof(EventSessionAgendaItemListDto)] = global::Explore.Application.Authorization.ResourceKinds.EventSessionAgendaItem,
 
         // Event Registration
-        [typeof(EventRegistrationDto)] = "event_registration",
-        [typeof(EventRegistrationListDto)] = "event_registration",
+        [typeof(EventRegistrationDto)] = global::Explore.Application.Authorization.ResourceKinds.EventRegistration,
+        [typeof(EventRegistrationListDto)] = global::Explore.Application.Authorization.ResourceKinds.EventRegistration,
 
         // Category
-        [typeof(CategoryDto)] = "category",
-        [typeof(CategoryListDto)] = "category",
+        [typeof(CategoryDto)] = global::Explore.Application.Authorization.ResourceKinds.Category,
+        [typeof(CategoryListDto)] = global::Explore.Application.Authorization.ResourceKinds.Category,
 
         // Custom Property Definition
-        [typeof(CustomPropertyDefinitionDto)] = "custom_property_definition",
-        [typeof(CustomPropertyDefinitionListDto)] = "custom_property_definition",
+        [typeof(CustomPropertyDefinitionDto)] = global::Explore.Application.Authorization.ResourceKinds.CustomPropertyDefinition,
+        [typeof(CustomPropertyDefinitionListDto)] = global::Explore.Application.Authorization.ResourceKinds.CustomPropertyDefinition,
 
         // Notification
-        [typeof(NotificationDto)] = "notification",
-        [typeof(NotificationListDto)] = "notification",
+        [typeof(NotificationDto)] = global::Explore.Application.Authorization.ResourceKinds.Notification,
+        [typeof(NotificationListDto)] = global::Explore.Application.Authorization.ResourceKinds.Notification,
 
         // Actor
-        [typeof(ActorDto)] = "actor",
-        [typeof(ActorListDto)] = "actor",
+        [typeof(ActorDto)] = global::Explore.Application.Authorization.ResourceKinds.Actor,
+        [typeof(ActorListDto)] = global::Explore.Application.Authorization.ResourceKinds.Actor,
 
         // ATProto Record
-        [typeof(AtprotoRecordDto)] = "atproto_record",
-        [typeof(AtprotoRecordListDto)] = "atproto_record"
+        [typeof(AtprotoRecordDto)] = global::Explore.Application.Authorization.ResourceKinds.AtprotoRecord,
+        [typeof(AtprotoRecordListDto)] = global::Explore.Application.Authorization.ResourceKinds.AtprotoRecord
     };
 
     /// <summary>

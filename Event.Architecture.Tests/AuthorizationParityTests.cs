@@ -17,8 +17,47 @@ using Explore.Infrastructure.Services;
 /// </summary>
 public partial class AuthorizationParityTests
 {
+    private const string ProductNamespacePrefix = "islamuevent_";
+    private const string NamespacedPrincipalSchemaFileName = "islamuevent_principal.json";
+
     private static readonly string CerbosPoliciesPath = FindCerbosPoliciesPath();
     private static readonly string CerbosSchemasPath = Path.Combine(FindCerbosPoliciesPath(), "_schemas");
+    private static readonly IReadOnlySet<string> LegacyBareResourceKinds = new HashSet<string>
+    {
+        "event",
+        "event_session",
+        "event_session_group",
+        "event_session_agenda_item",
+        "event_day",
+        "event_agenda_item",
+        "event_registration",
+        "event_contact_share_consent",
+        "organization",
+        "organization_member",
+        "organization_review",
+        "tenant",
+        "tenant_setting",
+        "tenant_member",
+        "category",
+        "tag",
+        "location",
+        "location_room",
+        "storage_object",
+        "user",
+        "atproto_record",
+        "indexed_did",
+        "instance_setting",
+        "custom_property_definition",
+        "custom_property_template",
+        "custom_property_value",
+        "custom_property_projection",
+        "custom_property_governance",
+        "platform_namespace",
+        "notification",
+        "actor",
+        "group",
+        "group_member"
+    };
 
     // ──────────────────────────────────────────
     // Data extraction helpers
@@ -121,7 +160,7 @@ public partial class AuthorizationParityTests
 
         return Directory.GetFiles(CerbosSchemasPath, "*.json")
             .Select(Path.GetFileNameWithoutExtension)
-            .Where(name => name != "principal") // principal.json is shared, not a resource kind
+            .Where(name => name != Path.GetFileNameWithoutExtension(NamespacedPrincipalSchemaFileName)) // principal schema is shared, not a resource kind
             .ToHashSet()!;
     }
 
@@ -286,11 +325,102 @@ public partial class AuthorizationParityTests
     [DisplayName("Principal JSON schema file exists")]
     public async Task PrincipalSchema_ShouldExist()
     {
-        var principalSchemaPath = Path.Combine(CerbosSchemasPath, "principal.json");
+        var principalSchemaPath = Path.Combine(CerbosSchemasPath, NamespacedPrincipalSchemaFileName);
 
         await Assert.That(File.Exists(principalSchemaPath))
             .IsTrue()
-            .Because("cerbos/policies/_schemas/principal.json must exist for Cerbos schema validation.");
+            .Because($"cerbos/policies/_schemas/{NamespacedPrincipalSchemaFileName} must exist for Cerbos schema validation.");
+    }
+
+    [Test]
+    [DisplayName("Product-owned Cerbos resource kinds use the islamuevent namespace")]
+    public async Task ProductOwnedResourceKinds_ShouldUse_IslamuEventNamespace()
+    {
+        var constants = GetResourceKindConstants();
+        var cerbosPolicies = GetCerbosPolicyResourceKinds();
+        var schemas = GetCerbosSchemaResourceKinds();
+
+        var violations = constants
+            .Concat(cerbosPolicies)
+            .Concat(schemas)
+            .Distinct()
+            .Where(kind => !kind.StartsWith(ProductNamespacePrefix, StringComparison.Ordinal))
+            .ToList();
+
+        await Assert.That(violations)
+            .IsEmpty()
+            .Because("Product-owned Cerbos resource identifiers must be namespaced to avoid collisions with tenant/BYO policy packages.");
+    }
+
+    [Test]
+    [DisplayName("Legacy bare Cerbos resource kinds are absent from canonical contracts")]
+    public async Task LegacyBareResourceKinds_ShouldBeAbsent_FromCanonicalContracts()
+    {
+        var constants = GetResourceKindConstants();
+        var cerbosPolicies = GetCerbosPolicyResourceKinds();
+        var schemas = GetCerbosSchemaResourceKinds();
+
+        var violations = constants
+            .Concat(cerbosPolicies)
+            .Concat(schemas)
+            .Distinct()
+            .Intersect(LegacyBareResourceKinds)
+            .ToList();
+
+        await Assert.That(violations)
+            .IsEmpty()
+            .Because("The Phase 1 hard cut intentionally removes all old bare product-owned Cerbos resource identifiers.");
+    }
+
+    [Test]
+    [DisplayName("Derived roles and principal role use islamuevent names")]
+    public async Task DerivedRoles_ShouldUse_IslamuEventNamespace()
+    {
+        var derivedRolesPath = Path.Combine(CerbosPoliciesPath, "derived_roles.yaml");
+        var content = File.ReadAllText(derivedRolesPath);
+
+        var violations = new List<string>();
+
+        foreach (Match match in LegacyDerivedRoleDefinitionRegex().Matches(content))
+            violations.Add(match.Value.Trim());
+
+        foreach (Match match in LegacyImportedDerivedRoleRegex().Matches(content))
+            violations.Add(match.Value.Trim());
+
+        foreach (Match match in LegacyPrincipalRoleRegex().Matches(content))
+            violations.Add(match.Value.Trim());
+
+        if (!content.Contains("name: islamuevent_explore_admin_roles", StringComparison.Ordinal))
+            violations.Add("missing islamuevent_explore_admin_roles policy name");
+
+        await Assert.That(violations)
+            .IsEmpty()
+            .Because("Static Cerbos principal and derived role identifiers are product-owned and must be namespaced.");
+    }
+
+    [Test]
+    [DisplayName("Cerbos policies reference the namespaced principal schema")]
+    public async Task CerbosPolicies_ShouldReference_NamespacedPrincipalSchema()
+    {
+        var violations = new List<string>();
+
+        foreach (var file in Directory.GetFiles(CerbosPoliciesPath, "*.yaml"))
+        {
+            var content = File.ReadAllText(file);
+            if (!CerbosResourceKindRegex().IsMatch(content))
+                continue;
+
+            var fileName = Path.GetFileName(file);
+            if (!content.Contains($"cerbos:///{NamespacedPrincipalSchemaFileName}", StringComparison.Ordinal))
+                violations.Add($"{fileName}: missing namespaced principal schema reference");
+
+            if (content.Contains("cerbos:///principal.json", StringComparison.Ordinal))
+                violations.Add($"{fileName}: still references legacy principal schema");
+        }
+
+        await Assert.That(violations)
+            .IsEmpty()
+            .Because("Every resource policy must use the namespaced shared principal schema after the hard cut.");
     }
 
     [Test]
@@ -400,4 +530,13 @@ public partial class AuthorizationParityTests
 
     [GeneratedRegex(@"\.RequirePermission\s*\(\s*(?!AuthorizationActions\.)", RegexOptions.Singleline)]
     private static partial Regex MissingAuthorizationActionRegex();
+
+    [GeneratedRegex(@"(?m)^\s*-?\s*name:\s*(explore_admin_roles|instance_admin|tenant_admin|org_admin)\b")]
+    private static partial Regex LegacyDerivedRoleDefinitionRegex();
+
+    [GeneratedRegex(@"(?m)^\s*-\s*(explore_admin_roles|instance_admin|tenant_admin|org_admin)\b")]
+    private static partial Regex LegacyImportedDerivedRoleRegex();
+
+    [GeneratedRegex(@"(?<!islamuevent_)authenticated_user\b")]
+    private static partial Regex LegacyPrincipalRoleRegex();
 }

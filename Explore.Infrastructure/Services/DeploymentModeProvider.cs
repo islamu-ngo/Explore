@@ -40,9 +40,12 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
     public async Task<DeploymentMode> GetCurrentModeAsync(CancellationToken ct = default)
     {
         // Layer 1: distributed cache
-        var cached = await TryGetCachedModeAsync(ct);
-        if (cached is not null)
-            return cached.Value;
+        if (!IsCacheDisabled())
+        {
+            var cached = await TryGetCachedModeAsync(ct);
+            if (cached is not null)
+                return cached.Value;
+        }
 
         // Layer 2: database (scoped repo accessed via factory)
         using var scope = _scopeFactory.CreateScope();
@@ -56,7 +59,11 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
         // and persisted when onboarding completes.
         if (bootstrap is null || !bootstrap.IsCompleted)
         {
-            await TrySetCachedModeAsync(DeploymentMode.SingleTenant, ct);
+            if (!IsCacheDisabled())
+            {
+                await TrySetCachedModeAsync(DeploymentMode.SingleTenant, ct);
+            }
+
             _logger.LogDebug("Deployment mode resolved from DB (pre-onboarding fallback): SingleTenant");
             return DeploymentMode.SingleTenant;
         }
@@ -67,7 +74,10 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
             ? dbMode
             : DeploymentMode.MultiTenant;
 
-        await TrySetCachedModeAsync(mode, ct);
+        if (!IsCacheDisabled())
+        {
+            await TrySetCachedModeAsync(mode, ct);
+        }
 
         _logger.LogDebug("Deployment mode resolved from DB: {Mode}", mode);
         return mode;
@@ -81,6 +91,12 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
 
     public async Task InvalidateCacheAsync()
         => await TryRemoveCachedModeAsync();
+
+    private bool IsCacheDisabled()
+    {
+        return _configuration.GetValue<bool>("Deployment:DisableModeCache")
+            || _configuration.GetValue<bool>("Testing:DisableDeploymentModeCache");
+    }
 
     private async Task<DeploymentMode?> TryGetCachedModeAsync(CancellationToken ct)
     {

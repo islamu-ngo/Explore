@@ -89,6 +89,62 @@ public class SaveAuthorizationProviderConfigurationCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenCerbosAdminEndpointIsRejected_ReturnsFailureWithoutSaving()
+    {
+        var configuration = new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "https://cerbosgrpc.example.com:443",
+            CerbosAdminEndpoint = "https://127.0.0.1:3592",
+            CerbosAdminUsername = "admin",
+            CerbosAdminPassword = "secret"
+        };
+
+        _configurationService.VerifyCerbosEndpointAsync(configuration.CerbosGrpcEndpoint, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _configurationService.VerifyCerbosAdminEndpointAsync(configuration.CerbosAdminEndpoint, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var result = await _handler.Handle(new SaveAuthorizationProviderConfigurationCommand
+        {
+            Configuration = configuration
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("Admin API endpoint");
+        await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
+    }
+
+    [Test]
+    public async Task Handle_WhenCerbosAdminEndpointIsAllowed_PreservesWriteOnlyCredentialsForPersistence()
+    {
+        var configuration = new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "https://cerbosgrpc.example.com:443",
+            CerbosAdminEndpoint = "https://tenant-cerbos.example.com:3592",
+            CerbosAdminUsername = "admin",
+            CerbosAdminPassword = "secret"
+        };
+
+        _configurationService.VerifyCerbosEndpointAsync(configuration.CerbosGrpcEndpoint, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _configurationService.VerifyCerbosAdminEndpointAsync(configuration.CerbosAdminEndpoint, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _handler.Handle(new SaveAuthorizationProviderConfigurationCommand
+        {
+            Configuration = configuration
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _configurationService.Received(1).ApplyConfigurationAsync(Arg.Is<AuthorizationProviderConfigurationDto>(x =>
+            x.CerbosAdminEndpoint == "https://tenant-cerbos.example.com:3592"
+            && x.CerbosAdminUsername == "admin"
+            && x.CerbosAdminPassword == "secret"));
+    }
+
+    [Test]
     public async Task Handle_WhenCerbosEndpointDoesNotVerify_ReturnsFailureWithoutSaving()
     {
         var configuration = new AuthorizationProviderConfigurationDto

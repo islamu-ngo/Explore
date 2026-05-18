@@ -116,19 +116,19 @@ public class CerbosAuthorizationService : IAuthorizationProvider
 
         if (organizationId.HasValue)
         {
-            resourceKind = "organization";
+            resourceKind = "islamuevent_organization";
             attributes["organizationId"] = organizationId.Value.ToString();
         }
         else if (tenantId.HasValue)
         {
-            resourceKind = "tenant_setting";
+            resourceKind = "islamuevent_tenant_setting";
             attributes["tenantId"] = tenantId.Value.ToString();
             var metadata = await _resolver.ResolveWithMetadataAsync(settingKey, new SettingContext(), cancellationToken);
             attributes["isLockedByInstance"] = metadata?.IsLocked == true;
         }
         else
         {
-            resourceKind = "instance_setting";
+            resourceKind = "islamuevent_instance_setting";
         }
 
         return await IsAllowedAsync(resourceKind, settingKey, action, attributes, cancellationToken);
@@ -173,9 +173,10 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         catch (Exception ex) when (ex is Grpc.Core.RpcException or OperationCanceledException)
         {
             _logger.LogError(
-                ex,
-                "Cerbos PDP unreachable at {Endpoint}. Denying access for requestId={RequestId} correlationId={CorrelationId}",
-                endpointLabel, requestId, correlationId);
+                "Cerbos PDP unreachable. Denying access for requestId={RequestId} correlationId={CorrelationId}. FailureType={FailureType}",
+                requestId,
+                correlationId,
+                ex.GetType().Name);
 
             if (throwOnUnavailable)
                 throw;
@@ -215,7 +216,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
                 }
 
                 // Auto-enrich with tenantId when not explicitly provided in resource attributes.
-                // Required for Cerbos derived role evaluation (tenant_admin checks resource.attr.tenantId).
+        // Required for Cerbos derived role evaluation (tenant admin checks resource.attr.tenantId).
                 if (effectiveTenantId is not null &&
                     (check.ResourceAttributes is null || !check.ResourceAttributes.ContainsKey("tenantId")))
                 {
@@ -238,7 +239,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         for (var i = 0; i < checks.Count; i++)
         {
             var check = checks[i];
-            var resultEntry = response.Find(check.ResourceId);
+            var resultEntry = FindResultEntry(response, check);
 
             if (resultEntry is not null && resultEntry.Actions.TryGetValue(check.Action, out var effect))
             {
@@ -257,6 +258,16 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         }
 
         return decisions;
+    }
+
+    private static Cerbos.Api.V1.Response.CheckResourcesResponse.Types.ResultEntry? FindResultEntry(
+        CheckResourcesResponse response,
+        AuthorizationCheck check)
+    {
+        return response.Raw.Results.FirstOrDefault(result =>
+            result.Resource is { } resource &&
+            string.Equals(resource.Id, check.ResourceId, StringComparison.Ordinal) &&
+            string.Equals(resource.Kind, check.ResourceKind, StringComparison.Ordinal));
     }
 
     private static bool[] DenyAll(int count)
@@ -314,6 +325,8 @@ public class CerbosSettings
 public interface ICerbosClientFactory
 {
     ICerbosClient GetOrCreate(string grpcEndpoint);
+
+    void Evict(string grpcEndpoint);
 }
 
 /// <summary>
@@ -335,7 +348,7 @@ public class CerbosClientFactory : ICerbosClientFactory
 
         return _clients.GetOrAdd(normalizedEndpoint, endpoint =>
         {
-            _logger.LogInformation("Creating Cerbos gRPC client for BYO endpoint: {Endpoint}", endpoint);
+            _logger.LogInformation("Creating Cerbos gRPC client for BYO endpoint");
             var builder = CerbosClientBuilder
                 .ForTarget(endpoint)
                 .WithGrpcChannelOptions(CerbosGrpcChannelOptionsFactory.Create());
@@ -345,5 +358,21 @@ public class CerbosClientFactory : ICerbosClientFactory
 
             return builder.Build();
         });
+    }
+
+    public void Evict(string grpcEndpoint)
+    {
+        var normalizedEndpoint = GrpcEndpointNormalizer.Normalize(grpcEndpoint);
+
+        if (string.IsNullOrWhiteSpace(normalizedEndpoint))
+            return;
+
+        if (_clients.TryRemove(normalizedEndpoint, out var client))
+        {
+            if (client is IDisposable disposable)
+                disposable.Dispose();
+
+            _logger.LogInformation("Evicted Cerbos gRPC client for BYO endpoint");
+        }
     }
 }

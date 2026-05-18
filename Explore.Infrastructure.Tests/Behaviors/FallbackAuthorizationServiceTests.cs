@@ -54,7 +54,7 @@ public class FallbackAuthorizationServiceTests
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
 
-        var result = await _service.IsAllowedAsync("instance_setting", "any-key", "update");
+        var result = await _service.IsAllowedAsync("islamuevent_instance_setting", "any-key", "update");
 
         await Assert.That(result).IsTrue();
     }
@@ -65,7 +65,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
 
         var attrs = new Dictionary<string, object> { ["isLockedByInstance"] = true };
-        var result = await _service.IsAllowedAsync("tenant_setting", "locked-key", "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_setting", "locked-key", "update", attrs);
 
         await Assert.That(result).IsTrue();
     }
@@ -77,7 +77,7 @@ public class FallbackAuthorizationServiceTests
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("instance_setting", "any-key", "update");
+        var result = await _service.IsAllowedAsync("islamuevent_instance_setting", "any-key", "update");
 
         await Assert.That(result).IsFalse();
     }
@@ -96,7 +96,7 @@ public class FallbackAuthorizationServiceTests
             ["isLockedByInstance"] = false
         };
 
-        var result = await _service.IsAllowedAsync("tenant_setting", "unlocked-key", "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_setting", "unlocked-key", "update", attrs);
 
         await Assert.That(result).IsTrue();
     }
@@ -113,9 +113,28 @@ public class FallbackAuthorizationServiceTests
             ["isLockedByInstance"] = true
         };
 
-        var result = await _service.IsAllowedAsync("tenant_setting", "locked-key", "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_setting", "locked-key", "update", attrs);
 
         await Assert.That(result).IsFalse();
+    }
+
+
+    [Test]
+    public async Task IsAllowed_TenantAdmin_AllowsLockedTenantBrandingDocumentForHandlerValidation()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId,
+            ["documentKey"] = "tenant.branding",
+            ["isLockedByInstance"] = true
+        };
+
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_setting", "tenant-branding", "update", attrs);
+
+        await Assert.That(result).IsTrue();
     }
 
     [Test]
@@ -130,7 +149,7 @@ public class FallbackAuthorizationServiceTests
             ["isLockedByInstance"] = false
         };
 
-        var result = await _service.IsAllowedAsync("tenant_setting", "some-key", "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_setting", "some-key", "update", attrs);
 
         await Assert.That(result).IsFalse();
     }
@@ -145,7 +164,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
 
         var attrs = new Dictionary<string, object> { ["organizationId"] = TestOrgId };
-        var result = await _service.IsAllowedAsync("organization", TestOrgId.ToString(), "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_organization", TestOrgId.ToString(), "update", attrs);
 
         await Assert.That(result).IsTrue();
     }
@@ -157,7 +176,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
 
         var attrs = new Dictionary<string, object> { ["organizationId"] = TestOrgId };
-        var result = await _service.IsAllowedAsync("organization", TestOrgId.ToString(), "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_organization", TestOrgId.ToString(), "update", attrs);
 
         await Assert.That(result).IsTrue();
     }
@@ -170,7 +189,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(false);
 
         var attrs = new Dictionary<string, object> { ["organizationId"] = TestOrgId };
-        var result = await _service.IsAllowedAsync("organization", TestOrgId.ToString(), "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_organization", TestOrgId.ToString(), "update", attrs);
 
         await Assert.That(result).IsFalse();
     }
@@ -184,7 +203,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
 
         var attrs = new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString() };
-        var result = await _service.IsAllowedAsync("tenant_member", Guid.NewGuid().ToString(), "create", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_member", Guid.NewGuid().ToString(), "create", attrs);
 
         await Assert.That(result).IsTrue();
     }
@@ -195,7 +214,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("tenant_member", Guid.NewGuid().ToString(), "create");
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_member", Guid.NewGuid().ToString(), "create");
 
         await Assert.That(result).IsFalse();
     }
@@ -208,7 +227,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("group", Guid.NewGuid().ToString(), "view");
+        var result = await _service.IsAllowedAsync("islamuevent_group", Guid.NewGuid().ToString(), "view");
 
         await Assert.That(result).IsTrue();
     }
@@ -221,7 +240,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
 
         var attrs = new Dictionary<string, object> { ["organizationId"] = TestOrgId };
-        var result = await _service.IsAllowedAsync("group", Guid.NewGuid().ToString(), "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_group", Guid.NewGuid().ToString(), "update", attrs);
 
         await Assert.That(result).IsTrue();
     }
@@ -233,7 +252,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("group", Guid.NewGuid().ToString(), "update");
+        var result = await _service.IsAllowedAsync("islamuevent_group", Guid.NewGuid().ToString(), "update");
 
         await Assert.That(result).IsFalse();
     }
@@ -246,8 +265,8 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var viewResult = await _service.IsAllowedAsync("group_member", Guid.NewGuid().ToString(), "view");
-        var createResult = await _service.IsAllowedAsync("group_member", Guid.NewGuid().ToString(), "create");
+        var viewResult = await _service.IsAllowedAsync("islamuevent_group_member", Guid.NewGuid().ToString(), "view");
+        var createResult = await _service.IsAllowedAsync("islamuevent_group_member", Guid.NewGuid().ToString(), "create");
 
         await Assert.That(viewResult).IsTrue();
         await Assert.That(createResult).IsTrue();
@@ -260,7 +279,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("group_member", Guid.NewGuid().ToString(), "delete");
+        var result = await _service.IsAllowedAsync("islamuevent_group_member", Guid.NewGuid().ToString(), "delete");
 
         await Assert.That(result).IsFalse();
     }
@@ -278,7 +297,7 @@ public class FallbackAuthorizationServiceTests
             ["tenantId"] = TestTenantId
         };
 
-        var result = await _service.IsAllowedAsync("event_session", Guid.NewGuid().ToString(), "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs);
 
         await Assert.That(result).IsFalse();
     }
@@ -291,7 +310,7 @@ public class FallbackAuthorizationServiceTests
 
         var attrs = CreateEventContextAttributes();
 
-        var result = await _service.IsAllowedAsync("event_session", Guid.NewGuid().ToString(), "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs);
 
         await Assert.That(result).IsTrue();
     }
@@ -309,7 +328,7 @@ public class FallbackAuthorizationServiceTests
 
         var attrs = CreateEventContextAttributes(eventId);
 
-        var result = await _service.IsAllowedAsync("event_session", Guid.NewGuid().ToString(), "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs);
 
         await Assert.That(result).IsTrue();
     }
@@ -327,7 +346,7 @@ public class FallbackAuthorizationServiceTests
 
         var attrs = CreateEventContextAttributes(eventId);
 
-        var result = await _service.IsAllowedAsync("event_session", Guid.NewGuid().ToString(), "delete", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_event_session", Guid.NewGuid().ToString(), "delete", attrs);
 
         await Assert.That(result).IsFalse();
     }
@@ -343,7 +362,7 @@ public class FallbackAuthorizationServiceTests
             ["eventSessionId"] = Guid.NewGuid()
         };
 
-        var result = await _service.IsAllowedAsync("event_registration", Guid.NewGuid().ToString(), "create", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_event_registration", Guid.NewGuid().ToString(), "create", attrs);
 
         await Assert.That(result).IsFalse();
     }
@@ -356,7 +375,7 @@ public class FallbackAuthorizationServiceTests
         var attrs = CreateEventContextAttributes();
         attrs["eventSessionId"] = Guid.NewGuid();
 
-        var result = await _service.IsAllowedAsync("event_registration", Guid.NewGuid().ToString(), "create", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_event_registration", Guid.NewGuid().ToString(), "create", attrs);
 
         await Assert.That(result).IsTrue();
     }
@@ -375,7 +394,7 @@ public class FallbackAuthorizationServiceTests
         var attrs = CreateEventContextAttributes(eventId);
         attrs["eventSessionId"] = Guid.NewGuid();
 
-        var result = await _service.IsAllowedAsync("event_registration", Guid.NewGuid().ToString(), "update", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_event_registration", Guid.NewGuid().ToString(), "update", attrs);
 
         await Assert.That(result).IsTrue();
     }
@@ -392,7 +411,7 @@ public class FallbackAuthorizationServiceTests
         ConfigureEventAuthority(userId, eventId, PermissionCodes.EventDayUpdate);
 
         var result = await _service.IsAllowedAsync(
-            "event_day",
+            "islamuevent_event_day",
             Guid.NewGuid().ToString(),
             "update",
             CreateEventContextAttributes(eventId));
@@ -412,7 +431,7 @@ public class FallbackAuthorizationServiceTests
         ConfigureEventAuthority(userId, eventId, PermissionCodes.EventAgendaItemUpdate);
 
         var result = await _service.IsAllowedAsync(
-            "event_agenda_item",
+            "islamuevent_event_agenda_item",
             Guid.NewGuid().ToString(),
             "update",
             CreateEventContextAttributes(eventId));
@@ -428,7 +447,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("custom_property_definition", Guid.NewGuid().ToString(), "view");
+        var result = await _service.IsAllowedAsync("islamuevent_custom_property_definition", Guid.NewGuid().ToString(), "view");
 
         await Assert.That(result).IsTrue();
     }
@@ -439,7 +458,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var result = await _service.IsAllowedAsync("custom_property_definition", Guid.NewGuid().ToString(), "create");
+        var result = await _service.IsAllowedAsync("islamuevent_custom_property_definition", Guid.NewGuid().ToString(), "create");
 
         await Assert.That(result).IsTrue();
     }
@@ -450,7 +469,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("custom_property_definition", Guid.NewGuid().ToString(), "create");
+        var result = await _service.IsAllowedAsync("islamuevent_custom_property_definition", Guid.NewGuid().ToString(), "create");
 
         await Assert.That(result).IsFalse();
     }
@@ -465,8 +484,8 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsOrganizationAdminAsync(TestOrgId, Arg.Any<CancellationToken>()).Returns(true);
 
         var attrs = new Dictionary<string, object> { ["organizationId"] = TestOrgId };
-        var viewResult = await _service.IsAllowedAsync("event_contact_share_consent", Guid.NewGuid().ToString(), "viewsharedcontacts", attrs);
-        var exportResult = await _service.IsAllowedAsync("event_contact_share_consent", Guid.NewGuid().ToString(), "exportsharedcontacts", attrs);
+        var viewResult = await _service.IsAllowedAsync("islamuevent_event_contact_share_consent", Guid.NewGuid().ToString(), "viewsharedcontacts", attrs);
+        var exportResult = await _service.IsAllowedAsync("islamuevent_event_contact_share_consent", Guid.NewGuid().ToString(), "exportsharedcontacts", attrs);
 
         await Assert.That(viewResult).IsTrue();
         await Assert.That(exportResult).IsTrue();
@@ -479,7 +498,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("event_contact_share_consent", Guid.NewGuid().ToString(), "viewsharedcontacts");
+        var result = await _service.IsAllowedAsync("islamuevent_event_contact_share_consent", Guid.NewGuid().ToString(), "viewsharedcontacts");
 
         await Assert.That(result).IsFalse();
     }
@@ -490,7 +509,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var result = await _service.IsAllowedAsync("event_contact_share_consent", Guid.NewGuid().ToString(), "delete");
+        var result = await _service.IsAllowedAsync("islamuevent_event_contact_share_consent", Guid.NewGuid().ToString(), "delete");
 
         await Assert.That(result).IsFalse();
     }
@@ -502,8 +521,8 @@ public class FallbackAuthorizationServiceTests
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
 
-        var viewResult = await _service.IsAllowedAsync("notification", Guid.NewGuid().ToString(), "view");
-        var deleteResult = await _service.IsAllowedAsync("notification", Guid.NewGuid().ToString(), "delete");
+        var viewResult = await _service.IsAllowedAsync("islamuevent_notification", Guid.NewGuid().ToString(), "view");
+        var deleteResult = await _service.IsAllowedAsync("islamuevent_notification", Guid.NewGuid().ToString(), "delete");
 
         await Assert.That(viewResult).IsTrue();
         await Assert.That(deleteResult).IsTrue();
@@ -517,7 +536,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("actor", Guid.NewGuid().ToString(), "view");
+        var result = await _service.IsAllowedAsync("islamuevent_actor", Guid.NewGuid().ToString(), "view");
 
         await Assert.That(result).IsTrue();
     }
@@ -528,7 +547,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("actor", Guid.NewGuid().ToString(), "update");
+        var result = await _service.IsAllowedAsync("islamuevent_actor", Guid.NewGuid().ToString(), "update");
 
         await Assert.That(result).IsFalse();
     }
@@ -541,7 +560,7 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _service.ActivateSafeMode();
 
-        var result = await _service.IsAllowedAsync("event", Guid.NewGuid().ToString(), "view");
+        var result = await _service.IsAllowedAsync("islamuevent_event", Guid.NewGuid().ToString(), "view");
 
         await Assert.That(result).IsFalse();
     }
@@ -552,12 +571,40 @@ public class FallbackAuthorizationServiceTests
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
         _service.ActivateSafeMode();
 
-        var result = await _service.IsAllowedAsync("event", Guid.NewGuid().ToString(), "view");
+        var result = await _service.IsAllowedAsync("islamuevent_event", Guid.NewGuid().ToString(), "view");
 
         await Assert.That(result).IsTrue();
     }
 
     // === Batch Optimization Tests ===
+
+
+    [Test]
+    public async Task IsAllowedBatch_TenantAdmin_AllowsLockedTenantBrandingDocumentForHandlerValidation()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var checks = new List<AuthorizationCheck>
+        {
+            new(
+                "islamuevent_tenant_setting",
+                "tenant-branding",
+                "update",
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = TestTenantId,
+                    ["documentKey"] = "tenant.branding",
+                    ["isLockedByInstance"] = true
+                }),
+            new("islamuevent_group", Guid.NewGuid().ToString(), "view"),
+            new("islamuevent_group_member", Guid.NewGuid().ToString(), "view")
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results[0]).IsTrue();
+    }
 
     [Test]
     public async Task IsAllowedBatch_ReturnsCorrectResults_ForMixedChecks()
@@ -568,10 +615,10 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationCheck>
         {
-            new("notification", Guid.NewGuid().ToString(), "view"),
-            new("tenant_member", Guid.NewGuid().ToString(), "create"),
-            new("instance_setting", "key", "update"),
-            new("group", Guid.NewGuid().ToString(), "view"),
+            new("islamuevent_notification", Guid.NewGuid().ToString(), "view"),
+            new("islamuevent_tenant_member", Guid.NewGuid().ToString(), "create"),
+            new("islamuevent_instance_setting", "key", "update"),
+            new("islamuevent_group", Guid.NewGuid().ToString(), "view"),
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -593,12 +640,12 @@ public class FallbackAuthorizationServiceTests
         var checks = new List<AuthorizationCheck>
         {
             new(
-                "event_session",
+                "islamuevent_event_session",
                 Guid.NewGuid().ToString(),
                 "update",
                 new Dictionary<string, object> { ["tenantId"] = TestTenantId }),
             new(
-                "event_session",
+                "islamuevent_event_session",
                 Guid.NewGuid().ToString(),
                 "update",
                 CreateEventContextAttributes())
@@ -626,9 +673,9 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationCheck>
         {
-            new("event_session", Guid.NewGuid().ToString(), "update", attrs),
-            new("event_registration", Guid.NewGuid().ToString(), "create", attrs),
-            new("notification", Guid.NewGuid().ToString(), "view")
+            new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
+            new("islamuevent_event_registration", Guid.NewGuid().ToString(), "create", attrs),
+            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -653,9 +700,9 @@ public class FallbackAuthorizationServiceTests
         var attrs = CreateEventContextAttributes(eventId);
         var checks = new List<AuthorizationCheck>
         {
-            new("event_session", Guid.NewGuid().ToString(), "update", attrs),
-            new("event_session", Guid.NewGuid().ToString(), "delete", attrs),
-            new("notification", Guid.NewGuid().ToString(), "view")
+            new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
+            new("islamuevent_event_session", Guid.NewGuid().ToString(), "delete", attrs),
+            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);
@@ -680,9 +727,9 @@ public class FallbackAuthorizationServiceTests
         var attrs = CreateEventContextAttributes(eventId);
         var checks = new List<AuthorizationCheck>
         {
-            new("event_session", Guid.NewGuid().ToString(), "update", attrs),
-            new("event_session", Guid.NewGuid().ToString(), "delete", attrs),
-            new("notification", Guid.NewGuid().ToString(), "view")
+            new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", attrs),
+            new("islamuevent_event_session", Guid.NewGuid().ToString(), "delete", attrs),
+            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         await _service.IsAllowedBatchAsync(checks);
@@ -708,9 +755,9 @@ public class FallbackAuthorizationServiceTests
 
         var checks = new List<AuthorizationCheck>
         {
-            new("event_session", Guid.NewGuid().ToString(), "update", CreateEventContextAttributes(authorizedEventId)),
-            new("event_session", Guid.NewGuid().ToString(), "update", CreateEventContextAttributes(otherEventId)),
-            new("notification", Guid.NewGuid().ToString(), "view")
+            new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", CreateEventContextAttributes(authorizedEventId)),
+            new("islamuevent_event_session", Guid.NewGuid().ToString(), "update", CreateEventContextAttributes(otherEventId)),
+            new("islamuevent_notification", Guid.NewGuid().ToString(), "view")
         };
 
         var results = await _service.IsAllowedBatchAsync(checks);

@@ -24,6 +24,8 @@ public static class ApplicationServicesRegistration
 
         // Onboarding Services
         services.AddScoped<ITenantPolicySettingService, TenantPolicySettingService>();
+        services.AddScoped<ITenantBrandingSettingsDocumentProvisioningService, TenantBrandingSettingsDocumentProvisioningService>();
+        services.AddScoped<ITenantBrandingSettingsDocumentLockService, TenantBrandingSettingsDocumentLockService>();
         services.AddScoped<IInstanceGovernanceSettingService, InstanceGovernanceSettingService>();
         services.AddScoped<IInstanceStorageSettingService, InstanceStorageSettingService>();
         services.AddScoped<IInstanceSmtpSettingService, InstanceSmtpSettingService>();

@@ -11,10 +11,11 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        if (resourceAttributes?.TryGetValue("isLockedByInstance", out var lockedObj) == true
+        if (!IsTenantBrandingDocument(resourceAttributes)
+            && resourceAttributes?.TryGetValue("isLockedByInstance", out var lockedObj) == true
             && lockedObj is true)
         {
-            LogDecision("deny", "locked_by_instance", "tenant_setting", resourceId, action);
+            LogDecision("deny", "locked_by_instance", "islamuevent_tenant_setting", resourceId, action);
             return false;
         }
 
@@ -42,12 +43,17 @@ public partial class FallbackAuthorizationService
         var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
         LogDecision(
             isTenantAdmin ? "allow" : "deny",
-            $"tenant_admin={isTenantAdmin}",
-            "tenant_setting",
+            $"is_tenant_admin={isTenantAdmin}",
+            "islamuevent_tenant_setting",
             resourceId,
             action);
         return isTenantAdmin;
     }
+
+    private static bool IsTenantBrandingDocument(IDictionary<string, object>? resourceAttributes)
+        => resourceAttributes?.TryGetValue("documentKey", out var documentKey) == true
+            && documentKey is string documentKeyString
+            && string.Equals(documentKeyString, "tenant.branding", StringComparison.Ordinal);
 
     private async Task<bool> EvaluateOrganizationAccessAsync(
         string resourceId,
@@ -61,7 +67,7 @@ public partial class FallbackAuthorizationService
         {
             if (!Guid.TryParse(resourceId, out var orgIdFromResource))
             {
-                LogDecision("deny", "missing_organization_id", "organization", resourceId, action);
+                LogDecision("deny", "missing_organization_id", "islamuevent_organization", resourceId, action);
                 return false;
             }
 
@@ -79,7 +85,7 @@ public partial class FallbackAuthorizationService
             }
             else if (!Guid.TryParse(resourceId, out orgId))
             {
-                LogDecision("deny", "invalid_organization_id", "organization", resourceId, action);
+                LogDecision("deny", "invalid_organization_id", "islamuevent_organization", resourceId, action);
                 return false;
             }
         }
@@ -87,7 +93,7 @@ public partial class FallbackAuthorizationService
         var tenantId = _tenantContext.TenantId;
         if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
         {
-            LogDecision("allow", "tenant_admin=true", "organization", resourceId, action);
+            LogDecision("allow", "is_tenant_admin=true", "islamuevent_organization", resourceId, action);
             return true;
         }
 
@@ -95,7 +101,7 @@ public partial class FallbackAuthorizationService
         LogDecision(
             isOrgAdmin ? "allow" : "deny",
             $"organization_admin={isOrgAdmin}",
-            "organization",
+            "islamuevent_organization",
             resourceId,
             action);
         return isOrgAdmin;
@@ -110,7 +116,7 @@ public partial class FallbackAuthorizationService
     {
         var tenantId = ResolveTenantId(resourceAttributes);
         var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        LogDecision(isTenantAdmin ? "allow" : "deny", $"tenant_admin={isTenantAdmin}", resourceKind, resourceId, action);
+        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", resourceKind, resourceId, action);
         return isTenantAdmin;
     }
 
@@ -124,7 +130,7 @@ public partial class FallbackAuthorizationService
         var tenantId = ResolveTenantId(resourceAttributes);
         if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
         {
-            LogDecision("allow", "tenant_admin=true", resourceKind, resourceId, action);
+            LogDecision("allow", "is_tenant_admin=true", resourceKind, resourceId, action);
             return true;
         }
 
@@ -148,7 +154,7 @@ public partial class FallbackAuthorizationService
         if (action is "create" or "view")
             return true;
 
-        return await EvaluateOrgScopedAccessAsync("organization_review", resourceId, action, resourceAttributes, cancellationToken);
+        return await EvaluateOrgScopedAccessAsync("islamuevent_organization_review", resourceId, action, resourceAttributes, cancellationToken);
     }
 
     private async Task<bool> EvaluateEventRegistrationAccessAsync(
@@ -157,25 +163,25 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        if (!TryResolveEventContext("event_registration", resourceId, resourceAttributes, out var tenantId, out var eventId))
+        if (!TryResolveEventContext("islamuevent_event_registration", resourceId, resourceAttributes, out var tenantId, out var eventId))
         {
-            LogDecision("deny", "missing_event_context", "event_registration", resourceId, action);
+            LogDecision("deny", "missing_event_context", "islamuevent_event_registration", resourceId, action);
             return false;
         }
 
         if (tenantId != _tenantContext.TenantId)
         {
-            LogDecision("deny", "tenant_mismatch", "event_registration", resourceId, action);
+            LogDecision("deny", "tenant_mismatch", "islamuevent_event_registration", resourceId, action);
             return false;
         }
 
         if (action is "create" or "view")
             return true;
 
-        if (await EvaluateEventRolePermissionAsync("event_registration", resourceId, action, tenantId, eventId, cancellationToken))
+        if (await EvaluateEventRolePermissionAsync("islamuevent_event_registration", resourceId, action, tenantId, eventId, cancellationToken))
             return true;
 
-        return await EvaluateOrgScopedAccessAsync("event_registration", resourceId, action, resourceAttributes, cancellationToken);
+        return await EvaluateOrgScopedAccessAsync("islamuevent_event_registration", resourceId, action, resourceAttributes, cancellationToken);
     }
 
     private async Task<bool> EvaluateEventScopedAccessAsync(
@@ -199,7 +205,7 @@ public partial class FallbackAuthorizationService
 
         if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
         {
-            LogDecision("allow", "tenant_admin=true", resourceKind, resourceId, action);
+            LogDecision("allow", "is_tenant_admin=true", resourceKind, resourceId, action);
             return true;
         }
 
@@ -261,7 +267,7 @@ public partial class FallbackAuthorizationService
         if (action is "create" or "view")
             return true;
 
-        return await EvaluateTenantScopedAccessAsync("storage_object", resourceId, action, resourceAttributes, cancellationToken);
+        return await EvaluateTenantScopedAccessAsync("islamuevent_storage_object", resourceId, action, resourceAttributes, cancellationToken);
     }
 
     private async Task<bool> EvaluateUserAccessAsync(
@@ -274,13 +280,13 @@ public partial class FallbackAuthorizationService
             && Guid.TryParse(resourceId, out var targetUserId)
             && targetUserId == _adminContext.UserId.Value)
         {
-            LogDecision("allow", "self_service", "user", resourceId, action);
+            LogDecision("allow", "self_service", "islamuevent_user", resourceId, action);
             return true;
         }
 
         var tenantId = ResolveTenantId(resourceAttributes);
         var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        LogDecision(isTenantAdmin ? "allow" : "deny", $"tenant_admin={isTenantAdmin}", "user", resourceId, action);
+        LogDecision(isTenantAdmin ? "allow" : "deny", $"is_tenant_admin={isTenantAdmin}", "islamuevent_user", resourceId, action);
         return isTenantAdmin;
     }
 
@@ -319,7 +325,7 @@ public partial class FallbackAuthorizationService
         if (action is "view" or "create")
             return true;
 
-        return await EvaluateOrgScopedAccessAsync("group_member", resourceId, action, resourceAttributes, cancellationToken);
+        return await EvaluateOrgScopedAccessAsync("islamuevent_group_member", resourceId, action, resourceAttributes, cancellationToken);
     }
 
     private async Task<bool> EvaluateContactShareConsentAccessAsync(
@@ -331,7 +337,7 @@ public partial class FallbackAuthorizationService
         if (action is not ("viewsharedcontacts" or "exportsharedcontacts"))
             return false;
 
-        return await EvaluateOrgScopedAccessAsync("event_contact_share_consent", resourceId, action, resourceAttributes, cancellationToken);
+        return await EvaluateOrgScopedAccessAsync("islamuevent_event_contact_share_consent", resourceId, action, resourceAttributes, cancellationToken);
     }
 
     private async Task<bool> EvaluateActorAccessAsync(

@@ -1,5 +1,5 @@
-// ABOUTME: Typed serialization models for Cerbos Admin API policy push (derived role policies).
-// ABOUTME: Replaces anonymous objects in PolicySyncService for compile-time safety and testability.
+// ABOUTME: Typed serialization models for Cerbos Admin API policy and schema push payloads.
+// ABOUTME: Replaces anonymous objects in Cerbos sync services for compile-time safety and testability.
 
 using System.Text.Json.Serialization;
 
@@ -80,4 +80,34 @@ internal sealed class CerbosDerivedRoleExpression
 {
     [JsonPropertyName("expr")]
     public string Expr { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Cerbos Admin API request wrapper for adding or updating policy documents.
+/// </summary>
+internal sealed class CerbosPolicyBatchRequest
+{
+    [JsonPropertyName("policies")]
+    public required IReadOnlyList<object> Policies { get; init; }
+}
+
+/// <summary>
+/// Cerbos Admin API request wrapper for adding or updating JSON schemas.
+/// </summary>
+internal sealed class CerbosSchemaBatchRequest
+{
+    [JsonPropertyName("schemas")]
+    public required IReadOnlyList<CerbosSchemaDefinition> Schemas { get; init; }
+}
+
+/// <summary>
+/// Cerbos Admin API schema definition. The definition is base64-encoded raw JSON schema text.
+/// </summary>
+internal sealed class CerbosSchemaDefinition
+{
+    [JsonPropertyName("id")]
+    public required string Id { get; init; }
+
+    [JsonPropertyName("definition")]
+    public required string Definition { get; init; }
 }

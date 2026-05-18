@@ -167,7 +167,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             isInstanceAdmin: true,
             tenantMemberships: new Dictionary<string, string>(),
             orgMemberships: new Dictionary<string, string>(),
-            resourceKind: "event",
+            resourceKind: ResourceKinds.Event,
             actions: ["view", "create", "update", "delete"]);
 
         result.Should().ContainValues("EFFECT_ALLOW", "EFFECT_ALLOW", "EFFECT_ALLOW", "EFFECT_ALLOW");
@@ -180,7 +180,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             isInstanceAdmin: false,
             tenantMemberships: new Dictionary<string, string>(),
             orgMemberships: new Dictionary<string, string>(),
-            resourceKind: "event",
+            resourceKind: ResourceKinds.Event,
             actions: ["view", "create", "update", "delete"]);
 
         result["view"].Should().Be("EFFECT_ALLOW");
@@ -196,7 +196,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             isInstanceAdmin: false,
             tenantMemberships: new Dictionary<string, string> { ["tenant-1"] = "admin" },
             orgMemberships: new Dictionary<string, string>(),
-            resourceKind: "event",
+            resourceKind: ResourceKinds.Event,
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update"]);
 
@@ -207,7 +207,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             isInstanceAdmin: false,
             tenantMemberships: new Dictionary<string, string> { ["tenant-1"] = "admin" },
             orgMemberships: new Dictionary<string, string>(),
-            resourceKind: "event",
+            resourceKind: ResourceKinds.Event,
             resourceAttrs: new { tenantId = "tenant-2", organizationId = "org-2" },
             actions: ["create", "update", "delete"]);
 
@@ -222,7 +222,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             isInstanceAdmin: false,
             tenantMemberships: new Dictionary<string, string>(),
             orgMemberships: new Dictionary<string, string> { ["org-1"] = "admin" },
-            resourceKind: "event",
+            resourceKind: ResourceKinds.Event,
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-1" },
             actions: ["view", "create", "update"]);
 
@@ -232,7 +232,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             isInstanceAdmin: false,
             tenantMemberships: new Dictionary<string, string>(),
             orgMemberships: new Dictionary<string, string> { ["org-1"] = "admin" },
-            resourceKind: "event",
+            resourceKind: ResourceKinds.Event,
             resourceAttrs: new { tenantId = "tenant-1", organizationId = "org-other" },
             actions: ["create", "update", "delete"]);
 
@@ -268,7 +268,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
             principal = new
             {
                 id = "pipeline-test-principal",
-                roles = new[] { "authenticated_user" },
+                roles = new[] { "islamuevent_authenticated_user" },
                 attr = new { isInstanceAdmin, tenantMemberships, orgMemberships }
             },
             resources = new[]
@@ -365,7 +365,7 @@ public class AuthorizationPipelineIntegrationTests : IAsyncDisposable
                 principal = new
                 {
                     id = "pipeline-principal",
-                    roles = new[] { "authenticated_user" },
+                    roles = new[] { "islamuevent_authenticated_user" },
                     attr = (object)new
                     {
                         isInstanceAdmin = _isInstanceAdmin,

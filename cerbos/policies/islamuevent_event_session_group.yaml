@@ -1,0 +1,38 @@
+# ABOUTME: Cerbos resource policy for event_session_group resources.
+# Event session groups are event-scoped program sections such as tracks, devrooms, stages, and rooms.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_event_session_group"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_event_session_group.json
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+
+    # Tenant admins can manage all event session groups within their tenant
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+
+    # Org admins can manage event session groups for their organization
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_org_admin
+
+    # All authenticated users can view event session groups
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user

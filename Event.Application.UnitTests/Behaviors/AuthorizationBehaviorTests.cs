@@ -34,7 +34,7 @@ public class AuthorizationBehaviorTests
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true, Id = Guid.NewGuid() };
 
         _authService.IsAllowedAsync(
-            "tenant_setting", "test-resource", "update",
+            "islamuevent_tenant_setting", "test-resource", "update",
             Arg.Any<IDictionary<string, object>?>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
@@ -76,7 +76,7 @@ public class AuthorizationBehaviorTests
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
         _authService.IsAllowedAsync(
-            "instance_setting", Arg.Any<string>(), "update",
+            "islamuevent_instance_setting", Arg.Any<string>(), "update",
             Arg.Any<IDictionary<string, object>?>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
@@ -140,7 +140,7 @@ public class AuthorizationBehaviorTests
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
         _authService.IsAllowedAsync(
-            "organization", command.OrganizationId.ToString(), "update",
+            "islamuevent_organization", command.OrganizationId.ToString(), "update",
             Arg.Any<IDictionary<string, object>?>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
@@ -151,7 +151,7 @@ public class AuthorizationBehaviorTests
         // Assert
         await Assert.That(result.Success).IsTrue();
         await _authService.Received(1).IsAllowedAsync(
-            "organization",
+            "islamuevent_organization",
             command.OrganizationId.ToString(),
             "update",
             Arg.Any<IDictionary<string, object>?>(),
@@ -189,7 +189,7 @@ public class AuthorizationBehaviorTests
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
         _authService.IsAllowedAsync(
-            "organization", command.OrganizationId.ToString(), "delete",
+            "islamuevent_organization", command.OrganizationId.ToString(), "delete",
             Arg.Is<IDictionary<string, object>?>(d => d != null && d.ContainsKey("tenantId")),
             Arg.Any<CancellationToken>())
             .Returns(true);
@@ -200,7 +200,7 @@ public class AuthorizationBehaviorTests
         // Assert
         await Assert.That(result.Success).IsTrue();
         await _authService.Received(1).IsAllowedAsync(
-            "organization",
+            "islamuevent_organization",
             command.OrganizationId.ToString(),
             "delete",
             Arg.Is<IDictionary<string, object>?>(d => d != null && d.ContainsKey("tenantId")),
@@ -218,7 +218,7 @@ public class AuthorizationBehaviorTests
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
         _authService.IsAllowedAsync(
-            "organization", nameof(TestSecureCommandWithNullId), "delete",
+            "islamuevent_organization", nameof(TestSecureCommandWithNullId), "delete",
             Arg.Any<IDictionary<string, object>?>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
@@ -230,7 +230,7 @@ public class AuthorizationBehaviorTests
         // Assert
         await Assert.That(result.Success).IsTrue();
         await _authService.Received(1).IsAllowedAsync(
-            "organization",
+            "islamuevent_organization",
             nameof(TestSecureCommandWithNullId),
             "delete",
             Arg.Any<IDictionary<string, object>?>(),
@@ -241,10 +241,10 @@ public class AuthorizationBehaviorTests
     public void AuthorizeResourceAttribute_EnumConstructor_ConvertsActionToString()
     {
         // Arrange & Act
-        var attribute = new AuthorizeResourceAttribute("organization", AuthorizationActions.Update);
+        var attribute = new AuthorizeResourceAttribute("islamuevent_organization", AuthorizationActions.Update);
 
         // Assert
-        Assert.That(attribute.Resource == "organization");
+        Assert.That(attribute.Resource == "islamuevent_organization");
         Assert.That(attribute.Action == "update");
     }
 }
@@ -252,13 +252,13 @@ public class AuthorizationBehaviorTests
 // Test command implementing IAuthorizedRequest
 public class TestAuthorizedCommand : IRequest<BaseCommandResponse<Guid>>, IAuthorizedRequest
 {
-    public string ResourceKind => "tenant_setting";
+    public string ResourceKind => "islamuevent_tenant_setting";
     public string ResourceId => "test-resource";
     public string Action => "update";
 }
 
 // Test command with [AuthorizeResource] attribute
-[AuthorizeResource("instance_setting", "update")]
+[AuthorizeResource("islamuevent_instance_setting", "update")]
 public class TestAttributeCommand : IRequest<BaseCommandResponse<Guid>>
 {
 }
@@ -269,7 +269,7 @@ public class TestPlainCommand : IRequest<BaseCommandResponse<Guid>>
 }
 
 // Test command with [AuthorizeResource] enum + ISecureRequest providing dynamic ResourceId
-[AuthorizeResource("organization", AuthorizationActions.Update)]
+[AuthorizeResource("islamuevent_organization", AuthorizationActions.Update)]
 public class TestSecureCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid OrganizationId { get; set; } = Guid.NewGuid();
@@ -278,7 +278,7 @@ public class TestSecureCommand : IRequest<BaseCommandResponse<Guid>>, ISecureReq
 }
 
 // Test command with [AuthorizeResource] enum + ISecureRequest providing ResourceId and ResourceAttributes
-[AuthorizeResource("organization", AuthorizationActions.Delete)]
+[AuthorizeResource("islamuevent_organization", AuthorizationActions.Delete)]
 public class TestSecureCommandWithAttributes : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid OrganizationId { get; set; } = Guid.NewGuid();
@@ -290,7 +290,7 @@ public class TestSecureCommandWithAttributes : IRequest<BaseCommandResponse<Guid
 }
 
 // Test command with [AuthorizeResource] enum + ISecureRequest but null ResourceId — should fall back to type name
-[AuthorizeResource("organization", AuthorizationActions.Delete)]
+[AuthorizeResource("islamuevent_organization", AuthorizationActions.Delete)]
 public class TestSecureCommandWithNullId : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     // Uses default null ResourceId — should fall back to type name

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for tenant_setting resources. Populated by tenant settings resource descriptors and typed settings document descriptors.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+    },
+    "isLockedByInstance": {
+      "type": "boolean",
+      "description": "Whether this setting is locked by an instance admin. Used in policy condition to prevent tenant admin updates."
+    },
+    "documentKey": {
+      "type": "string",
+      "description": "Optional typed settings document key. tenant.branding is authorized before handler-level field lock validation."
+    }
+  },
+  "required": ["tenantId"]
+}

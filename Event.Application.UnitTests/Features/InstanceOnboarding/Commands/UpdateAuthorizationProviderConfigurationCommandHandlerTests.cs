@@ -101,6 +101,32 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenCerbosAdminEndpointIsRejected_ReturnsFailureWithoutSaving()
+    {
+        _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var configuration = new AuthorizationProviderConfigurationDto
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "https://cerbosgrpc.example.com:443",
+            CerbosAdminEndpoint = "https://localhost:3592",
+            CerbosAdminUsername = "admin",
+            CerbosAdminPassword = "secret"
+        };
+
+        _configurationService.VerifyCerbosEndpointAsync(configuration.CerbosGrpcEndpoint, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _configurationService.VerifyCerbosAdminEndpointAsync(configuration.CerbosAdminEndpoint, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var result = await _handler.Handle(CreateCommand(configuration), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("Admin API endpoint");
+        await _configurationService.DidNotReceive().ApplyConfigurationAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
+    }
+
+    [Test]
     public async Task Handle_WhenCerbosEndpointDoesNotVerify_ReturnsFailureWithoutSaving()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);

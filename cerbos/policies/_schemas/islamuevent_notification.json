@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for notification resources. Notifications are personal data scoped to tenants.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+    }
+  }
+}

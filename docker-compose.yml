@@ -1,4 +1,4 @@
-name: explore-platform
+name: islamu-event-platform
 
 x-keycloak-env: &keycloak-env
   KEYCLOAK_REALM: ${KEYCLOAK_REALM:-ISLAMU}
@@ -108,7 +108,7 @@ services:
       keycloak-db:
         condition: service_healthy
 
-  explore-api:
+  islamu-event-api:
     build:
       context: .
       dockerfile: Explore.API/Dockerfile
@@ -134,7 +134,7 @@ services:
         condition: service_healthy
         required: false # API starts even if MinIO is not in the active profile
 
-  explore-blazor:
+  islamu-event-ui:
     build:
       context: .
       dockerfile: Explore.Blazor/Dockerfile
@@ -142,7 +142,7 @@ services:
       <<: [*keycloak-env, *secrets-env, *postgres-bootstrap-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
-      API_ENDPOINT: ${API_ENDPOINT:-http://eventapi:8080/}
+      API_ENDPOINT: ${API_ENDPOINT:-http://islamu-event-api:8080/}
       Keycloak__Authority: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
       Keycloak__Realm: ${KEYCLOAK_REALM:-ISLAMU}
@@ -155,7 +155,7 @@ services:
       - "keycloak.localhost:host-gateway"
       - "minio.localhost:host-gateway"
     depends_on:
-      explore-api:
+      islamu-event-api:
         condition: service_started
       keycloak:
         condition: service_healthy

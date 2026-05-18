@@ -25,7 +25,7 @@ namespace Explore.Application.Authorization;
 public interface IAuthorizableResourceDescriptor<in TResource>
 {
     /// <summary>
-    /// The Cerbos resource kind string (e.g., "event", "organization").
+    /// The Cerbos resource kind string (e.g., ResourceKinds.Event, ResourceKinds.Organization).
     /// Must match a constant from <see cref="ResourceKinds"/>.
     /// </summary>
     string Kind { get; }

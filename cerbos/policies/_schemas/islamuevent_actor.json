@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for actor resources. Actors are system-managed entities (users/organizations).",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role when present."
+    },
+    "organizationId": {
+      "type": "string",
+      "description": "Associated organization identifier. Used by islamuevent_org_admin derived role when present."
+    }
+  }
+}

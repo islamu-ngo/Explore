@@ -1,0 +1,38 @@
+# ABOUTME: Cerbos resource policy for organization_review resources.
+# Organization reviews: users can create/view, org admins can manage reviews of their org.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_organization_review"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_organization_review.json
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+
+    # Tenant admins can manage all reviews within their tenant
+    - actions: ["view", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+
+    # Org admins can manage reviews for their organization
+    - actions: ["view", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_org_admin
+
+    # All authenticated users can create and view reviews
+    - actions: ["create", "view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user

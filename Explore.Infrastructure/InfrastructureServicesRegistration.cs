@@ -60,6 +60,7 @@ public static class InfrastructureServicesRegistration
 
         // Settings and Module Governance services
         services.AddScoped<IHierarchicalSettingsResolver, HierarchicalSettingsResolver>();
+        services.AddScoped<ITypedSettingsDocumentResolver, TypedSettingsDocumentResolver>();
         services.AddScoped<IResolverConfigService, ResolverConfigService>();
         services.AddScoped<ITenantContextAccessor, TenantContextAccessor>();
         services.AddSingleton<ITenantSlugCache, TenantSlugCache>();
@@ -86,6 +87,8 @@ public static class InfrastructureServicesRegistration
         // Both concrete providers are always registered; RuntimeAuthorizationProvider delegates at runtime.
         services.Configure<CerbosSettings>(configuration.GetSection(CerbosSettings.SectionName));
         services.Configure<CerbosAdminApiSettings>(configuration.GetSection(CerbosAdminApiSettings.SectionName));
+        services.Configure<CerbosPolicyPackageOptions>(configuration.GetSection(CerbosPolicyPackageOptions.SectionName));
+        services.AddSingleton<CerbosAdminEndpointValidator>();
 
         // Cerbos gRPC SDK client (singleton — gRPC channels are long-lived and thread-safe)
         services.AddSingleton<ICerbosClient>(sp =>
@@ -104,8 +107,9 @@ public static class InfrastructureServicesRegistration
 
         // Client factory for BYO (Bring Your Own) Cerbos endpoints — each tenant may have its own PDP
         services.AddSingleton<ICerbosClientFactory, CerbosClientFactory>();
+        services.AddSingleton<CerbosConfigCacheRegistry>();
 
-        // Admin API client for PolicySyncService (HTTP-based, separate from gRPC runtime)
+        // Admin API client for policy package publishing (HTTP-based, separate from gRPC runtime)
         services.AddTransient<CorrelationIdDelegatingHandler>();
         services.AddHttpClient("CerbosAdminClient");
 
@@ -113,7 +117,10 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<CerbosAuthorizationService>();
         services.AddScoped<FallbackAuthorizationService>();
         services.AddScoped<ICerbosConfigResolver, CerbosConfigResolver>();
-        services.AddScoped<IAuthorizationProvider, RuntimeAuthorizationProvider>();
+        services.AddScoped<RuntimeAuthorizationProvider>();
+        services.AddScoped<IAuthorizationProvider>(sp => sp.GetRequiredService<RuntimeAuthorizationProvider>());
+        services.AddScoped<IAuthorizationProviderModeCacheInvalidator>(sp => sp.GetRequiredService<RuntimeAuthorizationProvider>());
+        services.AddScoped<IPolicyPackageService, CerbosPolicyPackageService>();
         services.AddScoped<IPolicySyncService, PolicySyncService>();
 
         // Event Strategies
@@ -124,22 +131,29 @@ public static class InfrastructureServicesRegistration
         // Analytics providers (runtime-switchable via SystemSetting "analytics.provider")
         // All concrete providers are always registered; RuntimeAnalyticsProvider delegates at runtime.
         // Config resolved per-tenant from cascading settings engine (SystemSetting -> TenantSetting)
-        services.AddHttpClient<PostHogAnalyticsProvider>(client =>
+        services.AddHttpClient("PostHogClient", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(5);
         });
-        services.AddHttpClient<PlausibleAnalyticsProvider>(client =>
+        services.AddScoped<PostHogAnalyticsProvider>();
+        
+        services.AddHttpClient("PlausibleClient", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(5);
         });
-        services.AddHttpClient<RybbitAnalyticsProvider>(client =>
+        services.AddScoped<PlausibleAnalyticsProvider>();
+        
+        services.AddHttpClient("RybbitClient", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(5);
         });
-        services.AddHttpClient<RudderStackAnalyticsProvider>(client =>
+        services.AddScoped<RybbitAnalyticsProvider>();
+        
+        services.AddHttpClient("RudderStackClient", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(5);
         });
+        services.AddScoped<RudderStackAnalyticsProvider>();
         services.AddScoped<NullAnalyticsProvider>();
         services.AddScoped<IAnalyticsConfigResolver, AnalyticsConfigResolver>();
         services.AddScoped<RuntimeAnalyticsProvider>();
@@ -149,7 +163,7 @@ public static class InfrastructureServicesRegistration
         // Translation Management System providers (runtime-switchable via GovernanceSettings "localization.tms_provider")
         // All concrete providers are always registered; RuntimeTranslationProvider delegates at runtime.
         // None → OfflineTranslationProvider (bundled .json files), Tolgee → TolgeeTranslationProvider, Weblate → WeblateTranslationProvider
-        services.AddHttpClient<TolgeeTranslationProvider>(client =>
+        services.AddHttpClient("TolgeeClient", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         })
@@ -163,7 +177,9 @@ public static class InfrastructureServicesRegistration
                 }
                 return null;
             }));
-        services.AddHttpClient<WeblateTranslationProvider>(client =>
+        services.AddScoped<TolgeeTranslationProvider>();
+        
+        services.AddHttpClient("WeblateClient", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         })
@@ -177,6 +193,7 @@ public static class InfrastructureServicesRegistration
                 }
                 return ValueTask.FromResult<TimeSpan?>(null);
             }));
+        services.AddScoped<WeblateTranslationProvider>();
         services.AddSingleton<OfflineTranslationProvider>();
         services.AddScoped<NullTranslationProvider>();
         services.AddScoped<ITranslationConfigResolver, TranslationConfigResolver>();

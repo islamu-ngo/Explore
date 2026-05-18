@@ -55,9 +55,6 @@ public static class ConfigurationExtensions
         var metadataAddress = keycloakAuthority != null
             ? $"{keycloakAuthority}/.well-known/openid-configuration"
             : null;
-        var authorizationUrl = keycloakAuthority != null
-            ? $"{keycloakAuthority}/protocol/openid-connect/auth"
-            : null;
         // Preserve the operator's raw input (bare host:port or full URL). Normalization happens only
         // at gRPC channel creation time so we don't surface a misleading scheme back to the UI/storage.
         var cerbosGrpcEndpoint = config["CERBOS_GRPC_ENDPOINT"]?.Trim();
@@ -76,7 +73,6 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Keycloak:Realm", rawRealm);
         TrySet(mappedConfig, config, "Keycloak:Authority", keycloakAuthority);
         TrySet(mappedConfig, config, "Keycloak:MetadataAddress", metadataAddress);
-        TrySet(mappedConfig, config, "Keycloak:AuthorizationUrl", authorizationUrl);
         TrySet(mappedConfig, config, "Keycloak:Audience", "islamu-event-api");
         TrySet(mappedConfig, config, "Keycloak:RequireHttpsMetadata", "true");
 

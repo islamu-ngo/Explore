@@ -1,0 +1,32 @@
+# ABOUTME: Cerbos resource policy for storage_object resources.
+# Storage objects: instance admins manage all, tenant admins manage objects in their tenant.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_storage_object"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_storage_object.json
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+
+    # Tenant admins can manage storage objects within their tenant
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+
+    # All authenticated users can view and upload storage objects
+    - actions: ["view", "create"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user

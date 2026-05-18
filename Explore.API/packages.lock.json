@@ -679,6 +679,11 @@
         "resolved": "7.2.1",
         "contentHash": "YKXEfg9fVQiTKgZlvIhAfPSFaamEgi8DsQmisCH0IAsU4FYLrtoguDrDj6JtJVGUt40QPnBLRH6fTQcAC4qsOg=="
       },
+      "Refit": {
+        "type": "Transitive",
+        "resolved": "10.1.6",
+        "contentHash": "j82mHFcXJpiJiaLqQgiikmLAu+oYKcIM8ZafipX2s2b2soOS0OGN+Oc+BXkhsG8x6j2M1J23Eac3068yOKLPFA=="
+      },
       "runtime.native.System.Data.SqlClient.sni": {
         "type": "Transitive",
         "resolved": "4.7.0",
@@ -925,7 +930,9 @@
           "MailKit": "[4.15.1, )",
           "Microsoft.Extensions.Http.Resilience": "[10.1.0, )",
           "OpenFeature": "[2.11.1, )",
-          "Polly": "[8.6.6, )"
+          "Polly": "[8.6.6, )",
+          "Refit.HttpClientFactory": "[10.1.6, )",
+          "YamlDotNet": "[17.1.0, )"
         }
       },
       "explore.persistence": {
@@ -1214,6 +1221,21 @@
         "dependencies": {
           "OpenTelemetry.Api": "[1.15.3, 2.0.0)"
         }
+      },
+      "Refit.HttpClientFactory": {
+        "type": "CentralTransitive",
+        "requested": "[10.1.6, )",
+        "resolved": "10.1.6",
+        "contentHash": "brVgMXHX2pp6pMji7tJijygbMwxccIy2vSsPurPmOZ7jSChBjYpiT9bBbJkBDc0hhnNyzvLkkbx0uiHhJuTTEQ==",
+        "dependencies": {
+          "Refit": "10.1.6"
+        }
+      },
+      "YamlDotNet": {
+        "type": "CentralTransitive",
+        "requested": "[17.1.0, )",
+        "resolved": "17.1.0",
+        "contentHash": "AhsNXgeAs3Ugt653t8LC44xXDuldFfwBpWbWX9pN3e4Yg8U5Bk8jLn8eXtGv5HV2V2nHu7F46fqsPC+tpcTGAA=="
       }
     }
   }

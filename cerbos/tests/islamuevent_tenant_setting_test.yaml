@@ -1,0 +1,96 @@
+# ABOUTME: Cerbos policy test suite for tenant_setting resources.
+# Tests the instance lock override and tenant admin conditional update.
+
+name: TenantSettingPolicyTests
+description: "Validates tenant_setting lock logic — instance admin bypass and tenant admin conditional access"
+
+principals:
+  islamuevent_instance_admin:
+    id: "user-instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  islamuevent_tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  regular_user:
+    id: "user-regular"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  unlocked_setting:
+    kind: "islamuevent_tenant_setting"
+    id: "events.require_approval"
+    attr:
+      tenantId: "tenant-1"
+      isLockedByInstance: false
+
+  locked_setting:
+    kind: "islamuevent_tenant_setting"
+    id: "events.max_attendees"
+    attr:
+      tenantId: "tenant-1"
+      isLockedByInstance: true
+
+tests:
+  - name: "Instance admin can update locked settings"
+    input:
+      principals: ["islamuevent_instance_admin"]
+      resources: ["locked_setting"]
+      actions: ["view", "update", "delete"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "locked_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+
+  - name: "Tenant admin can view and update unlocked settings"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["unlocked_setting"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "unlocked_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+
+  - name: "Tenant admin CANNOT update locked settings"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["locked_setting"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "locked_setting"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_DENY
+
+  - name: "Regular user cannot access tenant settings"
+    input:
+      principals: ["regular_user"]
+      resources: ["unlocked_setting"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "regular_user"
+        resource: "unlocked_setting"
+        actions:
+          view: EFFECT_DENY
+          update: EFFECT_DENY

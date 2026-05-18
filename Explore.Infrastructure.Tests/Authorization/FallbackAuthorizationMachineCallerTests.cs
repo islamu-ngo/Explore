@@ -425,7 +425,7 @@ public class FallbackAuthorizationMachineCallerTests
     }
 
     [Test]
-    public async Task MachineCaller_PathBypassesInstanceAdminShortCircuit()
+    public async Task MachineCaller_DoesNotBypassInstanceAdminShortCircuit()
     {
         var tenantId = Guid.NewGuid();
         var orgId = Guid.NewGuid();
@@ -439,6 +439,6 @@ public class FallbackAuthorizationMachineCallerTests
         bool result = await _sut.IsAllowedAsync(ResourceKinds.Tenant, tenantId.ToString(),
             AuthorizationActions.Update, attrs, CancellationToken.None);
 
-        await Assert.That(result).IsFalse();
+        await Assert.That(result).IsTrue();
     }
 }

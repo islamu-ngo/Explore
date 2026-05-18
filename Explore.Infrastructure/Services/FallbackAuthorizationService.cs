@@ -28,7 +28,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
     /// When true, only instance admin emergency access is allowed — all other requests are denied.
     /// Activated when a BYO-Cerbos tenant's PDP is unreachable and failure_mode is "closed".
     /// This prevents bypassing the tenant's potentially stricter policies via a more permissive fallback.
-    /// Once activated, safe mode persists until the instance is restarted.
+    /// Once activated, safe mode persists for this provider instance.
     /// </summary>
     public bool SafeMode { get; private set; }
 
@@ -49,7 +49,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             _logger.LogCritical(
                 "Safe mode ACTIVATED. Only instance admin access is permitted. " +
                 "Cause: BYO Cerbos PDP unreachable with failure_mode=closed. " +
-                "Restart the instance to deactivate safe mode.");
+                "Recreate the provider instance after the PDP recovers to deactivate safe mode.");
         }
     }
 
@@ -76,17 +76,9 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         IDictionary<string, object>? resourceAttributes = null,
         CancellationToken cancellationToken = default)
     {
-        if (_machinePrincipalAccessor.IsMachineCaller)
-        {
-            bool machineDecision = await EvaluateMachineCallerAccessAsync(
-                resourceKind, resourceId, action, resourceAttributes, cancellationToken);
-            LogDecision(machineDecision ? "allow" : "deny", "machine_caller", resourceKind, resourceId, action);
-            return machineDecision;
-        }
-
         if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
         {
-            LogDecision("allow", "instance_admin", resourceKind, resourceId, action);
+            LogDecision("allow", "is_instance_admin", resourceKind, resourceId, action);
             return true;
         }
 
@@ -98,66 +90,74 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             return false;
         }
 
+        if (_machinePrincipalAccessor.IsMachineCaller)
+        {
+            bool machineDecision = await EvaluateMachineCallerAccessAsync(
+                resourceKind, resourceId, action, resourceAttributes, cancellationToken);
+            LogDecision(machineDecision ? "allow" : "deny", "machine_caller", resourceKind, resourceId, action);
+            return machineDecision;
+        }
+
         var decision = resourceKind switch
         {
             // Instance-scoped: only instance admins (bypassed above)
-            "instance_setting" => false,
+            "islamuevent_instance_setting" => false,
 
             // Tenant-scoped: tenant admin with lock semantics
-            "tenant_setting" => await EvaluateTenantSettingAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_tenant_setting" => await EvaluateTenantSettingAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
             // Tenant-scoped: tenant admin only
-            "tenant" => false, // Only instance admins can create/update/delete tenants
-            "tenant_member" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "category" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "tag" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "location" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "location_room" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "custom_property_definition" => await EvaluateViewableTenantResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "custom_property_template" => await EvaluateViewableTenantResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "custom_property_value" => await EvaluateViewableOrgResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "custom_property_projection" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "custom_property_governance" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "platform_namespace" => action is "view",
+            "islamuevent_tenant" => false, // Only instance admins can create/update/delete tenants
+            "islamuevent_tenant_member" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_category" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_tag" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_location" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_location_room" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_custom_property_definition" => await EvaluateViewableTenantResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_custom_property_template" => await EvaluateViewableTenantResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_custom_property_value" => await EvaluateViewableOrgResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_custom_property_projection" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_custom_property_governance" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_platform_namespace" => action is "view",
 
             // Org-scoped: tenant admin or org admin
-            "organization" => await EvaluateOrganizationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
-            "organization_member" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "organization_review" => await EvaluateOrgReviewAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_organization" => await EvaluateOrganizationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_organization_member" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_organization_review" => await EvaluateOrgReviewAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
             // Group resources: org-scoped (tenant admin or org admin), view open
-            "group" => await EvaluateViewableOrgResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "group_member" => await EvaluateGroupMemberAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_group" => await EvaluateViewableOrgResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_group_member" => await EvaluateGroupMemberAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
             // Event resources require explicit tenant/event context before inherited authority checks.
-            "event" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "event_session" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "event_session_group" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "event_session_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "event_day" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "event_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_event" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_event_session" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_event_session_group" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_event_session_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_event_day" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_event_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
 
             // Event registration: all authenticated can create/view only when the parent event context is present.
-            "event_registration" => await EvaluateEventRegistrationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_event_registration" => await EvaluateEventRegistrationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
             // Contact share consent: tenant/org admin can view and export shared contacts
-            "event_contact_share_consent" => await EvaluateContactShareConsentAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_event_contact_share_consent" => await EvaluateContactShareConsentAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
             // Storage: all authenticated can create, tenant admin for full management
-            "storage_object" => await EvaluateStorageObjectAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_storage_object" => await EvaluateStorageObjectAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
             // User management: instance admin or tenant admin, or self-update
-            "user" => await EvaluateUserAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_user" => await EvaluateUserAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
             // Notification: personal data, all authenticated can manage own notifications
-            "notification" => true,
+            "islamuevent_notification" => true,
 
             // Actor: read-only for all authenticated; writes require tenant admin
-            "actor" => await EvaluateActorAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_actor" => await EvaluateActorAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
 
             // ATProto federation: instance admin only for writes (bypassed above)
-            "atproto_record" => false,
-            "indexed_did" => false,
+            "islamuevent_atproto_record" => false,
+            "islamuevent_indexed_did" => false,
 
             _ => await EvaluateDefaultAccessAsync(resourceKind, action, resourceAttributes, cancellationToken)
         };
@@ -187,12 +187,12 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
 
         if (organizationId.HasValue)
         {
-            resourceKind = "organization";
+            resourceKind = "islamuevent_organization";
             attributes["organizationId"] = organizationId.Value.ToString();
         }
         else if (tenantId.HasValue)
         {
-            resourceKind = "tenant_setting";
+            resourceKind = "islamuevent_tenant_setting";
             attributes["tenantId"] = tenantId.Value.ToString();
 
             // Check if the setting is locked by instance
@@ -201,7 +201,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         }
         else
         {
-            resourceKind = "instance_setting";
+            resourceKind = "islamuevent_instance_setting";
         }
 
         return await IsAllowedAsync(resourceKind, settingKey, action, attributes, cancellationToken);
@@ -254,16 +254,24 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out _, out _);
 
     private static bool IsEventScopedResourceKind(string resourceKind) =>
-        resourceKind is "event"
-            or "event_session"
-            or "event_session_group"
-            or "event_session_agenda_item"
-            or "event_day"
-            or "event_agenda_item"
-            or "event_registration";
+        resourceKind is "islamuevent_event"
+            or "islamuevent_event_session"
+            or "islamuevent_event_session_group"
+            or "islamuevent_event_session_agenda_item"
+            or "islamuevent_event_day"
+            or "islamuevent_event_agenda_item"
+            or "islamuevent_event_registration";
 
-    private static string PermissionCodeFor(string resourceKind, string action) =>
-        string.Concat(resourceKind, ":", action);
+    private static string PermissionCodeFor(string resourceKind, string action)
+    {
+        const string productNamespacePrefix = "islamuevent_";
+
+        var permissionResourceKind = resourceKind.StartsWith(productNamespacePrefix, StringComparison.Ordinal)
+            ? resourceKind[productNamespacePrefix.Length..]
+            : resourceKind;
+
+        return string.Concat(permissionResourceKind, ":", action);
+    }
 
     private static bool TryResolveEventContext(
         string resourceKind,
@@ -281,7 +289,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         if (TryResolveGuidAttribute(resourceAttributes, "eventId", out eventId))
             return true;
 
-        return resourceKind == "event" && Guid.TryParse(resourceId, out eventId);
+        return resourceKind == "islamuevent_event" && Guid.TryParse(resourceId, out eventId);
     }
 
     private static bool TryResolveGuidAttribute(

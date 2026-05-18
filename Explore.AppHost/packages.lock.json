@@ -725,11 +725,6 @@
         "resolved": "8.0.0",
         "contentHash": "7mu9v0QDv66ar3DpGSZHg9NuNcxDaaAcnMULuZlaTpP9+hwXhrxNGsF5GmLkSHxFdb5bBc1TzeujsRgTrPWi+Q=="
       },
-      "YamlDotNet": {
-        "type": "Transitive",
-        "resolved": "16.3.0",
-        "contentHash": "SgMOdxbz8X65z8hraIs6hOEdnkH6hESTAIUa7viEngHOYaH+6q5XJmwr1+yb9vJpNQ19hCQY69xbFsLtXpobQA=="
-      },
       "Microsoft.Extensions.Configuration.Abstractions": {
         "type": "CentralTransitive",
         "requested": "[10.0.7, )",
@@ -841,6 +836,12 @@
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "8.0.0"
         }
+      },
+      "YamlDotNet": {
+        "type": "CentralTransitive",
+        "requested": "[17.1.0, )",
+        "resolved": "16.3.0",
+        "contentHash": "SgMOdxbz8X65z8hraIs6hOEdnkH6hESTAIUa7viEngHOYaH+6q5XJmwr1+yb9vJpNQ19hCQY69xbFsLtXpobQA=="
       }
     }
   }

@@ -29,6 +29,18 @@ public class AuthorizationProviderConfigurationDtoValidator : AbstractValidator<
                 .When(x => !string.IsNullOrWhiteSpace(x.CerbosGrpcEndpoint))
                 .WithMessage("Cerbos gRPC endpoint must be a valid URL (e.g., https://cerbosgrpc.example.com:443).");
         });
+
+        RuleFor(x => x.CerbosAdminEndpoint)
+            .MaximumLength(512)
+            .WithMessage("Cerbos Admin API endpoint must be 512 characters or fewer.");
+
+        RuleFor(x => x.CerbosAdminUsername)
+            .MaximumLength(256)
+            .WithMessage("Cerbos Admin API username must be 256 characters or fewer.");
+
+        RuleFor(x => x.CerbosAdminPassword)
+            .MaximumLength(1024)
+            .WithMessage("Cerbos Admin API password must be 1024 characters or fewer.");
     }
 
     private static bool BeAValidGrpcEndpoint(string? endpoint)

@@ -13,16 +13,17 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-# Copy all project files for restore
-COPY ["Explore.API/Explore.API.csproj", "Explore.API/"]
-COPY ["Explore.Application/Explore.Application.csproj", "Explore.Application/"]
-COPY ["Explore.Domain/Explore.Domain.csproj", "Explore.Domain/"]
-COPY ["Explore.Infrastructure/Explore.Infrastructure.csproj", "Explore.Infrastructure/"]
-COPY ["Explore.Persistence/Explore.Persistence.csproj", "Explore.Persistence/"]
-COPY ["Explore.Secrets/Explore.Secrets.csproj", "Explore.Secrets/"]
-COPY ["Explore.ServiceDefaults/Explore.ServiceDefaults.csproj", "Explore.ServiceDefaults/"]
+# Copy restore inputs and project graph first for deterministic locked restore caching
+COPY ["global.json", "Directory.Build.props", "Directory.Packages.props", "./"]
+COPY ["Explore.API/Explore.API.csproj", "Explore.API/packages.lock.json", "Explore.API/"]
+COPY ["Explore.Application/Explore.Application.csproj", "Explore.Application/packages.lock.json", "Explore.Application/"]
+COPY ["Explore.Domain/Explore.Domain.csproj", "Explore.Domain/packages.lock.json", "Explore.Domain/"]
+COPY ["Explore.Infrastructure/Explore.Infrastructure.csproj", "Explore.Infrastructure/packages.lock.json", "Explore.Infrastructure/"]
+COPY ["Explore.Persistence/Explore.Persistence.csproj", "Explore.Persistence/packages.lock.json", "Explore.Persistence/"]
+COPY ["Explore.Secrets/Explore.Secrets.csproj", "Explore.Secrets/packages.lock.json", "Explore.Secrets/"]
+COPY ["Explore.ServiceDefaults/Explore.ServiceDefaults.csproj", "Explore.ServiceDefaults/packages.lock.json", "Explore.ServiceDefaults/"]
 
-RUN dotnet restore "./Explore.API/Explore.API.csproj"
+RUN dotnet restore "./Explore.API/Explore.API.csproj" --locked-mode
 COPY . .
 WORKDIR "/src/Explore.API"
 RUN dotnet build "./Explore.API.csproj" -c $BUILD_CONFIGURATION -o /app/build

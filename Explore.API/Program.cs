@@ -105,6 +105,8 @@ builder.Services.AddRouting(options =>
 
 builder.Services.ConfigureApplicationServices();
 builder.Services.ConfigureInfrastructureServices(builder.Configuration);
+builder.Services.Configure<CerbosPolicyBootSyncOptions>(
+    builder.Configuration.GetSection(CerbosPolicyBootSyncOptions.SectionName));
 
 // Skip DbContext registration if running in Testing environment (integration tests register their own)
 // or build-time OpenAPI generation (the endpoint graph is needed, not live persistence).
@@ -202,6 +204,14 @@ if (!isOpenApiGeneration)
     builder.Services.AddHostedService<OutboxProcessor>();
 }
 
+// Register zero-touch Cerbos policy package boot synchronization.
+// Testing hosts manage policy publishing explicitly to keep integration startup deterministic.
+if (!isOpenApiGeneration && !builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddSingleton<CerbosPolicyBootSyncRunner>();
+    builder.Services.AddHostedService<CerbosPolicyBootSyncWorker>();
+}
+
 builder.Services.AddApiCors(builder.Configuration);
 
 builder.Host.UseSerilog((ctx, services, lc) =>
@@ -213,7 +223,7 @@ builder.Host.UseSerilog((ctx, services, lc) =>
 builder.Services.AddApiAuthentication(
     builder.Configuration,
     builder.Environment,
-    skipAuthorityWarmup: isOpenApiGeneration);
+    skipAuthorityWarmup: isOpenApiGeneration || builder.Configuration.GetValue<bool>("Testing:SkipJwtAuthorityWarmup"));
 
 builder.Services.AddHsts(options =>
 {

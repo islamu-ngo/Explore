@@ -1,6 +1,7 @@
 // ABOUTME: Authorization provider wrapper that delegates to Cerbos or Local provider based on SystemSetting.
 // ABOUTME: Supports BYO (Bring Your Own) Cerbos per tenant with configurable failure modes.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Models;
@@ -35,7 +36,7 @@ namespace Explore.Infrastructure.Services;
 /// <para><b>Setting access</b>: Always uses instance-level provider (never BYO).
 /// Settings are platform governance, not tenant-customizable.</para>
 /// </summary>
-public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
+public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuthorizationProviderModeCacheInvalidator
 {
     private readonly CerbosAuthorizationService _cerbosProvider;
     private readonly FallbackAuthorizationService _localProvider;
@@ -88,7 +89,20 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
         CancellationToken cancellationToken = default)
     {
         // Step 1: Check if the tenant has a BYO Cerbos configuration (works regardless of instance mode)
-        var byoConfig = await ResolveTenantByoConfigAsync(cancellationToken);
+        CerbosConfiguration? byoConfig;
+        try
+        {
+            byoConfig = await ResolveTenantByoConfigAsync(cancellationToken);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogError(
+                "Failed to resolve tenant BYO Cerbos config for batch ({Count} checks). Activating safe mode to avoid local RBAC bypass. FailureType={FailureType}",
+                checks.Count,
+                ex.GetType().Name);
+            _localProvider.ActivateSafeMode();
+            return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
+        }
 
         if (byoConfig is not null)
             return await ExecuteByoAsync(byoConfig, checks, cancellationToken);
@@ -105,11 +119,12 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
             // When Cerbos is the configured instance authorization provider and is unavailable,
             // deny all checks. Falling back to a potentially more permissive local RBAC
             // would silently bypass the policies the operator explicitly chose to enforce.
-            _logger.LogError(ex,
+            _logger.LogError(
                 "Instance Cerbos provider unavailable for batch ({Count} checks). " +
                 "Denying all — Cerbos is the configured authorization provider. " +
-                "Restore Cerbos connectivity or switch authorization.provider setting to resolve",
-                checks.Count);
+                "Restore Cerbos connectivity or switch authorization.provider setting to resolve. FailureType={FailureType}",
+                checks.Count,
+                ex.GetType().Name);
             return checks.Select(_ => false).ToArray();
         }
     }
@@ -131,12 +146,20 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
         }
         catch (Exception ex) when (provider == _cerbosProvider)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
                 "Instance Cerbos provider unavailable for setting check {SettingKey}:{Action}. " +
-                "Denying — Cerbos is the configured authorization provider",
-                settingKey, action);
+                "Denying — Cerbos is the configured authorization provider. FailureType={FailureType}",
+                settingKey,
+                action,
+                ex.GetType().Name);
             return false;
         }
+    }
+
+    public void InvalidateInstanceMode()
+    {
+        _cache.Remove(InstanceModeCacheKey);
+        _logger.LogInformation("Authorization provider mode cache invalidated");
     }
 
     /// <summary>
@@ -144,20 +167,12 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
     /// </summary>
     private async Task<CerbosConfiguration?> ResolveTenantByoConfigAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            var config = await _cerbosConfigResolver.ResolveAsync(cancellationToken);
+        var config = await _cerbosConfigResolver.ResolveAsync(cancellationToken);
 
-            if (config is null || config.IsInstanceDefault || config.Mode == CerbosMode.Instance)
-                return null;
-
-            return config;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to resolve tenant BYO Cerbos config; proceeding with instance-level resolution");
+        if (config is null || config.IsInstanceDefault || config.Mode == CerbosMode.Instance)
             return null;
-        }
+
+        return config;
     }
 
     /// <summary>
@@ -171,22 +186,21 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
     {
         try
         {
-            _logger.LogDebug("Routing {Count} auth checks to BYO Cerbos endpoint: {Endpoint}", checks.Count, config.Endpoint);
+            _logger.LogDebug("Routing {Count} auth checks to BYO Cerbos endpoint", checks.Count);
             return await _cerbosProvider.IsAllowedBatchWithEndpointAsync(config.Endpoint, checks, cancellationToken);
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning(
-                ex,
-                "BYO Cerbos PDP unreachable at {Endpoint}. Applying failure_mode={FailureMode}",
-                config.Endpoint,
-                config.FailureMode);
+                "BYO Cerbos PDP unreachable. Applying failure_mode={FailureMode}. FailureType={FailureType}",
+                config.FailureMode,
+                ex.GetType().Name);
 
             if (config.FailureMode == CerbosFailureMode.Closed)
             {
                 // Safe-Mode: only instance admin allowed, deny everything else.
                 // Never fall back to instance PDP — tenant policies might be stricter.
-                // Safe mode is a one-way latch — persists until instance restart.
+                // Safe mode is a one-way latch for this fallback provider instance.
                 _localProvider.ActivateSafeMode();
                 return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
             }
@@ -209,7 +223,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
             try
             {
                 var setting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider);
-                var value = setting?.Value?.Trim().ToLowerInvariant();
+                var value = NormalizeProviderMode(setting?.Value);
 
                 if (value is "cerbos")
                 {
@@ -222,11 +236,48 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to read authorization provider setting; defaulting to local");
-                return "local";
+                _logger.LogWarning(
+                    "Failed to read authorization provider setting. Using Cerbos fail-closed path. FailureType={FailureType}",
+                    ex.GetType().Name);
+                return "cerbos";
             }
         });
 
         return mode == "cerbos" ? _cerbosProvider : _localProvider;
+    }
+
+    private static string NormalizeProviderMode(string? rawValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+            return "local";
+
+        var trimmedValue = rawValue.Trim();
+
+        if (TryDeserializeString(trimmedValue, out var deserializedValue)
+            && !string.IsNullOrWhiteSpace(deserializedValue))
+        {
+            return deserializedValue.Trim().ToLowerInvariant();
+        }
+
+        return trimmedValue.Trim('"').Trim().ToLowerInvariant();
+    }
+
+    private static bool TryDeserializeString(string rawValue, out string? value)
+    {
+        try
+        {
+            value = JsonSerializer.Deserialize<string>(rawValue);
+            return true;
+        }
+        catch (JsonException)
+        {
+            value = null;
+            return false;
+        }
+        catch (NotSupportedException)
+        {
+            value = null;
+            return false;
+        }
     }
 }

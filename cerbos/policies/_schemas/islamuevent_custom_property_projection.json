@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for custom_property_projection resources. Denormalized projection tables for discovery queries.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+    }
+  },
+  "required": ["tenantId"]
+}

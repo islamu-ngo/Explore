@@ -14,7 +14,7 @@ namespace Explore.Application.Authorization;
 /// </para>
 /// <para>
 /// Phase 5 of the modernization plan may migrate these values to a <c>resource:verb</c> format
-/// (e.g., <c>"event:view"</c>) alongside matching Cerbos policy changes.
+/// (e.g., <c>"islamuevent_event:view"</c>) alongside matching Cerbos policy changes.
 /// Until then, values use simple verb strings for backward compatibility.
 /// </para>
 /// </summary>
@@ -55,7 +55,7 @@ public static class AuthorizationActions
     // Standard CRUD resources reference top-level constants.
     // Resources with restricted or extended action sets are explicit.
 
-    /// <summary>Valid actions for the <c>event</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_event</c> resource kind.</summary>
     public static class Events
     {
         public const string View = AuthorizationActions.View;
@@ -64,7 +64,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>event_session</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_event_session</c> resource kind.</summary>
     public static class EventSessions
     {
         public const string View = AuthorizationActions.View;
@@ -73,7 +73,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>event_session_agenda_item</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_event_session_agenda_item</c> resource kind.</summary>
     public static class EventSessionAgendaItems
     {
         public const string View = AuthorizationActions.View;
@@ -82,7 +82,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>event_day</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_event_day</c> resource kind.</summary>
     public static class EventDays
     {
         public const string View = AuthorizationActions.View;
@@ -91,7 +91,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>event_agenda_item</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_event_agenda_item</c> resource kind.</summary>
     public static class EventAgendaItems
     {
         public const string View = AuthorizationActions.View;
@@ -100,7 +100,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>event_registration</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_event_registration</c> resource kind.</summary>
     public static class EventRegistrations
     {
         public const string View = AuthorizationActions.View;
@@ -110,7 +110,7 @@ public static class AuthorizationActions
     }
 
     /// <summary>
-    /// Valid actions for the <c>event_contact_share_consent</c> resource kind.
+    /// Valid actions for the <c>islamuevent_event_contact_share_consent</c> resource kind.
     /// Uses domain-specific actions instead of standard CRUD.
     /// </summary>
     public static class EventContactShareConsents
@@ -120,7 +120,7 @@ public static class AuthorizationActions
     }
 
     /// <summary>
-    /// Valid actions for the <c>organization</c> resource kind.
+    /// Valid actions for the <c>islamuevent_organization</c> resource kind.
     /// Extends standard CRUD with member management.
     /// </summary>
     public static class Organizations
@@ -133,7 +133,7 @@ public static class AuthorizationActions
     }
 
     /// <summary>
-    /// Valid actions for the <c>organization_member</c> resource kind.
+    /// Valid actions for the <c>islamuevent_organization_member</c> resource kind.
     /// Extends standard CRUD with member management.
     /// </summary>
     public static class OrganizationMembers
@@ -145,7 +145,7 @@ public static class AuthorizationActions
         public const string ManageMembers = AuthorizationActions.ManageMembers;
     }
 
-    /// <summary>Valid actions for the <c>organization_review</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_organization_review</c> resource kind.</summary>
     public static class OrganizationReviews
     {
         public const string View = AuthorizationActions.View;
@@ -155,7 +155,7 @@ public static class AuthorizationActions
     }
 
     /// <summary>
-    /// Valid actions for the <c>tenant</c> resource kind.
+    /// Valid actions for the <c>islamuevent_tenant</c> resource kind.
     /// Restricted to view and update only (no create/delete at resource level).
     /// </summary>
     public static class Tenants
@@ -165,7 +165,7 @@ public static class AuthorizationActions
     }
 
     /// <summary>
-    /// Valid actions for the <c>tenant_setting</c> resource kind.
+    /// Valid actions for the <c>islamuevent_tenant_setting</c> resource kind.
     /// No create action; settings are predefined.
     /// </summary>
     public static class TenantSettings
@@ -175,7 +175,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>tenant_member</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_tenant_member</c> resource kind.</summary>
     public static class TenantMembers
     {
         public const string View = AuthorizationActions.View;
@@ -184,7 +184,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>category</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_category</c> resource kind.</summary>
     public static class Categories
     {
         public const string View = AuthorizationActions.View;
@@ -193,7 +193,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>tag</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_tag</c> resource kind.</summary>
     public static class Tags
     {
         public const string View = AuthorizationActions.View;
@@ -202,7 +202,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>location</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_location</c> resource kind.</summary>
     public static class Locations
     {
         public const string View = AuthorizationActions.View;
@@ -211,7 +211,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>location_room</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_location_room</c> resource kind.</summary>
     public static class LocationRooms
     {
         public const string View = AuthorizationActions.View;
@@ -220,7 +220,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>storage_object</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_storage_object</c> resource kind.</summary>
     public static class StorageObjects
     {
         public const string View = AuthorizationActions.View;
@@ -230,7 +230,7 @@ public static class AuthorizationActions
     }
 
     /// <summary>
-    /// Valid actions for the <c>user</c> resource kind.
+    /// Valid actions for the <c>islamuevent_user</c> resource kind.
     /// No create action; users are provisioned through authentication.
     /// </summary>
     public static class Users
@@ -240,7 +240,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>atproto_record</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_atproto_record</c> resource kind.</summary>
     public static class AtprotoRecords
     {
         public const string View = AuthorizationActions.View;
@@ -249,7 +249,7 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>indexed_did</c> resource kind.</summary>
+    /// <summary>Valid actions for the <c>islamuevent_indexed_did</c> resource kind.</summary>
     public static class IndexedDids
     {
         public const string View = AuthorizationActions.View;
@@ -259,7 +259,7 @@ public static class AuthorizationActions
     }
 
     /// <summary>
-    /// Valid actions for the <c>instance_setting</c> resource kind.
+    /// Valid actions for the <c>islamuevent_instance_setting</c> resource kind.
     /// Extends standard CRUD with governance lock/unlock semantics.
     /// </summary>
     public static class InstanceSettings

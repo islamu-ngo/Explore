@@ -2,6 +2,7 @@
 // ABOUTME: Reads/writes authz provider settings via SystemSettings and verifies Cerbos gRPC endpoints via health check.
 
 using System.Text.Json;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
@@ -21,15 +22,24 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
 {
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly IConfiguration _configuration;
+    private readonly CerbosAdminEndpointValidator _adminEndpointValidator;
+    private readonly IAuthorizationProviderModeCacheInvalidator _providerModeCacheInvalidator;
+    private readonly ICerbosConfigResolver _cerbosConfigResolver;
     private readonly ILogger<AuthorizationProviderConfigurationService> _logger;
 
     public AuthorizationProviderConfigurationService(
         ISystemSettingRepository systemSettingRepository,
         IConfiguration configuration,
+        CerbosAdminEndpointValidator adminEndpointValidator,
+        IAuthorizationProviderModeCacheInvalidator providerModeCacheInvalidator,
+        ICerbosConfigResolver cerbosConfigResolver,
         ILogger<AuthorizationProviderConfigurationService> logger)
     {
         _systemSettingRepository = systemSettingRepository;
         _configuration = configuration;
+        _adminEndpointValidator = adminEndpointValidator;
+        _providerModeCacheInvalidator = providerModeCacheInvalidator;
+        _cerbosConfigResolver = cerbosConfigResolver;
         _logger = logger;
     }
 
@@ -37,6 +47,9 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
     {
         var providerSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider);
         var grpcEndpointSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Cerbos.GrpcEndpoint);
+        var adminEndpointSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Cerbos.CustomAdminEndpoint);
+        var adminUsernameSetting = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername);
+        var adminPasswordSetting = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword);
 
         // Preserve operator's raw value end-to-end. Detection compares against the local default using
         // a normalized form, but the value surfaced to UI/storage stays exactly as the operator typed it
@@ -58,6 +71,11 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         {
             Provider = provider,
             CerbosGrpcEndpoint = grpcEndpoint,
+            CerbosAdminEndpoint = DeserializeString(adminEndpointSetting?.Value, string.Empty),
+            CerbosAdminUsername = null,
+            CerbosAdminPassword = null,
+            CerbosAdminUsernameConfigured = !string.IsNullOrWhiteSpace(DeserializeString(adminUsernameSetting?.Value, string.Empty)),
+            CerbosAdminPasswordConfigured = !string.IsNullOrWhiteSpace(DeserializeString(adminPasswordSetting?.Value, string.Empty)),
             CerbosDetectedFromEnvironment = detectedFromEnv
         };
     }
@@ -65,6 +83,15 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
     public async Task ApplyConfigurationAsync(AuthorizationProviderConfigurationDto configuration)
     {
         var rawEndpoint = configuration.CerbosGrpcEndpoint?.Trim() ?? string.Empty;
+        var isCerbosProvider = configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase);
+        var rawAdminEndpoint = configuration.CerbosAdminEndpoint?.Trim() ?? string.Empty;
+        Uri? normalizedAdminEndpoint = null;
+
+        if (isCerbosProvider && !string.IsNullOrWhiteSpace(rawAdminEndpoint))
+        {
+            if (!_adminEndpointValidator.TryNormalize(rawAdminEndpoint, isByo: true, out normalizedAdminEndpoint, out var warning))
+                throw new InvalidOperationException(warning);
+        }
 
         await UpsertSettingAsync(
             GovernanceSettingKeys.Security.AuthorizationProvider,
@@ -77,12 +104,58 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
 
         await UpsertSettingAsync(
             GovernanceSettingKeys.Cerbos.GrpcEndpoint,
-            JsonSerializer.Serialize(configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase) ? rawEndpoint : string.Empty),
+            JsonSerializer.Serialize(isCerbosProvider ? rawEndpoint : string.Empty),
             SettingValueType.String,
             true,
             "Security",
             2,
             "Cerbos PDP gRPC endpoint for authorization requests");
+
+        if (!isCerbosProvider)
+        {
+            _cerbosConfigResolver.InvalidateCache();
+            _providerModeCacheInvalidator.InvalidateInstanceMode();
+            return;
+        }
+
+        if (normalizedAdminEndpoint is not null)
+        {
+            await UpsertSettingAsync(
+                GovernanceSettingKeys.Cerbos.CustomAdminEndpoint,
+                JsonSerializer.Serialize(normalizedAdminEndpoint.GetLeftPart(UriPartial.Path).TrimEnd('/')),
+                SettingValueType.String,
+                true,
+                "Security",
+                3,
+                "Cerbos Admin API endpoint for policy package publishing");
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuration.CerbosAdminUsername))
+        {
+            await UpsertSettingAsync(
+                InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
+                JsonSerializer.Serialize(configuration.CerbosAdminUsername.Trim()),
+                SettingValueType.String,
+                true,
+                "Security",
+                4,
+                "Cerbos Admin API username");
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuration.CerbosAdminPassword))
+        {
+            await UpsertSettingAsync(
+                InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword,
+                JsonSerializer.Serialize(configuration.CerbosAdminPassword),
+                SettingValueType.String,
+                true,
+                "Security",
+                5,
+                "Cerbos Admin API password");
+        }
+
+        _cerbosConfigResolver.InvalidateCache();
+        _providerModeCacheInvalidator.InvalidateInstanceMode();
     }
 
     public async Task<bool> IsConfiguredAsync()
@@ -135,6 +208,17 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
                 ex.Message);
             return false;
         }
+    }
+
+    public Task<bool> VerifyCerbosAdminEndpointAsync(string adminEndpoint, CancellationToken cancellationToken = default)
+    {
+        var isSafe = _adminEndpointValidator.TryNormalize(adminEndpoint, isByo: true, out _, out var warning);
+        if (!isSafe)
+        {
+            _logger.LogWarning("Cerbos Admin API endpoint validation failed: {Reason}", warning);
+        }
+
+        return Task.FromResult(isSafe);
     }
 
     private async Task UpsertSettingAsync(

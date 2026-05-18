@@ -1,0 +1,100 @@
+# ABOUTME: Cerbos policy test suite for tenant resources.
+# Tests cross-tenant isolation and instance-admin override.
+
+name: TenantPolicyTests
+description: "Validates tenant resource policies — instance admin override and cross-tenant isolation"
+
+principals:
+  islamuevent_instance_admin:
+    id: "user-instance-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: true
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  islamuevent_tenant_admin:
+    id: "user-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-1": "admin"
+      orgMemberships: {}
+
+  other_tenant_admin:
+    id: "user-other-tenant-admin"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships:
+        "tenant-2": "admin"
+      orgMemberships: {}
+
+  regular_user:
+    id: "user-regular"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+resources:
+  tenant1:
+    kind: "islamuevent_tenant"
+    id: "tenant-1"
+    attr:
+      tenantId: "tenant-1"
+
+tests:
+  - name: "Instance admin has full access to any tenant"
+    input:
+      principals: ["islamuevent_instance_admin"]
+      resources: ["tenant1"]
+      actions: ["view", "create", "update", "delete"]
+    expected:
+      - principal: "islamuevent_instance_admin"
+        resource: "tenant1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+
+  - name: "Tenant admin can manage their own tenant"
+    input:
+      principals: ["islamuevent_tenant_admin"]
+      resources: ["tenant1"]
+      actions: ["view", "update"]
+    expected:
+      - principal: "islamuevent_tenant_admin"
+        resource: "tenant1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+
+  - name: "Other tenant admin cannot manage tenant-1"
+    input:
+      principals: ["other_tenant_admin"]
+      resources: ["tenant1"]
+      actions: ["update", "delete"]
+    expected:
+      - principal: "other_tenant_admin"
+        resource: "tenant1"
+        actions:
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+
+  - name: "Regular user can only view tenant"
+    input:
+      principals: ["regular_user"]
+      resources: ["tenant1"]
+      actions: ["view", "create", "update", "delete"]
+    expected:
+      - principal: "regular_user"
+        resource: "tenant1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_DENY
+          update: EFFECT_DENY
+          delete: EFFECT_DENY

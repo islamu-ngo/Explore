@@ -17,7 +17,7 @@ namespace Explore.Application.Authorization;
 public interface IAuthorizedRequest
 {
     /// <summary>
-    /// The resource kind (e.g., "instance_setting", "tenant_setting", "organization").
+    /// The resource kind (e.g., ResourceKinds.InstanceSetting, ResourceKinds.TenantSetting, ResourceKinds.Organization).
     /// </summary>
     string ResourceKind { get; }
 
