@@ -30,15 +30,18 @@ namespace Explore.API.Controllers;
 public sealed class EventSessionTemplateSyncController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IHateoasAuthorizationEvaluator _authorizationEvaluator;
     private readonly IHateoasLinkGenerator _linkGenerator;
     private readonly ILinkPolicy<EventSessionTemplateSyncResource> _syncLinkPolicy;
 
     public EventSessionTemplateSyncController(
         IMediator mediator,
+        IHateoasAuthorizationEvaluator authorizationEvaluator,
         IHateoasLinkGenerator linkGenerator,
         ILinkPolicy<EventSessionTemplateSyncResource> syncLinkPolicy)
     {
         _mediator = mediator;
+        _authorizationEvaluator = authorizationEvaluator;
         _linkGenerator = linkGenerator;
         _syncLinkPolicy = syncLinkPolicy;
     }
@@ -62,6 +65,9 @@ public sealed class EventSessionTemplateSyncController : ExploreControllerBase
             new GetEventSessionTemplateDiffQuery(sessionId, templateVersion),
             cancellationToken);
 
+        if (!response.Success || response.Id is null)
+            return BadRequest(response);
+
         var diff = response.Id;
         var hasChanges =
             diff.AddedDefinitions.Count > 0 ||
@@ -74,8 +80,15 @@ public sealed class EventSessionTemplateSyncController : ExploreControllerBase
         var resource = new EventSessionTemplateSyncResource(sessionId, diff.TargetTemplateVersion, hasChanges);
         var halResource = new HalResource<TemplateDiffDto>(diff);
 
-        foreach (var linkDef in _syncLinkPolicy.GetLinks(resource, User))
+        var linkDefinitions = _syncLinkPolicy.GetLinks(resource, User).ToList();
+        var allowedLinks = await _authorizationEvaluator.AreLinksAllowedAsync(linkDefinitions, User, HttpContext);
+
+        for (var i = 0; i < linkDefinitions.Count; i++)
         {
+            if (!allowedLinks[i])
+                continue;
+
+            var linkDef = linkDefinitions[i];
             var halLink = _linkGenerator.GenerateLink(linkDef, HttpContext);
             if (halLink is not null)
             {

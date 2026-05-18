@@ -3,6 +3,7 @@
 
 using System.Security.Claims;
 using Explore.API.Hateoas.Resources;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Hateoas;
 
@@ -12,11 +13,22 @@ public sealed class EventTemplateSyncLinkPolicy : ILinkPolicy<EventTemplateSyncR
 {
     public IEnumerable<LinkDefinition> GetLinks(EventTemplateSyncResource dto, ClaimsPrincipal? user)
     {
+        var attributes = new Dictionary<string, object>
+        {
+            ["eventId"] = dto.EventId,
+            ["templateVersion"] = dto.TargetTemplateVersion
+        };
+
         yield return new LinkDefinition(
             "sync-diff",
             RouteNames.GetEventTemplateSyncDiff,
             new { eventId = dto.EventId, templateVersion = dto.TargetTemplateVersion },
-            HttpMethods.Get);
+            HttpMethods.Get,
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.CustomPropertyTemplates.SyncDiff,
+                ResourceKinds.CustomPropertyTemplate,
+                dto.EventId.ToString(),
+                attributes);
 
         if (dto.HasChanges)
         {
@@ -24,13 +36,19 @@ public sealed class EventTemplateSyncLinkPolicy : ILinkPolicy<EventTemplateSyncR
                 "sync-apply",
                 RouteNames.ApplyEventTemplateSync,
                 new { eventId = dto.EventId },
-                HttpMethods.Post);
+                HttpMethods.Post,
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.CustomPropertyTemplates.SyncApply,
+                    ResourceKinds.CustomPropertyTemplate,
+                    dto.EventId.ToString(),
+                    attributes);
         }
 
         yield return new LinkDefinition(
             "sync-history",
             RouteNames.GetEventTemplateSyncHistory,
             new { eventId = dto.EventId },
-            HttpMethods.Get);
+            HttpMethods.Get,
+            RequiresAuth: true);
     }
 }
