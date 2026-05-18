@@ -3,11 +3,9 @@
 
 namespace Explore.Blazor.Extensions;
 
-using System.Globalization;
 using System.Net.Http.Json;
 using Explore.Application.DTOs.Appearance;
-using Explore.Domain.Common.Localization;
-using Microsoft.AspNetCore.Localization;
+using Explore.Blazor.Services.Preferences;
 
 public static class BffPreferenceEndpoints
 {
@@ -78,21 +76,15 @@ public static class BffPreferenceEndpoints
 
     private static async Task<IResult> HandleGetResolvedAppearanceAsync(HttpContext ctx, CancellationToken cancellationToken)
     {
+        var fallback = GetPreferenceCookies(ctx).BuildDefaultResolvedAppearance(ctx);
+
         if (ctx.User.Identity?.IsAuthenticated != true)
         {
-            return Results.Ok(BuildDefaultResolvedAppearance(ctx));
+            return Results.Ok(fallback);
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .GetAsync("api/user/appearance", cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Results.Ok(BuildDefaultResolvedAppearance(ctx));
-        }
-
-        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+        using var response = await GetPreferenceForwarding(ctx).GetAppearanceAsync(cancellationToken);
+        return await BffForwardingResults.JsonStreamOrFallbackAsync(response, fallback, cancellationToken);
     }
 
     private static async Task<IResult> HandleGetPresetsAsync(HttpContext ctx, CancellationToken cancellationToken)
@@ -102,16 +94,8 @@ public static class BffPreferenceEndpoints
             return Results.Ok(Array.Empty<AvailablePresetDto>());
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .GetAsync("api/user/appearance/presets", cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Results.Ok(Array.Empty<AvailablePresetDto>());
-        }
-
-        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+        using var response = await GetPreferenceForwarding(ctx).GetPresetsAsync(cancellationToken);
+        return await BffForwardingResults.JsonStreamOrFallbackAsync(response, Array.Empty<AvailablePresetDto>(), cancellationToken);
     }
 
     private static async Task<IResult> HandleGetProfilesAsync(HttpContext ctx, CancellationToken cancellationToken)
@@ -121,16 +105,8 @@ public static class BffPreferenceEndpoints
             return Results.Ok(Array.Empty<UserAppearanceProfileDto>());
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .GetAsync("api/user/appearance/profiles", cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Results.Ok(Array.Empty<UserAppearanceProfileDto>());
-        }
-
-        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+        using var response = await GetPreferenceForwarding(ctx).GetProfilesAsync(cancellationToken);
+        return await BffForwardingResults.JsonStreamOrFallbackAsync(response, Array.Empty<UserAppearanceProfileDto>(), cancellationToken);
     }
 
     private static async Task<IResult> HandleSetActiveProfileAsync(HttpContext ctx, Guid profileId, CancellationToken cancellationToken)
@@ -140,14 +116,8 @@ public static class BffPreferenceEndpoints
             return Results.Unauthorized();
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        var request = new SetActiveProfileRequestDto { ProfileId = profileId };
-        using var response = await clientFactory.CreateClient("BffClient")
-            .PutAsJsonAsync("api/user/appearance/active-profile", request, cancellationToken);
-
-        return response.IsSuccessStatusCode
-            ? Results.Ok()
-            : Results.Problem(detail: "Could not set active profile.", statusCode: (int)response.StatusCode, title: "Active profile update failed");
+        using var response = await GetPreferenceForwarding(ctx).SetActiveProfileAsync(profileId, cancellationToken);
+        return BffForwardingResults.OkOrProblem(response, "Could not set active profile.", "Active profile update failed");
     }
 
     private static async Task<IResult> HandleClonePresetAsync(HttpContext ctx, Guid presetId, CancellationToken cancellationToken)
@@ -157,16 +127,8 @@ public static class BffPreferenceEndpoints
             return Results.Unauthorized();
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .PostAsJsonAsync($"api/user/appearance/profiles/from-preset/{presetId}", (object?)null, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Results.Problem(detail: "Could not clone preset.", statusCode: (int)response.StatusCode, title: "Preset clone failed");
-        }
-
-        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+        using var response = await GetPreferenceForwarding(ctx).ClonePresetAsync(presetId, cancellationToken);
+        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not clone preset.", "Preset clone failed", cancellationToken);
     }
 
     private static async Task<IResult> HandleCreateProfileAsync(HttpContext ctx, CreateCustomProfileRequestDto request, CancellationToken cancellationToken)
@@ -176,16 +138,8 @@ public static class BffPreferenceEndpoints
             return Results.Unauthorized();
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .PostAsJsonAsync("api/user/appearance/profiles", request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Results.Problem(detail: "Could not create custom profile.", statusCode: (int)response.StatusCode, title: "Profile creation failed");
-        }
-
-        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+        using var response = await GetPreferenceForwarding(ctx).CreateProfileAsync(request, cancellationToken);
+        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not create custom profile.", "Profile creation failed", cancellationToken);
     }
 
     private static async Task<IResult> HandleUpdateProfileAsync(HttpContext ctx, Guid profileId, UpdateAppearanceProfileRequestDto request, CancellationToken cancellationToken)
@@ -195,44 +149,34 @@ public static class BffPreferenceEndpoints
             return Results.Unauthorized();
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .PutAsJsonAsync($"api/user/appearance/profiles/{profileId}", request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Results.Problem(detail: "Could not update profile.", statusCode: (int)response.StatusCode, title: "Profile update failed");
-        }
-
-        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+        using var response = await GetPreferenceForwarding(ctx).UpdateProfileAsync(profileId, request, cancellationToken);
+        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not update profile.", "Profile update failed", cancellationToken);
     }
 
     private static async Task<IResult> HandleSetThemeModeAsync(HttpContext ctx, SetThemeModeRequestDto request, CancellationToken cancellationToken)
     {
         if (ctx.User.Identity?.IsAuthenticated != true)
         {
-var mode = request.ThemeMode?.Trim().ToLowerInvariant();
-        var validModes = new[] { "system", "light", "dark", "lighthighcontrast", "darkhighcontrast", "custom" };
-        if (mode is null || !validModes.Contains(mode))
-        {
-            return Results.Problem(detail: "Theme mode must be one of: system, light, dark, lighthighcontrast, darkhighcontrast, custom.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid theme mode");
-        }
+            var preferenceValidation = GetPreferenceValidation(ctx);
+            var mode = preferenceValidation.NormalizeThemeMode(request.ThemeMode);
+            if (mode is null)
+            {
+                return Results.Problem(detail: preferenceValidation.ThemeModeValidationMessage, statusCode: StatusCodes.Status400BadRequest, title: "Invalid theme mode");
+            }
 
-            PersistThemeCookie(ctx, mode);
+            GetPreferenceCookies(ctx).PersistThemeCookie(ctx, mode);
             return Results.Ok(new { themeMode = mode });
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .PutAsJsonAsync("api/user/appearance/mode", request, cancellationToken);
+        using var response = await GetPreferenceForwarding(ctx).SetThemeModeAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
-            return Results.Problem(detail: "Could not set theme mode.", statusCode: (int)response.StatusCode, title: "Theme mode update failed");
+            return BffForwardingResults.Problem(response, "Could not set theme mode.", "Theme mode update failed");
         }
 
-        PersistThemeCookie(ctx, request.ThemeMode ?? "system");
-        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+        GetPreferenceCookies(ctx).PersistThemeCookie(ctx, request.ThemeMode ?? "system");
+        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not set theme mode.", "Theme mode update failed", cancellationToken);
     }
 
     private static async Task<IResult> HandleGeneratePaletteAsync(HttpContext ctx, string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken)
@@ -242,16 +186,8 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
             return Results.Unauthorized();
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .GetAsync($"api/user/appearance/generate-palette?naturalColor={Uri.EscapeDataString(naturalColor)}&brandColor={Uri.EscapeDataString(brandColor)}&isDark={isDark}", cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Results.Problem(detail: "Could not generate palette.", statusCode: (int)response.StatusCode, title: "Palette generation failed");
-        }
-
-        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+        using var response = await GetPreferenceForwarding(ctx).GeneratePaletteAsync(naturalColor, brandColor, isDark, cancellationToken);
+        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not generate palette.", "Palette generation failed", cancellationToken);
     }
 
     private static async Task<IResult> HandleArchiveProfileAsync(HttpContext ctx, Guid profileId, CancellationToken cancellationToken)
@@ -261,16 +197,8 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
             return Results.Unauthorized();
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .PutAsync($"api/user/appearance/profiles/{profileId}/archive", null, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Results.Problem(detail: "Could not archive profile.", statusCode: (int)response.StatusCode, title: "Archive profile failed");
-        }
-
-        return Results.Ok();
+        using var response = await GetPreferenceForwarding(ctx).ArchiveProfileAsync(profileId, cancellationToken);
+        return BffForwardingResults.OkOrProblem(response, "Could not archive profile.", "Archive profile failed");
     }
 
     private static async Task<IResult> HandleDuplicateProfileAsync(HttpContext ctx, Guid profileId, CancellationToken cancellationToken)
@@ -280,52 +208,19 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
             return Results.Unauthorized();
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .PostAsync($"api/user/appearance/profiles/{profileId}/duplicate", null, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Results.Problem(detail: "Could not duplicate profile.", statusCode: (int)response.StatusCode, title: "Duplicate profile failed");
-        }
-
-        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
-    }
-
-    private static ResolvedAppearanceDto BuildDefaultResolvedAppearance(HttpContext ctx)
-    {
-        var theme = ctx.Request.Cookies["theme"];
-        var direction = ctx.Request.Cookies["direction"];
-        var lang = ctx.Request.Cookies["lang"];
-
-        var validModes = new[] { "system", "light", "dark", "lighthighcontrast", "darkhighcontrast", "custom" };
-        var resolvedMode = validModes.Contains(theme) ? theme! : "system";
-
-        return new ResolvedAppearanceDto
-        {
-            ThemeMode = resolvedMode,
-            Direction = direction is "ltr" or "rtl" ? direction : "auto",
-            Language = CultureRegistry.TryGetEntry(lang ?? string.Empty, out var entry) ? entry.Code : "en",
-            ServerEffectiveDarkMode = resolvedMode switch
-            {
-                "dark" => true,
-                "lighthighcontrast" => false,
-                "darkhighcontrast" => true,
-                "light" => false,
-                _ => null
-            }
-        };
+        using var response = await GetPreferenceForwarding(ctx).DuplicateProfileAsync(profileId, cancellationToken);
+        return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not duplicate profile.", "Duplicate profile failed", cancellationToken);
     }
 
     private static async Task<IResult> HandleThemePreference(HttpContext ctx, CancellationToken cancellationToken)
     {
-        var themeMode = ctx.Request.Query["theme"].ToString().Trim().ToLowerInvariant();
+        var preferenceValidation = GetPreferenceValidation(ctx);
+        var themeMode = preferenceValidation.NormalizeThemeMode(ctx.Request.Query["theme"].ToString());
 
-        var validModes = new[] { "system", "light", "dark", "lighthighcontrast", "darkhighcontrast", "custom" };
-        if (!validModes.Contains(themeMode))
+        if (themeMode is null)
         {
             return Results.Problem(
-                detail: "Theme mode must be one of: system, light, dark, lighthighcontrast, darkhighcontrast, custom.",
+                detail: preferenceValidation.ThemeModeValidationMessage,
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Invalid theme preference");
         }
@@ -342,7 +237,7 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
             }
         }
 
-        PersistThemeCookie(ctx, themeMode);
+        GetPreferenceCookies(ctx).PersistThemeCookie(ctx, themeMode);
         return Results.Ok(updated);
     }
 
@@ -357,14 +252,14 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
             }
         }
 
-        return Results.Ok(ReadCookiePreferences(ctx));
+        return Results.Ok(GetPreferenceCookies(ctx).ReadCookiePreferences(ctx));
     }
 
     private static async Task<IResult> HandleLanguagePreference(HttpContext ctx, CancellationToken cancellationToken)
     {
-        var rawLang = ctx.Request.Query["lang"].ToString();
+        var normalizedLang = GetPreferenceValidation(ctx).NormalizeLanguage(ctx.Request.Query["lang"].ToString());
 
-        if (!CultureRegistry.TryGetEntry(rawLang, out var entry))
+        if (normalizedLang is null)
         {
             return Results.Problem(
                 detail: "Language must be a supported culture code registered in CultureRegistry.",
@@ -372,7 +267,6 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
                 title: "Invalid language preference");
         }
 
-        var normalizedLang = entry.Code;
         var current = await ReadCurrentPreferencesAsync(ctx, cancellationToken);
         var updated = current with { Language = normalizedLang };
 
@@ -385,16 +279,17 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
             }
         }
 
-        PersistLanguageCookie(ctx, normalizedLang);
-        PersistAspNetCoreCultureCookie(ctx, normalizedLang);
+        var preferenceCookies = GetPreferenceCookies(ctx);
+        preferenceCookies.PersistLanguageCookie(ctx, normalizedLang);
+        preferenceCookies.PersistAspNetCoreCultureCookie(ctx, normalizedLang);
         return Results.Ok(updated);
     }
 
     private static async Task<IResult> HandleDirectionPreference(HttpContext ctx, CancellationToken cancellationToken)
     {
-        var direction = ctx.Request.Query["dir"].ToString().Trim().ToLowerInvariant();
+        var direction = GetPreferenceValidation(ctx).NormalizeDirection(ctx.Request.Query["dir"].ToString());
 
-        if (direction is not "auto" and not "ltr" and not "rtl")
+        if (direction is null)
         {
             return Results.Problem(
                 detail: "Direction must be 'auto', 'ltr', or 'rtl'.",
@@ -414,7 +309,7 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
             }
         }
 
-        PersistDirectionCookie(ctx, direction);
+        GetPreferenceCookies(ctx).PersistDirectionCookie(ctx, direction);
         return Results.Ok(updated);
     }
 
@@ -428,20 +323,12 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
                 title: "Authentication required");
         }
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .GetAsync("api/user/appearance/themes", cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return Results.Problem(
-                detail: "Available themes could not be fetched from the API.",
-                statusCode: (int)response.StatusCode,
-                title: "Theme catalog unavailable");
-        }
-
-        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
-        return Results.Content(payload, response.Content.Headers.ContentType?.MediaType ?? "application/json");
+        using var response = await GetPreferenceForwarding(ctx).GetAvailableThemesAsync(cancellationToken);
+        return await BffForwardingResults.ContentOrProblemAsync(
+            response,
+            "Available themes could not be fetched from the API.",
+            "Theme catalog unavailable",
+            cancellationToken);
     }
 
     private static async Task<UserAppearancePreferencesDto> ReadCurrentPreferencesAsync(HttpContext ctx, CancellationToken cancellationToken)
@@ -455,14 +342,12 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
             }
         }
 
-        return ReadCookiePreferences(ctx);
+        return GetPreferenceCookies(ctx).ReadCookiePreferences(ctx);
     }
 
     private static async Task<UserAppearancePreferencesDto?> ReadAuthenticatedAsync(HttpContext ctx, CancellationToken cancellationToken)
     {
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .GetAsync("api/user/appearance", cancellationToken);
+        using var response = await GetPreferenceForwarding(ctx).GetAppearanceAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -472,81 +357,15 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
         return await response.Content.ReadFromJsonAsync<UserAppearancePreferencesDto>(cancellationToken: cancellationToken);
     }
 
-    private static UserAppearancePreferencesDto ReadCookiePreferences(HttpContext ctx)
-    {
-        var theme = ctx.Request.Cookies["theme"];
-        var direction = ctx.Request.Cookies["direction"];
-        var lang = ctx.Request.Cookies["lang"];
-
-        return new UserAppearancePreferencesDto
-        {
-            ThemeMode = theme is "dark" or "light" ? theme : "system",
-            Direction = direction is "ltr" or "rtl" ? direction : "auto",
-            Language = CultureRegistry.TryGetEntry(lang ?? string.Empty, out var entry) ? entry.Code : "en",
-            DefaultThemeId = null
-        };
-    }
-
     private static async Task<IResult?> PersistAuthenticatedAsync(
         HttpContext ctx,
         UserAppearancePreferencesDto preferences,
         string failureTitle,
         CancellationToken cancellationToken)
     {
-        var request = new UpdateUserAppearancePreferencesDto
-        {
-            ThemeMode = preferences.ThemeMode,
-            Direction = preferences.Direction,
-            Language = preferences.Language,
-            DefaultThemeId = preferences.DefaultThemeId
-        };
+        using var response = await GetPreferenceForwarding(ctx).PersistPreferencesAsync(preferences, cancellationToken);
 
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-        using var response = await clientFactory.CreateClient("BffClient")
-            .PutAsJsonAsync("api/user/appearance", request, cancellationToken);
-
-        if (response.IsSuccessStatusCode)
-        {
-            return null;
-        }
-
-        return Results.Problem(
-            detail: "Authenticated preference could not be persisted.",
-            statusCode: (int)response.StatusCode,
-            title: failureTitle);
-    }
-
-    private static void PersistLanguageCookie(HttpContext ctx, string languageCode)
-    {
-        var isDev = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
-
-        ctx.Response.Cookies.Append("lang", languageCode, new CookieOptions
-        {
-            MaxAge = TimeSpan.FromDays(365),
-            Path = "/",
-            SameSite = SameSiteMode.Lax,
-            HttpOnly = false,
-            Secure = !isDev
-        });
-    }
-
-    private static void PersistAspNetCoreCultureCookie(HttpContext ctx, string languageCode)
-    {
-        var isDev = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
-        var cookieValue = CookieRequestCultureProvider.MakeCookieValue(
-            new RequestCulture(new CultureInfo(languageCode)));
-
-        ctx.Response.Cookies.Append(
-            CookieRequestCultureProvider.DefaultCookieName,
-            cookieValue,
-            new CookieOptions
-            {
-                MaxAge = TimeSpan.FromDays(365),
-                Path = "/",
-                SameSite = SameSiteMode.Lax,
-                HttpOnly = false,
-                Secure = !isDev
-            });
+        return BffForwardingResults.ProblemOrNull(response, "Authenticated preference could not be persisted.", failureTitle);
     }
 
     private static IResult HandleGetCurrentUser(HttpContext ctx)
@@ -573,55 +392,18 @@ var mode = request.ThemeMode?.Trim().ToLowerInvariant();
         });
     }
 
-    private static void PersistDirectionCookie(HttpContext ctx, string direction)
+    private static IBffPreferenceCookieService GetPreferenceCookies(HttpContext ctx)
     {
-        var isDev = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
-
-        if (direction == "auto")
-        {
-            ctx.Response.Cookies.Delete("direction", new CookieOptions
-            {
-                Path = "/",
-                SameSite = SameSiteMode.Lax,
-                HttpOnly = false,
-                Secure = !isDev
-            });
-            return;
-        }
-
-        ctx.Response.Cookies.Append("direction", direction, new CookieOptions
-        {
-            MaxAge = TimeSpan.FromDays(365),
-            Path = "/",
-            SameSite = SameSiteMode.Lax,
-            HttpOnly = false,
-            Secure = !isDev
-        });
+        return ctx.RequestServices.GetRequiredService<IBffPreferenceCookieService>();
     }
 
-    private static void PersistThemeCookie(HttpContext ctx, string themeMode)
+    private static IBffPreferenceValidationService GetPreferenceValidation(HttpContext ctx)
     {
-        var isDev = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
+        return ctx.RequestServices.GetRequiredService<IBffPreferenceValidationService>();
+    }
 
-        if (themeMode == "system")
-        {
-            ctx.Response.Cookies.Delete("theme", new CookieOptions
-            {
-                Path = "/",
-                SameSite = SameSiteMode.Lax,
-                HttpOnly = false,
-                Secure = !isDev
-            });
-            return;
-        }
-
-        ctx.Response.Cookies.Append("theme", themeMode, new CookieOptions
-        {
-            MaxAge = TimeSpan.FromDays(365),
-            Path = "/",
-            SameSite = SameSiteMode.Lax,
-            HttpOnly = false,
-            Secure = !isDev
-        });
+    private static IBffPreferenceForwardingService GetPreferenceForwarding(HttpContext ctx)
+    {
+        return ctx.RequestServices.GetRequiredService<IBffPreferenceForwardingService>();
     }
 }
