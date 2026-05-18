@@ -133,6 +133,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         var resource = builder.CreateResourceBuilder<ProjectResource>(resourceName);
 
         resource.WithEnvironment("ConnectionStrings__DefaultConnection", connectionString);
+        resource.WithEnvironment("Testing__DisableDeploymentModeCache", "true");
 
         if (includeMigrationServiceConnectionString)
         {
