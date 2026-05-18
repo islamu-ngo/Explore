@@ -6,8 +6,11 @@ using System.Net.Http.Json;
 using Explore.Blazor.Client.Services.Appearance;
 using MudBlazor;
 using MudBlazor.Utilities;
+using ClientAvailablePresetDto = Explore.Blazor.Client.Services.Appearance.AvailablePresetDto;
+using ClientCreateCustomProfileRequestDto = Explore.Blazor.Client.Services.Appearance.CreateCustomProfileRequestDto;
 using ClientResolvedAppearanceDto = Explore.Blazor.Client.Services.Appearance.ResolvedAppearanceDto;
 using ClientResolvedThemeDto = Explore.Blazor.Client.Services.Appearance.ResolvedThemeDto;
+using ClientUserAppearanceProfileDto = Explore.Blazor.Client.Services.Appearance.UserAppearanceProfileDto;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -146,6 +149,84 @@ public class AppearanceThemeServiceTests
         await Assert.That(theme.PaletteDark.SecondaryContrastText.ToString(MudColorOutputFormats.Hex).ToUpperInvariant()).IsEqualTo("#101010");
     }
 
+    [Test]
+    public async Task InitializeAsync_LoadsResolvedAppearancePresetsAndProfilesFromBff()
+    {
+        var requests = new List<string>();
+        var service = CreateService(request =>
+        {
+            requests.Add($"{request.Method} {request.RequestUri?.PathAndQuery}");
+
+            return request.RequestUri?.PathAndQuery switch
+            {
+                "/bff/appearance" => CreateJsonResponse(new ClientResolvedAppearanceDto
+                {
+                    ThemeMode = "darkhighcontrast",
+                    Direction = "rtl",
+                    Language = "fr",
+                    ServerEffectiveDarkMode = true
+                }),
+                "/bff/appearance/presets" => CreateJsonResponse<IReadOnlyList<ClientAvailablePresetDto>>(
+                    [CreatePreset()]),
+                "/bff/appearance/profiles" => CreateJsonResponse<IReadOnlyList<ClientUserAppearanceProfileDto>>(
+                    [CreateProfile(Guid.Parse("10000000-0000-0000-0000-000000000001"))]),
+                _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+            };
+        });
+
+        await service.InitializeAsync(null!);
+
+        await Assert.That(service.Current.ThemeMode).IsEqualTo("darkhighcontrast");
+        await Assert.That(service.Current.Direction).IsEqualTo("rtl");
+        await Assert.That(service.Current.Language).IsEqualTo("fr");
+        await Assert.That(service.Current.AvailablePresets.Count).IsEqualTo(1);
+        await Assert.That(service.Current.UserProfiles.Count).IsEqualTo(1);
+        await Assert.That(requests).Contains("GET /bff/appearance");
+        await Assert.That(requests).Contains("GET /bff/appearance/presets");
+        await Assert.That(requests).Contains("GET /bff/appearance/profiles");
+    }
+
+    [Test]
+    public async Task CreateCustomProfileAsync_PostsToBffAndReturnsProfile()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        var profileId = Guid.Parse("20000000-0000-0000-0000-000000000002");
+        var service = CreateService(request =>
+        {
+            capturedRequest = request;
+            return CreateJsonResponse(CreateProfile(profileId));
+        });
+
+        var result = await service.CreateCustomProfileAsync(new ClientCreateCustomProfileRequestDto
+        {
+            Name = "Custom",
+            NaturalColor = "#111111",
+            BrandColor = "#222222"
+        });
+
+        await Assert.That(result?.Id).IsEqualTo(profileId);
+        await Assert.That(capturedRequest?.Method).IsEqualTo(HttpMethod.Post);
+        await Assert.That(capturedRequest?.RequestUri?.PathAndQuery).IsEqualTo("/bff/appearance/profiles");
+    }
+
+    [Test]
+    public async Task GeneratePalettePreviewAsync_EscapesQueryAndReturnsPalette()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        var service = CreateService(request =>
+        {
+            capturedRequest = request;
+            return CreateJsonResponse(CreatePalette(primary: "#ABCDEF"));
+        });
+
+        var result = await service.GeneratePalettePreviewAsync("soft gray", "brand blue", isDark: false);
+
+        await Assert.That(result?.Primary).IsEqualTo("#ABCDEF");
+        await Assert.That(capturedRequest?.Method).IsEqualTo(HttpMethod.Get);
+        await Assert.That(capturedRequest?.RequestUri?.AbsoluteUri).Contains("naturalColor=soft%20gray");
+        await Assert.That(capturedRequest?.RequestUri?.AbsoluteUri).Contains("brandColor=brand%20blue");
+    }
+
     private static AppearanceThemeService CreateService(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
     {
         var logger = Substitute.For<ILogger<AppearanceThemeService>>();
@@ -156,6 +237,51 @@ public class AppearanceThemeServiceTests
 
         return new AppearanceThemeService(client, logger);
     }
+
+    private static HttpResponseMessage CreateJsonResponse<T>(T value) => new(HttpStatusCode.OK)
+    {
+        Content = JsonContent.Create(value)
+    };
+
+    private static ClientAvailablePresetDto CreatePreset() => new()
+    {
+        Id = Guid.Parse("30000000-0000-0000-0000-000000000003"),
+        ThemeKey = "standard",
+        DisplayName = "Standard",
+        LightPalette = CreatePalette(),
+        DarkPalette = CreatePalette(isDark: true)
+    };
+
+    private static ClientUserAppearanceProfileDto CreateProfile(Guid id) => new()
+    {
+        Id = id,
+        Name = "Profile",
+        LightPaletteSnapshot = CreatePalette(),
+        DarkPaletteSnapshot = CreatePalette(isDark: true)
+    };
+
+    private static ClientPaletteDto CreatePalette(string primary = "#123456", bool isDark = false) => new()
+    {
+        Primary = primary,
+        PrimaryContrastText = isDark ? "#1A1A1A" : "#FFFFFF",
+        Secondary = "#654321",
+        SecondaryContrastText = isDark ? "#101010" : "#ABCDEF",
+        Background = isDark ? "#1A1A1A" : "#F5F5F7",
+        Surface = isDark ? "#242424" : "#FFFFFF",
+        AppbarBackground = isDark ? "rgba(26,26,26,0.92)" : "#FFFFFF",
+        AppbarText = isDark ? "#FAFAFA" : "#18181B",
+        DrawerBackground = isDark ? "#1A1A1A" : "#FFFFFF",
+        DrawerText = isDark ? "#FAFAFA" : "#18181B",
+        DrawerIcon = isDark ? "#A1A1AA" : "#52525B",
+        TextPrimary = isDark ? "#FAFAFA" : "#18181B",
+        TextSecondary = isDark ? "#A1A1AA" : "#404040",
+        Info = "#52525B",
+        Success = "#16A34A",
+        Warning = "#D97706",
+        Error = "#DC2626",
+        LinesDefault = isDark ? "#3F3F46" : "#A1A1AA",
+        Divider = isDark ? "#2E2E2E" : "#E4E4E7"
+    };
 
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {

@@ -3,6 +3,7 @@
 
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Services.Appearance;
+using Explore.Blazor.Client.Services.Http;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Services;
@@ -11,6 +12,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<AppearanceThemeService> _logger;
+    private readonly IApiClientExecutor _apiClientExecutor;
 
     private AppearanceState _current = new();
     private bool _isInitialized;
@@ -103,10 +105,14 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     public AppearanceState Current => _current;
     public event EventHandler<AppearanceStateChangedEventArgs>? Changed;
 
-    public AppearanceThemeService(HttpClient httpClient, ILogger<AppearanceThemeService> logger)
+    public AppearanceThemeService(
+        HttpClient httpClient,
+        ILogger<AppearanceThemeService> logger,
+        IApiClientExecutor? apiClientExecutor = null)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _apiClientExecutor = apiClientExecutor ?? new ApiClientExecutor();
     }
 
     public async Task InitializeAsync(MudThemeProvider themeProvider, CancellationToken cancellationToken = default)
@@ -115,7 +121,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<ResolvedAppearanceDto>("/bff/appearance", cancellationToken);
+            var response = await ReadResolvedAppearanceAsync(cancellationToken);
             if (response is not null)
             {
                 _current.ResolvedAppearance = response;
@@ -132,8 +138,13 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            var presets = await _httpClient.GetFromJsonAsync<IReadOnlyList<AvailablePresetDto>>("/bff/appearance/presets", cancellationToken);
-            _current.AvailablePresets = presets ?? Array.Empty<AvailablePresetDto>();
+            var result = await _apiClientExecutor.ReadJsonAsync<IReadOnlyList<AvailablePresetDto>>(
+                token => _httpClient.GetAsync("/bff/appearance/presets", token),
+                "appearance presets",
+                cancellationToken);
+            _current.AvailablePresets = result.IsSuccess
+                ? result.Value ?? Array.Empty<AvailablePresetDto>()
+                : Array.Empty<AvailablePresetDto>();
         }
         catch (Exception ex)
         {
@@ -143,7 +154,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            var profiles = await _httpClient.GetFromJsonAsync<IReadOnlyList<UserAppearanceProfileDto>>("/bff/appearance/profiles", cancellationToken);
+            var profiles = await ReadProfilesAsync(cancellationToken);
             _current.UserProfiles = profiles ?? Array.Empty<UserAppearanceProfileDto>();
         }
         catch (Exception ex)
@@ -165,8 +176,16 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            await _httpClient.PutAsJsonAsync("/bff/appearance/active-profile", new SetActiveProfileRequestDto { ProfileId = profileId }, cancellationToken);
-            _current.ResolvedAppearance = await _httpClient.GetFromJsonAsync<ResolvedAppearanceDto>("/bff/appearance", cancellationToken);
+            var result = await _apiClientExecutor.SendAsync(
+                token => _httpClient.PutAsJsonAsync("/bff/appearance/active-profile", new SetActiveProfileRequestDto { ProfileId = profileId }, token),
+                "set active appearance profile",
+                cancellationToken);
+            if (!result.IsSuccess)
+            {
+                throw CreateExecutorException(result);
+            }
+
+            _current.ResolvedAppearance = await ReadResolvedAppearanceAsync(cancellationToken);
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
         }
         catch (Exception ex)
@@ -187,13 +206,24 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            var profile = await _httpClient.PostAsJsonAsync($"/bff/appearance/profiles/from-preset/{presetId}", new ClonePresetRequestDto(), cancellationToken);
-            var profileDto = await profile.Content.ReadFromJsonAsync<UserAppearanceProfileDto>(cancellationToken: cancellationToken);
+            var result = await _apiClientExecutor.ReadJsonAsync<UserAppearanceProfileDto>(
+                token => _httpClient.PostAsJsonAsync($"/bff/appearance/profiles/from-preset/{presetId}", new ClonePresetRequestDto(), token),
+                "clone appearance preset",
+                cancellationToken);
+            var profileDto = result.IsSuccess ? result.Value : null;
 
             if (profileDto is not null)
             {
-                await _httpClient.PutAsJsonAsync("/bff/appearance/active-profile", new SetActiveProfileRequestDto { ProfileId = profileDto.Id }, cancellationToken);
-                _current.ResolvedAppearance = await _httpClient.GetFromJsonAsync<ResolvedAppearanceDto>("/bff/appearance", cancellationToken);
+                var activateResult = await _apiClientExecutor.SendAsync(
+                    token => _httpClient.PutAsJsonAsync("/bff/appearance/active-profile", new SetActiveProfileRequestDto { ProfileId = profileDto.Id }, token),
+                    "activate cloned appearance profile",
+                    cancellationToken);
+                if (!activateResult.IsSuccess)
+                {
+                    throw CreateExecutorException(activateResult);
+                }
+
+                _current.ResolvedAppearance = await ReadResolvedAppearanceAsync(cancellationToken);
             }
 
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
@@ -217,7 +247,14 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
             _current.ThemeMode = mode;
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
 
-            await _httpClient.PutAsJsonAsync("/bff/appearance/mode", new SetThemeModeRequestDto { ThemeMode = mode }, cancellationToken);
+            var result = await _apiClientExecutor.SendAsync(
+                token => _httpClient.PutAsJsonAsync("/bff/appearance/mode", new SetThemeModeRequestDto { ThemeMode = mode }, token),
+                "set appearance theme mode",
+                cancellationToken);
+            if (!result.IsSuccess)
+            {
+                throw CreateExecutorException(result);
+            }
         }
         catch (Exception ex)
         {
@@ -234,8 +271,16 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            await _httpClient.PutAsJsonAsync($"/bff/appearance/profiles/{activeProfileId}", request, cancellationToken);
-            _current.ResolvedAppearance = await _httpClient.GetFromJsonAsync<ResolvedAppearanceDto>("/bff/appearance", cancellationToken);
+            var result = await _apiClientExecutor.SendAsync(
+                token => _httpClient.PutAsJsonAsync($"/bff/appearance/profiles/{activeProfileId}", request, token),
+                "update appearance profile",
+                cancellationToken);
+            if (!result.IsSuccess)
+            {
+                throw CreateExecutorException(result);
+            }
+
+            _current.ResolvedAppearance = await ReadResolvedAppearanceAsync(cancellationToken);
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
         }
         catch (Exception ex)
@@ -248,8 +293,11 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("/bff/appearance/profiles", request, cancellationToken);
-            return await response.Content.ReadFromJsonAsync<UserAppearanceProfileDto>(cancellationToken: cancellationToken);
+            var result = await _apiClientExecutor.ReadJsonAsync<UserAppearanceProfileDto>(
+                token => _httpClient.PostAsJsonAsync("/bff/appearance/profiles", request, token),
+                "create appearance profile",
+                cancellationToken);
+            return result.IsSuccess ? result.Value : null;
         }
         catch (Exception ex)
         {
@@ -262,10 +310,9 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     {
         try
         {
-            var response = _httpClient.GetFromJsonAsync<ClientPaletteDto>(
-                $"/bff/appearance/generate-palette?naturalColor={Uri.EscapeDataString(naturalColor)}&brandColor={Uri.EscapeDataString(brandColor)}&isDark={isDark}",
-                CancellationToken.None);
-            return response.Result ?? GetFallbackPalette(isDark);
+            return GeneratePalettePreviewAsync(naturalColor, brandColor, isDark, CancellationToken.None)
+                .GetAwaiter()
+                .GetResult() ?? GetFallbackPalette(isDark);
         }
         catch
         {
@@ -277,9 +324,13 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<ClientPaletteDto>(
-                $"/bff/appearance/generate-palette?naturalColor={Uri.EscapeDataString(naturalColor)}&brandColor={Uri.EscapeDataString(brandColor)}&isDark={isDark}",
+            var result = await _apiClientExecutor.ReadJsonAsync<ClientPaletteDto>(
+                token => _httpClient.GetAsync(
+                    $"/bff/appearance/generate-palette?naturalColor={Uri.EscapeDataString(naturalColor)}&brandColor={Uri.EscapeDataString(brandColor)}&isDark={isDark}",
+                    token),
+                "generate appearance palette",
                 cancellationToken);
+            return result.IsSuccess ? result.Value : null;
         }
         catch (Exception ex)
         {
@@ -334,7 +385,15 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     {
         try
         {
-            await _httpClient.PutAsync($"/bff/appearance/profiles/{profileId}/archive", null, cancellationToken);
+            var result = await _apiClientExecutor.SendAsync(
+                token => _httpClient.PutAsync($"/bff/appearance/profiles/{profileId}/archive", null, token),
+                "archive appearance profile",
+                cancellationToken);
+            if (!result.IsSuccess)
+            {
+                throw CreateExecutorException(result);
+            }
+
             await RefreshProfilesAsync(cancellationToken);
             Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
         }
@@ -351,8 +410,11 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
             var request = name is not null
                 ? JsonContent.Create(new { Name = name })
                 : null;
-            var response = await _httpClient.PostAsync($"/bff/appearance/profiles/{profileId}/duplicate", request, cancellationToken);
-            return await response.Content.ReadFromJsonAsync<UserAppearanceProfileDto>(cancellationToken: cancellationToken);
+            var result = await _apiClientExecutor.ReadJsonAsync<UserAppearanceProfileDto>(
+                token => _httpClient.PostAsync($"/bff/appearance/profiles/{profileId}/duplicate", request, token),
+                "duplicate appearance profile",
+                cancellationToken);
+            return result.IsSuccess ? result.Value : null;
         }
         catch (Exception ex)
         {
@@ -365,7 +427,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     {
         try
         {
-            var profiles = await _httpClient.GetFromJsonAsync<IReadOnlyList<UserAppearanceProfileDto>>("/bff/appearance/profiles", cancellationToken);
+            var profiles = await ReadProfilesAsync(cancellationToken);
             _current.UserProfiles = profiles ?? Array.Empty<UserAppearanceProfileDto>();
         }
         catch (Exception ex)
@@ -391,6 +453,29 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
             TextPrimary = "#18181B", TextSecondary = "#404040", Info = "#52525B", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
             LinesDefault = "#A1A1AA", Divider = "#E4E4E7"
         };
+
+    private async Task<ResolvedAppearanceDto?> ReadResolvedAppearanceAsync(CancellationToken cancellationToken)
+    {
+        var result = await _apiClientExecutor.ReadJsonAsync<ResolvedAppearanceDto>(
+            token => _httpClient.GetAsync("/bff/appearance", token),
+            "resolved appearance",
+            cancellationToken);
+        return result.IsSuccess ? result.Value : null;
+    }
+
+    private async Task<IReadOnlyList<UserAppearanceProfileDto>?> ReadProfilesAsync(CancellationToken cancellationToken)
+    {
+        var result = await _apiClientExecutor.ReadJsonAsync<IReadOnlyList<UserAppearanceProfileDto>>(
+            token => _httpClient.GetAsync("/bff/appearance/profiles", token),
+            "appearance profiles",
+            cancellationToken);
+        return result.IsSuccess ? result.Value : null;
+    }
+
+    private static InvalidOperationException CreateExecutorException(ApiResult result)
+    {
+        return new InvalidOperationException(result.ErrorMessage ?? "Appearance request failed.");
+    }
 
     private static string PaletteValue(string? value, string fallback) =>
         string.IsNullOrWhiteSpace(value) ? fallback : value;

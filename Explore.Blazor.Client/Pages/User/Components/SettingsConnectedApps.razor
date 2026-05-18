@@ -1,5 +1,6 @@
 @* ABOUTME: Settings page section for managing third-party access (contact sharing consents). *@
 @* ABOUTME: Shows organizations the user has shared their email with, with option to withdraw consent. *@
+@using Explore.Blazor.Client.Services
 @using MudBlazor
 @using Explore.Blazor.Client.Contracts.Services
 @inject IContactShareConsentService ConsentService
@@ -98,7 +99,7 @@
 </div>
 
 <!-- Withdraw Confirmation Dialog -->
-<MudDialog @bind-Visible="_showWithdrawDialog" Options="new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true }">
+<MudDialog @bind-Visible="_showWithdrawDialog" Options="DialogOptionsFactory.Small()">
     <DialogContent>
         <MudText Typo="Typo.body1" Class="mb-4">
             Are you sure you want to withdraw email sharing with <strong>@_withdrawTarget?.OrganizationName</strong>?

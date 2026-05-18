@@ -1,6 +1,7 @@
 @* ABOUTME: Contextual sign-in intercept shown before protected actions.
    ABOUTME: Defers provider selection to the dedicated login flow. *@
 
+@using Explore.Blazor.Client.Services
 @using MudBlazor
 @inject NavigationManager Navigation
 
@@ -80,15 +81,6 @@
             ["ReturnUrl"] = returnUrl,
             ["Message"] = message ?? "You need to sign in before continuing."
         };
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.ExtraSmall,
-            FullWidth = true,
-            CloseButton = false,
-            NoHeader = true,
-            CloseOnEscapeKey = true,
-            BackgroundClass = "login-prompt-backdrop"
-        };
-        return await dialogService.ShowAsync<LoginPromptDialog>("Sign in", parameters, options);
+        return await dialogService.ShowAsync<LoginPromptDialog>("Sign in", parameters, DialogOptionsFactory.LoginPrompt());
     }
 }

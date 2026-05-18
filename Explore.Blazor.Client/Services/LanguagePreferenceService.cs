@@ -4,23 +4,27 @@
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Domain.Common.Localization;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace Explore.Blazor.Client.Services;
+
+public interface ILanguagePreferenceApi
+{
+    [Post("/bff/language")]
+    Task<IApiResponse> SetLanguageAsync([Query] string lang, CancellationToken cancellationToken);
+}
 
 /// <summary>
 /// Default <see cref="ILanguagePreferenceService"/> implementation.
 /// </summary>
 public sealed class LanguagePreferenceService : ILanguagePreferenceService
 {
-    private const string BffClientName = "BffClient";
-    private const string LanguageEndpointPath = "/bff/language";
-
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILanguagePreferenceApi _api;
     private readonly ILogger<LanguagePreferenceService> _logger;
 
-    public LanguagePreferenceService(IHttpClientFactory httpClientFactory, ILogger<LanguagePreferenceService> logger)
+    public LanguagePreferenceService(ILanguagePreferenceApi api, ILogger<LanguagePreferenceService> logger)
     {
-        _httpClientFactory = httpClientFactory;
+        _api = api;
         _logger = logger;
     }
 
@@ -36,11 +40,7 @@ public sealed class LanguagePreferenceService : ILanguagePreferenceService
 
         try
         {
-            var client = _httpClientFactory.CreateClient(BffClientName);
-            var response = await client.PostAsync(
-                $"{LanguageEndpointPath}?lang={Uri.EscapeDataString(entry.Code)}",
-                content: null,
-                ct);
+            var response = await _api.SetLanguageAsync(entry.Code, ct);
 
             if (!response.IsSuccessStatusCode)
             {

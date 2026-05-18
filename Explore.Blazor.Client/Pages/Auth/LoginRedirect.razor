@@ -2,7 +2,7 @@
 @* ABOUTME: Supports Keycloak/Google button flows and AT Protocol handle-input flow before challenge. *@
 
 @page "/login"
-@using System.Net.Http.Json
+@using Explore.Blazor.Client.Extensions
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
@@ -137,7 +137,8 @@
         try
         {
             var client = CreateBffSelfClient();
-            var result = await client.GetFromJsonAsync<AuthProvidersResponse>("/auth/providers");
+            using var response = await client.GetAsync("/auth/providers");
+            var result = await response.ReadJsonOrThrowAsync<AuthProvidersResponse>("Authentication providers");
             var providers = result?.Providers ?? [];
 
             if (providers.Count == 0)

@@ -40,7 +40,7 @@ public class AuthStateService : IAuthStateService
             throw new UnauthorizedAccessException("User is not authenticated");
         }
 
-        // Fallback chain: sub → nameidentifier → sid (CLAUDE.md rule #8)
+        // Fallback chain: sub → nameidentifier → sid (AGENTS.md rule #8)
         var userId = user.FindFirst("sub")?.Value
                      ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                      ?? user.FindFirst("sid")?.Value;

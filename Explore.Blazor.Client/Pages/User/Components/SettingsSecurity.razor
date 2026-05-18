@@ -1,11 +1,13 @@
 @* ABOUTME: Account security settings UI focused on authentication-provider linking for current user. *@
 @* ABOUTME: Adds explicit AT Protocol DID linking flow required for non-email identity providers. *@
 
-@using System.Net.Http.Json
+@using Explore.Blazor.Client.Extensions
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Services.Http
+@using Explore.Blazor.Client.Components.Forms
 @using MudBlazor
 @inject IUserService UserService
-@inject IHttpClientFactory HttpClientFactory
+@inject IBffClient BffClient
 @inject ILogger<SettingsSecurity> Logger
 
 <div class="settings-section">
@@ -70,12 +72,12 @@
                           AdornmentIcon="@Icons.Material.Filled.Link"
                           Immediate="true" />
 
-            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!_canLinkAtproto || _isSaving)"
+            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!_canLinkAtproto || _submitState.IsSubmitting)"
                        OnClick="LinkAtprotoAsync"
                        StartIcon="@Icons.Material.Filled.AddLink"
                        Class="rounded-pill px-6"
                        Style="width: fit-content;">
-                @if (_isSaving)
+                @if (_submitState.IsSubmitting)
                 {
                     <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
                     <span>Linking...</span>
@@ -97,7 +99,7 @@
     private const string AtprotoProviderName = "atproto";
 
     private bool _isLoading = true;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private string _atprotoDid = string.Empty;
     private string? _errorMessage;
     private string? _successMessage;
@@ -137,9 +139,7 @@
                 return;
             }
 
-            var client = HttpClientFactory.CreateClient("BffClient");
-            var allLogins = await client.GetFromJsonAsync<List<UserExternalLoginListItem>>("/api/userexternallogin");
-
+            var allLogins = await BffClient.GetAsync<List<UserExternalLoginListItem>>("/api/userexternallogin");
             _linkedLogins = allLogins?
                 .Where(x => x.UserId == _currentUser.Id)
                 .ToList()
@@ -182,13 +182,12 @@
             return;
         }
 
-        _isSaving = true;
+        _submitState.Start();
         _errorMessage = null;
         _successMessage = null;
 
         try
         {
-            var client = HttpClientFactory.CreateClient("BffClient");
             var payload = new CreateUserExternalLoginRequest
             {
                 UserId = _currentUser.Id.Value,
@@ -198,7 +197,7 @@
                 ProviderDisplayName = "AT Protocol"
             };
 
-            var response = await client.PostAsJsonAsync("/api/userexternallogin", payload);
+            using var response = await BffClient.PostAsync("/api/userexternallogin", payload);
             var body = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -209,7 +208,7 @@
                 return;
             }
 
-            var commandResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponseOfGuidLike>();
+            var commandResponse = await response.ReadJsonOrDefaultAsync<BaseCommandResponseOfGuidLike>();
             if (commandResponse is null || !commandResponse.Success)
             {
                 _errorMessage = commandResponse?.Message ?? "Failed to link AT Protocol DID.";
@@ -227,7 +226,7 @@
         }
         finally
         {
-            _isSaving = false;
+            _submitState.Complete();
         }
     }
 
