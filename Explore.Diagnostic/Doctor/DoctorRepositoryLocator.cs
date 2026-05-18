@@ -1,0 +1,24 @@
+// ABOUTME: Finds the repository root for local doctor checks.
+// ABOUTME: Uses sentinel files rather than environment-specific absolute paths.
+
+namespace Explore.Diagnostic.Doctor;
+
+public static class DoctorRepositoryLocator
+{
+    public static string LocateRepositoryRoot(string startDirectory)
+    {
+        var directory = new DirectoryInfo(startDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Explore.sln"))
+                && Directory.Exists(Path.Combine(directory.FullName, "Explore.Diagnostic")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        return startDirectory;
+    }
+}
