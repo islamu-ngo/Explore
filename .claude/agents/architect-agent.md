@@ -21,7 +21,7 @@ Responsible for high-level system design, generating complex implementation plan
 - Debugging individual test failures (use `quality-verifier-agent`).
 
 ## Mandatory Reads
-1. [CLAUDE.md](../../CLAUDE.md)
+1. [AGENTS.md](../../AGENTS.md)
 2. [docs/QUICK_REFERENCE.md](../../docs/QUICK_REFERENCE.md)
 3. [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md)
 4. [docs/GOVERNANCE.md](../../docs/GOVERNANCE.md)

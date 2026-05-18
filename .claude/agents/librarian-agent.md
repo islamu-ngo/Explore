@@ -22,7 +22,7 @@ Maintains project documentation, researches external libraries or standards, and
 - Writing implementation plans (use `architect-agent`).
 
 ## Mandatory Reads
-1. [CLAUDE.md](../../CLAUDE.md)
+1. [AGENTS.md](../../AGENTS.md)
 2. [docs/QUICK_REFERENCE.md](../../docs/QUICK_REFERENCE.md)
 3. [docs/index.md](../../docs/index.md)
 4. [dev/_journal/README.md](../../dev/_journal/README.md)

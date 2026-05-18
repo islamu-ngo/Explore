@@ -14,7 +14,7 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 | 5 | Which tests must run at minimum? | `intents.yaml` → `minimum_tests` |
 | 6 | Which docs must be updated? | `intents.yaml` → `docs_to_update` |
 | 7 | Which PR checklist applies? | `intents.yaml` → `pr_checklist` |
-| 8 | Which things are forbidden without explicit approval? | `intents.yaml` → `forbidden_without_approval` + root `CLAUDE.md` critical rules |
+| 8 | Which things are forbidden without explicit approval? | `intents.yaml` → `forbidden_without_approval` + root `AGENTS.md` critical rules |
 
 ## Files
 
@@ -58,7 +58,7 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 ## Related
 
 - `AGENTS.md` — tool-neutral root entrypoint for any AI agent or contributor
-- `CLAUDE.md` — Claude-specific bootloader shim
+- `AGENTS.md` — Claude-specific bootloader shim
 - `docs/index.md` — canonical navigation root for the docs tree
 - `.claude/rules/` — path-scoped rule files, referenced from `intents.yaml`
 - `.claude/benchmarks/cold-start-tasks.yaml` — evaluation harness validating cold-start agent performance against these intents

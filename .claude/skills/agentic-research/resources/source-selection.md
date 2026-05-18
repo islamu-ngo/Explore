@@ -20,7 +20,7 @@ The answer exists in this repository. Examples:
 | Middleware pipeline order | `Event.API/Program.cs` |
 | Blazor component behavior | `Explore.Blazor.Client/` |
 | Domain entity rules | `Event.Domain/Entities/`, `docs/DOMAIN.md` |
-| Repo conventions | `CLAUDE.md`, `docs/GOVERNANCE.md`, `docs/QUICK_REFERENCE.md` |
+| Repo conventions | `AGENTS.md`, `docs/GOVERNANCE.md`, `docs/QUICK_REFERENCE.md` |
 | Test expectations | `Event.Architecture.Tests/`, `docs/TESTING.md` |
 | Config/settings | `docs/CONFIGURATION.md`, `appsettings*.json` |
 

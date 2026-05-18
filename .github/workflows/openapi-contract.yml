@@ -89,11 +89,19 @@ jobs:
 
       - name: Restore
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet restore
+        run: dotnet restore --locked-mode
 
       - name: Generate OpenAPI Document
         if: steps.changes.outputs.relevant == 'true'
         run: dotnet build Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal
+
+      - name: Build API Contract Tests
+        if: steps.changes.outputs.relevant == 'true'
+        run: dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
+
+      - name: Run Stable OpenAPI Invariants
+        if: steps.changes.outputs.relevant == 'true'
+        run: dotnet run --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/OpenApiDocument_*" --minimum-expected-tests 5 --no-progress --report-trx --report-trx-filename openapi-invariants.trx
 
       - name: Regenerate Blazor API Client
         if: steps.changes.outputs.relevant == 'true'

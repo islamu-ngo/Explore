@@ -14,7 +14,7 @@ on:
   pull_request:
     paths:
       - "AGENTS.md"
-      - "CLAUDE.md"
+      - "AGENTS.md"
       - ".github/copilot-instructions.md"
       - ".claude/**"
       - "docs/**"
@@ -29,7 +29,7 @@ on:
       - develop
     paths:
       - "AGENTS.md"
-      - "CLAUDE.md"
+      - "AGENTS.md"
       - ".github/copilot-instructions.md"
       - ".claude/**"
       - "docs/**"
@@ -51,10 +51,10 @@ jobs:
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/packages.lock.json'
+          cache-dependency-path: "**/packages.lock.json"
 
       - name: Restore
-        run: dotnet restore Event.Architecture.Tests/Event.Architecture.Tests.csproj
+        run: dotnet restore Event.Architecture.Tests/Event.Architecture.Tests.csproj --locked-mode
 
       - name: Build
         run: dotnet build Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-restore --verbosity quiet

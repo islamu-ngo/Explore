@@ -10,7 +10,7 @@ priority: critical
 # /check — Standard Verification Cycle
 
 > **Source of truth:** [`AGENTS.md`](../../AGENTS.md) §7 Verification Policy.
-> This command is a convenience wrapper — the command strings themselves live in AGENTS.md and `CLAUDE.md` to avoid drift.
+> This command is a convenience wrapper — the command strings themselves live in AGENTS.md and `AGENTS.md` to avoid drift.
 
 ## When to Run
 
@@ -77,7 +77,7 @@ Run the full list only when the change touches multiple layers or you are about 
 ## Related
 
 - [`AGENTS.md`](../../AGENTS.md) §7 — canonical command source.
-- [`CLAUDE.md`](../../CLAUDE.md) — Claude-specific notes.
+- [`AGENTS.md`](../../AGENTS.md) — Claude-specific notes.
 - [`docs/TROUBLESHOOTING.md`](../../docs/TROUBLESHOOTING.md) — common failure modes.
-- [`CLAUDE.md`](../../CLAUDE.md) — full cold-start workflow (includes this step).
+- [`AGENTS.md`](../../AGENTS.md) — full cold-start workflow (includes this step).
 - [`/review-pr`](review-pr.md) — pre-PR checklist.

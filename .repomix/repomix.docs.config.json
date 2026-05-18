@@ -3,7 +3,7 @@
     "schemas/**/*",
     "docs/**/*",
     "README.md",
-    "CLAUDE.md",
+    "AGENTS.md",
     "AGENTS.md",
     "docker-compose.yml",
     "global.json",

@@ -22,7 +22,7 @@ Responsible for the presentation layer, including RESTful API design, HATEOAS af
 - Deep database schema changes (use `backend-engineer-agent`).
 
 ## Mandatory Reads
-1. [CLAUDE.md](../../CLAUDE.md)
+1. [AGENTS.md](../../AGENTS.md)
 2. [docs/QUICK_REFERENCE.md](../../docs/QUICK_REFERENCE.md)
 3. [docs/API.md](../../docs/API.md)
 4. [docs/BLAZOR.md](../../docs/BLAZOR.md)

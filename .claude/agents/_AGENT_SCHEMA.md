@@ -47,7 +47,7 @@ Bulleted list. Explicit negatives. Example: "Not for general build errors — us
 ### `## Mandatory Reads`
 
 Numbered list. Links to the canonical artifacts the agent MUST consult every invocation:
-- Always include: `CLAUDE.md`
+- Always include: `AGENTS.md`
 - Always include: `docs/QUICK_REFERENCE.md`
 - Plus role-specific files (agent-specific docs, skills, rules).
 

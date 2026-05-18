@@ -3,7 +3,7 @@
     "docs/**/*",
     "dev/_journal/**/*",
     "README.md",
-    "CLAUDE.md",
+    "AGENTS.md",
     "AGENTS.md",
     ".claude",
     ".claude/commands/dev-docs.md",

@@ -115,7 +115,7 @@ jobs:
         if: matrix.build-mode == 'manual'
         shell: bash
         run: |
-          dotnet restore
+          dotnet restore --locked-mode
           dotnet build --configuration Release --no-restore --verbosity minimal
 
       - name: Perform CodeQL Analysis

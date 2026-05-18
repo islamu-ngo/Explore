@@ -21,7 +21,7 @@ Diagnoses build failures, investigates test regressions, and enforces architectu
 - Writing implementation plans (use `architect-agent`).
 
 ## Mandatory Reads
-1. [CLAUDE.md](../../CLAUDE.md)
+1. [AGENTS.md](../../AGENTS.md)
 2. [docs/QUICK_REFERENCE.md](../../docs/QUICK_REFERENCE.md)
 3. [docs/TESTING.md](../../docs/TESTING.md)
 4. [docs/OPERATIONS.md](../../docs/OPERATIONS.md)

@@ -330,6 +330,9 @@ Updated dev docs for `[task-name]`:
 - **Handoff:** added/refreshed/not needed — reason
 - **Journal:** entry added/not needed — reason
 
+What changed technically:
+- Medium-sized developer teaching summary of the implementation or doc synchronization work. Name the patterns, libraries/infrastructure, important files/classes, data/control flow, and project/industry conventions involved. Do not reduce this to an abstract sentence like “dev docs updated.”
+
 Verified:
 - `command` — result
 
@@ -342,4 +345,4 @@ Next:
 
 If multiple workstreams were updated, repeat the bullets per workstream.
 
-Never end with only “documentation updated.” Always state what remains and what should happen next.
+Never end with only “documentation updated.” Always teach what changed technically, state what remains, and state what should happen next. The user is a developer; write enough technical detail that they can understand the implementation state without reading the diff first.

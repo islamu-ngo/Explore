@@ -82,7 +82,7 @@ Before writing the plan, gather enough context to produce a high-quality plan. D
 
 Read these first:
 
-- `CLAUDE.md`
+- `AGENTS.md`
 - `AGENTS.md`
 - `dev/active/README.md`
 - `.claude/contract/intents.yaml`
@@ -105,7 +105,7 @@ For every matched intent, capture in the plan:
 - `unique_acceptance`;
 - `forbidden_without_approval`.
 
-If no intent matches, state that explicitly and create a “Fallback Contract” using `CLAUDE.md`, `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, relevant skills, and inferred tests. Also add a task to consider adding a new intent if this is likely to recur.
+If no intent matches, state that explicitly and create a “Fallback Contract” using `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, relevant skills, and inferred tests. Also add a task to consider adding a new intent if this is likely to recur.
 
 ### 3. Load Relevant Skills And Rules
 
@@ -312,7 +312,11 @@ Future agents implementing this plan MUST follow this contract:
    - `[task-name]-tasks.md` by checking completed items and adding discovered tasks.
 4. Do not report “done” unless docs reflect the actual current state.
 5. Every implementation summary to the user must include:
-   - what was implemented;
+   - what was implemented, explained as a developer teaching summary rather than an abstract status line;
+   - which architecture/design patterns, libraries, infrastructure components, protocols, and project abstractions were used;
+   - which important files/classes/interfaces/handlers/components changed and what each is responsible for;
+   - the relevant data/control flow through the implementation;
+   - which project conventions or industry best practices were followed and why;
    - what was verified;
    - what remains;
    - what should be worked on next.
@@ -322,11 +326,13 @@ Future agents implementing this plan MUST follow this contract:
 ## 16. Progress Reporting Contract
 When an implementation agent finishes a slice, its final response should use this concise structure:
 
-- **Implemented:** ...
+- **Implemented:** medium-sized developer teaching summary of what changed, naming the patterns, libraries/infrastructure, important files/classes, and data/control flow. Do not collapse this to a single abstract sentence.
 - **Verified:** ...
 - **Remaining:** ...
 - **Next:** ...
 - **Docs updated:** plan/context/tasks updated? yes/no with reason
+
+The `Implemented` section must leave the user with the same high-level technical understanding they would have if they had implemented the slice themselves. For example, an email-sending slice should name whether it used a transactional outbox, which queue/broker carries the message, which worker consumes it, which SMTP library/client sends mail, where retries/idempotency/error handling live, and how this follows the repo's Clean Architecture/CQRS boundaries. Do not write only “email sending implemented.”
 
 ## 17. Potential Risks & Unknowns
 Write a candid critique of the part most likely to fail or become complex. Be specific, not generic.

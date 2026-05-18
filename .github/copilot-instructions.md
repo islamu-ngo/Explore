@@ -53,6 +53,6 @@ Same as `AGENTS.md` §7 — do not duplicate here. Run via the `/check` slash co
 ## See Also
 
 - [`AGENTS.md`](../AGENTS.md) — tool-neutral entrypoint (canonical).
-- [`CLAUDE.md`](../CLAUDE.md) — Claude Code-specific bootloader.
+- [`AGENTS.md`](../AGENTS.md) — Claude Code-specific bootloader.
 - [`docs/index.md`](../docs/index.md) — documentation navigation root.
 - [`.claude/contract/intents.yaml`](../.claude/contract/intents.yaml) — intent registry.

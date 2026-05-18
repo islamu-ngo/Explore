@@ -59,6 +59,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Explore.Diagnostic", "Explo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Explore.Infrastructure.Tests", "Explore.Infrastructure.Tests\Explore.Infrastructure.Tests.csproj", "{E1DA0AC4-D513-4A29-B0EC-38857420AB7A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Explore.Diagnostic.UnitTests", "Explore.Diagnostic.UnitTests\Explore.Diagnostic.UnitTests.csproj", "{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -345,6 +347,18 @@ Global
 		{E1DA0AC4-D513-4A29-B0EC-38857420AB7A}.Release|x64.Build.0 = Release|Any CPU
 		{E1DA0AC4-D513-4A29-B0EC-38857420AB7A}.Release|x86.ActiveCfg = Release|Any CPU
 		{E1DA0AC4-D513-4A29-B0EC-38857420AB7A}.Release|x86.Build.0 = Release|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Debug|x64.Build.0 = Debug|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Debug|x86.Build.0 = Debug|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Release|x64.ActiveCfg = Release|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Release|x64.Build.0 = Release|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Release|x86.ActiveCfg = Release|Any CPU
+		{E72DA59F-AD15-4FC5-9669-844A5B80E9ED}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

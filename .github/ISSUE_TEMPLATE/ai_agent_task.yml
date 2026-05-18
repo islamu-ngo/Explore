@@ -26,7 +26,7 @@ body:
     attributes:
       label: Required docs and rules
       description: List project docs, skills, plans, or active context files the agent must follow.
-      placeholder: AGENTS.md, CLAUDE.md, docs/CONTRIBUTING.md, dev/active/.../context.md
+      placeholder: AGENTS.md, AGENTS.md, docs/CONTRIBUTING.md, dev/active/.../context.md
     validations:
       required: true
   - type: textarea

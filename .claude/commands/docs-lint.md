@@ -15,14 +15,14 @@ priority: high
 ## When to Run
 
 - After editing any `.claude/**/*.md` file.
-- After editing `AGENTS.md`, `CLAUDE.md`, `docs/index.md`, or canonical docs.
+- After editing `AGENTS.md`, `AGENTS.md`, `docs/index.md`, or canonical docs.
 - Before opening a PR (`/review-pr` runs this implicitly).
 
 ## What It Checks
 
 The link checks treat the following files as link graph roots:
 
-1. `CLAUDE.md`
+1. `AGENTS.md`
 2. `.github/copilot-instructions.md`
 3. `docs/index.md`
 4. `.claude/contract/**/*.md`
@@ -49,7 +49,7 @@ This is the truth. If this passes, your documentation links and docs quality che
 ### Option B — Quick local grep (not authoritative)
 
 ```bash
-grep -r -o -E '\]\([^)]+\)' .claude/ AGENTS.md CLAUDE.md docs/index.md 2>/dev/null \
+grep -r -o -E '\]\([^)]+\)' .claude/ AGENTS.md AGENTS.md docs/index.md 2>/dev/null \
   | awk -F: '{print $1 ": " $2}'
 ```
 
@@ -74,7 +74,7 @@ ls -la <path>
 Use grep to find every reference before renaming:
 
 ```bash
-grep -r -l "OLD_NAME" .claude/ docs/ AGENTS.md CLAUDE.md dev/
+grep -r -l "OLD_NAME" .claude/ docs/ AGENTS.md AGENTS.md dev/
 ```
 
 Update each occurrence, then rerun the link test.

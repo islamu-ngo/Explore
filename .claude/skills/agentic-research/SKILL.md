@@ -45,5 +45,5 @@ ABOUTME: Read the linked resources before escalating beyond the repository.
 - `auth-patterns`
 
 ## Related Documentation
-- [`CLAUDE.md`](../../../CLAUDE.md) - repo operating rules and tool hierarchy.
+- [`AGENTS.md`](../../../AGENTS.md) - repo operating rules and tool hierarchy.
 - [`docs/GOVERNANCE.md`](../../../docs/GOVERNANCE.md) - agentic engineering governance.

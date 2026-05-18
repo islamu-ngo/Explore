@@ -7,7 +7,7 @@ paths:
   - "**/*IntegrationTests/*.cs"
   - "**/*.Tests/*.cs"
 related_skills: []
-related_docs: [docs/TESTING.md, CLAUDE.md, docs/QUICK_REFERENCE.md]
+related_docs: [docs/TESTING.md, AGENTS.md, docs/QUICK_REFERENCE.md]
 minimum_tests: [Event.Domain.UnitTests, Event.Application.UnitTests, Event.Architecture.Tests, Event.Persistence.IntegrationTests, Event.API.IntegrationTests, Explore.Blazor.IntegrationTests, Explore.Blazor.Client.Tests, Explore.Blazor.Client.E2ETests, Explore.Secrets.UnitTests]
 related_intents: [add-get-endpoint, add-write-endpoint, add-cqrs-handler, add-ef-migration, update-repository-query, blazor-component-affordance, bff-auth-bug, openapi-contract-change]
 ---

@@ -107,7 +107,7 @@ Outstanding questions: <list or None>
 
 ## Related
 
-- [`CLAUDE.md`](../../CLAUDE.md) — get to a valid PR state.
+- [`AGENTS.md`](../../AGENTS.md) — get to a valid PR state.
 - [`/check`](check.md) — run the verification commands.
 - [`/docs-lint`](docs-lint.md) — check doc link integrity.
 - [`AGENTS.md`](../../AGENTS.md) — Contribution Contract authority.
