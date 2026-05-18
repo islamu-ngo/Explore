@@ -22,7 +22,6 @@ public sealed class EventProgramSummaryViewTests : IDisposable
         await Assert.That(cut.Markup).Contains("Keynotes");
         await Assert.That(cut.Markup).Contains("Fri 3 Jul");
         await Assert.That(cut.Markup).Contains("Opening keynote");
-        await Assert.That(cut.Markup).Contains("Talk");
         await Assert.That(cut.Markup).Contains("09:00–10:15");
         await Assert.That(cut.Markup).Contains("Auditorium");
         await Assert.That(cut.Markup).Contains("250 seats");

@@ -83,14 +83,14 @@
 
                 <div class="d-flex gap-3 mt-4">
                     <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" Class="rounded-lg flex-1"
-                               OnClick="HandleClose" Disabled="_isSaving">
+                               OnClick="HandleClose" Disabled="_submitState.IsSubmitting">
                         Cancel
                     </MudButton>
                     <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="rounded-lg flex-1"
                                OnClick="HandleSave"
-                               Disabled="@(_isSaving || !HasChanges)"
-                               StartIcon="@(_isSaving ? null : Icons.Material.Filled.Save)">
-                        @if (_isSaving)
+                               Disabled="@(_submitState.IsSubmitting || !HasChanges)"
+                               StartIcon="@(_submitState.IsSubmitting ? null : Icons.Material.Filled.Save)">
+                        @if (_submitState.IsSubmitting)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                             <span>Saving…</span>

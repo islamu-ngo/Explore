@@ -2,6 +2,7 @@
 // ABOUTME: Handles loading all tags/categories, tracking applied vs available, and firing save callbacks.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Forms;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -39,7 +40,7 @@ public partial class TagCategoryManagerPopup : ComponentBase
     private List<TagCategoryItem> _available = new();
     private HashSet<Guid> _originalAppliedIds = new();
     private bool _isLoading;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private bool _previousVisible;
 
     private bool HasChanges =>
@@ -62,7 +63,7 @@ public partial class TagCategoryManagerPopup : ComponentBase
     private async Task LoadItemsAsync()
     {
         _isLoading = true;
-        _isSaving = false;
+        _submitState = new();
 
         try
         {
@@ -128,7 +129,7 @@ public partial class TagCategoryManagerPopup : ComponentBase
 
     private async Task HandleSave()
     {
-        _isSaving = true;
+        _submitState.Start();
 
         try
         {
@@ -143,7 +144,7 @@ public partial class TagCategoryManagerPopup : ComponentBase
         }
         finally
         {
-            _isSaving = false;
+            _submitState.Complete();
         }
     }
 

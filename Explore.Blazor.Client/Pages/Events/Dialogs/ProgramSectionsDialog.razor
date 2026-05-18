@@ -6,6 +6,7 @@
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Models.EventSessionGroups
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Components.Forms
 @using MudBlazor
 
 @inject IEventService EventService
@@ -51,7 +52,7 @@
                             <div class="program-sections-dialog__item-actions">
                                 <MudButton Elevation="0" Variant="Variant.Text"
                                            Color="Color.Primary"
-                                           Disabled="@(!programSection.HasHalLink("edit") || _isSaving)"
+                                           Disabled="@(!programSection.HasHalLink("edit") || _submitState.IsSubmitting)"
                                            OnClick="@(() => EditSectionAsync(programSection))">
                                     Edit
                                 </MudButton>
@@ -59,14 +60,14 @@
                                  {
                                      <MudButton Elevation="0" Variant="Variant.Text"
                                                Color="Color.Error"
-                                               Disabled="@_isSaving"
+                                               Disabled="@_submitState.IsSubmitting"
                                                OnClick="@(() => DeleteSectionAsync(programSection))">
                                          Delete
                                      </MudButton>
                                  }
                                  <MudButton Elevation="0" Variant="Variant.Text"
                                             Color="Color.Secondary"
-                                            Disabled="@(!programSection.HasHalLink(AssignSessionLinkRel) || _isSaving)"
+                                            Disabled="@(!programSection.HasHalLink(AssignSessionLinkRel) || _submitState.IsSubmitting)"
                                             OnClick="@(() => SelectAssignmentSectionAsync(programSection))">
                                      Assign sessions
                                  </MudButton>
@@ -219,11 +220,11 @@
     <DialogActions>
         @if (_editingSectionId is not null)
         {
-            <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="ResetForm" Disabled="@_isSaving">Cancel edit</MudButton>
+            <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="ResetForm" Disabled="@_submitState.IsSubmitting">Cancel edit</MudButton>
         }
-        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="Close" Disabled="@_isSaving">Close</MudButton>
-        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="@_isSaving">
-            @if (_isSaving)
+        <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="Close" Disabled="@_submitState.IsSubmitting">Close</MudButton>
+        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="@_submitState.IsSubmitting">
+            @if (_submitState.IsSubmitting)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                 <span>Saving...</span>
@@ -260,7 +261,7 @@
     private List<EventSessionListDto> _sessions = [];
     private EventSessionGroupListModel? _assignmentSection;
     private bool _isAssignmentSaving;
-    private bool _isSaving;
+    private FormSubmitState _submitState = new();
     private string? _errorMessage;
     private bool _hasChanges;
     private const string AssignSessionLinkRel = "assign-session";
@@ -332,7 +333,7 @@
             return;
         }
 
-        _isSaving = true;
+        _submitState.Start();
 
         try
         {
@@ -381,7 +382,7 @@
         }
         finally
         {
-            _isSaving = false;
+            _submitState.Complete();
         }
     }
 
@@ -406,7 +407,7 @@
             return;
         }
 
-        _isSaving = true;
+        _submitState.Start();
 
         try
         {
@@ -439,7 +440,7 @@
         }
         finally
         {
-            _isSaving = false;
+            _submitState.Complete();
         }
     }
 
