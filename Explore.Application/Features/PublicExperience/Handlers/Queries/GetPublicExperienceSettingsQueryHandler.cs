@@ -14,6 +14,8 @@ using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums.Analytics;
+using Explore.Domain.Settings.Documents;
+using Explore.Domain.Settings.Documents.Payloads;
 using MediatR;
 
 namespace Explore.Application.Features.PublicExperience.Handlers.Queries;
@@ -29,6 +31,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
     private readonly IAnalyticsGovernanceService _analyticsGovernanceService;
     private readonly IAnalyticsRuntimeProfileResolver _runtimeProfileResolver;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
+    private readonly ITypedSettingsDocumentResolver _typedSettingsDocumentResolver;
     private readonly IFooterLinkGroupRepository _footerLinkGroupRepository;
     private readonly IMapper _mapper;
 
@@ -42,6 +45,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         IAnalyticsGovernanceService analyticsGovernanceService,
         IAnalyticsRuntimeProfileResolver runtimeProfileResolver,
         IHierarchicalSettingsResolver hierarchicalSettingsResolver,
+        ITypedSettingsDocumentResolver typedSettingsDocumentResolver,
         IFooterLinkGroupRepository footerLinkGroupRepository,
         IMapper mapper)
     {
@@ -54,6 +58,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         _analyticsGovernanceService = analyticsGovernanceService;
         _runtimeProfileResolver = runtimeProfileResolver;
         _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
+        _typedSettingsDocumentResolver = typedSettingsDocumentResolver;
         _footerLinkGroupRepository = footerLinkGroupRepository;
         _mapper = mapper;
     }
@@ -62,6 +67,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
     {
         var tenantId = _tenantContext.TenantId;
         var effectiveTenantSettings = await _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId);
+        var brandingDocument = await ResolveTypedBrandingAsync(tenantId, cancellationToken);
         var enabledModulesInfo = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
         var enabledModuleKeys = enabledModulesInfo.Select(m => m.ModuleKey).ToList();
         var governanceSettings = await _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId);
@@ -122,10 +128,10 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             Mode = Explore.Application.Models.PublicExperienceMode.DiscoveryCentric,
             DeploymentMode = deploymentMode,
             PreferredHomePage = effectiveTenantSettings.PreferredHomePage,
-            BrandDisplayName = effectiveTenantSettings.BrandDisplayName,
-            BrandLogoUrl = effectiveTenantSettings.BrandLogoUrl,
-            BrandFaviconUrl = effectiveTenantSettings.BrandFaviconUrl,
-            BrandCustomCssUrl = effectiveTenantSettings.BrandCustomCssUrl,
+            BrandDisplayName = brandingDocument?.Payload.DisplayName ?? string.Empty,
+            BrandLogoUrl = brandingDocument?.Payload.LogoUrl ?? string.Empty,
+            BrandFaviconUrl = brandingDocument?.Payload.FaviconUrl ?? string.Empty,
+            BrandCustomCssUrl = brandingDocument?.Payload.CustomCssUrl ?? string.Empty,
             InstanceBaseDomain = effectiveTenantSettings.InstanceBaseDomain,
             Subdomain = effectiveTenantSettings.Subdomain,
             CustomDomain = effectiveTenantSettings.CustomDomain,
@@ -174,6 +180,19 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             Direction = appearanceSettingGroup.Direction,
             Language = appearanceSettingGroup.Language,
         };
+    }
+
+    private Task<ResolvedSettingsDocument<BrandingSettings>?> ResolveTypedBrandingAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        const string documentKey = SettingsDocumentKeys.Tenant.Branding;
+        var context = new SettingsResolutionContext(tenantId, RequestedDocuments: [documentKey]);
+
+        return _typedSettingsDocumentResolver.ResolveTenantDocumentAsync<BrandingSettings>(
+            context,
+            documentKey,
+            cancellationToken);
     }
 
     private static AnalyticsConsentBootstrapDto MapToConsentBootstrap(AnalyticsRuntimeProfile profile, string provider)

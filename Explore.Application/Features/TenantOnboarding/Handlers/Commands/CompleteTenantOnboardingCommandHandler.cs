@@ -1,5 +1,5 @@
 // ABOUTME: Handles completion of tenant onboarding by persisting tenant policy choices.
-// ABOUTME: Restricts completion to tenant administrators (Owner/Admin) or instance administrators only.
+// ABOUTME: Restricts completion to tenant/instance admins and provisions typed branding during completion.
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -18,6 +18,7 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
     private readonly ITenantOnboardingStateRepository _tenantOnboardingStateRepository;
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
+    private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
 
@@ -26,6 +27,7 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
         IAdminContext adminContext,
         ITenantPolicySettingService policySettingService,
+        ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
         IUnitOfWork unitOfWork,
         IHierarchicalSettingsResolver hierarchicalSettingsResolver)
     {
@@ -33,6 +35,7 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
         _adminContext = adminContext;
         _policySettingService = policySettingService;
+        _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
         _unitOfWork = unitOfWork;
         _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
     }
@@ -52,10 +55,11 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         // Pre-read for create-or-update decision — BEFORE transaction (fast rejection, no write)
         var existingState = await _tenantOnboardingStateRepository.GetByTenantId(tenantId);
 
-        // Atomic writes: policy settings + onboarding state
+        // Atomic writes: policy settings + typed branding document + onboarding state
         var onboardingStateId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
             await _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings);
+            await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(tenantId, cancellationToken: ct);
 
             if (existingState == null)
             {

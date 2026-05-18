@@ -254,7 +254,6 @@ public static class RouteNames
     public const string CreateTenant = "CreateTenant";
     public const string UpdateTenant = "UpdateTenant";
     public const string DeleteTenant = "DeleteTenant";
-    public const string GetTenantSettings = "GetTenantSettings";
     public const string GetActiveTenantCount = "GetActiveTenantCount";
 
     #endregion
@@ -281,8 +280,8 @@ public static class RouteNames
 
     #region Tenant Settings Routes
 
-    public const string GetTenantSettingsById = "GetTenantSettingsById";
-    public const string UpdateTenantSettings = "UpdateTenantSettings";
+    public const string GetTenantBrandingSettingsDocument = "GetTenantBrandingSettingsDocument";
+    public const string ReplaceTenantBrandingSettingsDocument = "ReplaceTenantBrandingSettingsDocument";
 
     #endregion
 
@@ -449,6 +448,7 @@ public static class RouteNames
     public const string CreateCustomPropertyDefinition = "CreateCustomPropertyDefinition";
     public const string UpdateCustomPropertyDefinition = "UpdateCustomPropertyDefinition";
     public const string DeleteCustomPropertyDefinition = "DeleteCustomPropertyDefinition";
+    public const string PurgeCustomPropertyDefinition = "PurgeCustomPropertyDefinition";
 
     #endregion
 
@@ -469,6 +469,7 @@ public static class RouteNames
     public const string CreateEventCustomPropertyDefinition = "CreateEventCustomPropertyDefinition";
     public const string UpdateEventCustomPropertyDefinition = "UpdateEventCustomPropertyDefinition";
     public const string DeleteEventCustomPropertyDefinition = "DeleteEventCustomPropertyDefinition";
+    public const string PurgeEventCustomPropertyDefinition = "PurgeEventCustomPropertyDefinition";
     public const string GetEventCustomPropertyValues = "GetEventCustomPropertyValues";
     public const string SetEventCustomPropertyValue = "SetEventCustomPropertyValue";
     public const string SetEventCustomPropertyMultiValues = "SetEventCustomPropertyMultiValues";
@@ -492,6 +493,7 @@ public static class RouteNames
     public const string CreateEventSessionCustomPropertyDefinition = "CreateEventSessionCustomPropertyDefinition";
     public const string UpdateEventSessionCustomPropertyDefinition = "UpdateEventSessionCustomPropertyDefinition";
     public const string DeleteEventSessionCustomPropertyDefinition = "DeleteEventSessionCustomPropertyDefinition";
+    public const string PurgeEventSessionCustomPropertyDefinition = "PurgeEventSessionCustomPropertyDefinition";
     public const string GetEventSessionCustomPropertyValues = "GetEventSessionCustomPropertyValues";
     public const string SetEventSessionCustomPropertyValue = "SetEventSessionCustomPropertyValue";
     public const string SetEventSessionCustomPropertyMultiValues = "SetEventSessionCustomPropertyMultiValues";
@@ -663,6 +665,8 @@ public static class RouteNames
     public const string GetInstanceAuthorizationProviderConfiguration = "GetInstanceAuthorizationProviderConfiguration";
     public const string UpdateInstanceAuthorizationProviderConfiguration = "UpdateInstanceAuthorizationProviderConfiguration";
     public const string GetInstanceAuthorizationProviderConfigurationStatus = "GetInstanceAuthorizationProviderConfigurationStatus";
+    public const string SyncInstanceAuthorizationPolicyPackage = "SyncInstanceAuthorizationPolicyPackage";
+    public const string DownloadInstanceAuthorizationPolicyPackage = "DownloadInstanceAuthorizationPolicyPackage";
 
     #endregion
 
@@ -684,6 +688,8 @@ public static class RouteNames
     public const string GetInstanceOnboardingAuthorizationProviderConfigurationInternal = "GetInstanceOnboardingAuthorizationProviderConfigurationInternal";
     public const string SaveInstanceOnboardingAuthorizationProviderConfiguration = "SaveInstanceOnboardingAuthorizationProviderConfiguration";
     public const string VerifyInstanceOnboardingAuthorizationProviderEndpoint = "VerifyInstanceOnboardingAuthorizationProviderEndpoint";
+    public const string SyncInstanceOnboardingAuthorizationPolicyPackage = "SyncInstanceOnboardingAuthorizationPolicyPackage";
+    public const string DownloadInstanceOnboardingAuthorizationPolicyPackage = "DownloadInstanceOnboardingAuthorizationPolicyPackage";
 
     #endregion
 

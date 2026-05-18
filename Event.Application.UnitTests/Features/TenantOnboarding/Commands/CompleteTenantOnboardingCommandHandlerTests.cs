@@ -10,6 +10,7 @@ using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Features.TenantOnboarding.Handlers.Commands;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Domain;
+using Explore.Domain.Settings.Documents;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -25,6 +26,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
     private readonly ITenantOnboardingStateRepository _onboardingStateRepository;
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
+    private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
     private readonly CompleteTenantOnboardingCommandHandler _handler;
@@ -35,7 +37,11 @@ public class CompleteTenantOnboardingCommandHandlerTests
         _onboardingStateRepository = Substitute.For<ITenantOnboardingStateRepository>();
         _adminContext = Substitute.For<IAdminContext>();
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
+        _tenantBrandingProvisioningService = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
+        _tenantBrandingProvisioningService
+            .EnsureTenantBrandingDocumentAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(TenantBrandingSettingsDocumentDefaults.Create(call.ArgAt<Guid>(0), call.ArgAt<string?>(1))));
         _hierarchicalSettingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
 
         _tenantContext.TenantId.Returns(TestTenantId);
@@ -54,6 +60,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
             _onboardingStateRepository,
             _adminContext,
             _policySettingService,
+            _tenantBrandingProvisioningService,
             _unitOfWork,
             _hierarchicalSettingsResolver);
     }
@@ -98,6 +105,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
         // Assert
         await Assert.That(result.Success).IsTrue();
         await _policySettingService.Received(1).ApplyTenantSettingsAsync(TestTenantId, TestUserId, Arg.Any<UpdateTenantPolicyRequest>());
+        await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(TestTenantId, null, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -134,6 +142,8 @@ public class CompleteTenantOnboardingCommandHandlerTests
         // Assert: settings should NOT be applied
         await _policySettingService.DidNotReceive().ApplyTenantSettingsAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateTenantPolicyRequest>());
+        await _tenantBrandingProvisioningService.DidNotReceive().EnsureTenantBrandingDocumentAsync(
+            Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

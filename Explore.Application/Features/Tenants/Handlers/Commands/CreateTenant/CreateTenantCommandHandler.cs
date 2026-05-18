@@ -1,7 +1,8 @@
 // ABOUTME: Handles tenant creation with optional automatic admin assignment for the requesting user.
-// ABOUTME: Validates input, enforces slug uniqueness, and atomically creates the tenant + member record.
+// ABOUTME: Validates input, enforces slug uniqueness, and atomically creates tenant, branding, and member records.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Tenant.Validators;
 using Explore.Application.Features.Tenants.Requests.Commands;
 using Explore.Application.Responses;
@@ -17,6 +18,7 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantMemberRepository _tenantMemberRepository;
     private readonly IRoleRepository _roleRepository;
+    private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly ILogger<CreateTenantCommandHandler> _logger;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -24,12 +26,14 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
         ITenantRepository tenantRepository,
         ITenantMemberRepository tenantMemberRepository,
         IRoleRepository roleRepository,
+        ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
         ILogger<CreateTenantCommandHandler> logger,
         IUnitOfWork unitOfWork)
     {
         _tenantRepository = tenantRepository;
         _tenantMemberRepository = tenantMemberRepository;
         _roleRepository = roleRepository;
+        _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
         _logger = logger;
         _unitOfWork = unitOfWork;
     }
@@ -70,6 +74,8 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
                 TenantStatusId = statusId,
                 TenantStatus = null!
             });
+
+            await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(tenant.Id, dto.FullName, ct);
 
             if (assignAdmin)
             {

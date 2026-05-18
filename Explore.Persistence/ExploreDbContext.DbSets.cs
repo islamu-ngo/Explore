@@ -5,6 +5,7 @@ using Explore.Domain;
 using Explore.Domain.Federation;
 using Explore.Domain.Modules;
 using Explore.Domain.Secrets;
+using Explore.Domain.Settings.Documents;
 using Explore.Domain.Views;
 using Microsoft.EntityFrameworkCore;
 using StorageObject = Explore.Domain.StorageObject;
@@ -15,7 +16,6 @@ public partial class ExploreDbContext
 {
     // ===== Multi-tenancy =====
     public DbSet<Tenant> Tenants { get; set; }
-    public DbSet<TenantSettings> TenantSettings { get; set; }
     public DbSet<TenantMember> TenantMembers { get; set; }
     public DbSet<TenantOnboardingState> TenantOnboardingStates { get; set; }
     public DbSet<TenantInvitation> TenantInvitations { get; set; }
@@ -156,6 +156,7 @@ public partial class ExploreDbContext
     public DbSet<SettingScopeLookup> SettingScopes { get; set; }
     public DbSet<SettingValueTypeLookup> SettingValueTypes { get; set; }
     public DbSet<TenantSetting> TenantSettingOverrides { get; set; }
+    public DbSet<TenantSettingsDocument> TenantSettingsDocuments { get; set; }
     public DbSet<OrganizationSetting> OrganizationSettingOverrides { get; set; }
     public DbSet<GroupSetting> GroupSettingOverrides { get; set; }
     public DbSet<UserPreference> UserPreferences { get; set; }

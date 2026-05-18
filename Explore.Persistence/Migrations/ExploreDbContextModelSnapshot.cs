@@ -5933,6 +5933,14 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<Guid?>("ParentGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_group_id");
+
+                    b.Property<Guid?>("ParentOrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_organization_id");
+
                     b.Property<Guid?>("ProfilePictureId")
                         .HasColumnType("uuid")
                         .HasColumnName("profile_picture_id");
@@ -5952,6 +5960,9 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_groups");
 
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_groups_tenant_id_id");
+
                     b.HasIndex("ActorId")
                         .HasDatabaseName("ix_groups_actor_id");
 
@@ -5964,10 +5975,21 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId", "FullName")
                         .HasDatabaseName("ix_groups_tenant_name");
 
+                    b.HasIndex("TenantId", "ParentGroupId")
+                        .HasDatabaseName("ix_groups_tenant_parent_group");
+
+                    b.HasIndex("TenantId", "ParentOrganizationId")
+                        .HasDatabaseName("ix_groups_tenant_parent_organization");
+
                     b.HasIndex("TenantId", "IsDeleted", "ApprovalStatusId")
                         .HasDatabaseName("ix_groups_tenant_active_status");
 
-                    b.ToTable("groups", (string)null);
+                    b.ToTable("groups", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_groups_no_self_parent", "parent_group_id IS NULL OR parent_group_id <> id");
+
+                            t.HasCheckConstraint("ck_groups_parent_exclusive", "parent_organization_id IS NULL OR parent_group_id IS NULL");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.GroupMember", b =>
@@ -6976,6 +6998,9 @@ namespace Explore.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_organizations");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("ak_organizations_tenant_id_id");
 
                     b.HasIndex("ActorId")
                         .HasDatabaseName("ix_organizations_actor_id");
@@ -8187,6 +8212,81 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("setting_value_types", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.Settings.Documents.TenantSettingsDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DefaultsVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("defaults_version");
+
+                    b.Property<string>("DocumentKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("document_key");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_settings_documents");
+
+                    b.HasIndex("DocumentKey")
+                        .HasDatabaseName("ix_tenant_settings_documents_document_key");
+
+                    b.HasIndex("TenantId", "DocumentKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_settings_documents_tenant_id_document_key");
+
+                    b.ToTable("tenant_settings_documents", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_tenant_settings_documents_document_key_not_blank", "length(trim(document_key)) > 0");
+
+                            t.HasCheckConstraint("ck_tenant_settings_documents_payload_object", "jsonb_typeof(payload_json) = 'object'");
+
+                            t.HasCheckConstraint("ck_tenant_settings_documents_schema_version_positive", "schema_version > 0");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9067,65 +9167,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_tenant_setting_overrides_tenant_id_setting_key");
 
                     b.ToTable("tenant_setting_overrides", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.TenantSettings", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("AllowPublicGroupCreation")
-                        .HasColumnType("boolean")
-                        .HasColumnName("allow_public_group_creation");
-
-                    b.Property<bool>("AllowPublicOrganizationRegistration")
-                        .HasColumnType("boolean")
-                        .HasColumnName("allow_public_organization_registration");
-
-                    b.Property<Guid>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("uuid")
-                        .HasColumnName("concurrency_stamp");
-
-                    b.Property<Guid?>("DefaultGroupId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("default_group_id");
-
-                    b.Property<Guid?>("DefaultOrganizationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("default_organization_id");
-
-                    b.Property<int>("EventPublishingPolicy")
-                        .HasColumnType("integer")
-                        .HasColumnName("event_publishing_policy");
-
-                    b.Property<bool>("RequireGroupApproval")
-                        .HasColumnType("boolean")
-                        .HasColumnName("require_group_approval");
-
-                    b.Property<bool>("RequireOrganizationVerification")
-                        .HasColumnType("boolean")
-                        .HasColumnName("require_organization_verification");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_tenant_settings");
-
-                    b.HasIndex("DefaultGroupId")
-                        .HasDatabaseName("ix_tenant_settings_default_group_id");
-
-                    b.HasIndex("DefaultOrganizationId")
-                        .HasDatabaseName("ix_tenant_settings_default_organization_id");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_tenant_settings_tenant_id");
-
-                    b.ToTable("tenant_settings", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.TenantStatus", b =>
@@ -11714,9 +11755,27 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_groups_tenants_tenant_id");
 
+                    b.HasOne("Explore.Domain.Group", "ParentGroup")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ParentGroupId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_groups_groups_tenant_id_parent_group_id");
+
+                    b.HasOne("Explore.Domain.Organization", "ParentOrganization")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ParentOrganizationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_groups_organizations_tenant_id_parent_organization_id");
+
                     b.Navigation("Actor");
 
                     b.Navigation("ApprovalStatus");
+
+                    b.Navigation("ParentGroup");
+
+                    b.Navigation("ParentOrganization");
 
                     b.Navigation("ProfilePicture");
 
@@ -14425,6 +14484,18 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("SettingScope");
                 });
 
+            modelBuilder.Entity("Explore.Domain.Settings.Documents.TenantSettingsDocument", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_settings_documents_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
                 {
                     b.HasOne("Explore.Domain.Actor", "Actor")
@@ -14655,32 +14726,6 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_tenant_setting_overrides_tenants_tenant_id");
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Explore.Domain.TenantSettings", b =>
-                {
-                    b.HasOne("Explore.Domain.Group", "DefaultGroup")
-                        .WithMany()
-                        .HasForeignKey("DefaultGroupId")
-                        .HasConstraintName("fk_tenant_settings_groups_default_group_id");
-
-                    b.HasOne("Explore.Domain.Organization", "DefaultOrganization")
-                        .WithMany()
-                        .HasForeignKey("DefaultOrganizationId")
-                        .HasConstraintName("fk_tenant_settings_organizations_default_organization_id");
-
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_tenant_settings_tenants_tenant_id");
-
-                    b.Navigation("DefaultGroup");
-
-                    b.Navigation("DefaultOrganization");
 
                     b.Navigation("Tenant");
                 });

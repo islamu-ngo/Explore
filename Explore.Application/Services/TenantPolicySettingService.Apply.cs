@@ -24,15 +24,10 @@ public partial class TenantPolicySettingService
         var orgSelfRegSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
         var groupSelfRegSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
         var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
-        var tenantWhiteLabelingSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Tenants.WhiteLabelingEnabled);
         var homePageSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.DefaultPublicHomePage);
         var allowCustomDomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain);
         var subdomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantSubdomain);
         var customDomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantCustomDomain);
-        var brandDisplayNameSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.DisplayName);
-        var brandLogoUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.LogoUrl);
-        var brandFaviconUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.FaviconUrl);
-        var brandCustomCssUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.CustomCssUrl);
         var communityGuidelinesSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
         var allowTenantRenderOverrideSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AllowTenantOverride);
         var lockPublicSeoSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo);
@@ -42,7 +37,6 @@ public partial class TenantPolicySettingService
         var tenant = await _tenantRepository.GetById(tenantId);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
         var isMultiTenant = DeserializeString(deploymentModeSetting?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
-        var isTenantWhiteLabelingEnabled = isMultiTenant && DeserializeBoolean(tenantWhiteLabelingSetting?.Value, false);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
@@ -125,34 +119,6 @@ public partial class TenantPolicySettingService
             GovernanceSettingKeys.Domains.TenantCustomDomain,
             NormalizeOptionalHost(settings.CustomDomain),
             customDomainSetting?.IsLocked != true && DeserializeBoolean(allowCustomDomainSetting?.Value, true),
-            actorUserId);
-
-        await SetStringTenantOverrideAsync(
-            tenantId,
-            GovernanceSettingKeys.Branding.DisplayName,
-            settings.BrandDisplayName,
-            isTenantWhiteLabelingEnabled && brandDisplayNameSetting?.IsLocked != true,
-            actorUserId);
-
-        await SetStringTenantOverrideAsync(
-            tenantId,
-            GovernanceSettingKeys.Branding.LogoUrl,
-            settings.BrandLogoUrl,
-            isTenantWhiteLabelingEnabled && brandLogoUrlSetting?.IsLocked != true,
-            actorUserId);
-
-        await SetStringTenantOverrideAsync(
-            tenantId,
-            GovernanceSettingKeys.Branding.FaviconUrl,
-            settings.BrandFaviconUrl,
-            isTenantWhiteLabelingEnabled && brandFaviconUrlSetting?.IsLocked != true,
-            actorUserId);
-
-        await SetStringTenantOverrideAsync(
-            tenantId,
-            GovernanceSettingKeys.Branding.CustomCssUrl,
-            settings.BrandCustomCssUrl,
-            isTenantWhiteLabelingEnabled && brandCustomCssUrlSetting?.IsLocked != true,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(

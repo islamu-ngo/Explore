@@ -122,38 +122,6 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
 
         AddLockedValueChangeFailure(
             failures,
-            nameof(requestSettings.BrandDisplayName),
-            effectiveSettings.CanOverrideBrandDisplayName,
-            effectiveSettings.BrandDisplayName,
-            requestSettings.BrandDisplayName,
-            "Tenant brand display name is locked by instance policy.");
-
-        AddLockedValueChangeFailure(
-            failures,
-            nameof(requestSettings.BrandLogoUrl),
-            effectiveSettings.CanOverrideBrandLogoUrl,
-            effectiveSettings.BrandLogoUrl,
-            requestSettings.BrandLogoUrl,
-            "Tenant brand logo URL is locked by instance policy.");
-
-        AddLockedValueChangeFailure(
-            failures,
-            nameof(requestSettings.BrandFaviconUrl),
-            effectiveSettings.CanOverrideBrandFaviconUrl,
-            effectiveSettings.BrandFaviconUrl,
-            requestSettings.BrandFaviconUrl,
-            "Tenant brand favicon URL is locked by instance policy.");
-
-        AddLockedValueChangeFailure(
-            failures,
-            nameof(requestSettings.BrandCustomCssUrl),
-            effectiveSettings.CanOverrideBrandCustomCssUrl,
-            effectiveSettings.BrandCustomCssUrl,
-            requestSettings.BrandCustomCssUrl,
-            "Tenant brand custom CSS URL is locked by instance policy.");
-
-        AddLockedValueChangeFailure(
-            failures,
             nameof(requestSettings.EventCardClickOpensDetailPage),
             effectiveSettings.CanOverrideEventCardClickBehavior,
             effectiveSettings.EventCardClickOpensDetailPage,

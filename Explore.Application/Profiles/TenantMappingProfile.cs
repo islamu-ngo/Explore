@@ -1,11 +1,10 @@
-// ABOUTME: AutoMapper profile for Tenant, TenantNavigationLink, TenantMember, TenantSettings, and Footer entities.
+// ABOUTME: AutoMapper profile for Tenant, TenantNavigationLink, TenantMember, and Footer entities.
 // ABOUTME: Split from monolithic MappingProfile.cs for domain-cohesion.
 
 using AutoMapper;
 using Explore.Application.DTOs.Footer;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.DTOs.TenantMember;
-using Explore.Application.DTOs.TenantSettings;
 using Explore.Domain;
 
 namespace Explore.Application.Profiles;
@@ -35,13 +34,6 @@ public class TenantMappingProfile : Profile
             .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
         CreateMap<CreateTenantMemberDto, TenantMember>();
         CreateMap<UpdateTenantMemberDto, TenantMember>();
-
-        CreateMap<TenantSettings, TenantSettingsDto>()
-            .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
-        CreateMap<TenantSettings, TenantSettingsListDto>()
-            .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null));
-        CreateMap<CreateTenantSettingsDto, TenantSettings>();
-        CreateMap<UpdateTenantSettingsDto, TenantSettings>();
 
         CreateMap<TenantFooterLink, FooterLinkItemDto>();
 

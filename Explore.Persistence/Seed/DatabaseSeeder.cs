@@ -4,6 +4,7 @@
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Modules;
+using Explore.Domain.Settings.Documents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 
@@ -32,6 +33,45 @@ public static class DatabaseSeeder
             await SeedDevelopmentDataAsync(context, cancellationToken);
             await SeedDevelopmentSmtpAsync(context, cancellationToken);
         }
+
+        await EnsureTenantBrandingDocumentsAsync(context, cancellationToken);
+    }
+
+
+    private static async Task EnsureTenantBrandingDocumentsAsync(
+        ExploreDbContext context,
+        CancellationToken ct)
+    {
+        var tenants = await context.Set<Tenant>()
+            .AsNoTracking()
+            .Select(tenant => new { tenant.Id, tenant.FullName })
+            .ToListAsync(ct);
+
+        if (tenants.Count == 0)
+        {
+            return;
+        }
+
+        var tenantIds = tenants.Select(tenant => tenant.Id).ToList();
+        var existingTenantIds = await context.Set<TenantSettingsDocument>()
+            .Where(document => document.DocumentKey == SettingsDocumentKeys.Tenant.Branding
+                && tenantIds.Contains(document.TenantId))
+            .Select(document => document.TenantId)
+            .ToListAsync(ct);
+        var existing = existingTenantIds.ToHashSet();
+
+        var missingDocuments = tenants
+            .Where(tenant => !existing.Contains(tenant.Id))
+            .Select(tenant => TenantBrandingSettingsDocumentDefaults.Create(tenant.Id, tenant.FullName))
+            .ToList();
+
+        if (missingDocuments.Count == 0)
+        {
+            return;
+        }
+
+        context.Set<TenantSettingsDocument>().AddRange(missingDocuments);
+        await context.SaveChangesAsync(ct);
     }
 
     /// <summary>
@@ -99,8 +139,7 @@ public static class DatabaseSeeder
             SeedData.DefaultOrganizationLogo);
         await context.SaveChangesAsync(ct);
 
-        // Phase 7: Tenant settings and capabilities
-        context.Set<TenantSettings>().Add(SeedData.DefaultTenantSettings);
+        // Phase 7: Tenant capabilities
         context.Set<TenantCapability>().AddRange(
             SeedData.DefaultTenantCoreCapability,
             SeedData.DefaultTenantIslamicCapability);
@@ -157,7 +196,7 @@ public static class DatabaseSeeder
         var now = DateTime.UtcNow;
 
         await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpHost, "\"mailpit.openislamu.org\"", now, ct);
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpPort, "1025", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpPort, "8025", now, ct);
         await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpSecurity, "\"None\"", now, ct);
         await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.FromAddress, "\"noreply@explore.dev\"", now, ct);
         await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.FromName, "\"Explore Dev\"", now, ct);

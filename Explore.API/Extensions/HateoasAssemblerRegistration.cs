@@ -35,7 +35,7 @@ using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.DTOs.TenantMember;
-using Explore.Application.DTOs.TenantSettings;
+using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.User;
 
 /// <summary>
@@ -143,10 +143,10 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ICollectionLinkPolicy<TenantMemberListDto>, TenantMemberCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<TenantMemberDto, TenantMemberListDto>, TenantMemberResourceAssembler>();
 
-        // TenantSettings
-        services.AddScoped<ILinkPolicy<TenantSettingsDto>, TenantSettingsDetailLinkPolicy>();
-        services.AddScoped<ICollectionLinkPolicy<TenantSettingsListDto>, TenantSettingsCollectionLinkPolicy>();
-        services.AddScoped<IResourceAssembler<TenantSettingsDto, TenantSettingsListDto>, TenantSettingsResourceAssembler>();
+        // Tenant typed settings documents
+        services.AddScoped<ILinkPolicy<TenantBrandingSettingsDocumentDto>, TenantBrandingSettingsDocumentLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<TenantBrandingSettingsDocumentDto>, TenantBrandingSettingsDocumentCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<TenantBrandingSettingsDocumentDto, TenantBrandingSettingsDocumentDto>, TenantBrandingSettingsDocumentResourceAssembler>();
 
         // OrganizationMember (relationship with payload, same DTO for detail and list)
         services.AddScoped<ILinkPolicy<OrganizationMemberDto>, OrganizationMemberDetailLinkPolicy>();
@@ -190,9 +190,13 @@ public static class HateoasAssemblerRegistration
 
         // Custom Property Projection Admin (D2 Operability)
         services.AddScoped<ILinkPolicy<ProjectionStatusDto>, ProjectionStatusDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ProjectionStatusDto>, ProjectionStatusCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ProjectionStatusDto, ProjectionStatusDto>, ProjectionStatusResourceAssembler>();
+        services.AddScoped<ILinkPolicy<ProjectionDirtyScopeDto>, ProjectionDirtyScopeDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ProjectionDirtyScopeDto>, ProjectionDirtyScopeCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ProjectionDirtyScopeDto, ProjectionDirtyScopeDto>, ProjectionDirtyScopeResourceAssembler>();
         services.AddScoped<ILinkPolicy<RebuildProjectionResponseDto>, RebuildProjectionResponseLinkPolicy>();
         services.AddScoped<ILinkPolicy<DrainDirtyScopesResponseDto>, DrainDirtyScopesResponseLinkPolicy>();
-        services.AddScoped<ICollectionLinkPolicy<ProjectionDirtyScopeDto>, ProjectionDirtyScopeCollectionLinkPolicy>();
 
         // Custom Property Governance (D2 Operability)
         services.AddScoped<ICollectionLinkPolicy<CustomPropertyGovernanceRowDto>, CustomPropertyGovernanceCollectionLinkPolicy>();

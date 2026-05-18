@@ -121,9 +121,9 @@ public class SettingHandlerTests
     // UpdateSettingCommandHandler
     // ──────────────────────────────────────────────
 
-    private UpdateSettingCommandHandler CreateUpdateHandler() =>
+    private UpdateSettingCommandHandler CreateUpdateHandler(ICerbosConfigResolver? cerbosConfigResolver = null) =>
         new(_resolver, _userPrefRepo, _tenantContext, _currentUserService,
-            _adminContext, _mediator, Substitute.For<ILogger<UpdateSettingCommandHandler>>());
+            _adminContext, _mediator, Substitute.For<ILogger<UpdateSettingCommandHandler>>(), cerbosConfigResolver);
 
     [Test]
     public async Task Update_UnknownKey_Fails()
@@ -282,6 +282,27 @@ public class SettingHandlerTests
     }
 
     [Test]
+    public async Task Update_TenantCerbosEndpoint_InvalidatesTenantCerbosConfigCache()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        var cerbosConfigResolver = Substitute.For<ICerbosConfigResolver>();
+        SetupResolverMetadata(GovernanceSettingKeys.Cerbos.CustomEndpoint, false);
+        var handler = CreateUpdateHandler(cerbosConfigResolver);
+
+        var cmd = new UpdateSettingCommand
+        {
+            Key = GovernanceSettingKeys.Cerbos.CustomEndpoint,
+            Value = "https://tenant-cerbos.example.com:443",
+            Scope = SettingScope.Tenant
+        };
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        cerbosConfigResolver.Received(1).InvalidateCache(TestTenantId);
+    }
+
+    [Test]
     public async Task Update_PublicExperiencePrimaryOrganization_WritesTenantOverrideViaResolver()
     {
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
@@ -335,9 +356,9 @@ public class SettingHandlerTests
     // UpdateSettingBatchCommandHandler
     // ──────────────────────────────────────────────
 
-    private UpdateSettingBatchCommandHandler CreateBatchHandler() =>
+    private UpdateSettingBatchCommandHandler CreateBatchHandler(ICerbosConfigResolver? cerbosConfigResolver = null) =>
         new(_resolver, _userPrefRepo, _tenantContext, _currentUserService,
-            _adminContext, _mediator, Substitute.For<ILogger<UpdateSettingBatchCommandHandler>>());
+            _adminContext, _mediator, Substitute.For<ILogger<UpdateSettingBatchCommandHandler>>(), cerbosConfigResolver);
 
     [Test]
     public async Task Batch_EmptyValues_ReturnsSuccess()
@@ -446,6 +467,30 @@ public class SettingHandlerTests
         var foreignResult = result.Results.First(r => r.Key == foreignKey);
         await Assert.That(foreignResult.Applied).IsFalse();
         await Assert.That(foreignResult.SkipReason).Contains("does not belong to category");
+    }
+
+    [Test]
+    public async Task Batch_InstanceCerbosSettings_InvalidatesAllCerbosConfigCaches()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var cerbosConfigResolver = Substitute.For<ICerbosConfigResolver>();
+        var handler = CreateBatchHandler(cerbosConfigResolver);
+        SetupResolverBatchForBatchCommand();
+
+        var cmd = new UpdateSettingBatchCommand
+        {
+            Category = "Cerbos",
+            Values = new Dictionary<string, string>
+            {
+                { GovernanceSettingKeys.Cerbos.TenantCustomizationEnabled, "true" }
+            },
+            Scope = SettingScope.Instance
+        };
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        cerbosConfigResolver.Received(1).InvalidateCache();
     }
 
     // ──────────────────────────────────────────────

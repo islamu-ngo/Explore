@@ -371,14 +371,6 @@ public static class SeedData
         ActorId = SeedIds.AdminUserActorId
     };
 
-    // ===== Tenant Settings =====
-    public static TenantSettings DefaultTenantSettings => new()
-    {
-        Id = SeedIds.DefaultTenantSettingsId,
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!
-    };
-
     // ===== Tenant Capabilities =====
     public static TenantCapability DefaultTenantCoreCapability => new()
     {

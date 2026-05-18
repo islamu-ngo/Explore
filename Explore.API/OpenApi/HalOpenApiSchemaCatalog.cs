@@ -52,6 +52,8 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.EventSessionTemplate.EventSessionTemplateListDto),
         typeof(Explore.Application.DTOs.Group.GroupDto),
         typeof(Explore.Application.DTOs.Group.GroupListDto),
+        typeof(Explore.Application.DTOs.GroupMember.GroupMemberDto),
+        typeof(Explore.Application.DTOs.OrganizationMember.OrganizationMemberDto),
         typeof(Explore.Application.DTOs.IndexedDid.IndexedDidDto),
         typeof(Explore.Application.DTOs.IndexedDid.IndexedDidListDto),
         typeof(Explore.Application.DTOs.LocationRoom.LocationRoomDto),
@@ -84,6 +86,13 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.EventTemplateSync.RetiredOptionDto),
         typeof(Explore.Application.DTOs.EventTemplateSync.UntouchedLocalDefinitionDto),
         typeof(Explore.Application.DTOs.EventTemplateSync.FieldChangeDto),
+
+        // Projection admin DTOs
+        typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionStatusDto),
+        typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionDirtyScopeDto),
+
+        // Tenant settings DTOs
+        typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantBrandingSettingsDocumentDto),
     ];
 
     public static IReadOnlyDictionary<string, Type> DetailResourceMappings { get; } = new Dictionary<string, Type>
@@ -116,6 +125,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfEventSessionTemplateListDto"] = typeof(Explore.Application.DTOs.EventSessionTemplate.EventSessionTemplateListDto),
         ["HalResourceOfGroupDto"] = typeof(Explore.Application.DTOs.Group.GroupDto),
         ["HalResourceOfGroupListDto"] = typeof(Explore.Application.DTOs.Group.GroupListDto),
+        ["HalResourceOfGroupMemberDto"] = typeof(Explore.Application.DTOs.GroupMember.GroupMemberDto),
+        ["HalResourceOfOrganizationMemberDto"] = typeof(Explore.Application.DTOs.OrganizationMember.OrganizationMemberDto),
         ["HalResourceOfIndexedDidDto"] = typeof(Explore.Application.DTOs.IndexedDid.IndexedDidDto),
         ["HalResourceOfIndexedDidListDto"] = typeof(Explore.Application.DTOs.IndexedDid.IndexedDidListDto),
         ["HalResourceOfLocationRoomDto"] = typeof(Explore.Application.DTOs.LocationRoom.LocationRoomDto),
@@ -126,6 +137,9 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfEventAgendaItemListDto"] = typeof(Explore.Application.DTOs.EventAgendaItem.EventAgendaItemListDto),
         ["HalResourceOfOrganizationReviewDto"] = typeof(Explore.Application.DTOs.OrganizationReview.OrganizationReviewDto),
         ["HalResourceOfTemplateDiffDto"] = typeof(Explore.Application.DTOs.EventTemplateSync.TemplateDiffDto),
+        ["HalResourceOfProjectionStatusDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionStatusDto),
+        ["HalResourceOfProjectionDirtyScopeDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionDirtyScopeDto),
+        ["HalResourceOfTenantBrandingSettingsDocumentDto"] = typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantBrandingSettingsDocumentDto),
     };
 
     public static IReadOnlyDictionary<string, string> CollectionEmbeddedItemResourceMappings { get; } = new Dictionary<string, string>
@@ -143,11 +157,15 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfEventSessionTemplateListDto"] = "HalResourceOfEventSessionTemplateListDto",
         ["HalCollectionEmbeddedOfEventTemplateListDto"] = "HalResourceOfEventTemplateListDto",
         ["HalCollectionEmbeddedOfGroupListDto"] = "HalResourceOfGroupListDto",
+        ["HalCollectionEmbeddedOfGroupMemberDto"] = "HalResourceOfGroupMemberDto",
+        ["HalCollectionEmbeddedOfOrganizationMemberDto"] = "HalResourceOfOrganizationMemberDto",
         ["HalCollectionEmbeddedOfIndexedDidListDto"] = "HalResourceOfIndexedDidListDto",
         ["HalCollectionEmbeddedOfLocationListDto"] = "HalResourceOfLocationListDto",
         ["HalCollectionEmbeddedOfLocationRoomListDto"] = "HalResourceOfLocationRoomListDto",
         ["HalCollectionEmbeddedOfOrganizationListDto"] = "HalResourceOfOrganizationListDto",
         ["HalCollectionEmbeddedOfOrganizationReviewDto"] = "HalResourceOfOrganizationReviewDto",
+        ["HalCollectionEmbeddedOfProjectionStatusDto"] = "HalResourceOfProjectionStatusDto",
+        ["HalCollectionEmbeddedOfProjectionDirtyScopeDto"] = "HalResourceOfProjectionDirtyScopeDto",
         ["HalCollectionEmbeddedOfTagListDto"] = "HalResourceOfTagListDto",
     };
 

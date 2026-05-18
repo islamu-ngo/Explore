@@ -535,6 +535,34 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
+    [HttpPost("authz-provider/sync", Name = RouteNames.SyncInstanceAuthorizationPolicyPackage)]
+    [EndpointSummary("Sync Authorization Policy Package")]
+    [EndpointDescription("Publishes the authorization policy package. Requires instance administrator.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncAuthorizationPolicyPackage(CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
+
+        var response = await _mediator.Send(new SyncAuthorizationPolicyPackageCommand(), cancellationToken);
+        return HandleCommandResponse(response);
+    }
+
+    [HttpGet("authz-provider/package", Name = RouteNames.DownloadInstanceAuthorizationPolicyPackage)]
+    [EndpointSummary("Download Authorization Policy Package")]
+    [EndpointDescription("Downloads a ZIP archive containing the authorization policy package and manual cerbosctl instructions. Requires instance administrator.")]
+    [Produces("application/zip")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DownloadAuthorizationPolicyPackage(CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
+
+        var archive = await _mediator.Send(new DownloadAuthorizationPolicyPackageQuery(), cancellationToken);
+        return File(archive.Content, archive.ContentType, archive.FileName);
+    }
+
     [HttpGet("authz-provider/status", Name = RouteNames.GetInstanceAuthorizationProviderConfigurationStatus)]
     [AllowAnonymous]
     [EndpointSummary("Check Authorization Provider Configuration Status")]

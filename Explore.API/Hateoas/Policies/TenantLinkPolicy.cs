@@ -40,16 +40,6 @@ public sealed class TenantDetailLinkPolicy : ILinkPolicy<TenantDto>
             "GET",
             "Tenant users",
             RequiresAuth: true);
-
-        // Settings link
-        yield return new LinkDefinition(
-            "settings",
-            RouteNames.GetTenantSettings,
-            new { tenantId = dto.Id },
-            "GET",
-            "Tenant settings",
-            RequiresAuth: true);
-
         // Edit link - requires authentication
         yield return new LinkDefinition(
             LinkRelations.Edit,

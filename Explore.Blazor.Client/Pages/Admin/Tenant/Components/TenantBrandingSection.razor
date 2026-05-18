@@ -1,54 +1,74 @@
-@* ABOUTME: Renders tenant branding fields for the Tenant Admin Settings sidebar. *@
-@* ABOUTME: Includes brand name, logo, favicon, and custom CSS URL fields with instance-level lock support. *@
+@* ABOUTME: Renders tenant branding fields from the typed tenant settings document. *@
+@* ABOUTME: Uses API-emitted HAL affordances to determine editability during settings cutover. *@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Components.Common
 
 <div class="settings-section">
     <div class="settings-section-header">
-        <MudText Typo="Typo.h5" Style="font-weight: 700;">Branding</MudText>
+        <MudText Typo="Typo.h5" HtmlTag="h2" Style="font-weight: 700;">Branding</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-            Customize your tenant's brand identity including display name, logo, and styling.
+            Customize your tenant's typed branding document. These values are saved only to the JSONB branding settings document.
         </MudText>
     </div>
     <MudStack Spacing="3">
-        @if (HasLockedFields)
+        @if (!Model.Exists)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" role="alert">
+                @Model.ErrorMessage
+            </MudAlert>
+        }
+        else if (!Model.CanReplace)
         {
             <MudAlert Severity="Severity.Info" Dense="true">
-                Some fields are locked by instance-level policies.
+                Branding settings are read-only because the API did not emit the replace-settings action.
             </MudAlert>
         }
 
-        <MudTextField T="string" Label="Brand Display Name"
-                      Variant="Variant.Outlined"
-                      @bind-Value="Model.BrandDisplayName"
-                      Disabled="@(!Model.CanOverrideBrandDisplayName)" />
+        <AppTextField T="string" Label="Brand display name"
+                      @bind-Value="Model.DisplayName"
+                      ReadOnly="@IsReadOnly"
+                      Disabled="@IsSaving"
+                      FullWidth="true"
+                      HelperText="Public name shown in tenant-branded surfaces." />
 
-        <MudTextField T="string" Label="Brand Logo URL"
-                      Variant="Variant.Outlined"
-                      @bind-Value="Model.BrandLogoUrl"
-                      Disabled="@(!Model.CanOverrideBrandLogoUrl)" />
+        <AppTextField T="string" Label="Brand logo URL"
+                      @bind-Value="Model.LogoUrl"
+                      ReadOnly="@IsReadOnly"
+                      Disabled="@IsSaving"
+                      FullWidth="true"
+                      HelperText="HTTPS URL for the tenant logo asset." />
 
-        <MudTextField T="string" Label="Brand Favicon URL"
-                      Variant="Variant.Outlined"
-                      @bind-Value="Model.BrandFaviconUrl"
-                      Disabled="@(!Model.CanOverrideBrandFaviconUrl)" />
+        <AppTextField T="string" Label="Brand favicon URL"
+                       @bind-Value="Model.FaviconUrl"
+                       ReadOnly="@IsReadOnly"
+                       Disabled="@IsSaving"
+                       FullWidth="true"
+                       HelperText="HTTPS URL for the browser favicon asset." />
 
-        <MudTextField T="string" Label="Custom CSS URL"
-                      Variant="Variant.Outlined"
-                      @bind-Value="Model.BrandCustomCssUrl"
-                      Disabled="@(!Model.CanOverrideBrandCustomCssUrl)"
-                      HelperText="Optional advanced override for tenant-level custom stylesheet." />
+        <AppTextField T="string" Label="Brand custom CSS URL"
+                       @bind-Value="Model.CustomCssUrl"
+                       ReadOnly="@IsReadOnly"
+                       Disabled="@IsSaving"
+                       FullWidth="true"
+                       HelperText="HTTPS URL for the tenant-specific stylesheet asset." />
+
+        @if (Model.Exists)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Concurrency stamp: @Model.ConcurrencyStamp
+            </MudText>
+        }
     </MudStack>
 </div>
 
 @code {
     [Parameter, EditorRequired]
-    public TenantPolicySettingsModel Model { get; set; } = null!;
+    public TenantBrandingSettingsAdminModel Model { get; set; } = null!;
 
-    private bool HasLockedFields =>
-        !Model.CanOverrideBrandDisplayName ||
-        !Model.CanOverrideBrandLogoUrl ||
-        !Model.CanOverrideBrandFaviconUrl ||
-        !Model.CanOverrideBrandCustomCssUrl;
+    [Parameter]
+    public bool IsSaving { get; set; }
+
+    private bool IsReadOnly => !Model.Exists || !Model.CanReplace;
 }

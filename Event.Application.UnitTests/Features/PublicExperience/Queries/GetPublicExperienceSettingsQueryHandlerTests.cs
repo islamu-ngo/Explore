@@ -16,6 +16,8 @@ using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Settings.Documents;
+using Explore.Domain.Settings.Documents.Payloads;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.PublicExperience.Queries;
@@ -31,6 +33,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
     private readonly IAnalyticsGovernanceService _analyticsGovernanceService;
     private readonly IAnalyticsRuntimeProfileResolver _runtimeProfileResolver;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
+    private readonly ITypedSettingsDocumentResolver _typedSettingsDocumentResolver;
     private readonly IFooterLinkGroupRepository _footerLinkGroupRepository;
     private readonly IMapper _mapper;
     private readonly GetPublicExperienceSettingsQueryHandler _handler;
@@ -48,6 +51,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _runtimeProfileResolver.Resolve(Arg.Any<AnalyticsSettingGroup>())
             .Returns(new AnalyticsRuntimeProfile());
         _hierarchicalSettingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+        _typedSettingsDocumentResolver = Substitute.For<ITypedSettingsDocumentResolver>();
         _hierarchicalSettingsResolver.ResolveGroupAsync<AnalyticsSettingGroup>(
             Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(new AnalyticsSettingGroup());
@@ -79,6 +83,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             _analyticsGovernanceService,
             _runtimeProfileResolver,
             _hierarchicalSettingsResolver,
+            _typedSettingsDocumentResolver,
             _footerLinkGroupRepository,
             _mapper);
     }
@@ -347,6 +352,85 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         await Assert.That(result.GlobalPrerenderEnabled).IsTrue();
         await Assert.That(result.OperationalRenderMode).IsEqualTo("InteractiveServer");
         await Assert.That(result.DisallowInteractiveServerOnOnboarding).IsTrue();
+    }
+
+    [Test]
+    public async Task Handle_WhenTypedBrandingDocumentExists_UsesTypedBrandingInsteadOfScalarPolicyValues()
+    {
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto
+        {
+            BrandDisplayName = "Scalar Brand",
+            BrandLogoUrl = "https://scalar.example/logo.svg",
+            BrandFaviconUrl = "https://scalar.example/favicon.ico",
+            BrandCustomCssUrl = "https://scalar.example/custom.css"
+        });
+
+        _typedSettingsDocumentResolver.ResolveTenantDocumentAsync<BrandingSettings>(
+                Arg.Is<SettingsResolutionContext>(context =>
+                    context.TenantId == tenantId
+                    && context.RequestsDocument(SettingsDocumentKeys.Tenant.Branding)),
+                SettingsDocumentKeys.Tenant.Branding,
+                Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSettingsDocument<BrandingSettings>
+            {
+                DocumentKey = SettingsDocumentKeys.Tenant.Branding,
+                SchemaVersion = 1,
+                DefaultsVersion = "2026-05-branding",
+                Payload = new BrandingSettings
+                {
+                    DisplayName = "Typed Brand",
+                    LogoUrl = "https://typed.example/logo.svg",
+                    FaviconUrl = "https://typed.example/favicon.ico",
+                    CustomCssUrl = "https://typed.example/custom.css"
+                },
+                Source = SettingsDocumentSource.Tenant,
+                SourceScopeId = tenantId,
+                ConcurrencyStamp = Guid.NewGuid()
+            });
+
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(new List<ModuleInfo>());
+
+        var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
+
+        await Assert.That(result.BrandDisplayName).IsEqualTo("Typed Brand");
+        await Assert.That(result.BrandLogoUrl).IsEqualTo("https://typed.example/logo.svg");
+        await Assert.That(result.BrandFaviconUrl).IsEqualTo("https://typed.example/favicon.ico");
+        await Assert.That(result.BrandCustomCssUrl).IsEqualTo("https://typed.example/custom.css");
+    }
+
+    [Test]
+    public async Task Handle_WhenTypedBrandingDocumentIsMissing_DoesNotFallbackToScalarBranding()
+    {
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto
+        {
+            BrandDisplayName = "Scalar Brand",
+            BrandLogoUrl = "https://scalar.example/logo.svg",
+            BrandFaviconUrl = "https://scalar.example/favicon.ico",
+            BrandCustomCssUrl = "https://scalar.example/custom.css"
+        });
+
+        _typedSettingsDocumentResolver.ResolveTenantDocumentAsync<BrandingSettings>(
+                Arg.Any<SettingsResolutionContext>(),
+                SettingsDocumentKeys.Tenant.Branding,
+                Arg.Any<CancellationToken>())
+            .Returns((ResolvedSettingsDocument<BrandingSettings>?)null);
+
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(new List<ModuleInfo>());
+
+        var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
+
+        await Assert.That(result.BrandDisplayName).IsEqualTo(string.Empty);
+        await Assert.That(result.BrandLogoUrl).IsEqualTo(string.Empty);
+        await Assert.That(result.BrandFaviconUrl).IsEqualTo(string.Empty);
+        await Assert.That(result.BrandCustomCssUrl).IsEqualTo(string.Empty);
     }
 
     private static InstanceGovernanceSettings CreateDefaultGovernanceSettings()

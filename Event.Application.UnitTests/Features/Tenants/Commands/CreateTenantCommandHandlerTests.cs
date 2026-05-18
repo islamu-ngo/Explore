@@ -2,11 +2,13 @@
 // ABOUTME: Verifies idempotent admin assignment and graceful handling of missing roles.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.Tenants.Handlers.Commands.CreateTenant;
 using Explore.Application.Features.Tenants.Requests.Commands;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Documents;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 
@@ -19,6 +21,7 @@ public class CreateTenantCommandHandlerTests
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantMemberRepository _tenantMemberRepository;
     private readonly IRoleRepository _roleRepository;
+    private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly ILogger<CreateTenantCommandHandler> _logger;
     private readonly IUnitOfWork _unitOfWork;
     private readonly CreateTenantCommandHandler _handler;
@@ -28,6 +31,10 @@ public class CreateTenantCommandHandlerTests
         _tenantRepository = Substitute.For<ITenantRepository>();
         _tenantMemberRepository = Substitute.For<ITenantMemberRepository>();
         _roleRepository = Substitute.For<IRoleRepository>();
+        _tenantBrandingProvisioningService = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
+        _tenantBrandingProvisioningService
+            .EnsureTenantBrandingDocumentAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(TenantBrandingSettingsDocumentDefaults.Create(call.ArgAt<Guid>(0), call.ArgAt<string?>(1))));
         _logger = Substitute.For<ILogger<CreateTenantCommandHandler>>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
 
@@ -44,6 +51,7 @@ public class CreateTenantCommandHandlerTests
             _tenantRepository,
             _tenantMemberRepository,
             _roleRepository,
+            _tenantBrandingProvisioningService,
             _logger,
             _unitOfWork);
     }
@@ -61,6 +69,7 @@ public class CreateTenantCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(createdTenant.Id);
         await _tenantRepository.Received(1).Create(Arg.Any<Tenant>());
+        await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(createdTenant.Id, dto.FullName, Arg.Any<CancellationToken>());
         await _tenantMemberRepository.DidNotReceive().Create(Arg.Any<TenantMember>());
     }
 
@@ -75,6 +84,7 @@ public class CreateTenantCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains("slug already exists");
         await _tenantRepository.DidNotReceive().Create(Arg.Any<Tenant>());
+        await _tenantBrandingProvisioningService.DidNotReceive().EnsureTenantBrandingDocumentAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

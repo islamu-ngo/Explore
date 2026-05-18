@@ -16,10 +16,6 @@ public class UpdateTenantPolicyRequest
     public string PreferredHomePage { get; set; } = "EventList";
     public string Subdomain { get; set; } = string.Empty;
     public string CustomDomain { get; set; } = string.Empty;
-    public string BrandDisplayName { get; set; } = string.Empty;
-    public string BrandLogoUrl { get; set; } = string.Empty;
-    public string BrandFaviconUrl { get; set; } = string.Empty;
-    public string BrandCustomCssUrl { get; set; } = string.Empty;
     public bool AnnouncementBarEnabled { get; set; }
     public string AnnouncementBarMessage { get; set; } = string.Empty;
     public string AnnouncementBarLinkText { get; set; } = string.Empty;

@@ -130,7 +130,6 @@ public static class PersistenceServicesRegistration
         // Multi-tenancy Repositories
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<ITenantLookupSource, TenantLookupSource>();
-        services.AddScoped<ITenantSettingsRepository, TenantSettingsRepository>();
         services.AddScoped<IInstanceBootstrapStateRepository, InstanceBootstrapStateRepository>();
         services.AddScoped<IPlatformUserRoleRepository, PlatformUserRoleRepository>();
         services.AddScoped<ITenantMemberRepository, TenantMemberRepository>();
@@ -230,6 +229,7 @@ public static class PersistenceServicesRegistration
         // Settings Repositories
         services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
         services.AddScoped<ITenantSettingRepository, TenantSettingRepository>();
+        services.AddScoped<ITenantSettingsDocumentRepository, TenantSettingsDocumentRepository>();
         services.AddScoped<IOrganizationSettingRepository, OrganizationSettingRepository>();
         services.AddScoped<IGroupSettingRepository, GroupSettingRepository>();
         services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();

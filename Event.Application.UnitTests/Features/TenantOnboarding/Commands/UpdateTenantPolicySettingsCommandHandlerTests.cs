@@ -64,18 +64,10 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
             PreferredHomePage = "EventList",
             Subdomain = "tenant",
             CustomDomain = string.Empty,
-            BrandDisplayName = "ISLAMU Explore",
-            BrandLogoUrl = string.Empty,
-            BrandFaviconUrl = string.Empty,
-            BrandCustomCssUrl = string.Empty,
             CanTenantOmitVerification = true,
             CanOverrideHomePagePreference = true,
             CanOverrideSubdomain = true,
-            CanOverrideCustomDomain = true,
-            CanOverrideBrandDisplayName = true,
-            CanOverrideBrandLogoUrl = true,
-            CanOverrideBrandFaviconUrl = true,
-            CanOverrideBrandCustomCssUrl = true
+            CanOverrideCustomDomain = true
         });
     }
 
@@ -183,25 +175,21 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenLockedBrandDisplayNameIsModified_ThrowsValidationException()
+    public async Task Handle_WhenLockedPreferredHomePageIsModified_ThrowsValidationException()
     {
         // Arrange
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
         _policySettingService.ReadEffectiveTenantSettingsAsync(TestTenantId).Returns(new TenantPolicySettingsDto
         {
-            BrandDisplayName = "Locked Brand",
-            CanOverrideBrandDisplayName = false,
+            PreferredHomePage = "EventList",
+            CanOverrideHomePagePreference = false,
             CanTenantOmitVerification = true,
-            CanOverrideHomePagePreference = true,
             CanOverrideSubdomain = true,
-            CanOverrideCustomDomain = true,
-            CanOverrideBrandLogoUrl = true,
-            CanOverrideBrandFaviconUrl = true,
-            CanOverrideBrandCustomCssUrl = true
+            CanOverrideCustomDomain = true
         });
 
         var command = CreateCommand();
-        command.Settings.BrandDisplayName = "Modified Brand";
+        command.Settings.PreferredHomePage = "LandingPage";
 
         // Act + Assert
         await Assert.ThrowsAsync<ValidationException>(

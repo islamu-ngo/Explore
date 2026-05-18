@@ -76,7 +76,6 @@ public static class SeedIds
     public static readonly Guid OnlineLocationId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000300");
 
     // ===== Tenant Settings (Development) =====
-    public static readonly Guid DefaultTenantSettingsId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000400");
 
     // ===== System Settings =====
     public static readonly Guid SystemSettingDeploymentModeId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000500");
