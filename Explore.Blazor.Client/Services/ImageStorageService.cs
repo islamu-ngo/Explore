@@ -1,11 +1,8 @@
-using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services.Http;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -125,437 +122,71 @@ public class PresignedDownloadUrlResponse
 /// </summary>
 public class ImageStorageService : IImageStorageService
 {
-    private const string GenerateUploadUrlPath = "/api/storageobject/generate-upload-url";
-    private const string GenerateUploadSessionPath = "/bff/storage/upload-session";
-    private const string UploadProxyPath = "/bff/storage/upload-proxy";
     private readonly IEventApiClient _apiClient;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ImageStorageService> _logger;
     private readonly BffClient? _bffClient;
+    private readonly IApiClientExecutor _apiClientExecutor;
+    private readonly IImageFileReaderService _fileReader;
+    private readonly IImagePreviewService _previewService;
+    private readonly IImageUploadClient _uploadClient;
+    private readonly IImageStorageRecordClient _storageRecordClient;
     private const long DefaultMaxFileSize = 10 * 1024 * 1024; // 10MB
 
     public ImageStorageService(
         IEventApiClient apiClient,
         IHttpClientFactory httpClientFactory,
         ILogger<ImageStorageService> logger,
-        BffClient? bffClient = null)
+        BffClient? bffClient = null,
+        IApiClientExecutor? apiClientExecutor = null,
+        IImageFileReaderService? fileReader = null,
+        IImagePreviewService? previewService = null,
+        IImageContentClassifier? contentClassifier = null,
+        IImageUploadClient? uploadClient = null,
+        IImageStorageRecordClient? storageRecordClient = null)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _bffClient = bffClient;
+        _apiClientExecutor = apiClientExecutor ?? new ApiClientExecutor();
+        _fileReader = fileReader ?? new ImageFileReaderService(NullLogger<ImageFileReaderService>.Instance);
+        _previewService = previewService ?? new ImagePreviewService(NullLogger<ImagePreviewService>.Instance);
+        var classifier = contentClassifier ?? new ImageContentClassifier();
+        _uploadClient = uploadClient ?? new ImageUploadClient(
+            _apiClient,
+            _httpClientFactory,
+            NullLogger<ImageUploadClient>.Instance,
+            _bffClient,
+            _apiClientExecutor);
+        _storageRecordClient = storageRecordClient ?? new ImageStorageRecordClient(
+            _apiClient,
+            classifier,
+            NullLogger<ImageStorageRecordClient>.Instance);
     }
 
     /// <inheritdoc />
     public async Task<FileUploadData?> ReadFileAsync(IBrowserFile file, long maxFileSize = DefaultMaxFileSize)
     {
-        if (file == null)
-        {
-            _logger.LogWarning("ReadFileAsync called with null file");
-            return null;
-        }
-
-        try
-        {
-            _logger.LogInformation("Reading file into memory: {FileName}, Size: {Size} bytes, ContentType: {ContentType}",
-                file.Name, file.Size, file.ContentType);
-
-            if (file.Size > maxFileSize)
-            {
-                _logger.LogWarning("File {FileName} exceeds max size ({Size} > {MaxSize})",
-                    file.Name, file.Size, maxFileSize);
-                return null;
-            }
-
-            // Read file into memory immediately - this prevents stream exhaustion in WASM
-            await using var stream = file.OpenReadStream(maxAllowedSize: maxFileSize);
-            using var memoryStream = new MemoryStream();
-            await stream.CopyToAsync(memoryStream);
-            var bytes = memoryStream.ToArray();
-
-            _logger.LogDebug("Successfully read {ByteCount} bytes from {FileName}", bytes.Length, file.Name);
-
-            return new FileUploadData
-            {
-                Content = bytes,
-                FileName = file.Name,
-                ContentType = file.ContentType
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error reading file {FileName} into memory", file.Name);
-            return null;
-        }
+        return await _fileReader.ReadFileAsync(file, maxFileSize);
     }
 
     /// <inheritdoc />
     public async Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType)
     {
-        try
-        {
-            _logger.LogInformation("Getting upload URL for: {FileName}, type: {ContentType}", fileName, contentType);
-
-            var request = new UploadRequestDto
-            {
-                FileName = fileName,
-                ContentType = contentType
-            };
-
-            // Use a direct BFF call first to avoid fetch failures from generated client content negotiation.
-            var bffUploadSession = await GetUploadSessionViaBffAsync(request);
-            if (bffUploadSession != null)
-            {
-                return bffUploadSession;
-            }
-
-            if (OperatingSystem.IsBrowser())
-            {
-                _logger.LogWarning("BFF upload session request returned no usable response in browser runtime.");
-                return null;
-            }
-
-            var response = await GetUploadUrlViaBffAsync(request);
-            if (response == null)
-            {
-                _logger.LogWarning("BFF upload URL request returned no usable response. Falling back to generated API client.");
-                response = await _apiClient.GenerateStorageObjectUploadUrlAsync(request);
-            }
-
-            // Defensive: server might return non-null DTO but with an empty UploadUrl.
-            if (response == null)
-            {
-                _logger.LogWarning("GenerateUploadUrlAsync returned null response");
-                return null;
-            }
-
-            if (string.IsNullOrWhiteSpace(response.UploadUrl))
-            {
-                _logger.LogWarning("UploadUrl is null or empty. Check server S3 configuration (bucket/endpoint/credentials)");
-                return null;
-            }
-
-            _logger.LogDebug("Got upload URL: {UploadUrlPreview}...", response.UploadUrl?.Substring(0, Math.Min(50, response.UploadUrl?.Length ?? 0)));
-            return new ImageUploadResponse
-            {
-                UploadUrl = response.UploadUrl ?? string.Empty,
-                ObjectKey = response.ObjectKey ?? string.Empty,
-                ViewUrl = response.ViewUrl ?? string.Empty,
-                ExpiresInMinutes = response.ExpiresInMinutes ?? 60
-            };
-        }
-        catch (ApiException ex)
-        {
-            _logger.LogError(ex, "API error getting upload URL: {StatusCode}", ex.StatusCode);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting upload URL");
-            return null;
-        }
-    }
-
-    private async Task<ImageUploadResponse?> GetUploadSessionViaBffAsync(UploadRequestDto request)
-    {
-        try
-        {
-            using var response = _bffClient is not null
-                ? await _bffClient.PostAsync(GenerateUploadSessionPath, request)
-                : await _httpClientFactory.CreateClient("BffClient").PostAsJsonAsync(GenerateUploadSessionPath, request);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                _logger.LogWarning("Upload session request returned 401 Unauthorized");
-                return null;
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var hasBody = response.Content.Headers.ContentLength.GetValueOrDefault() > 0;
-                _logger.LogWarning("Upload session request failed via BFF. Status={StatusCode}, HasBody={HasBody}",
-                    (int)response.StatusCode, hasBody);
-                return null;
-            }
-
-            var session = await response.Content.ReadFromJsonAsync<BffStorageUploadSessionResponse>();
-            if (session == null || string.IsNullOrWhiteSpace(session.UploadSessionId))
-            {
-                return null;
-            }
-
-            return new ImageUploadResponse
-            {
-                UploadSessionId = session.UploadSessionId,
-                ObjectKey = session.ObjectKey,
-                ViewUrl = session.ViewUrl,
-                ExpiresInMinutes = session.ExpiresInMinutes <= 0 ? 60 : session.ExpiresInMinutes
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error calling upload session endpoint via BFF");
-            return null;
-        }
-    }
-
-    private async Task<UploadUrlResponseDto?> GetUploadUrlViaBffAsync(UploadRequestDto request)
-    {
-        try
-        {
-            using var httpClient = _httpClientFactory.CreateClient("BffClient");
-            using var response = await httpClient.PostAsJsonAsync(GenerateUploadUrlPath, request);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                _logger.LogWarning("Upload URL request returned 401 Unauthorized");
-                return null;
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorBody = await response.Content.ReadAsStringAsync();
-                _logger.LogWarning("Upload URL request failed via BFF. Status={StatusCode}, Body={Body}",
-                    (int)response.StatusCode, errorBody);
-                return null;
-            }
-
-            return await response.Content.ReadFromJsonAsync<UploadUrlResponseDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error calling upload URL endpoint via BFF");
-            return null;
-        }
-    }
-
-    private async Task<bool> UploadImageViaBffProxyAsync(string uploadSessionId, FileUploadData fileData)
-    {
-        try
-        {
-            using var form = new MultipartFormDataContent();
-            form.Add(new StringContent(uploadSessionId), "uploadSessionId");
-            form.Add(new StringContent(fileData.ContentType), "contentType");
-
-            using var fileContent = new ByteArrayContent(fileData.Content);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(fileData.ContentType);
-            form.Add(fileContent, "file", fileData.FileName);
-
-            using var response = _bffClient is not null
-                ? await _bffClient.PostMultipartAsync(UploadProxyPath, form)
-                : await _httpClientFactory.CreateClient("BffClient").PostAsync(UploadProxyPath, form);
-
-            if (response.IsSuccessStatusCode)
-            {
-                _logger.LogInformation("BFF upload proxy completed successfully for {FileName}", fileData.FileName);
-                return true;
-            }
-
-            var errorBody = await response.Content.ReadAsStringAsync();
-            _logger.LogError("BFF upload proxy failed for {FileName}. Status={StatusCode}, Body={Body}",
-                fileData.FileName, (int)response.StatusCode, errorBody);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "BFF upload proxy request failed for {FileName}", fileData.FileName);
-            return false;
-        }
-    }
-
-    private async Task<bool> UploadImageViaBffProxyAsync(string uploadSessionId, IBrowserFile file)
-    {
-        try
-        {
-            using var form = new MultipartFormDataContent();
-            form.Add(new StringContent(uploadSessionId), "uploadSessionId");
-            form.Add(new StringContent(file.ContentType), "contentType");
-
-            await using var stream = file.OpenReadStream(maxAllowedSize: DefaultMaxFileSize);
-            using var fileContent = new StreamContent(stream);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-            form.Add(fileContent, "file", file.Name);
-
-            using var response = _bffClient is not null
-                ? await _bffClient.PostMultipartAsync(UploadProxyPath, form)
-                : await _httpClientFactory.CreateClient("BffClient").PostAsync(UploadProxyPath, form);
-
-            if (response.IsSuccessStatusCode)
-            {
-                _logger.LogInformation("BFF upload proxy completed successfully for {FileName}", file.Name);
-                return true;
-            }
-
-            var hasBody = response.Content.Headers.ContentLength.GetValueOrDefault() > 0;
-            _logger.LogError("BFF upload proxy failed for {FileName}. Status={StatusCode}, HasBody={HasBody}",
-                file.Name, (int)response.StatusCode, hasBody);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "BFF upload proxy request failed for {FileName}", file.Name);
-            return false;
-        }
+        return await _uploadClient.GetUploadUrlAsync(fileName, contentType);
     }
 
     /// <inheritdoc />
     public async Task<bool> UploadImageAsync(string uploadUrl, IBrowserFile file)
     {
-        if (string.IsNullOrWhiteSpace(uploadUrl))
-        {
-            _logger.LogWarning("Invalid upload URL (empty/null) - aborting upload");
-            return false;
-        }
-
-        if (!Uri.TryCreate(uploadUrl, UriKind.Absolute, out var validatedUri))
-        {
-            _logger.LogWarning("Invalid upload URL format: {UploadUrl} - aborting upload", uploadUrl);
-            return false;
-        }
-
-        try
-        {
-            _logger.LogInformation("Uploading to S3: {FileName}, Size: {Size} bytes, ContentType: {ContentType}, Host: {Host}",
-                file.Name, file.Size, file.ContentType, validatedUri.Host);
-
-            // Use named HTTP client for S3 upload (configured with CORS mode for cross-origin requests)
-            using var s3Client = _httpClientFactory.CreateClient("S3Upload");
-
-            // Read the file content - stream directly without buffering to avoid memory issues
-            const long maxFileSize = 10 * 1024 * 1024; // 10MB max
-            await using var stream = file.OpenReadStream(maxAllowedSize: maxFileSize);
-            using var content = new StreamContent(stream);
-
-            // CRITICAL: Content-Type MUST match what was used to generate the pre-signed URL
-            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
-
-            _logger.LogDebug("Sending PUT request to S3...");
-
-            // PUT request to the pre-signed URL
-            var response = await s3Client.PutAsync(validatedUri, content);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError("S3 upload failed: {StatusCode} - {ReasonPhrase} - {ErrorContent}",
-                    (int)response.StatusCode, response.ReasonPhrase, errorContent);
-
-                // Log additional debug info for common error codes
-                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
-                {
-                    _logger.LogError("S3 403 Forbidden - Check: 1) CORS config on bucket 2) Pre-signed URL expired 3) Content-Type mismatch");
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    _logger.LogError("S3 400 Bad Request - Check: 1) Content-Type header matches pre-signed URL 2) Request headers are correct");
-                }
-            }
-            else
-            {
-                var etag = response.Headers.ETag?.Tag ?? "no-etag";
-                _logger.LogInformation("S3 upload successful! ETag: {ETag}", etag);
-            }
-
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP request error uploading to S3. This may be a CORS issue - check bucket CORS configuration.");
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error uploading image to S3");
-            return false;
-        }
+        return await _uploadClient.UploadImageAsync(uploadUrl, file);
     }
 
     /// <inheritdoc />
     public async Task<bool> UploadImageFromBytesAsync(string uploadUrl, FileUploadData fileData)
     {
-        if (string.IsNullOrWhiteSpace(uploadUrl))
-        {
-            _logger.LogWarning("Invalid upload URL (empty/null) - aborting upload");
-            return false;
-        }
-
-        if (fileData == null || fileData.Content.Length == 0)
-        {
-            _logger.LogWarning("Invalid file data (null or empty) - aborting upload");
-            return false;
-        }
-
-        if (!Uri.TryCreate(uploadUrl, UriKind.Absolute, out var validatedUri))
-        {
-            _logger.LogWarning("Invalid upload URL format: {UploadUrl} - aborting upload", uploadUrl);
-            return false;
-        }
-
-        if (OperatingSystem.IsBrowser())
-        {
-            _logger.LogWarning("Browser runtime requires a server-issued upload session for {FileName}", fileData.FileName);
-            return false;
-        }
-
-        try
-        {
-            _logger.LogInformation("Uploading to S3: {FileName}, Size: {Size} bytes, ContentType: {ContentType}, Host: {Host}",
-                fileData.FileName, fileData.Size, fileData.ContentType, validatedUri.Host);
-
-            // Use named HTTP client for S3 upload (configured with CORS mode)
-            using var s3Client = _httpClientFactory.CreateClient("S3Upload");
-
-            // Use ByteArrayContent instead of StreamContent for reliable WASM uploads
-            // ByteArrayContent avoids stream timing/disposal issues in browser fetch API
-            using var content = new ByteArrayContent(fileData.Content);
-
-            // CRITICAL: Content-Type MUST match what was used to generate the pre-signed URL
-            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(fileData.ContentType);
-
-            _logger.LogDebug("Sending PUT request to S3 with ByteArrayContent ({Size} bytes)...", fileData.Size);
-
-            // Use a cancellation token with timeout to prevent indefinite hangs
-            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-            var response = await s3Client.PutAsync(validatedUri, content, cts.Token);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError("S3 upload failed: {StatusCode} - {ReasonPhrase} - {ErrorContent}",
-                    (int)response.StatusCode, response.ReasonPhrase, errorContent);
-
-                // Log additional debug info for common error codes
-                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
-                {
-                    _logger.LogError("S3 403 Forbidden - Check: 1) CORS config on bucket 2) Pre-signed URL expired 3) Content-Type mismatch");
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    _logger.LogError("S3 400 Bad Request - Check: 1) Content-Type header matches pre-signed URL 2) Request headers are correct");
-                }
-
-                return false;
-            }
-
-            var etag = response.Headers.ETag?.Tag ?? "no-etag";
-            _logger.LogInformation("S3 upload successful! ETag: {ETag}, Size: {Size} bytes", etag, fileData.Size);
-            return true;
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogError("S3 upload timed out after 3 minutes for file {FileName}", fileData.FileName);
-            return false;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP request error uploading to S3. This may be a CORS issue - check bucket CORS configuration. File: {FileName}", fileData.FileName);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error uploading image to S3. File: {FileName}", fileData.FileName);
-            return false;
-        }
+        return await _uploadClient.UploadImageFromBytesAsync(uploadUrl, fileData);
     }
 
     /// <inheritdoc />
@@ -592,7 +223,7 @@ public class ImageStorageService : IImageStorageService
 
             // Step 2: Upload to S3 using bytes
             var uploadSuccess = OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId)
-                ? await UploadImageViaBffProxyAsync(uploadResponse.UploadSessionId, fileData)
+                ? await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, fileData)
                 : await UploadImageFromBytesAsync(uploadResponse.UploadUrl, fileData);
             if (!uploadSuccess)
             {
@@ -607,77 +238,7 @@ public class ImageStorageService : IImageStorageService
             _logger.LogDebug("S3 upload completed successfully for {FileName}", fileData.FileName);
 
             // Step 3: Create StorageObject record
-            var createDto = BuildCreateStorageObjectDto(
-                fileData.ContentType,
-                uploadResponse.ViewUrl,
-                uploadResponse.ObjectKey,
-                fileData.FileName,
-                fileData.Size);
-            if (createDto == null)
-            {
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = "Failed to build storage metadata for uploaded image."
-                };
-            }
-
-            _logger.LogInformation("Creating StorageObject record for {FileName}", fileData.FileName);
-
-            BaseCommandResponseOfGuid? createResponse = null;
-            try
-            {
-                createResponse = await _apiClient.CreateStorageObjectAsync(createDto);
-                _logger.LogInformation("StorageObject API response received: Success={Success}, Id={Id}, Message={Message}",
-                    createResponse?.Success, createResponse?.Id, createResponse?.Message);
-            }
-            catch (ApiException<ProblemDetails> apiEx)
-            {
-                var problemMessage = BuildProblemDetailsMessage(apiEx.Result);
-                _logger.LogError(apiEx,
-                    "StorageobjectPOSTAsync returned {StatusCode} for {FileName}. Details: {ProblemMessage}",
-                    apiEx.StatusCode,
-                    fileData.FileName,
-                    problemMessage);
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = $"API call failed ({apiEx.StatusCode}): {problemMessage}"
-                };
-            }
-            catch (Exception apiEx)
-            {
-                _logger.LogError(apiEx, "Exception calling StorageobjectPOSTAsync for {FileName}", fileData.FileName);
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = $"API call failed: {apiEx.Message}"
-                };
-            }
-
-            if (createResponse?.Success == true)
-            {
-                _logger.LogInformation("StorageObject created successfully! ID: {StorageObjectId}", createResponse.Id);
-                var result = new ImageUploadResult
-                {
-                    Success = true,
-                    StorageObjectId = createResponse.Id ?? Guid.Empty,
-                    ViewUrl = uploadResponse.ViewUrl,
-                    ObjectKey = uploadResponse.ObjectKey
-                };
-                _logger.LogInformation("Returning successful ImageUploadResult for {FileName}", fileData.FileName);
-                return result;
-            }
-            else
-            {
-                var errorMsg = createResponse?.Message ?? "Failed to create storage object record";
-                _logger.LogWarning("StorageObject creation failed: {Message}", errorMsg);
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = errorMsg
-                };
-            }
+            return await _storageRecordClient.CreateRecordFromBytesAsync(uploadResponse, fileData);
         }
         catch (ApiException ex)
         {
@@ -719,7 +280,7 @@ public class ImageStorageService : IImageStorageService
 
             // Step 2: Upload to S3
             var uploadSuccess = OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId)
-                ? await UploadImageViaBffProxyAsync(uploadResponse.UploadSessionId, file)
+                ? await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, file)
                 : await UploadImageAsync(uploadResponse.UploadUrl, file);
             if (!uploadSuccess)
             {
@@ -731,62 +292,7 @@ public class ImageStorageService : IImageStorageService
             }
 
             // Step 3: Create StorageObject record
-            var createDto = BuildCreateStorageObjectDto(
-                file.ContentType,
-                uploadResponse.ViewUrl,
-                uploadResponse.ObjectKey,
-                file.Name,
-                file.Size);
-            if (createDto == null)
-            {
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = "Failed to build storage metadata for uploaded image."
-                };
-            }
-
-            _logger.LogInformation("Creating StorageObject record");
-            BaseCommandResponseOfGuid? createResponse;
-            try
-            {
-                createResponse = await _apiClient.CreateStorageObjectAsync(createDto);
-            }
-            catch (ApiException<ProblemDetails> apiEx)
-            {
-                var problemMessage = BuildProblemDetailsMessage(apiEx.Result);
-                _logger.LogError(apiEx,
-                    "StorageobjectPOSTAsync returned {StatusCode} for {FileName}. Details: {ProblemMessage}",
-                    apiEx.StatusCode,
-                    file.Name,
-                    problemMessage);
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = $"API call failed ({apiEx.StatusCode}): {problemMessage}"
-                };
-            }
-
-            if (createResponse?.Success == true)
-            {
-                _logger.LogInformation("StorageObject created with ID: {StorageObjectId}", createResponse.Id);
-                return new ImageUploadResult
-                {
-                    Success = true,
-                    StorageObjectId = createResponse.Id ?? Guid.Empty,
-                    ViewUrl = uploadResponse.ViewUrl,
-                    ObjectKey = uploadResponse.ObjectKey
-                };
-            }
-            else
-            {
-                _logger.LogWarning("StorageObject creation failed: {Message}", createResponse?.Message);
-                return new ImageUploadResult
-                {
-                    Success = false,
-                    ErrorMessage = createResponse?.Message ?? "Failed to create storage object record"
-                };
-            }
+            return await _storageRecordClient.CreateRecordFromFileAsync(uploadResponse, file);
         }
         catch (ApiException ex)
         {
@@ -832,19 +338,20 @@ public class ImageStorageService : IImageStorageService
             }
 
             // Get presigned URL from the API via BFF
-            using var httpClient = _httpClientFactory.CreateClient("BffClient");
-            var response = await httpClient.GetAsync($"/api/StorageObject/presigned-url-by-key/{objectKey}?expirationMinutes=60");
+            var result = await _apiClientExecutor.ReadJsonAsync<PresignedDownloadUrlResponse>(
+                ct => _httpClientFactory.CreateClient("BffClient").GetAsync($"/api/StorageObject/presigned-url-by-key/{objectKey}?expirationMinutes=60", ct),
+                "BFF presigned URL by key");
 
-            if (response.IsSuccessStatusCode)
+            if (result.IsSuccess)
             {
-                var presignedResponse = await response.Content.ReadFromJsonAsync<PresignedDownloadUrlResponse>();
+                var presignedResponse = result.Value;
                 if (presignedResponse != null && !string.IsNullOrEmpty(presignedResponse.PresignedUrl))
                 {
                     return presignedResponse.PresignedUrl;
                 }
             }
 
-            _logger.LogWarning("Failed to get presigned URL for object key: {ObjectKey}, Status: {StatusCode}", objectKey, response.StatusCode);
+            _logger.LogWarning("Failed to get presigned URL for object key: {ObjectKey}, Status: {StatusCode}", objectKey, result.StatusCode);
             return null;
         }
         catch (Exception ex)
@@ -861,19 +368,20 @@ public class ImageStorageService : IImageStorageService
     {
         try
         {
-            using var httpClient = _httpClientFactory.CreateClient("BffClient");
-            var response = await httpClient.GetAsync($"/api/StorageObject/{storageObjectId}/presigned-url?expirationMinutes=60");
+            var result = await _apiClientExecutor.ReadJsonAsync<PresignedDownloadUrlResponse>(
+                ct => _httpClientFactory.CreateClient("BffClient").GetAsync($"/api/StorageObject/{storageObjectId}/presigned-url?expirationMinutes=60", ct),
+                "BFF presigned URL by id");
 
-            if (response.IsSuccessStatusCode)
+            if (result.IsSuccess)
             {
-                var presignedResponse = await response.Content.ReadFromJsonAsync<PresignedDownloadUrlResponse>();
+                var presignedResponse = result.Value;
                 if (presignedResponse != null && !string.IsNullOrEmpty(presignedResponse.PresignedUrl))
                 {
                     return presignedResponse.PresignedUrl;
                 }
             }
 
-            _logger.LogWarning("Failed to get presigned URL for storage object ID: {Id}, Status: {StatusCode}", storageObjectId, response.StatusCode);
+            _logger.LogWarning("Failed to get presigned URL for storage object ID: {Id}, Status: {StatusCode}", storageObjectId, result.StatusCode);
             return null;
         }
         catch (Exception ex)
@@ -902,175 +410,13 @@ public class ImageStorageService : IImageStorageService
     /// <inheritdoc />
     public async Task<string> GenerateLocalPreviewAsync(IBrowserFile file, long maxFileSize = 5 * 1024 * 1024)
     {
-        try
-        {
-            var resizedImage = await file.RequestImageFileAsync(file.ContentType, 400, 400);
-            using var stream = resizedImage.OpenReadStream(maxFileSize);
-            using var memoryStream = new MemoryStream();
-            await stream.CopyToAsync(memoryStream);
-            var bytes = memoryStream.ToArray();
-            return $"data:{file.ContentType};base64,{Convert.ToBase64String(bytes)}";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating preview");
-            return string.Empty;
-        }
+        return await _previewService.GenerateLocalPreviewAsync(file, maxFileSize);
     }
 
     /// <inheritdoc />
     public string GenerateLocalPreviewFromBytes(FileUploadData fileData)
     {
-        if (fileData == null || fileData.Content.Length == 0)
-        {
-            _logger.LogWarning("GenerateLocalPreviewFromBytes called with null or empty file data");
-            return string.Empty;
-        }
-
-        try
-        {
-            return $"data:{fileData.ContentType};base64,{Convert.ToBase64String(fileData.Content)}";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating preview from bytes");
-            return string.Empty;
-        }
+        return _previewService.GenerateLocalPreviewFromBytes(fileData);
     }
 
-    private CreateStorageObjectDto? BuildCreateStorageObjectDto(
-        string contentType,
-        string? viewUrl,
-        string? objectKey,
-        string fileName,
-        long size)
-    {
-        var uri = !string.IsNullOrWhiteSpace(viewUrl) ? viewUrl : objectKey;
-        if (string.IsNullOrWhiteSpace(uri))
-        {
-            _logger.LogError("Cannot build CreateStorageObjectDto: both ViewUrl and ObjectKey are empty for {FileName}", fileName);
-            return null;
-        }
-
-        var extension = Path.GetExtension(fileName);
-        if (string.IsNullOrWhiteSpace(extension))
-        {
-            extension = GetDefaultExtension(contentType);
-        }
-
-        // API DTO has non-nullable Guid TenantId. Sending null from generated client causes model-binding 400.
-        return new CreateStorageObjectDto
-        {
-            FileTypeId = GetFileTypeId(contentType),
-            Uri = uri,
-            FullName = fileName,
-            Extension = extension,
-            Size = size,
-            TenantId = Guid.Empty
-        };
-    }
-
-    private static string BuildProblemDetailsMessage(ProblemDetails? problemDetails)
-    {
-        if (problemDetails == null)
-        {
-            return "Bad request";
-        }
-
-        var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(problemDetails.Title))
-        {
-            parts.Add(problemDetails.Title!);
-        }
-
-        if (!string.IsNullOrWhiteSpace(problemDetails.Detail))
-        {
-            parts.Add(problemDetails.Detail!);
-        }
-
-        if (problemDetails.AdditionalProperties.TryGetValue("errors", out var errorsObject))
-        {
-            var validationErrors = FlattenValidationErrors(errorsObject);
-            if (!string.IsNullOrWhiteSpace(validationErrors))
-            {
-                parts.Add(validationErrors);
-            }
-        }
-
-        return parts.Count == 0 ? "Bad request" : string.Join(" | ", parts);
-    }
-
-    private static string FlattenValidationErrors(object? errorsObject)
-    {
-        if (errorsObject is not JsonElement errorsJson || errorsJson.ValueKind != JsonValueKind.Object)
-        {
-            return string.Empty;
-        }
-
-        var messages = new List<string>();
-        foreach (var entry in errorsJson.EnumerateObject())
-        {
-            if (entry.Value.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            var fieldMessages = new List<string>();
-            foreach (var item in entry.Value.EnumerateArray())
-            {
-                var message = item.GetString();
-                if (!string.IsNullOrWhiteSpace(message))
-                {
-                    fieldMessages.Add(message);
-                }
-            }
-
-            if (fieldMessages.Count > 0)
-            {
-                messages.Add($"{entry.Name}: {string.Join(", ", fieldMessages)}");
-            }
-        }
-
-        return string.Join("; ", messages);
-    }
-
-    private static string GetDefaultExtension(string contentType)
-    {
-        return contentType.ToLowerInvariant() switch
-        {
-            "image/jpeg" or "image/jpg" => ".jpg",
-            "image/png" => ".png",
-            "image/gif" => ".gif",
-            "image/webp" => ".webp",
-            "image/svg+xml" => ".svg",
-            _ => ".bin"
-        };
-    }
-
-    private int GetFileTypeId(string contentType)
-    {
-        var normalized = (contentType ?? string.Empty).Trim().ToLowerInvariant();
-        if (normalized.StartsWith("image/", StringComparison.Ordinal))
-        {
-            return 1; // FileTypeEnum.Image
-        }
-
-        if (normalized.StartsWith("video/", StringComparison.Ordinal))
-        {
-            return 3; // FileTypeEnum.Video
-        }
-
-        if (normalized.StartsWith("audio/", StringComparison.Ordinal))
-        {
-            return 4; // FileTypeEnum.Audio
-        }
-
-        if (normalized.StartsWith("text/", StringComparison.Ordinal) ||
-            normalized == "application/pdf")
-        {
-            return 2; // FileTypeEnum.Document
-        }
-
-        return 5; // FileTypeEnum.Other
-    }
 }

@@ -1,0 +1,93 @@
+// ABOUTME: Focused tests for ImageStorageService support seams extracted during Phase 3.
+// ABOUTME: Covers file reading, preview generation from bytes, and content-type classification behavior.
+
+using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace Explore.Blazor.Client.Tests.Services;
+
+public class ImageStorageSupportServiceTests
+{
+    [Test]
+    public async Task ImageFileReaderService_ReadFileAsync_ReturnsFileData_WhenFileIsValid()
+    {
+        var bytes = new byte[] { 1, 2, 3 };
+        var file = Substitute.For<IBrowserFile>();
+        file.Name.Returns("test.jpg");
+        file.Size.Returns(3L);
+        file.ContentType.Returns("image/jpeg");
+        file.OpenReadStream(Arg.Any<long>()).Returns(_ => new MemoryStream(bytes));
+
+        var service = new ImageFileReaderService(NullLogger<ImageFileReaderService>.Instance);
+
+        var result = await service.ReadFileAsync(file, 1024);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.FileName).IsEqualTo("test.jpg");
+        await Assert.That(result.ContentType).IsEqualTo("image/jpeg");
+        await Assert.That(result.Content.SequenceEqual(bytes)).IsTrue();
+    }
+
+    [Test]
+    public async Task ImageFileReaderService_ReadFileAsync_ReturnsNull_WhenFileExceedsMaxSize()
+    {
+        var file = Substitute.For<IBrowserFile>();
+        file.Name.Returns("big.jpg");
+        file.Size.Returns(2048L);
+        file.ContentType.Returns("image/jpeg");
+
+        var service = new ImageFileReaderService(NullLogger<ImageFileReaderService>.Instance);
+
+        var result = await service.ReadFileAsync(file, 1024);
+
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task ImagePreviewService_GenerateLocalPreviewFromBytes_ReturnsDataUri()
+    {
+        var service = new ImagePreviewService(NullLogger<ImagePreviewService>.Instance);
+        var fileData = new FileUploadData
+        {
+            Content = new byte[] { 1, 2, 3 },
+            FileName = "test.jpg",
+            ContentType = "image/jpeg"
+        };
+
+        var result = service.GenerateLocalPreviewFromBytes(fileData);
+
+        await Assert.That(result).IsEqualTo("data:image/jpeg;base64,AQID");
+    }
+
+    [Test]
+    public async Task ImagePreviewService_GenerateLocalPreviewFromBytes_ReturnsEmpty_WhenFileDataIsNull()
+    {
+        var service = new ImagePreviewService(NullLogger<ImagePreviewService>.Instance);
+
+        var result = service.GenerateLocalPreviewFromBytes(null!);
+
+        await Assert.That(result).IsEqualTo(string.Empty);
+    }
+
+    [Test]
+    public async Task ImageContentClassifier_GetDefaultExtension_MapsKnownImageTypes()
+    {
+        var classifier = new ImageContentClassifier();
+
+        await Assert.That(classifier.GetDefaultExtension("image/jpeg")).IsEqualTo(".jpg");
+        await Assert.That(classifier.GetDefaultExtension("image/png")).IsEqualTo(".png");
+        await Assert.That(classifier.GetDefaultExtension("application/octet-stream")).IsEqualTo(".bin");
+    }
+
+    [Test]
+    public async Task ImageContentClassifier_GetFileTypeId_ClassifiesContentFamily()
+    {
+        var classifier = new ImageContentClassifier();
+
+        await Assert.That(classifier.GetFileTypeId("image/png")).IsEqualTo(1);
+        await Assert.That(classifier.GetFileTypeId("application/pdf")).IsEqualTo(2);
+        await Assert.That(classifier.GetFileTypeId("video/mp4")).IsEqualTo(3);
+        await Assert.That(classifier.GetFileTypeId("audio/mpeg")).IsEqualTo(4);
+        await Assert.That(classifier.GetFileTypeId("application/octet-stream")).IsEqualTo(5);
+    }
+}
