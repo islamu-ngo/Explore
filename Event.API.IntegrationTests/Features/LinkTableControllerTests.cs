@@ -9,7 +9,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// <summary>
 /// Integration tests for link table controllers.
 /// These are many-to-many relationship controllers that connect entities.
-/// Note: Some link table controllers (EventCategories, EventTags, EventSessionLanguage,
+/// Note: Some link table controllers (EventCategories, EventTags,
 /// EventSessionSpeaker, TagTypeTags) do not exist yet and return NotFound.
 /// </summary>
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
@@ -86,13 +86,13 @@ public class LinkTableControllerTests
 
     #endregion
 
-    #region EventSessionLanguage Controller (not yet implemented)
+    #region EventSessionLanguage Controller
 
     [Test]
-    public async Task EventSessionLanguage_GetAll_ShouldReturnNotFound()
+    public async Task EventSessionLanguage_GetRoot_ShouldReturnMethodNotAllowed()
     {
         var response = await _fixture.Client.GetAsync("/api/eventsessionlanguage");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.MethodNotAllowed);
     }
 
     [Test]
@@ -103,17 +103,17 @@ public class LinkTableControllerTests
     }
 
     [Test]
-    public async Task EventSessionLanguage_Create_ShouldReturnNotFound()
+    public async Task EventSessionLanguage_Create_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.PostAsJsonAsync("/api/eventsessionlanguage", new { EventSessionId = Guid.NewGuid(), LanguageId = 1 });
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
-    public async Task EventSessionLanguage_Delete_ShouldReturnNotFound()
+    public async Task EventSessionLanguage_Delete_ShouldReturnUnauthorized()
     {
         var response = await _fixture.Client.DeleteAsync($"/api/eventsessionlanguage/{1}");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     #endregion

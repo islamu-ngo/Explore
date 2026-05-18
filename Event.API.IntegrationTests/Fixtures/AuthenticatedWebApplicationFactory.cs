@@ -47,6 +47,7 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
                 {"Keycloak:Audience", "islamu-event-api"},
                 {"Keycloak:RequireHttpsMetadata", "false"},
                 {"Keycloak:MetadataAddress", "https://auth.example.com/.well-known/openid-configuration"},
+                {"Testing:SkipJwtAuthorityWarmup", "true"},
                 {"S3Settings:Region", "us-east-1"},
                 {"S3Settings:BucketName", "test-bucket"},
                 {"S3Settings:AccessKeyId", "test-key"},

@@ -70,5 +70,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         {
             // Preserve the existing legacy teardown tolerance used by other integration-test fixtures.
         }
+        catch (ObjectDisposedException)
+        {
+            // OpenFeature can dispose shared shutdown primitives before WebApplicationFactory finishes teardown.
+        }
     }
 }
