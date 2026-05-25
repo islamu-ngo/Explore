@@ -1,3 +1,6 @@
+// ABOUTME: Registers shared Refit clients for Blazor BFF endpoints with secure handlers.
+// ABOUTME: Requires host-supplied same-origin BaseAddress values so routes stay behind BFF/YARP.
+
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Explore.Blazor.Client.Services.Http;
@@ -48,10 +51,13 @@ public static class RefitClientRegistrationExtensions
 
         builder.ConfigureHttpClient((sp, client) =>
         {
-            // If no explicit base address is configured, try to resolve a default
-            // from the environment in a subsequent configuration step or here.
-            // By default, BFF calls are same-origin.
             configureClient?.Invoke(sp, client);
+
+            if (client.BaseAddress is null)
+            {
+                throw new InvalidOperationException(
+                    $"A BaseAddress is required for BFF Refit client {typeof(TInterface).Name}.");
+            }
         })
         // 1. Ensure cookies/credentials are included for authentication
         .AddHttpMessageHandler<BrowserCredentialsMessageHandler>()

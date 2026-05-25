@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.Secrets;
 using Explore.Application.Utilities;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -51,21 +52,40 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         var adminUsernameSetting = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername);
         var adminPasswordSetting = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword);
 
-        // Preserve operator's raw value end-to-end. Detection compares against the local default using
-        // a normalized form, but the value surfaced to UI/storage stays exactly as the operator typed it
-        // in Infisical/env (e.g. `cerbosgrpc.openislamu.org:443`, no auto-prepended scheme).
+        // Preserve operator's raw bootstrap value end-to-end. Deployment values prefill setup/admin
+        // screens, but application-managed saved settings take precedence after an explicit save.
         var rawEnvEndpoint = _configuration["Cerbos:GrpcEndpoint"]?.Trim() ?? string.Empty;
         var detectedFromEnv = !string.IsNullOrWhiteSpace(rawEnvEndpoint)
                               && !GrpcEndpointNormalizer.Normalize(rawEnvEndpoint)
                                   .Equals("http://localhost:3593", StringComparison.OrdinalIgnoreCase);
 
+        var providerConfigured = providerSetting is not null && !string.IsNullOrWhiteSpace(providerSetting.Value);
         var provider = DeserializeString(providerSetting?.Value, "local");
-        var grpcEndpoint = DeserializeString(grpcEndpointSetting?.Value, string.Empty);
+        var storedGrpcEndpoint = DeserializeString(grpcEndpointSetting?.Value, string.Empty);
+        var endpointDeploymentManaged = IsDeploymentManaged(GovernanceSettingKeys.Cerbos.GrpcEndpoint)
+                                        || IsDeploymentManaged(Explore.Domain.Secrets.SecretDefinitionRegistry.Keys.Cerbos.GrpcEndpoint);
+        var credentialsDeploymentManaged = IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername)
+                                           || IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword)
+                                           || IsDeploymentManaged("Cerbos:AdminApi:AdminUsername")
+                                           || IsDeploymentManaged("Cerbos:AdminApi:AdminPassword");
+
+        var grpcEndpoint = endpointDeploymentManaged
+            ? rawEnvEndpoint
+            : storedGrpcEndpoint;
 
         if (string.IsNullOrWhiteSpace(grpcEndpoint) && detectedFromEnv)
         {
             grpcEndpoint = rawEnvEndpoint;
         }
+
+        var storedAdminUsernameConfigured = !string.IsNullOrWhiteSpace(DeserializeString(adminUsernameSetting?.Value, string.Empty));
+        var storedAdminPasswordConfigured = !string.IsNullOrWhiteSpace(DeserializeString(adminPasswordSetting?.Value, string.Empty));
+        var configuredAdminUsernameConfigured = !string.IsNullOrWhiteSpace(_configuration["Cerbos:AdminApi:AdminUsername"]);
+        var configuredAdminPasswordConfigured = !string.IsNullOrWhiteSpace(_configuration["Cerbos:AdminApi:AdminPassword"]);
+        var adminCredentialsConfigured = credentialsDeploymentManaged
+            ? configuredAdminUsernameConfigured && configuredAdminPasswordConfigured
+            : (storedAdminUsernameConfigured || configuredAdminUsernameConfigured)
+              && (storedAdminPasswordConfigured || configuredAdminPasswordConfigured);
 
         return new AuthorizationProviderConfigurationDto
         {
@@ -74,9 +94,29 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
             CerbosAdminEndpoint = DeserializeString(adminEndpointSetting?.Value, string.Empty),
             CerbosAdminUsername = null,
             CerbosAdminPassword = null,
-            CerbosAdminUsernameConfigured = !string.IsNullOrWhiteSpace(DeserializeString(adminUsernameSetting?.Value, string.Empty)),
-            CerbosAdminPasswordConfigured = !string.IsNullOrWhiteSpace(DeserializeString(adminPasswordSetting?.Value, string.Empty)),
-            CerbosDetectedFromEnvironment = detectedFromEnv
+            CerbosAdminUsernameConfigured = credentialsDeploymentManaged
+                ? configuredAdminUsernameConfigured
+                : storedAdminUsernameConfigured || configuredAdminUsernameConfigured,
+            CerbosAdminPasswordConfigured = credentialsDeploymentManaged
+                ? configuredAdminPasswordConfigured
+                : storedAdminPasswordConfigured || configuredAdminPasswordConfigured,
+            CerbosDetectedFromEnvironment = detectedFromEnv,
+            AuthorizationProviderConfigured = providerConfigured,
+            CerbosEndpointOwnership = CreateOwnershipMetadata(
+                endpointDeploymentManaged,
+                configured: !string.IsNullOrWhiteSpace(grpcEndpoint),
+                bootstrapAvailable: detectedFromEnv && !endpointDeploymentManaged && string.IsNullOrWhiteSpace(storedGrpcEndpoint),
+                applicationManagedDescription: "Saved Cerbos PDP endpoint settings take precedence after onboarding/admin save. Environment values are only bootstrap prefills unless deployment-managed mode is configured.",
+                deploymentManagedDescription: "Cerbos PDP endpoint is managed by deployment configuration. Change it in the environment, secret provider, or appsettings and restart."),
+            CerbosAdminCredentialsOwnership = CreateOwnershipMetadata(
+                credentialsDeploymentManaged,
+                configured: adminCredentialsConfigured,
+                bootstrapAvailable: !credentialsDeploymentManaged
+                    && !storedAdminUsernameConfigured
+                    && !storedAdminPasswordConfigured
+                    && (configuredAdminUsernameConfigured || configuredAdminPasswordConfigured),
+                applicationManagedDescription: "Cerbos Admin API credentials can be saved by the application for runtime policy sync. Server-side environment values only seed or unlock sync until application credentials are saved.",
+                deploymentManagedDescription: "Cerbos Admin API credentials are deployment-managed. The browser cannot edit them; rotate them in the configured secret provider and restart or refresh the deployment."),
         };
     }
 
@@ -85,6 +125,12 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         var rawEndpoint = configuration.CerbosGrpcEndpoint?.Trim() ?? string.Empty;
         var isCerbosProvider = configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase);
         var rawAdminEndpoint = configuration.CerbosAdminEndpoint?.Trim() ?? string.Empty;
+        var endpointDeploymentManaged = IsDeploymentManaged(GovernanceSettingKeys.Cerbos.GrpcEndpoint)
+                                        || IsDeploymentManaged(Explore.Domain.Secrets.SecretDefinitionRegistry.Keys.Cerbos.GrpcEndpoint);
+        var credentialsDeploymentManaged = IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername)
+                                           || IsDeploymentManaged(InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword)
+                                           || IsDeploymentManaged("Cerbos:AdminApi:AdminUsername")
+                                           || IsDeploymentManaged("Cerbos:AdminApi:AdminPassword");
         Uri? normalizedAdminEndpoint = null;
 
         if (isCerbosProvider && !string.IsNullOrWhiteSpace(rawAdminEndpoint))
@@ -102,14 +148,17 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
             1,
             "Authorization provider: 'cerbos' for external PDP, 'local' for built-in RBAC");
 
-        await UpsertSettingAsync(
-            GovernanceSettingKeys.Cerbos.GrpcEndpoint,
-            JsonSerializer.Serialize(isCerbosProvider ? rawEndpoint : string.Empty),
-            SettingValueType.String,
-            true,
-            "Security",
-            2,
-            "Cerbos PDP gRPC endpoint for authorization requests");
+        if (!endpointDeploymentManaged)
+        {
+            await UpsertSettingAsync(
+                GovernanceSettingKeys.Cerbos.GrpcEndpoint,
+                JsonSerializer.Serialize(isCerbosProvider ? rawEndpoint : string.Empty),
+                SettingValueType.String,
+                true,
+                "Security",
+                2,
+                "Cerbos PDP gRPC endpoint for authorization requests");
+        }
 
         if (!isCerbosProvider)
         {
@@ -130,28 +179,31 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
                 "Cerbos Admin API endpoint for policy package publishing");
         }
 
-        if (!string.IsNullOrWhiteSpace(configuration.CerbosAdminUsername))
+        if (!credentialsDeploymentManaged)
         {
-            await UpsertSettingAsync(
-                InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
-                JsonSerializer.Serialize(configuration.CerbosAdminUsername.Trim()),
-                SettingValueType.String,
-                true,
-                "Security",
-                4,
-                "Cerbos Admin API username");
-        }
+            if (!string.IsNullOrWhiteSpace(configuration.CerbosAdminUsername))
+            {
+                await UpsertSettingAsync(
+                    InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
+                    JsonSerializer.Serialize(configuration.CerbosAdminUsername.Trim()),
+                    SettingValueType.String,
+                    true,
+                    "Security",
+                    4,
+                    "Cerbos Admin API username");
+            }
 
-        if (!string.IsNullOrWhiteSpace(configuration.CerbosAdminPassword))
-        {
-            await UpsertSettingAsync(
-                InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword,
-                JsonSerializer.Serialize(configuration.CerbosAdminPassword),
-                SettingValueType.String,
-                true,
-                "Security",
-                5,
-                "Cerbos Admin API password");
+            if (!string.IsNullOrWhiteSpace(configuration.CerbosAdminPassword))
+            {
+                await UpsertSettingAsync(
+                    InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword,
+                    JsonSerializer.Serialize(configuration.CerbosAdminPassword),
+                    SettingValueType.String,
+                    true,
+                    "Security",
+                    5,
+                    "Cerbos Admin API password");
+            }
         }
 
         _cerbosConfigResolver.InvalidateCache();
@@ -219,6 +271,50 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         }
 
         return Task.FromResult(isSafe);
+    }
+
+    private bool IsDeploymentManaged(string key)
+    {
+        var configuredKeys = _configuration.GetSection("Secrets:Ownership:DeploymentManagedKeys").Get<string[]>()
+                             ?? Array.Empty<string>();
+        return configuredKeys.Any(candidate =>
+            candidate.Equals("*", StringComparison.OrdinalIgnoreCase)
+            || candidate.Equals(key, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static SecretOwnershipDto CreateOwnershipMetadata(
+        bool deploymentManaged,
+        bool configured,
+        bool bootstrapAvailable,
+        string applicationManagedDescription,
+        string deploymentManagedDescription)
+    {
+        if (deploymentManaged)
+        {
+            return new SecretOwnershipDto
+            {
+                Mode = "deployment-managed",
+                Source = "deployment",
+                Badge = "Managed by Deployment",
+                Description = deploymentManagedDescription,
+                Editable = false,
+                Configured = configured,
+                BootstrapAvailable = false
+            };
+        }
+
+        return new SecretOwnershipDto
+        {
+            Mode = "application-managed",
+            Source = bootstrapAvailable ? "deployment-bootstrap" : "application",
+            Badge = bootstrapAvailable ? "Bootstrap from Deployment" : "Managed by Application",
+            Description = bootstrapAvailable
+                ? "These values were detected from environment variables. If you modify them, saved application settings will be used from now on."
+                : applicationManagedDescription,
+            Editable = true,
+            Configured = configured,
+            BootstrapAvailable = bootstrapAvailable
+        };
     }
 
     private async Task UpsertSettingAsync(

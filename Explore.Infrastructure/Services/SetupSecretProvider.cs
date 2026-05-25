@@ -1,5 +1,5 @@
 // ABOUTME: Singleton service that manages the setup secret lifecycle for instance onboarding.
-// ABOUTME: Reads SETUP_SECRET from env var or auto-generates a 32-char crypto-random token; validates with timing-safe comparison.
+// ABOUTME: Reads setup/provisioning configuration, generates or disables setup-secret validation safely, and validates with timing-safe comparison.
 
 using System.Security.Cryptography;
 using System.Text;
@@ -18,6 +18,8 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
     private bool _isLocked;
     private bool? _isBootstrapComplete;
 
+    public bool IsSetupSecretRequired { get; }
+    public bool IsTrustedManagedProvisioningConfigured { get; }
     public bool IsFromEnvironmentVariable { get; }
     public DateTime InstanceStartedAt { get; }
 
@@ -42,6 +44,17 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
     {
         _scopeFactory = scopeFactory;
         InstanceStartedAt = DateTime.UtcNow;
+        IsTrustedManagedProvisioningConfigured = HasTrustedManagedProvisioningConfiguration(configuration);
+
+        var requestedSetupSecretRequired = ReadBoolean(configuration["SETUP_SECRET_REQUIRED"], defaultValue: true);
+        IsSetupSecretRequired = requestedSetupSecretRequired || !IsTrustedManagedProvisioningConfigured;
+
+        if (!IsSetupSecretRequired)
+        {
+            _secret = string.Empty;
+            IsFromEnvironmentVariable = false;
+            return;
+        }
 
         var envSecret = configuration["SETUP_SECRET"];
         if (!string.IsNullOrWhiteSpace(envSecret))
@@ -58,6 +71,9 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
 
     public bool ValidateSecret(string? secret)
     {
+        if (!IsSetupSecretRequired)
+            return false;
+
         if (_isLocked)
             return false;
 
@@ -80,7 +96,7 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
     }
 
     /// <inheritdoc />
-    public string? GetSecretForLogging() => IsFromEnvironmentVariable ? null : _secret;
+    public string? GetSecretForLogging() => !IsSetupSecretRequired || IsFromEnvironmentVariable ? null : _secret;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -125,5 +141,41 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
             .Replace("/", "")
             .Replace("=", "");
         return filtered[..32];
+    }
+
+    private static bool HasTrustedManagedProvisioningConfiguration(IConfiguration configuration)
+    {
+        if (!ReadBoolean(configuration["PROVISIONING_TRUSTED"], defaultValue: false))
+            return false;
+
+        if (!IsManagedProvisioningMode(configuration["PROVISIONING_MODE"]))
+            return false;
+
+        if (string.IsNullOrWhiteSpace(configuration["MANAGED_CLIENT_EXTERNAL_PROVIDER"]))
+            return false;
+
+        return !string.IsNullOrWhiteSpace(configuration["PHYSICAL_TENANCY_MODE"]);
+    }
+
+    private static bool IsManagedProvisioningMode(string? mode)
+    {
+        if (string.IsNullOrWhiteSpace(mode))
+            return false;
+
+        var normalized = mode.Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace("_", string.Empty, StringComparison.Ordinal)
+            .Trim();
+
+        return normalized.Equals("managedprovider", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("managedhosting", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("managed", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ReadBoolean(string? value, bool defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return defaultValue;
+
+        return bool.TryParse(value, out var parsed) ? parsed : defaultValue;
     }
 }

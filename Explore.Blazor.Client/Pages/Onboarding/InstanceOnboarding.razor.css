@@ -1,0 +1,62 @@
+/* ABOUTME: Scoped layout styles for the instance onboarding 2-step flow. */
+/* ABOUTME: Creates the desktop step rail, main content area, and launch recap summary panel. */
+
+.onboarding-shell {
+    max-width: min(1180px, calc(100vw - 48px));
+    margin-inline: auto;
+}
+
+.onboarding-shell__grid {
+    align-items: flex-start;
+}
+
+.onboarding-shell__rail,
+.onboarding-shell__summary {
+    position: sticky;
+    top: var(--isl-space-6, 24px);
+}
+
+.onboarding-shell__step {
+    min-height: 32px;
+}
+
+.onboarding-shell__check-row {
+    padding: var(--isl-space-2, 8px) var(--isl-space-3, 12px);
+    border-radius: var(--isl-radius-sm, 4px);
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+.onboarding-shell__check-row--error {
+    border-color: var(--mud-palette-error);
+    background: var(--mud-palette-error-hover, rgba(244, 67, 54, 0.04));
+}
+
+.onboarding-shell__check-row--pass {
+    border-color: var(--mud-palette-success, rgba(76, 175, 80, 0.3));
+    background: var(--mud-palette-success-hover, rgba(76, 175, 80, 0.04));
+}
+
+.onboarding-shell__check-name {
+    line-height: 1.3;
+}
+
+.onboarding-shell__check-msg {
+    line-height: 1.4;
+}
+
+.onboarding-shell__check-detail {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 1279px) {
+    .onboarding-shell {
+        max-width: min(920px, calc(100vw - 32px));
+    }
+
+    .onboarding-shell__rail,
+    .onboarding-shell__summary {
+        position: static;
+    }
+}

@@ -113,9 +113,43 @@ public class CerbosPolicyPackageServiceTests : IDisposable
         await Assert.That(entryNames).Contains("manifest.json");
         await Assert.That(entryNames).Contains("INSTRUCTIONS.md");
 
+        var instructions = await ReadEntryAsync(zipArchive, "INSTRUCTIONS.md");
         await Assert.That(await ReadEntryAsync(zipArchive, "islamuevent_event.yaml")).IsEqualTo(policy);
-        await Assert.That(await ReadEntryAsync(zipArchive, "INSTRUCTIONS.md")).Contains("cerbosctl put");
+        await Assert.That(instructions).Contains("docker compose --profile authz run --rm cerbos-policy-sync");
+        await Assert.That(instructions).Contains("cerbosctl put policy --recursive .");
+        await Assert.That(instructions).Contains("cerbosctl put schema --recursive _schemas");
         await Assert.That(await ReadEntryAsync(zipArchive, "manifest.json")).Contains("test-policy-package");
+    }
+
+    [Test]
+    public async Task ExportArchiveAsync_WhenPolicyRootMissing_ThrowsSafeUnavailableException()
+    {
+        var missingRoot = Path.Combine(_tempRoot, "does-not-exist", "policies");
+        var service = CreateService(missingRoot);
+
+        var exception = await Assert.ThrowsAsync<PolicyPackageUnavailableException>(async () =>
+            await service.ExportArchiveAsync());
+
+        await Assert.That(exception).IsNotNull();
+        await Assert.That(exception?.Message ?? string.Empty).Contains("Cerbos:PolicyPackagePath");
+        await Assert.That(exception?.Message ?? string.Empty).DoesNotContain(_tempRoot);
+        await Assert.That(exception?.Message ?? string.Empty).DoesNotContain("does-not-exist");
+    }
+
+    [Test]
+    public async Task BuildManifestAsync_WhenSchemaDirectoryMissing_ThrowsSafeUnavailableException()
+    {
+        var policiesRoot = Path.Combine(_tempRoot, "policies-without-schemas");
+        Directory.CreateDirectory(policiesRoot);
+        await File.WriteAllTextAsync(Path.Combine(policiesRoot, "islamuevent_event.yaml"), CreatePolicyYaml("islamuevent_event"));
+        var service = CreateService(policiesRoot);
+
+        var exception = await Assert.ThrowsAsync<PolicyPackageUnavailableException>(async () =>
+            await service.BuildManifestAsync());
+
+        await Assert.That(exception).IsNotNull();
+        await Assert.That(exception?.Message ?? string.Empty).Contains("Cerbos:PolicyPackagePath");
+        await Assert.That(exception?.Message ?? string.Empty).DoesNotContain(policiesRoot);
     }
 
     [Test]

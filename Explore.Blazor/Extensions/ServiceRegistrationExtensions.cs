@@ -40,7 +40,9 @@ public static class ServiceRegistrationExtensions
         services.AddTransient<BffAntiforgeryMessageHandler>();
         services.AddTransient<BffUnauthorizedHandler>();
 
-        services.AddSharedApplicationServices();
+        services.AddSharedApplicationServices(
+            ConfigureBffRefitBaseAddress,
+            builder => builder.AddHttpMessageHandler<BffCookieForwardingHandler>());
         services.AddScoped<BffClient>(sp =>
         {
             var factory = sp.GetRequiredService<IHttpClientFactory>();
@@ -59,6 +61,21 @@ public static class ServiceRegistrationExtensions
 
         return services;
     }
+
+    private static void ConfigureBffRefitBaseAddress(IServiceProvider serviceProvider, HttpClient client)
+    {
+        var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
+        var request = httpContextAccessor.HttpContext?.Request;
+
+        if (request is null)
+        {
+            return;
+        }
+
+        var pathBase = request.PathBase.HasValue ? request.PathBase.Value : string.Empty;
+        client.BaseAddress = new Uri($"{request.Scheme}://{request.Host}{pathBase}/", UriKind.Absolute);
+    }
+
 
     /// <summary>
     /// Registers services that are only needed on the Blazor Server (BFF) side.

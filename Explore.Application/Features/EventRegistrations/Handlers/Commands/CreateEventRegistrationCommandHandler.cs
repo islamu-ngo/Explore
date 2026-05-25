@@ -13,6 +13,7 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace Explore.Application.Features.EventRegistrations.Handlers.Commands;
 
@@ -82,6 +83,21 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             return response;
         }
 
+        var user = await _userRepository.GetById(dto.UserId);
+        if (user is null)
+        {
+            response.Success = false;
+            response.Message = "User not found.";
+            return response;
+        }
+
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            response.Success = false;
+            response.Message = "User email address is required for registration confirmation.";
+            return response;
+        }
+
         // Short-circuit idempotency: if the user already has the same intent, return its id.
         var existing = await _intentRepository.FindExistingAsync(
             dto.EventId,
@@ -114,6 +130,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
 
         var intent = new EventRegistrationIntent
         {
+            Id = Guid.CreateVersion7(),
             EventId = dto.EventId,
             Event = null!,
             UserId = dto.UserId,
@@ -140,12 +157,21 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             })
             .ToList();
 
+        var emailDispatchOutbox = CreateRegistrationConfirmationEmail(
+            tenantId,
+            dto.UserId,
+            dto.EventId,
+            intent.Id,
+            user.Email,
+            parentEvent.Title);
+
         var creationResult = await _intentRepository.CreateWithChildrenAndCapacityAsync(
             intent,
             childRows,
             (int)ApprovalStatusEnum.Approved,
             (int)ApprovalStatusEnum.Waitlisted,
-            cancellationToken);
+            cancellationToken,
+            emailDispatchOutbox);
         var created = creationResult.Intent;
 
         if (dto.ShareEmailWithOrganizer)
@@ -178,6 +204,34 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _metrics.RecordRegistrationCreated(tenantId.ToString());
 
         return response;
+    }
+
+    private static EmailDispatchOutbox CreateRegistrationConfirmationEmail(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        Guid registrationIntentId,
+        string recipientEmail,
+        string eventTitle)
+    {
+        var safeTitle = string.IsNullOrWhiteSpace(eventTitle) ? "the event" : eventTitle.Trim();
+        var encodedTitle = WebUtility.HtmlEncode(safeTitle);
+
+        return new EmailDispatchOutbox
+        {
+            TenantId = tenantId,
+            Kind = EmailDispatchKind.RegistrationConfirmation,
+            SourceType = "event_registration_intent",
+            SourceId = registrationIntentId,
+            EventId = eventId,
+            RegistrationIntentId = registrationIntentId,
+            UserId = userId,
+            RecipientEmail = recipientEmail.Trim(),
+            Subject = $"Registration received for {safeTitle}",
+            PlainTextBody = $"Assalamu alaykum,\n\nYour registration for {safeTitle} has been received. We will keep you updated if any registration status changes.\n\nISLAMU Event",
+            HtmlBody = $"<p>Assalamu alaykum,</p><p>Your registration for <strong>{encodedTitle}</strong> has been received.</p><p>We will keep you updated if any registration status changes.</p><p>ISLAMU Event</p>",
+            CorrelationId = registrationIntentId.ToString()
+        };
     }
 
     private async Task<List<Guid>> ResolveChildSessionsAsync(CreateEventRegistrationDto dto, CancellationToken cancellationToken)

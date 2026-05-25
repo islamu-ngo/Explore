@@ -1,0 +1,75 @@
+// ABOUTME: Specialized durable email-dispatch intent used by Basic Dispatch Mode before any SMTP side effect runs.
+// ABOUTME: Stores tenant-safe recipient/body snapshots plus delivery state for retry, dead-letter, parking, and replay.
+
+using Explore.Domain.Interfaces;
+
+namespace Explore.Domain;
+
+public class EmailDispatchOutbox : ITenantEntity, IAuditableEntity, ISoftDeletable
+{
+    public Guid Id { get; set; }
+    public Guid TenantId { get; set; }
+    public Tenant? Tenant { get; set; }
+
+    public Guid PublishEventId { get; set; } = Guid.CreateVersion7();
+    public EmailDispatchKind Kind { get; set; }
+    public required string SourceType { get; set; }
+    public Guid SourceId { get; set; }
+
+    public Guid? EventId { get; set; }
+    public Event? Event { get; set; }
+
+    public Guid? RegistrationIntentId { get; set; }
+    public EventRegistrationIntent? RegistrationIntent { get; set; }
+
+    public Guid? UserId { get; set; }
+    public User? User { get; set; }
+
+    public required string RecipientEmail { get; set; }
+    public required string Subject { get; set; }
+    public string? PlainTextBody { get; set; }
+    public string? HtmlBody { get; set; }
+    public string? ReplyTo { get; set; }
+
+    public EmailDispatchStatus Status { get; set; } = EmailDispatchStatus.Pending;
+    public int AttemptCount { get; set; }
+    public int MaxAttempts { get; set; } = 5;
+    public DateTime? NextAttemptAt { get; set; }
+    public DateTime? ProcessingStartedAt { get; set; }
+    public Guid? ProcessingLeaseToken { get; set; }
+    public DateTime? SentAt { get; set; }
+    public DateTime? DeadLetteredAt { get; set; }
+    public DateTime? ParkedAt { get; set; }
+    public DateTime? UnknownAt { get; set; }
+
+    public string? LastFailureCategory { get; set; }
+    public string? LastError { get; set; }
+    public DateTime? LastFailureAt { get; set; }
+    public string? ProviderMessageId { get; set; }
+    public string? CorrelationId { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
+}
+
+public enum EmailDispatchKind
+{
+    RegistrationConfirmation = 1
+}
+
+public enum EmailDispatchStatus
+{
+    Pending = 1,
+    Processing = 2,
+    Sent = 3,
+    RetryScheduled = 4,
+    DeadLettered = 5,
+    Parked = 6,
+    Unknown = 7
+}

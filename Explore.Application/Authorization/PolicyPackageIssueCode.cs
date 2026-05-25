@@ -13,5 +13,6 @@ public enum PolicyPackageIssueCode
     PackageStatusUnknown = 5,
     ReloadFailed = 6,
     PdpUnreachable = 7,
-    PublishFailed = 8
+    PublishFailed = 8,
+    PackageUnavailable = 9
 }

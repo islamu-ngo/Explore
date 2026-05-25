@@ -25,7 +25,10 @@ public static class ServiceCollectionExtensions
     /// Services that need different implementations per host (e.g., IAnalyticsInterop)
     /// must be registered separately by each host.
     /// </summary>
-    public static IServiceCollection AddSharedApplicationServices(this IServiceCollection services)
+    public static IServiceCollection AddSharedApplicationServices(
+        this IServiceCollection services,
+        Action<IServiceProvider, HttpClient>? configureBffRefitClient = null,
+        Action<IHttpClientBuilder>? configureBffRefitClientBuilder = null)
     {
         // Domain services (NSwag IEventApiClient consumers)
         services.AddScoped<IApiClientExecutor, ApiClientExecutor>();
@@ -42,7 +45,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILandingPageService, LandingPageService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
-        services.AddBffRefitClient<IMapsApi>();
+        services.AddBffRefitClient<IMapsApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IMapsService, MapsService>();
         services.AddScoped<IImageContentClassifier, ImageContentClassifier>();
         services.AddScoped<IImageFileReaderService, ImageFileReaderService>();
@@ -84,14 +88,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INotificationService, NotificationService>();
 
         // BFF / onboarding services (use named HttpClient "BffClient")
-        services.AddBffRefitClient<IInstanceOnboardingApi>();
-        services.AddBffRefitClient<ITenantOnboardingApi>();
-        services.AddBffRefitClient<IPublicExperienceApi>();
+        services.AddBffRefitClient<IInstanceOnboardingApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
+        services.AddBffRefitClient<ITenantOnboardingApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
+        services.AddBffRefitClient<IPublicExperienceApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
         services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
         services.AddScoped<IPublicExperienceService, PublicExperienceService>();
         services.AddScoped<ITenantPublicExperienceAdminService, TenantPublicExperienceAdminService>();
-        services.AddBffRefitClient<ITenantBrandingSettingsApi>();
+        services.AddBffRefitClient<ITenantBrandingSettingsApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<ITenantBrandingSettingsAdminService, TenantBrandingSettingsAdminService>();
         services.AddScoped<IAppearanceThemeService, AppearanceThemeService>();
         services.AddScoped<IUserAppearancePreferencesService, UserAppearancePreferencesService>();
@@ -105,12 +113,14 @@ public static class ServiceCollectionExtensions
 
         // Localization
         services.AddScoped<ITranslationService, TranslationService>();
-        services.AddBffRefitClient<ILanguagePreferenceApi>();
+        services.AddBffRefitClient<ILanguagePreferenceApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<ILanguagePreferenceService, LanguagePreferenceService>();
         services.AddTransient<MudBlazor.MudLocalizer, MudBlazorLocalizer>();
 
         // UI state
         services.AddScoped<SidebarState>();
+        services.AddScoped<MainContentAppearanceState>();
         services.AddScoped<AiAssistantState>();
         services.AddScoped<TenantNavLinksState>();
         services.AddScoped<DockLayoutState>();
@@ -126,9 +136,19 @@ public static class ServiceCollectionExtensions
 
         // Feature flags (hydrated from API, no OpenFeature SDK dependency)
         services.AddScoped<FeatureStateContainer>();
-        services.AddBffRefitClient<IFeatureFlagApi>();
+        services.AddBffRefitClient<IFeatureFlagApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IFeatureFlagClientService, FeatureFlagClientService>();
 
         return services;
+    }
+
+
+    private static IHttpClientBuilder ConfigureBffRefitClient(
+        this IHttpClientBuilder builder,
+        Action<IHttpClientBuilder>? configure)
+    {
+        configure?.Invoke(builder);
+        return builder;
     }
 }

@@ -158,9 +158,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_actors_tenant_id");
 
-                    b.HasIndex("UserId")
+                    b.HasIndex("UserId", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("ix_actors_user_id")
+                        .HasDatabaseName("ix_actors_user_id_tenant_id")
                         .HasFilter("user_id IS NOT NULL");
 
                     b.ToTable("actors", null, t =>
@@ -1362,6 +1362,436 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_did_custody_types");
 
                     b.ToTable("did_custody_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EmailDispatchAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<int>("AttemptNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_number");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EmailDispatchOutboxId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("email_dispatch_outbox_id");
+
+                    b.Property<string>("FailureCategory")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("failure_category");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("integer")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_message_id");
+
+                    b.Property<string>("SanitizedErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("sanitized_error_message");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Transport")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("transport");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_dispatch_attempts");
+
+                    b.HasIndex("EmailDispatchOutboxId", "AttemptNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_email_dispatch_attempts_outbox_attempt");
+
+                    b.HasIndex("TenantId", "StartedAt")
+                        .HasDatabaseName("ix_email_dispatch_attempts_tenant_started");
+
+                    b.ToTable("email_dispatch_attempts", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EmailDispatchOutbox", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeadLetteredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dead_lettered_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("HtmlBody")
+                        .HasColumnType("text")
+                        .HasColumnName("html_body");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime?>("LastFailureAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_failure_at");
+
+                    b.Property<string>("LastFailureCategory")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_failure_category");
+
+                    b.Property<int>("MaxAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(5)
+                        .HasColumnName("max_attempts");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<DateTime?>("ParkedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("parked_at");
+
+                    b.Property<string>("PlainTextBody")
+                        .HasColumnType("text")
+                        .HasColumnName("plain_text_body");
+
+                    b.Property<Guid?>("ProcessingLeaseToken")
+                        .HasColumnType("uuid")
+                        .HasColumnName("processing_lease_token");
+
+                    b.Property<DateTime?>("ProcessingStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processing_started_at");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_message_id");
+
+                    b.Property<Guid>("PublishEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("publish_event_id");
+
+                    b.Property<string>("RecipientEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("recipient_email");
+
+                    b.Property<Guid?>("RegistrationIntentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_intent_id");
+
+                    b.Property<string>("ReplyTo")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("reply_to");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("source_type");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("subject");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UnknownAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("unknown_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_dispatch_outbox");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_email_dispatch_outbox_event_id");
+
+                    b.HasIndex("RegistrationIntentId")
+                        .HasDatabaseName("ix_email_dispatch_outbox_registration_intent_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_email_dispatch_outbox_user_id");
+
+                    b.HasIndex("TenantId", "PublishEventId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_email_dispatch_outbox_tenant_publish_event");
+
+                    b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
+                        .HasDatabaseName("ix_email_dispatch_outbox_worker_poll");
+
+                    b.HasIndex("TenantId", "Status", "LastFailureAt")
+                        .HasDatabaseName("ix_email_dispatch_outbox_tenant_status");
+
+                    b.HasIndex("TenantId", "SourceType", "SourceId", "Kind")
+                        .IsUnique()
+                        .HasDatabaseName("ux_email_dispatch_outbox_tenant_source_kind")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("email_dispatch_outbox", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EmailDispatchReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("ConsumerId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("consumer_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EmailDispatchOutboxId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("email_dispatch_outbox_id");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("failure_message");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_seen_at");
+
+                    b.Property<DateTime?>("ProcessingStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processing_started_at");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("provider_message_id");
+
+                    b.Property<Guid>("PublishEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("publish_event_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_dispatch_receipts");
+
+                    b.HasIndex("EmailDispatchOutboxId", "Status")
+                        .HasDatabaseName("ix_email_dispatch_receipts_outbox_status");
+
+                    b.HasIndex("TenantId", "PublishEventId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_email_dispatch_receipts_tenant_publish_event");
+
+                    b.ToTable("email_dispatch_receipts", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EmailDispatchTenantControl", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsPaused")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_paused");
+
+                    b.Property<string>("PauseReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("pause_reason");
+
+                    b.Property<DateTime?>("PausedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paused_at");
+
+                    b.Property<Guid?>("PausedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paused_by");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_dispatch_tenant_controls");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_email_dispatch_tenant_controls_tenant");
+
+                    b.HasIndex("IsPaused", "UpdatedAt")
+                        .HasDatabaseName("ix_email_dispatch_tenant_controls_pause_state");
+
+                    b.ToTable("email_dispatch_tenant_controls", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Event", b =>
@@ -5747,6 +6177,117 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("external_api_key_statuses", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.ExternalBinding", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("ExternalBindingStatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("external_binding_status_id");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("external_id");
+
+                    b.Property<string>("ExternalSystem")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("external_system");
+
+                    b.Property<string>("ExternalType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("external_type");
+
+                    b.Property<Guid>("InternalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("internal_id");
+
+                    b.Property<string>("InternalType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("internal_type");
+
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata_json");
+
+                    b.Property<string>("ProviderKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("provider_key");
+
+                    b.Property<Guid?>("ScopeTenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scope_tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_external_bindings");
+
+                    b.HasIndex("ScopeTenantId")
+                        .HasDatabaseName("ix_external_bindings_scope_tenant_id");
+
+                    b.HasIndex("ProviderKey", "ExternalSystem", "ExternalType", "ExternalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_external_bindings_external_global_unique")
+                        .HasFilter("scope_tenant_id IS NULL");
+
+                    b.HasIndex("ProviderKey", "ExternalSystem", "InternalType", "InternalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_external_bindings_internal_global_unique")
+                        .HasFilter("scope_tenant_id IS NULL");
+
+                    b.HasIndex("ProviderKey", "ExternalSystem", "ExternalType", "ExternalId", "ScopeTenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_external_bindings_external_tenant_unique")
+                        .HasFilter("scope_tenant_id IS NOT NULL");
+
+                    b.HasIndex("ProviderKey", "ExternalSystem", "InternalType", "InternalId", "ScopeTenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_external_bindings_internal_tenant_unique")
+                        .HasFilter("scope_tenant_id IS NOT NULL");
+
+                    b.ToTable("external_bindings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_external_bindings_status", "external_binding_status_id IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("ck_external_bindings_text_not_blank", "length(btrim(provider_key)) > 0 AND length(btrim(external_system)) > 0 AND length(btrim(external_type)) > 0 AND length(btrim(external_id)) > 0 AND length(btrim(internal_type)) > 0");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.Federation.PdsSyncOutbox", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9202,6 +9743,196 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("tenant_statuses", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.TenantUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime?>("BanExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ban_expires_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTime?>("JoinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at");
+
+                    b.Property<string>("ModerationNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("moderation_note");
+
+                    b.Property<DateTime?>("RemovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("removed_at");
+
+                    b.Property<Guid?>("RemovedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("removed_by");
+
+                    b.Property<int>("StatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status_id");
+
+                    b.Property<DateTime?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("suspended_at");
+
+                    b.Property<Guid?>("SuspendedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("suspended_by");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_users");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_tenant_users_actor_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_tenant_users_user_id");
+
+                    b.HasIndex("TenantId", "ActorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenantusers_tenant_actor")
+                        .HasFilter("actor_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenantusers_tenant_user");
+
+                    b.ToTable("tenant_users", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_tenant_users_status", "status_id IN (1, 2, 3, 4)");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantUserProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("AdminNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("admin_note");
+
+                    b.Property<string>("ConsentJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("consent_json");
+
+                    b.Property<string>("ContactEmailOverride")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("contact_email_override");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DisplayNameOverride")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("display_name_override");
+
+                    b.Property<string>("Locale")
+                        .HasMaxLength(35)
+                        .HasColumnType("character varying(35)")
+                        .HasColumnName("locale");
+
+                    b.Property<string>("PreferencesJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("preferences_json");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("TenantUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_user_id");
+
+                    b.Property<string>("TimeZone")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("time_zone");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_user_profiles");
+
+                    b.HasIndex("TenantUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenantuserprofiles_tenant_user");
+
+                    b.HasIndex("TenantId", "ContactEmailOverride")
+                        .HasDatabaseName("ix_tenantuserprofiles_tenant_contact_email")
+                        .HasFilter("contact_email_override IS NOT NULL");
+
+                    b.ToTable("tenant_user_profiles", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.UiTheme", b =>
                 {
                     b.Property<Guid>("Id")
@@ -10338,6 +11069,96 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Definition");
 
                     b.Navigation("Option");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EmailDispatchAttempt", b =>
+                {
+                    b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
+                        .WithMany()
+                        .HasForeignKey("EmailDispatchOutboxId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_dispatch_attempts_email_dispatch_outbox_email_dispatc");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_dispatch_attempts_tenants_tenant_id");
+
+                    b.Navigation("EmailDispatchOutbox");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EmailDispatchOutbox", b =>
+                {
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_email_dispatch_outbox_events_event_id");
+
+                    b.HasOne("Explore.Domain.EventRegistrationIntent", "RegistrationIntent")
+                        .WithMany()
+                        .HasForeignKey("RegistrationIntentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_email_dispatch_outbox_event_registration_intents_registrati");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_dispatch_outbox_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_email_dispatch_outbox_users_user_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("RegistrationIntent");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EmailDispatchReceipt", b =>
+                {
+                    b.HasOne("Explore.Domain.EmailDispatchOutbox", "EmailDispatchOutbox")
+                        .WithMany()
+                        .HasForeignKey("EmailDispatchOutboxId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_dispatch_receipts_email_dispatch_outbox_email_dispatc");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_dispatch_receipts_tenants_tenant_id");
+
+                    b.Navigation("EmailDispatchOutbox");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EmailDispatchTenantControl", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_dispatch_tenant_controls_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -11725,6 +12546,17 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_external_api_key_quotas_external_api_keys_external_api_key_");
 
                     b.Navigation("ExternalApiKey");
+                });
+
+            modelBuilder.Entity("Explore.Domain.ExternalBinding", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "ScopeTenant")
+                        .WithMany()
+                        .HasForeignKey("ScopeTenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_external_bindings_tenants_scope_tenant_id");
+
+                    b.Navigation("ScopeTenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.Group", b =>
@@ -14730,6 +15562,56 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.TenantUser", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_tenant_users_actors_actor_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_users_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_users_users_user_id");
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantUserProfile", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_user_profiles_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.TenantUser", "TenantUser")
+                        .WithOne("Profile")
+                        .HasForeignKey("Explore.Domain.TenantUserProfile", "TenantUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_user_profiles_tenant_users_tenant_user_id");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("TenantUser");
+                });
+
             modelBuilder.Entity("Explore.Domain.UiTheme", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
@@ -15795,6 +16677,11 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.TenantFooterLinkGroup", b =>
                 {
                     b.Navigation("Links");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TenantUser", b =>
+                {
+                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("Explore.Domain.User", b =>

@@ -52,6 +52,26 @@ public static class SeedIds
 
     // ===== Events (Development) =====
     public static readonly Guid SampleEventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000060");
+    public static readonly Guid QuranTafsirWomenEventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000061");
+    public static readonly Guid BrothersFiqhEventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000062");
+    public static readonly Guid FamilySeerahEventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000063");
+    public static readonly Guid SegregatedRamadanEventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000064");
+    public static readonly Guid OnlineHadithEventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000065");
+    public static readonly Guid ArabicWorkshopEventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000066");
+    public static readonly Guid YouthAqeedahEventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000067");
+    public static readonly Guid CommunityIftarEventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000068");
+
+    public static readonly Guid[] IslamicEventCatalogIds =
+    [
+        QuranTafsirWomenEventId,
+        BrothersFiqhEventId,
+        FamilySeerahEventId,
+        SegregatedRamadanEventId,
+        OnlineHadithEventId,
+        ArabicWorkshopEventId,
+        YouthAqeedahEventId,
+        CommunityIftarEventId
+    ];
 
     // ===== Categories (Development) =====
     public static readonly Guid IslamicStudiesCategoryId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000100");
@@ -74,6 +94,21 @@ public static class SeedIds
 
     // ===== Locations (Development) =====
     public static readonly Guid OnlineLocationId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000300");
+    public static readonly Guid BrusselsIslamicCenterLocationId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000301");
+    public static readonly Guid AntwerpMasjidLocationId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000302");
+
+    public static Guid RoomId(int roomNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-0000000003{roomNumber:00}");
+    public static Guid EventDayId(int eventNumber, int dayNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-0000000007{eventNumber}{dayNumber}");
+    public static Guid EventSessionId(int eventNumber, int sessionNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-0000000008{eventNumber}{sessionNumber}");
+    public static Guid EventSessionGroupId(int eventNumber, int groupNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-0000000009{eventNumber}{groupNumber}");
+    public static Guid EventAgendaItemId(int eventNumber, int itemNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-0000000010{eventNumber}{itemNumber}");
+    public static Guid EventSessionAgendaItemId(int eventNumber, int sessionNumber, int itemNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-000000001{eventNumber}{sessionNumber}{itemNumber}");
+    public static Guid EventCategoryId(int eventNumber, int categoryNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-0000000020{eventNumber}{categoryNumber}");
+    public static Guid EventTagId(int eventNumber, int tagNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-0000000021{eventNumber}{tagNumber}");
+    public static Guid EventSessionCategoryId(int eventNumber, int sessionNumber, int categoryNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-000000002{eventNumber}{sessionNumber}{categoryNumber}");
+    public static Guid EventSessionTagId(int eventNumber, int sessionNumber, int tagNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-000000003{eventNumber}{sessionNumber}{tagNumber}");
+    public static Guid EventSessionSpeakerId(int eventNumber, int sessionNumber, int speakerNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-000000004{eventNumber}{sessionNumber}{speakerNumber}");
+    public static Guid EventSessionGroupSessionId(int eventNumber, int sessionNumber, int groupNumber) => Guid.Parse($"018e4e5c-7f00-7000-8000-000000005{eventNumber}{sessionNumber}{groupNumber}");
 
     // ===== Tenant Settings (Development) =====
 

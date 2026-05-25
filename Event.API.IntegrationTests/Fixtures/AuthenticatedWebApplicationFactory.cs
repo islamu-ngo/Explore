@@ -54,7 +54,8 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
                 {"S3Settings:SecretAccessKey", "test-secret"},
                 {"S3Settings:Endpoint", "https://s3.example.com"},
                 {"Deployment:Mode", "SingleTenant"},
-                {"Deployment:DefaultTenantId", PlatformDefaults.DefaultTenantId.ToString()}
+                {"Deployment:DefaultTenantId", PlatformDefaults.DefaultTenantId.ToString()},
+                {"PublicBaseUrl", "https://integration.test"}
             };
             config.AddInMemoryCollection(inMemoryConfig);
         });

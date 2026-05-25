@@ -202,6 +202,7 @@ if (!isOpenApiGeneration)
 if (!isOpenApiGeneration)
 {
     builder.Services.AddHostedService<OutboxProcessor>();
+    builder.Services.AddHostedService<EmailDispatchProcessor>();
 }
 
 // Register zero-touch Cerbos policy package boot synchronization.
@@ -258,6 +259,10 @@ builder.Services.AddHealthChecks()
         "smtp",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "smtp", "infrastructure"])
+    .AddCheck<EmailDispatchHealthCheck>(
+        "email-dispatch",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "email", "dispatch", "infrastructure"])
     .AddCheck<CerbosReadinessHealthCheck>(
         "cerbos",
         failureStatus: HealthStatus.Unhealthy,
@@ -363,7 +368,12 @@ if (!isOpenApiGeneration)
     await setupSecretProvider.InitializeAsync();
     if (setupSecretProvider.IsSetupModeActive)
     {
-        if (setupSecretProvider.IsFromEnvironmentVariable)
+        if (!setupSecretProvider.IsSetupSecretRequired)
+        {
+            app.Logger.LogInformation(
+                "[SetupSecret] Interactive setup-secret validation disabled by trusted managed provisioning configuration. Setup endpoints still reject anonymous setup-secret access.");
+        }
+        else if (setupSecretProvider.IsFromEnvironmentVariable)
         {
             app.Logger.LogInformation("[SetupSecret] SETUP_SECRET loaded from environment variable.");
         }

@@ -107,9 +107,12 @@ The system uses a transactional outbox for reliable asynchronous event delivery:
 5. After `MaxRetryCount` exhausted, messages are dead-lettered and remain in the database for manual inspection.
 6. Optimistic concurrency via `TryMarkAsProcessing` prevents duplicate processing across workers.
 
+Handlers, controllers, automation executors, and sequence processors create durable intent only. They must not send SMTP or publish RabbitMQ directly. Side effects are owned by approved background workers or Infrastructure dispatch components.
+
 Specialized outbox variants exist for specific subsystems:
 - `PdsSyncOutbox` — AT Protocol federation sync (DID, Collection, RecordKey, PdsHost).
 - `PolicyChangeOutbox` — authorization policy change propagation (SettingScope).
+- `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. PostgreSQL owns delivery state; SMTP/RabbitMQ are transports only.
 
 See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration, and monitoring details.
 
@@ -119,6 +122,7 @@ See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration,
 |---|---|---|
 | `OutboxProcessor` | General outbox message dispatch with retry/dead-letter | Configurable (default 5s) |
 | `PdsSyncWorker` | AT Protocol PDS synchronization from `PdsSyncOutbox` | Configurable with exponential backoff |
+| `EmailDispatchProcessor` | Basic Dispatch Mode SMTP dispatch from `EmailDispatchOutbox` with attempts, receipts, retry, dead-letter, unknown state, tenant pause, and metrics | Configurable (default 5s) |
 
 Both services use optimistic locking for multi-worker safety and are availability-gated (skip processing when dependent services are unavailable).
 

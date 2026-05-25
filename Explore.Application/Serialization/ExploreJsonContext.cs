@@ -21,6 +21,7 @@ using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Application.DTOs.EventStatus;
 using Explore.Application.DTOs.EventTags;
 using Explore.Application.DTOs.EventType;
+using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.DTOs.FileType;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Language;
@@ -125,6 +126,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(EventProgramSummaryDto))]
 [JsonSerializable(typeof(EventRegistrationDto))]
 [JsonSerializable(typeof(EventRegistrationListDto))]
+[JsonSerializable(typeof(EmailDispatchStatusDto))]
+[JsonSerializable(typeof(BaseCommandResponse<IReadOnlyList<EmailDispatchStatusDto>>))]
 [JsonSerializable(typeof(EventSessionAgendaItemDto))]
 [JsonSerializable(typeof(EventSessionAgendaItemListDto))]
 [JsonSerializable(typeof(EventSessionGroupAssignmentDto))]

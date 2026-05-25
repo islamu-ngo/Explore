@@ -54,7 +54,13 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
         return await _dbContext.TenantMembers
             .IgnoreTenantFilter()
             .AsNoTracking()
-            .AnyAsync(x => x.TenantId == tenantId && x.UserId == userId);
+            .AnyAsync(x => x.TenantId == tenantId
+                && x.UserId == userId
+                && _dbContext.TenantUsers.IgnoreTenantFilter().Any(tenantUser =>
+                    tenantUser.TenantId == tenantId
+                    && tenantUser.UserId == userId
+                    && tenantUser.StatusId == (int)TenantUserStatusEnum.Active
+                    && !tenantUser.IsDeleted));
     }
 
     public async Task<bool> IsTenantAdmin(Guid tenantId, Guid userId)
@@ -64,7 +70,12 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
             .AsNoTracking()
             .AnyAsync(x => x.TenantId == tenantId
                 && x.UserId == userId
-                && x.RoleId == (int)RoleEnum.TenantAdmin);
+                && x.RoleId == (int)RoleEnum.TenantAdmin
+                && _dbContext.TenantUsers.IgnoreTenantFilter().Any(tenantUser =>
+                    tenantUser.TenantId == tenantId
+                    && tenantUser.UserId == userId
+                    && tenantUser.StatusId == (int)TenantUserStatusEnum.Active
+                    && !tenantUser.IsDeleted));
     }
 
     public async Task<TenantMember?> GetMemberWithDetails(Guid id)

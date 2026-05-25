@@ -2,6 +2,7 @@
 // ABOUTME: Represents the chosen authorization provider plus redacted Cerbos runtime/Admin API endpoints.
 
 using System.Text.Json.Serialization;
+using Explore.Application.DTOs.Secrets;
 
 namespace Explore.Application.DTOs.Onboarding;
 
@@ -56,4 +57,19 @@ public class AuthorizationProviderConfigurationDto
     /// Whether the Cerbos gRPC endpoint was verified reachable via health check.
     /// </summary>
     public bool CerbosEndpointVerified { get; set; }
+
+    /// <summary>
+    /// Whether an authorization provider choice has already been saved.
+    /// </summary>
+    public bool AuthorizationProviderConfigured { get; set; }
+
+    /// <summary>
+    /// Ownership metadata for the Cerbos PDP endpoint/bootstrap value.
+    /// </summary>
+    public SecretOwnershipDto CerbosEndpointOwnership { get; set; } = new();
+
+    /// <summary>
+    /// Ownership metadata for Cerbos Admin API credentials. Values are never returned.
+    /// </summary>
+    public SecretOwnershipDto CerbosAdminCredentialsOwnership { get; set; } = new();
 }

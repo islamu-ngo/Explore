@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Analytics;
@@ -559,8 +560,15 @@ public class InstanceSettingsController : ExploreControllerBase
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
 
-        var archive = await _mediator.Send(new DownloadAuthorizationPolicyPackageQuery(), cancellationToken);
-        return File(archive.Content, archive.ContentType, archive.FileName);
+        try
+        {
+            var archive = await _mediator.Send(new DownloadAuthorizationPolicyPackageQuery(), cancellationToken);
+            return File(archive.Content, archive.ContentType, archive.FileName);
+        }
+        catch (PolicyPackageUnavailableException)
+        {
+            return AuthorizationPolicyPackageUnavailableProblem();
+        }
     }
 
     [HttpGet("authz-provider/status", Name = RouteNames.GetInstanceAuthorizationProviderConfigurationStatus)]
@@ -574,6 +582,12 @@ public class InstanceSettingsController : ExploreControllerBase
         var isConfigured = await service.IsConfiguredAsync();
         return Ok(new { configured = isConfigured });
     }
+
+    private ObjectResult AuthorizationPolicyPackageUnavailableProblem() =>
+        Problem(
+            title: "Authorization policy package unavailable",
+            detail: "The bundled Cerbos policy package is not available to this API deployment. Mount or bundle the package directory and retry the download.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
 
     // ── Helpers ────────────────────────────────────────────────────────
 

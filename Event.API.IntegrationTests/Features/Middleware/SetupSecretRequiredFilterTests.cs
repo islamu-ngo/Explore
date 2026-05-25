@@ -73,6 +73,27 @@ public class SetupSecretRequiredFilterTests
     {
         var setupSecretProvider = Substitute.For<ISetupSecretProvider>();
         setupSecretProvider.IsSetupModeActive.Returns(true);
+        setupSecretProvider.IsSetupSecretRequired.Returns(true);
+        setupSecretProvider.ValidateSecret(null).Returns(false);
+
+        var filter = CreateFilter(setupSecretProvider);
+        var context = CreateExecutingContext();
+        var nextCalled = false;
+
+        await filter.OnActionExecutionAsync(context, CreateNext(context, () => nextCalled = true));
+
+        await Assert.That(nextCalled).IsEqualTo(false);
+        await Assert.That(context.Result).IsTypeOf<ObjectResult>();
+        var result = (ObjectResult)context.Result!;
+        await Assert.That(result.StatusCode).IsEqualTo(StatusCodes.Status403Forbidden);
+    }
+
+    [Test]
+    public async Task OnActionExecutionAsync_SetupSecretNotRequiredStillDoesNotAllowAnonymousSetupEndpoint()
+    {
+        var setupSecretProvider = Substitute.For<ISetupSecretProvider>();
+        setupSecretProvider.IsSetupModeActive.Returns(true);
+        setupSecretProvider.IsSetupSecretRequired.Returns(false);
         setupSecretProvider.ValidateSecret(null).Returns(false);
 
         var filter = CreateFilter(setupSecretProvider);

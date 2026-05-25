@@ -132,6 +132,8 @@ public static class PersistenceServicesRegistration
         services.AddScoped<ITenantLookupSource, TenantLookupSource>();
         services.AddScoped<IInstanceBootstrapStateRepository, InstanceBootstrapStateRepository>();
         services.AddScoped<IPlatformUserRoleRepository, PlatformUserRoleRepository>();
+        services.AddScoped<ITenantUserRepository, TenantUserRepository>();
+        services.AddScoped<ITenantUserProfileRepository, TenantUserProfileRepository>();
         services.AddScoped<ITenantMemberRepository, TenantMemberRepository>();
         services.AddScoped<ITenantOnboardingStateRepository, TenantOnboardingStateRepository>();
         services.AddScoped<ITenantNavigationLinkRepository, TenantNavigationLinkRepository>();
@@ -147,6 +149,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IUserNotificationPreferenceRepository, UserNotificationPreferenceRepository>();
         services.AddScoped<IUserAuthenticationTokenRepository, UserAuthenticationTokenRepository>();
         services.AddScoped<IUserExternalLoginRepository, UserExternalLoginRepository>();
+        services.AddScoped<IExternalBindingRepository, ExternalBindingRepository>();
 
         // Actor Repositories
         services.AddScoped<IActorRepository, ActorRepository>();
@@ -249,6 +252,7 @@ public static class PersistenceServicesRegistration
 
         // Generic Outbox Repositories
         services.AddScoped<IOutboxRepository, OutboxRepository>();
+        services.AddScoped<IEmailDispatchOutboxRepository, EmailDispatchOutboxRepository>();
 
         // Authorization (RBAC) Repositories
         services.AddScoped<IRoleRepository, RoleRepository>();

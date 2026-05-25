@@ -4513,6 +4513,76 @@
         "x-endpoint-class": "Public"
       }
     },
+    "/api/admin/email-dispatch/status": {
+      "get": {
+        "tags": [
+          "EmailDispatchAdmin"
+        ],
+        "operationId": "GetEmailDispatchStatus",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfIReadOnlyListOfEmailDispatchStatusDto"
+                }
+              },
+              "application/json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/email/unsubscribe": {
       "get": {
         "tags": [
@@ -16766,6 +16836,144 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/group/updatestatustype/{id}": {
+      "put": {
+        "tags": [
+          "Group"
+        ],
+        "summary": "Update Group Approval Status",
+        "description": "Update the approval status of a group. Requires group update authorization.",
+        "operationId": "UpdateGroupApprovalStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupApprovalStatusDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupApprovalStatusDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/groupmember/{groupId}": {
       "get": {
         "tags": [
@@ -22850,6 +23058,115 @@
           }
         },
         "x-endpoint-class": "Public"
+      }
+    },
+    "/api/managed-provider-provisioning/clients:ensure": {
+      "post": {
+        "tags": [
+          "ManagedProviderProvisioning"
+        ],
+        "summary": "Ensure managed provider client provisioning",
+        "description": "Creates or rehydrates a provider-customer tenant, external admin user, tenant-admin membership, and optional organizer actor. Requires instance administrator authority.",
+        "operationId": "EnsureManagedProviderClientProvisioned",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedProviderClientProvisioningDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedProviderClientProvisioningDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedProviderClientProvisioningDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfManagedProviderClientProvisioningResultDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfManagedProviderClientProvisioningResultDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfManagedProviderClientProvisioningResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfManagedProviderClientProvisioningResultDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfManagedProviderClientProvisioningResultDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfManagedProviderClientProvisioningResultDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin"
       }
     },
     "/api/module/available": {
@@ -35281,6 +35598,15 @@
           },
           "cerbosEndpointVerified": {
             "type": "boolean"
+          },
+          "authorizationProviderConfigured": {
+            "type": "boolean"
+          },
+          "cerbosEndpointOwnership": {
+            "$ref": "#/components/schemas/SecretOwnershipDto"
+          },
+          "cerbosAdminCredentialsOwnership": {
+            "$ref": "#/components/schemas/SecretOwnershipDto"
           }
         }
       },
@@ -35613,6 +35939,54 @@
           }
         }
       },
+      "BaseCommandResponseOfIReadOnlyListOfEmailDispatchStatusDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/EmailDispatchStatusDto"
+            }
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quotaExceeded": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QuotaExceededDetails"
+              }
+            ]
+          }
+        }
+      },
       "BaseCommandResponseOfIReadOnlyListOfEventCustomPropertyProjectionDto": {
         "type": "object",
         "properties": {
@@ -35672,6 +36046,55 @@
             "items": {
               "$ref": "#/components/schemas/EventSessionCustomPropertyProjectionDto"
             }
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quotaExceeded": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QuotaExceededDetails"
+              }
+            ]
+          }
+        }
+      },
+      "BaseCommandResponseOfManagedProviderClientProvisioningResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagedProviderClientProvisioningResultDto"
+              }
+            ]
           },
           "success": {
             "type": "boolean"
@@ -39549,6 +39972,84 @@
             ]
           },
           "allowedValues": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "EmailDispatchStatusDto": {
+        "type": "object",
+        "properties": {
+          "outboxId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deliveryStatus": {
+            "type": "string"
+          },
+          "attemptCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "nextRetryAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastFailureCategory": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastFailureAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "unknownAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "deliveredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "parkedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "correlationId": {
             "type": [
               "null",
               "string"
@@ -54089,6 +54590,207 @@
           }
         }
       },
+      "ManagedProviderClientProvisioningDto": {
+        "required": [
+          "providerKey",
+          "externalSystem",
+          "externalCustomerId",
+          "tenantFullName",
+          "tenantSlug",
+          "externalAdmin"
+        ],
+        "type": "object",
+        "properties": {
+          "providerKey": {
+            "type": "string"
+          },
+          "externalSystem": {
+            "type": "string"
+          },
+          "externalCustomerId": {
+            "type": "string"
+          },
+          "tenantFullName": {
+            "type": "string"
+          },
+          "tenantSlug": {
+            "type": "string"
+          },
+          "activateTenant": {
+            "type": "boolean"
+          },
+          "externalAdmin": {
+            "$ref": "#/components/schemas/ManagedProviderExternalAdminDto"
+          },
+          "organizer": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagedProviderOrganizerDto"
+              }
+            ]
+          }
+        }
+      },
+      "ManagedProviderClientProvisioningResultDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantUserProfileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userActorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userExternalLoginId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantMemberId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "organizerActorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "organizerKind": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ManagedProviderOrganizerKindDto"
+              }
+            ]
+          },
+          "organizerMembershipId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "ManagedProviderExternalAdminDto": {
+        "required": [
+          "identityProvider",
+          "subject",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "identityProvider": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ManagedProviderOrganizerDto": {
+        "required": [
+          "fullName"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ManagedProviderOrganizerKindDto"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "websiteUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "country": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "city": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "address": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "postcode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ManagedProviderOrganizerKindDto": {
+        "type": "integer"
+      },
       "ModifiedDefinitionDto": {
         "required": [
           "namespace",
@@ -56832,6 +57534,32 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "SecretOwnershipDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "badge": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "editable": {
+            "type": "boolean"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "bootstrapAvailable": {
+            "type": "boolean"
           }
         }
       },
@@ -60128,6 +60856,25 @@
           }
         }
       },
+      "UpdateGroupApprovalStatusDto": {
+        "type": "object",
+        "properties": {
+          "approvalStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "approvalNotes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "UpdateGroupDto": {
         "required": [
           "fullName"
@@ -61647,6 +62394,9 @@
       "name": "DidCustodyType"
     },
     {
+      "name": "EmailDispatchAdmin"
+    },
+    {
       "name": "EmailUnsubscribe"
     },
     {
@@ -61753,6 +62503,9 @@
     },
     {
       "name": "Madhab"
+    },
+    {
+      "name": "ManagedProviderProvisioning"
     },
     {
       "name": "Module"

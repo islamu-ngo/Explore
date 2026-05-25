@@ -6,8 +6,8 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-06
-> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
+> **Last Verified:** 2026-05-23
+> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
 
@@ -16,6 +16,14 @@ The system uses three configuration layers:
 1. static app settings (`appsettings*.json`, environment variables, user secrets),
 2. secret management (`AddInfisicalCompatibility` / `AddInfisicalBlazorCompatibility` + `AddSecretManagement`),
 3. governance settings in database (`SystemSetting` + `TenantSetting`).
+
+Secrets have an additional ownership contract that applies across the platform:
+
+- **Application-managed** secrets/settings are saved by ISLAMU Event and editable from setup/admin UI. Saved database/application values are the runtime authority.
+- **Deployment-managed** secrets/settings are controlled by environment variables, appsettings, or a configured secret provider. UI surfaces show read-only ownership badges and changes require provider refresh or redeploy/restart.
+- **Deployment bootstrap** values may prefill onboarding/admin forms when no application-managed value exists. If the operator modifies and saves them, the saved application setting is used from then on.
+
+Do not treat environment variables as absolute authority forever. In application-managed mode the precedence is: explicit saved application/database setting, then deployment bootstrap value, then default. In deployment-managed mode the selected external source is authoritative and application-managed DB values for that field are ignored.
 
 ## Deployment CI/CD Secrets
 
@@ -53,13 +61,15 @@ Commonly consumed sections in code:
 - `S3Settings:*` (fallback source for storage resolver)
 - `SecretProvider:*`
 - `SecretRefresh:*`
+- `EmailDispatchProcessor:*` (Basic Dispatch Mode background worker)
 
 ### Cerbos Authorization Configuration
 
-Cerbos runtime settings are split between static instance configuration and governed database settings:
+Cerbos runtime settings are the first implemented consumer of the shared secrets ownership metadata:
 
-- `Cerbos:GrpcEndpoint` points the instance authorization provider at the default PDP.
+- `Cerbos:GrpcEndpoint` can prefill onboarding/admin forms as deployment bootstrap. Once an operator saves an application-managed endpoint, the saved setting takes precedence unless the key is explicitly deployment-managed.
 - `Cerbos:AdminApi:*` configures policy package sync/status operations, not runtime authorization checks. Admin API credentials are secret-bearing and must be treated as write-only/redacted in UI and API responses.
+- `Secrets:Ownership:DeploymentManagedKeys` can mark `cerbos.grpc_endpoint`, `Cerbos:AdminApi:AdminUsername`, `Cerbos:AdminApi:AdminPassword`, or `*` as deployment-managed. Deployment-managed fields are read-only in UI and ignore application-managed DB values for that field.
 - Governance settings select the active provider (`AuthorizationProvider`), whether tenant customization is enabled, and per-tenant BYO values such as `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, custom Admin API endpoint, and custom Admin API credentials.
 
 Endpoint and secret safety rules:
@@ -68,6 +78,25 @@ Endpoint and secret safety rules:
 - Runtime failure logs must not include raw PDP/Admin API endpoints, Admin API credentials, JWTs/tokens, response bodies, or exception objects/messages.
 - A tenant with `cerbos.mode=custom_endpoint` and a blank PDP endpoint remains in BYO mode. Runtime authorization applies the tenant `failure_mode` instead of falling back to the instance PDP, while any explicit BYO Admin API configuration is still preserved for package operations.
 - `failure_mode=closed` activates provider-instance safe mode for local fallback decisions; `failure_mode=open` uses standard local RBAC fallback only for that tenant BYO failure path.
+
+### Email Dispatch Processor Configuration
+
+Basic Dispatch Mode uses PostgreSQL as the durable source of truth and the existing SMTP abstraction as the transport. It does **not** require RabbitMQ. Registration confirmation currently creates an `EmailDispatchOutbox` row in the registration transaction; `EmailDispatchProcessor` later claims due rows, rebinds tenant context, calls `IEmailService`, records attempts/receipts, and advances final delivery state.
+
+Static worker settings bind from `EmailDispatchProcessor` and are validated at startup with `ValidateOnStart`:
+
+| Key | Default | Description |
+|---|---:|---|
+| `Enabled` | `true` | Enables the Basic Dispatch Mode worker. When disabled, the `email-dispatch` readiness check reports `Degraded` intentionally. |
+| `PollingIntervalSeconds` | `5` | Delay between polling loops. Must be greater than zero. |
+| `BatchSize` | `50` | Maximum due outbox rows loaded per loop. Must be greater than zero. |
+| `MaxAttemptCount` | `5` | Worker-level cap used with per-row `MaxAttempts` before dead-lettering. Must be greater than zero. |
+| `InitialRetryDelaySeconds` | `5` | Base retry delay for failed SMTP dispatch. Must be greater than zero. |
+| `MaxRetryDelaySeconds` | `3600` | Maximum retry delay cap. Must be greater than or equal to `InitialRetryDelaySeconds`. |
+| `ConsumerId` | machine name | Worker identity recorded in receipts and logs. Must not be blank. |
+| `VerboseLogging` | `false` | Enables additional worker logs when troubleshooting. Logs must remain free of bodies, recipients, and secrets. |
+
+SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. RabbitMQ Dispatch Mode is not part of Basic mode. If RabbitMQ mode is added later, it must be a separate optional profile sharing the same `EmailDispatchOutbox` state machine rather than replacing PostgreSQL as business truth.
 
 ## Secret Provider Configuration
 
@@ -78,6 +107,26 @@ Endpoint and secret safety rules:
 - `SecretProvider:Infisical:*` (project/client credentials, paths, environment)
 
 Refresh behavior binds from `SecretRefresh` and runs via hosted `SecretRefreshService`.
+
+## Setup Secret And Managed Provisioning Bootstrap
+
+`SetupSecretProvider` reads setup and managed-provisioning bootstrap keys directly from configuration at API startup.
+
+| Key | Default | Purpose |
+|---|---|---|
+| `SETUP_SECRET` | generated 32-character startup secret | Optional fixed setup secret for interactive first-run onboarding. When omitted and setup mode is active, API generates a temporary secret and logs it for the operator. |
+| `SETUP_SECRET_REQUIRED` | `true` | Controls whether interactive setup endpoints can validate a setup secret. `false` is effective only when trusted managed provisioning is explicitly configured; otherwise the provider fails closed and still requires a setup secret. |
+| `PROVISIONING_TRUSTED` | `false` | Must be `true` before managed-provider provisioning can disable interactive setup-secret validation. |
+| `PROVISIONING_MODE` | unset | Trusted values are managed-provider modes such as `managed-provider`, `managed_provider`, `managed-hosting`, or `managed`. Other values do not disable setup-secret validation. |
+| `MANAGED_CLIENT_EXTERNAL_PROVIDER` | unset | Stable external provider key for the managed provisioning operator, for example an ERP or hosting-provider key. Required when `SETUP_SECRET_REQUIRED=false`. |
+| `PHYSICAL_TENANCY_MODE` | unset | Deployment posture such as shared database or dedicated deployment. Required when `SETUP_SECRET_REQUIRED=false` so the operator has declared the physical tenancy model. |
+
+Important safety behavior:
+
+- Omitted `SETUP_SECRET_REQUIRED` defaults to `true`.
+- `SETUP_SECRET_REQUIRED=false` without all trusted managed-provisioning keys is ignored and the API still requires a setup secret.
+- `SETUP_SECRET_REQUIRED=false` with trusted managed provisioning does **not** make setup-secret-protected endpoints public. `ValidateSecret` returns false and those endpoints reject anonymous/no-secret calls; managed provider automation must use the authorized provisioning endpoint instead.
+- Raw setup secrets are not logged when interactive setup-secret validation is disabled.
 
 ## API Compatibility Mapping (Infisical -> .NET keys)
 

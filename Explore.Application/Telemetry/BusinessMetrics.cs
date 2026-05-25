@@ -26,6 +26,7 @@ public sealed class BusinessMetrics
     private readonly Counter<long> _externalApiKeyThrottleEvents;
     private readonly Counter<long> _externalApiKeyPolicyUpdated;
     private readonly Counter<long> _externalApiKeyRotated;
+    private readonly Counter<long> _emailDispatchAttempts;
 
     public BusinessMetrics(IMeterFactory meterFactory)
     {
@@ -90,6 +91,11 @@ public sealed class BusinessMetrics
             "explore.external_api_keys.rotated",
             unit: "{rotation}",
             description: "Total external API key rotations");
+
+        _emailDispatchAttempts = meter.CreateCounter<long>(
+            "explore.email_dispatch.attempts",
+            unit: "{attempt}",
+            description: "Total Basic Dispatch Mode email dispatch attempts by outcome");
     }
 
     public void RecordEventCreated(string? tenantId = null, string? eventType = null)
@@ -175,5 +181,13 @@ public sealed class BusinessMetrics
         _externalApiKeyRotated.Add(1,
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("owner_type", ownerType ?? "unknown"));
+    }
+
+    public void RecordEmailDispatchAttempt(string? tenantId = null, string? outcome = null, string? failureCategory = null)
+    {
+        _emailDispatchAttempts.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("outcome", outcome ?? "unknown"),
+            new KeyValuePair<string, object?>("failure_category", failureCategory ?? "none"));
     }
 }

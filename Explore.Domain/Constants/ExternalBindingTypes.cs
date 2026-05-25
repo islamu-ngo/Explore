@@ -1,0 +1,33 @@
+// ABOUTME: Canonical external and internal binding type strings for managed provider provisioning.
+// ABOUTME: Keeps correlation records authority-neutral while avoiding hard-coded string drift across handlers and tests.
+
+namespace Explore.Domain.Constants;
+
+public static class ExternalBindingTypes
+{
+    public static class External
+    {
+        public const string ProviderCustomer = "provider-customer";
+        public const string ExternalAdminUser = "external-admin-user";
+        public const string ExternalAdminTenantUser = "external-admin-tenant-user";
+        public const string ExternalAdminTenantUserProfile = "external-admin-tenant-user-profile";
+        public const string ExternalAdminUserActor = "external-admin-user-actor";
+        public const string ExternalAdminUserLogin = "external-admin-user-login";
+        public const string CustomerOrganization = "customer-organization";
+        public const string CustomerOrganizationActor = "customer-organization-actor";
+        public const string CustomerGroup = "customer-group";
+        public const string CustomerGroupActor = "customer-group-actor";
+    }
+
+    public static class Internal
+    {
+        public const string Tenant = "Tenant";
+        public const string User = "User";
+        public const string TenantUser = "TenantUser";
+        public const string TenantUserProfile = "TenantUserProfile";
+        public const string Actor = "Actor";
+        public const string UserExternalLogin = "UserExternalLogin";
+        public const string Organization = "Organization";
+        public const string Group = "Group";
+    }
+}

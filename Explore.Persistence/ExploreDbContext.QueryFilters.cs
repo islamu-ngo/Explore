@@ -73,6 +73,20 @@ public partial class ExploreDbContext
         modelBuilder.Entity<EventRegistrationIntent>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EmailDispatchOutbox>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EmailDispatchAttempt>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
+        modelBuilder.Entity<EmailDispatchReceipt>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
+        modelBuilder.Entity<EmailDispatchTenantControl>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
         modelBuilder.Entity<EventSessionIslamicAspect>()
             .HasQueryFilter(QueryFilterNames.Tenant,
                 e => TenantContext == null
@@ -244,6 +258,11 @@ public partial class ExploreDbContext
         modelBuilder.Entity<TenantSetting>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<TenantSettingsDocument>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+        modelBuilder.Entity<TenantUser>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+        modelBuilder.Entity<TenantUserProfile>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<TenantMember>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));

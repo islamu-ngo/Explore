@@ -58,8 +58,7 @@ public sealed class OrganizationMembersSectionTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("Invite Member");
         await Assert.That(cut.Markup).Contains("Actions");
-        await Assert.That(cut.Markup).Contains("Change Role");
-        await Assert.That(cut.Markup).Contains("Remove");
+        await Assert.That(cut.FindAll("button.mud-menu-icon-button-activator").Count).IsEqualTo(1);
     }
 
     private IRenderedComponent<OrganizationMembersSection> Render(Guid organizationId)

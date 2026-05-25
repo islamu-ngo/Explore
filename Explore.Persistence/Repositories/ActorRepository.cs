@@ -81,6 +81,15 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
             .FirstOrDefaultAsync(a => a.UserId == userId);
     }
 
+    public async Task<Actor?> GetActorByUserIdAndTenantId(Guid userId, Guid tenantId)
+    {
+        return await _dbContext.Actors
+            .AsNoTracking()
+            .Include(a => a.Pii)
+            .Include(a => a.ActorType)
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.TenantId == tenantId);
+    }
+
     public async Task<Actor?> GetActorByOrganizationId(Guid organizationId)
     {
         return await _dbContext.Actors

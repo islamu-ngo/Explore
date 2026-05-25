@@ -178,6 +178,36 @@ public class GroupController : ExploreControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("updatestatustype/{id:guid}", Name = RouteNames.UpdateGroupApprovalStatus)]
+    [EndpointSummary("Update Group Approval Status")]
+    [EndpointDescription("Update the approval status of a group. Requires group update authorization.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateApprovalStatus(
+        Guid id,
+        [FromBody] UpdateGroupApprovalStatusDto approvalStatus,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new UpdateGroupApprovalStatusCommand
+        {
+            Id = id,
+            GroupApprovalStatusDto = approvalStatus
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteGroup)]
     [EndpointSummary("Delete Group")]
     [EndpointDescription("Delete a group. User must have group deletion permission.")]

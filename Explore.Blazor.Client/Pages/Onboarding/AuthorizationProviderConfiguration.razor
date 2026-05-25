@@ -1,5 +1,5 @@
-@* ABOUTME: Authorization provider configuration page shown after auth-provider setup and before final onboarding. *@
-@* ABOUTME: Lets operators choose between built-in local RBAC and external Cerbos, with endpoint auto-detection and verification. *@
+@* ABOUTME: Authorization provider onboarding step for choosing Local RBAC or Cerbos PDP authorization. *@
+@* ABOUTME: Keeps provider choice first while separating PDP reachability, secret ownership, and policy package readiness. *@
 
 @page "/onboarding/authz-provider"
 @rendermode InteractiveServer
@@ -12,217 +12,370 @@
 
 <PageTitle>Authorization Provider</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
-    <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Authorization Provider</MudText>
-        <MudText Typo="Typo.body2" Class="mb-4">
-            Choose how protected API operations are authorized. Cerbos mode fails closed when the external PDP is unavailable.
-        </MudText>
+<MudContainer MaxWidth="MaxWidth.False" Class="authz-shell py-8">
+    <MudGrid Spacing="3" Class="authz-shell__grid">
+        <MudItem xs="12" lg="2">
+            <MudPaper Class="authz-shell__rail pa-4" Outlined="true">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.overline" Color="Color.Primary">Setup progress</MudText>
+                    @foreach (var step in SetupSteps)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="authz-shell__step">
+                            <MudIcon Icon="@(step.Number < 3 ? Icons.Material.Filled.CheckCircle : step.Number == 3 ? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Outlined.RadioButtonUnchecked)"
+                                     Color="@(step.Number < 3 ? Color.Success : step.Number == 3 ? Color.Primary : Color.Default)"
+                                     Size="Size.Small" />
+                            <MudText Typo="Typo.body2" Color="@(step.Number == 3 ? Color.Primary : Color.Secondary)">
+                                Step @step.Number · @step.Label
+                            </MudText>
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudItem>
 
-        @if (_isLoading)
-        {
+        <MudItem xs="12" lg="7">
             <MudStack Spacing="3">
-                <MudSkeleton Width="60%" Height="20px" Class="mb-1" />
-                <MudSkeleton Width="100%" Height="120px" Class="mb-2" />
-                <MudSkeleton Width="100%" Height="180px" Class="mb-2" />
-                <MudSkeleton Width="140px" Height="40px" />
-            </MudStack>
-        }
-        else
-        {
-            @if (!string.IsNullOrWhiteSpace(_errorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-            }
-
-            @if (_canContinueAfterManualPolicyPackageFallback)
-            {
-                <MudAlert Severity="Severity.Warning" Class="mb-4">
-                    <MudStack Spacing="2">
-                        <MudText Typo="Typo.body2">
-                            Admin API sync did not complete. If you installed the downloaded policy package manually with <code>cerbosctl put</code>, acknowledge it here to continue setup.
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.overline" Color="Color.Primary">Step 3 of 6</MudText>
+                        <MudText Typo="Typo.h3" HtmlTag="h1">Authorization</MudText>
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">
+                            Choose how protected actions are authorized before this instance goes live.
                         </MudText>
-                        <MudCheckBox T="bool"
-                                     @bind-Value="_manualPolicyPackageInstalled"
-                                     Color="Color.Primary"
-                                     Label="I installed the downloaded authorization policy package in Cerbos." />
-                        <MudButton Elevation="0"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Disabled="@(!_manualPolicyPackageInstalled)"
-                                   OnClick="ContinueAfterManualPolicyPackageFallbackAsync">
-                            Continue after manual install
-                        </MudButton>
                     </MudStack>
-                </MudAlert>
-            }
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Large" />
+                    </MudAvatar>
+                </MudStack>
 
-            @if (!string.IsNullOrWhiteSpace(_successMessage))
-            {
-                <MudAlert Severity="Severity.Success" Class="mb-4">@_successMessage</MudAlert>
-            }
-
-            @if (_model.CerbosDetectedFromEnvironment && !_showAdvancedConfig)
-            {
-                <MudPaper Class="pa-8 mb-4 d-flex flex-column align-center text-center" Outlined="true">
-                    <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Primary" Style="font-size: 4rem;" Class="mb-4" />
-                    <MudText Typo="Typo.h5" Class="mb-2">Cerbos Detected</MudText>
-                    <MudText Typo="Typo.body2" Class="mb-6">We've automatically configured Cerbos from your environment variables.</MudText>
-                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" Disabled="@(!CanSave)" OnClick="SaveAndContinueAsync" Class="mb-4 px-8">
-                        @if (_submitState.IsSubmitting)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                            @(_isSyncing ? "Syncing policies..." : "Continuing...")
-                        }
-                        else
-                        {
-                            @:Continue with Cerbos
-                        }
-                    </MudButton>
-                    <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="@(() => _showAdvancedConfig = true)">
-                        Configure Authorization Provider
-                    </MudButton>
-                </MudPaper>
-            }
-            else
-            {
-                <MudPaper Outlined="true"
-                          Class="pa-4 mb-4"
-                          Style="@GetCardStyle(LocalProvider)"
-                          @onclick="@(() => SelectProvider(LocalProvider))">
-                    <MudStack Spacing="2">
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                            <MudRadio T="string" Value="@LocalProvider" Selected="@IsSelected(LocalProvider)" />
-                            <MudText Typo="Typo.h6">Local (Built-in RBAC)</MudText>
-                            <MudTooltip Text="Use the built-in authorization implementation with no external Cerbos dependency.">
-                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
-                            </MudTooltip>
+                @if (_isLoading)
+                {
+                    <MudPaper Class="pa-6" Outlined="true">
+                        <MudStack Spacing="3">
+                            <MudSkeleton Width="45%" Height="24px" />
+                            <MudSkeleton Width="100%" Height="130px" />
+                            <MudSkeleton Width="100%" Height="220px" />
+                            <MudSkeleton Width="180px" Height="42px" />
                         </MudStack>
-                    </MudStack>
-                </MudPaper>
+                    </MudPaper>
+                }
+                else
+                {
+                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+                    }
 
-                <MudPaper Outlined="true"
-                          Class="pa-4 mb-4"
-                          Style="@GetCardStyle(CerbosProvider)"
-                          @onclick="@(() => SelectProvider(CerbosProvider))">
-                    <MudStack Spacing="2">
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                            <MudRadio T="string" Value="@CerbosProvider" Selected="@IsSelected(CerbosProvider)" />
-                            <MudText Typo="Typo.h6">Cerbos (External PDP)</MudText>
-                            <MudTooltip Text="Route all protected authorization checks to Cerbos. When selected, authorized requests are denied if Cerbos is unavailable.">
-                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
-                            </MudTooltip>
-                            @if (_model.CerbosDetectedFromEnvironment)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
-                                    Auto-detected
-                                </MudChip>
-                            }
-                            @if (_model.CerbosEndpointVerified)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
-                                    Verified
-                                </MudChip>
-                            }
-                        </MudStack>
+                    @if (!string.IsNullOrWhiteSpace(_successMessage))
+                    {
+                        <MudAlert Severity="Severity.Success">@_successMessage</MudAlert>
+                    }
 
-                        @if (_model.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase))
-                        {
-                            @if (_model.CerbosDetectedFromEnvironment && _model.CerbosEndpointVerified)
-                            {
-                                <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
-                                    Cerbos was detected from environment and verified successfully. The endpoint is locked for this setup flow.
-                                </MudAlert>
-                            }
-                            else if (_model.CerbosDetectedFromEnvironment)
-                            {
-                                <MudAlert Severity="Severity.Warning" Dense="true">
-                                    A Cerbos endpoint was detected from environment, but it could not be verified. Review it or enter a different endpoint below.
-                                </MudAlert>
-                            }
-
-                            <MudTextField Variant="Variant.Outlined" T="string"
-                                          Label="Cerbos gRPC Endpoint"
-                                          Value="_model.CerbosGrpcEndpoint"
-                                          ValueChanged="OnCerbosEndpointChanged"
-                                          Placeholder="https://cerbosgrpc.example.com:443 or cerbosgrpc.example.com:443"
-                                          Disabled="@IsEndpointLocked"
-                                          HelperText="Accepts a full URL or bare host:port. Bare remote endpoints default to HTTPS; localhost defaults to HTTP." />
-
-                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
-                                           Disabled="@(!CanVerify)"
-                                           OnClick="VerifyCerbosEndpointAsync">
-                                    @if (_isVerifying)
-                                    {
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                        @:Verifying...
-                                    }
-                                    else
-                                    {
-                                        @:Verify Endpoint
-                                    }
-                                </MudButton>
-
-                                @if (_model.CerbosEndpointVerified)
-                                {
-                                    <MudText Typo="Typo.caption" Color="Color.Success">
-                                        Endpoint verified and ready to use.
-                                    </MudText>
-                                }
+                    <MudPaper Class="pa-5" Outlined="true">
+                        <MudStack Spacing="3">
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.h5">Choose authorization provider</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    Pick the authorization model first. Runtime checks and policy installation are shown only when they matter.
+                                </MudText>
                             </MudStack>
 
-                            <MudPaper Outlined="true" Class="pa-4 mt-2">
-                                <MudStack Spacing="2">
-                                    <div>
-                                        <MudText Typo="Typo.subtitle2">Manual policy package fallback</MudText>
-                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                            Download a ZIP with policies, schemas, and cerbosctl put instructions when Admin API sync is unavailable.
-                                        </MudText>
-                                    </div>
+                            <MudGrid Spacing="3">
+                                <MudItem xs="12" md="6">
+                                    <MudPaper Outlined="true" Class="pa-4 authz-provider-card" Style="@GetCardStyle(LocalProvider)" @onclick="() => SelectProvider(LocalProvider)">
+                                        <MudStack Spacing="2">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                <MudIcon Icon="@(IsSelected(LocalProvider) ? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Outlined.RadioButtonUnchecked)" Color="@(IsSelected(LocalProvider) ? Color.Primary : Color.Default)" />
+                                                <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Primary" />
+                                                <MudText Typo="Typo.h6">Local RBAC</MudText>
+                                            </MudStack>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                Built into ISLAMU Event. No external policy service required.
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                Best for small deployments, first setup, and simple self-hosting.
+                                            </MudText>
+                                            <MudStack Row="true" Spacing="1" Class="authz-provider-card__chips">
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">No infrastructure</MudChip>
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Can migrate later</MudChip>
+                                            </MudStack>
+                                        </MudStack>
+                                    </MudPaper>
+                                </MudItem>
+
+                                <MudItem xs="12" md="6">
+                                    <MudPaper Outlined="true" Class="pa-4 authz-provider-card" Style="@GetCardStyle(CerbosProvider)" @onclick="() => SelectProvider(CerbosProvider)">
+                                        <MudStack Spacing="2">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                <MudIcon Icon="@(IsSelected(CerbosProvider) ? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Outlined.RadioButtonUnchecked)" Color="@(IsSelected(CerbosProvider) ? Color.Primary : Color.Default)" />
+                                                <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Primary" />
+                                                <MudText Typo="Typo.h6">Cerbos PDP</MudText>
+                                            </MudStack>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                External policy engine for advanced authorization and policy governance.
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                Best for strict policy control, audits, enterprise deployments, and BYO policy setups.
+                                            </MudText>
+                                            <MudStack Row="true" Spacing="1" Class="authz-provider-card__chips">
+                                                @if (_model.CerbosEndpointVerified)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">PDP reachable</MudChip>
+                                                }
+                                                else if (_model.CerbosDetectedFromEnvironment)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">Detected</MudChip>
+                                                }
+                                                <MudChip T="string" Size="Size.Small" Color="@OwnershipChipColor(_model.CerbosEndpointOwnership)" Variant="Variant.Outlined">@SourceLabel</MudChip>
+                                                <MudChip T="string" Size="Size.Small" Color="@PolicyReadinessColor" Variant="Variant.Outlined">@PolicyReadinessLabel</MudChip>
+                                            </MudStack>
+                                        </MudStack>
+                                    </MudPaper>
+                                </MudItem>
+                            </MudGrid>
+                        </MudStack>
+                    </MudPaper>
+
+                    @if (IsSelected(CerbosProvider))
+                    {
+                        <MudPaper Class="pa-5" Outlined="true">
+                            <MudStack Spacing="3">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.h5">Cerbos setup</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        Runtime checks use the PDP endpoint. Admin API credentials are only for policy sync and are not collected on this screen.
+                                    </MudText>
+                                </MudStack>
+
+                                <MudAlert Severity="@OwnershipAlertSeverity(_model.CerbosEndpointOwnership)" Dense="true">
+                                    <MudStack Spacing="1">
+                                        <MudText Typo="Typo.subtitle2">@SourceLabel</MudText>
+                                        <MudText Typo="Typo.body2">@_model.CerbosEndpointOwnership.Description</MudText>
+                                    </MudStack>
+                                </MudAlert>
+
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="12" md="8">
+                                        <MudTextField Variant="Variant.Outlined" T="string"
+                                                      Label="Runtime PDP endpoint"
+                                                      Value="_model.CerbosGrpcEndpoint"
+                                                      ValueChanged="OnCerbosEndpointChanged"
+                                                      Placeholder="https://cerbosgrpc.example.com:443 or cerbosgrpc.example.com:443"
+                                                      Disabled="@IsEndpointLocked"
+                                                      HelperText="@EndpointHelperText" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="4" Class="authz-shell__endpoint-action">
+                                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Outlined"
+                                                   Disabled="@(!CanVerify)"
+                                                   OnClick="VerifyCerbosEndpointAsync"
+                                                   StartIcon="@Icons.Material.Filled.NetworkPing">
+                                            @if (_isVerifying)
+                                            {
+                                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                                @:Retesting...
+                                            }
+                                            else
+                                            {
+                                                @:Retest endpoint
+                                            }
+                                        </MudButton>
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudSimpleTable Dense="true" Elevation="0">
+                                    <tbody>
+                                        <tr>
+                                            <td>Runtime PDP</td>
+                                            <td>
+                                                <MudChip T="string" Size="Size.Small" Color="@RuntimeStatusColor" Variant="Variant.Outlined">@RuntimeStatusLabel</MudChip>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Policy package</td>
+                                            <td>
+                                                <MudChip T="string" Size="Size.Small" Color="@PolicyReadinessColor" Variant="Variant.Outlined">@PolicyReadinessLabel</MudChip>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>One-click sync</td>
+                                            <td>
+                                                <MudChip T="string" Size="Size.Small" Color="@SyncStatusColor" Variant="Variant.Outlined">@SyncStatusLabel</MudChip>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </MudSimpleTable>
+
+                                @if (!PolicyPackageReady)
+                                {
+                                    <MudAlert Severity="Severity.Warning" Dense="true">
+                                        Policies and schemas must be installed before launch. If you installed the package manually with Docker Compose or <code>cerbosctl</code>, confirm that below before continuing with Cerbos.
+                                    </MudAlert>
+                                    <MudCheckBox T="bool"
+                                                 @bind-Value="_manualPolicyPackageInstalled"
+                                                 Color="Color.Primary"
+                                                 Label="I have manually installed the Cerbos policy package." />
+                                }
+                            </MudStack>
+                        </MudPaper>
+                    }
+
+                    <MudPaper Class="pa-5" Outlined="true">
+                        <MudStack Spacing="3">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Filled.FolderZip" Color="Color.Primary" />
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.h5">Policy package</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        Download the Cerbos policies and schemas used by this version of ISLAMU Event.
+                                    </MudText>
+                                </MudStack>
+                            </MudStack>
+
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@PolicyPackageContextText</MudText>
+
+                            <MudStack Row="true" Spacing="2" Class="authz-shell__actions">
+                                <MudButton Elevation="0"
+                                           Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Href="/api/InstanceOnboarding/authz-provider-configuration/package"
+                                           Target="_blank"
+                                           StartIcon="@Icons.Material.Filled.Download">
+                                    Download ZIP
+                                </MudButton>
+
+                                <MudButton Elevation="0"
+                                           Variant="Variant.Outlined"
+                                           Color="Color.Secondary"
+                                           OnClick="CopyComposeCommandAsync"
+                                           StartIcon="@Icons.Material.Filled.ContentCopy">
+                                    Copy Docker Compose command
+                                </MudButton>
+
+                                @if (CanShowPolicySync)
+                                {
                                     <MudButton Elevation="0"
                                                Variant="Variant.Outlined"
                                                Color="Color.Secondary"
-                                               Href="/api/InstanceOnboarding/authz-provider-configuration/package"
-                                               Target="_blank"
-                                               StartIcon="@Icons.Material.Filled.Download">
-                                        Download Policy ZIP
+                                               Disabled="@(!CanSyncPolicies)"
+                                               OnClick="SyncPolicyPackageAsync"
+                                               StartIcon="@Icons.Material.Filled.Sync">
+                                        @if (_isSyncing)
+                                        {
+                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                            @:Syncing...
+                                        }
+                                        else
+                                        {
+                                            @:Sync now
+                                        }
                                     </MudButton>
-                                </MudStack>
-                            </MudPaper>
+                                }
+                            </MudStack>
+
+                            @if (!HasServerSideAdminApiCredentials)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    One-click sync is unavailable because Cerbos Admin API credentials are not configured server-side. This setup screen does not collect Admin API passwords in the browser.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Sync now uses @(_model.CerbosAdminCredentialsOwnership.Badge.ToLowerInvariant()) Admin API credentials already configured for the API. No Cerbos password is sent from the browser.
+                                </MudText>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudStack>
+        </MudItem>
+
+        <MudItem xs="12" lg="3">
+            <MudPaper Class="authz-shell__summary pa-5" Outlined="true">
+                <MudStack Spacing="3">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.h5">Ready to continue?</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @ReadinessSummaryText
+                        </MudText>
+                    </MudStack>
+
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                            <MudText Typo="Typo.body2">Provider selected: @SelectedProviderLabel</MudText>
+                        </MudStack>
+                        @if (IsSelected(CerbosProvider))
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@(_model.CerbosEndpointVerified ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Warning)"
+                                         Color="@(_model.CerbosEndpointVerified ? Color.Success : Color.Warning)"
+                                         Size="Size.Small" />
+                                <MudText Typo="Typo.body2">Runtime endpoint: @RuntimeStatusLabel</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@(PolicyPackageReady ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Warning)"
+                                         Color="@(PolicyPackageReady ? Color.Success : Color.Warning)"
+                                         Size="Size.Small" />
+                                <MudText Typo="Typo.body2">Policy package: @PolicyReadinessLabel</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@(HasServerSideAdminApiCredentials ? Icons.Material.Filled.Sync : Icons.Material.Filled.RemoveCircleOutline)"
+                                         Color="@(HasServerSideAdminApiCredentials ? Color.Info : Color.Default)"
+                                         Size="Size.Small" />
+                                <MudText Typo="Typo.body2">One-click sync: @SyncStatusLabel</MudText>
+                            </MudStack>
                         }
                     </MudStack>
-                </MudPaper>
 
-                @if (_model.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase) && !_model.CerbosEndpointVerified)
-                {
-                    <MudAlert Severity="Severity.Warning" Class="mb-4">
-                        Verify the Cerbos endpoint before saving this authorization provider.
-                    </MudAlert>
-                }
+                    <MudDivider />
 
-                <MudStack Row="true" Spacing="2" Class="mt-2">
-                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave)"
-                               OnClick="SaveAndContinueAsync">
-                        @if (_submitState.IsSubmitting)
+                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" FullWidth="true"
+                               Disabled="@(!CanPrimaryAction)"
+                               OnClick="PrimaryActionAsync">
+                        @if (_submitState.IsSubmitting || _isSyncing)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                            @(_isSyncing ? "Syncing policies..." : "Saving...")
+                            @:Working...
                         }
                         else
                         {
-                            @:Save & Continue
+                            @PrimaryActionLabel
                         }
                     </MudButton>
+
+                    @if (IsSelected(CerbosProvider) && !_model.CerbosEndpointVerified)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Verify the runtime PDP endpoint before continuing with Cerbos.
+                        </MudText>
+                    }
+                    else if (IsSelected(CerbosProvider) && !PolicyPackageReady && !CanShowPolicySync)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Confirm manual policy installation to continue with Cerbos.
+                        </MudText>
+                    }
                 </MudStack>
-            }
-        }
-    </MudPaper>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 </MudContainer>
 
 @code {
     private const string LocalProvider = "local";
     private const string CerbosProvider = "cerbos";
+    private const string DockerComposeSyncCommand = "docker compose --profile authz run --rm cerbos-policy-sync";
+    private static readonly (int Number, string Label)[] SetupSteps =
+    [
+        (1, "Welcome"),
+        (2, "Authentication"),
+        (3, "Authorization"),
+        (4, "Instance"),
+        (5, "Storage"),
+        (6, "Finish")
+    ];
+
     private AuthorizationProviderConfigurationModel _model = new();
     private bool _isAuthenticated;
     private bool _isLoading = true;
@@ -232,23 +385,83 @@
     private string? _successMessage;
     private bool _shouldLoadConfiguration = true;
     private IJSObjectReference? _bffModule;
-    private bool _showAdvancedConfig = false;
     private bool _isSyncing;
-    private bool _canContinueAfterManualPolicyPackageFallback;
     private bool _manualPolicyPackageInstalled;
+    private bool _policyPackageSynced;
 
-    private bool IsEndpointLocked =>
-        _model.CerbosDetectedFromEnvironment && _model.CerbosEndpointVerified;
+    private bool IsEndpointLocked => !_model.CerbosEndpointOwnership.Editable;
+
+    private bool IsUsingDetectedBootstrap =>
+        IsSelected(CerbosProvider) && _model.CerbosEndpointOwnership.BootstrapAvailable;
+
+    private bool PolicyPackageReady => _policyPackageSynced || _manualPolicyPackageInstalled;
+
+    private string EndpointHelperText => IsEndpointLocked
+        ? "Deployment-managed endpoint. Change it in the environment, secret provider, or appsettings and redeploy/restart."
+        : _model.CerbosEndpointOwnership.BootstrapAvailable
+            ? "Modify before saving if needed. This checks runtime PDP health only; policy installation is tracked below."
+            : "This checks runtime PDP health only. Policy installation is tracked below.";
+
+    private bool HasServerSideAdminApiCredentials =>
+        _model.CerbosAdminUsernameConfigured && _model.CerbosAdminPasswordConfigured;
+
+    private bool CanShowPolicySync =>
+        IsSelected(CerbosProvider) && HasServerSideAdminApiCredentials && !PolicyPackageReady;
+
+    private bool CanSyncPolicies =>
+        !_isSyncing && !_submitState.IsSubmitting && CanShowPolicySync && _model.CerbosEndpointVerified;
 
     private bool CanVerify =>
         !_isVerifying &&
-        !IsEndpointLocked &&
         !string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint);
 
     private bool CanSave =>
         !_submitState.IsSubmitting &&
-        (_model.Provider.Equals("local", StringComparison.OrdinalIgnoreCase) ||
-         (!string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint) && _model.CerbosEndpointVerified));
+        (IsSelected(LocalProvider) ||
+         (!string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint) && _model.CerbosEndpointVerified && PolicyPackageReady));
+
+    private bool CanPrimaryAction =>
+        IsSelected(CerbosProvider) && CanShowPolicySync
+            ? CanSyncPolicies
+            : CanSave;
+
+    private string PrimaryActionLabel => IsSelected(LocalProvider)
+        ? "Continue with Local RBAC"
+        : !_model.CerbosEndpointVerified
+            ? "Fix Cerbos endpoint"
+            : CanShowPolicySync
+                ? "Sync policies now"
+                : PolicyPackageReady
+                    ? "Continue with Cerbos"
+                    : "Confirm manual policy installation";
+
+    private string SelectedProviderLabel => IsSelected(CerbosProvider) ? "Cerbos" : "Local RBAC";
+
+    private string RuntimeStatusLabel => _model.CerbosEndpointVerified
+        ? "Reachable"
+        : string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint) ? "Not configured" : "Not verified";
+
+    private Color RuntimeStatusColor => _model.CerbosEndpointVerified ? Color.Success : Color.Warning;
+
+    private string PolicyReadinessLabel => PolicyPackageReady ? "Policies confirmed" : "Policies not verified";
+
+    private Color PolicyReadinessColor => PolicyPackageReady ? Color.Success : Color.Warning;
+
+    private string SyncStatusLabel => HasServerSideAdminApiCredentials ? "Available" : "Not configured";
+
+    private Color SyncStatusColor => HasServerSideAdminApiCredentials ? Color.Info : Color.Default;
+
+    private string SourceLabel => _model.CerbosEndpointOwnership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase)
+        ? "Deployment-managed"
+        : _model.CerbosEndpointOwnership.BootstrapAvailable ? "From deployment" : "Application-managed";
+
+    private string ReadinessSummaryText => IsSelected(LocalProvider)
+        ? "Local RBAC has no external service dependency."
+        : "Cerbos requires a reachable PDP endpoint and installed policies before launch.";
+
+    private string PolicyPackageContextText => IsSelected(CerbosProvider)
+        ? "Required before launch unless policies were already installed in Cerbos."
+        : "Optional. Useful if you plan to migrate to Cerbos later or want to review the bundled policies.";
 
     protected override async Task OnInitializedAsync()
     {
@@ -276,6 +489,7 @@
             _model = await bffModule.InvokeAsync<AuthorizationProviderConfigurationModel>(
                 "fetchJson",
                 "/api/InstanceOnboarding/authz-provider-configuration/internal");
+            ApplyDetectedProviderDefaults();
         }
         catch (Exception ex)
         {
@@ -289,14 +503,9 @@
             StateHasChanged();
         }
 
-        // ABOUTME: Auto-verify the Cerbos endpoint when it was detected from environment variables but not yet
-        // verified. Without this, the user sees a pre-filled endpoint without the green Verified chip and must
-        // click Verify Endpoint manually before Save & Continue becomes enabled — pure friction since the value
-        // came from a trusted source (Infisical/env). User report m0202: "i need to click on the test connection
-        // and then it shows green". Skipping when already verified avoids redundant gRPC health checks.
         if (_model.CerbosDetectedFromEnvironment
             && !_model.CerbosEndpointVerified
-            && _model.Provider.Equals(CerbosProvider, StringComparison.OrdinalIgnoreCase)
+            && IsSelected(CerbosProvider)
             && !string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint))
         {
             try
@@ -319,8 +528,22 @@
         _model.Provider = provider;
         _errorMessage = null;
         _successMessage = null;
-        _canContinueAfterManualPolicyPackageFallback = false;
         _manualPolicyPackageInstalled = false;
+        _policyPackageSynced = false;
+    }
+
+    private void ApplyDetectedProviderDefaults()
+    {
+        if (_model.CerbosDetectedFromEnvironment && !_model.AuthorizationProviderConfigured)
+        {
+            _model.Provider = CerbosProvider;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.Provider))
+        {
+            _model.Provider = LocalProvider;
+        }
     }
 
     private bool IsSelected(string provider) =>
@@ -331,14 +554,35 @@
             ? "cursor:pointer; border: 2px solid var(--mud-palette-primary);"
             : "cursor:pointer;";
 
+    private static Color OwnershipChipColor(SecretOwnershipModel ownership) =>
+        ownership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase)
+            ? Color.Warning
+            : ownership.BootstrapAvailable
+                ? Color.Info
+                : Color.Success;
+
+    private static Severity OwnershipAlertSeverity(SecretOwnershipModel ownership) =>
+        ownership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase)
+            ? Severity.Warning
+            : ownership.BootstrapAvailable
+                ? Severity.Info
+                : Severity.Success;
+
     private void OnCerbosEndpointChanged(string value)
     {
+        if (IsEndpointLocked)
+        {
+            return;
+        }
+
         var endpointChanged = !string.Equals(_model.CerbosGrpcEndpoint, value, StringComparison.Ordinal);
         _model.CerbosGrpcEndpoint = value;
 
         if (endpointChanged)
         {
             _model.CerbosEndpointVerified = false;
+            _policyPackageSynced = false;
+            _manualPolicyPackageInstalled = false;
         }
     }
 
@@ -359,8 +603,9 @@
         if (!response.Success)
         {
             _model.CerbosEndpointVerified = false;
+            _policyPackageSynced = false;
             _errorMessage = string.IsNullOrWhiteSpace(response.Message)
-                ? "Failed to verify the Cerbos endpoint."
+                ? "Failed to verify the Cerbos PDP endpoint."
                 : response.Message;
 
             if (response.Errors.Count > 0)
@@ -375,13 +620,65 @@
         _successMessage = response.Message;
     }
 
+    private async Task SyncPolicyPackageAsync()
+    {
+        if (!CanSyncPolicies)
+        {
+            return;
+        }
+
+        _isSyncing = true;
+        _errorMessage = null;
+        _successMessage = null;
+        _manualPolicyPackageInstalled = false;
+
+        var bffModule = await GetBffModuleAsync();
+        var syncResponse = await bffModule.InvokeAsync<InstanceCommandResponseModel>(
+            "sendCommand",
+            "POST",
+            "/api/InstanceOnboarding/authz-provider-configuration/sync",
+            new { });
+        _isSyncing = false;
+
+        if (!syncResponse.Success)
+        {
+            _model.CerbosAdminPassword = null;
+            _policyPackageSynced = false;
+            _errorMessage = string.IsNullOrWhiteSpace(syncResponse.Message)
+                ? "Authorization policy package sync failed."
+                : syncResponse.Message;
+
+            if (syncResponse.Errors.Count > 0)
+            {
+                _errorMessage += " " + string.Join(" ", syncResponse.Errors);
+            }
+
+            return;
+        }
+
+        _model.CerbosAdminPassword = null;
+        _policyPackageSynced = true;
+        _successMessage = string.IsNullOrWhiteSpace(syncResponse.Message)
+            ? "Policies synced. You can continue with Cerbos."
+            : syncResponse.Message;
+    }
+
+    private async Task PrimaryActionAsync()
+    {
+        if (IsSelected(CerbosProvider) && CanShowPolicySync)
+        {
+            await SyncPolicyPackageAsync();
+            return;
+        }
+
+        await SaveAndContinueAsync();
+    }
+
     private async Task SaveAndContinueAsync()
     {
         _submitState.Start();
         _errorMessage = null;
         _successMessage = null;
-        _canContinueAfterManualPolicyPackageFallback = false;
-        _manualPolicyPackageInstalled = false;
 
         var bffModule = await GetBffModuleAsync();
         var response = await bffModule.InvokeAsync<InstanceCommandResponseModel>(
@@ -404,44 +701,10 @@
             return;
         }
 
-        if (_model.Provider.Equals(CerbosProvider, StringComparison.OrdinalIgnoreCase))
-        {
-            _isSyncing = true;
-            var syncResponse = await bffModule.InvokeAsync<InstanceCommandResponseModel>(
-                "sendCommand",
-                "POST",
-                "/api/InstanceOnboarding/authz-provider-configuration/sync",
-                new { });
-            _isSyncing = false;
-
-            if (!syncResponse.Success)
-            {
-                _submitState.Complete();
-                _model.CerbosAdminPassword = null;
-                _canContinueAfterManualPolicyPackageFallback = true;
-                _errorMessage = string.IsNullOrWhiteSpace(syncResponse.Message)
-                    ? "Authorization policy package sync failed."
-                    : syncResponse.Message;
-
-                if (syncResponse.Errors.Count > 0)
-                {
-                    _errorMessage += " " + string.Join(" ", syncResponse.Errors);
-                }
-
-                return;
-            }
-        }
-
         _submitState.Complete();
         _model.CerbosAdminPassword = null;
-
         _successMessage = response.Message;
 
-        // Save succeeded. Navigate immediately using the auth state captured at page load —
-        // the destination performs a full SSR reload (forceLoad: true) and re-fetches status
-        // server-side, so any stale auth context is corrected there. Avoiding a redundant
-        // BFF→API round-trip here prevents the "stuck on Save" UX reported when the pooled
-        // HttpClient hit a stale connection (see HttpClientExtensions.ConfigureDevCertBypass).
         var destination = _isAuthenticated
             ? "/onboarding/instance"
             : "/login?returnUrl=/onboarding/instance";
@@ -449,23 +712,18 @@
         Navigation.NavigateTo(destination, forceLoad: true);
     }
 
-    private Task ContinueAfterManualPolicyPackageFallbackAsync()
+    private async Task CopyComposeCommandAsync()
     {
-        if (!_canContinueAfterManualPolicyPackageFallback || !_manualPolicyPackageInstalled)
+        try
         {
-            return Task.CompletedTask;
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", DockerComposeSyncCommand);
+            _successMessage = "Docker Compose sync command copied.";
         }
-
-        _errorMessage = null;
-        _successMessage = "Authorization provider saved. Continuing after manual policy package installation.";
-        _model.CerbosAdminPassword = null;
-
-        var destination = _isAuthenticated
-            ? "/onboarding/instance"
-            : "/login?returnUrl=/onboarding/instance";
-
-        Navigation.NavigateTo(destination, forceLoad: true);
-        return Task.CompletedTask;
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not copy Cerbos policy sync command to clipboard.");
+            _errorMessage = "Could not copy the command. Use: " + DockerComposeSyncCommand;
+        }
     }
 
     private async Task<IJSObjectReference> GetBffModuleAsync()

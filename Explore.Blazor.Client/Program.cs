@@ -100,7 +100,10 @@ builder.Services.AddScoped<ILazyAssemblyLoader, LazyAssemblyLoaderService>();
 // ──────────────────────────────────────────────
 // Shared application services (Server + WASM)
 // ──────────────────────────────────────────────
-builder.Services.AddSharedApplicationServices();
+builder.Services.AddSharedApplicationServices((_, client) =>
+{
+    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
+});
 
 // WASM-specific services (different from server-side registrations)
 builder.Services.AddScoped<IGroupService, GroupService>();

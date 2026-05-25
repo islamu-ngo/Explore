@@ -206,7 +206,9 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
             {
                 Provider = "cerbos",
                 CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
-                CerbosEndpointVerified = true
+                CerbosEndpointVerified = true,
+                CerbosAdminUsernameConfigured = true,
+                CerbosAdminPasswordConfigured = true
             });
         _instanceOnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync()
             .Returns(new InstanceCommandResponseModel
@@ -242,7 +244,9 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
             {
                 Provider = "cerbos",
                 CerbosGrpcEndpoint = "cerbosgrpc.local:3593",
-                CerbosEndpointVerified = true
+                CerbosEndpointVerified = true,
+                CerbosAdminUsernameConfigured = true,
+                CerbosAdminPasswordConfigured = true
             });
         _instanceOnboardingService.SyncAuthorizationPolicyPackageAsAdminAsync()
             .Returns(new InstanceCommandResponseModel

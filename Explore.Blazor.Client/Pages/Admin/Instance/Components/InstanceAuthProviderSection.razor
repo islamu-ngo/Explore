@@ -164,6 +164,7 @@
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Auto-detected</MudChip>
                                 }
+                                <MudChip T="string" Size="Size.Small" Color="@OwnershipChipColor(AuthorizationModel.CerbosEndpointOwnership)" Variant="Variant.Outlined">@AuthorizationModel.CerbosEndpointOwnership.Badge</MudChip>
                                 @if (AuthorizationModel.CerbosEndpointVerified)
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">Verified</MudChip>
@@ -193,12 +194,20 @@
                                 </MudAlert>
                             }
 
+                            <MudAlert Severity="@OwnershipAlertSeverity(AuthorizationModel.CerbosEndpointOwnership)" Dense="true">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.subtitle2">@AuthorizationModel.CerbosEndpointOwnership.Badge</MudText>
+                                    <MudText Typo="Typo.body2">@AuthorizationModel.CerbosEndpointOwnership.Description</MudText>
+                                </MudStack>
+                            </MudAlert>
+
                             <MudTextField Variant="Variant.Outlined" T="string"
                                           Label="Cerbos gRPC Endpoint"
                                           Value="AuthorizationModel.CerbosGrpcEndpoint"
                                           ValueChanged="OnCerbosEndpointChanged"
                                           Placeholder="https://cerbosgrpc.example.com:443 or cerbosgrpc.example.com:443"
-                                          HelperText="Accepts a full URL or bare host:port. Bare remote endpoints default to HTTPS; localhost defaults to HTTP." />
+                                          Disabled="@IsCerbosEndpointReadOnly"
+                                          HelperText="@CerbosEndpointHelperText" />
 
                             @if (!AuthorizationModel.CerbosEndpointVerified)
                             {
@@ -213,7 +222,7 @@
                                         <div>
                                             <MudText Typo="Typo.subtitle2">Policy package sync</MudText>
                                             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                                Publish the latest embedded authorization policy bundle to the configured Cerbos Admin API through the BFF, or download the same package for manual cerbosctl put installation.
+                                                Publish the latest embedded authorization policy bundle through the BFF using @(AuthorizationModel.CerbosAdminCredentialsOwnership.Badge.ToLowerInvariant()) server-side credentials, or download the same package for manual cerbosctl put installation. The browser never owns the Admin API password.
                                             </MudText>
                                         </div>
                                         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
@@ -350,11 +359,34 @@
             ? "border: 2px solid var(--mud-palette-primary);"
             : string.Empty;
 
+    private static Color OwnershipChipColor(SecretOwnershipModel ownership) =>
+        ownership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase)
+            ? Color.Warning
+            : ownership.BootstrapAvailable
+                ? Color.Info
+                : Color.Success;
+
+    private static Severity OwnershipAlertSeverity(SecretOwnershipModel ownership) =>
+        ownership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase)
+            ? Severity.Warning
+            : ownership.BootstrapAvailable
+                ? Severity.Info
+                : Severity.Success;
+
+
     private bool CanSyncCerbosPolicies =>
         !_isSyncing
         && OnboardingService is not null
         && IsAuthorizationProviderSelected(CerbosProvider)
-        && AuthorizationModel.CerbosEndpointVerified;
+        && AuthorizationModel.CerbosEndpointVerified
+        && AuthorizationModel.CerbosAdminUsernameConfigured
+        && AuthorizationModel.CerbosAdminPasswordConfigured;
+
+    private bool IsCerbosEndpointReadOnly => !AuthorizationModel.CerbosEndpointOwnership.Editable;
+
+    private string CerbosEndpointHelperText => IsCerbosEndpointReadOnly
+        ? "Deployment-managed endpoint. Change it in the environment, secret provider, or appsettings and redeploy/restart."
+        : "Accepts a full URL or bare host:port. Environment values are bootstrap prefills only; saved application settings take precedence after you edit.";
 
     private bool CanDownloadCerbosPackage =>
         !_isDownloadingPackage
@@ -386,6 +418,11 @@
 
     private void OnCerbosEndpointChanged(string value)
     {
+        if (IsCerbosEndpointReadOnly)
+        {
+            return;
+        }
+
         var endpointChanged = !string.Equals(AuthorizationModel.CerbosGrpcEndpoint, value, StringComparison.Ordinal);
         AuthorizationModel.CerbosGrpcEndpoint = value;
 

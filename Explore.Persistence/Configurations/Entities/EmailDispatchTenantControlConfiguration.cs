@@ -1,0 +1,33 @@
+// ABOUTME: EF Core mapping for tenant-level email dispatch pause controls.
+// ABOUTME: Keeps Basic Dispatch Mode self-hosting controls queryable and tenant-isolated.
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public sealed class EmailDispatchTenantControlConfiguration : IEntityTypeConfiguration<EmailDispatchTenantControl>
+{
+    public void Configure(EntityTypeBuilder<EmailDispatchTenantControl> builder)
+    {
+        builder.ToTable("email_dispatch_tenant_controls");
+
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
+
+        builder.Property(e => e.PauseReason).HasMaxLength(500);
+
+        builder.HasOne(e => e.Tenant)
+            .WithMany()
+            .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(e => e.TenantId)
+            .IsUnique()
+            .HasDatabaseName("ux_email_dispatch_tenant_controls_tenant");
+
+        builder.HasIndex(e => new { e.IsPaused, e.UpdatedAt })
+            .HasDatabaseName("ix_email_dispatch_tenant_controls_pause_state");
+    }
+}

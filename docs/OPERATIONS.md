@@ -84,6 +84,7 @@ Readiness interpretation:
 | `distributed-cache` | API, Blazor | Effective cache round-trip works | Configured Redis fell back to in-memory cache | Effective cache round-trip failed |
 | `oidc-discovery` | API, Blazor | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
 | `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
+| `email-dispatch` | API | Basic Dispatch Mode worker is enabled | Worker is intentionally disabled | Invalid worker options fail startup; RabbitMQ is not checked in Basic mode |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
 | `islamu-event-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
 | `secret_provider` | API, Blazor | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
@@ -95,6 +96,7 @@ Operational rules:
 - Treat `Unhealthy` as non-deployable for rolling updates; fix the dependency or intentionally switch the related feature/provider off.
 - Instance Cerbos readiness follows authorization fail-closed semantics: if the operator selected `authorization.provider=cerbos`, an unreachable PDP makes `/health` unhealthy rather than silently falling back to local RBAC.
 - Local authorization mode skips Cerbos readiness, so self-hosted/local deployments do not need a Cerbos PDP unless explicitly selected.
+- Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only.
 
 ## Deployment Protection and Evidence
 
@@ -208,20 +210,43 @@ Current counters include:
 - `explore.organizations.created` (`tenant_id`)
 - `explore.authorization.decisions` (`resource`, `action`, `result`)
 - `event_role_assignment.changed` (`operation`, `outcome`, `role`)
+- `explore.email_dispatch.attempts` (`tenant_id`, `outcome`, `failure_category`) — Basic Dispatch Mode email outcomes; labels intentionally exclude recipient, subject, body, provider message ID, and raw error text.
+
+### Basic Email Dispatch Operations
+
+Registration confirmation email is handled as a durable side effect:
+
+1. The registration command creates an `EmailDispatchOutbox` row in the same PostgreSQL transaction as the registration state.
+2. `EmailDispatchProcessor` polls due rows, checks tenant pause state, atomically claims one row, and sets tenant context before resolving SMTP settings.
+3. SMTP is called through `IEmailService`; handlers and controllers do not send SMTP or publish RabbitMQ directly.
+4. The worker records `EmailDispatchAttempt` and `EmailDispatchReceipt` state, then marks the outbox row `Sent`, `RetryScheduled`, `DeadLettered`, or `Unknown`.
+
+Operator signals:
+
+| Signal | Meaning |
+|---|---|
+| `email-dispatch` health check | Worker enabled/disabled state and safe worker settings. |
+| `explore.email_dispatch.attempts` | Outcome counter for sent, tenant paused, unknown, retry-scheduled, and dead-lettered attempts. |
+| Structured worker logs | Include dispatch/outbox IDs, tenant IDs, outcomes, retry delay, and normalized failure category; do not include bodies, recipients, subjects, secrets, provider message IDs, or raw SMTP error text. |
+
+Timeout-like SMTP outcomes are recorded as `Unknown` instead of blind retry. Dead-lettered rows remain in PostgreSQL for operator inspection and later replay tooling.
 
 ## Cerbos PDP Operations
 
 ### Storage And Package Topology
 
-Static policies, schemas, and derived roles live in `cerbos/policies/`; native policy tests live in `cerbos/tests/`. The application publishes the bundled package through `IPolicyPackageService` instead of generating ad-hoc role policies at runtime.
+Static policies, schemas, and derived roles live in repo-root `cerbos/policies/`; native policy tests live in `cerbos/tests/`. The application publishes the bundled package through `IPolicyPackageService` instead of generating ad-hoc role policies at runtime.
+
+`Cerbos:PolicyPackagePath` (environment variable `CERBOS__POLICYPACKAGEPATH`) points the API at the policy package directory. Container deployments should either bundle `cerbos/` into the API image or mount the policy folder read-only, for example `./cerbos/policies:/app/cerbos/policies:ro` with `CERBOS__POLICYPACKAGEPATH=/app/cerbos/policies`. Aspire local development sets `Cerbos__PolicyPackagePath` for `explore-api` to repo-root `cerbos/policies`; direct `dotnet run` also falls back from the default relative `cerbos/policies` path to repo-root policies when launched from a project subdirectory. If the folder is missing, download endpoints return safe `503 ProblemDetails` without host paths.
 
 Package delivery paths:
 
 | Path | Trigger | Notes |
 |---|---|---|
+| Docker Compose one-shot sync | `docker compose --profile authz run --rm cerbos-policy-sync` | Recommended self-hosting path. Starts the `authz` profile with `cerbos-db`, uses server-side `CERBOS_ADMIN_USER` / `CERBOS_ADMIN_PASSWORD`, recursively uploads policies and `_schemas`, then requests store reload. Set `CERBOS_ADMIN_PASSWORD_HASH` to the hash matching `CERBOS_ADMIN_PASSWORD` before using Admin API sync. |
 | Zero-touch boot sync | API startup when complete instance Admin API config exists | Skips safely when endpoint or credentials are incomplete. |
-| Setup/Admin UI sync | Operator-triggered setup or admin action | Returns safe issue codes for missing config, auth failure, unavailable/rejected package, reload failure, or unknown package status. |
-| Manual ZIP fallback | Setup/Admin download endpoint | Exports the same bundled package for `cerbosctl put` when Admin API sync is unavailable or intentionally disabled. |
+| Setup/Admin UI sync | Operator-triggered setup or admin action | Advanced path shown only when server-side Admin API credentials are already configured; the browser does not collect Cerbos Admin API passwords. Returns safe issue codes for missing config, auth failure, unavailable/rejected package, reload failure, or unknown package status. |
+| Manual ZIP fallback | Setup/Admin download endpoint | Always visible in onboarding, including Local RBAC mode. Exports the same bundled package for `cerbosctl put policy --recursive .` and `cerbosctl put schema --recursive _schemas` when Admin API sync is unavailable or intentionally disabled. |
 
 Runtime authorization checks use the PDP gRPC endpoint. Package sync/status uses the Admin API endpoint and credentials. Do not treat a healthy Admin API as proof that runtime PDP checks are healthy, or vice versa.
 
@@ -231,7 +256,8 @@ Runtime authorization checks use the PDP gRPC endpoint. Package sync/status uses
 |---|---|---|
 | `Endpoint` / `Endpoints` | `string` / `List<string>` | Instance Admin API target(s) for package upload/status/reload. |
 | `AdminUsername` | `string` | Basic Auth username; secret-bearing and redacted from reads/logs. |
-| `AdminPassword` | `string` | Basic Auth password; secret-bearing and redacted from reads/logs. |
+| `AdminPassword` | `string` | Basic Auth password; secret-bearing and redacted from reads/logs. Docker Compose uses `CERBOS_ADMIN_PASSWORD` for `cerbosctl` and `CERBOS_ADMIN_PASSWORD_HASH` for the Cerbos server config. |
+| `Cerbos:PolicyPackagePath` | `string` | API-local path to bundled or mounted `cerbos/policies`; use `CERBOS__POLICYPACKAGEPATH=/app/cerbos/policies` in containers. |
 | BYO custom Admin API endpoint/credentials | tenant governance/secret settings | Optional per-tenant package target, preserved even when the tenant custom PDP endpoint is blank. |
 
 Non-local Admin API/PDP endpoints must use safe TLS-capable URLs. Unsafe endpoint changes are rejected before provider settings are persisted. Runtime failure logs must not include raw endpoints, credentials, JWTs/tokens, response bodies, or exception objects/messages.
@@ -252,7 +278,7 @@ Non-local Admin API/PDP endpoints must use safe TLS-capable URLs. Unsafe endpoin
 2. Verify instance `Cerbos:GrpcEndpoint` for runtime checks and `Cerbos:AdminApi:*` for package operations.
 3. For BYO tenants, verify `cerbos.mode`, `cerbos.custom_endpoint`, `cerbos.failure_mode`, and optional custom Admin API endpoint/credentials.
 4. If `cerbos.mode=custom_endpoint` has a blank PDP endpoint, runtime authorization still follows BYO failure mode; configure the PDP endpoint or temporarily choose local/open behavior only as an explicit operator decision.
-5. For package sync failures, inspect the safe issue code before retrying. Use setup/admin manual ZIP download plus `cerbosctl put` when Admin API sync is unavailable.
+5. For package sync failures, inspect the safe issue code before retrying. Prefer `docker compose --profile authz run --rm cerbos-policy-sync` for self-hosted Compose deployments after confirming `CERBOS_ADMIN_PASSWORD_HASH` matches `CERBOS_ADMIN_PASSWORD`, or use setup/admin manual ZIP download plus `cerbosctl put policy --recursive .` and `cerbosctl put schema --recursive _schemas` when Admin API sync is unavailable.
 6. For missing HAL affordances, confirm the link was not denied by server-side authorization before debugging route generation.
 
 ## Setup Secret Lifecycle

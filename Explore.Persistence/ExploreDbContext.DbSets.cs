@@ -16,6 +16,8 @@ public partial class ExploreDbContext
 {
     // ===== Multi-tenancy =====
     public DbSet<Tenant> Tenants { get; set; }
+    public DbSet<TenantUser> TenantUsers { get; set; }
+    public DbSet<TenantUserProfile> TenantUserProfiles { get; set; }
     public DbSet<TenantMember> TenantMembers { get; set; }
     public DbSet<TenantOnboardingState> TenantOnboardingStates { get; set; }
     public DbSet<TenantInvitation> TenantInvitations { get; set; }
@@ -42,6 +44,7 @@ public partial class ExploreDbContext
     public DbSet<ExternalApiKeyQuota> ExternalApiKeyQuotas { get; set; }
     public DbSet<UserAuthenticationToken> UserAuthenticationTokens { get; set; }
     public DbSet<UserExternalLogin> UserExternalLogins { get; set; }
+    public DbSet<ExternalBinding> ExternalBindings { get; set; }
 
     // ===== Authorization (RBAC) =====
     public DbSet<Role> Roles { get; set; }
@@ -193,6 +196,12 @@ public partial class ExploreDbContext
 
     // ===== Generic Outbox (cross-process side effects) =====
     public DbSet<OutboxMessage> OutboxMessages { get; set; }
+
+    // ===== Email Dispatch Outbox (Basic Dispatch Mode) =====
+    public DbSet<EmailDispatchOutbox> EmailDispatchOutbox { get; set; }
+    public DbSet<EmailDispatchAttempt> EmailDispatchAttempts { get; set; }
+    public DbSet<EmailDispatchReceipt> EmailDispatchReceipts { get; set; }
+    public DbSet<EmailDispatchTenantControl> EmailDispatchTenantControls { get; set; }
 
     // ===== Event Series =====
     public DbSet<EventSeries> EventSeries { get; set; }

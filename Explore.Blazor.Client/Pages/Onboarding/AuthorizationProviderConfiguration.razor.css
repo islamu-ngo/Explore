@@ -1,0 +1,51 @@
+/* ABOUTME: Scoped layout styles for the authorization-provider onboarding step. */
+/* ABOUTME: Creates the desktop step rail, decision area, and readiness summary shell. */
+
+.authz-shell {
+    max-width: min(1180px, calc(100vw - 48px));
+    margin-inline: auto;
+}
+
+.authz-shell__grid {
+    align-items: flex-start;
+}
+
+.authz-shell__rail,
+.authz-shell__summary {
+    position: sticky;
+    top: var(--isl-space-6, 24px);
+}
+
+.authz-shell__step {
+    min-height: 32px;
+}
+
+.authz-provider-card {
+    min-height: 190px;
+    transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.authz-provider-card:hover {
+    transform: translateY(-1px);
+}
+
+.authz-provider-card__chips,
+.authz-shell__actions {
+    flex-wrap: wrap;
+}
+
+.authz-shell__endpoint-action {
+    display: flex;
+    align-items: center;
+}
+
+@media (max-width: 1279px) {
+    .authz-shell {
+        max-width: min(920px, calc(100vw - 32px));
+    }
+
+    .authz-shell__rail,
+    .authz-shell__summary {
+        position: static;
+    }
+}

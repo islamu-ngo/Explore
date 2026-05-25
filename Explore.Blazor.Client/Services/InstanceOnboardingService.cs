@@ -874,6 +874,18 @@ public class SetupSecretValidationResult
     public string? Error { get; set; }
 }
 
+
+public class SecretOwnershipModel
+{
+    public string Mode { get; set; } = "application-managed";
+    public string Source { get; set; } = "application";
+    public string Badge { get; set; } = "Managed by Application";
+    public string Description { get; set; } = "Stored securely by ISLAMU Event and editable from Admin UI.";
+    public bool Editable { get; set; } = true;
+    public bool Configured { get; set; }
+    public bool BootstrapAvailable { get; set; }
+}
+
 // ── Auth Provider Models ─────────────────────────────────────────────────
 
 public class AuthProviderConfigurationModel
@@ -909,6 +921,9 @@ public class AuthorizationProviderConfigurationModel
     public bool CerbosAdminPasswordConfigured { get; set; }
     public bool CerbosDetectedFromEnvironment { get; set; }
     public bool CerbosEndpointVerified { get; set; }
+    public bool AuthorizationProviderConfigured { get; set; }
+    public SecretOwnershipModel CerbosEndpointOwnership { get; set; } = new();
+    public SecretOwnershipModel CerbosAdminCredentialsOwnership { get; set; } = new();
 }
 
 public class AuthorizationProviderConfiguredResult

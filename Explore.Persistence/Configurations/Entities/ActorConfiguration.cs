@@ -77,10 +77,11 @@ public class ActorConfiguration : IEntityTypeConfiguration<Actor>
             .HasForeignKey(e => e.GroupId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Unique indexes to ensure one Actor per User and one per Organization
-        builder.HasIndex(e => e.UserId)
+        // Unique indexes to ensure one User Actor per tenant and one Actor per Organization/Group.
+        builder.HasIndex(e => new { e.UserId, e.TenantId })
             .IsUnique()
-            .HasFilter("user_id IS NOT NULL");
+            .HasFilter("user_id IS NOT NULL")
+            .HasDatabaseName("ix_actors_user_id_tenant_id");
 
         builder.HasIndex(e => e.OrganizationId)
             .IsUnique()

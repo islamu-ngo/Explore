@@ -86,6 +86,21 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 
 Environment variable format uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string.
 
+
+## Ownership Model
+
+Secrets use a platform-wide ownership model so environment variables and external secret providers are not permanent live overrides by accident. The ownership source is metadata; browser-facing DTOs expose only configured/source/editability flags and never raw values, ciphertext, provider tokens, or resolved secret coordinates.
+
+| Mode | Source types | UI behavior | Runtime meaning |
+|---|---|---|---|
+| Application-managed | `InlineEncrypted` / application-stored encrypted values | Editable in ISLAMU Event admin/setup UI, masked after save | Saved application settings are the runtime authority; deployment values can only prefill/import until an operator saves. |
+| Deployment-managed | `EnvironmentVariable` or `Infisical` binding, or an explicit deployment-managed key list | Read-only badge in UI; rotate outside the app | Values are controlled by environment, appsettings, or the secret provider and changes require provider refresh or redeploy/restart. |
+| Deployment bootstrap | Environment/secret-provider value exists but no application-managed value has been saved | Editable prefill with “Bootstrap from Deployment” badge | The value helps first-run setup only. If modified and saved, application-managed settings take precedence from then on. |
+
+Do not merge application-managed and deployment-managed values for the same field at runtime. The `SecretResolver` dispatches through one `SecretBinding` source and intentionally does not fallback to another source after a binding is selected. For settings still migrating to the shared secret control plane, the same contract applies at the DTO/UI boundary: deployment values may prefill forms, but they do not silently override saved application settings unless that key is explicitly marked deployment-managed.
+
+Current migrated surface: Cerbos authorization settings expose endpoint and Admin API credential ownership metadata. Cerbos Admin API credentials are now registered in `SecretDefinitionRegistry`; the browser sees only configured flags and ownership badges. SMTP, S3, OAuth, localization/TMS, and AI keys still have area-specific storage/UI paths and must not be documented as fully migrated until their resolvers use the shared ownership metadata consistently.
+
 ## ISecretProvider Interface
 
 | Method | Returns | Purpose |

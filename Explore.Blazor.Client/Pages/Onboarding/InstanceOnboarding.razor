@@ -1,3 +1,6 @@
+@* ABOUTME: Two-step instance onboarding (Site Profile → Review & Launch) with step rail and summary panel. *@
+@* ABOUTME: Merges the old Preflight step into Review & Launch, adds collapsible passed checks and acknowledgement checkboxes. *@
+
 @page "/onboarding/instance"
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
@@ -17,223 +20,449 @@
 
 <PageTitle>Instance Onboarding</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
-    <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Launch Your Site</MudText>
-        <MudText Typo="Typo.body1" Class="mb-4">
-            Add the minimum public profile, review launch readiness, and hand off to the first useful destination.
-        </MudText>
-
-        @if (!string.IsNullOrWhiteSpace(_errorMessage))
-        {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-        }
-
-        @if (!string.IsNullOrWhiteSpace(_syncWarning))
-        {
-            <MudAlert Severity="Severity.Warning" Class="mb-4">@_syncWarning</MudAlert>
-        }
-
-        @if (_isLoading)
-        {
-            <MudStack Spacing="3">
-                <MudSkeleton Width="50%" Height="20px" Class="mb-1" />
-                <MudStack Direction="Direction.Row" Spacing="2" Class="mb-4">
-                    @for (int i = 0; i < 4; i++)
+<MudContainer MaxWidth="MaxWidth.False" Class="onboarding-shell py-8">
+    <MudGrid Spacing="3" Class="onboarding-shell__grid">
+        @* ── Left Step Rail ── *@
+        <MudItem xs="12" lg="2">
+            <MudPaper Class="onboarding-shell__rail pa-4" Outlined="true">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.overline" Color="Color.Primary">Setup progress</MudText>
+                    @foreach (var step in OnboardingSteps)
                     {
-                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="32px" Height="32px" />
-                        @if (i < 3) { <MudSkeleton Width="60px" Height="4px" Class="align-self-center" /> }
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="onboarding-shell__step">
+                            <MudIcon Icon="@(step.Number < _activeStep + 1 ? Icons.Material.Filled.CheckCircle : step.Number == _activeStep + 1 ? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Outlined.RadioButtonUnchecked)"
+                                     Color="@(step.Number < _activeStep + 1 ? Color.Success : step.Number == _activeStep + 1 ? Color.Primary : Color.Default)"
+                                     Size="Size.Small" />
+                            <MudText Typo="Typo.body2" Color="@(step.Number == _activeStep + 1 ? Color.Primary : Color.Secondary)">
+                                Step @step.Number · @step.Label
+                            </MudText>
+                        </MudStack>
                     }
                 </MudStack>
-                <MudSkeleton Width="40%" Height="28px" Class="mb-2" />
-                <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
-                <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
-                <MudSkeleton Width="100%" Height="40px" Class="mb-2" />
-                <MudSkeleton Width="100%" Height="40px" />
-            </MudStack>
-        }
-        else
-        {
-            <MudStepper @bind-ActiveIndex="_activeStep"
-                        NonLinear="false"
-                        ShowResetButton="false">
-                <ChildContent>
-                    <MudStep Title="Site Profile">
-                    <EditForm EditContext="_profileEditContext" OnValidSubmit="ContinueToPreflightAsync">
-                        <DataAnnotationsValidator />
-                        <MudStack Spacing="3">
-                            <MudText Typo="Typo.h6">Name Your Site</MudText>
-                            <MudText Typo="Typo.body2">
-                                This is the public identity visitors see first. Everything else can be refined after launch.
+            </MudPaper>
+        </MudItem>
+
+        @* ── Main Content ── *@
+        <MudItem xs="12" lg="7">
+            <MudStack Spacing="3">
+                @if (_isCompleted)
+                {
+                    @* ── Success State ── *@
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.overline" Color="Color.Success">Complete</MudText>
+                            <MudText Typo="Typo.h3" HtmlTag="h1">Your Site Is Ready</MudText>
+                            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                                Onboarding is complete. Start with the public event catalog, then tune advanced settings when you are ready.
                             </MudText>
-
-                            <MudAlert Severity="@(IsMultiTenantMode ? Severity.Info : Severity.Success)" Dense="true" Variant="Variant.Outlined">
-                                @GetDeploymentModeNotice()
-                            </MudAlert>
-
-                            <ValidationSummary />
-
-                            <MudTextField T="string" Label="Site Name (Required)"
-                                          Variant="Variant.Outlined"
-                                          Required="true"
-                                          RequiredError="Site name is required."
-                                          For="@(() => _siteProfile.SiteName)"
-                                          @bind-Value="_siteProfile.SiteName"
-                                          Placeholder="e.g. ISLAMU Explore, My Community Events" />
-                            <ValidationMessage For="@(() => _siteProfile.SiteName)" />
-
-                            <MudTextField T="string" Label="Support Email (Optional)"
-                                          Variant="Variant.Outlined"
-                                          For="@(() => _siteProfile.SupportEmail)"
-                                          @bind-Value="_siteProfile.SupportEmail"
-                                          Placeholder="support@example.org" />
-                            <ValidationMessage For="@(() => _siteProfile.SupportEmail)" />
-
-                            <MudTextField T="string" Label="Canonical URL (Optional)"
-                                          Variant="Variant.Outlined"
-                                          For="@(() => _siteProfile.CanonicalUrl)"
-                                          @bind-Value="_siteProfile.CanonicalUrl"
-                                          Placeholder="https://events.example.org" />
-                            <ValidationMessage For="@(() => _siteProfile.CanonicalUrl)" />
-
-                            <MudTextField T="string" Label="Purpose (Optional)"
-                                          Variant="Variant.Outlined"
-                                          Lines="3"
-                                          For="@(() => _siteProfile.Purpose)"
-                                          @bind-Value="_siteProfile.Purpose"
-                                          Placeholder="A short note for future admins about what this site is for." />
-                            <ValidationMessage For="@(() => _siteProfile.Purpose)" />
-
-                            <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
-                                Onboarding will apply safe launch defaults for the public event catalog. Advanced modules,
-                                policies, domains, federation, and branding remain available in instance settings.
-                            </MudAlert>
                         </MudStack>
-                    </EditForm>
-                    </MudStep>
+                        <MudAvatar Color="Color.Success" Variant="Variant.Filled" Size="Size.Large">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" />
+                        </MudAvatar>
+                    </MudStack>
 
-                    <MudStep Title="Preflight">
-                    <MudStack Spacing="3">
-                        <MudText Typo="Typo.h6">Launch Readiness</MudText>
-                        <MudText Typo="Typo.body2">
-                            Critical checks must pass before launch. Operational warnings can be handled after the site is online.
-                        </MudText>
+                    <MudPaper Class="pa-5" Outlined="true">
+                        <MudStack Spacing="3">
+                            <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">
+                                Your instance is live with safe launch defaults.
+                            </MudAlert>
+                            <MudText Typo="Typo.body2"><strong>Site:</strong> @_siteProfile.SiteName</MudText>
+                            <MudText Typo="Typo.body2"><strong>Mode:</strong> @(IsSingleTenantMode ? "Single Tenant" : "Multi Tenant")</MudText>
+                            <MudStack Direction="Direction.Row" Spacing="2">
+                                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/events" StartIcon="@Icons.Material.Filled.Event">
+                                    Browse Events
+                                </MudButton>
+                                <MudButton Elevation="0" Href="/admin/instance/settings"
+                                           Variant="Variant.Outlined"
+                                           Color="Color.Secondary"
+                                           StartIcon="@Icons.Material.Filled.Settings">
+                                    Open Instance Settings
+                                </MudButton>
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+                }
+                else if (_isLoading)
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudStack Spacing="1">
+                            <MudSkeleton Width="120px" Height="16px" />
+                            <MudSkeleton Width="280px" Height="32px" />
+                            <MudSkeleton Width="400px" Height="20px" />
+                        </MudStack>
+                        <MudSkeleton Width="56px" Height="56px" SkeletonType="SkeletonType.Circle" />
+                    </MudStack>
+                    <MudPaper Class="pa-5" Outlined="true">
+                        <MudStack Spacing="3">
+                            <MudSkeleton Width="45%" Height="24px" />
+                            <MudSkeleton Width="100%" Height="56px" />
+                            <MudSkeleton Width="100%" Height="56px" />
+                            <MudSkeleton Width="100%" Height="40px" />
+                            <MudSkeleton Width="100%" Height="40px" />
+                        </MudStack>
+                    </MudPaper>
+                }
+                else
+                {
+                    @* ── Step Header ── *@
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.overline" Color="Color.Primary">
+                                Step @(_activeStep + 1) of 2
+                            </MudText>
+                            <MudText Typo="Typo.h3" HtmlTag="h1">
+                                @(_activeStep == SiteProfileStepIndex ? "Site Profile" : "Review & Launch")
+                            </MudText>
+                            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                                @(_activeStep == SiteProfileStepIndex
+                                    ? "Add the minimum public profile, review launch readiness, and hand off to the first useful destination."
+                                    : "Review launch readiness and confirm your site profile before going live.")
+                            </MudText>
+                        </MudStack>
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large">
+                            <MudIcon Icon="@(_activeStep == SiteProfileStepIndex ? Icons.Material.Filled.Edit : Icons.Material.Filled.RocketLaunch)" Size="Size.Large" />
+                        </MudAvatar>
+                    </MudStack>
 
+                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-2">@_errorMessage</MudAlert>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(_syncWarning))
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mb-2">@_syncWarning</MudAlert>
+                    }
+
+                    @* ── Step 1: Site Profile ── *@
+                    @if (_activeStep == SiteProfileStepIndex)
+                    {
+                        <EditForm EditContext="_profileEditContext" OnValidSubmit="ContinueToReviewAsync">
+                            <DataAnnotationsValidator />
+                            <MudPaper Class="pa-5" Outlined="true">
+                                <MudStack Spacing="3">
+                                    <MudText Typo="Typo.h6">Name Your Site</MudText>
+                                    <MudText Typo="Typo.body2">
+                                        This is the public identity visitors see first. Everything else can be refined after launch.
+                                    </MudText>
+
+                                    <MudAlert Severity="@(IsMultiTenantMode ? Severity.Info : Severity.Success)" Dense="true" Variant="Variant.Outlined">
+                                        @GetDeploymentModeNotice()
+                                    </MudAlert>
+
+                                    <ValidationSummary />
+
+                                    <MudTextField T="string" Label="Site Name (Required)"
+                                                  Variant="Variant.Outlined"
+                                                  Required="true"
+                                                  RequiredError="Site name is required."
+                                                  For="@(() => _siteProfile.SiteName)"
+                                                  @bind-Value="_siteProfile.SiteName"
+                                                  Placeholder="e.g. ISLAMU Explore, My Community Events" />
+                                    <ValidationMessage For="@(() => _siteProfile.SiteName)" />
+
+                                    <MudTextField T="string" Label="Support Email (Optional)"
+                                                  Variant="Variant.Outlined"
+                                                  For="@(() => _siteProfile.SupportEmail)"
+                                                  @bind-Value="_siteProfile.SupportEmail"
+                                                  Placeholder="support@example.org" />
+                                    <ValidationMessage For="@(() => _siteProfile.SupportEmail)" />
+
+                                    <MudTextField T="string" Label="Canonical URL (Optional)"
+                                                  Variant="Variant.Outlined"
+                                                  For="@(() => _siteProfile.CanonicalUrl)"
+                                                  @bind-Value="_siteProfile.CanonicalUrl"
+                                                  Placeholder="https://events.example.org" />
+                                    <ValidationMessage For="@(() => _siteProfile.CanonicalUrl)" />
+
+                                    <MudTextField T="string" Label="Purpose (Optional)"
+                                                  Variant="Variant.Outlined"
+                                                  Lines="3"
+                                                  For="@(() => _siteProfile.Purpose)"
+                                                  @bind-Value="_siteProfile.Purpose"
+                                                  Placeholder="A short note for future admins about what this site is for." />
+                                    <ValidationMessage For="@(() => _siteProfile.Purpose)" />
+
+                                    <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                                        Onboarding will apply safe launch defaults for the public event catalog. Advanced modules,
+                                        policies, domains, federation, and branding remain available in instance settings.
+                                    </MudAlert>
+                                </MudStack>
+                            </MudPaper>
+
+                            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
+                                <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled"
+                                           OnClick="ContinueToReviewAsync"
+                                           Disabled="@_submitState.IsSubmitting">
+                                    Next: Review & Launch
+                                </MudButton>
+                            </MudStack>
+                        </EditForm>
+                    }
+
+                    @* ── Step 2: Review & Launch ── *@
+                    @if (_activeStep == ReviewStepIndex)
+                    {
                         @if (_isPreflightLoading)
                         {
-                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                            <MudPaper Class="pa-5" Outlined="true">
+                                <MudStack Spacing="3">
+                                    <MudSkeleton Width="45%" Height="24px" />
+                                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                                    <MudSkeleton Width="100%" Height="60px" />
+                                    <MudSkeleton Width="100%" Height="60px" />
+                                </MudStack>
+                            </MudPaper>
                         }
                         else if (_preflight is null)
                         {
-                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
-                                Preflight data is not available. Go back and try again.
-                            </MudAlert>
+                            <MudPaper Class="pa-5" Outlined="true">
+                                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                                    Preflight data is not available. Go back and try again.
+                                </MudAlert>
+                            </MudPaper>
                         }
                         else
                         {
-                            <MudAlert Severity="@(_preflight.IsReadyToLaunch ? Severity.Success : Severity.Error)" Variant="Variant.Outlined">
-                                @(_preflight.IsReadyToLaunch ? "Ready to launch with convention defaults." : "Resolve blocking checks before completing onboarding.")
-                            </MudAlert>
+                            var failedBlocking = _preflight.BlockingChecks.Where(c => !c.Status.Equals("Pass", StringComparison.OrdinalIgnoreCase)).ToList();
+                            var passedBlocking = _preflight.BlockingChecks.Where(c => c.Status.Equals("Pass", StringComparison.OrdinalIgnoreCase)).ToList();
+                            var warningChecks = _preflight.WarningChecks;
+                            var hasPublicWarning = warningChecks.Any(c => c.Severity.Equals("Critical", StringComparison.OrdinalIgnoreCase)
+                                || c.Severity.Equals("High", StringComparison.OrdinalIgnoreCase));
 
-                            <MudText Typo="Typo.subtitle2">Blocking Checks</MudText>
-                            @foreach (var check in _preflight.BlockingChecks)
+                            @* ── Critical Launch Requirements ── *@
+                            <MudPaper Class="pa-5" Outlined="true">
+                                <MudStack Spacing="3">
+                                    <MudStack Spacing="1">
+                                        <MudText Typo="Typo.h6">Critical Launch Requirements</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            These checks must pass before your site can go live.
+                                        </MudText>
+                                    </MudStack>
+
+                                    @if (failedBlocking.Count > 0)
+                                    {
+                                        foreach (var check in failedBlocking)
+                                        {
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="onboarding-shell__check-row onboarding-shell__check-row--error">
+                                                <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Small" />
+                                                <MudStack Spacing="0">
+                                                    <MudText Typo="Typo.subtitle2" Class="onboarding-shell__check-name">@check.Name</MudText>
+                                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="onboarding-shell__check-msg">@check.Message</MudText>
+                                                </MudStack>
+                                            </MudStack>
+                                        }
+                                    }
+
+                                    @if (passedBlocking.Count > 0)
+                                    {
+                                        <MudStack Spacing="1">
+                                            <MudButton Variant="Variant.Text"
+                                                       Color="Color.Success"
+                                                       Size="Size.Small"
+                                                       EndIcon="@(_showPassedChecks ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                                       OnClick="@(() => { _showPassedChecks = !_showPassedChecks; })">
+                                                ✓ Critical launch requirements passed (@passedBlocking.Count/@_preflight.BlockingChecks.Count)
+                                            </MudButton>
+                                            @if (_showPassedChecks)
+                                            {
+                                                foreach (var check in passedBlocking)
+                                                {
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="onboarding-shell__check-row onboarding-shell__check-row--pass">
+                                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                                        <MudStack Spacing="0">
+                                                            <MudText Typo="Typo.subtitle2" Class="onboarding-shell__check-name">@check.Name</MudText>
+                                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="onboarding-shell__check-msg">@check.Message</MudText>
+                                                        </MudStack>
+                                                    </MudStack>
+                                                }
+                                            }
+                                        </MudStack>
+                                    }
+
+                                    @if (failedBlocking.Count == 0 && passedBlocking.Count == 0)
+                                    {
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">No blocking checks found.</MudText>
+                                    }
+                                </MudStack>
+                            </MudPaper>
+
+                            @* ── Operational Recommendations ── *@
+                            @if (warningChecks.Count > 0)
                             {
-                                <MudAlert Severity="@GetCheckSeverity(check)" Dense="true" Variant="Variant.Text">
-                                    <strong>@check.Name:</strong> @check.Message
-                                </MudAlert>
+                                <MudPaper Class="pa-5" Outlined="true">
+                                    <MudStack Spacing="3">
+                                        <MudStack Spacing="1">
+                                            <MudText Typo="Typo.h6">Operational Recommendations</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                These can be addressed after launch but should be reviewed.
+                                            </MudText>
+                                        </MudStack>
+
+                                        @foreach (var check in warningChecks)
+                                        {
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="onboarding-shell__check-row">
+                                                <MudChip T="string" Size="Size.Small"
+                                                         Color="@GetSeverityColor(check.Severity)"
+                                                         Variant="Variant.Outlined">
+                                                    @check.Severity
+                                                </MudChip>
+                                                <MudStack Spacing="0" Class="onboarding-shell__check-detail">
+                                                    <MudText Typo="Typo.subtitle2" Class="onboarding-shell__check-name">@check.Name</MudText>
+                                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="onboarding-shell__check-msg">@check.Message</MudText>
+                                                </MudStack>
+                                            </MudStack>
+                                        }
+                                    </MudStack>
+                                </MudPaper>
                             }
 
-                            @if (_preflight.WarningChecks.Count > 0)
+                            @* ── Acknowledgement Checkboxes for Serious Warnings ── *@
+                            @if (hasPublicWarning && _preflight.IsReadyToLaunch)
                             {
-                                <MudText Typo="Typo.subtitle2">Operational Warnings</MudText>
-                                @foreach (var check in _preflight.WarningChecks)
-                                {
-                                    <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Text">
-                                        <strong>@check.Name:</strong> @check.Message
-                                    </MudAlert>
-                                }
+                                <MudPaper Class="pa-5" Outlined="true">
+                                    <MudStack Spacing="2">
+                                        <MudText Typo="Typo.subtitle2">Acknowledgements</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            Please confirm the following before launching a publicly accessible site.
+                                        </MudText>
+                                        <MudCheckBox T="bool" @bind-Value="_acknowledgePublicExposure"
+                                                      Color="Color.Warning"
+                                                      Label="I understand this site will be publicly accessible and I have reviewed the operational recommendations above." />
+                                    </MudStack>
+                                </MudPaper>
                             }
                         }
-                    </MudStack>
-                    </MudStep>
 
-                    <MudStep Title="Launch">
-                    <MudStack Spacing="3">
-                        <MudText Typo="Typo.h6">Your Site Is Ready</MudText>
-                        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">
-                            Onboarding is complete. Start with the public event catalog, then tune advanced settings when you are ready.
-                        </MudAlert>
-                        <MudText Typo="Typo.body2"><strong>Site:</strong> @_siteProfile.SiteName</MudText>
-                        <MudText Typo="Typo.body2"><strong>Mode:</strong> @(IsSingleTenantMode ? "Single Tenant" : "Multi Tenant")</MudText>
-                        <MudStack Direction="Direction.Row" Spacing="2">
-                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/events" StartIcon="@Icons.Material.Filled.Event">
-                                Browse Events
+                        @* ── Action Buttons ── *@
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" Spacing="2" Class="mt-4">
+                            <MudButton Elevation="0" Variant="Variant.Text" Color="Color.Default"
+                                       Disabled="@(_submitState.IsSubmitting)"
+                                       OnClick="GoBackToProfile">
+                                Back
                             </MudButton>
-                            <MudButton Elevation="0" Href="/admin/instance/settings"
-                                       Variant="Variant.Outlined"
-                                       Color="Color.Secondary"
-                                       StartIcon="@Icons.Material.Filled.Settings">
-                                Open Instance Settings
+                            <MudSpacer />
+                            <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled"
+                                       OnClick="CompleteOnboardingAsync"
+                                       Disabled="@(_submitState.IsSubmitting || _isPreflightLoading || _preflight?.IsReadyToLaunch != true || !AllAcknowledgementsChecked)">
+                                @_completeButtonLabel
                             </MudButton>
                         </MudStack>
-                    </MudStack>
-                    </MudStep>
-                </ChildContent>
-
-                <ActionContent Context="stepper">
-                    <MudButton Elevation="0" Variant="Variant.Text"
-                               Color="Color.Default"
-                               Disabled="@(_activeStep == 0 || _submitState.IsSubmitting)"
-                               OnClick="@(() => stepper.PreviousStepAsync())">
-                        Back
-                    </MudButton>
-                    <MudSpacer />
-
-                    @if (_activeStep == SiteProfileStepIndex)
-                    {
-                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="ContinueToPreflightAsync"
-                                   Disabled="@(_submitState.IsSubmitting || _isPreflightLoading)">
-                            Next
-                        </MudButton>
                     }
-                    else if (_activeStep == PreflightStepIndex)
+                }
+            </MudStack>
+        </MudItem>
+
+        @* ── Right Summary Panel ── *@
+        <MudItem xs="12" lg="3">
+            <MudPaper Class="onboarding-shell__summary pa-5" Outlined="true">
+                <MudStack Spacing="3">
+                    @if (_isCompleted)
                     {
-                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="CompleteOnboardingAsync"
-                                   Disabled="@(_submitState.IsSubmitting || _isPreflightLoading || _preflight?.IsReadyToLaunch != true)">
-                            @_completeButtonLabel
-                        </MudButton>
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.h5">Launch Complete</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Your site is live and ready for visitors.
+                            </MudText>
+                        </MudStack>
                     }
                     else
                     {
-                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Href="/events">
-                            Go to Events
-                        </MudButton>
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.h5">Launch Recap</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @(_activeStep == SiteProfileStepIndex
+                                    ? "Fill in your site profile to continue."
+                                    : "Review your configuration before launching.")
+                            </MudText>
+                        </MudStack>
+
+                        <MudDivider />
+
+                        <MudStack Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2"><strong>Site:</strong> @(string.IsNullOrWhiteSpace(_siteProfile.SiteName) ? "—" : _siteProfile.SiteName)</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2"><strong>Mode:</strong> @(IsSingleTenantMode ? "Single Tenant" : "Multi Tenant")</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Small" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2"><strong>Auth:</strong> Configured</MudText>
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Color="Color.Primary" />
+                                <MudText Typo="Typo.body2"><strong>Destination:</strong> Events Dashboard</MudText>
+                            </MudStack>
+                        </MudStack>
+
+                        @if (_activeStep == ReviewStepIndex && _preflight is not null)
+                        {
+                            <MudDivider />
+
+                            <MudStack Spacing="2">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@(_preflight.IsReadyToLaunch ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                                             Color="@(_preflight.IsReadyToLaunch ? Color.Success : Color.Error)"
+                                             Size="Size.Small" />
+                                    <MudText Typo="Typo.body2">
+                                        @(_preflight.IsReadyToLaunch ? "Ready to launch" : "Resolve blockers first")
+                                    </MudText>
+                                </MudStack>
+                            </MudStack>
+                        }
                     }
-                </ActionContent>
-            </MudStepper>
-        }
-    </MudPaper>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 </MudContainer>
 
 @code {
     private const int SiteProfileStepIndex = 0;
-    private const int PreflightStepIndex = 1;
-    private const int LaunchStepIndex = 2;
+    private const int ReviewStepIndex = 1;
+
+    private static readonly (int Number, string Label)[] OnboardingSteps =
+    [
+        (1, "Site Profile"),
+        (2, "Review & Launch")
+    ];
+
     private string _deploymentMode = "SingleTenant";
     private readonly SelfHostOnboardingProfileModel _siteProfile = new();
     private EditContext _profileEditContext = default!;
-    private OnboardingPreflightModel? _preflight;
+    public OnboardingPreflightModel? _preflight;
     private bool _isLoading = true;
     private bool _isPreflightLoading;
+    private bool _isCompleted;
     private FormSubmitState _submitState = new();
     private string? _errorMessage;
     private bool _setupSecretSynced;
     private string? _syncWarning;
-    private int _activeStep;
-    private string _completeButtonLabel = "Complete Instance Onboarding";
+    public int _activeStep;
+    private string _completeButtonLabel = "Launch Instance";
+    private bool _showPassedChecks;
+    private bool _acknowledgePublicExposure;
 
     private bool IsSingleTenantMode => _deploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
     private bool IsMultiTenantMode => _deploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
+
+    private bool AllAcknowledgementsChecked
+    {
+        get
+        {
+            if (_preflight is null || !_preflight.IsReadyToLaunch)
+                return true;
+
+            var hasSeriousWarning = _preflight.WarningChecks.Any(c =>
+                c.Severity.Equals("Critical", StringComparison.OrdinalIgnoreCase) ||
+                c.Severity.Equals("High", StringComparison.OrdinalIgnoreCase));
+
+            return !hasSeriousWarning || _acknowledgePublicExposure;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -325,7 +554,7 @@
             ? "MultiTenant"
             : "SingleTenant";
 
-    private async Task ContinueToPreflightAsync()
+    private async Task ContinueToReviewAsync()
     {
         _errorMessage = null;
 
@@ -335,10 +564,16 @@
         }
 
         await LoadPreflightAsync();
-        _activeStep = PreflightStepIndex;
+        _activeStep = ReviewStepIndex;
     }
 
-    private async Task LoadPreflightAsync()
+    private void GoBackToProfile()
+    {
+        _activeStep = SiteProfileStepIndex;
+        _errorMessage = null;
+    }
+
+    public async Task LoadPreflightAsync()
     {
         _isPreflightLoading = true;
         try
@@ -370,8 +605,14 @@
             return;
         }
 
+        if (!AllAcknowledgementsChecked)
+        {
+            _errorMessage = "Please acknowledge all warnings before launching.";
+            return;
+        }
+
         _submitState.Start();
-        _completeButtonLabel = "Saving...";
+        _completeButtonLabel = "Launching...";
         _errorMessage = null;
 
         var completion = new OnboardingCompletionModel
@@ -390,16 +631,12 @@
         };
 
         // Proactively refresh the BFF auth session so the access token forwarded to the API is fresh.
-        // The setup form can sit open for minutes while the user reads guidance, and Keycloak access
-        // tokens have short lifetimes (often 1-5 min). Without this, the API's [Authorize] rejects
-        // the Complete command with 401, and we'd have to redirect the user back through /login,
-        // losing their form data. See docs/SECURITY-MODEL.md on token forwarding.
         var preRefreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
         if (!preRefreshed)
         {
             Logger.LogWarning("Pre-complete auth session refresh failed. Aborting Complete and redirecting to login.");
             _submitState.Complete();
-            _completeButtonLabel = "Complete Instance Onboarding";
+            _completeButtonLabel = "Launch Instance";
             _errorMessage = "Your session expired. Please sign in again to complete setup.";
             Navigation.NavigateTo("/login", forceLoad: true);
             return;
@@ -407,9 +644,7 @@
 
         var response = await InstanceOnboardingService.CompleteAsync(completion);
 
-        // Retry once on 401: the refresh may not have landed before the request left the circuit,
-        // or the token just rotated. A second refresh + retry eliminates the common transient case
-        // without forcing the user back through /login and losing their onboarding choices.
+        // Retry once on 401
         if (response.StatusCode == 401)
         {
             Logger.LogInformation("Complete returned 401 after pre-refresh. Retrying once with forced refresh.");
@@ -425,11 +660,10 @@
         }
 
         _submitState.Complete();
-        _completeButtonLabel = "Complete Instance Onboarding";
+        _completeButtonLabel = "Launch Instance";
 
         if (response.StatusCode == 401)
         {
-            // Session truly dead (refresh token rotated out by Keycloak). Only now redirect to login.
             _errorMessage = "Your session expired. Please sign in again to complete setup.";
             Navigation.NavigateTo("/login", forceLoad: true);
             return;
@@ -444,7 +678,7 @@
             }
 
             Snackbar.Add("Instance onboarding completed.", Severity.Success);
-            _activeStep = LaunchStepIndex;
+            _isCompleted = true;
             return;
         }
 
@@ -457,6 +691,12 @@
         check.Status.Equals("Pass", StringComparison.OrdinalIgnoreCase)
             ? Severity.Success
             : Severity.Error;
+
+    private static Color GetSeverityColor(string severity) =>
+        severity.Equals("Critical", StringComparison.OrdinalIgnoreCase) ? Color.Error
+        : severity.Equals("High", StringComparison.OrdinalIgnoreCase) ? Color.Warning
+        : severity.Equals("Medium", StringComparison.OrdinalIgnoreCase) ? Color.Info
+        : Color.Default;
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -475,5 +715,4 @@
         _bffModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "/js/bff.js");
         return _bffModule;
     }
-
 }

@@ -17,6 +17,11 @@ public interface IActorRepository : IGenericRepository<Actor, Guid>
     Task<Actor?> GetActorByUserId(Guid userId);
 
     /// <summary>
+    /// Gets the tenant-scoped Actor associated with a specific User.
+    /// </summary>
+    Task<Actor?> GetActorByUserIdAndTenantId(Guid userId, Guid tenantId);
+
+    /// <summary>
     /// Gets the Actor associated with a specific Organization.
     /// </summary>
     Task<Actor?> GetActorByOrganizationId(Guid organizationId);

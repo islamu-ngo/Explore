@@ -133,6 +133,11 @@ The outbox pattern is also used for domain-specific event flows:
 |---------|---------|-------------------|
 | `PolicyChangeOutbox` | Settings/policy change propagation | `SettingScope` |
 | `PdsSyncOutbox` | AT Protocol federation sync | `Did`, `Collection`, `RecordKey`, `PdsHost` |
+| `EmailDispatchOutbox` | Basic Dispatch Mode email delivery state | `TenantId`, `PublishEventId`, `Kind`, `SourceType`, `SourceId`, recipient/subject/body snapshots, `AttemptCount`, `NextAttemptAt`, `SentAt`, `UnknownAt`, `DeadLetteredAt`, `ParkedAt`, `CorrelationId` |
+
+`EmailDispatchOutbox` is a specialized durable-intent table, not a RabbitMQ queue mirror. Registration confirmation creates an outbox row in the registration transaction. `EmailDispatchProcessor` later claims due rows, rebinds tenant context, calls the approved SMTP abstraction, records attempts/receipts, and advances delivery state. RabbitMQ Dispatch Mode, when added, must share this PostgreSQL state machine and use pointer-only transport messages.
+
+Non-negotiable boundary: handlers, controllers, automation executors, sequence processors, and domain services may create durable outbox intent only. They must not send SMTP or publish RabbitMQ directly.
 
 ## Monitoring
 

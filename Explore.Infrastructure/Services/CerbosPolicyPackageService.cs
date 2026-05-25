@@ -84,7 +84,8 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         var schemaRoot = Path.Combine(packageRoot, SchemaDirectoryName);
         if (!Directory.Exists(schemaRoot))
         {
-            throw new DirectoryNotFoundException($"Cerbos schema directory was not found: {schemaRoot}");
+            _logger.LogWarning("Cerbos policy package is unavailable because the schema directory is missing.");
+            throw CreatePackageUnavailableException();
         }
 
         foreach (var schemaFile in Directory.EnumerateFiles(schemaRoot, "*.json", SearchOption.TopDirectoryOnly).Order(StringComparer.Ordinal))
@@ -104,7 +105,8 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         var orderedArtifacts = artifacts.OrderBy(a => a.LogicalId, StringComparer.Ordinal).ToArray();
         if (orderedArtifacts.Length == 0)
         {
-            throw new InvalidOperationException($"No policy package artifacts were found under '{packageRoot}'.");
+            _logger.LogWarning("Cerbos policy package is unavailable because no policy or schema artifacts were found.");
+            throw CreatePackageUnavailableException();
         }
 
         var contentHash = ComputeManifestHash(orderedArtifacts);
@@ -126,11 +128,12 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
     /// <inheritdoc />
     public async Task<PolicyPackagePublishResult> PublishAsync(CancellationToken cancellationToken = default)
     {
-        var packageRoot = ResolvePolicyRoot();
-        var manifest = await BuildManifestAsync(cancellationToken);
+        var manifest = CreateUnavailableManifest();
 
         try
         {
+            var packageRoot = ResolvePolicyRoot();
+            manifest = await BuildManifestAsync(cancellationToken);
             var targetResolution = await ResolveAdminApiTargetAsync(cancellationToken);
             if (!targetResolution.Succeeded || targetResolution.Target is null)
             {
@@ -185,6 +188,21 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
                 Message: "Policy package uploaded and Cerbos instances reloaded successfully.",
                 PublishedAt: DateTimeOffset.UtcNow,
                 Warnings: []);
+        }
+        catch (PolicyPackageUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "Policy package publish skipped because the package is unavailable for this API deployment.");
+
+            return new PolicyPackagePublishResult(
+                Succeeded: false,
+                PackageId: manifest.PackageId,
+                ContentHash: manifest.ContentHash,
+                Message: "Policy package publishing skipped because the bundled Cerbos policy package is unavailable.",
+                PublishedAt: DateTimeOffset.UtcNow,
+                Warnings: [ex.Message])
+            {
+                IssueCode = PolicyPackageIssueCode.PackageUnavailable
+            };
         }
         catch (CerbosAdminApiException ex) when (ex.IssueCode == PolicyPackageIssueCode.AdminApiAuthenticationFailed)
         {
@@ -242,7 +260,25 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
     /// <inheritdoc />
     public async Task<PolicyPackageStatusResult> GetStatusAsync(CancellationToken cancellationToken = default)
     {
-        var manifest = await BuildManifestAsync(cancellationToken);
+        PolicyPackageManifest manifest;
+        try
+        {
+            manifest = await BuildManifestAsync(cancellationToken);
+        }
+        catch (PolicyPackageUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "Policy package status is unavailable because the package is unavailable for this API deployment.");
+
+            manifest = CreateUnavailableManifest();
+            return new PolicyPackageStatusResult(
+                PackageId: manifest.PackageId,
+                ContentHash: manifest.ContentHash,
+                CheckedAt: DateTimeOffset.UtcNow,
+                IssueCode: PolicyPackageIssueCode.PackageUnavailable,
+                Message: "The bundled Cerbos policy package is unavailable for this API deployment.",
+                Warnings: [ex.Message]);
+        }
+
         var targetResolution = await ResolveAdminApiTargetAsync(cancellationToken);
 
         if (!targetResolution.Succeeded || targetResolution.Target is null)
@@ -353,11 +389,56 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
             ? _options.PoliciesPath
             : Path.GetFullPath(_options.PoliciesPath, Directory.GetCurrentDirectory());
 
+        if (!Directory.Exists(packageRoot)
+            && IsDefaultRelativePolicyPath(_options.PoliciesPath)
+            && TryResolveRepositoryPolicyRoot(Directory.GetCurrentDirectory(), out var repositoryPolicyRoot))
+        {
+            packageRoot = repositoryPolicyRoot;
+        }
+
         if (!Directory.Exists(packageRoot))
-            throw new DirectoryNotFoundException($"Cerbos policy package directory was not found: {packageRoot}");
+        {
+            _logger.LogWarning("Cerbos policy package is unavailable because the configured policy directory does not exist.");
+            throw CreatePackageUnavailableException();
+        }
 
         return packageRoot;
     }
+
+    private static bool IsDefaultRelativePolicyPath(string policiesPath) =>
+        policiesPath.Equals("cerbos/policies", StringComparison.Ordinal)
+        || policiesPath.Equals("cerbos\\policies", StringComparison.Ordinal);
+
+    private static bool TryResolveRepositoryPolicyRoot(string startDirectory, out string policyRoot)
+    {
+        var current = new DirectoryInfo(startDirectory);
+
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "cerbos", "policies");
+            if (File.Exists(Path.Combine(current.FullName, "Explore.sln")) && Directory.Exists(candidate))
+            {
+                policyRoot = candidate;
+                return true;
+            }
+
+            current = current.Parent;
+        }
+
+        policyRoot = string.Empty;
+        return false;
+    }
+
+    private PolicyPackageManifest CreateUnavailableManifest() =>
+        new(
+            PackageId: _options.PackageId,
+            Version: "unavailable",
+            ContentHash: "unavailable",
+            GeneratedAt: DateTimeOffset.UtcNow,
+            Artifacts: []);
+
+    private static PolicyPackageUnavailableException CreatePackageUnavailableException() =>
+        new("Authorization policy package assets are not available in this deployment. Configure Cerbos:PolicyPackagePath to a bundled or mounted policy directory.");
 
     private static IEnumerable<string> EnumeratePolicyFiles(string packageRoot)
     {
@@ -445,10 +526,19 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
     private ICerbosAdminApi CreateAdminApi(Uri endpoint)
     {
         var client = _httpClientFactory.CreateClient("CerbosAdminClient");
-        client.BaseAddress = endpoint;
+        if (client.BaseAddress is null)
+        {
+            client.BaseAddress = endpoint;
+        }
+        else if (client.BaseAddress != endpoint)
+        {
+            throw new InvalidOperationException("Cerbos Admin API HTTP client was reused for multiple endpoints.");
+        }
+
         return RestService.For<ICerbosAdminApi>(client, new RefitSettings
         {
-            ContentSerializer = new SystemTextJsonContentSerializer(AdminApiJsonOptions)
+            ContentSerializer = new SystemTextJsonContentSerializer(AdminApiJsonOptions),
+            ExceptionFactory = _ => Task.FromResult<Exception?>(null)
         });
     }
 
@@ -461,7 +551,7 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         var auth = GetBasicAuthHeader(target);
         
         using var response = await SendAdminRequestAsync(
-            () => api.PushSchemasAsync(auth, new CerbosSchemaBatchRequest { Schemas = schemas }, cancellationToken),
+            async () => await api.PushSchemasAsync(auth, new CerbosSchemaBatchRequest { Schemas = schemas }, cancellationToken),
             "schema", target.PrimaryEndpoint, cancellationToken);
             
         await EnsureSuccessAsync(response, "schema", target.PrimaryEndpoint, cancellationToken);
@@ -476,7 +566,7 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         var auth = GetBasicAuthHeader(target);
         
         using var response = await SendAdminRequestAsync(
-            () => api.PushPoliciesAsync(auth, new CerbosPolicyBatchRequest { Policies = policies }, cancellationToken),
+            async () => await api.PushPoliciesAsync(auth, new CerbosPolicyBatchRequest { Policies = policies }, cancellationToken),
             "policy", target.PrimaryEndpoint, cancellationToken);
             
         await EnsureSuccessAsync(response, "policy", target.PrimaryEndpoint, cancellationToken);
@@ -497,7 +587,17 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         IApiResponse response;
         try
         {
-            response = await api.ReloadInstanceAsync(auth, wait: true, cancellationToken);
+            response = await api.ReloadInstanceAsync(auth, wait: "true", cancellationToken);
+            if (response is null)
+                return false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogWarning(
+                "Cerbos package reload failed at {Endpoint}: {StatusCode}",
+                CerbosAdminEndpointValidator.ToSafeEndpoint(endpoint),
+                ex.StatusCode);
+            return false;
         }
         catch (Exception ex) when (IsAdminApiTransportFailure(ex, cancellationToken))
         {
@@ -529,7 +629,25 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
     {
         try
         {
-            return await requestAction();
+            var response = await requestAction();
+            return response ?? throw new CerbosAdminApiException(
+                PolicyPackageIssueCode.AdminApiUnavailable,
+                $"Cerbos Admin API {artifactKind} upload failed before a response was received.");
+        }
+        catch (ApiException ex)
+        {
+            var issueCode = ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden
+                ? PolicyPackageIssueCode.AdminApiAuthenticationFailed
+                : PolicyPackageIssueCode.AdminApiUnavailable;
+
+            _logger.LogError(
+                "Cerbos Admin API {ArtifactKind} upload failed at {Endpoint}: {StatusCode}",
+                artifactKind,
+                CerbosAdminEndpointValidator.ToSafeEndpoint(endpoint),
+                ex.StatusCode);
+            throw new CerbosAdminApiException(
+                issueCode,
+                $"Cerbos Admin API {artifactKind} upload failed: {ex.StatusCode}");
         }
         catch (Exception ex) when (IsAdminApiTransportFailure(ex, cancellationToken))
         {
@@ -626,8 +744,13 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         builder.AppendLine();
         builder.AppendLine("1. Extract this ZIP to a temporary directory.");
         builder.AppendLine("2. Review `manifest.json` and the policy/schema files before applying them.");
-        builder.AppendLine("3. From the extracted directory, run `cerbosctl put --recursive .` against your Cerbos deployment.");
-        builder.AppendLine("4. Reload or restart Cerbos if your deployment does not automatically pick up Admin API changes.");
+        builder.AppendLine("3. Recommended for Docker Compose: mount the extracted policies directory read-only and run:");
+        builder.AppendLine("   docker compose --profile authz run --rm cerbos-policy-sync");
+        builder.AppendLine("4. Manual fallback from the extracted directory:");
+        builder.AppendLine("   cerbosctl put policy --recursive .");
+        builder.AppendLine("   cerbosctl put schema --recursive _schemas");
+        builder.AppendLine("   cerbosctl store reload --wait");
+        builder.AppendLine("5. Restart Cerbos if your storage driver does not support Admin API reloads.");
         builder.AppendLine();
         builder.AppendLine("The archive intentionally does not include Admin API credentials or runtime secrets.");
         return builder.ToString();

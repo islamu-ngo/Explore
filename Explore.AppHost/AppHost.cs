@@ -7,6 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = DistributedApplication.CreateBuilder(args);
+var repositoryRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+var cerbosPolicyPackagePath = Path.Combine(repositoryRoot, "cerbos", "policies");
+
 
 Console.WriteLine("===========================================");
 Console.WriteLine("Explore AppHost - Local Development Orchestrator");
@@ -31,7 +34,8 @@ var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WithReference(migrations)
     .WaitForCompletion(migrations)
     .WithReference(cache)
-    .WaitFor(cache);
+    .WaitFor(cache)
+    .WithEnvironment("Cerbos__PolicyPackagePath", cerbosPolicyPackagePath);
 
 // Explore Blazor - loads its own secrets via AddInfisicalCompatibility()
 // Service discovery (via WithReference) automatically resolves the API URL at runtime.
@@ -45,3 +49,21 @@ var exploreBlazor = builder.AddProject<Projects.Explore_Blazor>("explore-blazor"
     .WaitFor(cache);
 
 await builder.Build().RunAsync();
+
+static string FindRepositoryRoot(string startDirectory)
+{
+    var current = new DirectoryInfo(startDirectory);
+
+    while (current is not null)
+    {
+        if (File.Exists(Path.Combine(current.FullName, "Explore.sln"))
+            && Directory.Exists(Path.Combine(current.FullName, "cerbos", "policies")))
+        {
+            return current.FullName;
+        }
+
+        current = current.Parent;
+    }
+
+    return startDirectory;
+}

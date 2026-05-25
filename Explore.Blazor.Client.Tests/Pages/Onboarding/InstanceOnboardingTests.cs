@@ -110,12 +110,10 @@ public class InstanceOnboardingTests : IDisposable
     [Test]
     public async Task CompleteOnboarding_SingleTenant_ShowsLaunchHandoff()
     {
-        // Arrange
         var cut = RenderForDeploymentMode("SingleTenant");
 
-        // Act
-        GoToPreflight(cut);
-        ClickButton(cut, "Complete Instance Onboarding");
+        GoToReviewAndLaunch(cut);
+        ClickMudButton(cut, "Launch Instance");
 
         // Assert
         cut.WaitForAssertion(() =>
@@ -139,12 +137,10 @@ public class InstanceOnboardingTests : IDisposable
     [Test]
     public async Task CompleteOnboarding_MultiTenant_ShowsLaunchHandoff()
     {
-        // Arrange
         var cut = RenderForDeploymentMode("MultiTenant");
 
-        // Act
-        GoToPreflight(cut);
-        ClickButton(cut, "Complete Instance Onboarding");
+        GoToReviewAndLaunch(cut);
+        ClickMudButton(cut, "Launch Instance");
 
         // Assert
         cut.WaitForAssertion(() =>
@@ -162,12 +158,10 @@ public class InstanceOnboardingTests : IDisposable
     [Test]
     public async Task CompleteOnboarding_MultiTenant_SendsConfiguredDeploymentMode()
     {
-        // Arrange
         var cut = RenderForDeploymentMode("MultiTenant");
 
-        // Act
-        GoToPreflight(cut);
-        ClickButton(cut, "Complete Instance Onboarding");
+        GoToReviewAndLaunch(cut);
+        ClickMudButton(cut, "Launch Instance");
 
         // Assert
         await _instanceOnboardingService.Received(1).CompleteAsync(
@@ -179,12 +173,10 @@ public class InstanceOnboardingTests : IDisposable
     [Test]
     public async Task CompleteOnboarding_RefreshesAuthSession_BeforeRedirect()
     {
-        // Arrange
         var cut = RenderForDeploymentMode("MultiTenant");
 
-        // Act
-        GoToPreflight(cut);
-        ClickButton(cut, "Complete Instance Onboarding");
+        GoToReviewAndLaunch(cut);
+        ClickMudButton(cut, "Launch Instance");
 
         // Assert
         // RefreshAuthSessionAsync is now called twice during the Complete flow:
@@ -209,7 +201,9 @@ public class InstanceOnboardingTests : IDisposable
             });
     }
 
-    private IRenderedComponent<InstanceOnboarding> RenderForDeploymentMode(string deploymentMode)
+    private IRenderedComponent<InstanceOnboarding> RenderForDeploymentMode(
+        string deploymentMode,
+        OnboardingPreflightModel? preflight = null)
     {
         _instanceOnboardingService.GetSystemOnboardingStatusAsync().Returns(new SystemOnboardingStatusModel
         {
@@ -222,7 +216,7 @@ public class InstanceOnboardingTests : IDisposable
             DefaultBrandDisplayName = "ISLAMU Explore"
         });
 
-        _instanceOnboardingService.GetOnboardingPreflightAsync().Returns(new OnboardingPreflightModel
+        _instanceOnboardingService.GetOnboardingPreflightAsync().Returns(preflight ?? new OnboardingPreflightModel
         {
             DeploymentMode = deploymentMode,
             IsReadyToLaunch = true,
@@ -262,29 +256,194 @@ public class InstanceOnboardingTests : IDisposable
         return cut;
     }
 
-    private static void GoToPreflight(IRenderedComponent<InstanceOnboarding> cut)
+    private void GoToReviewAndLaunch(IRenderedComponent<InstanceOnboarding> cut)
     {
-        ClickButton(cut, "Next");
+        cut.Instance._preflight = _instanceOnboardingService.GetOnboardingPreflightAsync().GetAwaiter().GetResult();
+        cut.Instance._activeStep = 1;
+        cut.Render();
+
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Launch Readiness", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Critical Launch Requirements", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Preflight step did not render.");
+                throw new InvalidOperationException("Review & Launch step did not render after setting _activeStep.");
             }
-        });
+        }, TimeSpan.FromSeconds(5));
     }
 
-    private static void ClickButton(IRenderedComponent<InstanceOnboarding> cut, string text)
+    private static void ClickMudButton(IRenderedComponent<InstanceOnboarding> cut, string text)
     {
-        var button = cut.FindAll("button")
+        var htmlButton = cut.FindAll("button")
             .FirstOrDefault(b => b.TextContent.Contains(text, StringComparison.OrdinalIgnoreCase));
 
-        if (button is null)
+        if (htmlButton is null)
         {
             throw new InvalidOperationException($"Button containing '{text}' was not found.");
         }
 
-        button.Click();
+        htmlButton.Click();
+    }
+
+    [Test]
+    public async Task StepIndicator_ShowsCorrectStepNumbers()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Step 1 of 2", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected Step 1 of 2 indicator on Site Profile.");
+            }
+        });
+
+        GoToReviewAndLaunch(cut);
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Step 2 of 2", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected Step 2 of 2 indicator on Review & Launch.");
+            }
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task StepRail_ShowsAllSteps()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Step 1", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Site Profile", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Step 2", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Review & Launch", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected step rail to show both steps.");
+            }
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task LaunchRecapPanel_ShowsSummary()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Launch Recap", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Site:", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Mode:", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Auth:", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Destination:", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected Launch Recap panel with summary fields.");
+            }
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task ReviewAndLaunch_ShowsBlockingChecks()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant");
+        GoToReviewAndLaunch(cut);
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Critical Launch Requirements", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Critical launch requirements passed", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected Critical Launch Requirements section with passed checks summary.");
+            }
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task ReviewAndLaunch_WithFailedBlockingCheck_PreventsLaunch()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant", new OnboardingPreflightModel
+        {
+            DeploymentMode = "SingleTenant",
+            IsReadyToLaunch = false,
+            BlockingChecks = new List<OnboardingPreflightCheckModel>
+            {
+                new OnboardingPreflightCheckModel
+                {
+                    Code = "setup_secret",
+                    Name = "Setup Secret",
+                    Severity = "Blocking",
+                    Status = "Fail",
+                    Message = "Setup secret is missing or invalid."
+                }
+            },
+            WarningChecks = new List<OnboardingPreflightCheckModel>()
+        });
+        GoToReviewAndLaunch(cut);
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Setup secret is missing or invalid.", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected failed blocking check message to be visible.");
+            }
+        });
+
+        ClickMudButton(cut, "Launch Instance");
+        await _instanceOnboardingService.DidNotReceive().CompleteAsync(Arg.Any<OnboardingCompletionModel>());
+    }
+
+    [Test]
+    public async Task ReviewAndLaunch_Acknowledgements_RequiredForSeriousWarnings()
+    {
+        var cut = RenderForDeploymentMode("SingleTenant", new OnboardingPreflightModel
+        {
+            DeploymentMode = "SingleTenant",
+            IsReadyToLaunch = true,
+            BlockingChecks = new List<OnboardingPreflightCheckModel>
+            {
+                new OnboardingPreflightCheckModel
+                {
+                    Code = "setup_secret",
+                    Name = "Setup Secret",
+                    Severity = "Blocking",
+                    Status = "Pass",
+                    Message = "Setup secret is active."
+                }
+            },
+            WarningChecks = new List<OnboardingPreflightCheckModel>
+            {
+                new OnboardingPreflightCheckModel
+                {
+                    Code = "public_exposure",
+                    Name = "Public Exposure",
+                    Severity = "Critical",
+                    Status = "Warning",
+                    Message = "Site will be publicly accessible."
+                }
+            }
+        });
+        GoToReviewAndLaunch(cut);
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Acknowledgements", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("publicly accessible", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected acknowledgement section for serious warning.");
+            }
+        });
+
+        ClickMudButton(cut, "Launch Instance");
+        await _instanceOnboardingService.DidNotReceive().CompleteAsync(Arg.Any<OnboardingCompletionModel>());
     }
 
     private sealed class OkHttpHandler : HttpMessageHandler

@@ -155,6 +155,38 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
+    public async Task Complete_WhenPreflightHasBlockers_ShouldReturnBadRequest()
+    {
+        using var factory = CreateFactoryWithSetupSecret(new Dictionary<string, string?>
+        {
+            ["Keycloak:Authority"] = string.Empty,
+            ["Keycloak:Audience"] = string.Empty,
+            ["Keycloak:ClientId"] = string.Empty,
+            ["PublicBaseUrl"] = "https://integration.test"
+        });
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Post,
+            $"{BaseUrl}/complete",
+            userId,
+            CreateValidOnboardingRequest(),
+            includeSetupSecret: true);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+
+        var responseBody = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(responseBody).IsNotNull();
+        await Assert.That(responseBody!.Success).IsFalse();
+        await Assert.That(responseBody.Message).IsEqualTo("Instance cannot be launched because critical launch requirements are not met. Please review the blocking issues and try again.");
+    }
+
+    [Test]
     public async Task UpdateModuleSettings_WhenUserIsNotInstanceAdmin_ShouldReturnForbidden()
     {
         using var factory = CreateFactoryWithSetupSecret();

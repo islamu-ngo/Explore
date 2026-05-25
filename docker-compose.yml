@@ -120,11 +120,19 @@ services:
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
       Keycloak__Authority: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}
       ConnectionStrings__cache: ${REDIS_CONNECTION_STRING:-redis:6379}
+      Cerbos__GrpcEndpoint: ${CERBOS_GRPC_ENDPOINT:-http://cerbos:3593}
+      Cerbos__PlaintextMode: ${CERBOS_PLAINTEXT_MODE:-true}
+      Cerbos__PolicyPackagePath: /app/cerbos/policies
+      Cerbos__AdminApi__Endpoints__0: ${CERBOS_ADMIN_API_ENDPOINT:-http://cerbos:3592}
+      Cerbos__AdminApi__AdminUsername: ${CERBOS_ADMIN_USER:-cerbos}
+      Cerbos__AdminApi__AdminPassword: ${CERBOS_ADMIN_PASSWORD:-}
     ports:
       - "7039:8080"
     extra_hosts:
       - "keycloak.localhost:host-gateway"
       - "minio.localhost:host-gateway"
+    volumes:
+      - ./cerbos/policies:/app/cerbos/policies:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -195,22 +203,65 @@ services:
       mc anonymous set public local/${S3_BUCKET_NAME:-explore};
       "
 
+  cerbos-db:
+    image: postgres:18-alpine
+    profiles: ["authz"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${CERBOS_POSTGRES_USER:-cerbos_user}
+      POSTGRES_PASSWORD: ${CERBOS_POSTGRES_PASSWORD:-cerbos_password}
+      POSTGRES_DB: ${CERBOS_POSTGRES_DB:-cerbos}
+    volumes:
+      - cerbos_data:/var/lib/postgresql/data
+      - ./cerbos/init/cerbos-schema.sql:/docker-entrypoint-initdb.d/cerbos-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      retries: 5
+
   cerbos:
-    image: ghcr.io/cerbos/cerbos:latest
+    image: ghcr.io/cerbos/cerbos:0.53.0
     profiles: ["authz"] # Opt-in only (use: docker compose --profile authz up)
     restart: unless-stopped
+    command: ["server", "--config=/config/.cerbos.yaml"]
+    environment:
+      CERBOS_ADMIN_USER: ${CERBOS_ADMIN_USER:-cerbos}
+      CERBOS_ADMIN_PASSWORD_HASH: ${CERBOS_ADMIN_PASSWORD_HASH:-}
+      CERBOS_PG_URL: ${CERBOS_PG_URL:-postgres://cerbos_user:cerbos_password@cerbos-db:5432/cerbos?search_path=cerbos&sslmode=disable}
     volumes:
-      - ./cerbos/policies:/policies
+      - ./cerbos/config/.cerbos.yaml:/config/.cerbos.yaml:ro
+      - ./cerbos/policies:/policies:ro
     ports:
-      - "3592:3592" # HTTP API
-      - "3593:3593" # gRPC
+      - "3592:3592" # HTTP/Admin API
+      - "3593:3593" # gRPC PDP
+    depends_on:
+      cerbos-db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3592/_cerbos/health"]
       interval: 5s
       retries: 5
+
+  cerbos-policy-sync:
+    image: ghcr.io/cerbos/cerbosctl:0.53.0
+    profiles: ["authz"]
+    depends_on:
+      cerbos:
+        condition: service_healthy
+    environment:
+      CERBOS_USERNAME: ${CERBOS_ADMIN_USER:-cerbos}
+      CERBOS_PASSWORD: ${CERBOS_ADMIN_PASSWORD:-}
+    volumes:
+      - ./cerbos/policies:/policies:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      cerbosctl --server=http://cerbos:3592 put policy --recursive /policies &&
+      cerbosctl --server=http://cerbos:3592 put schema --recursive /policies/_schemas &&
+      cerbosctl --server=http://cerbos:3592 store reload --wait
 
 volumes:
   postgres_data:
   redis_data:
   keycloak_data:
   minio_data:
+  cerbos_data:

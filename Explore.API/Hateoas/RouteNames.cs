@@ -246,6 +246,12 @@ public static class RouteNames
 
     #endregion
 
+    #region Email Dispatch Admin Routes
+
+    public const string GetEmailDispatchStatus = "GetEmailDispatchStatus";
+
+    #endregion
+
     #region Tenant Routes
 
     public const string GetTenants = "GetTenants";
@@ -314,6 +320,7 @@ public static class RouteNames
     public const string GetMyGroups = "GetMyGroups";
     public const string CreateGroup = "CreateGroup";
     public const string UpdateGroup = "UpdateGroup";
+    public const string UpdateGroupApprovalStatus = "UpdateGroupApprovalStatus";
     public const string DeleteGroup = "DeleteGroup";
     public const string GetGroupMembers = "GetGroupMembers";
     public const string GetGroupMemberById = "GetGroupMemberById";
@@ -617,6 +624,12 @@ public static class RouteNames
     public const string UpdateExternalApiKey = "UpdateExternalApiKey";
     public const string DeleteExternalApiKey = "DeleteExternalApiKey";
     public const string GetExternalApiKeyUsageReport = "GetExternalApiKeyUsageReport";
+
+    #endregion
+
+    #region Managed Provider Provisioning Routes
+
+    public const string EnsureManagedProviderClientProvisioned = "EnsureManagedProviderClientProvisioned";
 
     #endregion
 

@@ -223,6 +223,24 @@ public class SecretBindingTests
     // Registry integrity
     // ==================================================================================
 
+
+    [Test]
+    public async Task Registry_CerbosAdminCredentials_AreNonBootstrapSecretDefinitions()
+    {
+        var username = SecretDefinitionRegistry.GetRequired(SecretDefinitionRegistry.Keys.Cerbos.CustomAdminUsername);
+        var password = SecretDefinitionRegistry.GetRequired(SecretDefinitionRegistry.Keys.Cerbos.CustomAdminPassword);
+
+        await Assert.That(username.DefaultInfisicalPath).IsEqualTo("/cerbos");
+        await Assert.That(username.DefaultEnvironmentVariableName).IsEqualTo("CERBOS_ADMIN_USERNAME");
+        await Assert.That(username.IsBootstrapSecret).IsFalse();
+        await Assert.That(username.AllowedSources.Contains(SecretSourceType.InlineEncrypted)).IsTrue();
+
+        await Assert.That(password.DefaultInfisicalPath).IsEqualTo("/cerbos");
+        await Assert.That(password.DefaultEnvironmentVariableName).IsEqualTo("CERBOS_ADMIN_PASSWORD");
+        await Assert.That(password.IsBootstrapSecret).IsFalse();
+        await Assert.That(password.AllowedSources.Contains(SecretSourceType.InlineEncrypted)).IsTrue();
+    }
+
     [Test]
     public async Task Registry_AllBootstrapSecrets_DisallowInlineEncrypted()
     {

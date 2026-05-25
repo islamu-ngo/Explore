@@ -7,6 +7,7 @@ using Explore.API.Attributes;
 using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
@@ -24,6 +25,8 @@ namespace Explore.API.Controllers;
 [ApiController]
 public class InstanceOnboardingController : ExploreControllerBase
 {
+    private const string PreflightBlockedMessage = "Instance cannot be launched because critical launch requirements are not met. Please review the blocking issues and try again.";
+
     private readonly IMediator _mediator;
     private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly ILogger<InstanceOnboardingController> _logger;
@@ -74,6 +77,16 @@ public class InstanceOnboardingController : ExploreControllerBase
             {
                 Success = false,
                 Message = "Session expired. Please sign in again."
+            });
+        }
+
+        var preflight = await _mediator.Send(new GetOnboardingPreflightQuery(), cancellationToken);
+        if (!preflight.IsReadyToLaunch)
+        {
+            return BadRequest(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = PreflightBlockedMessage
             });
         }
 
@@ -245,8 +258,16 @@ public class InstanceOnboardingController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> DownloadAuthorizationPolicyPackage(CancellationToken cancellationToken = default)
     {
-        var archive = await _mediator.Send(new DownloadAuthorizationPolicyPackageQuery(), cancellationToken);
-        return File(archive.Content, archive.ContentType, archive.FileName);
+        try
+        {
+            var archive = await _mediator.Send(new DownloadAuthorizationPolicyPackageQuery(), cancellationToken);
+            return File(archive.Content, archive.ContentType, archive.FileName);
+        }
+        catch (PolicyPackageUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "Authorization policy package download is unavailable for this API deployment.");
+            return AuthorizationPolicyPackageUnavailableProblem();
+        }
     }
 
     [AllowAnonymous]
@@ -276,6 +297,12 @@ public class InstanceOnboardingController : ExploreControllerBase
         return Ok(response);
     }
 
+
+    private ObjectResult AuthorizationPolicyPackageUnavailableProblem() =>
+        Problem(
+            title: "Authorization policy package unavailable",
+            detail: "The bundled Cerbos policy package is not available to this API deployment. Mount or bundle the package directory and retry the download.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
 }
 
 public class ValidateSetupSecretRequest

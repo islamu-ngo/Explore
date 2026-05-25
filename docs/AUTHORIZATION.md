@@ -136,6 +136,10 @@ The platform defines a clear hierarchy of roles with distinct boundaries. See [A
 
 Strict boundaries are enforced to protect tenant autonomy and platform integrity. For example, an Instance Admin cannot read tenant business data, and a Tenant Admin cannot disable globally enforced security policies.
 
+Tenant user participation is tenant-local. A global `User` authenticates the person or external identity, but tenant-admin-controlled lifecycle and moderation state lives in `TenantUser`/`TenantUserProfile`. Local membership checks require an active tenant-local user record in addition to the relevant role grant, so a suspension, ban, removal, or profile moderation action in one tenant does not affect the same external identity in another tenant.
+
+Managed-provider provisioning follows the same boundary. Provider/operator automation must authenticate through instance-admin authority before it can create customer tenants. The provisioned ERP customer/admin receives a `TenantMember` tenant-admin grant and tenant-local user state for that tenant only; this flow must not create `PlatformUserRole` rows or `InstanceAdmin` API keys for customer/admin identities.
+
 ## 6. Implementation Patterns
 
 ### 6.1. CQRS Authorization Patterns

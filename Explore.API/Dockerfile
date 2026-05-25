@@ -38,6 +38,10 @@ WORKDIR /app
 # Copy published application
 COPY --from=publish /app/publish .
 
+# Bundle Cerbos policy package assets for manual download and boot sync fallback.
+# Compose deployments may still mount /app/cerbos/policies read-only to override this copy.
+COPY --from=build /src/cerbos ./cerbos
+
 # Secret management is handled by the application via AddSecretManagement()
 # Configure via environment variables:
 #   SECRET_PROVIDER=infisical (or "none" for env vars only)

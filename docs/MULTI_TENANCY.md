@@ -69,7 +69,19 @@ Isolation is enforced in `ExploreDbContext` with named global filters:
 Notable cases:
 
 - `User` is soft-delete filtered but not tenant-scoped.
+- `TenantUser` and `TenantUserProfile` hold tenant-local participation, status, profile, consent, and moderation state for a global `User`; tenant-admin actions such as suspend, ban, remove, or profile moderation must target these tenant-local rows rather than mutating global account identity.
+- `Actor` is tenant-scoped. User actors are unique by `(UserId, TenantId)` so the same global account can have separate tenant personas.
 - some entities combine tenant and soft-delete filters.
+
+## Managed Provider Tenant Provisioning
+
+Trusted managed-provider automation creates tenant boundaries explicitly rather than treating `Organization` as tenancy:
+
+1. Provider/operator authority calls `POST /api/managed-provider-provisioning/clients:ensure` with instance-admin authorization.
+2. The command creates or resolves a `Tenant` for the provider customer and records provider-neutral `ExternalBinding` rows for durable idempotency.
+3. The external administrator is linked to the minimal global `User` account through stable IdP identifiers, then gets tenant-local `TenantUser`, `TenantUserProfile`, user `Actor`, and `TenantMember` tenant-admin state inside the new tenant.
+4. Optional organizer semantics create an approved `Organization` or `Group` plus actor inside the tenant. These are tenant-scoped organizer entities, not tenancy boundaries.
+5. ERP customer/admin identities receive tenant-admin authority for their tenant, not instance-admin authority. Customer-as-instance-admin is reserved for separate managed-hosting/dedicated-instance product models.
 
 ## Hierarchical Settings Model
 

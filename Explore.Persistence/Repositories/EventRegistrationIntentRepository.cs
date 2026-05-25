@@ -60,7 +60,8 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
         IReadOnlyList<EventRegistration> children,
         int approvedStatusId,
         int waitlistedStatusId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        EmailDispatchOutbox? emailDispatchOutbox = null)
     {
         return await ExecuteInSerializableTransactionAsync(async () =>
         {
@@ -87,6 +88,13 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
             {
                 child.EventRegistrationIntentId = intent.Id;
                 await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
+            }
+
+            if (emailDispatchOutbox is not null)
+            {
+                emailDispatchOutbox.RegistrationIntentId = intent.Id;
+                emailDispatchOutbox.SourceId = intent.Id;
+                await _dbContext.EmailDispatchOutbox.AddAsync(emailDispatchOutbox, cancellationToken);
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);

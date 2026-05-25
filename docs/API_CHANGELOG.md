@@ -20,6 +20,7 @@ Key behavior in current code:
 - OutboxProcessor background service for reliable event dispatching with retry and dead-letter.
 - Analytics relay rate limit policy (`AnalyticsRelay`) for `POST /api/a/t`.
 - Event and event-session template sync endpoints for diff/apply/history workflows, including 409 ProblemDetails types `/problems/stale_sync_base` and `/problems/concurrent_update`.
+- Managed-provider provisioning endpoint `POST /api/managed-provider-provisioning/clients:ensure` for instance-admin/provider automation. It creates or rehydrates provider-customer tenants using `ExternalBinding`, creates tenant-local `TenantUser`/`TenantUserProfile` state, grants tenant admin membership, and keeps ERP customer/admin identities out of instance-admin authority.
 
 ## Historical Baseline (`v0.1.0`)
 

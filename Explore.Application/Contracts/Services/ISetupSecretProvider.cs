@@ -23,6 +23,12 @@ public interface ISetupSecretProvider
     bool IsSetupModeActive { get; }
 
     /// <summary>
+    /// True when interactive setup endpoints require SETUP_SECRET validation.
+    /// Defaults to true and may only become false for explicitly trusted managed-provisioning deployments.
+    /// </summary>
+    bool IsSetupSecretRequired { get; }
+
+    /// <summary>
     /// True when the secret was loaded from the SETUP_SECRET environment variable (vs auto-generated).
     /// </summary>
     bool IsFromEnvironmentVariable { get; }

@@ -30,8 +30,54 @@ public class SetupSecretProviderTests
     {
         var provider = CreateProvider();
 
+        await Assert.That(provider.IsSetupSecretRequired).IsEqualTo(true);
         await Assert.That(provider.IsFromEnvironmentVariable).IsEqualTo(false);
         await Assert.That(provider.GetSecretForLogging().Length).IsEqualTo(32);
+    }
+
+    [Test]
+    public async Task Constructor_SetupSecretRequiredOmitted_DefaultsToRequired()
+    {
+        var provider = CreateProvider();
+
+        await Assert.That(provider.IsSetupSecretRequired).IsEqualTo(true);
+        await Assert.That(provider.ValidateSecret(provider.GetSecretForLogging())).IsEqualTo(true);
+    }
+
+    [Test]
+    public async Task Constructor_SetupSecretRequiredFalseWithoutTrustedProvisioning_FailsClosedAsRequired()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["SETUP_SECRET_REQUIRED"] = "false" })
+            .Build();
+        var provider = new SetupSecretProvider(configuration, CreateScopeFactory(null));
+
+        await Assert.That(provider.IsSetupSecretRequired).IsEqualTo(true);
+        await Assert.That(provider.IsTrustedManagedProvisioningConfigured).IsEqualTo(false);
+        await Assert.That(provider.GetSecretForLogging()).IsNotNullOrEmpty();
+        await Assert.That(provider.ValidateSecret(provider.GetSecretForLogging())).IsEqualTo(true);
+    }
+
+    [Test]
+    public async Task Constructor_SetupSecretRequiredFalseWithTrustedManagedProvisioning_DisablesInteractiveSetupSecret()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SETUP_SECRET_REQUIRED"] = "false",
+                ["PROVISIONING_TRUSTED"] = "true",
+                ["PROVISIONING_MODE"] = "managed-provider",
+                ["MANAGED_CLIENT_EXTERNAL_PROVIDER"] = "erp",
+                ["PHYSICAL_TENANCY_MODE"] = "shared-database"
+            })
+            .Build();
+        var provider = new SetupSecretProvider(configuration, CreateScopeFactory(null));
+
+        await Assert.That(provider.IsSetupSecretRequired).IsEqualTo(false);
+        await Assert.That(provider.IsTrustedManagedProvisioningConfigured).IsEqualTo(true);
+        await Assert.That(provider.GetSecretForLogging()).IsNull();
+        await Assert.That(provider.ValidateSecret(null)).IsEqualTo(false);
+        await Assert.That(provider.ValidateSecret("anything")).IsEqualTo(false);
     }
 
     [Test]

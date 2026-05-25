@@ -59,11 +59,11 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>())
             .Returns(callInfo =>
             {
                 var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
-                intent.Id = Guid.NewGuid();
                 return new EventRegistrationIntentCreationResult(intent, []);
             });
 
@@ -83,7 +83,16 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 && children[0].ApprovalStatusId == (int)ApprovalStatusEnum.Approved),
             (int)ApprovalStatusEnum.Approved,
             (int)ApprovalStatusEnum.Waitlisted,
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Is<EmailDispatchOutbox>(outbox =>
+                outbox != null
+                && outbox.TenantId == tenantId
+                && outbox.Kind == EmailDispatchKind.RegistrationConfirmation
+                && outbox.SourceType == "event_registration_intent"
+                && outbox.EventId == eventId
+                && outbox.UserId == userId
+                && outbox.RecipientEmail == "registrant@example.test"
+                && outbox.Status == EmailDispatchStatus.Pending));
     }
 
     [Test]
@@ -101,11 +110,11 @@ public sealed class CreateEventRegistrationCommandHandlerTests
                 Arg.Any<IReadOnlyList<EventRegistration>>(),
                 (int)ApprovalStatusEnum.Approved,
                 (int)ApprovalStatusEnum.Waitlisted,
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(),
+                Arg.Any<EmailDispatchOutbox?>())
             .Returns(callInfo =>
             {
                 var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
-                intent.Id = Guid.NewGuid();
                 intent.ApprovalStatusId = (int)ApprovalStatusEnum.Waitlisted;
                 return new EventRegistrationIntentCreationResult(intent, [sessionId]);
             });
@@ -121,6 +130,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
         _tenantContext.TenantId.Returns(tenantId);
         _eventRepository.Exists(eventId).Returns(true);
         _userRepository.Exists(userId).Returns(true);
+        _userRepository.GetById(userId).Returns(CreateUser(userId));
         _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId));
         _eventSessionRepository.GetSessionsByEvent(eventId).Returns([CreateEventSession(eventId, tenantId, sessionId)]);
         _intentRepository.FindExistingAsync(
@@ -177,6 +187,24 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             StartTime = DateTimeOffset.UtcNow.AddDays(7),
             EndTime = DateTimeOffset.UtcNow.AddDays(7).AddHours(2)
         };
+    }
+
+    private static User CreateUser(Guid userId)
+    {
+        var user = new User
+        {
+            Id = userId,
+            Pii = new UserPii
+            {
+                UserId = userId,
+                Email = "registrant@example.test",
+                FirstName = "Test",
+                LastName = "Registrant"
+            }
+        };
+
+        user.Pii.User = user;
+        return user;
     }
 
     private static BusinessMetrics CreateBusinessMetrics()

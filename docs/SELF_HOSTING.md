@@ -29,6 +29,11 @@ Profiles:
 - `storage` starts MinIO and creates the configured bucket.
 - `authz` starts Cerbos for deployments that select Cerbos authorization.
 
+Email dispatch modes:
+
+- **Basic Dispatch Mode is implemented and requires no extra Compose profile.** API + PostgreSQL + configured SMTP are sufficient for registration confirmation email. The API-hosted `EmailDispatchProcessor` claims `EmailDispatchOutbox` rows from PostgreSQL and sends through the SMTP abstraction.
+- **RabbitMQ Dispatch Mode is optional future infrastructure.** Do not require RabbitMQ for the self-hosted stack until a dedicated Compose/Aspire profile and reliability tests are added. When that mode exists, it must share the same PostgreSQL `EmailDispatchOutbox` state machine; RabbitMQ is transport only.
+
 ## Start The Stack
 
 1. Create an environment file with secrets required by `docker-compose.yml`.
@@ -100,6 +105,7 @@ Infisical/domain secret definitions use the `STORAGE_S3_*` family under storage 
 |---|---|---|
 | `DEPLOYMENT_MODE` | API | Optional first-run mode; omit for single-tenant, set `multi_tenant` before first launch for multi-tenant. |
 | `SETUP_SECRET` | API | Optional fixed setup secret. If absent, API generates and logs a temporary secret. |
+| `SETUP_SECRET_REQUIRED` | API | Optional. Defaults to `true`; `false` only takes effect with trusted managed-provider provisioning keys and never makes setup endpoints anonymous. |
 | `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
 
 `docker-compose.yml` sets Blazor `API_ENDPOINT` with a default of `http://islamu-event-api:8080/`, matching the Compose API service name. Operators only need to override `API_ENDPOINT` when routing the BFF to a different API host.
@@ -117,6 +123,8 @@ If `SETUP_SECRET` is unset and setup mode is active, the API generates a 32-char
 The validation endpoint is `POST /api/InstanceOnboarding/validate-secret`. The setup-secret rate-limit policy allows only a small number of attempts per minute; repeated failures should be treated as operator or credential errors, not retried blindly.
 
 If the generated secret expires before launch, restart `islamu-event-api` and use the newly logged secret.
+
+Managed hosting operators that provision through the authorized managed-provider endpoint can set `SETUP_SECRET_REQUIRED=false` only together with `PROVISIONING_TRUSTED=true`, a managed `PROVISIONING_MODE`, `MANAGED_CLIENT_EXTERNAL_PROVIDER`, and `PHYSICAL_TENANCY_MODE`. In that mode the interactive setup-secret lane is not public: setup-secret-protected endpoints still reject missing or invalid secrets, and provider automation must authenticate as the platform/operator path.
 
 ## Keycloak Realm
 
@@ -158,6 +166,8 @@ Minimum proxy requirements:
 | `/metrics` | API | Prometheus metrics endpoint. |
 
 Treat `Unhealthy` as non-deployable. Treat `Degraded` as acceptable only when the response identifies an optional dependency that is intentionally disabled.
+
+Basic Email Dispatch readiness is reported by the API `email-dispatch` health check. `Degraded` means the worker is intentionally disabled. RabbitMQ is not part of Basic Dispatch Mode readiness.
 
 ## Backup And Upgrade
 

@@ -88,6 +88,14 @@ public static class InfrastructureServicesRegistration
         services.Configure<CerbosSettings>(configuration.GetSection(CerbosSettings.SectionName));
         services.Configure<CerbosAdminApiSettings>(configuration.GetSection(CerbosAdminApiSettings.SectionName));
         services.Configure<CerbosPolicyPackageOptions>(configuration.GetSection(CerbosPolicyPackageOptions.SectionName));
+        services.PostConfigure<CerbosPolicyPackageOptions>(options =>
+        {
+            var policyPackagePath = configuration["Cerbos:PolicyPackagePath"];
+            if (!string.IsNullOrWhiteSpace(policyPackagePath))
+            {
+                options.PoliciesPath = policyPackagePath;
+            }
+        });
         services.AddSingleton<CerbosAdminEndpointValidator>();
 
         // Cerbos gRPC SDK client (singleton — gRPC channels are long-lived and thread-safe)
@@ -215,6 +223,10 @@ public static class InfrastructureServicesRegistration
         // Generic Outbox Processor settings and dispatcher
         services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));
         services.AddScoped<IOutboxMessageDispatcher, MqContractOutboxMessageDispatcher>();
+        services.AddOptions<EmailDispatchProcessorSettings>()
+            .Bind(configuration.GetSection(EmailDispatchProcessorSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<EmailDispatchProcessorSettings>, EmailDispatchProcessorSettingsValidator>();
 
         // PDS Synchronization services
         services.Configure<PdsSyncSettings>(configuration.GetSection(PdsSyncSettings.SectionName));

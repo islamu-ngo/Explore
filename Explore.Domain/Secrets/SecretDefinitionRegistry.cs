@@ -2,6 +2,7 @@
 // ABOUTME: Encodes the user-specified Infisical layout (api, storage, keycloak, cerbos, postgresql, smtp, analytics, ai).
 
 using System.Collections.Frozen;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 
 namespace Explore.Domain.Secrets;
@@ -103,6 +104,8 @@ public static class SecretDefinitionRegistry
         public static class Cerbos
         {
             public const string GrpcEndpoint = "cerbos.grpc_endpoint";
+            public const string CustomAdminUsername = InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername;
+            public const string CustomAdminPassword = InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword;
         }
 
         public static class Ai
@@ -314,6 +317,28 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "CERBOS_GRPC_ENDPOINT",
                 IsBootstrapSecret = false,
                 Description = "Cerbos PDP gRPC endpoint (e.g. cerbosgrpc.example.com:443).",
+            },
+            new()
+            {
+                Key = Keys.Cerbos.CustomAdminUsername,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/cerbos",
+                DefaultInfisicalKey = "CERBOS_ADMIN_USERNAME",
+                DefaultEnvironmentVariableName = "CERBOS_ADMIN_USERNAME",
+                IsBootstrapSecret = false,
+                Description = "Cerbos Admin API username used by server-side policy package sync.",
+            },
+            new()
+            {
+                Key = Keys.Cerbos.CustomAdminPassword,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/cerbos",
+                DefaultInfisicalKey = "CERBOS_ADMIN_PASSWORD",
+                DefaultEnvironmentVariableName = "CERBOS_ADMIN_PASSWORD",
+                IsBootstrapSecret = false,
+                Description = "Cerbos Admin API password used by server-side policy package sync.",
             },
 
             // --- postgresql/POSTGRESQL_* (ALL bootstrap) ---

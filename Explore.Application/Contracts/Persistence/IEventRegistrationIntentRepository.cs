@@ -36,5 +36,6 @@ public interface IEventRegistrationIntentRepository : IGenericRepository<EventRe
         IReadOnlyList<EventRegistration> children,
         int approvedStatusId,
         int waitlistedStatusId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        EmailDispatchOutbox? emailDispatchOutbox = null);
 }

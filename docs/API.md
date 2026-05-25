@@ -6,7 +6,7 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API
-> **Last Verified:** 2026-05-12
+> **Last Verified:** 2026-05-23
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
@@ -253,6 +253,23 @@ Non-interactive callers authenticate with long-lived `X-API-Key` credentials in 
 | `GET` | `/api/ExternalApiKey/usage-report` | Tenant admins see their tenant; instance admins see platform-wide | Aggregated report |
 
 Create/revoke/update emit business metrics (`created`, `revoked`, `policy_updated`) tagged with `tenant_id` and `owner_type`.
+
+### Managed Provider Provisioning
+
+Trusted ERP, CRM, and managed-hosting operators provision customers through the managed-provider composition endpoint:
+
+| Verb | Route | Route Name | Purpose | Response |
+|---|---|---|---|---|
+| `POST` | `/api/managed-provider-provisioning/clients:ensure` | `EnsureManagedProviderClientProvisioned` | Create or rehydrate a provider-customer tenant, external admin identity, tenant-local user state, tenant-admin grant, and optional approved organizer actor. | `BaseCommandResponse<ManagedProviderClientProvisioningResultDto>` |
+
+Security and tenancy rules:
+
+- The endpoint is `[Authorize]`, classified as `EndpointClass.Admin`, and explicitly checks `IAdminContext.IsInstanceAdminAsync`; ERP customer/admin identities are never treated as instance administrators by this path.
+- Provider automation identifies the customer with stable `providerKey`, `externalSystem`, and `externalCustomerId`; OIDC user linkage uses stable `identityProvider` + `subject`, not mutable email or display names.
+- The Application command writes provider-neutral `ExternalBinding` records for the customer tenant, tenant-local user state, user actor, external login, and optional organizer records. Existing bindings rehydrate the original IDs for retry-safe provisioning.
+- Tenant-local user status/profile/moderation state is stored in `TenantUser` and `TenantUserProfile`; the global `User` remains the auth/account anchor.
+- Do not send arbitrary tenant headers as provisioning authority. The command creates or resolves the tenant from trusted bindings and returns the resulting internal IDs.
+- Send `Idempotency-Key` on HTTP retries. The durable source of truth is still the `ExternalBinding` uniqueness model, so a replay with the same provider/customer IDs returns the existing provisioning result.
 
 ---
 
