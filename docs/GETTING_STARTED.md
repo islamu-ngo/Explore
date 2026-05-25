@@ -15,7 +15,7 @@ Use this page for the shortest safe local path. For production-style hosting, st
 
 | Tool | Version | Purpose |
 |---|---|---|
-| .NET SDK | `10.0.200-preview.0.26103.119` or compatible SDK from `global.json` | Build and run the solution. |
+| .NET SDK | `10.0.300` or compatible SDK from `global.json` | Build and run the solution. |
 | Docker / Docker Compose v2 | Current | Local infrastructure and self-hosting stack. |
 | .NET Aspire workload | Current compatible workload | Local AppHost orchestration. |
 

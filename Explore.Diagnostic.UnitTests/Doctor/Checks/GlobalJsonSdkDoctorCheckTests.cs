@@ -17,9 +17,9 @@ public class GlobalJsonSdkDoctorCheckTests
     public async Task RunAsync_WhenInstalledSdkMatchesGlobalJson_ReturnsPass()
     {
         var fileSystem = new FakeDoctorFileSystem();
-        fileSystem.AddFile(GlobalJsonPath, "{ \"sdk\": { \"version\": \"10.0.200-preview.0.26103.119\" } }");
+        fileSystem.AddFile(GlobalJsonPath, "{ \"sdk\": { \"version\": \"10.0.300\" } }");
         var processRunner = new FakeDoctorProcessRunner();
-        processRunner.AddResult("dotnet", "--version", new DoctorProcessResult(0, "10.0.200-preview.0.26103.119\n", string.Empty));
+        processRunner.AddResult("dotnet", "--version", new DoctorProcessResult(0, "10.0.300\n", string.Empty));
         var check = new GlobalJsonSdkDoctorCheck(fileSystem, processRunner, Root);
 
         var result = await check.RunAsync(CancellationToken.None);
@@ -31,9 +31,9 @@ public class GlobalJsonSdkDoctorCheckTests
     public async Task RunAsync_WhenInstalledSdkDiffers_ReturnsWarn()
     {
         var fileSystem = new FakeDoctorFileSystem();
-        fileSystem.AddFile(GlobalJsonPath, "{ \"sdk\": { \"version\": \"10.0.200-preview.0.26103.119\" } }");
+        fileSystem.AddFile(GlobalJsonPath, "{ \"sdk\": { \"version\": \"10.0.300\" } }");
         var processRunner = new FakeDoctorProcessRunner();
-        processRunner.AddResult("dotnet", "--version", new DoctorProcessResult(0, "10.0.100\n", string.Empty));
+        processRunner.AddResult("dotnet", "--version", new DoctorProcessResult(0, "10.0.300\n", string.Empty));
         var check = new GlobalJsonSdkDoctorCheck(fileSystem, processRunner, Root);
 
         var result = await check.RunAsync(CancellationToken.None);
