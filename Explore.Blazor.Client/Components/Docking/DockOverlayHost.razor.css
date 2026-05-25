@@ -123,14 +123,14 @@
     }
 
     .dock-overlay-host__slot--end {
-        inline-size: 100vw;
+        inline-size: min(100vw, var(--dock-panel-width, 440px));
     }
 
     .dock-overlay-host__slot--end.dock-overlay-host__slot--mode-temporary ::deep .dock-panel-host,
     .dock-overlay-host__slot--end.dock-overlay-host__slot--mode-inspector ::deep .dock-panel-host,
     .dock-overlay-host__slot--end.dock-overlay-host__slot--mode-overlay ::deep .dock-panel-host {
-        inline-size: 100vw;
-        max-inline-size: 100vw;
+        inline-size: 100%;
+        max-inline-size: 100%;
     }
 
     .dock-overlay-host__slot--bottom {

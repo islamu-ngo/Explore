@@ -11,27 +11,28 @@
     min-block-size: 0;
     background: var(--mud-palette-surface);
     color: var(--mud-palette-text-primary);
-    box-shadow: var(--isl-shadow-sm);
+    box-shadow: var(--isl-shadow-sm), 0 0 0 1px color-mix(in oklch, var(--mud-palette-lines-default) 70%, transparent);
     transition: var(--isl-dock-panel-transition);
 }
 
 .dock-panel-host--start {
-    border-inline-end: 1px solid var(--isl-color-border-subtle);
+    border-inline-end: 1px solid var(--isl-color-border-subtle, var(--mud-palette-lines-default));
+    box-shadow: var(--isl-shadow-sm), 0.75rem 0 1.5rem -1.25rem oklch(0 0 0 / 0.28);
 }
 
 .dock-panel-host--end,
 .dock-panel-host--bottom {
-    border-inline-start: 1px solid var(--isl-color-border-subtle);
+    border-inline-start: 1px solid var(--isl-color-border-subtle, var(--mud-palette-lines-default));
 }
 
 .dock-panel-host--bottom {
     inline-size: 100%;
     border-inline-start: 0;
-    border-block-start: 1px solid var(--isl-color-border-subtle);
+    border-block-start: 1px solid var(--isl-color-border-subtle, var(--mud-palette-lines-default));
 }
 
 .dock-panel-host--active {
-    border-color: color-mix(in oklch, var(--mud-palette-primary) 38%, var(--isl-color-border-subtle));
+    border-color: color-mix(in oklch, var(--mud-palette-primary) 38%, var(--isl-color-border-subtle, var(--mud-palette-lines-default)));
 }
 
 .dock-panel-host--mode-overlay,

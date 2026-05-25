@@ -187,7 +187,7 @@ public sealed class DockLayoutStateTests
     }
 
     [Test]
-    public async Task UpdateViewport_ClosesStartPanelsOnlyWhenRightPanelsConstrainContentBelowMobileWidth()
+    public async Task UpdateViewport_PreservesOpenStartPanelsWhenRightPanelsConstrainContent()
     {
         var state = new DockLayoutState();
         var workspaceCustomizeId = new DockPanelId("events.customize-view");
@@ -198,7 +198,7 @@ public sealed class DockLayoutStateTests
 
         state.Open(workspaceCustomizeId);
 
-        await Assert.That(state.GetPanel(ShellNavId)?.State.IsOpen).IsFalse();
+        await Assert.That(state.GetPanel(ShellNavId)?.State.IsOpen).IsTrue();
         await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
     }
 
@@ -267,7 +267,7 @@ public sealed class DockLayoutStateTests
     }
 
     [Test]
-    public async Task Open_StartPanelProjectsToOverlayWhenDockedRightPanelLeavesLessThanMobileContentWidth()
+    public async Task Open_StartPanelProjectionUsesPanelsFromTheSameScope()
     {
         var state = new DockLayoutState();
         var workspaceCustomizeId = new DockPanelId("events.customize-view");
@@ -282,11 +282,11 @@ public sealed class DockLayoutStateTests
         await Assert.That(nav.State.IsOpen).IsTrue();
         await Assert.That(nav.State.Mode).IsEqualTo(DockMode.Docked);
         await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
-        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(nav)).IsTrue();
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(nav)).IsFalse();
     }
 
     [Test]
-    public async Task UpdateViewport_EnforcesSingleEndPanelOnMobileAcrossScopes()
+    public async Task UpdateViewport_PreservesEndPanelsAcrossScopesOnMobile()
     {
         var state = new DockLayoutState();
         var workspaceCustomizeId = new DockPanelId("events.customize-view");
@@ -297,13 +297,13 @@ public sealed class DockLayoutStateTests
 
         state.Open(workspaceCustomizeId);
 
-        await Assert.That(state.GetPanel(ShellAiId)?.State.IsOpen).IsFalse();
+        await Assert.That(state.GetPanel(ShellAiId)?.State.IsOpen).IsTrue();
         await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
         await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsActive).IsTrue();
     }
 
     [Test]
-    public async Task UpdateViewport_MobileAllowsExplicitStartPanelAndClosesItWhenEndPanelOpens()
+    public async Task UpdateViewport_MobilePreservesExplicitStartPanelWhenEndPanelOpens()
     {
         var state = new DockLayoutState();
         var workspaceCustomizeId = new DockPanelId("events.customize-view");
@@ -319,13 +319,34 @@ public sealed class DockLayoutStateTests
 
         state.Open(ShellAiId);
 
-        await Assert.That(state.GetPanel(ShellNavId)?.State.IsOpen).IsFalse();
+        await Assert.That(state.GetPanel(ShellNavId)?.State.IsOpen).IsTrue();
         await Assert.That(state.GetPanel(ShellAiId)?.State.IsOpen).IsTrue();
         await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsFalse();
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(state.GetPanel(ShellNavId)!)).IsTrue();
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(state.GetPanel(ShellAiId)!)).IsTrue();
+        await Assert.That(state.GetPanel(ShellNavId)?.State.IsActive).IsFalse();
+        await Assert.That(state.GetPanel(ShellAiId)?.State.IsActive).IsTrue();
     }
 
     [Test]
-    public async Task UpdateViewport_EnforcesSingleEndPanelWhenNarrowAfterStartPanelClosed()
+    public async Task Open_MobileActivatesOnePanelPerScopeWithoutClosingOtherSides()
+    {
+        var state = new DockLayoutState();
+        state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
+        state.Register(CreateDescriptor(ShellAiId, DockScope.Shell, DockSide.End, defaultWidth: 360), _ => { });
+        state.UpdateViewport(390, isMobile: true);
+
+        state.Open(ShellAiId);
+        state.Open(ShellNavId);
+
+        await Assert.That(state.GetPanel(ShellAiId)?.State.IsOpen).IsTrue();
+        await Assert.That(state.GetPanel(ShellAiId)?.State.IsActive).IsFalse();
+        await Assert.That(state.GetPanel(ShellNavId)?.State.IsOpen).IsTrue();
+        await Assert.That(state.GetPanel(ShellNavId)?.State.IsActive).IsTrue();
+    }
+
+    [Test]
+    public async Task UpdateViewport_PreservesMultipleOpenEndPanelsWhenNarrow()
     {
         var state = new DockLayoutState();
         var workspaceCustomizeId = new DockPanelId("events.customize-view");
@@ -338,9 +359,26 @@ public sealed class DockLayoutStateTests
 
         state.Open(workspaceCustomizeId);
 
-        await Assert.That(state.GetPanel(ShellNavId)?.State.IsOpen).IsFalse();
-        await Assert.That(state.GetPanel(ShellAiId)?.State.IsOpen).IsFalse();
+        await Assert.That(state.GetPanel(ShellNavId)?.State.IsOpen).IsTrue();
+        await Assert.That(state.GetPanel(ShellAiId)?.State.IsOpen).IsTrue();
         await Assert.That(state.GetPanel(workspaceCustomizeId)?.State.IsOpen).IsTrue();
+    }
+
+    [Test]
+    public async Task Open_StartPanelProjectsToOverlayWhenSameScopeDockedRightPanelLeavesLessThanMobileContentWidth()
+    {
+        var state = new DockLayoutState();
+        state.Register(CreateDescriptor(ShellNavId, DockScope.Shell, DockSide.Start, defaultWidth: 280), _ => { });
+        state.Register(CreateDescriptor(ShellAiId, DockScope.Shell, DockSide.End, defaultWidth: 360), _ => { });
+        state.UpdateViewport(970, isMobile: false);
+        state.Open(ShellAiId);
+
+        state.Open(ShellNavId);
+
+        var nav = state.GetPanel(ShellNavId)!;
+        await Assert.That(nav.State.IsOpen).IsTrue();
+        await Assert.That(state.GetPanel(ShellAiId)?.State.IsOpen).IsTrue();
+        await Assert.That(state.ShouldRenderDockedPanelAsOverlay(nav)).IsTrue();
     }
 
     [Test]
@@ -478,6 +516,35 @@ public sealed class DockLayoutStateTests
         await Assert.That(activePanels).IsEqualTo(1);
         await Assert.That(state.GetPanel(firstId)?.State.IsActive).IsFalse();
         await Assert.That(state.GetPanel(secondId)?.State.IsActive).IsTrue();
+    }
+
+    [Test]
+    public async Task RestoreSnapshot_OnMobileNormalizesActivePanelsPerScope()
+    {
+        var state = new DockLayoutState();
+        var startId = new DockPanelId("workspace.events.filters");
+        var endId = new DockPanelId("workspace.events.preview");
+        state.Register(CreateDescriptor(startId, DockScope.Workspace, DockSide.Start, order: 10), _ => { });
+        state.Register(CreateDescriptor(endId, DockScope.Workspace, DockSide.End, order: 20), _ => { });
+        state.UpdateViewport(390, isMobile: true);
+
+        var snapshot = new DockLayoutSnapshot(
+            "events",
+            [
+                new DockPanelState(startId, IsOpen: true, Mode: DockMode.Docked, Width: 320, Order: 10, IsActive: true),
+                new DockPanelState(endId, IsOpen: true, Mode: DockMode.Docked, Width: 320, Order: 20, IsActive: true)
+            ],
+            DateTimeOffset.UtcNow);
+
+        state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
+
+        var activePanels = state.GetPanels(DockScope.Workspace, DockSide.Start)
+            .Concat(state.GetPanels(DockScope.Workspace, DockSide.End))
+            .Count(panel => panel.State.IsActive);
+
+        await Assert.That(activePanels).IsEqualTo(1);
+        await Assert.That(state.GetPanel(startId)?.State.IsActive).IsTrue();
+        await Assert.That(state.GetPanel(endId)?.State.IsActive).IsFalse();
     }
 
     [Test]

@@ -32,6 +32,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [API.md](API.md) - API conventions, HAL behavior, filters, caching, error shape.
 - [API_COOKBOOK.md](API_COOKBOOK.md) - task-first API integration guidance.
 - [BLAZOR.md](BLAZOR.md) - client architecture, render policy, service patterns.
+- [DOCK_LAYOUT.md](DOCK_LAYOUT.md) - dock engine, responsive behavior, shell/workspace stacking, inspector overlays, and persistence.
 - [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) - transactional outbox, retry, dead-letter.
 - [FOOTER_MANAGEMENT.md](FOOTER_MANAGEMENT.md) - footer data model, templates, governance.
 - [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md) - Layer 3 custom-property governance, projections, templates, purge, export/moderation boundaries.

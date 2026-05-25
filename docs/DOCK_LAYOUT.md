@@ -1,136 +1,790 @@
-<!-- ABOUTME: Architecture guide for the generic dock layout engine used by shell and workspace UI. -->
-<!-- ABOUTME: Documents descriptors, runtime state, snapshots, tokens, and migration guardrails. -->
+<!-- ABOUTME: In-depth implementation guide for the Blazor dock layout system used by shell and workspace UI. -->
+<!-- ABOUTME: Explains descriptors, state, responsiveness, stacking, overlays, persistence, accessibility, and current production consumers. -->
 
-# Dock Layout Architecture
+# Dock Layout
 
-The dock layout system is a generic internal workbench engine for shell and workspace panels. It is intentionally descriptor-driven: each panel owns a stable `DockPanelId`, immutable metadata, and runtime state without requiring a central enum for every future panel.
+> **Audience:** Contributors | AI agents
+> **Status:** Implemented
+> **Owner:** Frontend
+> **Last Verified:** 2026-05-21
+> **Source Anchors:** `Explore.Blazor.Client/Services/Docking/`, `Explore.Blazor.Client/Components/Docking/`, `Explore.Blazor.Client/Layout/MainLayout.razor`, `Explore.Blazor.Client/Layout/MainLayout.razor.cs`, `Explore.Blazor.Client/Layout/MainLayout.razor.css`, `Explore.Blazor.Client/Components/Shell/ShellDockPanels.cs`, `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor`, `Explore.Blazor.Client/Components/Shell/AppSideNav.razor.cs`, `Explore.Blazor.Client/Pages/Events/EventList.razor`, `Explore.Blazor.Client/Pages/Events/EventList.razor.cs`, `Explore.Blazor.Client/Pages/Events/EventList.razor.css`, `Explore.Blazor.Client/Pages/Events/EventListDockingController.cs`, `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs`, `Explore.Blazor.Client/Services/Interop/LocalStorageDockLayoutPersistence.cs`, `Explore.Blazor.Client/wwwroot/js/dock-layout-persistence.js`, `Explore.Blazor.Client.Tests/Services/Docking/`, `Explore.Blazor.Client.Tests/Components/Docking/`, `Explore.Blazor.Client.Tests/Layout/DockRegistrationTests.cs`, `Event.Architecture.Tests/DockLayoutArchitectureTests.cs`
 
-## Core model
+## Purpose
 
-- `DockPanelDescriptor` is immutable panel metadata: id, scope, side, default mode, title, accessible label, width bounds, order, resize support, close support, and persistence policy.
-- `DockPanelState` is runtime state: open/closed, mode, current width, order, and active status.
-- `DockPanelEntry` combines descriptor, render content, and current state for host components.
-- `DockLayoutSnapshot` captures persistent runtime state for reset, tests, debugging, and future user preference storage.
+The dock layout system is the generic panel-hosting layer for two different UI levels:
 
-## Scope, side, and mode
+- shell chrome owned by `MainLayout`
+- page-local workspace panels owned by a feature page such as `EventList`
 
-`DockScope.Shell` is for global chrome such as the app nav and AI rail. `DockScope.Workspace` is for page-owned panels such as EventList customization and inspector-style previews.
+It is descriptor-driven rather than component-hardcoded. A panel is defined by stable metadata plus runtime state, then rendered by shared host components. That lets the same engine handle:
 
-`DockSide` uses logical values: `Start`, `End`, and `Bottom`. Do not use physical left/right concepts in state or new CSS; renderers must map logical sides to CSS logical properties so RTL remains safe.
+- the shell start dock for navigation
+- the shell end dock for the AI assistant
+- the event-list workspace end dock for "Customize View"
+- the event-list preview inspector for event details
+- temporary modal-like overlays on mobile or constrained widths
 
-`DockMode` models behavior explicitly:
+This document describes the current implementation, not a speculative future workbench.
 
-- `Docked`: persistent grid/sidebar track that participates in layout.
-- `Overlay`: panel floats over content without reserving layout space.
-- `Temporary`: modal/mobile-style panel with backdrop and close affordance.
-- `Inspector`: focused preview/details panel; EventList detail remains in this family.
-- `Collapsed`: registered but reduced to a compact rail or hidden affordance.
+## Current Production Surface
 
-## Registration rules
+The current panel catalog is small and explicit.
 
-Register panels through `IDockPanelRegistry.Register(DockPanelDescriptor, RenderFragment)`. Duplicate ids are rejected because persisted state, tests, and ARIA relationships depend on stable uniqueness.
+| Panel | Id | Scope | Side | Default mode | Width | Resizable | Closeable | Persisted |
+|---|---|---|---|---|---:|---|---|---|
+| Navigation | `shell.left-nav` | `Shell` | `Start` | `Docked` | 280 | Yes | Yes | Yes |
+| AI Assistant | `shell.ai-assistant` | `Shell` | `End` | `Docked` | 360 | Yes | Yes | Yes |
+| Customize View | `events.customize-view` | `Workspace` | `End` | `Docked` | 320 | Yes | Yes | Yes |
+| Event Preview | `events.event-preview` | `Workspace` | `End` | `Inspector` | 440 | No | Yes | No |
 
-Descriptor capability flags are enforced by the state engine. `Resize` rejects panels whose descriptor has `IsResizable == false`, and `Close` rejects panels whose descriptor has `CanClose == false`. Host components should use these same flags to decide which user affordances to render.
+Sources:
 
-Do not add a central enum for every panel. Shared constants are allowed only when two or more components must reference the same specific id, such as a top-bar toggle and its shell panel host.
+- `Explore.Blazor.Client/Components/Shell/ShellDockPanels.cs`
+- `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs`
 
-## Tokens and styling
+## Architecture Overview
 
-Shared widths, z-indexes, backdrop color, and motion live in `Explore.Blazor/wwwroot/css/tokens.css`:
+The runtime is split into four layers.
 
-- `--isl-dock-shell-start-width`
-- `--isl-dock-shell-start-collapsed-width`
-- `--isl-dock-shell-ai-width`
-- `--isl-dock-workspace-end-width`
-- `--isl-dock-workspace-inspector-width`
-- `--isl-dock-mobile-panel-max-width`
-- `--isl-dock-z-*`
-- `--isl-dock-panel-transition`
+1. Descriptor layer
 
-Component CSS may provide temporary fallbacks while migrating legacy components, but new hardcoded panel widths should go into descriptors or tokens first.
+- `DockPanelId` is the stable panel identifier.
+- `DockPanelDescriptor` defines immutable metadata: scope, side, default mode, title, aria label, default width, min/max width, order, resize capability, close capability, persistence policy, stack strategy, mobile presentation, responsive priority, and whether responsive pressure may auto-close the panel.
 
-Inline-end overlay panels must slide toward their actual inline edge. In LTR that means `translateX(100%)`; in RTL it means `translateX(-100%)`. Use `:dir(rtl)` or an equivalent logical-direction mechanism rather than physical left/right selectors.
+2. State layer
 
-## Host components
+- `DockPanelState` stores mutable runtime state: `IsOpen`, `Mode`, `Width`, `Order`, `IsActive`.
+- `DockLayoutState` is the scoped state engine and registry.
 
-`Explore.Blazor.Client.Components.Docking` contains the first host layer:
+3. Rendering layer
 
-- `DockLayoutHost` creates a scope grid with logical start/content/end tracks and a bottom row. It reads open `DockMode.Docked` panels from `DockLayoutState`, observes MudBlazor browser breakpoints, exposes width custom properties from runtime state, and treats only `Breakpoint.Xs` as hard mobile.
-- `DockSideHost` renders ordered open docked panels for one `(DockScope, DockSide)` group on desktop and suppresses docked side-host rendering on mobile so temporary overlay chrome owns panel behavior.
-- `DockPanelHost` renders descriptor-driven panel chrome with accessible labels, panel ids, mode/side data attributes, tokenized width, and logical borders.
-- `DockOverlayHost` renders open `Overlay`, `Temporary`, and `Inspector` panels separately from persistent grid tracks. On mobile, it also projects open docked side panels into effective `Temporary` render entries while leaving runtime state in its desktop `Docked` mode, so resize/persistence semantics remain stable across breakpoints. Closing overlays remain mounted for the tokenized reverse slide/fade animation before unmounting.
-- `DockTabStrip` renders accessible tabs when a side has multiple open docked panels. `DockSideHost` keeps the tabs ordered by runtime state, displays only the active panel content, and routes tab activation back through `DockLayoutState.Activate`.
+- `DockLayoutHost` owns a grid region for one `DockScope`.
+- `DockSideHost` renders inline docked panels for one side.
+- `DockOverlayHost` renders overlays, inspectors, temporary panels, and projected mobile panels.
+- `DockPanelHost` renders one panel shell.
+- `DockTabStrip` handles same-side tabbed stacks.
+- `DockResizeHandle` handles keyboard and pointer resizing.
 
-These hosts now render the production shell and EventList workspace panels. Temporary bridge services remain only where toggles still need compatibility (`SidebarState`, `AiAssistantState`, and page-local EventList adapter booleans); do not remove those bridges until all consumers are audited and tests pass.
+4. Persistence and adapter layer
 
-`Explore.Blazor.Client.Components.Shell.AppSideNav` is the extracted left navigation panel content. The shell registers the same content as the `shell.left-nav` descriptor content instead of duplicating the navigation tree.
+- `LocalStorageDockLayoutPersistence` stores snapshot state in browser `localStorage`.
+- `MainLayout` adapts shell dock state to legacy `SidebarState` and `AiAssistantState`.
+- `EventListDockingController` adapts workspace dock state to page-local booleans and autosave.
 
-`Explore.Blazor.Client.Components.Shell.ShellDockPanels` owns the shell descriptors for `shell.left-nav` and `shell.ai-assistant`. `MainLayout` registers those descriptors and render fragments into `DockLayoutState`. Legacy `SidebarState` and `AiAssistantState` changes are still mirrored into dock state while remaining top-nav/settings consumers are migrated or formalized behind a facade.
+## State Model
 
-During the bridge period, hidden-chrome routes such as setup/onboarding/startup must mirror both shell descriptors closed, and layout disposal must unregister shell descriptors. These lifecycle behaviors are covered in `MainLayoutTests` so future host migration does not accidentally leave stale shell panels in scoped dock state.
+`DockLayoutState` is the central engine for open/close, activation, width changes, snapshots, and viewport-aware projection.
 
-Top navigation controls still bridge through `SidebarState` and `AiAssistantState` during the compatibility period, but the handlers mirror through `shell.left-nav` and `shell.ai-assistant` when the shell descriptors are present. This keeps bridge consumers aligned with the visible dock state while the remaining public toggle APIs are migrated or wrapped.
+Important properties and behaviors:
 
-## Responsive policy
+- `_entries` is keyed by `DockPanelId`, so ids must be unique within the scoped registry.
+- `Register` validates descriptors and creates a closed default `DockPanelState`.
+- `GetPanels(scope, side)` returns panels ordered by runtime `Order`, then title.
+- `Open(id)` marks the target panel active and open. On desktop, activation is normalized within the same `(scope, side)` group. On mobile, activation is normalized within the same `scope` so only one modal surface is active while other open panels preserve user intent state.
+- `Activate(id)` changes active selection without changing openness, using the same desktop/mobile activation grouping.
+- `Close(id)` and `Resize(id)` enforce descriptor capabilities.
+- `LastChangeReason` classifies why state changed so autosave can ignore viewport-only adjustments.
 
-The dock engine intentionally separates hard mobile behavior from constrained desktop behavior:
+The main change reasons are:
 
-- Hard mobile is `Breakpoint.Xs` only. `DockLayoutHost` passes `isMobile: true` to `DockLayoutState.UpdateViewport` only when MudBlazor reports `Breakpoint.Xs`.
-- `Sm` and wider viewports remain desktop/constrained-desktop layouts. They may project a start panel into overlay chrome, but they do not globally switch every docked inline panel to mobile behavior.
-- The center-content floor is `375px` (`MinimumMobileContentWidth` in `DockLayoutState`). This is the minimum remaining content width the policy tries to preserve when combining start and end docked panels.
-- Start-side docked panels can coexist with end-side docked panels until the combined docked width would leave less than `375px` for content. When that happens, explicit start-panel opens are rendered through overlay chrome while the runtime state can remain `DockMode.Docked` for persistence and resize semantics.
-- End-side panels keep at most one active/open panel when hard-mobile or constrained-width rules would leave too little content. If a user explicitly opens an end panel, the policy keeps the preferred panel; otherwise it keeps the active or last ordered end panel.
-- Viewport policy changes use `DockLayoutChangeReason.ViewportPolicy` and must not autosave durable layout preferences. Autosave belongs to meaningful user/reset changes whose scoped persistent snapshot actually changed.
+- `Registration`
+- `UserAction`
+- `ViewportPolicy`
+- `SnapshotRestore`
+- `Reset`
+- `Refresh`
 
-Maintainer tuning guidance:
+That separation matters because responsive projections do not overwrite user preferences. Viewport changes raise `ViewportPolicy` so renderers can react, but the state engine no longer closes panels merely because the viewport became narrow.
 
-- Change `MinimumMobileContentWidth` only with matching tests at constrained widths such as `970px` and `1000px`.
-- Do not broaden hard mobile from `Xs` to `Sm` without visual evidence showing the desktop/tablet layout is unusable; previous `Sm` behavior closed/projected panels too early.
-- Keep descriptor widths and token widths in sync before changing thresholds, because the content-floor calculation is based on runtime panel widths.
+## Scope Model
 
-Before production shell host migration, `MainLayoutTests` must preserve the shell accessibility/navigation contract: the skip link targets `#main-content`, the main landmark keeps `tabindex="-1"`, visible-chrome routes expose header/footer/sidebar navigation landmarks, hidden-chrome routes keep skip/main/live-region anchors while hiding shell chrome, and navigation changes call `IAccessibilityFocusService.FocusOnNavigateAsync()`.
+`DockScope` is what makes the system able to stack shell and page docks at the same time.
 
-## Resize foundation
+- `Shell` is global app chrome.
+- `Workspace` is page-owned panel space inside page content.
 
-`DockResizeHandle` provides the first dormant resize affordance for resizable docked inline panels. `DockPanelHost` renders it only for `DockMode.Docked` panels on `DockSide.Start` or `DockSide.End` whose descriptors set `IsResizable == true`.
+The shell host wraps the page body in `MainLayout.razor`:
 
-The handle is keyboard accessible:
+```razor
+<DockLayoutHost Scope="@DockScope.Shell">
+    <MudMainContent>
+        <main id="main-content">
+            @Body
+        </main>
+    </MudMainContent>
+</DockLayoutHost>
+```
 
-- `ArrowLeft` and `ArrowRight` adjust width by the standard keyboard step.
-- Holding `Shift` uses a larger step for faster resizing.
-- `Home` requests the descriptor minimum width.
-- `End` requests the descriptor maximum width.
+The event list page creates its own nested workspace host inside that shell content region:
 
-Pointer support uses Blazor pointer events for the dormant mouse/touch-capable drag foundation. Pointer movement computes width deltas from the drag start position and sends requested widths through the same descriptor-clamped `DockLayoutState.Resize` path as keyboard resizing. Pointer cancellation ends the drag without applying later movement.
+```razor
+<DockLayoutHost Scope="@DockScope.Workspace" Class="event-list__workspace">
+    <div class="event-list__page">
+        <main class="event-list__main">
+            ...
+        </main>
+    </div>
+</DockLayoutHost>
+```
 
-The component exposes `role="separator"`, `aria-orientation="vertical"`, `aria-controls`, and `aria-valuemin`/`aria-valuemax`/`aria-valuenow`. Width changes flow through `DockLayoutState.Resize`, so descriptor `MinWidth`, `MaxWidth`, and `IsResizable` remain the source of truth. Pointer capture is isolated in `/js/dock-resize.js` so drag can continue outside the handle bounds, while the Blazor component filters non-primary and mismatched pointer ids before applying width changes. Component tests cover the module import plus `setPointerCapture`/`releasePointerCapture` calls so the JS bridge remains part of the resize contract.
+This nesting is why the UI can show, for example:
 
-## Stacking foundation
+- shell AI assistant on the outer shell end side
+- event-list customization dock on the inner workspace end side
 
-Multiple docked panels can be registered on the same logical side. In the dormant host foundation, `DockSideHost` renders a `DockTabStrip` when more than one open docked panel exists for a `(DockScope, DockSide)` group. The tab strip uses `role="tablist"` and `role="tab"`, links the active tab to the active panel body with `aria-controls`, renders that body as `role="tabpanel"` labelled by the active tab, and activates panels through `DockLayoutState.Activate`. Keyboard activation moves focus to the newly activated tab through `IAccessibilityFocusService` so roving `tabindex` stays coherent.
+They do not compete for the exact same grid track. The workspace dock lives inside the page content region after the shell dock host has already allocated shell chrome space.
 
-The first stack implementation is intentionally tabbed only. Arbitrary split panes, detachable tabs, and complex workbench nesting remain out of scope until a concrete product need appears.
+## Side Model And RTL Safety
 
-## Snapshots
+`DockSide` uses logical directions:
 
-`DockLayoutSnapshot` stores only panels whose descriptors opt into `PersistState`. During restore, widths are clamped to the current descriptor bounds, non-resizable panels keep their current width, and currently open non-closable panels cannot be closed by imported state. Active state is normalized so each scope/side group with open panels has exactly one active open panel. If an imported snapshot marks multiple panels active in the same group, or opens panels without an active item, the engine keeps or promotes the earliest runtime order and clears the rest.
+- `Start`
+- `End`
+- `Bottom`
 
-## Guardrails
+The engine and CSS avoid physical left/right assumptions. CSS uses logical properties such as:
 
-- Do not use page-level shell compensation hacks to account for global rails.
-- Do not use physical CSS direction properties in new dock CSS; use `inline-start`, `inline-end`, `padding-inline-*`, `margin-inline-*`, and logical borders.
-- Do not migrate EventList detail preview until regression coverage exists; it must remain inspector/overlay style.
-- Do not remove `SidebarState` or `AiAssistantState` until all consumers are migrated and tests pass.
-- Do not reintroduce `RightSidebar` as an EventList/workspace host; the orphaned component was removed after a consumer audit.
-- Do not introduce external/plugin panel loading in this phase; registration is compile-time and component-owned.
+- `inset-inline-start`
+- `inset-inline-end`
+- `border-inline-start`
+- `border-inline-end`
 
-`Event.Architecture.Tests/DockLayoutArchitectureTests.cs` enforces the descriptor-driven contract by rejecting central panel enums and new page-scoped CSS shell compensation outside known legacy migration debt. Keep this test focused on preventing regressions while the visual baseline gap blocks production shell/workspace host migration.
+This is also why overlay animations have explicit `:dir(rtl)` overrides in `DockSideHost.razor.css`, `DockOverlayHost.razor.css`, and `AiAssistantRail.razor.css`.
 
-## Migration path
+## Mode Model
 
-1. Baseline tests and stable selectors for existing shell/workspace panels.
-2. Dock tokens and this architecture document.
-3. Generic dock engine and service registration.
-4. Shell host migration for left nav and AI rail.
-5. Workspace host migration for EventList customization and inspector preview.
-6. Resize, stacking, persistence, mobile, RTL, accessibility, motion, and cleanup phases.
+`DockMode` is explicit and important.
+
+- `Docked`: panel participates in inline layout.
+- `Overlay`: floating overlay without consuming track width.
+- `Temporary`: temporary overlay used for mobile-style or projected dock behavior.
+- `Inspector`: overlay-style detail panel, currently used by event preview.
+- `Collapsed`: registered but not rendered as a normal open panel.
+
+Two implementation details are important here:
+
+1. A panel can remain `Docked` in state but still be rendered as an overlay.
+
+`DockLayoutState.ShouldRenderDockedPanelAsOverlay(entry)` is the projection rule. `DockOverlayHost` converts those projected entries to effective `Temporary` render entries without rewriting stored state.
+
+2. Inspector is a rendering contract, not just a label.
+
+`events.event-preview` defaults to `DockMode.Inspector`, so it opens in `DockOverlayHost` with dialog semantics, backdrop handling, focus trap, and overlay z-index behavior.
+
+## Descriptor Behavior Policy
+
+The dock engine now keeps behavior policy on each `DockPanelDescriptor` instead of inferring every decision from `DockSide`.
+
+Current descriptor policy fields:
+
+- `StackStrategy`: declares whether same-side peers should use an accessible tab stack or a visible split stack.
+- `MobilePresentation`: records how a docked panel should be projected on mobile. The current implementation uses `TemporaryOverlay` as the safe default.
+- `ResponsivePriority`: gives future planners a stable ordering signal for constrained layouts without relying on registration order.
+- `CanAutoCloseWhenConstrained`: defaults to `false`, preserving user open intent unless a panel explicitly opts into responsive closure.
+
+Production descriptors use those defaults deliberately:
+
+- `shell.left-nav`: tabbed stack strategy and priority `10`.
+- `shell.ai-assistant`: split stack strategy and priority `20`.
+- `events.customize-view`: split stack strategy and priority `20`.
+- `events.event-preview`: split stack strategy and priority `30`, non-persistent inspector state.
+
+This metadata is intentionally small. It avoids introducing a separate planner framework while still making coexistence, stacking, and future responsive decisions explicit and testable.
+
+## Rendering Pipeline
+
+### `DockLayoutHost`
+
+`DockLayoutHost` is the root layout component for one scope.
+
+Responsibilities:
+
+- subscribes to `DockLayoutState.Changed`
+- subscribes to MudBlazor `IBrowserViewportService`
+- computes inline grid track widths from currently open docked panels
+- renders side hosts for `Start`, `End`, and `Bottom`
+- renders a `DockOverlayHost` for the same scope
+
+Its grid is defined in `DockLayoutHost.razor.css`:
+
+```css
+grid-template-columns: var(--dock-layout-start-width, 0px) minmax(0, 1fr) var(--dock-layout-end-width, 0px);
+grid-template-rows: minmax(0, 1fr) auto;
+grid-template-areas:
+    "start content end"
+    "bottom bottom bottom";
+```
+
+That means docked panels reserve actual inline layout space instead of forcing page-level compensation hacks.
+
+### `DockSideHost`
+
+`DockSideHost` renders only desktop inline docked panels for one `(scope, side)` pair.
+
+Key behavior:
+
+- filters to `IsOpen && Mode == Docked`
+- suppresses mobile rendering entirely
+- suppresses any entry that `ShouldRenderDockedPanelAsOverlay`
+- keeps closed panels mounted briefly for exit animation
+
+If more than one docked panel is open on the end side for the same scope, it renders them as a side-by-side split stack in descriptor order. Start and bottom multi-panel groups keep the tab-stack fallback and render only the active tab body.
+
+### `DockOverlayHost`
+
+`DockOverlayHost` renders all non-inline panels for one scope.
+
+It includes:
+
+- backdrop
+- focus trap via `MudFocusTrap`
+- body scroll lock
+- saved focus / restored focus
+- Escape-to-close
+- backdrop click close
+- exit animation persistence
+
+It treats these as overlays:
+
+- `Overlay`
+- `Temporary`
+- `Inspector`
+- projected docked panels from `ShouldRenderDockedPanelAsOverlay`
+
+### `DockPanelHost`
+
+`DockPanelHost` renders one panel shell.
+
+Important behavior:
+
+- panel width is emitted as `--dock-panel-width`
+- `role="dialog"` and `aria-modal="true"` are used only when `IsModal == true`
+- inline docked panels use `role="complementary"`
+- resize handles are rendered only for resizable `Docked` `Start`/`End` panels
+- panel content is provided as a `CascadingValue` of `DockPanelEntry`
+
+The host intentionally does not render a generic title/header bar. Panel content owns its own internal chrome.
+
+### `DockTabStrip`
+
+This is the implementation for same-side same-scope stacks that intentionally remain tabbed, such as start-side and bottom-side stacks.
+
+It provides:
+
+- `role="tablist"`
+- `role="tab"`
+- active/inactive roving `tabindex`
+- keyboard navigation with Arrow keys, Home, End
+- focus handoff through `IAccessibilityFocusService`
+
+The active tab maps to the active panel body through stable ids created by `DockElementIds`.
+
+### `DockResizeHandle`
+
+The resize handle is accessible and descriptor-bound.
+
+Supported keyboard interactions:
+
+- `ArrowLeft` / `ArrowRight`
+- `Shift+ArrowLeft` / `Shift+ArrowRight` for larger steps
+- `Home` for descriptor minimum width
+- `End` for descriptor maximum width
+
+Pointer interactions:
+
+- primary pointer only
+- pointer capture via `/js/dock-resize.js`
+- side-aware delta calculation so `Start` and `End` resize in opposite directions
+- descriptor clamping through the same `DockLayoutState.Resize` path
+
+## Responsive Behavior
+
+This is the main policy the user asked about.
+
+### Hard Mobile Threshold
+
+Hard mobile is not every small breakpoint. The code currently treats only MudBlazor `Breakpoint.Xs` as mobile.
+
+In `DockLayoutHost`:
+
+```csharp
+var isMobile = args.Breakpoint is Breakpoint.Xs;
+DockLayoutState.UpdateViewport(args.BrowserWindowSize.Width, isMobile);
+```
+
+That means:
+
+- `Xs` uses mobile behavior
+- `Sm` and above still use desktop/constrained-desktop behavior
+
+### Content Floor
+
+`DockLayoutState` uses `MinimumMobileContentWidth = 375`.
+
+This is the minimum remaining content width the projection policy tries to protect.
+
+### Start-side Projection Policy
+
+The start side is usually the navigation dock.
+
+Rules:
+
+1. On hard mobile, open docked panels render through overlay chrome instead of reserving inline grid width.
+2. On constrained desktop, a start docked panel is projected to overlay chrome when opening it inline would leave less than `375px` content width after accounting for docked end panels in the same `DockScope`.
+3. Projection does not close the start panel. It changes only the rendering path.
+
+This produces the important middle behavior you asked about:
+
+- the panel remains logically open
+- it stops consuming grid width while projected
+- it is shown as a temporary overlay with backdrop chrome instead
+
+That is the current implementation of the "almost full-screen while the rest of the page dims" behavior for constrained start-side docks.
+
+### End-side Preservation Policy
+
+The end side preserves open state by default.
+
+Earlier revisions closed all but one open end panel under mobile or constrained-width pressure. That close-first policy caused shell and workspace docks to fight each other: opening `events.event-preview` or `events.customize-view` could close an unrelated shell right-side panel. The current implementation treats `DockPanelState.IsOpen` as user intent. Opening or resizing one panel does not silently close another end panel just because the viewport is narrow.
+
+Rendering still adapts:
+
+- desktop docked end panels remain inline when they fit the host layout
+- inspector/temporary/overlay panels render through `DockOverlayHost`
+- mobile can keep multiple panels open in state, but only the active overlay surface for a scope is rendered as the modal surface
+
+This means `shell.ai-assistant`, `events.customize-view`, and `events.event-preview` can preserve their open state independently. The renderer decides what is visible and active for the current viewport instead of destroying panel state.
+
+### Mobile Overlay Sizes
+
+The overlay CSS distinguishes between start and end overlays on mobile.
+
+On `max-width: 600px`:
+
+- start overlays use `inline-size: min(88vw, var(--dock-panel-width, 360px))`
+- end overlays use `inline-size: min(100vw, var(--dock-panel-width, 440px))`
+
+So current mobile behavior is:
+
+- navigation-style start panels become partial-width overlay drawers
+- end-side temporary/inspector/overlay panels keep descriptor-driven width until the viewport is narrower than that width
+
+This matches the three practical responsive outcomes you described:
+
+1. stay docked inline when space allows
+2. project to overlay chrome when constrained
+3. on mobile end-side panels, clamp to the viewport naturally instead of snapping to unconditional fullscreen
+
+## Horizontal Stacking Behavior
+
+There are two different kinds of "stacking" in the current implementation.
+
+### 1. Cross-scope horizontal stacking
+
+This is implemented today.
+
+Example:
+
+- `shell.ai-assistant` is open in the shell host
+- `events.customize-view` is open in the nested workspace host
+
+Because the workspace host lives inside the shell host content region, both can remain visible and appear horizontally stacked from the user's perspective.
+
+This is not a split-pane manager inside one host. It is nested host composition:
+
+- outer shell grid reserves shell AI width
+- inner workspace grid reserves customize-view width inside the already-shrunk page area
+
+### 2. Same-scope same-side stacking
+
+This now has two policies based on side.
+
+For desktop `End` docks, multiple open docked panels in the same scope render side-by-side:
+
+- `DockSideHost` renders a split-stack container
+- every open end-side docked panel body is mounted in descriptor order
+- each panel keeps its own descriptor width via `--dock-panel-width`
+- `DockLayoutHost` reserves the combined end-side width because it already sums open docked panel widths
+
+For `Start` and `Bottom` stacks, the engine keeps the tabbed fallback:
+
+- `DockSideHost` renders `DockTabStrip`
+- only the active panel body is rendered
+- the inactive open panels stay open in state but are not shown side-by-side
+
+So if you want two panels on the same right/end side of the same scope today, the engine gives you:
+
+- visible side-by-side dock stack
+
+For left/start and bottom groups, it gives you:
+
+- tabbed stack
+
+not:
+
+- resizable nested groups
+- detachable windows
+
+## Event Preview Inspector
+
+The event preview is the current popup-style dock for event details.
+
+Implementation:
+
+- descriptor id: `events.event-preview`
+- scope: `Workspace`
+- side: `End`
+- mode: `Inspector`
+- width: `440`
+- not persisted
+- not resizable
+
+When a card is selected in `EventList`:
+
+1. the page sets `_selectedEvent`
+2. `_detailDrawerOpen = true`
+3. `EventListDockingController.OpenEventPreview()` opens the dock panel
+4. the panel renders through `DockOverlayHost`
+5. event detail and sessions are fetched asynchronously
+
+The inspector is therefore not just a normal sidebar. It is an overlay-hosted panel with modal behavior.
+
+Opening the inspector no longer closes `events.customize-view`. The page preserves both user intents and lets dock projection decide which surface is inline, overlayed, active, or hidden by the mobile modal rule. Likewise, opening customization no longer closes the event preview; explicit close actions still clear preview-only transient state.
+
+### Inspector close behavior
+
+Closing can happen through:
+
+- panel header close button in page-owned panel content
+- backdrop click
+- Escape key
+- workspace synchronization after state changes
+
+When it closes, `EventList` clears transient preview state such as:
+
+- loaded event detail DTO
+- loaded session collection
+- inline registration popup visibility
+- tag/category popup visibility
+
+## Nested Popup Behavior Inside Event Preview
+
+The event preview dock also hosts secondary popup-style surfaces inside the panel body.
+
+These are not separate dock panels. They are page-owned overlays inside the inspector body.
+
+### Inline registration popup
+
+`EventList.razor.css` anchors it to the preview panel body:
+
+```css
+[data-dock-panel-id="events.event-preview"] .dock-panel-host__body {
+    position: relative;
+}
+```
+
+Then the registration overlay uses absolute positioning over that body:
+
+- `.drawer-reg-overlay` covers the inspector body with a blurred/dimmed layer
+- `.drawer-reg-popup` is a centered popup card inside the inspector
+
+This means the registration popup is modal relative to the preview dock, not modal relative to the whole page.
+
+### Tag/category management popup
+
+The event preview also toggles `_showTagCatPopup` from `OpenTagManagement()` and `OpenCategoryManagement()`.
+
+Like the inline registration flow, this popup is preview-local state. It is cleared when:
+
+- navigating to previous/next event
+- closing the detail drawer
+- clicking outside while a popup is open
+
+Implementation summary:
+
+- dock system owns the outer preview inspector
+- event page owns popup layers inside the preview inspector body
+
+## Shell Integration
+
+`MainLayout` is the shell integration point.
+
+Responsibilities:
+
+- registers shell descriptors on initialization
+- renders shell panel content through render fragments
+- hydrates shell snapshot from `layoutKey = "shell"`
+- mirrors legacy `SidebarState` and `AiAssistantState` into dock state
+- mirrors dock state back into those bridge services on dock changes
+- autosaves only meaningful user/reset shell layout changes
+- resets shell layout by closing, restoring default mode, restoring default width, and deleting persisted state
+
+Shell content registration is currently:
+
+- `AppSideNav` for `shell.left-nav`
+- `AiAssistantRail HostedInDock="true"` for `shell.ai-assistant`
+
+### `AppSideNav` overlay awareness
+
+`AppSideNav` receives the current `DockPanelEntry` as a cascading parameter. It uses that to detect whether it is in overlay-like modes and whether it should render overlay-specific close/header affordances.
+
+### `AiAssistantRail` dual-mode behavior
+
+`AiAssistantRail` supports two rendering modes:
+
+- legacy fixed overlay rail when `HostedInDock == false`
+- dock-owned content when `HostedInDock == true`
+
+In docked mode it becomes layout-neutral content:
+
+- `position: relative`
+- `inline-size: 100%`
+- `block-size: 100%`
+- no fixed transform/visibility shell behavior
+
+## Workspace Integration On Event List
+
+`EventList` uses `EventListDockingController` so page rendering logic is not overloaded with persistence and synchronization details.
+
+The controller handles:
+
+- registering `Customize View` and `Event Preview`
+- hydrating `layoutKey = "events"`
+- synchronizing dock open state with `_customizationDrawerOpen` and `_detailDrawerOpen`
+- autosaving workspace layout
+- reset behavior
+- unregistering panels on disposal
+
+The important distinction is:
+
+- `Customize View` is a durable user-preference workspace dock
+- `Event Preview` is transient inspector UI and is intentionally not persisted
+
+## Persistence Model
+
+Persistence is local browser storage only.
+
+Implementation:
+
+- C# service: `LocalStorageDockLayoutPersistence`
+- JS module: `wwwroot/js/dock-layout-persistence.js`
+- storage key prefix: `dock_layout:v1:`
+
+Snapshots are schema-versioned envelopes:
+
+- `SchemaVersion`
+- `LayoutKey`
+- `Snapshot`
+
+Current layout keys:
+
+- shell layout: `shell`
+- event workspace layout: `events`
+
+### What is persisted
+
+Only panels whose descriptor sets `PersistState = true` are included in snapshots.
+
+Currently that means:
+
+- `shell.left-nav`
+- `shell.ai-assistant`
+- `events.customize-view`
+
+Not persisted:
+
+- `events.event-preview`
+
+### Autosave behavior
+
+Both `MainLayout` and `EventListDockingController` debounce dock persistence by `500ms`.
+
+Autosave only runs when:
+
+- `LastChangeReason` is `UserAction` or `Reset`
+- the scoped snapshot actually changed
+- hydration is complete
+- autosave is not currently suppressed
+
+Autosave does not run for:
+
+- registration changes
+- refresh changes
+- viewport policy changes
+
+That prevents mobile/constrained projection side effects from becoming the new saved default layout.
+
+### Restore behavior
+
+`RestoreSnapshot` is defensive.
+
+It ignores:
+
+- wrong layout keys
+- wrong scope panels
+- unknown panel ids
+- unsupported/corrupt payloads
+
+It also normalizes restored state:
+
+- widths are clamped to current descriptor bounds
+- non-resizable panels keep current width
+- non-closeable panels cannot be restored closed if they are supposed to remain open
+- on desktop, only one active panel remains per `(scope, side)` group
+- on mobile, only one active panel remains per `scope`
+
+This mirrors runtime activation: restored snapshots preserve `IsOpen` as user intent, but active-state normalization follows the current viewport so a mobile restore cannot expose multiple modal-active surfaces in the same shell or workspace scope.
+
+## Reset Behavior
+
+There are two reset flows.
+
+### Shell reset
+
+`MainLayout.ResetShellDockLayoutAsync()`:
+
+- closes closable shell panels
+- restores their default modes
+- restores default widths for resizable panels
+- deletes the `shell` persisted snapshot
+- resynchronizes bridge services
+
+### Event workspace reset
+
+`EventListDockingController.ResetWorkspaceDockLayoutAsync()` resets only the persistent customization workspace state and deletes the `events` snapshot.
+
+The reset restores `events.customize-view` to its descriptor defaults:
+
+- closed
+- `DockMode.Docked`
+- descriptor default width
+
+It does not persist a replacement snapshot during the reset operation. The event preview inspector remains transient because `events.event-preview` has `PersistState = false`; hydration cannot resurrect it from local storage, and workspace reset does not treat preview state as persisted layout state.
+
+## Accessibility Behavior
+
+The dock system has substantial accessibility behavior built in.
+
+### Inline docked panels
+
+- rendered as `role="complementary"`
+- no `aria-modal`
+- no focus trap
+
+### Overlay and inspector panels
+
+- rendered as `role="dialog"`
+- `aria-modal="true"`
+- backdrop close button has an explicit accessible label
+- focus is saved before opening
+- body scroll is locked while open
+- focus moves into the panel host
+- focus restores to `#main-content` when overlay lifecycle ends
+
+On mobile, multiple panels can remain open in state, but `DockOverlayHost` renders only the active overlay-eligible surface for a scope. This prevents simultaneous modal focus traps while preserving the user's open panel intent for later desktop expansion or tab/overlay reactivation.
+
+The current policy is intentionally binary: panels rendered by `DockOverlayHost` are modal surfaces, while inline docked and split-stack panels are non-modal complementary surfaces. That keeps dimming, scroll lock, focus trap, Escape, and backdrop close semantics aligned instead of showing a dimmer for content that is still meant to coexist with the page.
+
+### Tab stacks
+
+- proper `tablist`/`tab`/`tabpanel` structure
+- roving `tabindex`
+- Arrow/Home/End keyboard navigation
+
+### Split stacks
+
+End-side split stacks are not tab lists. They render each open docked panel as `role="complementary"` content, so they avoid assigning `tabpanel` semantics to multiple simultaneously visible bodies. Active state still exists for styling and command targeting, but visibility is no longer limited to the active entry.
+
+Split stacks also deliberately avoid overlay chrome: no backdrop, no `MudFocusTrap`, no body scroll lock, and no `aria-modal`. They are for parallel desktop work, not interruptive mobile/modal flows.
+
+### Resize handles
+
+- `role="separator"`
+- `aria-orientation="vertical"`
+- `aria-controls`
+- `aria-valuemin`, `aria-valuemax`, `aria-valuenow`
+
+## Motion And Visual Behavior
+
+The dock system intentionally keeps close animations alive long enough to play reverse motion before unmount.
+
+Patterns used:
+
+- grid track transitions on `DockLayoutHost`
+- side-panel exit animations in `DockSideHost`
+- backdrop fade and slide animations in `DockOverlayHost`
+- reduced-motion overrides with `animation-duration: 1ms` or `transition-duration: 1ms`
+
+Visual ownership is split like this:
+
+- dock hosts own placement, sizing, backdrop, modal behavior, and motion
+- panel content owns titles, toolbar buttons, internal layout, and local popup behavior
+
+### Responsive visual QA matrix
+
+The manual browser visual contract lives in `Explore.Blazor.Client.E2ETests/Flows/SidebarLayoutVisualTests.cs`. These tests remain skipped until the Aspire-backed visual baseline lane has seeded event data and approved screenshot storage, but the matrix is now explicit and compile-checked.
+
+The matrix covers these widths and modes:
+
+| Scenario | Viewport | Direction | Motion | Purpose |
+|---|---:|---|---|---|
+| `mobile-390-ltr` | 390 x 844 | LTR | Default | Small mobile overlay projection and active-modal behavior. |
+| `mobile-390-rtl` | 390 x 844 | RTL | Default | Logical start/end placement and RTL animation direction. |
+| `mobile-390-reduced-motion` | 390 x 844 | LTR | Reduced | Reduced-motion override contract for mobile overlays. |
+| `compact-600-ltr` | 600 x 900 | LTR | Default | Boundary around the overlay CSS mobile breakpoint. |
+| `tablet-768-ltr` | 768 x 900 | LTR | Default | Tablet-sized content pressure without hard fullscreen snap. |
+| `constrained-970-ltr` | 970 x 900 | LTR | Default | Constrained desktop projection and shell/workspace coexistence. |
+| `desktop-1280-ltr` | 1280 x 900 | LTR | Default | Normal desktop inline dock tracks and split stack behavior. |
+| `wide-1760-ltr` | 1760 x 1000 | LTR | Default | Wide desktop shell + workspace parallel dock layout. |
+
+Each scenario opens the shell AI rail, event customization dock, and event preview dock together. The assertions intentionally check shell and workspace dock hosts plus the two workspace panel hosts; screenshots/traces are captured by the Playwright fixture when the skipped visual lane is enabled.
+
+Reduced motion is applied through an injected test stylesheet instead of a guessed Playwright `.NET` API call. This keeps the test compile-safe while still proving that dock UI can be captured under a reduced-motion contract. If the Playwright package later exposes a verified typed `prefers-reduced-motion` API in this repo, the helper can move from stylesheet injection to browser context emulation.
+
+## What "Everything Related" Means In Current Code
+
+Today, the full dock system includes:
+
+- descriptor-defined panels with stable ids
+- scoped shared state engine
+- nested shell/workspace host composition
+- docked inline tracks
+- end-side same-scope split stacks
+- temporary and inspector overlays
+- constrained-width projection of docked panels into overlay chrome
+- projection-first responsive behavior that preserves open intent instead of closing panels as a side effect of viewport pressure
+- start/bottom same-side tab stacking
+- cross-scope horizontal stacking through nested hosts
+- keyboard and pointer resizing
+- schema-versioned local persistence
+- per-scope autosave and reset
+- focus, scroll-lock, Escape, backdrop click, and ARIA semantics
+- inspector-local popups inside the event preview panel body
+- architecture tests that prevent backsliding into a central panel enum or page-level shell compensation hacks
+
+## Important Non-Goals In The Current Implementation
+
+The following are not implemented today:
+
+- detachable windows
+- drag-reorder tab stacks
+- arbitrary panel plugins loaded at runtime
+- persisted inspector/detail popup state
+
+If future work needs those features, it should be added as a new documented behavior, not inferred from the current architecture.
+
+## Verification Surface
+
+The implementation is heavily test-covered.
+
+Key test areas:
+
+- `DockLayoutStateTests`: registration, open/close, resize clamping, projection-first responsive state preservation, snapshot restore, reset
+- `DockHostTests`: rendering, mobile projection, tab stacks, focus trap, Escape/backdrop close, exit animations, resize interactions
+- `EventDockPanelsTests`: descriptor contracts for workspace panels
+- `LocalStorageDockLayoutPersistenceTests`: schema versioning, corrupt data handling, non-browser safety
+- `DockRegistrationTests`: DI registration
+- `DockLayoutArchitectureTests`: no central panel enum and no new page-level shell compensation hacks
+- `SidebarLayoutVisualTests`: skipped/manual Playwright matrix for 390, 600, 768, 970, 1280, and 1760 px dock scenarios, including RTL and reduced-motion variants
+
+Those tests are the best proof of intended behavior when changing widths, breakpoints, stacking logic, or modal behavior.

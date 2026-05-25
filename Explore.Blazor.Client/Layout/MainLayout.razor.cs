@@ -51,6 +51,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     protected SidebarState SidebarState { get; set; } = null!;
 
     [Inject]
+    protected MainContentAppearanceState MainContentAppearanceState { get; set; } = null!;
+
+    [Inject]
     protected AiAssistantState AiAssistantState { get; set; } = null!;
 
     [Inject]
@@ -82,6 +85,12 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private bool _isRtl => LanguageContext?.EffectiveIsRtl ?? false;
 
+    private string MainContentClass => MainContentAppearanceState.HasAppearance
+        ? "main-layout__content-wrapper main-layout__content-wrapper--themed"
+        : "main-layout__content-wrapper";
+
+    private string MainContentStyle => MainContentAppearanceState.Style;
+
     public string DarkLightModeButtonIcon => _isDarkMode switch
     {
         true => Icons.Material.Rounded.AutoMode,
@@ -96,6 +105,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
         NavigationManager.LocationChanged += OnLocationChanged;
         SidebarState.OnChange += OnLegacySidebarStateChanged;
+        MainContentAppearanceState.Changed += OnMainContentAppearanceChanged;
         AiAssistantState.OnChange += OnLegacyAiAssistantStateChanged;
         TenantNavLinksState.OnChange += OnTenantNavLinksChanged;
         DockLayoutState.Changed += OnDockLayoutChanged;
@@ -211,6 +221,11 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         if (mode is "dark" or "darkhighcontrast") _isDarkMode = true;
         else if (mode is "light" or "lighthighcontrast") _isDarkMode = false;
         InvokeAsync(StateHasChanged);
+    }
+
+    private void OnMainContentAppearanceChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -508,6 +523,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         _shellDockLayoutAutosaveCts?.Dispose();
         NavigationManager.LocationChanged -= OnLocationChanged;
         SidebarState.OnChange -= OnLegacySidebarStateChanged;
+        MainContentAppearanceState.Changed -= OnMainContentAppearanceChanged;
         AiAssistantState.OnChange -= OnLegacyAiAssistantStateChanged;
         TenantNavLinksState.OnChange -= OnTenantNavLinksChanged;
         DockLayoutState.Changed -= OnDockLayoutChanged;

@@ -23,7 +23,9 @@ public static class EventDockPanels
         Order: 10,
         IsResizable: true,
         CanClose: true,
-        PersistState: true).Validate();
+        PersistState: true,
+        StackStrategy: DockPanelStackStrategy.Split,
+        ResponsivePriority: 20).Validate();
 
     public static DockPanelDescriptor EventPreview { get; } = new DockPanelDescriptor(
         EventPreviewId,
@@ -38,5 +40,7 @@ public static class EventDockPanels
         Order: 20,
         IsResizable: false,
         CanClose: true,
-        PersistState: false).Validate();
+        PersistState: false,
+        StackStrategy: DockPanelStackStrategy.Split,
+        ResponsivePriority: 30).Validate();
 }

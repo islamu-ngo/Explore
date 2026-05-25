@@ -3,6 +3,27 @@
 
 /* ===== Block: create-event ===== */
 
+.create-event {
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary));
+    padding-block: var(--isl-space-5);
+    transition: color 180ms ease;
+}
+
+.create-event ::deep .mud-typography:not(.mud-input-helper-text):not(.mud-input-error) {
+    color: inherit;
+}
+
+.create-event ::deep .mud-typography.mud-typography-subtitle2,
+.create-event ::deep .mud-typography.mud-typography-body2 {
+    color: var(--event-theme-muted-color, var(--mud-palette-text-secondary));
+}
+
+.create-event ::deep .mud-paper,
+.create-event ::deep .mud-input-control,
+.create-event ::deep .mud-alert {
+    color: var(--mud-palette-text-primary);
+}
+
 ::deep .create-event__readiness-list {
     margin: 0;
     padding-inline-start: var(--isl-space-5);

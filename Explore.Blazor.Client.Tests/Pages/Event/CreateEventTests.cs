@@ -2,6 +2,7 @@ using Blazouter.Services;
 using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
+using Explore.Blazor.Client.Services;
 using MudBlazor;
 using System.Reflection;
 
@@ -67,6 +68,7 @@ public class CreateEventTests : IDisposable
         _ctx.Services.AddSingleton(MockServiceFactory.CreateNotificationService());
         _ctx.Services.AddSingleton(MockServiceFactory.CreateTranslationService());
         _ctx.Services.AddSingleton(Substitute.For<IHttpClientFactory>());
+        _ctx.Services.AddScoped<MainContentAppearanceState>();
 
         var registrationPolicyMock = Substitute.For<IEventRegistrationPolicyService>();
         registrationPolicyMock.GetEventRegistrationPoliciesAsync()
@@ -932,6 +934,44 @@ public class CreateEventTests : IDisposable
                 || cut.Markup.Contains("Background Image URL", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Create Event must not duplicate quick controls or render unsupported raw background image URL controls in the tray.");
+            }
+        }, TimeSpan.FromSeconds(3));
+    }
+
+    [Test]
+    public async Task CreateEvent_ThemeQuickBarUpdatesPagePreviewStyle()
+    {
+        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
+
+        var cut = _ctx.RenderMudComponent<CreateEvent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Sage", StringComparison.OrdinalIgnoreCase)
+                || !cut.Markup.Contains("Soft", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Theme quick bar presets and effects were not rendered.");
+            }
+        }, TimeSpan.FromSeconds(3));
+
+        cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Sage", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
+        cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Soft", StringComparison.OrdinalIgnoreCase))
+            .Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var style = _ctx.Services.GetRequiredService<MainContentAppearanceState>().Style;
+
+            if (string.IsNullOrWhiteSpace(style)
+                || !style.Contains("background: #5D7661;", StringComparison.OrdinalIgnoreCase)
+                || !style.Contains("background-image: linear-gradient(rgba(0,0,0,0.24), rgba(0,0,0,0.24));", StringComparison.OrdinalIgnoreCase)
+                || !style.Contains("--event-theme-text-color:", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Create Event did not publish the selected theme preview style to the main content canvas.");
             }
         }, TimeSpan.FromSeconds(3));
     }

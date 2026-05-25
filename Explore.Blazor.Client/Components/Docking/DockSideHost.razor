@@ -13,7 +13,18 @@
          data-dock-side="@SideName"
          role="region"
          aria-label="@ResolvedAriaLabel">
-        @if (ShouldRenderStack)
+        @if (ShouldRenderSplitStack)
+        {
+            <div class="dock-side-host__split-stack"
+                 role="group"
+                 aria-label="@($"{Scope} {Side} dock panel stack")">
+                @foreach (var entry in RenderedEntries)
+                {
+                    <DockPanelHost Entry="@entry" Class="@GetPanelClass(entry)" />
+                }
+            </div>
+        }
+        else if (ShouldRenderTabbedStack)
         {
             <DockTabStrip Entries="@DockedEntries"
                           ActivePanelId="@ActiveEntry.Descriptor.Id"
@@ -55,7 +66,9 @@
     private string ScopeName => Scope.ToString().ToLowerInvariant();
     private string SideName => Side.ToString().ToLowerInvariant();
     private string ResolvedAriaLabel => AriaLabel ?? $"{Scope} {Side} dock panels";
-    private bool ShouldRenderStack => DockedEntries.Count > 1;
+    private bool ShouldRenderSplitStack => DockedEntries.Count > 1
+        && DockedEntries.All(entry => entry.Descriptor.StackStrategy == DockPanelStackStrategy.Split);
+    private bool ShouldRenderTabbedStack => DockedEntries.Count > 1 && !ShouldRenderSplitStack;
 
     private DockPanelEntry ActiveEntry => DockedEntries.FirstOrDefault(entry => entry.State.IsActive)
         ?? DockedEntries.FirstOrDefault()
@@ -66,6 +79,8 @@
         "dock-side-host",
         $"dock-side-host--{ScopeName}",
         $"dock-side-host--{SideName}",
+        ShouldRenderSplitStack ? "dock-side-host--split-stack" : null,
+        ShouldRenderTabbedStack ? "dock-side-host--tab-stack" : null,
         _closingPanelIds.Count > 0 ? "dock-side-host--closing" : null,
         Class
     }.Where(value => !string.IsNullOrWhiteSpace(value)));
@@ -94,9 +109,11 @@
 
     private string? GetPanelClass(DockPanelEntry entry)
     {
-        return _closingPanelIds.Contains(entry.Descriptor.Id)
-            ? "dock-panel-host--closing"
-            : null;
+        return string.Join(' ', new[]
+        {
+            ShouldRenderSplitStack ? "dock-panel-host--stacked" : null,
+            _closingPanelIds.Contains(entry.Descriptor.Id) ? "dock-panel-host--closing" : null
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
     }
 
     private void SyncRenderedEntries(bool scheduleClosingAnimation)

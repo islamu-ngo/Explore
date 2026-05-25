@@ -85,8 +85,10 @@
                         }
                     </div>
 
-                    <ThemeQuickBar @bind-BackgroundColor="_bgColor"
-                                   @bind-BackgroundEffect="_bgEffect"
+                    <ThemeQuickBar BackgroundColor="@_bgColor"
+                                   BackgroundColorChanged="SetBackgroundColorAsync"
+                                   BackgroundEffect="@_bgEffect"
+                                   BackgroundEffectChanged="SetBackgroundEffectAsync"
                                    OnAdvancedRequested="OpenThemeStudioAsync" />
 
                     @if (_uploadError != null)
@@ -654,9 +656,9 @@
 
         <ThemeStudioTray IsOpen="_isThemeStudioOpen"
                          BackgroundColor="@_bgColor"
-                         BackgroundColorChanged="@(value => _bgColor = value)"
+                         BackgroundColorChanged="SetBackgroundColorAsync"
                          BackgroundEffect="@_bgEffect"
-                         BackgroundEffectChanged="@(value => _bgEffect = value)"
+                         BackgroundEffectChanged="SetBackgroundEffectAsync"
                          OnClose="CloseThemeStudioAsync" />
     }
 

@@ -42,7 +42,7 @@
 
         <DockLayoutHost Scope="@DockScope.Shell">
             <MudMainContent Class="main-layout__main" Style="padding-top: 0 !important;">
-                <main id="main-content" tabindex="-1" class="main-layout__content-wrapper">
+                <main id="main-content" tabindex="-1" class="@MainContentClass" style="@MainContentStyle">
                     @Body
                 </main>
                 @if (!_hideChrome)

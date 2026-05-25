@@ -1116,9 +1116,9 @@ public partial class EventDetail : ComponentBase
 
     private string GetWrapperStyle()
     {
-        return string.IsNullOrEmpty(_eventDetails?.BackgroundImageUri)
-            ? ""
-            : $"background-image: url('{_eventDetails.BackgroundImageUri}');";
+        return _appearance.IsEmpty
+            ? string.Empty
+            : AppearanceStyleBuilder.BuildSurfaceStyle(_appearance, $"#{GetEventColor()}");
     }
 
     private string GetDateMonth() => _eventDetails?.FirstSessionDate?.ToString("MMM") ?? "";

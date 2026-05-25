@@ -5,9 +5,9 @@
     min-height: 100vh;
     padding-top: var(--isl-space-8);
     padding-bottom: var(--isl-space-12);
-    /* Luma uses a subtle gradient or solid color, we'll use a CSS variable that can be set inline */
     background: var(--event-bg-color, var(--mud-palette-background));
-    transition: background 0.3s ease;
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary));
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 .event-detail-container {
@@ -80,7 +80,7 @@
     font-size: 1.25rem;
     font-weight: 700;
     margin-bottom: 16px;
-    color: var(--mud-palette-text-primary);
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary));
 }
 
 .event-host-item {
@@ -99,13 +99,23 @@
 .event-sidebar-link {
     display: block;
     padding: 8px 0;
-    color: var(--mud-palette-text-secondary);
+    color: var(--event-theme-muted-color, var(--mud-palette-text-secondary));
     text-decoration: none;
     font-size: 0.875rem;
     transition: color 0.2s ease;
 }
 
 .event-sidebar-link:hover {
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary));
+}
+
+.event-detail-wrapper ::deep > .mud-container > .mud-grid > .mud-grid-item > .mud-typography {
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary));
+}
+
+.event-detail-wrapper ::deep .mud-paper,
+.event-detail-wrapper ::deep .event-registration-card,
+.event-detail-wrapper ::deep .event-icon-box {
     color: var(--mud-palette-text-primary);
 }
 

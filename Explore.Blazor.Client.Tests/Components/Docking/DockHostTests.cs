@@ -111,12 +111,12 @@ public sealed class DockHostTests : IDisposable
     }
 
     [Test]
-    public async Task DockSideHost_WithMultiplePanels_RendersTabStripAndActivePanelOnly()
+    public async Task DockSideHost_EndSideWithMultiplePanels_RendersSideBySideStack()
     {
         var secondPanelId = new DockPanelId("workspace.second");
         var firstPanelId = new DockPanelId("workspace.first");
-        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.End, order: 20), CreateContent("Second panel"));
-        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.End, order: 10), CreateContent("First panel"));
+        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.End, order: 20, stackStrategy: DockPanelStackStrategy.Split), CreateContent("Second panel"));
+        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.End, order: 10, stackStrategy: DockPanelStackStrategy.Split), CreateContent("First panel"));
         _dockLayoutState.Open(secondPanelId);
         _dockLayoutState.Open(firstPanelId);
 
@@ -126,18 +126,84 @@ public sealed class DockHostTests : IDisposable
         var panels = cut.FindAll("[data-testid='dock-panel-host']");
         var tabs = cut.FindAll("[data-testid='dock-tab-strip-tab']");
 
+        await Assert.That(tabs.Count).IsEqualTo(0);
+        await Assert.That(panels.Count).IsEqualTo(2);
+        await Assert.That(panels[0].GetAttribute("data-dock-panel-id")).IsEqualTo("workspace.first");
+        await Assert.That(panels[1].GetAttribute("data-dock-panel-id")).IsEqualTo("workspace.second");
+        await Assert.That(panels[0].ClassList.Contains("dock-panel-host--stacked")).IsTrue();
+        await Assert.That(panels[1].ClassList.Contains("dock-panel-host--stacked")).IsTrue();
+        await Assert.That(cut.Find("#dock-panel-body-workspace-first").HasAttribute("role")).IsFalse();
+        await Assert.That(cut.Find("#dock-panel-body-workspace-first").HasAttribute("aria-labelledby")).IsFalse();
+        await Assert.That(cut.Markup).Contains("First panel");
+        await Assert.That(cut.Markup).Contains("Second panel");
+    }
+
+    [Test]
+    public async Task DockSideHost_StartSideWithMultiplePanels_RendersTabStripAndActivePanelOnly()
+    {
+        var secondPanelId = new DockPanelId("workspace.start-second");
+        var firstPanelId = new DockPanelId("workspace.start-first");
+        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.Start, order: 20), CreateContent("Second start panel"));
+        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.Start, order: 10), CreateContent("First start panel"));
+        _dockLayoutState.Open(secondPanelId);
+        _dockLayoutState.Open(firstPanelId);
+
+        var cut = _ctx.Render<DockSideHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.Side, DockSide.Start));
+        var panels = cut.FindAll("[data-testid='dock-panel-host']");
+        var tabs = cut.FindAll("[data-testid='dock-tab-strip-tab']");
+
         await Assert.That(tabs.Count).IsEqualTo(2);
-        await Assert.That(tabs[0].GetAttribute("data-dock-tab-panel-id")).IsEqualTo("workspace.first");
-        await Assert.That(tabs[1].GetAttribute("data-dock-tab-panel-id")).IsEqualTo("workspace.second");
+        await Assert.That(tabs[0].GetAttribute("data-dock-tab-panel-id")).IsEqualTo("workspace.start-first");
+        await Assert.That(tabs[1].GetAttribute("data-dock-tab-panel-id")).IsEqualTo("workspace.start-second");
         await Assert.That(tabs[0].GetAttribute("aria-selected")).IsEqualTo("true");
-        await Assert.That(tabs[0].GetAttribute("aria-controls")).IsEqualTo("dock-panel-body-workspace-first");
+        await Assert.That(tabs[0].GetAttribute("aria-controls")).IsEqualTo("dock-panel-body-workspace-start-first");
         await Assert.That(tabs[1].HasAttribute("aria-controls")).IsFalse();
         await Assert.That(panels.Count).IsEqualTo(1);
-        await Assert.That(panels[0].GetAttribute("data-dock-panel-id")).IsEqualTo("workspace.first");
-        await Assert.That(cut.Find("#dock-panel-body-workspace-first").GetAttribute("role")).IsEqualTo("tabpanel");
-        await Assert.That(cut.Find("#dock-panel-body-workspace-first").GetAttribute("aria-labelledby")).IsEqualTo("dock-panel-tab-workspace-first");
-        await Assert.That(cut.Markup).Contains("First panel");
-        await Assert.That(cut.Markup).DoesNotContain("Second panel");
+        await Assert.That(panels[0].GetAttribute("data-dock-panel-id")).IsEqualTo("workspace.start-first");
+        await Assert.That(cut.Find("#dock-panel-body-workspace-start-first").GetAttribute("role")).IsEqualTo("tabpanel");
+        await Assert.That(cut.Find("#dock-panel-body-workspace-start-first").GetAttribute("aria-labelledby")).IsEqualTo("dock-panel-tab-workspace-start-first");
+        await Assert.That(cut.Markup).Contains("First start panel");
+        await Assert.That(cut.Markup).DoesNotContain("Second start panel");
+    }
+
+    [Test]
+    public async Task DockSideHost_EndSideWithTabbedStrategy_RendersTabFallback()
+    {
+        var firstPanelId = new DockPanelId("workspace.first-tabbed-end");
+        var secondPanelId = new DockPanelId("workspace.second-tabbed-end");
+        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.End, order: 10), CreateContent("First tabbed end panel"));
+        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.End, order: 20), CreateContent("Second tabbed end panel"));
+        _dockLayoutState.Open(firstPanelId);
+        _dockLayoutState.Open(secondPanelId);
+        _dockLayoutState.Activate(firstPanelId);
+
+        var cut = _ctx.Render<DockSideHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.Side, DockSide.End));
+
+        await Assert.That(cut.FindAll("[role='tab']").Count).IsEqualTo(2);
+        await Assert.That(cut.FindAll("[data-testid='dock-panel-host']").Count).IsEqualTo(1);
+        await Assert.That(cut.Markup).Contains("First tabbed end panel");
+        await Assert.That(cut.Markup).DoesNotContain("Second tabbed end panel");
+    }
+
+    [Test]
+    public async Task DockLayoutHost_WithMultipleEndPanels_ReservesCombinedEndWidth()
+    {
+        var firstPanelId = new DockPanelId("workspace.width-first");
+        var secondPanelId = new DockPanelId("workspace.width-second");
+        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.End, order: 10, stackStrategy: DockPanelStackStrategy.Split), CreateContent("First width panel"));
+        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.End, order: 20, stackStrategy: DockPanelStackStrategy.Split), CreateContent("Second width panel"));
+        _dockLayoutState.Open(firstPanelId);
+        _dockLayoutState.Open(secondPanelId);
+
+        var cut = _ctx.Render<DockLayoutHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .AddChildContent("Workspace body"));
+
+        await Assert.That(cut.Find("[data-testid='dock-layout-host']").GetAttribute("style")).Contains("--dock-layout-end-width: 640px;");
     }
 
     [Test]
@@ -160,9 +226,9 @@ public sealed class DockHostTests : IDisposable
     public async Task DockSideHost_ConstrainedStartPanel_DoesNotRenderDockedPanel()
     {
         var leftPanelId = new DockPanelId("shell.left-constrained");
-        var rightPanelId = new DockPanelId("workspace.right-docked");
+        var rightPanelId = new DockPanelId("shell.right-docked");
         _dockLayoutState.Register(CreateDescriptor(leftPanelId, DockScope.Shell, DockSide.Start, DockMode.Docked, order: 10), CreateContent("Constrained left panel"));
-        _dockLayoutState.Register(CreateDescriptor(rightPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Docked right panel"));
+        _dockLayoutState.Register(CreateDescriptor(rightPanelId, DockScope.Shell, DockSide.End, DockMode.Docked, order: 10), CreateContent("Docked right panel"));
         _dockLayoutState.UpdateViewport(970, isMobile: false);
         _dockLayoutState.Open(rightPanelId);
         _dockLayoutState.Open(leftPanelId);
@@ -179,9 +245,9 @@ public sealed class DockHostTests : IDisposable
     public async Task DockOverlayHost_ConstrainedStartPanel_RendersAsTemporaryOverlayWhileRightPanelStaysDocked()
     {
         var leftPanelId = new DockPanelId("shell.left-overlay");
-        var rightPanelId = new DockPanelId("workspace.right-stays-docked");
+        var rightPanelId = new DockPanelId("shell.right-stays-docked");
         _dockLayoutState.Register(CreateDescriptor(leftPanelId, DockScope.Shell, DockSide.Start, DockMode.Docked, order: 10), CreateContent("Constrained left overlay"));
-        _dockLayoutState.Register(CreateDescriptor(rightPanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Right panel remains docked"));
+        _dockLayoutState.Register(CreateDescriptor(rightPanelId, DockScope.Shell, DockSide.End, DockMode.Docked, order: 10), CreateContent("Right panel remains docked"));
         _dockLayoutState.UpdateViewport(970, isMobile: false);
         _dockLayoutState.Open(rightPanelId);
         _dockLayoutState.Open(leftPanelId);
@@ -233,14 +299,14 @@ public sealed class DockHostTests : IDisposable
     {
         var firstPanelId = new DockPanelId("workspace.stack-first");
         var secondPanelId = new DockPanelId("workspace.stack-second");
-        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.End, order: 10), CreateContent("First stack panel"));
-        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.End, order: 20), CreateContent("Second stack panel"));
+        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.Start, order: 10), CreateContent("First stack panel"));
+        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.Start, order: 20), CreateContent("Second stack panel"));
         _dockLayoutState.Open(firstPanelId);
         _dockLayoutState.Open(secondPanelId);
 
         var cut = _ctx.Render<DockSideHost>(parameters => parameters
             .Add(component => component.Scope, DockScope.Workspace)
-            .Add(component => component.Side, DockSide.End));
+            .Add(component => component.Side, DockSide.Start));
         var secondTab = cut.Find("[data-dock-tab-panel-id='workspace.stack-second']");
 
         await secondTab.ClickAsync(new MouseEventArgs());
@@ -257,14 +323,14 @@ public sealed class DockHostTests : IDisposable
     {
         var firstPanelId = new DockPanelId("workspace.stack-key-first");
         var secondPanelId = new DockPanelId("workspace.stack-key-second");
-        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.End, order: 10), CreateContent("First key panel"));
-        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.End, order: 20), CreateContent("Second key panel"));
+        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.Start, order: 10), CreateContent("First key panel"));
+        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.Start, order: 20), CreateContent("Second key panel"));
         _dockLayoutState.Open(firstPanelId);
         _dockLayoutState.Open(secondPanelId);
 
         var cut = _ctx.Render<DockSideHost>(parameters => parameters
             .Add(component => component.Scope, DockScope.Workspace)
-            .Add(component => component.Side, DockSide.End));
+            .Add(component => component.Side, DockSide.Start));
         var firstTab = cut.Find("[data-dock-tab-panel-id='workspace.stack-key-first']");
 
         await firstTab.TriggerEventAsync("onkeydown", new KeyboardEventArgs { Key = "ArrowRight" });
@@ -279,15 +345,15 @@ public sealed class DockHostTests : IDisposable
     {
         var firstPanelId = new DockPanelId("workspace.stack-focus-first");
         var secondPanelId = new DockPanelId("workspace.stack-focus-second");
-        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.End, order: 10), CreateContent("First focus panel"));
-        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.End, order: 20), CreateContent("Second focus panel"));
+        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.Start, order: 10), CreateContent("First focus panel"));
+        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.Start, order: 20), CreateContent("Second focus panel"));
         _dockLayoutState.Open(firstPanelId);
         _dockLayoutState.Open(secondPanelId);
 
         var focusService = _ctx.Services.GetRequiredService<IAccessibilityFocusService>();
         var cut = _ctx.Render<DockSideHost>(parameters => parameters
             .Add(component => component.Scope, DockScope.Workspace)
-            .Add(component => component.Side, DockSide.End));
+            .Add(component => component.Side, DockSide.Start));
         var firstTab = cut.Find("[data-dock-tab-panel-id='workspace.stack-focus-first']");
 
         await firstTab.TriggerEventAsync("onkeydown", new KeyboardEventArgs { Key = "ArrowRight" });
@@ -330,6 +396,28 @@ public sealed class DockHostTests : IDisposable
         await Assert.That(cut.Markup).Contains("Mobile overlay panel");
         await Assert.That(cut.Find("[data-dock-panel-id='workspace.mobile-overlay']").GetAttribute("data-dock-mode")).IsEqualTo("temporary");
         await Assert.That(cut.FindAll("[data-testid='dock-resize-handle']").Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task DockOverlayHost_Mobile_RendersOnlyActiveOverlaySurfaceWhenMultiplePanelsRemainOpen()
+    {
+        var customizePanelId = new DockPanelId("workspace.mobile-customize");
+        var previewPanelId = new DockPanelId("workspace.mobile-preview");
+        _dockLayoutState.Register(CreateDescriptor(customizePanelId, DockScope.Workspace, DockSide.End, DockMode.Docked, order: 10), CreateContent("Mobile customize panel"));
+        _dockLayoutState.Register(CreateDescriptor(previewPanelId, DockScope.Workspace, DockSide.End, DockMode.Inspector, order: 20), CreateContent("Mobile preview panel"));
+        _dockLayoutState.UpdateViewport(390, isMobile: true);
+        _dockLayoutState.Open(customizePanelId);
+        _dockLayoutState.Open(previewPanelId);
+
+        var cut = _ctx.Render<DockOverlayHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.IsMobile, true));
+
+        await Assert.That(_dockLayoutState.GetPanel(customizePanelId)?.State.IsOpen).IsTrue();
+        await Assert.That(_dockLayoutState.GetPanel(previewPanelId)?.State.IsOpen).IsTrue();
+        await Assert.That(cut.Markup).DoesNotContain("Mobile customize panel");
+        await Assert.That(cut.Markup).Contains("Mobile preview panel");
+        await Assert.That(cut.FindAll("[aria-modal='true']").Count).IsEqualTo(1);
     }
 
     [Test]
@@ -411,6 +499,29 @@ public sealed class DockHostTests : IDisposable
         await Assert.That(panel.GetAttribute("role")).IsEqualTo("dialog");
         await Assert.That(panel.GetAttribute("aria-modal")).IsEqualTo("true");
         await Assert.That(panel.GetAttribute("aria-label")).IsEqualTo("Panel workspace.inspector-modal-semantics");
+    }
+
+    [Test]
+    public async Task DockSideHost_SplitStack_DoesNotRenderBackdropFocusTrapOrModalSemantics()
+    {
+        var firstPanelId = new DockPanelId("workspace.split-nonmodal-first");
+        var secondPanelId = new DockPanelId("workspace.split-nonmodal-second");
+        _dockLayoutState.Register(CreateDescriptor(firstPanelId, DockScope.Workspace, DockSide.End, order: 10, stackStrategy: DockPanelStackStrategy.Split), CreateContent("First non-modal split panel"));
+        _dockLayoutState.Register(CreateDescriptor(secondPanelId, DockScope.Workspace, DockSide.End, order: 20, stackStrategy: DockPanelStackStrategy.Split), CreateContent("Second non-modal split panel"));
+        _dockLayoutState.Open(firstPanelId);
+        _dockLayoutState.Open(secondPanelId);
+
+        var cut = _ctx.Render<DockSideHost>(parameters => parameters
+            .Add(component => component.Scope, DockScope.Workspace)
+            .Add(component => component.Side, DockSide.End));
+
+        await Assert.That(cut.FindAll("[data-testid='dock-overlay-backdrop']").Count).IsEqualTo(0);
+        await Assert.That(cut.FindComponents<MudFocusTrap>().Count).IsEqualTo(0);
+
+        var panels = cut.FindAll("[data-testid='dock-panel-host']");
+        await Assert.That(panels.Count).IsEqualTo(2);
+        await Assert.That(panels.All(panel => panel.GetAttribute("role") == "complementary")).IsTrue();
+        await Assert.That(panels.Any(panel => panel.HasAttribute("aria-modal"))).IsFalse();
     }
 
     [Test]
@@ -777,7 +888,8 @@ public sealed class DockHostTests : IDisposable
         DockSide side,
         DockMode mode = DockMode.Docked,
         int order = 10,
-        bool isResizable = true)
+        bool isResizable = true,
+        DockPanelStackStrategy? stackStrategy = null)
     {
         return new DockPanelDescriptor(
             id,
@@ -792,7 +904,8 @@ public sealed class DockHostTests : IDisposable
             order,
             IsResizable: isResizable,
             CanClose: true,
-            PersistState: true);
+            PersistState: true,
+            StackStrategy: stackStrategy ?? DockPanelStackStrategy.Tabbed);
     }
 
     private static RenderFragment CreateContent(string text)

@@ -720,9 +720,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             return;
         }
 
-        // Mutual exclusion: close customization drawer
-        if (_customizationDrawerOpen) CloseCustomizationDrawer();
-
         _selectedEvent = evt;
         _selectedEventDetail = null;
         _selectedEventSessions = null;
@@ -862,7 +859,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private void OpenCustomizationDrawer()
     {
-        if (_detailDrawerOpen) CloseDetailDrawer();
         _customizationDrawerOpen = true;
         RequireDockingController().OpenCustomizationDrawer();
     }

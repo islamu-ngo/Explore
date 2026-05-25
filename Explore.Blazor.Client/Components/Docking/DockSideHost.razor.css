@@ -35,6 +35,26 @@
     grid-area: bottom;
 }
 
+.dock-side-host__split-stack {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    block-size: 100%;
+    min-inline-size: 0;
+    min-block-size: 0;
+    overflow: clip;
+}
+
+.dock-side-host--split-stack ::deep .dock-panel-host--stacked {
+    flex: 0 0 var(--dock-panel-width, 320px);
+    min-inline-size: 0;
+    max-inline-size: var(--dock-panel-width, 320px);
+}
+
+.dock-side-host--split-stack ::deep .dock-panel-host--stacked + .dock-panel-host--stacked {
+    border-inline-start: 1px solid var(--mud-palette-divider);
+}
+
 .dock-side-host--start ::deep .dock-panel-host--closing {
     animation: dock-side-slide-out-to-start var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1)) both;
 }

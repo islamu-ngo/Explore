@@ -26,6 +26,10 @@ public sealed class EventDockPanelsTests
         await Assert.That(descriptor.IsResizable).IsTrue();
         await Assert.That(descriptor.CanClose).IsTrue();
         await Assert.That(descriptor.PersistState).IsTrue();
+        await Assert.That(descriptor.StackStrategy).IsEqualTo(DockPanelStackStrategy.Split);
+        await Assert.That(descriptor.MobilePresentation).IsEqualTo(DockPanelMobilePresentation.TemporaryOverlay);
+        await Assert.That(descriptor.ResponsivePriority).IsEqualTo(20);
+        await Assert.That(descriptor.CanAutoCloseWhenConstrained).IsFalse();
     }
 
     [Test]
@@ -46,5 +50,9 @@ public sealed class EventDockPanelsTests
         await Assert.That(descriptor.IsResizable).IsFalse();
         await Assert.That(descriptor.CanClose).IsTrue();
         await Assert.That(descriptor.PersistState).IsFalse();
+        await Assert.That(descriptor.StackStrategy).IsEqualTo(DockPanelStackStrategy.Split);
+        await Assert.That(descriptor.MobilePresentation).IsEqualTo(DockPanelMobilePresentation.TemporaryOverlay);
+        await Assert.That(descriptor.ResponsivePriority).IsEqualTo(30);
+        await Assert.That(descriptor.CanAutoCloseWhenConstrained).IsFalse();
     }
 }

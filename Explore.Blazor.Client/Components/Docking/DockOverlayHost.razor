@@ -52,13 +52,29 @@
     private bool _scrollLocked;
     private bool _focusSaved;
 
-    private IReadOnlyList<DockPanelEntry> ActiveOverlayEntries => Enum.GetValues<DockSide>()
-        .SelectMany(side => DockLayoutState.GetPanels(Scope, side))
-        .Where(IsOverlayEntry)
-        .Select(GetEffectiveOverlayEntry)
-        .OrderBy(entry => entry.State.Order)
-        .ThenBy(entry => entry.Descriptor.Title, StringComparer.Ordinal)
-        .ToArray();
+    private IReadOnlyList<DockPanelEntry> ActiveOverlayEntries
+    {
+        get
+        {
+            var entries = Enum.GetValues<DockSide>()
+                .SelectMany(side => DockLayoutState.GetPanels(Scope, side))
+                .Where(IsOverlayEntry)
+                .Select(GetEffectiveOverlayEntry)
+                .OrderBy(entry => entry.State.Order)
+                .ThenBy(entry => entry.Descriptor.Title, StringComparer.Ordinal)
+                .ToArray();
+
+            if (!IsMobile || entries.Length <= 1)
+            {
+                return entries;
+            }
+
+            var activeEntry = entries.LastOrDefault(entry => entry.State.IsActive)
+                ?? entries.Last();
+
+            return [activeEntry];
+        }
+    }
 
     private IReadOnlyList<DockPanelEntry> RenderedEntries => _renderedEntries;
 

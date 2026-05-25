@@ -23,7 +23,9 @@ public static class ShellDockPanels
         Order: 10,
         IsResizable: true,
         CanClose: true,
-        PersistState: true).Validate();
+        PersistState: true,
+        StackStrategy: DockPanelStackStrategy.Tabbed,
+        ResponsivePriority: 10).Validate();
 
     public static DockPanelDescriptor AiAssistant { get; } = new DockPanelDescriptor(
         AiAssistantId,
@@ -38,5 +40,7 @@ public static class ShellDockPanels
         Order: 20,
         IsResizable: true,
         CanClose: true,
-        PersistState: true).Validate();
+        PersistState: true,
+        StackStrategy: DockPanelStackStrategy.Split,
+        ResponsivePriority: 20).Validate();
 }

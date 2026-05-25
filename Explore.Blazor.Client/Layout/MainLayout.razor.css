@@ -74,7 +74,11 @@
     padding-block-start: 0;
     padding-block-end: var(--isl-space-6);
     flex: 1 0 auto;
-    transition: padding 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--mud-palette-background-grey);
+    color: var(--mud-palette-text-primary);
+    transition: padding 300ms cubic-bezier(0.4, 0, 0.2, 1),
+        background 180ms ease,
+        color 180ms ease;
 
     @media (max-width: 48em) {
         --layout-padding-inline: 4%;
@@ -83,6 +87,10 @@
     @media (max-width: 30em) {
         --layout-padding-inline: var(--isl-space-3);
     }
+}
+
+.main-layout__content-wrapper--themed {
+    color: var(--event-theme-text-color, var(--mud-palette-text-primary));
 }
 
 /* Neutralize MudContainer gutters inside content-wrapper to prevent

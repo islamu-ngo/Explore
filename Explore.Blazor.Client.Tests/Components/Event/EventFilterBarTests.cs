@@ -93,4 +93,15 @@ public class EventFilterBarTests : IDisposable
         var count = cut.Instance.GetActiveFilterCount();
         await Assert.That(count).IsEqualTo(3);
     }
+
+    [Test]
+    public async Task MobileFilterDrawer_UsesBoundedWidthAndScrollableRegions()
+    {
+        var cut = _ctx.RenderMudComponent<EventFilterBarComponent>();
+
+        await Assert.That(cut.Markup).Contains("filter-bar__mobile-drawer");
+        await Assert.That(cut.Markup).Contains("min(92vw, 26rem)");
+        await Assert.That(cut.Markup).Contains("filter-bar__drawer-body");
+        await Assert.That(cut.Markup).Contains("filter-bar__drawer-footer");
+    }
 }

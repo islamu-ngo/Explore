@@ -16,8 +16,10 @@ using Explore.Blazor.Client.Components.Forms;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
-public partial class CreateEvent
+public partial class CreateEvent : IDisposable
 {
+    private const string MainContentAppearanceOwner = nameof(CreateEvent);
+
     [Inject] protected IEventService EventService { get; set; } = null!;
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
     [Inject] protected IGroupService GroupService { get; set; } = null!;
@@ -34,6 +36,7 @@ public partial class CreateEvent
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
     [Inject] private IAccessibilityAnnouncerService AccessibilityAnnouncerService { get; set; } = default!;
     [Inject] private IEventRegistrationPolicyService RegistrationPolicyService { get; set; } = default!;
+    [Inject] private MainContentAppearanceState MainContentAppearanceState { get; set; } = default!;
 
     // Sentinel Guid values for "Create Organization" / "Create Group" dropdown items
     private static readonly Guid CreateOrgSentinelValue = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -286,6 +289,44 @@ private CreateEventDraftRequestDto createDto = new();
         await AccessibilityAnnouncerService.AnnouncePoliteAsync("Theme studio closed.");
     }
 
+    private Task SetBackgroundColorAsync(string value)
+    {
+        _bgColor = value;
+        PublishMainContentAppearance();
+        return Task.CompletedTask;
+    }
+
+    private Task SetBackgroundEffectAsync(string value)
+    {
+        _bgEffect = string.IsNullOrWhiteSpace(value) ? "None" : value;
+        PublishMainContentAppearance();
+        return Task.CompletedTask;
+    }
+
+    private string BuildCreateEventPreviewStyle()
+    {
+        var settings = new AppearanceSettings
+        {
+            BackgroundColor = _bgColor,
+            ImageUri = _bgImageUri,
+            BackgroundEffect = _bgEffect
+        };
+
+        return settings.IsEmpty
+            ? string.Empty
+            : AppearanceStyleBuilder.BuildSurfaceStyle(settings, "#F8FAFC");
+    }
+
+    private void PublishMainContentAppearance()
+    {
+        MainContentAppearanceState.Set(MainContentAppearanceOwner, BuildCreateEventPreviewStyle());
+    }
+
+    public void Dispose()
+    {
+        MainContentAppearanceState.Clear(MainContentAppearanceOwner);
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _editContext = new EditContext(createDto);
@@ -293,6 +334,7 @@ private CreateEventDraftRequestDto createDto = new();
 
         Logger.LogInformation("OnInitializedAsync starting");
         await LoadFormData();
+        PublishMainContentAppearance();
 
     }
 

@@ -11,6 +11,18 @@ public class SidebarLayoutVisualTests(
     AppHostFixture appHost,
     PlaywrightFixture playwright)
 {
+    private static readonly IReadOnlyList<DockVisualScenario> DockResponsiveMatrix =
+    [
+        new("mobile-390-ltr", Width: 390, Height: 844, Direction: "ltr", ReducedMotion: false),
+        new("mobile-390-rtl", Width: 390, Height: 844, Direction: "rtl", ReducedMotion: false),
+        new("mobile-390-reduced-motion", Width: 390, Height: 844, Direction: "ltr", ReducedMotion: true),
+        new("compact-600-ltr", Width: 600, Height: 900, Direction: "ltr", ReducedMotion: false),
+        new("tablet-768-ltr", Width: 768, Height: 900, Direction: "ltr", ReducedMotion: false),
+        new("constrained-970-ltr", Width: 970, Height: 900, Direction: "ltr", ReducedMotion: false),
+        new("desktop-1280-ltr", Width: 1280, Height: 900, Direction: "ltr", ReducedMotion: false),
+        new("wide-1760-ltr", Width: 1760, Height: 1000, Direction: "ltr", ReducedMotion: false)
+    ];
+
     [Test]
     [Skip("Category: Manual visual. Removal: enable when Aspire, seeded event data, and approved screenshot storage are available for the visual baseline lane.")]
     public async Task Desktop_LeftNavOpen_AiClosed_CapturesBaseline()
@@ -139,6 +151,31 @@ public class SidebarLayoutVisualTests(
         }
     }
 
+    [Test]
+    [Skip("Category: Manual visual. Removal: enable when Aspire, seeded event data, and approved screenshot storage are available for the visual baseline lane.")]
+    public async Task DockResponsiveMatrix_CapturesBreakpointsDirectionsAndReducedMotionContract()
+    {
+        foreach (var scenario in DockResponsiveMatrix)
+        {
+            var page = await CreateScenarioPageAsync(scenario);
+            try
+            {
+                await NavigateToEventsAsync(page);
+                await ApplyScenarioEnvironmentAsync(page, scenario);
+
+                await page.Locator("[data-testid='shell-ai-toggle']").ClickAsync();
+                await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Customize view" }).ClickAsync();
+                await page.Locator(".event-card").First.ClickAsync();
+
+                await AssertDockMatrixScenarioAsync(page, scenario);
+            }
+            finally
+            {
+                await playwright.ClosePageAsync(page, $"dock-responsive-matrix-{scenario.Name}");
+            }
+        }
+    }
+
     private async Task<IPage> CreateDesktopPageAsync()
     {
         var page = await playwright.CreatePageAsync(nameof(CreateDesktopPageAsync));
@@ -153,10 +190,69 @@ public class SidebarLayoutVisualTests(
         return page;
     }
 
+    private async Task<IPage> CreateScenarioPageAsync(DockVisualScenario scenario)
+    {
+        var page = await playwright.CreatePageAsync($"dock-responsive-matrix-{scenario.Name}");
+        await page.SetViewportSizeAsync(scenario.Width, scenario.Height);
+        return page;
+    }
+
     private async Task NavigateToEventsAsync(IPage page)
     {
         var response = await page.GotoAsync($"{appHost.BlazorBaseUrl}/events");
         await Assert.That(response).IsNotNull();
         await Assert.That(response!.Status).IsEqualTo(200);
     }
+
+    private static async Task ApplyScenarioEnvironmentAsync(IPage page, DockVisualScenario scenario)
+    {
+        if (scenario.Direction == "rtl")
+        {
+            await page.EvaluateAsync("() => document.documentElement.setAttribute('dir', 'rtl')");
+        }
+
+        if (scenario.ReducedMotion)
+        {
+            await page.EvaluateAsync(
+                """
+                () => {
+                    const style = document.createElement('style');
+                    style.setAttribute('data-testid', 'dock-visual-reduced-motion');
+                    style.textContent = `
+                        *, *::before, *::after {
+                            animation-duration: 1ms !important;
+                            animation-iteration-count: 1 !important;
+                            scroll-behavior: auto !important;
+                            transition-duration: 1ms !important;
+                        }`;
+                    document.head.appendChild(style);
+                }
+                """);
+        }
+    }
+
+    private static async Task AssertDockMatrixScenarioAsync(IPage page, DockVisualScenario scenario)
+    {
+        await Assert.That(await page.Locator("[data-testid='dock-layout-host'][data-dock-scope='Shell']").CountAsync()).IsGreaterThanOrEqualTo(1);
+        await Assert.That(await page.Locator("[data-testid='dock-layout-host'][data-dock-scope='Workspace']").CountAsync()).IsGreaterThanOrEqualTo(1);
+        await Assert.That(await page.Locator("[data-testid='dock-panel-host'][data-dock-panel-id='events.customize-view']").CountAsync()).IsGreaterThanOrEqualTo(1);
+        await Assert.That(await page.Locator("[data-testid='dock-panel-host'][data-dock-panel-id='events.event-preview']").CountAsync()).IsGreaterThanOrEqualTo(1);
+
+        if (scenario.Direction == "rtl")
+        {
+            await Assert.That(await page.EvaluateAsync<string>("() => document.documentElement.getAttribute('dir') ?? ''")).IsEqualTo("rtl");
+        }
+
+        if (scenario.ReducedMotion)
+        {
+            await Assert.That(await page.Locator("style[data-testid='dock-visual-reduced-motion']").CountAsync()).IsEqualTo(1);
+        }
+    }
+
+    private sealed record DockVisualScenario(
+        string Name,
+        int Width,
+        int Height,
+        string Direction,
+        bool ReducedMotion);
 }

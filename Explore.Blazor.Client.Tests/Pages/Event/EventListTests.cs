@@ -288,11 +288,15 @@ public class EventListTests : IDisposable
     private void SetupEventDetailResponses(Guid eventId)
     {
         SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        SetupEventDetailResponse(eventId, "Dock Baseline Event");
+    }
 
+    private void SetupEventDetailResponse(Guid eventId, string title)
+    {
         _eventService.GetEventByIdAsync(eventId).Returns(new EventDto
         {
             Id = eventId,
-            Title = "Dock Baseline Event",
+            Title = title,
             Description = "Event used for sidebar baseline tests"
         });
 
@@ -459,6 +463,42 @@ public class EventListTests : IDisposable
     }
 
     [Test]
+    public async Task ResetWorkspaceDockLayout_ClearsPersistentCustomizeStateAndDeletesEventsSnapshot()
+    {
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+        _dockLayoutPersistence.LoadAsync("events", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DockLayoutSnapshot?>(CreateWorkspaceSnapshot(customizeOpen: true, customizeWidth: 360)));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var customizePanel = _dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId);
+            if (customizePanel?.State is not { IsOpen: true, Width: 360 })
+                throw new InvalidOperationException("Expected workspace snapshot to restore Customize View before reset.");
+        });
+
+        SetPrivateField(cut.Instance, "_customizationDrawerOpen", true);
+        _dockLayoutPersistence.ClearReceivedCalls();
+
+        await InvokePrivateTaskAsync(cut, "ResetWorkspaceDockLayoutAsync");
+
+        var customizeState = _dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State;
+        var previewState = _dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State;
+
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsFalse();
+        await Assert.That(customizeState?.IsOpen).IsFalse();
+        await Assert.That(customizeState?.Mode).IsEqualTo(DockMode.Docked);
+        await Assert.That(customizeState?.Width).IsEqualTo(EventDockPanels.CustomizeView.DefaultWidth);
+        await Assert.That(previewState?.IsOpen).IsFalse();
+
+        await _dockLayoutPersistence.Received(1).DeleteAsync("events", Arg.Any<CancellationToken>());
+        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
+            Arg.Any<DockLayoutSnapshot>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Render_WithShellEventSections_ShowsCuratedFilterLinks()
     {
         SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
@@ -603,7 +643,7 @@ public class EventListTests : IDisposable
     }
 
     [Test]
-    public async Task SelectingEvent_ClosesCustomizationDrawerAndOpensDetailDrawer()
+    public async Task SelectingEvent_PreservesCustomizationDrawerAndOpensDetailDrawer()
     {
         var eventId = Guid.NewGuid();
         SetupEventDetailResponses(eventId);
@@ -620,8 +660,8 @@ public class EventListTests : IDisposable
             Title = "Dock Baseline Event"
         });
 
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsFalse();
-        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen).IsFalse();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsTrue();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen).IsTrue();
         await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsTrue();
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
 
@@ -633,7 +673,7 @@ public class EventListTests : IDisposable
     }
 
     [Test]
-    public async Task OpeningCustomizationDrawer_ClosesOpenDetailDrawer()
+    public async Task OpeningCustomizationDrawer_PreservesOpenDetailDrawer()
     {
         var eventId = Guid.NewGuid();
         SetupEventDetailResponses(eventId);
@@ -651,9 +691,9 @@ public class EventListTests : IDisposable
 
         await InvokePrivateVoidAsync(cut, "OpenCustomizationDrawer");
 
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsFalse();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsTrue();
         await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsTrue();
-        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsFalse();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen).IsTrue();
     }
 
@@ -699,14 +739,47 @@ public class EventListTests : IDisposable
         });
 
         SetPrivateField(cut.Instance, "_showInlineRegistration", true);
+        SetPrivateField(cut.Instance, "_showTagCatPopup", true);
         await cut.Find("[data-testid='dock-overlay-backdrop']").ClickAsync(new MouseEventArgs());
 
         cut.WaitForAssertion(() =>
         {
             Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsFalse();
             Assert.That(GetPrivateField<bool>(cut.Instance, "_showInlineRegistration")).IsFalse();
+            Assert.That(GetPrivateField<bool>(cut.Instance, "_showTagCatPopup")).IsFalse();
             Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsFalse();
         });
+    }
+
+    [Test]
+    public async Task NavigatingEventPreview_ResetsTransientPopupStateBeforeSelectingNextEvent()
+    {
+        var firstEventId = Guid.NewGuid();
+        var nextEventId = Guid.NewGuid();
+        var events = new List<EventListDto>
+        {
+            new() { Id = firstEventId, Title = "First Preview Event" },
+            new() { Id = nextEventId, Title = "Next Preview Event" }
+        };
+
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, events)));
+        SetupEventDetailResponse(firstEventId, "First Preview Event");
+        SetupEventDetailResponse(nextEventId, "Next Preview Event");
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+        await InvokeLoadEventsAsync(cut);
+        await InvokePrivateTaskAsync(cut, "SelectEvent", events[0]);
+
+        SetPrivateField(cut.Instance, "_showInlineRegistration", true);
+        SetPrivateField(cut.Instance, "_showTagCatPopup", true);
+
+        await InvokePrivateTaskAsync(cut, "NavigateNextEvent");
+
+        await Assert.That(GetPrivateField<EventListDto?>(cut.Instance, "_selectedEvent")?.Id).IsEqualTo(nextEventId);
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsTrue();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_showInlineRegistration")).IsFalse();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_showTagCatPopup")).IsFalse();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
     }
 
     [Test]
