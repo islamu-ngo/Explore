@@ -1076,6 +1076,61 @@ Table "tenant_members" {
   }
 }
 
+Table "tenant_users" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "user_id" uuid [not null]
+  "actor_id" uuid
+  "status_id" int [not null, default: 1]
+  "joined_at" timestamptz
+  "suspended_at" timestamptz
+  "suspended_by" uuid
+  "ban_expires_at" timestamptz
+  "removed_at" timestamptz
+  "removed_by" uuid
+  "moderation_note" varchar(2000)
+  "created_at" timestamptz [not null, default: `NOW()`]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    actor_id [name: 'ix_tenant_users_actor_id']
+    user_id [name: 'ix_tenant_users_user_id']
+    (tenant_id, actor_id) [unique, name: 'ix_tenantusers_tenant_actor', note: 'filter: actor_id IS NOT NULL']
+    (tenant_id, user_id) [unique, name: 'ix_tenantusers_tenant_user']
+  }
+
+  Note: 'Tenant-local membership/moderation state for a global user. Check: ck_tenant_users_status (1..4).'
+}
+
+Table "tenant_user_profiles" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "tenant_user_id" uuid [not null]
+  "display_name_override" varchar(256)
+  "contact_email_override" varchar(320)
+  "locale" varchar(35)
+  "time_zone" varchar(128)
+  "preferences_json" jsonb
+  "consent_json" jsonb
+  "admin_note" varchar(2000)
+  "created_at" timestamptz [not null, default: `NOW()`]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    tenant_user_id [unique, name: 'ix_tenantuserprofiles_tenant_user']
+    (tenant_id, contact_email_override) [name: 'ix_tenantuserprofiles_tenant_contact_email', note: 'filter: contact_email_override IS NOT NULL']
+  }
+
+  Note: 'Tenant-admin-managed local profile overrides layered on top of the global user record.'
+}
+
 Table "external_api_keys" {
   "id" uuid [pk, not null]
   "tenant_id" uuid
@@ -1123,6 +1178,34 @@ Table "external_api_key_quotas" {
   indexes {
     (external_api_key_id, period_start) [unique]
   }
+}
+
+Table "external_bindings" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "provider_key" varchar(128) [not null]
+  "external_system" varchar(128) [not null]
+  "external_type" varchar(128) [not null]
+  "external_id" varchar(512) [not null]
+  "internal_type" varchar(128) [not null]
+  "internal_id" uuid [not null]
+  "scope_tenant_id" uuid
+  "external_binding_status_id" int [not null, default: 1]
+  "metadata_json" jsonb
+  "last_seen_at" timestamptz
+  "created_at" timestamptz [not null, default: `NOW()`]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    scope_tenant_id [name: 'ix_external_bindings_scope_tenant_id']
+    (provider_key, external_system, external_type, external_id) [unique, name: 'ix_external_bindings_external_global_unique', note: 'filter: scope_tenant_id IS NULL']
+    (provider_key, external_system, internal_type, internal_id) [unique, name: 'ix_external_bindings_internal_global_unique', note: 'filter: scope_tenant_id IS NULL']
+    (provider_key, external_system, external_type, external_id, scope_tenant_id) [unique, name: 'ix_external_bindings_external_tenant_unique', note: 'filter: scope_tenant_id IS NOT NULL']
+    (provider_key, external_system, internal_type, internal_id, scope_tenant_id) [unique, name: 'ix_external_bindings_internal_tenant_unique', note: 'filter: scope_tenant_id IS NOT NULL']
+  }
+
+  Note: 'Provider-neutral external identity binding. Checks: ck_external_bindings_status (1..3), ck_external_bindings_text_not_blank.'
 }
 
 
