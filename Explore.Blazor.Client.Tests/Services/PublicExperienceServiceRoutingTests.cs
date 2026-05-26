@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for PublicExperienceService covering settings retrieval and route decision logic.
-// Verifies typed BFF exception fallback to null and deterministic route resolution for home page modes.
+// ABOUTME: Verifies typed BFF exception fallback to null and deterministic route resolution for home page modes.
 
 using System.Net;
 using System.Net.Http.Json;
@@ -117,6 +117,26 @@ public class PublicExperienceServiceRoutingTests
 
         // Assert
         await Assert.That(route).IsEqualTo("/events");
+    }
+
+    [Test]
+    public async Task ResolveHomeRoute_ReturnsHome_WhenShellPreferredHomePageIsLandingPage()
+    {
+        // Arrange
+        var shell = new PublicExperienceShellModel
+        {
+            Mode = "DiscoveryCentric",
+            Home = new PublicExperienceHomeModel
+            {
+                PreferredHomePage = "LandingPage"
+            }
+        };
+
+        // Act
+        var route = _service.ResolveHomeRoute(shell);
+
+        // Assert
+        await Assert.That(route).IsEqualTo("/home");
     }
 
     #endregion

@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for PublicExperienceService covering settings fetch and home route resolution.
-// Verifies typed BFF fallback behavior and route selection rules for preferred home page configuration.
+// ABOUTME: Verifies typed BFF fallback behavior and route selection rules for preferred home page configuration.
 
 using System.Net;
 using System.Net.Http.Json;
@@ -199,6 +199,26 @@ public class PublicExperienceServiceTests
             PrimaryOrganization = new PublicExperiencePrimaryOrganizationModel
             {
                 State = "Available"
+            }
+        };
+
+        // Act
+        var route = _service.ResolveHomeRoute(shell);
+
+        // Assert
+        await Assert.That(route).IsEqualTo("/home");
+    }
+
+    [Test]
+    public async Task ResolveHomeRoute_ReturnsHome_WhenShellPreferredHomePageIsLandingPage()
+    {
+        // Arrange
+        var shell = new PublicExperienceShellModel
+        {
+            Mode = "DiscoveryCentric",
+            Home = new PublicExperienceHomeModel
+            {
+                PreferredHomePage = "LandingPage"
             }
         };
 

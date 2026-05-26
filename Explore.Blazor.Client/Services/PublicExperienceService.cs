@@ -126,6 +126,11 @@ public class PublicExperienceService : IPublicExperienceService
 
     public string ResolveHomeRoute(PublicExperienceShellModel? shell)
     {
+        if (shell?.Home.PreferredHomePage?.Equals("LandingPage", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "/home";
+        }
+
         if (shell?.Mode?.Equals("OrganizationCentric", StringComparison.OrdinalIgnoreCase) == true
             && shell.PrimaryOrganization.State.Equals("Available", StringComparison.OrdinalIgnoreCase))
         {
