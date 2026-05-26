@@ -219,6 +219,49 @@ public class UserServiceTests
 
     #endregion
 
+    // ========== GetAdminAuthorityAsync ==========
+
+    #region GetAdminAuthorityAsync Tests
+
+    [Test]
+    public async Task GetAdminAuthorityAsync_ReturnsAuthority_WhenApiSucceeds()
+    {
+        // Arrange
+        var authority = new AdminAuthorityDto
+        {
+            IsInstanceAdmin = true,
+            AdminTenantIds = [Guid.NewGuid()],
+            AdminOrganizationIds = [],
+            HasAnyAuthority = true
+        };
+        _apiClient.GetCurrentUserAdminAuthorityAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(authority);
+
+        // Act
+        var result = await _service.GetAdminAuthorityAsync();
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.IsInstanceAdmin).IsTrue();
+        await Assert.That(result.HasAnyAuthority).IsTrue();
+    }
+
+    [Test]
+    public async Task GetAdminAuthorityAsync_ReturnsNull_WhenApiThrows()
+    {
+        // Arrange
+        _apiClient.GetCurrentUserAdminAuthorityAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Unauthorized", 401));
+
+        // Act
+        var result = await _service.GetAdminAuthorityAsync();
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    #endregion
+
     // ========== UpdateUserAsync ==========
 
     #region UpdateUserAsync Tests

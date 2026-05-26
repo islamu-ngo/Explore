@@ -1,3 +1,6 @@
+// ABOUTME: Code-behind for the top navigation shell and profile dropdown state.
+// ABOUTME: Loads BFF/API-backed public experience and admin authority status for menu affordances.
+
 using System.Security.Claims;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
@@ -222,8 +225,13 @@ public partial class NavMenu : IDisposable
         }
     }
 
-    private void ToggleDropdown()
+    private async Task ToggleDropdown()
     {
+        if (!_dropdownOpen)
+        {
+            await LoadDeploymentModeAsync();
+        }
+
         _dropdownOpen = !_dropdownOpen;
         if (!_dropdownOpen)
         {
@@ -374,9 +382,17 @@ public partial class NavMenu : IDisposable
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             if (authState.User.Identity?.IsAuthenticated == true)
             {
+                var authority = await UserService.GetAdminAuthorityAsync();
+                if (authority is not null)
+                {
+                    _isCurrentUserInstanceAdmin = authority.IsInstanceAdmin == true || _isCurrentUserInstanceAdmin;
+                    _isCurrentUserTenantAdmin = authority.AdminTenantIds?.Any() == true
+                        || (_isSingleTenantMode && _isCurrentUserInstanceAdmin);
+                }
+
                 var tenantStatus = await TenantOnboardingService.GetStatusAsync();
-                _isCurrentUserTenantAdmin = tenantStatus?.IsAuthenticated == true
-                    && tenantStatus.IsCurrentUserTenantAdministrator;
+                _isCurrentUserTenantAdmin = _isCurrentUserTenantAdmin
+                    || (tenantStatus?.IsAuthenticated == true && tenantStatus.IsCurrentUserTenantAdministrator);
             }
         }
         catch

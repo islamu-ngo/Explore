@@ -6,6 +6,7 @@ using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Tests.Common.Authentication;
 using NSubstitute;
 
 namespace Explore.Blazor.Client.Tests.Common;
@@ -47,6 +48,15 @@ public static class NavMenuTestServices
     {
         var userService = Substitute.For<IUserService>();
         userService.GetCurrentUserAsync().Returns((UserDto?)null);
+        userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
+        {
+            IsInstanceAdmin = isCurrentUserInstanceAdmin,
+            AdminTenantIds = isCurrentUserTenantAdmin || (deploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase) && isCurrentUserInstanceAdmin)
+                ? [AuthenticationTestConstants.DefaultTenantId]
+                : [],
+            AdminOrganizationIds = [],
+            HasAnyAuthority = isCurrentUserInstanceAdmin || isCurrentUserTenantAdmin
+        });
         ctx.Services.AddSingleton(userService);
 
         var userSettingsService = Substitute.For<IUserSettingsService>();

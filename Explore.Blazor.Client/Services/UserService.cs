@@ -1,3 +1,6 @@
+// ABOUTME: Client service for authenticated user profile, sync, account, and admin-authority calls.
+// ABOUTME: Wraps generated BFF API client failures into nullable/command response contracts for UI use.
+
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.Logging;
@@ -18,6 +21,11 @@ public interface IUserService
     /// Gets the current authenticated user's details.
     /// </summary>
     Task<UserDto?> GetCurrentUserAsync();
+
+    /// <summary>
+    /// Gets the current authenticated user's DB-backed admin authority.
+    /// </summary>
+    Task<AdminAuthorityDto?> GetAdminAuthorityAsync();
 
     /// <summary>
     /// Updates the current user's profile.
@@ -136,6 +144,30 @@ public class UserService : IUserService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting user");
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<AdminAuthorityDto?> GetAdminAuthorityAsync()
+    {
+        try
+        {
+            return await _apiClient.GetCurrentUserAdminAuthorityAsync();
+        }
+        catch (ApiException ex) when (ex.StatusCode == 401 || ex.StatusCode == 403)
+        {
+            _logger.LogWarning("User is not authorized to fetch admin authority: {StatusCode}", ex.StatusCode);
+            return null;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "API error fetching admin authority: {StatusCode}", ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching admin authority");
             return null;
         }
     }

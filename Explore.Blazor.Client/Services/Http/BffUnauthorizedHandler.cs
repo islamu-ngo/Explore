@@ -1,3 +1,6 @@
+// ABOUTME: HTTP handler that redirects interactive users to login when BFF API calls return 401.
+// ABOUTME: Suppresses redirects for anonymous endpoints and pre-navigation render phases.
+
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -40,8 +43,13 @@ public sealed class BffUnauthorizedHandler : DelegatingHandler
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
-            var currentRelativePath = _nav.ToBaseRelativePath(_nav.Uri);
+            var path = GetRequestPath(request.RequestUri);
+            if (!TryGetCurrentRelativePath(out var currentRelativePath))
+            {
+                _logger.LogDebug("BFF handler: suppressing 401 redirect before navigation manager initialization for {Method} {Uri}", request.Method, request.RequestUri);
+                return response;
+            }
+
             if (string.IsNullOrWhiteSpace(currentRelativePath))
             {
                 currentRelativePath = "/";
@@ -85,7 +93,11 @@ public sealed class BffUnauthorizedHandler : DelegatingHandler
 
             _logger.LogWarning("BFF handler: received 401 for {Method} {Uri} - redirecting to /login", request.Method, request.RequestUri);
 
-            var relativeCurrentPath = _nav.ToBaseRelativePath(_nav.Uri);
+            if (!TryGetCurrentRelativePath(out var relativeCurrentPath))
+            {
+                return response;
+            }
+
             if (string.IsNullOrWhiteSpace(relativeCurrentPath))
             {
                 relativeCurrentPath = "/";
@@ -100,5 +112,37 @@ public sealed class BffUnauthorizedHandler : DelegatingHandler
         }
 
         return response;
+    }
+
+    private bool TryGetCurrentRelativePath(out string currentRelativePath)
+    {
+        currentRelativePath = string.Empty;
+        try
+        {
+            currentRelativePath = _nav.ToBaseRelativePath(_nav.Uri);
+            return true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogDebug(ex, "BFF handler: NavigationManager is not initialized.");
+            return false;
+        }
+    }
+
+    private static string GetRequestPath(Uri? uri)
+    {
+        if (uri is null)
+        {
+            return string.Empty;
+        }
+
+        if (uri.IsAbsoluteUri)
+        {
+            return uri.AbsolutePath;
+        }
+
+        var value = uri.OriginalString;
+        var queryIndex = value.IndexOf('?', StringComparison.Ordinal);
+        return queryIndex >= 0 ? value[..queryIndex] : value;
     }
 }

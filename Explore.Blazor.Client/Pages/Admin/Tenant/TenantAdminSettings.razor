@@ -1,5 +1,5 @@
 @* ABOUTME: Page wrapper for the Tenant Admin Settings sidebar layout. *@
-@* ABOUTME: Redirects to instance settings in single-tenant mode; renders TenantAdminSettingsLayout otherwise. *@
+@* ABOUTME: Resolves deployment mode before rendering tenant settings or redirecting single-tenant admins. *@
 
 @page "/admin/tenant/settings"
 @using MudBlazor
@@ -19,12 +19,21 @@
         <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
     </MudContainer>
 }
+else if (_checkingMode)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+        <MudStack AlignItems="AlignItems.Center" Class="py-12">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        </MudStack>
+    </MudContainer>
+}
 else if (!_redirecting)
 {
     <TenantAdminSettingsLayout />
 }
 
 @code {
+    private bool _checkingMode = true;
     private bool _redirecting;
     private string? _errorMessage;
 
@@ -33,16 +42,21 @@ else if (!_redirecting)
         try
         {
             var deploymentMode = await InstanceOnboardingService.GetDeploymentModeAsync();
-            if (string.Equals(deploymentMode.Mode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
-                || string.IsNullOrWhiteSpace(deploymentMode?.Mode))
+            if (string.IsNullOrWhiteSpace(deploymentMode?.Mode)
+                || string.Equals(deploymentMode.Mode, "SingleTenant", StringComparison.OrdinalIgnoreCase))
             {
                 _redirecting = true;
                 Navigation.NavigateTo("/admin/instance/settings", replace: true);
+                return;
             }
         }
         catch
         {
             _errorMessage = "Unable to determine deployment mode. Please refresh or contact support.";
+        }
+        finally
+        {
+            _checkingMode = false;
         }
     }
 }

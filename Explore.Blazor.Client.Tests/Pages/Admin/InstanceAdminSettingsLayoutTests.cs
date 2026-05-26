@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Tests.Common.Authentication;
 using System.Reflection;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -14,6 +15,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     private readonly ITenantOnboardingService _tenantOnboardingService;
     private readonly ITenantPublicExperienceAdminService _publicExperienceAdminService;
     private readonly IOrganizationService _organizationService;
+    private readonly IUserService _userService;
 
     public InstanceAdminSettingsLayoutTests()
     {
@@ -25,6 +27,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _tenantOnboardingService = _ctx.AddMockService<ITenantOnboardingService>();
         _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
         _organizationService = _ctx.AddMockService<IOrganizationService>();
+        _userService = _ctx.AddMockService<IUserService>();
 
         ConfigureSingleTenantInstanceDefaults();
     }
@@ -343,6 +346,14 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 IsAuthenticated = true,
                 IsCurrentUserInstanceAdmin = true,
                 SelectedDeploymentMode = "SingleTenant"
+            });
+        _userService.GetAdminAuthorityAsync()
+            .Returns(new AdminAuthorityDto
+            {
+                IsInstanceAdmin = true,
+                AdminTenantIds = [AuthenticationTestConstants.DefaultTenantId],
+                AdminOrganizationIds = [],
+                HasAnyAuthority = true
             });
         _instanceOnboardingService.GetDeploymentModeAsync().Returns(new DeploymentModeModel { Mode = "SingleTenant" });
         _instanceOnboardingService.GetModuleSettingsAsync().Returns(new ModuleSettingsModel());

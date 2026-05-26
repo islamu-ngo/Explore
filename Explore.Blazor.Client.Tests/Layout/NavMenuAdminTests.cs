@@ -1,5 +1,5 @@
 // ABOUTME: Component tests for NavMenu admin section visibility based on BFF-reported admin status.
-// Verifies browser admin claims are not treated as navigation authority.
+// ABOUTME: Verifies browser admin claims are not treated as navigation authority.
 
 using Explore.Blazor.Client.Tests.Common.Authentication;
 
@@ -243,6 +243,73 @@ public class NavMenuAdminTests : IDisposable
         await Assert.That(cut.Markup).Contains("Administration");
         await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
         await Assert.That(cut.Markup).DoesNotContain("href=\"/admin/instance/settings\"");
+    }
+
+    [Test]
+    public async Task NavMenu_RefreshesAdminStatusWhenDropdownOpens_AfterSingleTenantOnboarding()
+    {
+        // Arrange
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Setup Admin");
+        SetupNavMenuServices(deploymentMode: "SingleTenant");
+
+        var instanceOnboardingService = _ctx.Services.GetRequiredService<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns(
+            new InstanceOnboardingStatusModel
+            {
+                IsCompleted = true,
+                IsAuthenticated = true,
+                IsCurrentUserInstanceAdmin = false,
+                SelectedDeploymentMode = "SingleTenant"
+            },
+            new InstanceOnboardingStatusModel
+            {
+                IsCompleted = true,
+                IsAuthenticated = true,
+                IsCurrentUserInstanceAdmin = true,
+                SelectedDeploymentMode = "SingleTenant"
+            });
+
+        // Act
+        var cut = RenderNavMenu();
+        OpenDropdown(cut);
+
+        // Assert -- the persisted layout rechecks BFF/API authority on menu open.
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("href=\"/admin/tenant/settings\"", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected tenant administration link to render after status refresh.");
+            }
+        });
+        await Assert.That(cut.Markup).Contains("Administration");
+    }
+
+    [Test]
+    public async Task NavMenu_SingleTenantAdminAuthority_ShowsAdministration_WhenOnboardingStatusIsStale()
+    {
+        // Arrange
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.AdminUserId, "Setup Admin");
+        SetupNavMenuServices(deploymentMode: "SingleTenant");
+
+        var userService = _ctx.Services.GetRequiredService<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
+        {
+            IsInstanceAdmin = true,
+            AdminTenantIds = [AuthenticationTestConstants.DefaultTenantId],
+            AdminOrganizationIds = [],
+            HasAnyAuthority = true
+        });
+
+        var tenantOnboardingService = _ctx.Services.GetRequiredService<ITenantOnboardingService>();
+        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusModel?)null);
+
+        // Act
+        var cut = RenderNavMenu();
+        OpenDropdown(cut);
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("href=\"/admin/tenant/settings\"");
+        await Assert.That(cut.Markup).Contains("Administration");
     }
 
     private IRenderedComponent<DynamicComponent> RenderNavMenu()

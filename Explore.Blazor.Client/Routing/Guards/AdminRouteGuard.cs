@@ -1,5 +1,5 @@
 // ABOUTME: Route guard that restricts instance admin routes to platform-scoped instance administrators.
-// Uses the BFF onboarding status endpoint as the source of truth for instance-admin authority.
+// ABOUTME: Uses DB-backed BFF admin authority before falling back to onboarding status.
 
 using Blazouter.Interfaces;
 using Blazouter.Models;
@@ -13,7 +13,8 @@ namespace Explore.Blazor.Client.Routing.Guards;
 /// </summary>
 public sealed class AdminRouteGuard(
     AuthenticationStateProvider authStateProvider,
-    IInstanceOnboardingService instanceOnboardingService) : IRouteGuard
+    IInstanceOnboardingService instanceOnboardingService,
+    IUserService userService) : IRouteGuard
 {
     public async Task<bool> CanActivateAsync(RouteMatch match)
     {
@@ -27,6 +28,12 @@ public sealed class AdminRouteGuard(
         if (user.Identity?.IsAuthenticated != true)
         {
             return false;
+        }
+
+        var authority = await userService.GetAdminAuthorityAsync().ConfigureAwait(false);
+        if (authority?.IsInstanceAdmin == true)
+        {
+            return true;
         }
 
         var instanceStatus = await instanceOnboardingService.GetStatusAsync().ConfigureAwait(false);

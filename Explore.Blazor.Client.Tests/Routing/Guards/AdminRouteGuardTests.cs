@@ -222,6 +222,74 @@ public class AdminRouteGuardTests
     }
 
     [Test]
+    public async Task CanActivateAsync_AuthenticatedUserWithoutClaims_ButAdminAuthorityInstanceAdmin_ReturnsTrue()
+    {
+        // Arrange
+        var principal = new AuthenticationTestBuilder()
+            .WithUser(AuthenticationTestConstants.AdminUserId, "Instance Admin")
+            .BuildPrincipal();
+
+        var authState = new AuthenticationState(principal);
+        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
+        authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
+
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsAuthenticated = false,
+            IsCurrentUserInstanceAdmin = false
+        });
+        var userService = Substitute.For<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
+        {
+            IsInstanceAdmin = true,
+            AdminTenantIds = [],
+            AdminOrganizationIds = [],
+            HasAnyAuthority = true
+        });
+
+        var guard = CreateGuard(authStateProvider, instanceOnboardingService, userService);
+
+        // Act
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/instance/settings" });
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task CanActivateAsync_AdminAuthorityTenantOnly_ReturnsFalse()
+    {
+        // Arrange
+        var principal = new AuthenticationTestBuilder()
+            .WithUser(AuthenticationTestConstants.AdminUserId, "Tenant Admin")
+            .BuildPrincipal();
+
+        var authState = new AuthenticationState(principal);
+        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
+        authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
+
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusModel?)null);
+        var userService = Substitute.For<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
+        {
+            IsInstanceAdmin = false,
+            AdminTenantIds = [AuthenticationTestConstants.DefaultTenantId],
+            AdminOrganizationIds = [],
+            HasAnyAuthority = true
+        });
+
+        var guard = CreateGuard(authStateProvider, instanceOnboardingService, userService);
+
+        // Act
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/instance/settings" });
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
     public async Task CanActivateAsync_AuthenticatedUserWithoutClaims_ButTenantStatusAdmin_ReturnsFalse()
     {
         // Arrange
@@ -247,7 +315,8 @@ public class AdminRouteGuardTests
 
     private static AdminRouteGuard CreateGuard(
         AuthenticationStateProvider authStateProvider,
-        IInstanceOnboardingService? instanceOnboardingService = null)
+        IInstanceOnboardingService? instanceOnboardingService = null,
+        IUserService? userService = null)
     {
         if (instanceOnboardingService is null)
         {
@@ -255,6 +324,12 @@ public class AdminRouteGuardTests
             instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusModel?)null);
         }
 
-        return new AdminRouteGuard(authStateProvider, instanceOnboardingService);
+        if (userService is null)
+        {
+            userService = Substitute.For<IUserService>();
+            userService.GetAdminAuthorityAsync().Returns((AdminAuthorityDto?)null);
+        }
+
+        return new AdminRouteGuard(authStateProvider, instanceOnboardingService, userService);
     }
 }

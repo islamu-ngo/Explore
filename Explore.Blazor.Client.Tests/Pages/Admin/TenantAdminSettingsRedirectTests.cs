@@ -9,6 +9,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IInstanceOnboardingService _onboardingService;
+    private readonly ITenantOnboardingService _tenantOnboardingService;
     private readonly ITenantPublicExperienceAdminService _publicExperienceAdminService;
     private readonly BunitNavigationManager _nav;
 
@@ -19,7 +20,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Instance Admin", "admin@example.com");
 
         _onboardingService = _ctx.AddMockService<IInstanceOnboardingService>();
-        _ctx.AddMockService<ITenantOnboardingService>();
+        _tenantOnboardingService = _ctx.AddMockService<ITenantOnboardingService>();
         _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
         _ctx.AddMockService<ITenantBrandingSettingsAdminService>();
         _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())
@@ -51,6 +52,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         });
 
         await Assert.That(_nav.Uri).Contains("/admin/instance/settings");
+        await _tenantOnboardingService.DidNotReceive().GetStatusAsync();
     }
 
     [Test]

@@ -21,8 +21,10 @@ public class TenantAdminRouteGuardTests
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        var userService = Substitute.For<IUserService>();
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
@@ -45,8 +47,12 @@ public class TenantAdminRouteGuardTests
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
         tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusModel?)null);
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusModel?)null);
+        var userService = Substitute.For<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns((AdminAuthorityDto?)null);
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
@@ -69,8 +75,12 @@ public class TenantAdminRouteGuardTests
         authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
         var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
         tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusModel?)null);
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns((InstanceOnboardingStatusModel?)null);
+        var userService = Substitute.For<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns((AdminAuthorityDto?)null);
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
@@ -96,8 +106,17 @@ public class TenantAdminRouteGuardTests
             IsAuthenticated = true,
             IsCurrentUserTenantAdministrator = true
         });
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsAuthenticated = true,
+            IsCurrentUserInstanceAdmin = false,
+            SelectedDeploymentMode = "MultiTenant"
+        });
+        var userService = Substitute.For<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns((AdminAuthorityDto?)null);
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
@@ -124,13 +143,97 @@ public class TenantAdminRouteGuardTests
             IsCurrentUserPlatformAdministrator = true,
             IsCurrentUserTenantAdministrator = false
         });
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsAuthenticated = true,
+            IsCurrentUserInstanceAdmin = true,
+            SelectedDeploymentMode = "MultiTenant"
+        });
+        var userService = Substitute.For<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
+        {
+            IsInstanceAdmin = true,
+            AdminTenantIds = [],
+            AdminOrganizationIds = [],
+            HasAnyAuthority = true
+        });
 
-        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService);
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
 
         // Act
         var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
 
         // Assert
         await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task CanActivateAsync_SingleTenantInstanceAdminStatus_ReturnsTrueWhenTenantStatusUnavailable()
+    {
+        // Arrange
+        var principal = new AuthenticationTestBuilder()
+            .WithUser(AuthenticationTestConstants.AdminUserId, "Setup Admin")
+            .BuildPrincipal();
+
+        var authState = new AuthenticationState(principal);
+        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
+        authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
+        var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
+        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusModel?)null);
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsAuthenticated = true,
+            IsCurrentUserInstanceAdmin = true,
+            SelectedDeploymentMode = "SingleTenant"
+        });
+        var userService = Substitute.For<IUserService>();
+
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
+
+        // Act
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task CanActivateAsync_SingleTenantAdminAuthority_ReturnsTrueWhenOnboardingStatusIsStale()
+    {
+        // Arrange
+        var principal = new AuthenticationTestBuilder()
+            .WithUser(AuthenticationTestConstants.AdminUserId, "Setup Admin")
+            .BuildPrincipal();
+
+        var authState = new AuthenticationState(principal);
+        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
+        authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
+        var tenantOnboardingService = Substitute.For<ITenantOnboardingService>();
+        tenantOnboardingService.GetStatusAsync().Returns((TenantOnboardingStatusModel?)null);
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsAuthenticated = true,
+            IsCurrentUserInstanceAdmin = false,
+            SelectedDeploymentMode = "SingleTenant"
+        });
+        var userService = Substitute.For<IUserService>();
+        userService.GetAdminAuthorityAsync().Returns(new AdminAuthorityDto
+        {
+            IsInstanceAdmin = true,
+            AdminTenantIds = [AuthenticationTestConstants.DefaultTenantId],
+            AdminOrganizationIds = [],
+            HasAnyAuthority = true
+        });
+
+        var guard = new TenantAdminRouteGuard(authStateProvider, tenantOnboardingService, instanceOnboardingService, userService);
+
+        // Act
+        var result = await guard.CanActivateAsync(new RouteMatch { MatchedPath = "/admin/tenant/settings" });
+
+        // Assert
+        await Assert.That(result).IsTrue();
     }
 }

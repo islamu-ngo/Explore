@@ -1,5 +1,5 @@
 @* ABOUTME: Sidebar layout component for Instance Admin Settings with context-aware sections. *@
-@* In single-tenant mode shows unified settings; in multi-tenant mode shows tenant management. *@
+@* ABOUTME: In single-tenant mode shows unified settings; in multi-tenant mode shows tenant management. *@
 
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
@@ -9,6 +9,7 @@
 
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject ITenantOnboardingService TenantOnboardingService
+@inject IUserService UserService
 @inject IPublicExperienceService PublicExperienceService
 @inject ITenantPublicExperienceAdminService TenantPublicExperienceAdminService
 @inject AiAssistantState AiAssistantState
@@ -301,8 +302,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authority = await UserService.GetAdminAuthorityAsync();
         var status = await InstanceOnboardingService.GetStatusAsync();
-        _canEdit = status?.IsCurrentUserInstanceAdmin == true;
+        _canEdit = authority?.IsInstanceAdmin == true
+            || (status?.IsAuthenticated == true && status.IsCurrentUserInstanceAdmin);
 
         if (!_canEdit)
         {
