@@ -355,7 +355,7 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
 
     /// <summary>
     /// Resolves an image object key to a presigned URL for viewing.
-    /// If the value is already a full URL (legacy data), extracts the key and generates presigned URL.
+    /// If the value is already a full external URL, returns it unchanged.
     /// </summary>
     private async Task<string?> ResolveImageUrl(string? objectKeyOrUri)
     {
@@ -368,12 +368,6 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
             if (objectKeyOrUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                 objectKeyOrUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                // Extract object key from full URL and generate presigned URL
-                if (Uri.TryCreate(objectKeyOrUri, UriKind.Absolute, out var uri))
-                {
-                    var objectKey = uri.AbsolutePath.TrimStart('/');
-                    return await _objectStorageService.GeneratePresignedDownloadUrl(objectKey, 60);
-                }
                 return objectKeyOrUri;
             }
 

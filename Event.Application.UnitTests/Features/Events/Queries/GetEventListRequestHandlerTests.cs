@@ -211,6 +211,38 @@ public class GetEventListRequestHandlerTests
             Arg.Any<EventQuerySpecification>());
     }
 
+    [Test]
+    public async Task Handle_WithAbsoluteFeaturedImageUrl_ReturnsUrlWithoutPresigning()
+    {
+        var imageUrl = "https://placeholder.islamu.org/event-default.jpg";
+        _eventRepository.GetEventsWithDetailsPaged(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<EventQuerySpecification>())
+            .Returns((new List<Explore.Domain.Event> { CreateEventProbe(Guid.NewGuid(), "With external image", _tenantId) }, 1));
+        _mapper.Map<List<EventListDto>>(Arg.Any<List<Explore.Domain.Event>>())
+            .Returns(_ =>
+            [
+                new EventListDto
+                {
+                    Id = Guid.NewGuid(),
+                    Title = "With external image",
+                    EventTypeFullName = string.Empty,
+                    AudienceGenderFullName = string.Empty,
+                    AudienceAgeFullName = string.Empty,
+                    ActorDisplayName = string.Empty,
+                    ActorTypeFullName = string.Empty,
+                    EventStatusFullName = string.Empty,
+                    VisibilityTypeFullName = string.Empty,
+                    EventFormatFullName = string.Empty,
+                    TenantId = _tenantId,
+                    FeaturedImageUri = imageUrl
+                }
+            ]);
+
+        var result = await _handler.Handle(new GetEventListRequest(), CancellationToken.None);
+
+        await Assert.That(result.Items.Single().FeaturedImageUri).IsEqualTo(imageUrl);
+        await _objectStorageService.DidNotReceiveWithAnyArgs().GeneratePresignedDownloadUrl(default!, default);
+    }
+
     private static bool HasActorFilter(EventQuerySpecification specification, Guid actorId)
     {
         var probe = CreateEventProbe(actorId);
