@@ -24,6 +24,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
     private readonly IInstanceBootstrapStateRepository _bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
     private readonly IPlatformUserRoleRepository _platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
     private readonly ITenantMemberRepository _tenantMemberRepository = Substitute.For<ITenantMemberRepository>();
+    private readonly ITenantUserRepository _tenantUserRepository = Substitute.For<ITenantUserRepository>();
     private readonly IRoleRepository _roleRepository = Substitute.For<IRoleRepository>();
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
     private readonly IActorRepository _actorRepository = Substitute.For<IActorRepository>();
@@ -34,6 +35,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
     private readonly IAdminCacheInvalidator _adminCacheInvalidator = Substitute.For<IAdminCacheInvalidator>();
     private readonly IDeploymentModeProvider _deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
     private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier = Substitute.For<IJwtAuthorityRefreshNotifier>();
+    private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly CompleteInstanceOnboardingCommandHandler _handler;
 
@@ -90,11 +92,13 @@ public class CompleteInstanceOnboardingCommandHandlerTests
         _systemSettingRepository.Create(Arg.Any<SystemSetting>()).Returns(callInfo => callInfo.Arg<SystemSetting>()!);
         _platformUserRoleRepository.Create(Arg.Any<PlatformUserRole>()).Returns(callInfo => callInfo.Arg<PlatformUserRole>()!);
         _tenantMemberRepository.Create(Arg.Any<TenantMember>()).Returns(callInfo => callInfo.Arg<TenantMember>()!);
+        _tenantUserRepository.Create(Arg.Any<TenantUser>()).Returns(callInfo => callInfo.Arg<TenantUser>()!);
 
         _handler = new CompleteInstanceOnboardingCommandHandler(
             _bootstrapRepository,
             _platformUserRoleRepository,
             _tenantMemberRepository,
+            _tenantUserRepository,
             _roleRepository,
             _userRepository,
             _actorRepository,
@@ -105,6 +109,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             _adminCacheInvalidator,
             _deploymentModeProvider,
             _jwtAuthorityRefreshNotifier,
+            _tenantBrandingProvisioningService,
             Substitute.For<ILogger<CompleteInstanceOnboardingCommandHandler>>(),
             _unitOfWork);
     }
@@ -165,6 +170,21 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             && setting.SettingKey == GovernanceSettingKeys.PublicExperience.Ctas
             && setting.ValueType == SettingValueType.Json
             && ContainsDefaultCta(setting.Value)));
+        await _tenantUserRepository.Received(1).Create(Arg.Is<TenantUser>(tenantUser =>
+            tenantUser != null
+            && tenantUser.TenantId == PlatformDefaults.DefaultTenantId
+            && tenantUser.UserId == TestUserId
+            && tenantUser.StatusId == (int)TenantUserStatusEnum.Active
+            && tenantUser.CreatedBy == TestUserId));
+        await _tenantMemberRepository.Received(1).Create(Arg.Is<TenantMember>(member =>
+            member != null
+            && member.TenantId == PlatformDefaults.DefaultTenantId
+            && member.UserId == TestUserId
+            && member.RoleId == (int)RoleEnum.TenantAdmin));
+        await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(
+            PlatformDefaults.DefaultTenantId,
+            "Community Events",
+            Arg.Any<CancellationToken>());
         _setupSecretProvider.Received(1).Lock();
     }
 

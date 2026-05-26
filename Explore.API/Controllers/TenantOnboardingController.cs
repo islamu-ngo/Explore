@@ -13,6 +13,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -59,7 +60,10 @@ public class TenantOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] UpdateTenantPolicyRequest settings, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete(
+        [FromBody] UpdateTenantPolicyRequest settings,
+        [FromServices] IOutputCacheStore cacheStore,
+        CancellationToken cancellationToken = default)
     {
         var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!currentUserId.HasValue)
@@ -87,6 +91,7 @@ public class TenantOnboardingController : ExploreControllerBase
             return BadRequest(response);
         }
 
+        await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
         return Ok(response);
     }
 
@@ -97,7 +102,10 @@ public class TenantOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings([FromBody] UpdateTenantPolicyRequest settings, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings(
+        [FromBody] UpdateTenantPolicyRequest settings,
+        [FromServices] IOutputCacheStore cacheStore,
+        CancellationToken cancellationToken = default)
     {
         var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!currentUserId.HasValue)
@@ -125,6 +133,7 @@ public class TenantOnboardingController : ExploreControllerBase
             return BadRequest(response);
         }
 
+        await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
         return Ok(response);
     }
 

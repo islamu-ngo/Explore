@@ -24,6 +24,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly IPlatformUserRoleRepository _platformUserRoleRepository;
     private readonly ITenantMemberRepository _tenantMemberRepository;
+    private readonly ITenantUserRepository _tenantUserRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IUserRepository _userRepository;
     private readonly IActorRepository _actorRepository;
@@ -34,6 +35,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IDeploymentModeProvider _deploymentModeProvider;
     private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier;
+    private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly ILogger<CompleteInstanceOnboardingCommandHandler> _logger;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -41,6 +43,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         IPlatformUserRoleRepository platformUserRoleRepository,
         ITenantMemberRepository tenantMemberRepository,
+        ITenantUserRepository tenantUserRepository,
         IRoleRepository roleRepository,
         IUserRepository userRepository,
         IActorRepository actorRepository,
@@ -51,12 +54,14 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         IAdminCacheInvalidator adminCacheInvalidator,
         IDeploymentModeProvider deploymentModeProvider,
         IJwtAuthorityRefreshNotifier jwtAuthorityRefreshNotifier,
+        ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
         ILogger<CompleteInstanceOnboardingCommandHandler> logger,
         IUnitOfWork unitOfWork)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _platformUserRoleRepository = platformUserRoleRepository;
         _tenantMemberRepository = tenantMemberRepository;
+        _tenantUserRepository = tenantUserRepository;
         _roleRepository = roleRepository;
         _userRepository = userRepository;
         _actorRepository = actorRepository;
@@ -67,6 +72,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         _adminCacheInvalidator = adminCacheInvalidator;
         _deploymentModeProvider = deploymentModeProvider;
         _jwtAuthorityRefreshNotifier = jwtAuthorityRefreshNotifier;
+        _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
         _logger = logger;
         _unitOfWork = unitOfWork;
     }
@@ -133,7 +139,11 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
             if (isSingleTenant && defaultTenantId.HasValue)
             {
-                await EnsureDefaultTenantAdministratorAsync(defaultTenantId.Value, request.UserId);
+                await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(
+                    defaultTenantId.Value,
+                    siteProfile.SiteName,
+                    ct);
+                await EnsureDefaultTenantAdministratorAsync(defaultTenantId.Value, user);
                 _logger.LogInformation("Onboarding: Assigned Tenant Admin role for default tenant {TenantId} to user {UserId}", defaultTenantId, request.UserId);
             }
 
@@ -535,8 +545,11 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         return uri.Host.Trim().ToLowerInvariant();
     }
 
-    private async Task EnsureDefaultTenantAdministratorAsync(Guid tenantId, Guid userId)
+    private async Task EnsureDefaultTenantAdministratorAsync(Guid tenantId, User user)
     {
+        var userId = user.Id;
+        await EnsureActiveTenantUserAsync(tenantId, user);
+
         var tenantMember = await _tenantMemberRepository.GetByTenantAndUser(tenantId, userId);
         
         // Resolve the tenant admin role using the canonical master code.
@@ -572,5 +585,40 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         
         tenantMember.RoleId = tenantAdminRole.Id;
         await _tenantMemberRepository.Update(tenantMember);
+    }
+
+    private async Task EnsureActiveTenantUserAsync(Guid tenantId, User user)
+    {
+        var tenantUser = await _tenantUserRepository.GetByTenantAndUserAsync(tenantId, user.Id);
+        if (tenantUser == null)
+        {
+            await _tenantUserRepository.Create(new TenantUser
+            {
+                TenantId = tenantId,
+                Tenant = null!,
+                UserId = user.Id,
+                User = null!,
+                ActorId = user.DefaultActorId ?? user.ActorId,
+                Actor = null,
+                StatusId = (int)TenantUserStatusEnum.Active,
+                JoinedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = user.Id
+            });
+            return;
+        }
+
+        if (tenantUser.StatusId == (int)TenantUserStatusEnum.Active && !tenantUser.IsDeleted)
+        {
+            return;
+        }
+
+        tenantUser.StatusId = (int)TenantUserStatusEnum.Active;
+        tenantUser.IsDeleted = false;
+        tenantUser.DeletedAt = null;
+        tenantUser.DeletedBy = null;
+        tenantUser.UpdatedAt = DateTime.UtcNow;
+        tenantUser.UpdatedBy = user.Id;
+        await _tenantUserRepository.Update(tenantUser);
     }
 }

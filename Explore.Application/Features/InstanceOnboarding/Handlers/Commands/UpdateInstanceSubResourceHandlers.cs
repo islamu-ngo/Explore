@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Domain.Constants;
 using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
@@ -117,12 +118,21 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
 {
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
+    private readonly IDeploymentModeProvider _deploymentModeProvider;
+    private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateBrandingSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
+    public UpdateBrandingSettingsCommandHandler(
+        IAdminContext adminContext,
+        IInstanceGovernanceSettingService service,
+        IDeploymentModeProvider deploymentModeProvider,
+        ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
+        IUnitOfWork unitOfWork)
     {
         _adminContext = adminContext;
         _service = service;
+        _deploymentModeProvider = deploymentModeProvider;
+        _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
         _unitOfWork = unitOfWork;
     }
 
@@ -132,8 +142,18 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
             return Unauthorized(response);
 
-        await _unitOfWork.ExecuteInTransactionAsync(ct =>
-            _service.ApplyBrandingSettingsAsync(request.Settings, request.UserId), cancellationToken);
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            await _service.ApplyBrandingSettingsAsync(request.Settings, request.UserId);
+
+            if (await _deploymentModeProvider.IsSingleTenantAsync(ct))
+            {
+                await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(
+                    PlatformDefaults.DefaultTenantId,
+                    request.Settings.DefaultBrandDisplayName,
+                    ct);
+            }
+        }, cancellationToken);
         response.Success = true;
         response.Message = "Branding settings updated successfully.";
         return response;

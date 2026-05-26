@@ -15,6 +15,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -62,6 +63,7 @@ public sealed class TenantSettingsDocumentsController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<HalResource<TenantBrandingSettingsDocumentDto>>> ReplaceBranding(
         [FromBody] ReplaceTenantBrandingSettingsDocumentDto document,
+        [FromServices] IOutputCacheStore cacheStore,
         CancellationToken cancellationToken = default)
     {
         var lockState = await lockService.GetLockStateAsync(cancellationToken);
@@ -83,6 +85,8 @@ public sealed class TenantSettingsDocumentsController(
 
             return BadRequest(response);
         }
+
+        await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
 
         var updated = await mediator.Send(new GetTenantBrandingSettingsDocumentQuery(), cancellationToken);
         if (updated is null)

@@ -19,6 +19,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Explore.API.Controllers;
 
@@ -153,12 +154,19 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateBrandingSettings(
-        [FromBody] BrandingSettingsDto settings, CancellationToken cancellationToken = default)
+        [FromBody] BrandingSettingsDto settings,
+        [FromServices] IOutputCacheStore cacheStore,
+        CancellationToken cancellationToken = default)
     {
         var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateBrandingSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        if (response.Success)
+        {
+            await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
+        }
+
         return HandleCommandResponse(response);
     }
 
