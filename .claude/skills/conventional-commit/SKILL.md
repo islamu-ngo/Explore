@@ -23,6 +23,7 @@ Enforce a consistent, parseable commit message format that:
 - Enables automated changelog generation
 - Communicates intent (feature, fix, refactor, etc.) at a glance
 - Prevents oversized mixed-purpose commits by requiring atomic, fully related changes
+- Defaults commit work to multiple atomic commits rather than a single large catch-all commit
 
 ## When This Skill Activates
 
@@ -103,6 +104,11 @@ staging or committing, split the working tree by **intent**, **scope**, and
 **work unit**. The question is not "can these files compile together?" but
 "would reverting this commit revert exactly one coherent change?"
 
+Default expectation: when a working tree contains more than one independently
+understandable change, the result should be **multiple atomic commits**. A
+single large commit that regroups everything is a failure unless the changes
+are demonstrably one indivisible work unit.
+
 ### Atomicity Gate
 
 Every commit must pass all of these checks:
@@ -135,9 +141,10 @@ change). Otherwise, split it.
 
 1. Inspect the full working tree before staging.
 2. Group files by shared intent and same work unit.
-3. Stage only the files for the next atomic commit.
-4. Re-check staged diff before committing.
-5. Repeat until each remaining group is independently understandable.
+3. Plan for **multiple commits by default**, not one final umbrella commit.
+4. Stage only the files for the next atomic commit.
+5. Re-check staged diff before committing.
+6. Commit that slice, then repeat until each remaining group is independently understandable.
 
 Never stage all changes merely because they are present. Never use an AI commit
 composer as permission to create a mixed commit; its output must still satisfy
@@ -194,7 +201,8 @@ BREAKING CHANGE: EventDto removed. All consumers must use EventResource.
 8. **`BREAKING CHANGE:` in footer** — not just the `!` suffix alone.
 9. When a commit spans multiple projects, use the *primary* project as scope and mention others in the body.
 10. **Never commit the entire working tree by default** — explicitly select the atomic file group being committed.
-11. **Merge commits and automated commits** are exempt from this format.
+11. **Multiple atomic commits are the default outcome** whenever the worktree contains more than one separable change.
+12. **Merge commits and automated commits** are exempt from this format.
 
 ## Multi-Project Commits
 
