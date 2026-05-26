@@ -58,7 +58,7 @@ public class AuthorizationEnforcementFlowTests(
             await BffCookieAuthHelper.AddSetupSecretBypassCookieAsync(page.Context, appHost.BlazorBaseUrl);
 
             await AssertAnonymousProtectedRouteRedirectsToLoginAsync(page, "/events/create");
-            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page);
+            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page, appHost.BlazorBaseUrl);
         }
         finally
         {
@@ -77,7 +77,7 @@ public class AuthorizationEnforcementFlowTests(
         {
             await BffCookieAuthHelper.LoginAsTestUserAsync(page, appHost);
             await AssertInstanceAdminApiIsForbiddenForLowPrivilegeUserAsync(page);
-            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page);
+            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page, appHost.BlazorBaseUrl);
         }
         finally
         {

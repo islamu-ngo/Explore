@@ -32,6 +32,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         CancellationToken cancellationToken)
     {
         return await _dbContext.EmailDispatchOutbox
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(e => (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
                 && (e.NextAttemptAt == null || e.NextAttemptAt <= now))
@@ -46,6 +47,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         CancellationToken cancellationToken)
     {
         return await _dbContext.EmailDispatchOutbox
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(dispatch => dispatch.TenantId == tenantId)
             .OrderByDescending(dispatch => dispatch.LastFailureAt ?? dispatch.SentAt ?? dispatch.UnknownAt ?? dispatch.ParkedAt ?? dispatch.CreatedAt)
@@ -57,8 +59,44 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
     public async Task<bool> IsTenantPaused(Guid tenantId, CancellationToken cancellationToken)
     {
         return await _dbContext.EmailDispatchTenantControls
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .AnyAsync(e => e.TenantId == tenantId && e.IsPaused, cancellationToken);
+    }
+
+    public async Task<EmailDispatchTenantControl> SetTenantPauseState(
+        Guid tenantId,
+        bool isPaused,
+        string? pauseReason,
+        Guid? changedBy,
+        DateTime changedAt,
+        CancellationToken cancellationToken)
+    {
+        var control = await _dbContext.EmailDispatchTenantControls
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(e => e.TenantId == tenantId, cancellationToken);
+
+        if (control is null)
+        {
+            control = new EmailDispatchTenantControl
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenantId,
+                CreatedAt = changedAt,
+                CreatedBy = changedBy
+            };
+            await _dbContext.EmailDispatchTenantControls.AddAsync(control, cancellationToken);
+        }
+
+        control.IsPaused = isPaused;
+        control.PauseReason = isPaused ? Truncate(pauseReason, 500) : null;
+        control.PausedAt = isPaused ? changedAt : null;
+        control.PausedBy = isPaused ? changedBy : null;
+        control.UpdatedAt = changedAt;
+        control.UpdatedBy = changedBy;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return control;
     }
 
     public async Task<bool> TryMarkAsProcessing(
@@ -68,6 +106,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         CancellationToken cancellationToken)
     {
         var updated = await _dbContext.EmailDispatchOutbox
+            .IgnoreQueryFilters()
             .Where(e => e.Id == id
                 && (e.Status == EmailDispatchStatus.Pending || e.Status == EmailDispatchStatus.RetryScheduled)
                 && (e.NextAttemptAt == null || e.NextAttemptAt <= startedAt))
@@ -88,6 +127,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         CancellationToken cancellationToken)
     {
         await _dbContext.EmailDispatchOutbox
+            .IgnoreQueryFilters()
             .Where(e => e.Id == id)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.Status, EmailDispatchStatus.Sent)
@@ -111,7 +151,9 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         DateTime failedAt,
         CancellationToken cancellationToken)
     {
-        var entry = await _dbContext.EmailDispatchOutbox.FirstAsync(e => e.Id == id, cancellationToken);
+        var entry = await _dbContext.EmailDispatchOutbox
+            .IgnoreQueryFilters()
+            .FirstAsync(e => e.Id == id, cancellationToken);
         var exhausted = !isRetryable || entry.AttemptCount >= Math.Min(entry.MaxAttempts, maxAttempts);
 
         entry.Status = exhausted ? EmailDispatchStatus.DeadLettered : EmailDispatchStatus.RetryScheduled;
@@ -135,6 +177,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         CancellationToken cancellationToken)
     {
         await _dbContext.EmailDispatchOutbox
+            .IgnoreQueryFilters()
             .Where(e => e.Id == id)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.Status, EmailDispatchStatus.Unknown)
@@ -157,6 +200,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
     public async Task<bool> TryClaimReceipt(EmailDispatchReceipt receipt, CancellationToken cancellationToken)
     {
         var exists = await _dbContext.EmailDispatchReceipts
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .AnyAsync(e => e.TenantId == receipt.TenantId && e.PublishEventId == receipt.PublishEventId, cancellationToken);
         if (exists)
@@ -185,6 +229,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         CancellationToken cancellationToken)
     {
         await _dbContext.EmailDispatchReceipts
+            .IgnoreQueryFilters()
             .Where(e => e.Id == receiptId)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.Status, EmailDispatchReceiptStatus.Completed)
@@ -201,6 +246,7 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
         CancellationToken cancellationToken)
     {
         await _dbContext.EmailDispatchReceipts
+            .IgnoreQueryFilters()
             .Where(e => e.Id == receiptId)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(e => e.Status, EmailDispatchReceiptStatus.Failed)

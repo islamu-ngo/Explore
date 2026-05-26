@@ -20,7 +20,6 @@ public class EventSessionIslamicAspectConfiguration : IEntityTypeConfiguration<E
 
         builder.Property(e => e.StartTimeType)
             .HasConversion<int>()
-            .HasDefaultValue(SessionStartTimeType.RelativeToPrayer)
             .IsRequired();
 
         builder.Property(e => e.ReferencePrayer)

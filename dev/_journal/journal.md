@@ -99,6 +99,93 @@
 - [2026-04-24 Europe/Brussels] **HATEOAS policies live under `Explore.API/Hateoas/Policies/*LinkPolicy*.cs`**, not `Explore.API/LinkPolicies/**` as the original plan drafted. Subagent discovered this via `ls Explore.API/`. Corrected in `intents.yaml` and in `.claude/rules/api-hateoas.md`. Pattern: `<Feature>LinkPolicy.cs` alongside a matching `<Feature>CollectionLinkPolicy.cs` for list endpoints — separate policies keep detail vs collection affordances independently composable.
 - [2026-04-24 Europe/Brussels] **Agent project-context duplication banned by CI**. `AgentContextDuplicationTests` blocks agents from inlining stack-overview content. Detection has three layers: (a) phrase blacklist (9 markers including "This repo uses .NET", "Clean Architecture, CQRS", "Blazor Server + WebAssembly", etc.); (b) LCS-of-runs over MeaningfulLines (drops frontmatter/ABOUTME/<10-char lines) triggering on ≥ 15 consecutive identical lines; (c) Jaccard similarity over SHA256 line-hashes ≥ 0.85. One finding: the phrase `Clean Architecture, CQRS` appeared verbatim in `code-architecture-reviewer.md`'s description; reworded to "the repo's architectural rules (see AGENTS.md §5) covering layering, handlers, EF Core, and the auth pipeline" to pass the guard. **Lesson:** description fields are NOT exempt from duplication checks — they're parsed as body text.
 - [2026-04-24 Europe/Brussels] **TUnit does not support `--filter` CLI flag**. Discovered during Phase 6 when trying to run just the new `AgentContext*` tests in isolation. Consequence: `.github/workflows/agent-context.yml` runs the whole `Event.Architecture.Tests` project (~3 s cost is negligible). Development loops should use IDE test explorer if targeted execution is needed. This also means the `codebase-verifier` agent and the `/check` command use per-project `dotnet test` (no filtering within a project).
+
+[2026-05-25 Europe/Brussels] — Background dispatch repositories must bypass tenant filters deliberately
+
+**Context**: While implementing the Basic Dispatch Mode registration-confirmation E2E for `EmailDispatchOutbox`, the API successfully created the durable outbox row but the background `EmailDispatchProcessor` left it `Pending` until the test timed out.
+
+**Symptom / Observation**: The E2E showed registration and outbox creation succeeded, but `EmailDispatchProcessor` did not transition the row to `Sent`. The worker runs outside an HTTP tenant scope while `EmailDispatchOutbox` has tenant query filters, so normal repository queries could hide due rows from the dispatcher.
+
+**Root Cause**: Tenant-filtered EF queries are correct for request paths, but background workers that intentionally process all tenants must opt out of query filters and then re-apply explicit tenant/id predicates at the repository boundary. Otherwise the worker can be tenant-blind in the wrong direction: safe for request isolation, but invisible to due work.
+
+**Resolution**: `EmailDispatchOutboxRepository` now uses `IgnoreQueryFilters()` on worker/status operations and explicit predicates for due-row selection, tenant pause checks, row claims, state transitions, receipt updates, and status reads. Verification passed with the targeted registration/Mailpit E2E plus architecture, persistence integration, and Release build.
+
+**Why This Matters for Future Work**: Any future cross-tenant worker (`EmailDispatchProcessor`, RabbitMQ consumer/replay, automation scheduler, sequence enrollment worker) must intentionally combine `IgnoreQueryFilters()` with explicit tenant/id predicates. Do not copy request-path repository queries into background workers unchanged.
+
+**References**:
+- `Explore.Persistence/Repositories/EmailDispatchOutboxRepository.cs:35`
+- `Explore.Persistence/Repositories/EmailDispatchOutboxRepository.cs:50`
+- `Explore.Persistence/Repositories/EmailDispatchOutboxRepository.cs:74`
+- `Explore.Persistence/Repositories/EmailDispatchOutboxRepository.cs:120`
+- `Explore.API/BackgroundServices/EmailDispatchProcessor.cs`
+- `dev/active/crmworx-event-api-adaptation/crmworx-event-api-adaptation-context.md`
+
+**Promotion Consideration**:
+- [x] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.claude/rules/*.md` entry
+- [ ] Candidate for skill update: `<skill name>`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-05-25 Europe/Brussels] — EF seed data must satisfy relational invariants before E2E can prove features
+
+**Context**: While proving Basic Dispatch Mode through the Aspire/Playwright registration E2E, the distributed app failed before reaching registration because migration/development seeding crashed in `Event.MigrationService`.
+
+**Symptom / Observation**: The E2E initially timed out on direct API calls. The decoded test output showed `Database migration failed. Application cannot start.` Root errors included `event_sessions.event_day_id` foreign-key violations and `CK_EventSessionIslamicAspect_RelativeStartFields` check-constraint violations.
+
+**Root Cause**: The test path exercised development catalog seeding as part of AppHost startup. One Ramadan session referenced a non-existent second event day, and Islamic session aspect rows could be stored as `RelativeToPrayer` without both `reference_prayer` and `offset_minutes`. Additionally, the database default for `event_session_islamic_aspects.start_time_type` forced `RelativeToPrayer` when EF omitted the CLR-default `Fixed` value.
+
+**Resolution**: Normalized the seed data and schema: Ramadan parallel sessions now reference the existing event day, `SeedData.CreateSessionIslamicAspect(...)` stores relative prayer metadata only when both prayer and offset are present, and migration `20260525160808_RemoveEventSessionIslamicAspectStartTypeDefault` removes the obsolete database default. The registration/Mailpit E2E now reaches and verifies the email dispatch path.
+
+**Why This Matters for Future Work**: Aspire E2E failures can be caused by unrelated seed invariants long before the feature under test runs. When a distributed E2E times out on an API call, inspect migration-service logs first; do not assume YARP, auth, or the feature path is the root cause.
+
+**References**:
+- `Explore.Persistence/Seed/SeedData.cs:659`
+- `Explore.Persistence/Seed/SeedData.cs:1128`
+- `Explore.Persistence/Seed/SeedData.cs:1137`
+- `Explore.Persistence/Seed/DatabaseSeeder.cs:211`
+- `Explore.Persistence/Seed/DatabaseSeeder.cs:363`
+- `Explore.Persistence/Configurations/Entities/EventSessionIslamicAspectConfiguration.cs:21`
+- `Explore.Persistence/Migrations/20260525160808_RemoveEventSessionIslamicAspectStartTypeDefault.cs`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `aspire`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-05-25 Europe/Brussels] — Mailpit E2E assertions should read message detail, not guessed text endpoints
+
+**Context**: While adding the first registration-confirmation E2E, the test successfully sent email to Mailpit but failed while reading the message body.
+
+**Symptom / Observation**: Mailpit listed the delivered registration email through `GET /api/v1/messages`, but body assertions failed when the fixture tried guessed endpoints like `/api/v1/message/{id}/text` and `/html`.
+
+**Root Cause**: Mailpit's API exposes message body fields through `GET /api/v1/message/{ID}`; the list endpoint returns summaries only. The text/html convenience endpoints were an assumption from general mail-catcher patterns, not Mailpit's actual API shape.
+
+**Resolution**: `MailpitContainerFixture.GetMessageTextAsync` and `GetMessageHtmlAsync` now call `GET /api/v1/message/{ID}` and read the returned `Text`/`HTML` fields. The targeted registration E2E passed after the fixture used the real Mailpit API.
+
+**Why This Matters for Future Work**: Reuse `MailpitContainerFixture` for SMTP E2E assertions instead of reinventing Mailpit HTTP calls. For future notification, reminder, cancellation, and automation email tests, assert delivery from the detail endpoint and keep Mailpit container wiring centralized in the fixture.
+
+**References**:
+- `Explore.Blazor.Client.E2ETests/Fixtures/MailpitContainerFixture.cs:45`
+- `Explore.Blazor.Client.E2ETests/Fixtures/MailpitContainerFixture.cs:52`
+- `Explore.Blazor.Client.E2ETests/Fixtures/MailpitContainerFixture.cs:56`
+- `Explore.Blazor.Client.E2ETests/Fixtures/MailpitContainerFixture.cs:85`
+- `Explore.Blazor.Client.E2ETests/Flows/CriticalFlows/RegistrationFlowTests.cs:26`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.claude/rules/*.md` entry
+- [x] Candidate for skill update: `aspire`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
 - [2026-04-24 Europe/Brussels] **Markdown link extractor gotcha: placeholder syntax in docs**. `AgentContextLinkTests` parses `[text](target)` as a real link. The first `docs-lint.md` draft had a placeholder line `[link text](path)` as an example — the extractor treated `path` as a real file and failed. Fix: reworded to "bracketed text followed by a parenthesized relative target". **Rule:** if you want to show link syntax in markdown without triggering link resolvers, either escape the brackets (`\[text\]`) or describe the shape prose-wise.
 - [2026-04-24 Europe/Brussels] **Narrow YAML reader vs full parser**. `intents.yaml` is structurally simple (records with Fields scalar-dict + Lists list-dict). Rather than add YamlDotNet, `AgentContextIntentManifestTests` carries a ~60-line YAML state machine specific to intent manifest shape: top-level array, `- id:` entry markers, nested scalars vs list-continuations recognized by indent. Dual-dict design (Fields vs Lists) means key-existence checks must hit both — discovered when `triggers` (a list) showed as "missing required key" because the initial check only looked in Fields. **Rule documented in test source comment** so future maintainers don't conflate.
 - [2026-04-24 Europe/Brussels] **User inversion of AGENTS.md ↔ AGENTS.md canonicality**. Phase 1 made `AGENTS.md` the canonical tool-neutral entrypoint (11 sections) and `AGENTS.md` a thin Claude-specific bootloader. After final verification passed, user (m0102) requested the inversion: move all content into `AGENTS.md`, reduce `AGENTS.md` to a 3-line pointer (`# AI Agents\n\nSee [AGENTS.md](AGENTS.md) for AI agent instructions.`). Merge preserved all 11 AGENTS.md sections + integrated all AGENTS.md Claude-specific operational rules (Subagent Delegation, MCP Tool Use, Session Memory, Todo Discipline), removed duplicated Verification Policy / Shell Behavior Rules blocks, and added a See Also footer. **Zero CI regressions** after the swap because (a) agents' `Mandatory Reads` still link to `AGENTS.md` which still exists (as a 3-line stub) and redirects to `AGENTS.md`; (b) `ContextSystemHelpers.RepoRoot` requires both files to find the repo root and both remain present; (c) no skill/agent/rule/intent/command file referenced AGENTS.md's CONTENT — only its path. **Insight:** One-hop redirects through pointer stubs are safe in a link-validated system as long as every referenced path still resolves.

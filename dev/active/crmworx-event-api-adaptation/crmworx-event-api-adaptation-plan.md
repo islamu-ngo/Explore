@@ -3,7 +3,7 @@
 
 # CRMWorx Event API Adaptation — Plan
 
-Last Updated: 2026-05-24 Europe/Brussels
+Last Updated: 2026-05-25 Europe/Brussels
 
 ## 1. Executive Summary
 
@@ -155,6 +155,8 @@ Mandatory rules/skills: `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `
 **Acceptance:** implementation is blocked until ADR, first slice, mode decision, state lifecycle, MQContract decision, and failure matrix are recorded.
 
 **Validation:** current build status recorded; architecture tests still pass or blockers are explicit.
+
+**Current evidence:** `docs/adr/ADR-008-email-dispatch-state-machine.md` records the accepted state-machine and profile decision, `crmworx-event-api-adaptation-failure-matrix.md` records the Basic/RabbitMQ failure-window contract, and the MQContract gate decision is recorded as **keep + capability-gate**. MQContract remains the provider-choice abstraction candidate for self-hosters, but future EmailDispatch broker transports require provider-specific capability proof before activation: RabbitMQ confirms/returns/manual acknowledgements/prefetch/topology/DLQ/health/shutdown, Kafka delivery reports/offset commits/consumer groups/idempotent producer behavior, and receipt-integrated idempotent consumption in PostgreSQL.
 
 ### Phase 1 — PostgreSQL-Owned Email Dispatch State
 

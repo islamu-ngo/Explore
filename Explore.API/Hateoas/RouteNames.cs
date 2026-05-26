@@ -249,6 +249,8 @@ public static class RouteNames
     #region Email Dispatch Admin Routes
 
     public const string GetEmailDispatchStatus = "GetEmailDispatchStatus";
+    public const string PauseEmailDispatchTenant = "PauseEmailDispatchTenant";
+    public const string ResumeEmailDispatchTenant = "ResumeEmailDispatchTenant";
 
     #endregion
 

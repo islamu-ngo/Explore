@@ -21,6 +21,14 @@ public interface IEmailDispatchOutboxRepository
 
     Task<bool> IsTenantPaused(Guid tenantId, CancellationToken cancellationToken);
 
+    Task<EmailDispatchTenantControl> SetTenantPauseState(
+        Guid tenantId,
+        bool isPaused,
+        string? pauseReason,
+        Guid? changedBy,
+        DateTime changedAt,
+        CancellationToken cancellationToken);
+
     Task<bool> TryMarkAsProcessing(
         Guid id,
         Guid leaseToken,

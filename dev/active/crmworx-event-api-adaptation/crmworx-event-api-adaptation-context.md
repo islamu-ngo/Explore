@@ -3,7 +3,7 @@
 
 # CRMWorx Event API Adaptation — Context
 
-Last Updated: 2026-05-24 Europe/Brussels
+Last Updated: 2026-05-25 Europe/Brussels
 
 ## 1. Purpose
 
@@ -284,3 +284,88 @@ The first implementation pass has started the approved Basic Dispatch Mode path 
 - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed after the guard was tightened: 175 total, 174 succeeded, 1 skipped, 0 failed.
 - `dotnet build --configuration Release --verbosity quiet` passed after the guard: 25 projects, 0 errors. Focused warning scan found only the repository's existing MailKit NU1902 advisory lines and no guard-specific warnings.
 - A read-only verifier retry failed with an infrastructure `UnknownError`, so it is not counted as evidence; deterministic LSP, focused guard tests, full architecture tests, and Release build are the recorded verification for this slice.
+
+### 12.11 Async workflow failure matrix
+
+- Added `crmworx-event-api-adaptation-failure-matrix.md` to freeze the expected behavior for Basic Dispatch Mode and future RabbitMQ Dispatch Mode failure windows.
+- The matrix keeps PostgreSQL state as the source of truth and names expected outcomes for rollback, commit, duplicate registration, dispatch disabled, tenant pause, duplicate claims, worker crash windows, SMTP success/failure/timeout, retry exhaustion, missing SMTP configuration, status reads, and direct-side-effect violations.
+- The RabbitMQ section is intentionally future-facing and records required behavior for optional broker mode without making RabbitMQ part of the Basic Dispatch Mode acceptance path.
+- Each row names expected persisted state, operator signal, and the validation lane required before claiming that scenario complete.
+- LSP diagnostics were clean for `dev/active/crmworx-event-api-adaptation` after adding the matrix.
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed after the matrix update: 175 total, 174 succeeded, 1 skipped, 0 failed.
+
+### 12.12 Email dispatch architecture decision record
+
+- Added `docs/adr/ADR-008-email-dispatch-state-machine.md` to record the accepted decision for a PostgreSQL-owned `EmailDispatchOutbox` state machine.
+- The ADR documents three dispatch profiles: dispatch disabled, Basic Dispatch Mode, and future RabbitMQ Dispatch Mode.
+- The ADR records the hard side-effect boundary: handlers, controllers, automation executors, sequence processors, and domain services create durable intent only; background dispatch components own SMTP and future broker side effects.
+- The ADR keeps RabbitMQ optional and requires pointer payloads, stable publish identity, mandatory routing, confirms, returned-message handling, manual ack/reject/nack, bounded prefetch, DLQ/parking, health, metrics, graceful shutdown, and receipt idempotency before RabbitMQ Dispatch Mode can start.
+- Linked the ADR from `docs/index.md`.
+- LSP diagnostics were clean for `docs/adr/ADR-008-email-dispatch-state-machine.md`, `docs/index.md`, and this workstream directory after the ADR update.
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed after the ADR/index update: 175 total, 174 succeeded, 1 skipped, 0 failed.
+- A follow-up architecture/docs gate after recording dispatch profiles and first-slice task evidence also passed: 175 total, 174 succeeded, 1 skipped, 0 failed.
+
+### 12.13 Registration confirmation E2E through Basic Dispatch Mode
+
+- Added `MailpitContainerFixture` to the Aspire/Playwright E2E project using the generic Testcontainers container image `axllent/mailpit:v1.30.0`.
+- Extended `AppHostFixture` to start Mailpit, configure the API's SMTP settings in PostgreSQL governance settings, and lower Basic dispatch polling delay for E2E runs.
+- Added a Keycloak ROPC token helper to `BffKeycloakFixture` so the registration-confirmation dispatch proof can call the real API directly with a bearer token instead of relying on the Blazor/YARP BFF path.
+- Extended `RegistrationFlowLoginBrowseRegisterConfirmationMyRegistrations` to prove the complete Basic Dispatch Mode path:
+  1. Seed a tenant, event, and registration session.
+  2. Obtain a Keycloak test-user bearer token.
+  3. Call the API directly with `X-Tenant-Slug` and `Authorization` headers.
+  4. Create an event registration.
+  5. Assert registration intent and child registration rows exist.
+  6. Wait for `EmailDispatchOutbox` to reach `Sent`.
+  7. Assert a successful `EmailDispatchAttempt` and completed `EmailDispatchReceipt` exist.
+  8. Assert Mailpit received the registration confirmation email for `user@test.islamu.org`.
+- Kept the E2E proof on Basic Dispatch Mode only. RabbitMQ is not started, configured, or required.
+- Fixed E2E seed/runtime blockers discovered while exercising the full path:
+  - Development seed cleanup no longer uses unsupported EF Core TPT `ExecuteDelete` against the `Event` hierarchy.
+  - Ramadan conference seed sessions now reference an existing event day.
+  - Islamic session aspect seed normalization now stores relative prayer start metadata only when both prayer and offset are present.
+  - Removed the obsolete database default for `event_session_islamic_aspects.start_time_type` via migration `20260525160808_RemoveEventSessionIslamicAspectStartTypeDefault`.
+  - Worker/status repository operations use explicit `IgnoreQueryFilters()` plus explicit tenant/id predicates where background processing must see all due dispatch rows outside an HTTP tenant scope.
+- Targeted E2E verification passed:
+  - Command: `timeout 12m dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/RegistrationFlowLoginBrowseRegisterConfirmationMyRegistrations" --minimum-expected-tests 1`
+  - Result: 1 total, 1 succeeded, 0 failed, 0 skipped, duration 1m 33s 263ms.
+- Final diagnostics and regression lanes after the E2E fixes:
+  - LSP diagnostics were clean for the E2E fixtures/flows, seed files, Islamic aspect configuration, email dispatch repository, and migration.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed: 177 total, 176 succeeded, 1 skipped, 0 failed.
+  - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet` passed: 109 total, 109 succeeded, 0 failed.
+  - `dotnet build --configuration Release --verbosity quiet` passed: 25 projects, 0 errors, 14 baseline warnings.
+  - Focused warning scan of `/tmp/emaildispatch-final-build.log` found no warnings matching `EmailDispatch`, `email_dispatch`, `Mailpit`, `RegistrationFlowLoginBrowseRegisterConfirmation`, `BffKeycloak`, `DatabaseSeeder`, `SeedData`, or `EventSessionIslamicAspect`.
+
+### 12.14 MQContract/provider abstraction capability gate
+
+- Recorded the Phase 0 provider abstraction decision as **keep MQContract as the self-hoster provider-choice abstraction candidate, but capability-gate it for EmailDispatch reliability**.
+- Internal repository inspection covered the current `dev/active/rabbitmq-messaging` workstream and messaging implementation files, including `IMessagingProvider`, `RabbitMqMessagingProvider`, `RuntimeMessagingProvider`, `MqContractOutboxMessageDispatcher`, `MessagingConfigResolver`, `MessagingConfiguration`, messaging governance keys, DI wiring, current health checks, and the Basic EmailDispatch outbox/receipt repository.
+- Current MQContract wiring proves optional transport selection and a RabbitMQ publish/subscribe prototype, but it does **not** yet prove the provider-specific reliability semantics required by ADR-008 for EmailDispatch transport modes.
+- The EF Core analogy is valid only when treated as a capability-aware provider model: EF Core gives a common abstraction while providers still expose provider-specific migration, SQL, concurrency, JSON/index, and transaction behavior. Messaging needs the same shape: a shared transport shell plus provider-specific capability surfaces.
+- RabbitMQ capability requirements confirmed by official docs and Context7: publisher confirms, mandatory publishing/returned messages, manual ack/reject/nack, bounded prefetch/QoS, consumer tags/client-provided names, topology/DLQ checks, health/readiness, host-driven shutdown, and idempotent consumer storage.
+- Kafka capability requirements confirmed by official Confluent/Kafka docs and Context7: delivery reports, idempotent producer/transactions where needed, consumer groups, partition assignment/rebalancing, manual offset store/commit behavior, graceful `Close()`, and committed offsets as the provider-native consume cursor.
+- `RuntimeMessagingProvider` currently catches publish/subscribe failures and falls back to `NullMessagingProvider`, which can remain acceptable for optional best-effort transport plumbing but cannot be the failure boundary for an outbox dispatcher that must propagate failures so PostgreSQL state can retry.
+- Decision: do not remove MQContract. Keep it for self-hoster provider choice and generic messaging. Future EmailDispatch broker transports must sit behind an Event-specific dispatch transport port or adapter that proves the provider capability matrix. If MQContract can expose those capabilities for a provider, use it inside the adapter; if it cannot, wrap/extend it or bypass it for that provider only. Basic Dispatch Mode remains API + PostgreSQL + SMTP and must continue to work without any broker.
+
+### 12.15 Tenant pause/resume admin controls for Basic Dispatch Mode
+
+- Implemented the first Basic Dispatch Mode admin write controls for durable tenant pause/resume.
+- Added `SetEmailDispatchTenantPauseStateCommand`, `SetEmailDispatchTenantPauseStateCommandValidator`, and `SetEmailDispatchTenantPauseStateCommandHandler` in Application.
+- The handler manually instantiates its validator, returns `BaseCommandResponse<Guid>`, and mutates only the durable `EmailDispatchTenantControl` row through `IEmailDispatchOutboxRepository`.
+- Extended `IEmailDispatchOutboxRepository` and `EmailDispatchOutboxRepository` with `SetTenantPauseState(...)`.
+- The repository upserts one `email_dispatch_tenant_controls` row per tenant, truncates pause reason to the configured 500-character bound, records `PausedAt`/`PausedBy` only while paused, and clears pause metadata on resume.
+- Extended `EmailDispatchAdminController` with authenticated write routes:
+  - `PUT api/admin/email-dispatch/tenants/{tenantId}/pause` named `RouteNames.PauseEmailDispatchTenant`.
+  - `DELETE api/admin/email-dispatch/tenants/{tenantId}/pause` named `RouteNames.ResumeEmailDispatchTenant`.
+- The controller remains thin: it dispatches MediatR commands, uses `RouteNames`, applies authenticated write rate limiting and request timeout policies, and returns safe `BaseCommandResponse<Guid>` payloads without email recipient/body/subject/provider details.
+- A read-only verifier found one metadata issue: the controller originally declared bare `400` response metadata. Fixed all EmailDispatch admin actions to declare `ProblemDetails` for `400 Bad Request`.
+- Added focused tests:
+  - `SetEmailDispatchTenantPauseStateCommandHandlerTests` verifies validation failures do not call persistence, pause writes durable paused state, and resume clears durable paused state.
+  - `EmailDispatchTenantControlRepositoryTests` verifies PostgreSQL-backed upsert behavior, one durable control row per tenant, `IsTenantPaused` transitions, and pause metadata clearing.
+- Verification after this slice:
+  - LSP diagnostics were clean for the new command/validator/handler, repository contract, repository implementation, controller, and tests.
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` passed: 1032 total, 1032 succeeded, 0 failed.
+  - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet` passed: 110 total, 110 succeeded, 0 failed.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed before and after the `ProblemDetails` metadata fix; final run passed: 177 total, 176 succeeded, 1 skipped, 0 failed.
+  - `dotnet build --configuration Release --verbosity quiet` passed after the metadata fix: 25 projects, 0 errors, 3701 baseline warnings.
+  - Focused warning scan of `/tmp/emaildispatch-admin-controls-final-build.log` found no warnings matching `EmailDispatch`, `email_dispatch`, `SetEmailDispatchTenantPause`, `PauseEmailDispatch`, `ResumeEmailDispatch`, `EmailDispatchTenantControl`, or `ProblemDetails`.

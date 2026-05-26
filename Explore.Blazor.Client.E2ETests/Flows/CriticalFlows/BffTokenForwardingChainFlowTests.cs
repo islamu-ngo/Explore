@@ -23,7 +23,7 @@ public class BffTokenForwardingChainFlowTests(
             await AssertPublicProxyIsReachableAsync(page);
             await BffCookieAuthHelper.LoginAsTestUserAsync(page, appHost);
             await AssertAuthenticatedProxyCallUsesBffCookieAsync(page);
-            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page);
+            await BffCookieAuthHelper.AssertBrowserStorageDoesNotContainTokensAsync(page, appHost.BlazorBaseUrl);
         }
         finally
         {

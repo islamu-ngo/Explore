@@ -4,6 +4,7 @@
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Modules;
+using Explore.Domain.Services.Scheduling;
 
 namespace Explore.Persistence.Seed;
 
@@ -16,8 +17,8 @@ namespace Explore.Persistence.Seed;
 ///
 /// Seeding order matters due to FK constraints and circular dependencies (User/Org ↔ Actor):
 /// 1. Tenant → 2. Users (no ActorId) → 3. Organizations (no ActorId) → 4. Actors →
-/// 5. Update Users/Orgs with ActorId → 6. TenantMembers, OrgMembers, Storage →
-/// 7. Settings, Capabilities → 8. Categories, Tags, Location → 9. Sample Event
+    /// 5. Update Users/Orgs with ActorId → 6. TenantMembers, OrgMembers, Storage →
+    /// 7. Settings, Capabilities → 8. Categories, Tags, Location → 9. Islamic event catalog
 /// </summary>
 public static class SeedData
 {
@@ -556,32 +557,703 @@ public static class SeedData
         Tenant = null!
     };
 
-    // ===== Sample Event =====
-    public static Event SampleEvent => new()
+    // ===== Additional development locations and rooms =====
+    public static IReadOnlyList<Location> IslamicEventLocations =>
+    [
+        new()
+        {
+            Id = SeedIds.BrusselsIslamicCenterLocationId,
+            FullName = "Brussels Islamic Learning Center",
+            Country = "Belgium",
+            City = "Brussels",
+            Pii = new LocationPii
+            {
+                Address = "Rue de l'Instruction 12",
+                Postcode = "1070",
+                Latitude = 50.8369,
+                Longitude = 4.3264
+            },
+            Timezone = BrusselsTimezone,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!
+        },
+        new()
+        {
+            Id = SeedIds.AntwerpMasjidLocationId,
+            FullName = "Antwerp Masjid Community Hall",
+            Country = "Belgium",
+            City = "Antwerp",
+            Pii = new LocationPii
+            {
+                Address = "Gemeentestraat 44",
+                Postcode = "2060",
+                Latitude = 51.2213,
+                Longitude = 4.4210
+            },
+            Timezone = BrusselsTimezone,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!
+        }
+    ];
+
+    public static IReadOnlyList<LocationRoom> IslamicEventRooms =>
+    [
+        CreateRoom(10, SeedIds.BrusselsIslamicCenterLocationId, "Main Prayer Hall", "main-prayer-hall", "Large hall with configurable family and segregated seating.", 220, 1),
+        CreateRoom(11, SeedIds.BrusselsIslamicCenterLocationId, "Sisters Classroom", "sisters-classroom", "Women-only teaching room with privacy screens and audio relay.", 80, 2),
+        CreateRoom(12, SeedIds.BrusselsIslamicCenterLocationId, "Brothers Study Room", "brothers-study-room", "Men-only study room for fiqh and hadith circles.", 90, 3),
+        CreateRoom(20, SeedIds.AntwerpMasjidLocationId, "Antwerp Prayer Hall", "antwerp-prayer-hall", "Community masjid hall for lectures, youth circles, and iftar.", 180, 1),
+        CreateRoom(21, SeedIds.AntwerpMasjidLocationId, "Youth Activity Room", "youth-activity-room", "Smaller room for supervised youth workshops.", 45, 2)
+    ];
+
+    // ===== Islamic event catalog =====
+    public static IReadOnlyList<Event> IslamicEvents => IslamicEventSpecs
+        .Select(CreateEvent)
+        .ToList();
+
+    public static IReadOnlyList<EventIslamicAspect> IslamicEventAspects => IslamicEventSpecs
+        .Select(spec => new EventIslamicAspect
+        {
+            Id = spec.Id,
+            MadhabId = (int?)spec.Madhab,
+            ReferencePrayer = spec.ReferencePrayer,
+            PrayerTimeOffset = spec.PrayerOffsetMinutes,
+            GenderMode = spec.GenderMode,
+            IncludesQuranRecitation = spec.IncludesQuranRecitation,
+            PrimaryLanguageId = spec.PrimaryLanguageId
+        })
+        .ToList();
+
+    public static IReadOnlyList<EventDay> IslamicEventDays => IslamicEventSpecs
+        .SelectMany(spec => spec.Days.Select(day => new EventDay
+        {
+            Id = SeedIds.EventDayId(spec.Number, day.Number),
+            EventId = spec.Id,
+            Event = null!,
+            LocalDate = day.LocalDate,
+            Label = day.Label,
+            Description = day.Description,
+            BannerText = day.BannerText,
+            BannerImageId = SeedIds.DefaultEventImageId,
+            IsPublished = true,
+            SortOrder = day.Number,
+            AllowsDayScopeRegistration = spec.IsRegistrationRequired,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = SeedTimestamp,
+            ConcurrencyStamp = SeedIds.EventDayId(spec.Number, day.Number)
+        }))
+        .ToList();
+
+    public static IReadOnlyList<EventSession> IslamicEventSessions
     {
-        Id = SeedIds.SampleEventId,
-        Title = "Welcome to ISLAMU Events",
-        Description = "This is a sample event to demonstrate the ISLAMU Events platform. Feel free to explore and create your own events!",
-        Slug = "welcome-to-islamu-events",
-        EventTypeId = (int)EventTypeEnum.Webinar,
-        AudienceGenderId = (int)AudienceGenderEnum.Both,
-        AudienceAgeId = (int)AudienceAgeEnum.AllAges,
-        ActorId = SeedIds.IslamuOrgActorId,
-        Actor = null!,
-        Price = 0,
-        CurrencyCode = "EUR",
-        FeaturedImageId = SeedIds.DefaultEventImageId,
-        TotalViews = 0,
-        IsRegistrationRequired = false,
-        MadhabId = null,
-        TenantId = SeedIds.DefaultTenantId,
-        Tenant = null!,
-        VisibilityTypeId = (int)VisibilityTypeEnum.Public,
-        VisibilityType = null!,
-        EventStatusId = (int)EventStatusEnum.Published,
-        EventStatus = null!,
-        EventFormatId = (int)EventFormatEnum.Digital,
-        EventFormat = null!,
-        Timezone = "Europe/Brussels"
-    };
+        get
+        {
+            var calculator = new EventScheduleProjectionCalculator();
+            return IslamicEventSpecs
+                .SelectMany(spec => spec.Sessions.Select(session => CreateSession(spec, session, calculator)))
+                .ToList();
+        }
+    }
+
+    public static IReadOnlyList<EventSessionIslamicAspect> IslamicSessionAspects => IslamicEventSpecs
+        .SelectMany(spec => spec.Sessions.Select(session => CreateSessionIslamicAspect(spec, session)))
+        .ToList();
+
+    public static IReadOnlyList<EventSessionGroup> IslamicSessionGroups => IslamicEventSpecs
+        .SelectMany(spec => spec.Groups.Select(group => new EventSessionGroup
+        {
+            Id = SeedIds.EventSessionGroupId(spec.Number, group.Number),
+            EventId = spec.Id,
+            Event = null!,
+            Name = group.Name,
+            Slug = group.Slug,
+            Description = group.Description,
+            LocationId = group.LocationId,
+            RoomId = group.RoomId,
+            Color = group.Color,
+            SortOrder = group.Number,
+            IsPublished = true,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = SeedTimestamp,
+            ConcurrencyStamp = SeedIds.EventSessionGroupId(spec.Number, group.Number)
+        }))
+        .ToList();
+
+    public static IReadOnlyList<EventSessionGroupSession> IslamicSessionGroupSessions => IslamicEventSpecs
+        .SelectMany(spec => spec.Sessions.Select(session => new EventSessionGroupSession
+        {
+            Id = SeedIds.EventSessionGroupSessionId(spec.Number, session.Number, session.GroupNumber),
+            EventSessionGroupId = SeedIds.EventSessionGroupId(spec.Number, session.GroupNumber),
+            EventSessionGroup = null!,
+            EventSessionId = SeedIds.EventSessionId(spec.Number, session.Number),
+            EventSession = null!,
+            EventId = spec.Id,
+            Event = null!,
+            IsPrimary = true,
+            SortOrder = session.Number,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = SeedTimestamp
+        }))
+        .ToList();
+
+    public static IReadOnlyList<EventAgendaItem> IslamicEventAgendaItems
+    {
+        get
+        {
+            var calculator = new EventScheduleProjectionCalculator();
+            return IslamicEventSpecs
+                .SelectMany(spec => spec.AgendaItems.Select(item => CreateEventAgendaItem(spec, item, calculator)))
+                .ToList();
+        }
+    }
+
+    public static IReadOnlyList<EventSessionAgendaItem> IslamicSessionAgendaItems => IslamicEventSpecs
+        .SelectMany(spec => spec.Sessions.SelectMany(session => session.AgendaItems.Select(item => new EventSessionAgendaItem
+        {
+            Id = SeedIds.EventSessionAgendaItemId(spec.Number, session.Number, item.Number),
+            EventSessionId = SeedIds.EventSessionId(spec.Number, session.Number),
+            EventSession = null!,
+            StartTime = item.StartUtc,
+            EndTime = item.EndUtc,
+            Title = item.Title,
+            Description = item.Description,
+            LocationId = session.LocationId,
+            Location = null,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!
+        })))
+        .ToList();
+
+    public static IReadOnlyList<EventCategories> IslamicEventCategories => IslamicEventSpecs
+        .SelectMany(spec => spec.CategoryIds.Select((categoryId, index) => new EventCategories
+        {
+            Id = SeedIds.EventCategoryId(spec.Number, index + 1),
+            EventId = spec.Id,
+            Event = null!,
+            CategoryId = categoryId,
+            Category = null!,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = SeedTimestamp
+        }))
+        .ToList();
+
+    public static IReadOnlyList<EventTags> IslamicEventTags => IslamicEventSpecs
+        .SelectMany(spec => spec.TagIds.Select((tagId, index) => new EventTags
+        {
+            Id = SeedIds.EventTagId(spec.Number, index + 1),
+            EventId = spec.Id,
+            Event = null!,
+            TagId = tagId,
+            Tag = null!,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = SeedTimestamp
+        }))
+        .ToList();
+
+    public static IReadOnlyList<EventSessionCategory> IslamicSessionCategories => IslamicEventSpecs
+        .SelectMany(spec => spec.Sessions.SelectMany(session => session.CategoryIds.Select((categoryId, index) => new EventSessionCategory
+        {
+            Id = SeedIds.EventSessionCategoryId(spec.Number, session.Number, index + 1),
+            EventSessionId = SeedIds.EventSessionId(spec.Number, session.Number),
+            EventSession = null!,
+            CategoryId = categoryId,
+            Category = null!,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = SeedTimestamp
+        })))
+        .ToList();
+
+    public static IReadOnlyList<EventSessionTag> IslamicSessionTags => IslamicEventSpecs
+        .SelectMany(spec => spec.Sessions.SelectMany(session => session.TagIds.Select((tagId, index) => new EventSessionTag
+        {
+            Id = SeedIds.EventSessionTagId(spec.Number, session.Number, index + 1),
+            EventSessionId = SeedIds.EventSessionId(spec.Number, session.Number),
+            EventSession = null!,
+            TagId = tagId,
+            Tag = null!,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = SeedTimestamp
+        })))
+        .ToList();
+
+    public static IReadOnlyList<EventSessionLanguage> IslamicSessionLanguages => IslamicEventSpecs
+        .SelectMany(spec => spec.Sessions.SelectMany(session => session.LanguageIds.Select(languageId => new EventSessionLanguage
+        {
+            EventSessionId = SeedIds.EventSessionId(spec.Number, session.Number),
+            EventSession = null!,
+            LanguageId = languageId,
+            Language = null!,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!
+        })))
+        .ToList();
+
+    public static IReadOnlyList<EventSessionSpeaker> IslamicSessionSpeakers => IslamicEventSpecs
+        .SelectMany(spec => spec.Sessions.SelectMany(session => session.SpeakerActorIds.Select((actorId, index) => new EventSessionSpeaker
+        {
+            Id = SeedIds.EventSessionSpeakerId(spec.Number, session.Number, index + 1),
+            ActorId = actorId,
+            Actor = null!,
+            EventSessionId = SeedIds.EventSessionId(spec.Number, session.Number),
+            EventSession = null!,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!
+        })))
+        .ToList();
+
+    private const string BrusselsTimezone = "Europe/Brussels";
+
+    private static readonly IReadOnlyList<IslamicEventSpec> IslamicEventSpecs =
+    [
+        new(
+            1,
+            SeedIds.QuranTafsirWomenEventId,
+            "Sisters Quran & Tafsir Morning",
+            "sisters-quran-tafsir-morning",
+            "Women-only public halaqa with Quran recitation, tafsir, and practical reflection time.",
+            EventTypeEnum.Workshop,
+            EventFormatEnum.Local,
+            AudienceGenderEnum.Woman,
+            AudienceAgeEnum.AdultsOnly18Plus,
+            GenderSegregationMode.WomenOnly,
+            MadhabEnum.Maliki,
+            1,
+            PrayerTime.Dhuhr,
+            -120,
+            true,
+            0,
+            true,
+            SeedIds.BrusselsIslamicCenterLocationId,
+            [SeedIds.QuranCategoryId, SeedIds.IslamicStudiesCategoryId],
+            [SeedIds.FreeTagId, SeedIds.InPersonTagId, SeedIds.BeginnerTagId],
+            [new(1, new DateOnly(2026, 6, 6), "Sisters tafsir day", "Women-only public Quran study and reflection.", "Women-only public event")],
+            [new(1, "Sisters Track", "sisters-track", "Women-only learning room", SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(11), "#D946EF")],
+            [new(1, "Surah Al-Hujurat: adab and community", "surah-al-hujurat-adab", "Interactive tafsir session for sisters.", new DateTimeOffset(2026, 6, 6, 8, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 6, 6, 10, 30, 0, TimeSpan.Zero), 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(11), EventSessionKindEnum.Class, RegistrationModeEnum.Open, [1, 2], [SeedIds.ModeratorUserActorId], [SeedIds.QuranCategoryId], [SeedIds.BeginnerTagId], PrayerTime.Dhuhr, -150, true, "{\"notes\":\"Bring a mushaf and notebook.\"}", [new(1, "Opening recitation", "Short recitation circle before tafsir.", new DateTimeOffset(2026, 6, 6, 8, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 6, 6, 8, 45, 0, TimeSpan.Zero))])],
+            [new(1, "Dhuhr preparation break", "Time reserved for wudu and prayer preparation.", new DateTimeOffset(2026, 6, 6, 10, 35, 0, TimeSpan.Zero), new DateTimeOffset(2026, 6, 6, 11, 0, 0, TimeSpan.Zero), ScheduleItemKindEnum.Prayer, 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(11))]),
+        new(
+            2,
+            SeedIds.BrothersFiqhEventId,
+            "Brothers Fiqh of Purification Intensive",
+            "brothers-fiqh-purification-intensive",
+            "Men-only fiqh workshop focused on taharah, wudu, ghusl, and practical Q&A.",
+            EventTypeEnum.Workshop,
+            EventFormatEnum.Local,
+            AudienceGenderEnum.Man,
+            AudienceAgeEnum.AdultsOnly18Plus,
+            GenderSegregationMode.MenOnly,
+            MadhabEnum.Hanafi,
+            2,
+            PrayerTime.Asr,
+            30,
+            false,
+            10,
+            true,
+            SeedIds.BrusselsIslamicCenterLocationId,
+            [SeedIds.FiqhCategoryId, SeedIds.IslamicStudiesCategoryId],
+            [SeedIds.PaidTagId, SeedIds.InPersonTagId, SeedIds.IntermediateTagId],
+            [new(1, new DateOnly(2026, 6, 13), "Brothers fiqh day", "Men-only practical fiqh workshop.", "Men only")],
+            [new(1, "Brothers Track", "brothers-track", "Men-only study room", SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(12), "#2563EB")],
+            [new(1, "Taharah foundations", "taharah-foundations", "Evidence-based fiqh lesson with practical scenarios.", new DateTimeOffset(2026, 6, 13, 12, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 6, 13, 14, 30, 0, TimeSpan.Zero), 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(12), EventSessionKindEnum.Workshop, RegistrationModeEnum.ApprovalRequired, [2], [SeedIds.AdminUserActorId], [SeedIds.FiqhCategoryId], [SeedIds.IntermediateTagId], PrayerTime.Asr, -30, true, "{\"materials\":\"Printed scenario booklet.\"}", [new(1, "Case study Q&A", "Attendee questions on purification edge cases.", new DateTimeOffset(2026, 6, 13, 14, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 6, 13, 14, 30, 0, TimeSpan.Zero))])],
+            [new(1, "Asr prayer", "Congregational Asr after the workshop.", new DateTimeOffset(2026, 6, 13, 14, 35, 0, TimeSpan.Zero), new DateTimeOffset(2026, 6, 13, 15, 0, 0, TimeSpan.Zero), ScheduleItemKindEnum.Prayer, 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(12))]),
+        new(
+            3,
+            SeedIds.FamilySeerahEventId,
+            "Family Seerah Story Night",
+            "family-seerah-story-night",
+            "Both-gender family event with shared seating, children-friendly storytelling, nasheed, and reminders.",
+            EventTypeEnum.Conference,
+            EventFormatEnum.Hybrid,
+            AudienceGenderEnum.Both,
+            AudienceAgeEnum.AllAges,
+            GenderSegregationMode.Family,
+            MadhabEnum.Other,
+            2,
+            PrayerTime.Maghrib,
+            20,
+            false,
+            0,
+            true,
+            SeedIds.AntwerpMasjidLocationId,
+            [SeedIds.SeerahCategoryId, SeedIds.CommunityEventsCategoryId],
+            [SeedIds.FreeTagId, SeedIds.InPersonTagId, SeedIds.OnlineTagId, SeedIds.BeginnerTagId],
+            [new(1, new DateOnly(2026, 6, 20), "Family seerah night", "Family-oriented Prophetic biography gathering.", "Families welcome")],
+            [new(1, "Family Hall", "family-hall", "Family seating and livestream track", SeedIds.AntwerpMasjidLocationId, SeedIds.RoomId(20), "#16A34A")],
+            [new(1, "Stories from the Hijrah", "stories-from-the-hijrah", "Family seerah lecture with lessons for children and parents.", new DateTimeOffset(2026, 6, 20, 17, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 6, 20, 19, 0, 0, TimeSpan.Zero), 1, SeedIds.AntwerpMasjidLocationId, SeedIds.RoomId(20), EventSessionKindEnum.Lecture, RegistrationModeEnum.Open, [2, 11], [SeedIds.IslamuOrgActorId], [SeedIds.SeerahCategoryId], [SeedIds.FreeTagId], PrayerTime.Maghrib, -60, false, null, [new(1, "Children reflection activity", "Guided reflection cards for families.", new DateTimeOffset(2026, 6, 20, 18, 40, 0, TimeSpan.Zero), new DateTimeOffset(2026, 6, 20, 19, 0, 0, TimeSpan.Zero))])],
+            [new(1, "Maghrib and refreshments", "Prayer followed by tea and snacks.", new DateTimeOffset(2026, 6, 20, 19, 5, 0, TimeSpan.Zero), new DateTimeOffset(2026, 6, 20, 19, 45, 0, TimeSpan.Zero), ScheduleItemKindEnum.Prayer, 1, SeedIds.AntwerpMasjidLocationId, SeedIds.RoomId(20))]),
+        new(
+            4,
+            SeedIds.SegregatedRamadanEventId,
+            "Ramadan Preparation Conference",
+            "ramadan-preparation-conference-segregated",
+            "Both-gender public conference with strictly segregated brothers and sisters rooms, prayer breaks, and multilingual sessions.",
+            EventTypeEnum.Conference,
+            EventFormatEnum.Local,
+            AudienceGenderEnum.Both,
+            AudienceAgeEnum.AllAges,
+            GenderSegregationMode.Segregated,
+            MadhabEnum.Shafii,
+            2,
+            PrayerTime.Isha,
+            -30,
+            true,
+            15,
+            true,
+            SeedIds.BrusselsIslamicCenterLocationId,
+            [SeedIds.FiqhCategoryId, SeedIds.QuranCategoryId, SeedIds.CommunityEventsCategoryId],
+            [SeedIds.PaidTagId, SeedIds.InPersonTagId, SeedIds.IntermediateTagId],
+            [new(1, new DateOnly(2026, 7, 4), "Ramadan conference", "Segregated preparation conference.", "Separate brothers and sisters areas")],
+            [new(1, "Brothers Hall", "brothers-hall", "Brothers seating area", SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(12), "#1D4ED8"), new(2, "Sisters Hall", "sisters-hall", "Sisters seating area", SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(11), "#BE185D")],
+            [new(1, "Fiqh of fasting for brothers", "fiqh-fasting-brothers", "Rules, concessions, and Q&A for brothers.", new DateTimeOffset(2026, 7, 4, 8, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 4, 10, 0, 0, TimeSpan.Zero), 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(12), EventSessionKindEnum.Talk, RegistrationModeEnum.Open, [2], [SeedIds.AdminUserActorId], [SeedIds.FiqhCategoryId], [SeedIds.IntermediateTagId], PrayerTime.Dhuhr, -150, false, null, [new(1, "Brothers Q&A", "Focused questions before the break.", new DateTimeOffset(2026, 7, 4, 9, 35, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 4, 10, 0, 0, TimeSpan.Zero))]), new(2, "Quran routines for sisters", "quran-routines-sisters", "Sisters-only planning workshop for Ramadan recitation routines.", new DateTimeOffset(2026, 7, 4, 8, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 4, 10, 0, 0, TimeSpan.Zero), 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(11), EventSessionKindEnum.Workshop, RegistrationModeEnum.Open, [1, 2], [SeedIds.ModeratorUserActorId], [SeedIds.QuranCategoryId], [SeedIds.IntermediateTagId], PrayerTime.Dhuhr, -150, true, "{\"privacy\":\"Women-only room.\"}", [new(1, "Sisters action planning", "Build a realistic Ramadan Quran plan.", new DateTimeOffset(2026, 7, 4, 9, 20, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 4, 10, 0, 0, TimeSpan.Zero))])],
+            [new(1, "Opening reminders", "Joint opening with room audio relay.", new DateTimeOffset(2026, 7, 4, 8, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 4, 8, 20, 0, TimeSpan.Zero), ScheduleItemKindEnum.Intro, 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(10)), new(2, "Dhuhr prayer break", "Coordinated prayer break with separate spaces.", new DateTimeOffset(2026, 7, 4, 10, 10, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 4, 10, 40, 0, TimeSpan.Zero), ScheduleItemKindEnum.Prayer, 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(10))]),
+        new(
+            5,
+            SeedIds.OnlineHadithEventId,
+            "Online Hadith Methodology Webinar",
+            "online-hadith-methodology-webinar",
+            "Both-gender online webinar on hadith terminology, isnad basics, and how to study narrations responsibly.",
+            EventTypeEnum.Webinar,
+            EventFormatEnum.Digital,
+            AudienceGenderEnum.Both,
+            AudienceAgeEnum.Teens16Plus,
+            GenderSegregationMode.Mixed,
+            MadhabEnum.Other,
+            2,
+            null,
+            null,
+            false,
+            0,
+            true,
+            SeedIds.OnlineLocationId,
+            [SeedIds.HadithCategoryId, SeedIds.IslamicStudiesCategoryId],
+            [SeedIds.FreeTagId, SeedIds.OnlineTagId, SeedIds.BeginnerTagId],
+            [new(1, new DateOnly(2026, 7, 11), "Online hadith webinar", "Remote hadith methodology session.", "Online")],
+            [new(1, "Webinar Room", "webinar-room", "Virtual webinar track", SeedIds.OnlineLocationId, null, "#7C3AED")],
+            [new(1, "What makes a hadith authentic?", "what-makes-hadith-authentic", "Introductory methodology webinar with moderated chat Q&A.", new DateTimeOffset(2026, 7, 11, 18, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 11, 19, 30, 0, TimeSpan.Zero), 1, SeedIds.OnlineLocationId, null, EventSessionKindEnum.Lecture, RegistrationModeEnum.Open, [2, 3], [SeedIds.IslamuOrgActorId], [SeedIds.HadithCategoryId], [SeedIds.OnlineTagId], null, null, false, null, [new(1, "Live chat Q&A", "Moderated questions from online attendees.", new DateTimeOffset(2026, 7, 11, 19, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 11, 19, 30, 0, TimeSpan.Zero))])],
+            [new(1, "Webinar opening", "Technical checks and adab reminder.", new DateTimeOffset(2026, 7, 11, 17, 50, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 11, 18, 0, 0, TimeSpan.Zero), ScheduleItemKindEnum.Logistics, 1, SeedIds.OnlineLocationId, null)]),
+        new(
+            6,
+            SeedIds.ArabicWorkshopEventId,
+            "Arabic for Quran Beginners",
+            "arabic-for-quran-beginners",
+            "Both-gender mixed beginner workshop for recognizing Quranic vocabulary, roots, and simple grammar patterns.",
+            EventTypeEnum.Workshop,
+            EventFormatEnum.Hybrid,
+            AudienceGenderEnum.Both,
+            AudienceAgeEnum.Teens16Plus,
+            GenderSegregationMode.Mixed,
+            MadhabEnum.Other,
+            1,
+            null,
+            null,
+            true,
+            5,
+            true,
+            SeedIds.BrusselsIslamicCenterLocationId,
+            [SeedIds.ArabicLanguageCategoryId, SeedIds.QuranCategoryId],
+            [SeedIds.PaidTagId, SeedIds.InPersonTagId, SeedIds.OnlineTagId, SeedIds.BeginnerTagId],
+            [new(1, new DateOnly(2026, 7, 18), "Arabic workshop", "Beginner Arabic workshop with hybrid participation.", "Hybrid beginner workshop")],
+            [new(1, "Arabic Lab", "arabic-lab", "Interactive Arabic learning room", SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(10), "#EA580C")],
+            [new(1, "Roots and repeated Quran words", "roots-repeated-quran-words", "Hands-on vocabulary workshop with worksheets.", new DateTimeOffset(2026, 7, 18, 9, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 18, 11, 0, 0, TimeSpan.Zero), 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(10), EventSessionKindEnum.Workshop, RegistrationModeEnum.Open, [1, 2], [SeedIds.RegularUserActorId], [SeedIds.ArabicLanguageCategoryId], [SeedIds.BeginnerTagId], null, null, false, null, [new(1, "Vocabulary drill", "Small-group practice with common Quran words.", new DateTimeOffset(2026, 7, 18, 10, 20, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 18, 11, 0, 0, TimeSpan.Zero))])],
+            [new(1, "Hybrid check-in", "Onsite and online attendance check-in.", new DateTimeOffset(2026, 7, 18, 8, 45, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 18, 9, 0, 0, TimeSpan.Zero), ScheduleItemKindEnum.Logistics, 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(10))]),
+        new(
+            7,
+            SeedIds.YouthAqeedahEventId,
+            "Youth Aqeedah Circle",
+            "youth-aqeedah-circle",
+            "Both-gender youth circle with supervised mixed seating and discussion on belief, identity, and worship.",
+            EventTypeEnum.Workshop,
+            EventFormatEnum.Local,
+            AudienceGenderEnum.Both,
+            AudienceAgeEnum.YouthUnder18,
+            GenderSegregationMode.Mixed,
+            MadhabEnum.Other,
+            2,
+            PrayerTime.Asr,
+            45,
+            false,
+            0,
+            true,
+            SeedIds.AntwerpMasjidLocationId,
+            [SeedIds.AqeedahCategoryId, SeedIds.CommunityEventsCategoryId],
+            [SeedIds.FreeTagId, SeedIds.InPersonTagId, SeedIds.BeginnerTagId],
+            [new(1, new DateOnly(2026, 7, 25), "Youth circle", "Supervised youth aqeedah session.", "Youth under 18")],
+            [new(1, "Youth Room", "youth-room", "Supervised youth room", SeedIds.AntwerpMasjidLocationId, SeedIds.RoomId(21), "#0891B2")],
+            [new(1, "Allah's names and daily choices", "allahs-names-daily-choices", "Interactive youth discussion with activities.", new DateTimeOffset(2026, 7, 25, 13, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 25, 15, 0, 0, TimeSpan.Zero), 1, SeedIds.AntwerpMasjidLocationId, SeedIds.RoomId(21), EventSessionKindEnum.Activity, RegistrationModeEnum.ApprovalRequired, [2, 11], [SeedIds.ModeratorUserActorId], [SeedIds.AqeedahCategoryId], [SeedIds.BeginnerTagId], PrayerTime.Asr, -30, false, "{\"guardianConsent\":true}", [new(1, "Reflection worksheet", "Youth complete a short names-of-Allah worksheet.", new DateTimeOffset(2026, 7, 25, 14, 35, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 25, 15, 0, 0, TimeSpan.Zero))])],
+            [new(1, "Guardian pickup window", "Post-session pickup and feedback.", new DateTimeOffset(2026, 7, 25, 15, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 7, 25, 15, 20, 0, TimeSpan.Zero), ScheduleItemKindEnum.Logistics, 1, SeedIds.AntwerpMasjidLocationId, SeedIds.RoomId(21))]),
+        new(
+            8,
+            SeedIds.CommunityIftarEventId,
+            "Community Iftar & New Muslim Welcome",
+            "community-iftar-new-muslim-welcome",
+            "Both-gender segregated community iftar with welcome table, Maghrib prayer, meal service, and multilingual support.",
+            EventTypeEnum.Conference,
+            EventFormatEnum.Local,
+            AudienceGenderEnum.Both,
+            AudienceAgeEnum.AllAges,
+            GenderSegregationMode.Segregated,
+            MadhabEnum.Other,
+            2,
+            PrayerTime.Maghrib,
+            -20,
+            true,
+            0,
+            true,
+            SeedIds.BrusselsIslamicCenterLocationId,
+            [SeedIds.CommunityEventsCategoryId, SeedIds.IslamicStudiesCategoryId],
+            [SeedIds.FreeTagId, SeedIds.InPersonTagId, SeedIds.BeginnerTagId],
+            [new(1, new DateOnly(2026, 8, 1), "Community iftar", "Segregated iftar and new Muslim welcome.", "Segregated iftar")],
+            [new(1, "Main Hall", "main-hall", "Shared program with segregated seating", SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(10), "#CA8A04")],
+            [new(1, "Welcome to the masjid", "welcome-to-the-masjid", "Orientation and support session for new Muslims and guests.", new DateTimeOffset(2026, 8, 1, 17, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 8, 1, 18, 15, 0, TimeSpan.Zero), 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(10), EventSessionKindEnum.Talk, RegistrationModeEnum.Open, [2, 3, 11], [SeedIds.IslamuOrgActorId, SeedIds.RegularUserActorId], [SeedIds.CommunityEventsCategoryId], [SeedIds.FreeTagId], PrayerTime.Maghrib, -90, false, null, [new(1, "Support table intro", "Introduce mentors and language support tables.", new DateTimeOffset(2026, 8, 1, 18, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 8, 1, 18, 15, 0, TimeSpan.Zero))])],
+            [new(1, "Maghrib and iftar", "Dates, water, prayer, and meal service.", new DateTimeOffset(2026, 8, 1, 18, 20, 0, TimeSpan.Zero), new DateTimeOffset(2026, 8, 1, 19, 30, 0, TimeSpan.Zero), ScheduleItemKindEnum.Prayer, 1, SeedIds.BrusselsIslamicCenterLocationId, SeedIds.RoomId(10))])
+    ];
+
+    private static LocationRoom CreateRoom(
+        int roomNumber,
+        Guid locationId,
+        string name,
+        string slug,
+        string description,
+        int capacity,
+        int sortOrder) => new()
+        {
+            Id = SeedIds.RoomId(roomNumber),
+            LocationId = locationId,
+            Location = null!,
+            Name = name,
+            Slug = slug,
+            Description = description,
+            Capacity = capacity,
+            SortOrder = sortOrder,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = SeedTimestamp,
+            ConcurrencyStamp = SeedIds.RoomId(roomNumber)
+        };
+
+    private static Event CreateEvent(IslamicEventSpec spec)
+    {
+        var firstSession = spec.Sessions.Min(session => session.StartUtc);
+        var lastSession = spec.Sessions.Max(session => session.StartUtc);
+
+        return new Event
+        {
+            Id = spec.Id,
+            Title = spec.Title,
+            Description = spec.Description,
+            Slug = spec.Slug,
+            EventTypeId = (int)spec.EventType,
+            AudienceGenderId = (int)spec.AudienceGender,
+            AudienceAgeId = (int)spec.AudienceAge,
+            ActorId = SeedIds.IslamuOrgActorId,
+            Actor = null!,
+            Price = spec.Price,
+            CurrencyCode = "EUR",
+            FeaturedImageId = SeedIds.DefaultEventImageId,
+            TotalViews = spec.Number * 11,
+            IsRegistrationRequired = spec.IsRegistrationRequired,
+            MadhabId = (int?)spec.Madhab,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+            VisibilityType = null!,
+            EventStatusId = (int)EventStatusEnum.Published,
+            EventStatus = null!,
+            EventFormatId = (int)spec.EventFormat,
+            EventFormat = null!,
+            SessionCount = spec.Sessions.Count,
+            FirstSessionDate = spec.Days.Min(day => day.LocalDate),
+            LastSessionDate = spec.Days.Max(day => day.LocalDate),
+            FirstSessionStartUtc = firstSession,
+            LastSessionStartUtc = lastSession,
+            Timezone = BrusselsTimezone,
+            EventTimeZoneId = BrusselsTimezone,
+            RegistrationPolicyId = spec.IsRegistrationRequired ? 1 : null,
+            CreatedAt = SeedTimestamp,
+            ConcurrencyStamp = spec.Id,
+            BackgroundColor = spec.GenderMode switch
+            {
+                GenderSegregationMode.WomenOnly => "#FDF2F8",
+                GenderSegregationMode.MenOnly => "#EFF6FF",
+                GenderSegregationMode.Segregated => "#FFFBEB",
+                GenderSegregationMode.Family => "#F0FDF4",
+                _ => "#F8FAFC"
+            },
+            BackgroundEffect = "subtle-islamic-pattern"
+        };
+    }
+
+    private static EventSession CreateSession(
+        IslamicEventSpec spec,
+        SessionSpec session,
+        IEventScheduleProjectionCalculator calculator)
+    {
+        var entity = new EventSession
+        {
+            Id = SeedIds.EventSessionId(spec.Number, session.Number),
+            EventId = spec.Id,
+            Event = null!,
+            EventDayId = SeedIds.EventDayId(spec.Number, session.DayNumber),
+            EventDay = null,
+            SortOrder = session.Number,
+            LocationId = session.LocationId,
+            Location = null,
+            RoomId = session.RoomId,
+            Room = null,
+            Title = session.Title,
+            Slug = session.Slug,
+            Description = session.Description,
+            EventSessionKindId = (int)session.Kind,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            MaxAudienceAttendees = session.RoomId.HasValue ? 80 : 500,
+            CurrentAudienceAttendees = session.Number * 7,
+            RegistrationModeId = (int)session.RegistrationMode,
+            FeaturedImageId = SeedIds.DefaultEventImageId,
+            Price = spec.Price,
+            CurrencyCode = "EUR",
+            CreatedAt = SeedTimestamp,
+            ConcurrencyStamp = SeedIds.EventSessionId(spec.Number, session.Number)
+        };
+
+        entity.Reschedule(session.StartUtc, session.EndUtc, BrusselsTimezone, calculator);
+        return entity;
+    }
+
+    private static EventSessionIslamicAspect CreateSessionIslamicAspect(
+        IslamicEventSpec spec,
+        SessionSpec session)
+    {
+        bool hasRelativeStart = session.ReferencePrayer.HasValue && session.PrayerOffsetMinutes.HasValue;
+
+        return new EventSessionIslamicAspect
+        {
+            EventSessionId = SeedIds.EventSessionId(spec.Number, session.Number),
+            StartTimeType = hasRelativeStart ? SessionStartTimeType.RelativeToPrayer : SessionStartTimeType.Fixed,
+            ReferencePrayer = hasRelativeStart ? session.ReferencePrayer : null,
+            OffsetMinutes = hasRelativeStart ? session.PrayerOffsetMinutes : null,
+            RequiresWudu = session.RequiresWudu,
+            RitualRequirementsJson = session.RitualRequirementsJson
+        };
+    }
+
+    private static EventAgendaItem CreateEventAgendaItem(
+        IslamicEventSpec spec,
+        AgendaItemSpec item,
+        IEventScheduleProjectionCalculator calculator)
+    {
+        var entity = new EventAgendaItem
+        {
+            Id = SeedIds.EventAgendaItemId(spec.Number, item.Number),
+            EventId = spec.Id,
+            Event = null!,
+            EventDayId = SeedIds.EventDayId(spec.Number, item.DayNumber),
+            EventDay = null,
+            Title = item.Title,
+            Description = item.Description,
+            LocationId = item.LocationId,
+            Location = null,
+            RoomId = item.RoomId,
+            Room = null,
+            KindId = (int)item.Kind,
+            SortOrder = item.Number,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = SeedTimestamp,
+            ConcurrencyStamp = SeedIds.EventAgendaItemId(spec.Number, item.Number)
+        };
+
+        entity.Reschedule(item.StartUtc, item.EndUtc, BrusselsTimezone, calculator);
+        return entity;
+    }
+
+    private sealed record IslamicEventSpec(
+        int Number,
+        Guid Id,
+        string Title,
+        string Slug,
+        string Description,
+        EventTypeEnum EventType,
+        EventFormatEnum EventFormat,
+        AudienceGenderEnum AudienceGender,
+        AudienceAgeEnum AudienceAge,
+        GenderSegregationMode GenderMode,
+        MadhabEnum Madhab,
+        int PrimaryLanguageId,
+        PrayerTime? ReferencePrayer,
+        int? PrayerOffsetMinutes,
+        bool IncludesQuranRecitation,
+        decimal Price,
+        bool IsRegistrationRequired,
+        Guid PrimaryLocationId,
+        IReadOnlyList<Guid> CategoryIds,
+        IReadOnlyList<Guid> TagIds,
+        IReadOnlyList<DaySpec> Days,
+        IReadOnlyList<GroupSpec> Groups,
+        IReadOnlyList<SessionSpec> Sessions,
+        IReadOnlyList<AgendaItemSpec> AgendaItems);
+
+    private sealed record DaySpec(
+        int Number,
+        DateOnly LocalDate,
+        string Label,
+        string Description,
+        string BannerText);
+
+    private sealed record GroupSpec(
+        int Number,
+        string Name,
+        string Slug,
+        string Description,
+        Guid? LocationId,
+        Guid? RoomId,
+        string Color);
+
+    private sealed record SessionSpec(
+        int Number,
+        string Title,
+        string Slug,
+        string Description,
+        DateTimeOffset StartUtc,
+        DateTimeOffset EndUtc,
+        int DayNumber,
+        Guid? LocationId,
+        Guid? RoomId,
+        EventSessionKindEnum Kind,
+        RegistrationModeEnum RegistrationMode,
+        IReadOnlyList<int> LanguageIds,
+        IReadOnlyList<Guid> SpeakerActorIds,
+        IReadOnlyList<Guid> CategoryIds,
+        IReadOnlyList<Guid> TagIds,
+        PrayerTime? ReferencePrayer,
+        int? PrayerOffsetMinutes,
+        bool RequiresWudu,
+        string? RitualRequirementsJson,
+        IReadOnlyList<SessionAgendaItemSpec> AgendaItems)
+    {
+        public int GroupNumber => Number == 2 ? 2 : 1;
+    }
+
+    private sealed record AgendaItemSpec(
+        int Number,
+        string Title,
+        string Description,
+        DateTimeOffset StartUtc,
+        DateTimeOffset EndUtc,
+        ScheduleItemKindEnum Kind,
+        int DayNumber,
+        Guid? LocationId,
+        Guid? RoomId);
+
+    private sealed record SessionAgendaItemSpec(
+        int Number,
+        string Title,
+        string Description,
+        DateTimeOffset StartUtc,
+        DateTimeOffset EndUtc);
 }

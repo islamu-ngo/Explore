@@ -9,6 +9,7 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.Extensions.DependencyInjection;
+using System.Globalization;
 
 namespace Explore.Blazor.Client.E2ETests.Fixtures;
 
@@ -16,6 +17,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 {
     private readonly PostgreSqlContainerFixture _database = new();
     private readonly BffKeycloakFixture _keycloak = new();
+    private readonly MailpitContainerFixture _mailpit = new();
     private DistributedApplication? _app;
 
     public string BlazorBaseUrl => _app?.GetEndpoint("explore-blazor", "https")?.ToString().TrimEnd('/')
@@ -28,10 +30,25 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 
     public ExploreDbContext CreateDbContext() => _database.CreateDbContext();
 
+    public Task ClearMailpitMessagesAsync(CancellationToken cancellationToken = default)
+        => _mailpit.ClearMessagesAsync(cancellationToken);
+
+    public Task<IReadOnlyList<MailpitContainerFixture.MailpitMessageSummary>> GetMailpitMessagesAsync(
+        CancellationToken cancellationToken = default)
+        => _mailpit.GetMessagesAsync(cancellationToken);
+
+    public Task<string> GetMailpitMessageTextAsync(string id, CancellationToken cancellationToken = default)
+        => _mailpit.GetMessageTextAsync(id, cancellationToken);
+
+    public Task<string> GetTestUserAccessTokenAsync(CancellationToken cancellationToken = default)
+        => _keycloak.GetTestUserAccessTokenAsync(cancellationToken);
+
     public async Task InitializeAsync()
     {
         await _database.InitializeAsync();
+        await _mailpit.InitializeAsync();
         await PreconfigureTenantRoutingAsync();
+        await PreconfigureMailpitSmtpAsync();
         await _keycloak.InitializeAsync();
 
         var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.Explore_AppHost>();
@@ -41,6 +58,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 
         ConfigureDatabase(builder, _database.ConnectionString);
         ConfigureKeycloak(builder, _keycloak);
+        ConfigureEmailDispatch(builder);
         ConfigureApiEndpoint(builder);
 
         _app = await builder.BuildAsync();
@@ -48,13 +66,15 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 
         await _app.StartAsync();
 
+        using var apiHealthTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         await resourceNotificationService.WaitForResourceHealthyAsync(
             "explore-api",
-            new CancellationTokenSource(TimeSpan.FromMinutes(3)).Token);
+            apiHealthTimeout.Token);
 
+        using var blazorHealthTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         await resourceNotificationService.WaitForResourceHealthyAsync(
             "explore-blazor",
-            new CancellationTokenSource(TimeSpan.FromMinutes(3)).Token);
+            blazorHealthTimeout.Token);
     }
 
     public async ValueTask DisposeAsync()
@@ -67,7 +87,17 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         }
 
         await _keycloak.DisposeAsync();
+        await _mailpit.DisposeAsync();
         await _database.DisposeAsync();
+    }
+
+    private static void ConfigureEmailDispatch(IDistributedApplicationTestingBuilder builder)
+    {
+        var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
+
+        api.WithEnvironment("EmailDispatchProcessor__PollingIntervalSeconds", "1");
+        api.WithEnvironment("EmailDispatchProcessor__InitialRetryDelaySeconds", "1");
+        api.WithEnvironment("EmailDispatchProcessor__BatchSize", "25");
     }
 
     private static void ConfigureKeycloak(
@@ -175,6 +205,55 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
             "\"/t\"",
             SettingValueType.String,
             "Routing");
+
+        await context.SaveChangesAsync();
+    }
+
+    private async Task PreconfigureMailpitSmtpAsync()
+    {
+        await using var context = _database.CreateDbContext();
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Email.SmtpHost,
+            $"\"{_mailpit.SmtpHost}\"",
+            SettingValueType.String,
+            "Email");
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Email.SmtpPort,
+            _mailpit.SmtpPort.ToString(CultureInfo.InvariantCulture),
+            SettingValueType.Integer,
+            "Email");
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Email.SmtpSecurity,
+            "\"None\"",
+            SettingValueType.String,
+            "Email");
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Email.FromAddress,
+            "\"noreply@registration-e2e.test\"",
+            SettingValueType.String,
+            "Email");
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Email.FromName,
+            "\"ISLAMU Event E2E\"",
+            SettingValueType.String,
+            "Email");
+
+        UpsertSystemSetting(
+            context,
+            GovernanceSettingKeys.Email.SmtpTimeoutSeconds,
+            "10",
+            SettingValueType.Integer,
+            "Email");
 
         await context.SaveChangesAsync();
     }

@@ -5,6 +5,8 @@ namespace Explore.Blazor.Client.E2ETests.Fixtures;
 
 public sealed class PlaywrightFixture : IAsyncInitializer, IAsyncDisposable
 {
+    private static readonly TimeSpan ArtifactTimeout = TimeSpan.FromSeconds(5);
+
     private IPlaywright? _playwright;
     private IBrowser? _browser;
     private readonly string _artifactRoot = Path.Combine(
@@ -69,9 +71,15 @@ public sealed class PlaywrightFixture : IAsyncInitializer, IAsyncDisposable
                 await page.ScreenshotAsync(new PageScreenshotOptions
                 {
                     FullPage = true,
-                    Path = screenshotPath
+                    Path = screenshotPath,
+                    Timeout = (float)ArtifactTimeout.TotalMilliseconds
                 });
             }
+        }
+        catch (TimeoutException)
+        {
+            // Artifact capture is best-effort. A slow screenshot must not mask the
+            // actual E2E assertion result after the browser flow has completed.
         }
         finally
         {
