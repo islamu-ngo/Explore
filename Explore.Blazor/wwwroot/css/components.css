@@ -42,12 +42,23 @@
 /* Shell panels are application chrome, not page content. Keep them pinned
    below the sticky header while the center workspace scrolls normally. */
 .dock-side-host--shell {
-    position: sticky !important;
+    position: fixed !important;
     inset-block-start: var(--mud-appbar-height, 4rem) !important;
-    align-self: start !important;
-    block-size: calc(100vh - var(--mud-appbar-height, 4rem)) !important;
-    max-block-size: calc(100vh - var(--mud-appbar-height, 4rem)) !important;
+    inset-block-end: 0 !important;
+    align-self: auto !important;
+    block-size: calc(100dvh - var(--mud-appbar-height, 4rem)) !important;
+    max-block-size: calc(100dvh - var(--mud-appbar-height, 4rem)) !important;
     z-index: var(--isl-dock-z-shell, 1200) !important;
+}
+
+.dock-side-host--shell.dock-side-host--start {
+    inset-inline-start: 0 !important;
+    inline-size: var(--dock-layout-start-width, 0px) !important;
+}
+
+.dock-side-host--shell.dock-side-host--end {
+    inset-inline-end: 0 !important;
+    inline-size: var(--dock-layout-end-width, 0px) !important;
 }
 
 .dock-side-host--shell > .dock-panel-host {

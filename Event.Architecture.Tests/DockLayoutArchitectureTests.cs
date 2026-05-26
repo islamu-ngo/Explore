@@ -79,16 +79,66 @@ public class DockLayoutArchitectureTests
                      $"Violations: {string.Join(", ", violations)}");
     }
 
+    [Test]
+    public async Task DockCss_MustLayerWorkspaceInspectorAboveAppChrome()
+    {
+        var clientDockOverlayCss = await File.ReadAllTextAsync(Path.Combine(
+            BlazorClientRoot,
+            "Components/Docking/DockOverlayHost.razor.css"));
+        var globalTokensCss = await File.ReadAllTextAsync(Path.Combine(
+            ResolveRepoRoot(),
+            "Explore.Blazor/wwwroot/css/tokens.css"));
+
+        await Assert.That(clientDockOverlayCss).Contains("z-index: var(--isl-dock-z-inspector, 1400);")
+            .Because("workspace inspectors must paint above page content, shell chrome, and the footer.");
+        await Assert.That(clientDockOverlayCss).Contains(".dock-overlay-host--workspace .dock-overlay-host__backdrop")
+            .Because("workspace inspector backdrops must dim the whole app chrome below the inspector panel.");
+        await Assert.That(clientDockOverlayCss).Contains("z-index: var(--isl-dock-z-workspace-backdrop, 1100);")
+            .Because("workspace backdrop must stay below the inspector panel inside the overlay stacking context.");
+        await Assert.That(globalTokensCss).Contains("--isl-dock-z-shell: 1200;");
+        await Assert.That(globalTokensCss).Contains("--isl-dock-z-workspace-backdrop: 1100;");
+    }
+
+    [Test]
+    public async Task DockCss_MustKeepShellSidePanelsFixedBelowHeader()
+    {
+        var clientDockSideCss = await File.ReadAllTextAsync(Path.Combine(
+            BlazorClientRoot,
+            "Components/Docking/DockSideHost.razor.css"));
+        var mainLayoutCss = await File.ReadAllTextAsync(Path.Combine(
+            BlazorClientRoot,
+            "Layout/MainLayout.razor.css"));
+        var globalComponentsCss = await File.ReadAllTextAsync(Path.Combine(
+            ResolveRepoRoot(),
+            "Explore.Blazor/wwwroot/css/components.css"));
+
+        await Assert.That(mainLayoutCss).Contains("position: fixed;")
+            .Because("the shell header must remain visible while event-list content scrolls.");
+        await Assert.That(mainLayoutCss).Contains("margin-block-start: var(--mud-appbar-height, 4rem);")
+            .Because("fixed shell chrome must reserve its height before the dock host content starts.");
+        await Assert.That(clientDockSideCss).Contains("position: fixed;")
+            .Because("shell side panels must not drift while the page scrolls.");
+        await Assert.That(globalComponentsCss).Contains("position: fixed !important;")
+            .Because("the global cross-component shell dock rule must match the isolated component rule.");
+        await Assert.That(globalComponentsCss).DoesNotContain("position: sticky !important;")
+            .Because("sticky shell docks move during scroll boundary transitions.");
+    }
+
     private static string ResolveBlazorClientRoot()
     {
-        var testDir = AppContext.BaseDirectory;
-        var repoRoot = Path.GetFullPath(Path.Combine(testDir, "..", "..", "..", ".."));
+        var repoRoot = ResolveRepoRoot();
         var clientRoot = Path.Combine(repoRoot, "Explore.Blazor.Client");
 
         if (!Directory.Exists(clientRoot))
-            throw new DirectoryNotFoundException($"Explore.Blazor.Client not found at '{clientRoot}'. Test binary dir: '{testDir}'");
+            throw new DirectoryNotFoundException($"Explore.Blazor.Client not found at '{clientRoot}'. Test binary dir: '{AppContext.BaseDirectory}'");
 
         return clientRoot;
+    }
+
+    private static string ResolveRepoRoot()
+    {
+        var testDir = AppContext.BaseDirectory;
+        return Path.GetFullPath(Path.Combine(testDir, "..", "..", "..", ".."));
     }
 
     private static bool IsGenerated(string filePath) =>

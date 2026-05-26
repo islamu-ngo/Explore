@@ -31,6 +31,7 @@ public class MainLayoutTests : IDisposable
 
         // Explicit state registration for assertion control (not via AddShellStateMocks)
         _ctx.Services.AddScoped<AiAssistantState>();
+        _ctx.Services.AddScoped<MainContentAppearanceState>();
         _ctx.Services.AddScoped<TenantNavLinksState>();
         _ctx.Services.AddScoped<DockLayoutState>();
         _ctx.Services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
@@ -107,6 +108,35 @@ public class MainLayoutTests : IDisposable
             IsResizable: true,
             CanClose: true,
             PersistState: true);
+    }
+
+    private static async Task WaitForAsync(Action assertion, TimeSpan? timeout = null)
+    {
+        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(3));
+        Exception? lastException = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            try
+            {
+                assertion();
+                return;
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                await Task.Delay(TimeSpan.FromMilliseconds(50));
+            }
+        }
+
+        try
+        {
+            assertion();
+        }
+        catch (Exception ex)
+        {
+            throw new TimeoutException("The expected assertion did not pass before the timeout.", lastException ?? ex);
+        }
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -377,16 +407,16 @@ public class MainLayoutTests : IDisposable
         dockLayoutState.Register(CreateWorkspacePersistentDescriptor(workspacePanelId), _ => { });
         await cut.InvokeAsync(() => dockLayoutState.Open(workspacePanelId));
         await cut.InvokeAsync(() => dockLayoutState.Resize(ShellDockPanels.LeftNavId, 340));
-        await Task.Delay(TimeSpan.FromMilliseconds(650));
 
-        await _dockLayoutPersistence.Received(1).SaveAsync(
-            Arg.Is<DockLayoutSnapshot>(snapshot => snapshot != null
-                && snapshot.LayoutKey == "shell"
-                && snapshot.Panels.Count == 2
-                && snapshot.Panels.All(panel => panel.Id == ShellDockPanels.LeftNavId || panel.Id == ShellDockPanels.AiAssistantId)
-                && snapshot.Panels.Any(panel => panel.Id == ShellDockPanels.LeftNavId && panel.Width == 340)
-                && snapshot.Panels.All(panel => panel.Id != workspacePanelId)),
-            Arg.Any<CancellationToken>());
+        await WaitForAsync(() =>
+            _dockLayoutPersistence.Received(1).SaveAsync(
+                Arg.Is<DockLayoutSnapshot>(snapshot => snapshot != null
+                    && snapshot.LayoutKey == "shell"
+                    && snapshot.Panels.Count == 2
+                    && snapshot.Panels.All(panel => panel.Id == ShellDockPanels.LeftNavId || panel.Id == ShellDockPanels.AiAssistantId)
+                    && snapshot.Panels.Any(panel => panel.Id == ShellDockPanels.LeftNavId && panel.Width == 340)
+                    && snapshot.Panels.All(panel => panel.Id != workspacePanelId)),
+                Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
     }
 
     [Test]

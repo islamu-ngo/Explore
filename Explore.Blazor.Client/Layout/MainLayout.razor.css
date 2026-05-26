@@ -24,8 +24,6 @@
 
 /* Let MudLayout and the shell dock host grow to fill the viewport, pushing the
    footer to the bottom on short pages.
-   overflow-y: clip suppresses extra scroll-height that the sticky header
-   contributes (without creating a new scroll context like overflow:hidden).
    -------------------------------------------------------------------------- */
 ::deep .mud-layout {
     display: flex;
@@ -33,11 +31,11 @@
     flex: 1 0 auto;
     min-height: 100vh;
     height: auto;
-    overflow-y: clip;
 }
 
 ::deep .dock-layout-host--shell {
     flex: 1 0 auto;
+    margin-block-start: var(--mud-appbar-height, 4rem);
 }
 
 ::deep .dock-layout-host--shell > .dock-layout-host__content {
@@ -46,11 +44,11 @@
 }
 
 /* Element: main-layout__header
-   The sticky header container for navbar and announcements - FULL WIDTH
+   The fixed header container for navbar and announcements - FULL WIDTH
    -------------------------------------------------------------------------- */
 .main-layout__header {
-    position: sticky;
-    top: 0;
+    position: fixed;
+    inset-block-start: 0;
     inset-inline: 0;
     z-index: 1300;
     inline-size: 100%;

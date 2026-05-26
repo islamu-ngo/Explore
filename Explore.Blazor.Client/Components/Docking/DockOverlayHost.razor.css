@@ -20,7 +20,12 @@
     background: var(--isl-dock-backdrop-color, rgb(0 0 0 / 42%));
     cursor: pointer;
     pointer-events: auto;
+    z-index: var(--isl-dock-z-backdrop, 1299);
     animation: dock-backdrop-fade-in var(--isl-dock-motion-duration, 300ms) var(--isl-dock-motion-easing, cubic-bezier(0.4, 0, 0.2, 1)) both;
+}
+
+.dock-overlay-host--workspace .dock-overlay-host__backdrop {
+    z-index: var(--isl-dock-z-workspace-backdrop, 1100);
 }
 
 .dock-overlay-host__backdrop--closing {

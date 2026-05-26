@@ -15,12 +15,23 @@
 }
 
 .dock-side-host--shell {
-    position: sticky;
+    position: fixed;
     inset-block-start: var(--mud-appbar-height, 4rem);
-    align-self: start;
-    block-size: calc(100vh - var(--mud-appbar-height, 4rem));
-    max-block-size: calc(100vh - var(--mud-appbar-height, 4rem));
+    inset-block-end: 0;
+    align-self: auto;
+    block-size: calc(100dvh - var(--mud-appbar-height, 4rem));
+    max-block-size: calc(100dvh - var(--mud-appbar-height, 4rem));
     z-index: var(--isl-dock-z-shell, 1200);
+}
+
+.dock-side-host--shell.dock-side-host--start {
+    inset-inline-start: 0;
+    inline-size: var(--dock-layout-start-width, 0px);
+}
+
+.dock-side-host--shell.dock-side-host--end {
+    inset-inline-end: 0;
+    inline-size: var(--dock-layout-end-width, 0px);
 }
 
 .dock-side-host--start {

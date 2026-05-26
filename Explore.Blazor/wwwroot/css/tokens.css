@@ -149,6 +149,7 @@
 
     /* ── Dock Layout Semantics ── */
     --isl-dock-z-shell: 1200;
+    --isl-dock-z-workspace-backdrop: 1100;
     --isl-dock-z-workspace: 1300;
     --isl-dock-z-backdrop: 1299;
     --isl-dock-z-inspector: 1400;
