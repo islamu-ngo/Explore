@@ -70,7 +70,7 @@ This plan's previous revision (2026-03-26) asserted *"Blazor — Nothing"*. That
 | WCAG docs | `docs/ACCESSIBILITY.md` (WCAG 2.2 AA target, CSS logical-properties ban on physical properties) | Published |
 | Appearance DTO | `Explore.Application/DTOs/Appearance/UpdateUserAppearancePreferencesDto.cs` → `{ ThemeMode, Direction }` (no `Language` field yet) | Needs extension |
 | Admin layout | `Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceAdminSettingsLayout.razor` (MudGrid xs=3 sidebar + xs=9 content sections switch) | Available for admin UI docking |
-| NSwag generation | `Explore.Blazor.Client/nswag.json` → input `../Explore.API/swagger.json`, runs before `CoreCompile` | Complete (translation endpoints already present in `_apiClient.TranslationAsync` and `_apiClient.LanguagesAsync`) |
+| NSwag generation | `Explore.Blazor.Client/nswag.json` → input `../schemas/openapi.json`, runs before `CoreCompile` | Complete (translation endpoints already present in `_apiClient.TranslationAsync` and `_apiClient.LanguagesAsync`) |
 
 ### Confirmed Gaps (Priority-Sorted)
 

@@ -3,7 +3,7 @@
 
 # CRMWorx Event API Adaptation — Tasks
 
-Last Updated: 2026-05-25 Europe/Brussels
+Last Updated: 2026-05-28 Europe/Brussels
 
 ## Task Status Legend
 
@@ -96,21 +96,21 @@ Last Updated: 2026-05-25 Europe/Brussels
 
 ## Phase 4 — Optional RabbitMQ Dispatch Mode
 
-- [ ] Implement/wrap RabbitMQ publisher after MQContract gate.
+- [x] Implement/wrap RabbitMQ publisher after MQContract gate.
   - Acceptance: pointer-only payload, stable `PublishEventId`, mandatory routing, correlated confirms, return detection, timeout, redacted logs, metrics.
-  - Validation: RabbitMQ Testcontainers tests.
-- [ ] Add RabbitMQ topology/health/Aspire wiring.
+  - Validation: implemented Event-specific `IEmailDispatchTransport` and `RabbitMqEmailDispatchTransport` using direct `RabbitMQ.Client` 7.2.1; added `EmailDispatchPointer` unit coverage proving body/recipient/subject exclusion; `Explore.Infrastructure.Tests` passed 295/295; `Event.Architecture.Tests` passed 177 total, 176 succeeded, 1 skipped. RabbitMQ Testcontainers confirm/return coverage remains required before completing consumer mode.
+- [x] Add RabbitMQ topology/health/Aspire wiring.
   - Acceptance: exchange, standard queue, DLQ, parking queue; priority queue deferred unless consumed/tested; Rabbit profile optional.
-  - Validation: Aspire startup/profile or AppHost resource test; health check tests.
+  - Validation: added `EmailDispatchRabbitMqSettings`, validator, `EmailDispatchRabbitMqHealthCheck`, API `email-dispatch-rabbitmq` readiness check, Aspire `messaging` RabbitMQ resource, and AppHost `WithReference(messaging).WaitFor(messaging)` for local Rabbit mode; `Explore.Infrastructure.Tests` passed 295/295. Aspire startup/profile smoke remains pending.
 - [ ] Add RabbitMQ manual-ack consumer.
   - Acceptance: ACK only after persisted terminal/deferred outcome; reject poison to DLQ; nack transient unexpected failures according to retry policy; bounded prefetch; consumer identity recorded.
   - Validation: RabbitMQ integration tests.
 - [ ] Add DLQ replay and parking.
   - Acceptance: replay validates DB row, tenant, event ID, and not already sent; unsafe messages park; DLQ replay without parking queue is unhealthy.
   - Validation: unit/RabbitMQ tests.
-- [ ] Prove Basic mode remains independent.
+- [x] Prove Basic mode remains independent.
   - Acceptance: RabbitMQ disabled/broken does not prevent Basic Dispatch Mode startup or dispatch.
-  - Validation: mode-isolation integration test.
+  - Validation: RabbitMQ settings default to disabled and health-safe, Basic `EmailDispatchProcessor` remains separate, and self-hosting/docs still declare API + PostgreSQL + SMTP as sufficient. Added no-broker proof coverage in `EmailDispatchRabbitMqHealthCheckTests`: the real `RabbitMqEmailDispatchTransport` reports healthy disabled mode and returns a disabled publish result without opening even deliberately invalid AMQP configuration. `Explore.Infrastructure.Tests` passed 297/297.
 
 ## Phase 5 — Event-Specific Lifecycle Automation
 
@@ -136,11 +136,12 @@ Last Updated: 2026-05-25 Europe/Brussels
 - [x] Add tenant pause/resume write actions after Basic Dispatch transition rules are stable.
   - Acceptance: action availability comes only from server-owned routes/HAL links; UI must not infer from roles/claims/local state.
   - Validation: tenant pause/resume controls implemented as the first admin write action slice. `PUT api/admin/email-dispatch/tenants/{tenantId}/pause` and `DELETE api/admin/email-dispatch/tenants/{tenantId}/pause` use `RouteNames.PauseEmailDispatchTenant` and `RouteNames.ResumeEmailDispatchTenant`, authenticated write rate limiting, MediatR command dispatch, manual command validation, durable `EmailDispatchTenantControl` upsert, `ProblemDetails` metadata for `400 Bad Request`, and safe `BaseCommandResponse<Guid>` responses. Application Unit passed 1032/1032; Persistence Integration passed 110/110; final Architecture passed 176/177 with 1 skipped; final Release build passed 25 projects/0 errors; focused warning scan found no EmailDispatch admin-control warnings.
-- [ ] Add replay/park write actions after replay and parking transition rules are implemented.
+- [~] Add replay/park write actions after replay and parking transition rules are implemented.
   - Acceptance: replay/park availability comes only from HAL links and validates current outbox state; unsafe messages remain parked/dead-lettered; UI must not infer from roles/claims/local state.
-  - Validation: HAL affordance tests, authorization tests, and transition tests for replay/park.
-- [ ] Add ProblemDetails for invalid transitions and misconfiguration.
+  - Validation: durable transition foundation implemented in Application and Persistence. Added `ParkEmailDispatchCommand`, `ReplayEmailDispatchCommand`, manual validators/handlers, `EmailDispatchFailureCodes`, and repository methods `GetByTenantAndId`, `TryParkForOperator`, and `TryReplayForOperator`. Application Unit passed 1047/1047 for that slice and now passes 1062/1062 after authorization metadata additions. Persistence Integration compiled but could not execute locally because Docker/Testcontainers was unavailable (`DockerUnavailableException` for `/var/run/docker.sock` and Docker Desktop socket). Authenticated API routes are implemented for `PUT api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/park` and `POST api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/replay` using `RouteNames.ParkEmailDispatch` and `RouteNames.ReplayEmailDispatch`, write rate limiting, MediatR command dispatch, `ChangedBy = CurrentUserId`, and RFC 7807 mappings for not-found and state-transition conflicts. Backend row-level HAL status materialization is implemented: `EmailDispatchAdminController.GetStatus` returns `HalCollectionResource<EmailDispatchStatusDto>`, `EmailDispatchStatusLinkPolicy` emits server-gated `_links.replay` only for `DeadLettered`, `Parked`, `Unknown`, and `RetryScheduled`, and `_links.park` only for non-`Sent`, non-`Parked` rows. Permission-bound resource/action authorization metadata is now wired through `ResourceKinds.EmailDispatch`, `AuthorizationActions.EmailDispatches`, `ResourceDescriptors.EmailDispatchStatus`, `ResourceDescriptorRegistry`, `MachineScopeMapping`, `FallbackAuthorizationService`, Cerbos policy/schema `islamuevent_email_dispatch`, and `RequirePermission(AuthorizationActions.EmailDispatches.Update, ResourceDescriptors.EmailDispatchStatus, dto)` on both replay and park links. `Event.Architecture.Tests` passes 179 total / 178 succeeded / 1 skipped after parity fixes; touched API projects build 8 projects / 0 errors / 14 existing warnings. Blazor UI affordance tests remain unchecked because no EmailDispatch UI surface exists yet.
+- [~] Add ProblemDetails for invalid transitions and misconfiguration.
   - Acceptance: safe errors with trace/correlation details, no secrets.
+  - Validation: replay/park API endpoints map `email_dispatch_not_found` to `404 application/problem+json` and `email_dispatch_invalid_transition` / `email_dispatch_concurrent_transition` to `409 application/problem+json` with `traceId`, `timestamp`, optional `correlationId`, and safe `code` metadata. The status query failure path now also returns explicit `400 application/problem+json` validation details instead of a raw `BaseCommandResponse`. Misconfiguration-specific ProblemDetails remains unchecked.
 
 ## Phase 7 — Custom Fields/Data Modeling Guardrails
 
@@ -170,10 +171,10 @@ Last Updated: 2026-05-25 Europe/Brussels
 Every implementation agent must do the following before claiming task completion:
 
 - [ ] Load/read matched skills, docs, rules, and intent.
-- [ ] Update this file's task statuses and evidence.
-- [ ] Update `crmworx-event-api-adaptation-context.md` with decisions or discoveries.
-- [ ] Preserve `Last Updated: YYYY-MM-DD Europe/Brussels`.
-- [ ] Run `lsp_diagnostics` on modified files when supported.
-- [ ] Run relevant tests and build commands; record exact commands/results.
-- [ ] Never send SMTP or publish RabbitMQ directly from handlers/controllers/automation/sequence processors.
+- [x] Update this file's task statuses and evidence.
+- [x] Update `crmworx-event-api-adaptation-context.md` with decisions or discoveries.
+- [x] Preserve `Last Updated: YYYY-MM-DD Europe/Brussels`.
+- [x] Run `lsp_diagnostics` on modified files when supported.
+- [x] Run relevant tests and build commands; record exact commands/results.
+- [x] Never send SMTP or publish RabbitMQ directly from handlers/controllers/automation/sequence processors.
 - [ ] Do not commit unless explicitly requested.

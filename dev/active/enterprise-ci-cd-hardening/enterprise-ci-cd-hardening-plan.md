@@ -9,7 +9,7 @@ Last Updated: 2026-05-07
 
 The current GitHub Actions setup provides a useful foundation: reusable build/test logic, CodeQL, Cerbos policy checks, security integration tests, dependency review, reusable container builds, protected deploy jobs, advisory E2E runtime lanes, and Coolify deployment workflows. PR1-PR9 plus the Phase 1B/1C follow-ups now address the first correctness, hygiene, security-gate, container-evidence, deployment-protection, runtime-evidence, governance-documentation, and action supply-chain gaps: fast tests include the infrastructure suite, GitHub Actions restore uses locked NuGet restore, TRX/OpenAPI/security/container/deploy/E2E evidence is produced, fast/integration test summaries identify project outcomes and artifact names, OpenAPI drift is guarded, workflow permissions are explicit, missing timeouts/concurrency are added, Cerbos no longer uses a mutable binary version, C# CodeQL scans a built Release graph, Dependabot update automation is in place, external actions are SHA-pinned with version comments, deployable images emit digests/SBOM/provenance/GHCR attestations/Trivy scan output, deploy jobs use GitHub Environments plus hardened Coolify webhook calls, and `docs/CI_CD_GOVERNANCE.md` documents required checks, repository settings, fork PR policy, generated-artifact review, badges, locked restore, and retention. Remaining enterprise gaps include coverage, Dockerfile locked-restore normalization, full deploy workflow consolidation, Coolify digest/tag consumption, mandatory production smoke URL enforcement, and GitHub repository settings verification.
 
-This plan upgrades CI/CD in phases so reliability comes before strict enforcement. The first milestone keeps current workflow names stable, fixes deterministic build/test behavior, and introduces a dedicated OpenAPI contract guard that regenerates `Explore.API/swagger.json` and the NSwag client only when API-surface changes require it, then fails CI if generated artifacts were not committed. Later phases add least privilege, artifacts, security scanning, container provenance, protected deployments, smoke checks, and governance documentation.
+This plan upgrades CI/CD in phases so reliability comes before strict enforcement. The first milestone keeps current workflow names stable, fixes deterministic build/test behavior, and introduces a dedicated OpenAPI contract guard that regenerates `schemas/openapi.json` and the NSwag client only when API-surface changes require it, then fails CI if generated artifacts were not committed. Later phases add least privilege, artifacts, security scanning, container provenance, protected deployments, smoke checks, and governance documentation.
 
 **Execution constraint:** this is not a single implementation PR. Deliver it as small, reviewable PRs with stable required-check names until branch protection is explicitly migrated.
 
@@ -29,11 +29,11 @@ This plan upgrades CI/CD in phases so reliability comes before strict enforcemen
 ### Existing OpenAPI Contract Path
 
 - `Explore.API/Program.cs` wires `builder.Services.AddOpenApi("event-api", ...)` and `app.MapOpenApi()` in Development/Testing.
-- `Explore.API/Explore.API.csproj` refreshes `Explore.API/swagger.json` through ASP.NET Core build-time OpenAPI generation.
-- `Explore.Blazor.Client/Explore.Blazor.Client.csproj` runs NSwag before compile when `Explore.API/swagger.json` changes.
-- `Explore.Blazor.Client/nswag.json` generates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` from `Explore.API/swagger.json`.
+- `Explore.API/Explore.API.csproj` refreshes `schemas/openapi.json` through ASP.NET Core build-time OpenAPI generation.
+- `Explore.Blazor.Client/Explore.Blazor.Client.csproj` runs NSwag before compile when `schemas/openapi.json` changes.
+- `Explore.Blazor.Client/nswag.json` generates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` from `schemas/openapi.json`.
 - `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.Architecture.Tests/ApiContractArchitectureTests.cs`, `Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs`, and `Explore.Blazor.Client.Tests/ApiClientNamingTests.cs` already contain related guardrails, though some contract/client naming checks are skipped pending stabilization.
-- `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md` is generated from `/openapi/event-api.json` and should be kept in sync when inventory generation is intentionally part of a PR.
+- `docs/API_CONTRACT_INVENTORY.md` is generated from `/openapi/event-api.json` and should be kept in sync when inventory generation is intentionally part of a PR.
 
 ### Important Gaps
 
@@ -117,7 +117,7 @@ Not every enterprise-grade signal should block every PR. Use this matrix to avoi
 
 1. **Repository conventions first**: follow `AGENTS.md`, `docs/TESTING.md`, `docs/GOVERNANCE.md`, `docs/OPERATIONS.md`, `docs/SECURITY-MODEL.md`, and `docs/CONFIGURATION.md` before importing generic CI patterns.
 2. **Per-project tests only**: never introduce solution-level `dotnet test`; CI must run project-specific `dotnet test --project ...` lanes.
-3. **OpenAPI artifacts are generated, never hand-edited**: `Explore.API/swagger.json` and `Explore.Blazor.Client/Clients/EventApiClient.g.cs` must be refreshed by deterministic commands and committed when API-surface changes require it.
+3. **OpenAPI artifacts are generated, never hand-edited**: `schemas/openapi.json` and `Explore.Blazor.Client/Clients/EventApiClient.g.cs` must be refreshed by deterministic commands and committed when API-surface changes require it.
 4. **Fast checks first, strict checks after stability**: do not make flaky long-running lanes merge-blocking until reliability is proven with artifacts and trend data.
 5. **Least privilege by default**: top-level workflow permissions should be read-only or `{}`; jobs elevate only when required.
 6. **Deploy immutable outputs**: staging/production must deploy previously validated image digests, not mutable `latest` tags as the source of truth.
@@ -221,21 +221,21 @@ Not every enterprise-grade signal should block every PR. Use this matrix to avoi
 - `Event.API.IntegrationTests/Features/ApiContractInventoryGeneratorTests.cs`
 - `Explore.Blazor.Client/nswag.json`
 - `Explore.Blazor.Client/Explore.Blazor.Client.csproj`
-- `Explore.API/swagger.json`
+- `schemas/openapi.json`
 - `Explore.Blazor.Client/Clients/EventApiClient.g.cs`
-- `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md`
+- `docs/API_CONTRACT_INVENTORY.md`
 
 **Guard Steps:**
 1. Checkout with full enough history to compare the base branch when needed.
 2. Setup .NET from `global.json` with NuGet cache.
 3. Restore using locked mode where compatible.
 4. Build required API/test/client projects.
-5. Build `Explore.API/Explore.API.csproj` to refresh `Explore.API/swagger.json` through build-time OpenAPI generation.
-6. Build `Explore.Blazor.Client/Explore.Blazor.Client.csproj` so the existing `GenerateApiClient` target runs NSwag and refreshes `Explore.Blazor.Client/Clients/EventApiClient.g.cs` when `Explore.API/swagger.json` changed.
+5. Build `Explore.API/Explore.API.csproj` to refresh `schemas/openapi.json` through build-time OpenAPI generation.
+6. Build `Explore.Blazor.Client/Explore.Blazor.Client.csproj` so the existing `GenerateApiClient` target runs NSwag and refreshes `Explore.Blazor.Client/Clients/EventApiClient.g.cs` when `schemas/openapi.json` changed.
 7. Defer `Event.API.IntegrationTests/Features/ApiContractInventoryGeneratorTests.cs` from the strict PR2 guard until its timestamped output is normalized or regenerated in a deterministic mode.
 8. Run contract invariant tests that are stable today; explicitly leave currently skipped tests alone until their stabilization story enables them.
 9. Fail on uncommitted generated drift:
-   - `git diff --exit-code -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs`
+   - `git diff --exit-code -- schemas/openapi.json Explore.Blazor.Client/Clients/EventApiClient.g.cs`
 10. Upload generated OpenAPI, generated client diff, TRX reports, and logs as artifacts when the guard runs.
 11. Add a clear job summary explaining which generated files must be committed.
 
@@ -252,12 +252,12 @@ dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj \
   --verbosity quiet
 
 git diff --exit-code -- \
-  Explore.API/swagger.json \
+  schemas/openapi.json \
   Explore.Blazor.Client/Clients/EventApiClient.g.cs
 ```
 
-If action inventory generation is included in the guard, extend the diff command to include `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md` after running the inventory generator test.
-For PR2, exclude the action inventory from the strict drift guard because the current generator writes a timestamped `Generated:` line; promote it only after normalizing that output or adding deterministic generation mode.
+If action inventory generation is included in the guard, extend the diff command to include `docs/API_CONTRACT_INVENTORY.md` after running the inventory generator test.
+For PR2, include `docs/API_CONTRACT_INVENTORY.md` in the strict drift guard now that the generator output is deterministic and no longer writes a timestamped `Generated:` line.
 
 **Breaking-Change Layer:**
 - Pre-1.0: run `oasdiff` as advisory or warning artifact against the base branch.
@@ -268,7 +268,7 @@ For PR2, exclude the action inventory from the strict drift guard because the cu
 - API contract changes fail PRs unless regenerated artifacts are committed in the same PR.
 - Unrelated changes pass without forcing regeneration.
 - Drift failures tell contributors exactly which command or test to run and which files to commit.
-- The guard uses the existing repo path: `Explore.API` build-time OpenAPI generation → `Explore.API/swagger.json` → NSwag → `EventApiClient.g.cs`.
+- The guard uses the existing repo path: `Explore.API` build-time OpenAPI generation → `schemas/openapi.json` → NSwag → `EventApiClient.g.cs`.
 - Running the OpenAPI guard twice on the same commit produces zero diff on the second run.
 
 **Effort:** M
@@ -407,7 +407,7 @@ For PR2, exclude the action inventory from the strict drift guard because the cu
 
 ### Why This Guard Exists
 
-The project already treats OpenAPI as a governed artifact: controller signatures, routes, API versioning, `ProducesResponseType`, operation IDs, endpoint classifications, and DTO shapes are part of the public contract. Because `Explore.Blazor.Client` regenerates its typed client from `Explore.API/swagger.json`, stale OpenAPI artifacts can cause generated-client drift and hidden integration failures.
+The project already treats OpenAPI as a governed artifact: controller signatures, routes, API versioning, `ProducesResponseType`, operation IDs, endpoint classifications, and DTO shapes are part of the public contract. Because `Explore.Blazor.Client` regenerates its typed client from `schemas/openapi.json`, stale OpenAPI artifacts can cause generated-client drift and hidden integration failures.
 
 ### What Counts as an API-Surface Change
 
@@ -436,11 +436,11 @@ dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj \
   --verbosity quiet
 
 git diff --exit-code -- \
-  Explore.API/swagger.json \
+  schemas/openapi.json \
   Explore.Blazor.Client/Clients/EventApiClient.g.cs
 ```
 
-Then review the generated diff for intentionality and commit generated artifacts with the API change. If the action inventory is part of the PR, run the inventory generator and include `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md` in the review/diff.
+Then review the generated diff for intentionality and commit generated artifacts with the API change. If the action inventory is part of the PR, run the inventory generator and include `docs/API_CONTRACT_INVENTORY.md` in the review/diff.
 
 ### Generated Artifact Review Rules
 
@@ -493,7 +493,7 @@ Reviewers must inspect generated artifact diffs for:
 
 - 100% of required workflows declare explicit least-privilege permissions.
 - 100% of fast test projects run in CI, including `Explore.Infrastructure.Tests`.
-- OpenAPI drift guard blocks stale `Explore.API/swagger.json` and `EventApiClient.g.cs` diffs.
+- OpenAPI drift guard blocks stale `schemas/openapi.json` and `EventApiClient.g.cs` diffs.
 - TRX artifacts are available for every test job.
 - Coverage artifacts or documented badge removal resolves README badge mismatch.
 - Production deploys require protected environment approval.

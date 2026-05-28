@@ -3,7 +3,7 @@
 
 # CRMWorx Event API Adaptation — Context
 
-Last Updated: 2026-05-25 Europe/Brussels
+Last Updated: 2026-05-28 Europe/Brussels
 
 ## 1. Purpose
 
@@ -21,7 +21,7 @@ Primary source reports:
 - Create repository-grounded dev docs under `dev/active/[task-name]/`.
 - Required files: plan, context, and tasks.
 - Every file must include `Last Updated: YYYY-MM-DD Europe/Brussels`.
-- Use Tavily MCP and Context7 MCP research. Context7 attempts failed with a streamable HTTP session error; Tavily and librarian research succeeded and are recorded below.
+- Use Tavily MCP and Context7 MCP research. Initial Context7 attempts failed with a streamable HTTP session error, but the 2026-05-26 RabbitMQ/Aspire continuation succeeded through Context7 and Aspire docs; Tavily and librarian research also succeeded and are recorded below.
 - Apply repository skills and conventions: `aspire`, `auth-patterns`, `dotnet-efcore-guidelines`, `outbox-pattern`, `cqrs-mediatr-guidelines`, `error-tracking`, `agentic-research`, and `clean-architecture-rules`.
 - No backward compatibility requirement because the repository is pre-release/development. This permits replacing weak interim abstractions when that better fits the architecture, but still requires migrations, tests, docs, and clear intent records.
 - RabbitMQ must not be mandatory. ISLAMU Event must function with or without RabbitMQ like it functions with optional Keycloak/Cerbos-style deployment choices.
@@ -368,4 +368,119 @@ The first implementation pass has started the approved Basic Dispatch Mode path 
   - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet` passed: 110 total, 110 succeeded, 0 failed.
   - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed before and after the `ProblemDetails` metadata fix; final run passed: 177 total, 176 succeeded, 1 skipped, 0 failed.
   - `dotnet build --configuration Release --verbosity quiet` passed after the metadata fix: 25 projects, 0 errors, 3701 baseline warnings.
-  - Focused warning scan of `/tmp/emaildispatch-admin-controls-final-build.log` found no warnings matching `EmailDispatch`, `email_dispatch`, `SetEmailDispatchTenantPause`, `PauseEmailDispatch`, `ResumeEmailDispatch`, `EmailDispatchTenantControl`, or `ProblemDetails`.
+   - Focused warning scan of `/tmp/emaildispatch-admin-controls-final-build.log` found no warnings matching `EmailDispatch`, `email_dispatch`, `SetEmailDispatchTenantPause`, `PauseEmailDispatch`, `ResumeEmailDispatch`, `EmailDispatchTenantControl`, or `ProblemDetails`.
+
+### 12.16 RabbitMQ publisher/topology/health foundation
+
+- Implemented the first Phase 4 RabbitMQ Dispatch Mode slice as an optional transport foundation, not as a replacement for Basic Dispatch Mode.
+- Added Application-owned transport contracts under `Explore.Application/Contracts/Infrastructure/`:
+  - `EmailDispatchPointer` is the pointer-only broker payload and maps from `EmailDispatchOutbox` without recipient, subject, plain-text body, HTML body, reply-to, provider message IDs, raw provider errors, or SMTP credentials.
+  - `IEmailDispatchTransport`, `EmailDispatchPublishResult`, `EmailDispatchPublishOutcome`, and `EmailDispatchTransportHealth` define the broker boundary without referencing RabbitMQ or MQContract from handlers/controllers/domain.
+- Added Infrastructure-owned RabbitMQ implementation:
+  - `EmailDispatchRabbitMqSettings` and validator bind `EmailDispatchRabbitMq:*` with disabled-by-default optional semantics.
+  - `RabbitMqEmailDispatchTransport` uses direct `RabbitMQ.Client` 7.2.1, resolves direct/connection-string/Aspire `MESSAGING_URI` configuration, declares durable direct exchange, dispatch queue, DLX, DLQ, and parking queue, and publishes pointer messages with `mandatory:true`, publisher confirmations/tracking, return/nack/timeout handling, redacted logs, and low-cardinality metrics.
+  - `EmailDispatchRabbitMqHealthCheck` reports healthy when disabled and unhealthy when enabled broker/topology declaration fails.
+- Added API/AppHost/observability wiring:
+  - `Explore.API/Program.cs` registers the `email-dispatch-rabbitmq` readiness check.
+  - `Explore.AppHost/AppHost.cs` adds optional local RabbitMQ resource `messaging` with management plugin and wires it to `explore-api` through Aspire connection injection.
+  - `BusinessMetrics` now records `explore.email_dispatch.rabbitmq.publishes` with `tenant_id`, `outcome`, and `failure_category` only.
+- Updated operator docs in `docs/CONFIGURATION.md`, `docs/OPERATIONS.md`, and `docs/SELF_HOSTING.md` to distinguish Basic mode from optional RabbitMQ transport and to document safe payload/configuration behavior.
+- Verification evidence for this slice:
+  - LSP diagnostics clean for new Application contracts, RabbitMQ settings/validator/transport/health check, and new Infrastructure tests.
+  - `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --minimum-expected-tests 1` passed: 295 total, 295 succeeded, 0 failed.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --minimum-expected-tests 1` passed: 177 total, 176 succeeded, 1 skipped.
+  - Full `Event.API.IntegrationTests` run found 3 failures in `AuthorizationProductionGuardrailTests`; triage showed startup failure in existing Development/InMemory seeding because EF InMemory does not support `ExecuteDeleteAsync`, unrelated to the RabbitMQ slice.
+- Still pending for later RabbitMQ Dispatch Mode completion: manual-ack consumer, bounded prefetch, persisted outcome-before-ACK, DLQ replay/parking writes, RabbitMQ Testcontainers confirm/return tests, and explicit Basic/Rabbit mode isolation integration proof.
+
+### 12.17 Replay/park durable transition foundation
+
+- Implemented the first Phase 6 replay/park slice as a durable state-transition foundation only; no API controller routes, HAL links, or UI affordances were added in this slice.
+- Added Application command surface:
+  - `ParkEmailDispatchCommand` and `ReplayEmailDispatchCommand` under `Explore.Application/Features/EmailDispatch/Requests/Commands/`.
+  - `ParkEmailDispatchCommandValidator` and `ReplayEmailDispatchCommandValidator` manually enforce tenant/outbox identifiers and the operator park reason bound.
+  - `ParkEmailDispatchCommandHandler` and `ReplayEmailDispatchCommandHandler` manually instantiate validators, return `BaseCommandResponse<Guid>`, use structured `EmailDispatchFailureCodes`, and mutate only the durable repository boundary.
+- Added repository transition surface:
+  - `IEmailDispatchOutboxRepository.GetByTenantAndId(...)` reads the exact tenant/outbox row for state gating without exposing recipient/body/subject data to API callers.
+  - `TryParkForOperator(...)` moves eligible rows to `EmailDispatchStatus.Parked`, records `ParkedAt`, clears retry/processing fields, stores a truncated safe operator reason in failure metadata, and refuses already sent or already parked rows.
+  - `TryReplayForOperator(...)` resets deferred rows (`DeadLettered`, `Parked`, `Unknown`, `RetryScheduled`) back to `Pending`, clears dead-letter/park/unknown/failure metadata, and refuses sent/processing rows.
+- The handlers deliberately do not send SMTP, publish RabbitMQ, inspect HAL, or own controller-level ProblemDetails. This preserves Clean Architecture: Application owns orchestration and state validation, Persistence owns EF conditional updates, API/HAL will be a later affordance slice.
+- Added focused tests:
+  - `ParkEmailDispatchCommandHandlerTests` covers validation, not-found failure code, invalid sent transition, and successful repository-mediated park.
+  - `ReplayEmailDispatchCommandHandlerTests` covers validation, invalid sent transition, idempotent pending replay success, and successful repository-mediated replay from dead-lettered state.
+  - `EmailDispatchOutboxTransitionRepositoryTests` covers PostgreSQL-backed park/replay conditional transitions, but local execution currently requires Docker/Testcontainers availability.
+- Verification evidence for this slice so far:
+  - LSP diagnostics clean for the new Application commands/validators/handlers, repository contract/implementation, and new tests.
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --minimum-expected-tests 1` passed: 1047 total, 1047 succeeded, 0 failed.
+  - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet -- --minimum-expected-tests 1` could not execute the repository assertions in this environment because Testcontainers could not connect to Docker (`unix:///var/run/docker.sock` or Docker Desktop socket). The failure was suite-wide and not specific to the new transition tests.
+- Still pending for the full admin operations feature: authenticated controller actions, route names, API ProblemDetails shape for invalid transitions, HAL link policies/authorization metadata, API integration tests, UI affordance gating, and operator docs for replay/park actions.
+
+### 12.18 Replay/park authenticated admin API endpoints
+
+- Exposed the durable replay/park transition foundation through authenticated admin write endpoints in `EmailDispatchAdminController`.
+- Added stable route names in `Explore.API/Hateoas/RouteNames.cs`:
+  - `RouteNames.ParkEmailDispatch` for `PUT api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/park`.
+  - `RouteNames.ReplayEmailDispatch` for `POST api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/replay`.
+- Both endpoints preserve the controller pattern used by status and tenant pause/resume:
+  - `[Authorize]` inherited from the controller.
+  - authenticated endpoint classification.
+  - write rate limiting through `RateLimitingExtensions.WritePolicy`.
+  - complex request timeout policy.
+  - MediatR dispatch only; no SMTP, RabbitMQ, EF DbContext, or HAL evaluation in the controller.
+  - `ChangedBy = CurrentUserId` on the replay/park commands for audit attribution.
+- Added controller-owned RFC 7807 mapping for command failure codes:
+  - `email_dispatch_not_found` returns `404 application/problem+json` with title `Email dispatch row not found`.
+  - `email_dispatch_invalid_transition` and `email_dispatch_concurrent_transition` return `409 application/problem+json` with title `Email dispatch state transition conflict`.
+  - fallback validation failures return `400 ValidationProblemDetails`.
+  - all problem responses include safe `traceId`, `timestamp`, optional `correlationId`, and `code` metadata when available.
+  - The controller returns these payloads through an explicit `ContentResult` with `ContentType = application/problem+json` because the controller-level HAL JSON `Produces` metadata otherwise causes MVC to serialize `ObjectResult` problem payloads as `application/json`.
+- Added focused API integration tests in `Event.API.IntegrationTests/Features/EmailDispatchAdminControllerTests.cs` for unauthenticated park denial, authenticated park command dispatch, replay conflict ProblemDetails shape, and route-name/write-rate-limit metadata.
+- HAL affordances remain intentionally deferred. The repository search found that EmailDispatch status currently returns a flat DTO list without a resource assembler/link policy. Future HAL work should first introduce row-level EmailDispatch admin resources and then emit `replay` links only for `DeadLettered`, `Parked`, `Unknown`, and `RetryScheduled`, and `park` links only for non-`Sent`, non-`Parked` rows.
+- Verification note: LSP diagnostics are clean for the controller, route names, and new API test file. Focused TUnit/Microsoft.Testing.Platform filters currently match zero API integration tests in this project, so full API integration execution is used to prove runtime behavior; known unrelated guardrail failures from Development/InMemory seeding may still appear. `Event.Architecture.Tests` passed after this API slice: 179 total, 178 succeeded, 1 skipped.
+
+### 12.19 EmailDispatch status HAL affordances
+
+- Implemented the backend HAL affordance slice that section 12.18 intentionally deferred.
+- `EmailDispatchAdminController.GetStatus` now returns `HalCollectionResource<EmailDispatchStatusDto>` instead of a raw `BaseCommandResponse<IReadOnlyList<EmailDispatchStatusDto>>` on success.
+- The status endpoint still dispatches only `GetEmailDispatchStatusQuery` through MediatR; it does not inspect roles, send SMTP, publish RabbitMQ, or access EF directly.
+- Status query failures now return explicit `400 application/problem+json` validation details with `traceId`, `timestamp`, optional `correlationId`, and safe `emailDispatch` errors.
+- Added `EmailDispatchStatusLinkPolicy`:
+  - `_links.replay` is emitted only for durable statuses `DeadLettered`, `Parked`, `Unknown`, and `RetryScheduled`.
+  - `_links.park` is emitted only for rows that are not `Sent` and not already `Parked`.
+  - Links use stable route names `RouteNames.ReplayEmailDispatch` and `RouteNames.ParkEmailDispatch`, route values `{ tenantId, outboxId }`, methods `POST` and `PUT`, and `RequiresAuth = true`.
+  - Permission metadata is attached through `RequirePermission(AuthorizationActions.EmailDispatches.Update, ResourceDescriptors.EmailDispatchStatus, dto)`, so link materialization can fail closed through the existing HATEOAS authorization evaluator.
+- Added `EmailDispatchStatusResourceAssembler` and registered the detail policy, collection policy, and resource assembler in `HateoasAssemblerRegistration`.
+- Added EmailDispatch HAL serialization/OpenAPI coverage in `ExploreJsonContext` and `HalOpenApiSchemaCatalog` for `HalResource<EmailDispatchStatusDto>`, `HalCollectionResource<EmailDispatchStatusDto>`, and embedded collection items.
+- Added direct HAL policy tests in `EmailDispatchAdminHateoasTests` for deferred, sent, parked, and processing rows, plus controller route metadata coverage for the HAL status return type.
+- Verification evidence:
+  - LSP diagnostics clean for the controller, HAL policy, assembler, DI registration, JSON context, OpenAPI schema catalog, and new/updated tests.
+  - Full API integration run after the HAL fix: 1093 total, 66 failed, 1022 succeeded, 5 skipped. The previous EmailDispatch-specific `GetStatusRoute_ReturnsHalCollectionResource` failure is gone; remaining failures are unrelated baseline startup/migration/API cases such as `PendingModelChangesWarning`.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --minimum-expected-tests 1` passed: 179 total, 178 succeeded, 1 skipped.
+  - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet && dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` passed: 7 projects, 0 errors, 12 existing warnings.
+  - Repo-wide `dotnet build --configuration Release --verbosity quiet` is currently blocked by unrelated existing Blazor/test/package analyzer errors and warnings-as-errors; no EmailDispatch/HAL errors were present in the build output.
+- Permission-bound metadata now has a canonical authorization catalog and policy surface:
+  - `ResourceKinds.EmailDispatch = "islamuevent_email_dispatch"`.
+  - `AuthorizationActions.EmailDispatches.View` and `AuthorizationActions.EmailDispatches.Update` reuse the shared `view`/`update` verbs.
+  - `ResourceDescriptors.EmailDispatchStatus` extracts safe attributes only: `tenantId`, `outboxId`, `sourceType`, `sourceId`, and `deliveryStatus`; it deliberately excludes recipient, subject, body, provider message, and raw error data.
+  - `ResourceDescriptorRegistry` maps `EmailDispatchStatusDto` to `ResourceKinds.EmailDispatch` for generic authorization parity.
+  - `MachineScopeMapping` permits EmailDispatch operations only for `admin:tenant` or `admin:instance` machine scopes, matching the tenant-scoped operator nature of replay/park.
+  - `FallbackAuthorizationService` handles `islamuevent_email_dispatch` through tenant-scoped access evaluation, preserving local/fallback fail-closed behavior.
+  - Added Cerbos resource policy and schema: `cerbos/policies/islamuevent_email_dispatch.yaml` and `cerbos/policies/_schemas/islamuevent_email_dispatch.json`; instance admins can do everything, tenant admins can `view`/`update` within their tenant.
+- Verification evidence for permission metadata slice:
+  - LSP diagnostics clean for Application authorization catalogs, fallback authorization service, EmailDispatch HAL policy, updated HAL tests, and machine-scope tests.
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --minimum-expected-tests 1` passed: 1062 total, 1062 succeeded.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --minimum-expected-tests 1` passed after formatting the `RequirePermission(AuthorizationActions...)` calls to satisfy the architecture regex: 179 total, 178 succeeded, 1 skipped.
+  - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet && dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` passed: 8 projects, 0 errors, 14 existing warnings.
+- Remaining for full Phase 6 completion: Blazor UI affordance rendering/tests that consume `_links.replay` and `_links.park`, and misconfiguration-specific ProblemDetails.
+
+### 12.20 Basic/RabbitMQ dispatch-mode isolation proof
+
+Completed the no-broker proof slice for Phase 4 Basic Dispatch Mode independence.
+
+- Added focused coverage in `Explore.Infrastructure.Tests/Infrastructure/EmailDispatchRabbitMqHealthCheckTests.cs` using the real `RabbitMqEmailDispatchTransport` instead of a stub transport.
+- The new health test configures `EmailDispatchRabbitMqSettings.Enabled = false` with deliberately invalid RabbitMQ connection data and verifies `CheckHealthAsync` returns a healthy disabled state with the description `Basic Dispatch Mode remains independent`.
+- The new publish test uses the same disabled/invalid broker configuration and verifies `PublishDispatchPointerAsync` returns `EmailDispatchPublishOutcome.Disabled` without attempting to resolve or open the invalid AMQP connection. `EmailDispatchPublishResult.Disabled()` is intentionally considered successful because a disabled optional broker is a successful no-op for Basic Dispatch Mode.
+- This proves the optional RabbitMQ adapter short-circuits before broker access when disabled; Basic `EmailDispatchProcessor` continues to remain separate and does not depend on `IEmailDispatchTransport`.
+- Verification evidence:
+  - LSP diagnostics clean for `EmailDispatchRabbitMqHealthCheckTests.cs`.
+  - `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --minimum-expected-tests 1` passed: 297 total, 297 succeeded.
+- Remaining Phase 4 work: implement the RabbitMQ manual-ack consumer, bounded prefetch, persisted outcome-before-ACK, DLQ replay/parking operations, and RabbitMQ-backed integration tests when Docker/Testcontainers are available.

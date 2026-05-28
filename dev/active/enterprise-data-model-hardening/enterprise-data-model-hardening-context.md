@@ -560,8 +560,8 @@ dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.cs
 
 #### Risks
 
-- Phase 4.3 still needs operator-facing projection/quota/purge signals; Phase 4.2 lifecycle and semantic controls are complete.
-- Test or build risks: the full Release build is currently blocked by unrelated generated Blazor client anonymous HAL link type mismatches in `CustomPropertyAdminServiceTests`; full application tests are blocked by unrelated email-dispatch telemetry metrics; event/session PostgreSQL custom-property tests are blocked by current migration drift (`events.content` missing). Avoid reporting full-suite success until those are fixed and rerun.
+- Superseded by the Phase 4.3 handoff: operator-facing projection/quota/purge signals are complete, and the full Release build plus full application-unit baseline are green again.
+- Test risk that remains: event/session PostgreSQL custom-property tests are blocked by current migration drift (`events.content` missing). Avoid reporting full persistence-suite success until that is fixed and rerun.
 - Operator/release risks: Existing overlapping active room assignments will fail the constraint applier preflight and require intentional data cleanup.
 
 #### Notes For Next Contributor Or Agent
@@ -586,8 +586,7 @@ dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.cs
 
 #### Blockers
 
-- Full Release build fails in unrelated `Explore.Blazor.Client.Tests/Services/CustomPropertyAdminServiceTests.cs` generated anonymous HAL link types.
-- Full `Event.Application.UnitTests` fails on unrelated email-dispatch telemetry metrics.
+- Superseded by the Phase 4.3 handoff: full Release build and full `Event.Application.UnitTests` now pass.
 - Event/session PostgreSQL custom-property tests are blocked by migration drift: PostgreSQL reports `column "content" of relation "events" does not exist` during seed.
 
 #### Modified Files
@@ -605,7 +604,7 @@ dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.cs
 - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet --no-progress --treenode-filter "/*/*/*/SharedPurgeDefinition_OnPostgreSql_ReturnsFalseWhenValuesExistAndKeepsRows" --minimum-expected-tests 1` — passed 1/1.
 - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --no-progress` — passed 178/179 with the known skipped response-metadata test.
 - `git diff --check -- <scoped Phase 4.2 files>` — passed.
-- `dotnet build --configuration Release --verbosity quiet` — failed only on unrelated generated Blazor client test anonymous type mismatches in `CustomPropertyAdminServiceTests`.
+- `dotnet build --configuration Release --verbosity quiet` — initially failed on unrelated generated Blazor client test anonymous type mismatches in `CustomPropertyAdminServiceTests`; later Phase 4.3 verification passed the full Release build.
 
 #### Documentation Impact
 

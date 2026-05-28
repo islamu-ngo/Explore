@@ -57,7 +57,7 @@ Create an implementation plan based on the GitHub workflow audit report. The pla
   - every file starts with two `ABOUTME` comments;
   - canonical build baseline is `dotnet build --configuration Release --verbosity quiet`.
 - `docs/TESTING.md` says tests must run per project; do not use solution-level `dotnet test`.
-- `docs/GOVERNANCE.md` treats OpenAPI as a governed artifact and says `Explore.API/swagger.json` is generated, reviewed, and never hand-edited.
+- `docs/GOVERNANCE.md` treats OpenAPI as a governed artifact and says `schemas/openapi.json` is generated, reviewed, and never hand-edited.
 - `docs/OPERATIONS.md` defines `/alive`, `/health`, and `/metrics` operational semantics.
 - `docs/SECURITY-MODEL.md` defines BFF token boundaries and authorization trust boundaries.
 - `docs/CONFIGURATION.md` defines runtime configuration layers and secret-handling expectations.
@@ -140,19 +140,19 @@ Create an implementation plan based on the GitHub workflow audit report. The pla
 - `Explore.Blazor.Client/Explore.Blazor.Client.csproj`
 - `Explore.Blazor.Client/nswag.json`
 - `Explore.Blazor.Client/Clients/EventApiClient.g.cs`
-- `Explore.API/swagger.json`
+- `schemas/openapi.json`
 
 ### OpenAPI Flow
 
 1. Runtime exposes `/openapi/event-api.json` in Development/Testing for inspection and assertion-style tests.
-2. Building `Explore.API/Explore.API.csproj` refreshes `Explore.API/swagger.json` through ASP.NET Core build-time OpenAPI generation.
-3. `Explore.Blazor.Client.csproj` runs NSwag before compile when `Explore.API/swagger.json` is present/changed.
+2. Building `Explore.API/Explore.API.csproj` refreshes `schemas/openapi.json` through ASP.NET Core build-time OpenAPI generation.
+3. `Explore.Blazor.Client.csproj` runs NSwag before compile when `schemas/openapi.json` is present/changed.
 4. NSwag writes `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
 5. Contract tests and architecture tests validate operation IDs, endpoint classification, URL-versioning bans, and generated-client naming.
 
 ### Guard Design Decision
 
-Use the API build-time OpenAPI target as the canonical CI regeneration path. CI should fail on drift by comparing committed generated artifacts after regeneration and should reject the SDK suffix artifact (`swagger_event-api.json`) if it appears.
+Use the API build-time OpenAPI target as the canonical CI regeneration path. CI should fail on drift by comparing committed generated artifacts after regeneration and should reject the SDK suffix artifact (`openapi_event-api.json`) if it appears.
 
 The guard also runs stable OpenAPI invariant tests with:
 
@@ -164,9 +164,9 @@ This intentionally excludes timestamped inventory generation and skipped route-n
 
 Files to compare:
 
-- `Explore.API/swagger.json`
+- `schemas/openapi.json`
 - `Explore.Blazor.Client/Clients/EventApiClient.g.cs`
-- `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md` when inventory generation is in scope
+- `docs/API_CONTRACT_INVENTORY.md` when inventory generation is in scope
 
 ## Test Inventory
 
@@ -256,7 +256,7 @@ The CTO verdict approved the planning direction but blocked a single giant imple
 7. Do not rename or consolidate workflows in the first implementation PRs unless branch protection has already been migrated.
 8. Separate least-privilege permissions from full action SHA pinning to keep review diffs manageable.
 9. Prefer manual-build CodeQL for this repo if moving away from `build-mode: none`, because the repo has a canonical Release build and pinned preview SDK.
-10. Exclude `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md` from the PR2 strict OpenAPI guard because its current generator emits a timestamped `Generated:` line; add it only after deterministic output is available.
+10. Exclude `docs/API_CONTRACT_INVENTORY.md` from the PR2 strict OpenAPI guard until the inventory generator is included in that job.
 11. Keep the OpenAPI relevance detector conservative: broad API project/startup/config and API integration test project changes should run the guard rather than silently no-op.
 
 ## Quick Resume
@@ -269,7 +269,7 @@ If continuing implementation:
 4. For OpenAPI contract generation, use the build-time generation path:
    - `dotnet build Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal`
    - `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet`
-   - `git diff --exit-code -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs`
+   - `git diff --exit-code -- schemas/openapi.json Explore.Blazor.Client/Clients/EventApiClient.g.cs`
 5. Upload artifacts before enforcing stricter gates.
 6. Prove OpenAPI determinism by running the guard twice on the same commit and verifying the second run produces zero diff.
 7. Do not commit unless explicitly asked.

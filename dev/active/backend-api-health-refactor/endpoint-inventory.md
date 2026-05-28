@@ -16,7 +16,7 @@ Required columns:
 ## Completion Gate
 
 - [x] Import every operation from the current generated OpenAPI contract.
-- [x] Reconcile with `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md`.
+- [x] Reconcile with `docs/API_CONTRACT_INVENTORY.md`.
 - [x] Preserve the generated inventory baseline: `270` paths, `399` operations, `0` missing operationIds, `0` missing `x-endpoint-class`, and classification breakdown `Admin=6`, `Authenticated=270`, `Public=123` until regenerated.
 - [ ] Verify every named endpoint maps to `RouteNames.Xxx`.
 - [ ] Record rate-limit and cache policy posture for every endpoint.
@@ -24,7 +24,7 @@ Required columns:
 
 ## Current Metadata Sources
 
-- Existing generated inventory: `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md`.
+- Existing generated inventory: `docs/API_CONTRACT_INVENTORY.md`.
 - Inventory generator: `Event.API.IntegrationTests/Features/ApiContractInventoryGeneratorTests.cs`.
 - Current generated columns: `Path | Method | OperationId | Summary | Tags | RouteName | Classification | Has Auth?`.
 - Endpoint class attribute: `Explore.API/Attributes/EndpointClassificationAttribute.cs`.
@@ -36,7 +36,7 @@ Required columns:
 
 ## Full Generated Operation Import — Phase 0A Baseline
 
-This table is mechanically expanded from `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md`, generated from `/openapi/event-api.json` on 2026-05-07. It preserves all `399` operations and adds the Phase 0 planning columns required by this workstream. Values marked `verify` are intentionally conservative until Phase 0B source-code guardrails reconcile each row with controller attributes, handler authorization metadata, HAL policies, rate-limit attributes, and output-cache policies.
+This table is mechanically expanded from `docs/API_CONTRACT_INVENTORY.md`, generated from `/openapi/event-api.json` on 2026-05-07. It preserves all `399` operations and adds the Phase 0 planning columns required by this workstream. Values marked `verify` are intentionally conservative until Phase 0B source-code guardrails reconcile each row with controller attributes, handler authorization metadata, HAL policies, rate-limit attributes, and output-cache policies.
 
 | Endpoint | Method | Route | RouteName | Current Auth | Target Classification | AuthClassification | TenantMode | RateLimitPolicy | CachePolicy | HAL Links | OpenAPI OperationId | Risk | Action |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|

@@ -560,7 +560,7 @@ Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceAdminSettingsLayou
 **Phase 10 — Slice C** — Documentation + tech-debt tickets (edits to `docs/LOCALIZATION.md`, new `dev/backlog/` tickets for `UpdateUserAppearancePreferencesDto` → `UserPreferences` split, `InstanceSettingsController` rename, `DistributedBundleFileWriter`)
 
 ### NSwag
-- `Explore.Blazor.Client/nswag.json` — input `../Explore.API/swagger.json`, output `Clients/EventApiClient.g.cs`, runs on `GenerateApiClient` before `CoreCompile`. Translation endpoints (`TranslationAsync`, `LanguagesAsync`) are already in the generated client. New admin endpoint from Phase 4 will regenerate automatically on build.
+- `Explore.Blazor.Client/nswag.json` — input `../schemas/openapi.json`, output `Clients/EventApiClient.g.cs`, runs on `GenerateApiClient` before `CoreCompile`. Translation endpoints (`TranslationAsync`, `LanguagesAsync`) are already in the generated client. New admin endpoint from Phase 4 will regenerate automatically on build.
 
 ---
 

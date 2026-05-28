@@ -97,8 +97,8 @@ Last Updated: 2026-05-07
 - [ ] Run `Event.API.IntegrationTests/Features/ApiContractInventoryGeneratorTests.cs` only after its timestamped output is normalized or deterministic mode exists.
 - [x] Run stable OpenAPI contract invariant tests.
 - [ ] Do not unskip currently skipped contract/client tests until a separate stabilization task proves them reliable.
-- [x] Add drift check: `git diff --exit-code -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
-- [ ] Include `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md` in the diff only when generated in the job.
+- [x] Add drift check: `git diff --exit-code -- schemas/openapi.json Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
+- [ ] Include `docs/API_CONTRACT_INVENTORY.md` in the diff only when generated in the job.
 - [x] Prove determinism by running the guard twice on the same commit and verifying the second run produces zero diff.
 - [x] Upload generated OpenAPI/client artifacts and TRX reports when the guard runs.
 - [x] Add job summary explaining exact local fix steps.

@@ -443,7 +443,7 @@ ABOUTME: Rebaselined after the 2026-05-03 source/doc audit; use the plan for str
 - Acceptance: Calendar buttons work from 3 touchpoints
 
 #### WP-6.4: NSwag Client Regeneration
-- [ ] Build `Explore.API` so build-time OpenAPI generation refreshes `Explore.API/swagger.json`
+- [ ] Build `Explore.API` so build-time OpenAPI generation refreshes `schemas/openapi.json`
 - [ ] Rebuild Blazor client so NSwag regenerates `EventApiClient.g.cs`
 - [x] Fix consuming code — direct download anchors used; generated client not required by UI path
 - [x] Run client tests
