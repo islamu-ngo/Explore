@@ -511,7 +511,9 @@ app.UseRequestLocalization();
 app.UseMiddleware<IdempotencyMiddleware>();
 app.UseRateLimiter();
 app.UseAuthorization();
-if (useTickerQEmailDispatch && TickerQSchedulerExtensions.IsTickerQSchedulerEnabled(app.Configuration, app.Environment))
+if (!isOpenApiGeneration &&
+    useTickerQEmailDispatch &&
+    TickerQSchedulerExtensions.IsTickerQSchedulerEnabled(app.Configuration, app.Environment))
 {
     app.UseTickerQ();
 }
