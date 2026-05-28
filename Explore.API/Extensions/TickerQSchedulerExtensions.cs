@@ -33,10 +33,8 @@ public static class TickerQSchedulerExtensions
 
         var connectionString = ResolvePostgresConnectionString(configuration);
 
-        services.AddTickerQ<TimeTickerEntity, CronTickerEntity>(tickerOptions =>
+        var tickerBuilder = services.AddTickerQ<TimeTickerEntity, CronTickerEntity>(tickerOptions =>
         {
-            tickerOptions.AddOpenTelemetryInstrumentation();
-
             tickerOptions.ConfigureScheduler(scheduler =>
             {
                 scheduler.MaxConcurrency = Math.Max(1, options.MaxConcurrency);
@@ -44,30 +42,32 @@ public static class TickerQSchedulerExtensions
                     ? Environment.MachineName
                     : options.NodeIdentifier;
             });
-
-            tickerOptions.AddOperationalStore(efOptions =>
-            {
-                efOptions.UseTickerQDbContext<TickerQDbContext>(dbOptions =>
-                {
-                    dbOptions.UseNpgsql(connectionString);
-                });
-                efOptions.SetSchema(string.IsNullOrWhiteSpace(options.Schema) ? "ticker" : options.Schema);
-            });
-
-            if (options.DashboardEnabled)
-            {
-                tickerOptions.AddDashboard(dashboard =>
-                {
-                    dashboard.SetBasePath(string.IsNullOrWhiteSpace(options.DashboardPath)
-                        ? "/admin/scheduler"
-                        : options.DashboardPath);
-                    dashboard.WithHostAuthentication(string.IsNullOrWhiteSpace(options.DashboardAuthorizationPolicy)
-                        ? TickerQSchedulerOptions.InstanceAdminPolicyName
-                        : options.DashboardAuthorizationPolicy);
-                    dashboard.WithSessionTimeout(Math.Max(1, options.DashboardSessionTimeoutMinutes));
-                });
-            }
         });
+
+        tickerBuilder.AddOperationalStore(efOptions =>
+        {
+            efOptions.UseTickerQDbContext<TickerQDbContext>(dbOptions =>
+            {
+                dbOptions.UseNpgsql(connectionString);
+            });
+            efOptions.SetSchema(string.IsNullOrWhiteSpace(options.Schema) ? "ticker" : options.Schema);
+        });
+
+        if (options.DashboardEnabled)
+        {
+            tickerBuilder.AddDashboard(dashboard =>
+            {
+                dashboard.SetBasePath(string.IsNullOrWhiteSpace(options.DashboardPath)
+                    ? "/admin/scheduler"
+                    : options.DashboardPath);
+                dashboard.WithHostAuthentication(string.IsNullOrWhiteSpace(options.DashboardAuthorizationPolicy)
+                    ? TickerQSchedulerOptions.InstanceAdminPolicyName
+                    : options.DashboardAuthorizationPolicy);
+                dashboard.WithSessionTimeout(Math.Max(1, options.DashboardSessionTimeoutMinutes));
+            });
+        }
+
+        tickerBuilder.AddOpenTelemetryInstrumentation();
 
         return services;
     }
