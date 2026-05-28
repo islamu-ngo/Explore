@@ -1,3 +1,6 @@
+// ABOUTME: EF Core benchmark suite for comparing common event-query composition strategies.
+// ABOUTME: Uses real ExploreDbContext query shapes while isolating query construction and invocation cost.
+
 using BenchmarkDotNet.Attributes;
 using Event.Benchmarks.Configuration;
 using Explore.Persistence;

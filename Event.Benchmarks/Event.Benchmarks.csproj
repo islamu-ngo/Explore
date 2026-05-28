@@ -1,3 +1,5 @@
+<!-- ABOUTME: BenchmarkDotNet console project for Event API and hot-path performance measurements. -->
+<!-- ABOUTME: References product layers needed to host realistic API benchmark scenarios. -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -10,10 +12,14 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Explore.API\Explore.API.csproj" />
     <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
     <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
     <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />

@@ -1,3 +1,6 @@
+// ABOUTME: MediatR pipeline benchmark suite for measuring request behavior overhead.
+// ABOUTME: Compares direct handler execution with the application's performance behavior wrapper.
+
 using BenchmarkDotNet.Attributes;
 using Event.Benchmarks.Configuration;
 using Explore.Application.Behaviors;

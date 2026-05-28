@@ -1,0 +1,154 @@
+// ABOUTME: Benchmark-owned API seed data for non-empty representative endpoint measurements.
+// ABOUTME: Creates deterministic tenant, user, actor, and event rows without changing product seed behavior.
+
+using Explore.Domain;
+using Explore.Domain.Constants;
+using Explore.Domain.Enums;
+using Explore.Persistence;
+using Explore.Persistence.Seed;
+using Microsoft.EntityFrameworkCore;
+
+namespace Event.Benchmarks.Api;
+
+internal static class BenchmarkApiSeedData
+{
+    internal static readonly Guid BenchmarkUserId = Guid.Parse("018f6d10-7b7b-7f20-8c61-3c3e7f1b6a11");
+
+    private static readonly Guid BenchmarkActorId = Guid.Parse("018f6d10-7b7b-7f20-8c61-3c3e7f1b6a12");
+    private static readonly Guid BenchmarkEventIdStart = Guid.Parse("018f6d10-7b7b-7f20-8c61-3c3e7f1b7000");
+    private static readonly DateTime SeedTimestamp = new(2026, 5, 28, 0, 0, 0, DateTimeKind.Utc);
+    private const string TimezoneId = "Europe/Brussels";
+    private const int EventCount = 24;
+
+    public static async Task SeedAsync(ExploreDbContext context, CancellationToken cancellationToken)
+    {
+        if (await context.Events.AnyAsync(evt => EF.Functions.Like(evt.Slug, "benchmark-api-event-%"), cancellationToken))
+        {
+            return;
+        }
+
+        await EnsureTenantAsync(context, cancellationToken);
+        await EnsureBenchmarkUserAndActorAsync(context, cancellationToken);
+
+        context.Events.AddRange(CreateEvents());
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task EnsureTenantAsync(ExploreDbContext context, CancellationToken cancellationToken)
+    {
+        if (await context.Tenants.AnyAsync(tenant => tenant.Id == SeedIds.DefaultTenantId, cancellationToken))
+        {
+            return;
+        }
+
+        context.Tenants.Add(new Tenant
+        {
+            Id = SeedIds.DefaultTenantId,
+            FullName = "Benchmark API Tenant",
+            Slug = "benchmark-api",
+            Description = "Tenant used by Event.Benchmarks API endpoint scenarios.",
+            TenantStatusId = (int)TenantStatusEnum.Active,
+            TenantStatus = null!,
+            CreatedAt = SeedTimestamp
+        });
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task EnsureBenchmarkUserAndActorAsync(ExploreDbContext context, CancellationToken cancellationToken)
+    {
+        if (await context.Users.AnyAsync(user => user.Id == BenchmarkUserId, cancellationToken))
+        {
+            return;
+        }
+
+        var user = new User
+        {
+            Id = BenchmarkUserId,
+            EmailVerified = true,
+            CreatedAt = SeedTimestamp,
+            Pii = new UserPii
+            {
+                Email = "benchmark-api-user@example.test",
+                FirstName = "Benchmark",
+                LastName = "User"
+            }
+        };
+
+        var actor = new Actor
+        {
+            Id = BenchmarkActorId,
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            UserId = BenchmarkUserId,
+            TenantId = SeedIds.DefaultTenantId,
+            Tenant = null!,
+            CreatedAt = SeedTimestamp,
+            Pii = new ActorPii
+            {
+                DisplayName = "Benchmark API Organizer",
+                Handle = "benchmark-api-organizer"
+            }
+        };
+
+        context.Users.Add(user);
+        await context.SaveChangesAsync(cancellationToken);
+
+        context.Actors.Add(actor);
+        await context.SaveChangesAsync(cancellationToken);
+
+        user.ActorId = BenchmarkActorId;
+        user.DefaultActorId = BenchmarkActorId;
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static IEnumerable<Explore.Domain.Event> CreateEvents()
+    {
+        for (var index = 0; index < EventCount; index++)
+        {
+            var sessionStartUtc = DateTimeOffset.UtcNow.AddDays(index + 1).AddHours(index % 6);
+            var sessionDate = DateOnly.FromDateTime(sessionStartUtc.UtcDateTime);
+
+            yield return new Explore.Domain.Event
+            {
+                Id = IncrementGuid(BenchmarkEventIdStart, index),
+                Title = $"Benchmark API Event {index + 1:00}",
+                Subtitle = "Representative benchmark event",
+                Description = "Seeded by Event.Benchmarks so API list benchmarks serialize non-empty event payloads.",
+                Content = "This deterministic benchmark event gives API endpoint benchmarks realistic data volume without relying on Development seed data.",
+                Slug = $"benchmark-api-event-{index + 1:00}",
+                ActorId = BenchmarkActorId,
+                Actor = null!,
+                TenantId = SeedIds.DefaultTenantId,
+                Tenant = null!,
+                EventStatusId = (int)EventStatusEnum.Published,
+                EventStatus = null!,
+                VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+                VisibilityType = null!,
+                EventFormatId = (int)EventFormatEnum.Local,
+                EventFormat = null!,
+                FirstSessionDate = sessionDate,
+                LastSessionDate = sessionDate,
+                FirstSessionStartUtc = sessionStartUtc,
+                LastSessionStartUtc = sessionStartUtc.AddHours(2),
+                Timezone = TimezoneId,
+                EventTimeZoneId = TimezoneId,
+                TotalViews = index * 17,
+                IsRegistrationRequired = index % 3 == 0,
+                RegistrationPolicyId = index % 3 == 0 ? (int)EventRegistrationPolicyEnum.SessionSelectionOnly : null,
+                SessionCount = 1,
+                CreatedAt = SeedTimestamp.AddMinutes(index),
+                CreatedBy = BenchmarkUserId,
+                ConcurrencyStamp = IncrementGuid(BenchmarkEventIdStart, index + EventCount)
+            };
+        }
+    }
+
+    private static Guid IncrementGuid(Guid baseGuid, int offset)
+    {
+        var bytes = baseGuid.ToByteArray();
+        var value = BitConverter.ToInt32(bytes, 0);
+        BitConverter.GetBytes(value + offset).CopyTo(bytes, 0);
+        return new Guid(bytes);
+    }
+}
