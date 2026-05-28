@@ -106,6 +106,12 @@
           "Polly.Core": "8.6.6"
         }
       },
+      "RabbitMQ.Client": {
+        "type": "Direct",
+        "requested": "[7.2.1, )",
+        "resolved": "7.2.1",
+        "contentHash": "YKXEfg9fVQiTKgZlvIhAfPSFaamEgi8DsQmisCH0IAsU4FYLrtoguDrDj6JtJVGUt40QPnBLRH6fTQcAC4qsOg=="
+      },
       "Refit.HttpClientFactory": {
         "type": "Direct",
         "requested": "[10.1.6, )",
@@ -307,11 +313,6 @@
         "dependencies": {
           "Polly.Core": "8.4.2"
         }
-      },
-      "RabbitMQ.Client": {
-        "type": "Transitive",
-        "resolved": "7.2.1",
-        "contentHash": "YKXEfg9fVQiTKgZlvIhAfPSFaamEgi8DsQmisCH0IAsU4FYLrtoguDrDj6JtJVGUt40QPnBLRH6fTQcAC4qsOg=="
       },
       "Refit": {
         "type": "Transitive",

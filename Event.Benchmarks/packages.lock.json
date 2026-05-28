@@ -144,6 +144,14 @@
           "Docker.DotNet.Enhanced": "3.131.1"
         }
       },
+      "FlexLabs.EntityFrameworkCore.Upsert": {
+        "type": "Transitive",
+        "resolved": "10.0.0-beta1",
+        "contentHash": "gSzy/Cg04pG7y6+VOXJRsLuy+JlLDcwFYFb/Y5vsZ9qHNNBk69VjeiIyx8SMeg88Q8v02cc9btEVfxBOBfN6Kw==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Relational": "10.0.0-rc.2.25502.107"
+        }
+      },
       "Gee.External.Capstone": {
         "type": "Transitive",
         "resolved": "2.3.0",
@@ -678,6 +686,11 @@
           "System.Security.Cryptography.Pkcs": "10.0.0"
         }
       },
+      "ncrontab": {
+        "type": "Transitive",
+        "resolved": "3.3.0",
+        "contentHash": "oNHphZD7YiqHJoqX5Myw+lfDDTnnI2i+mCuil8MW2gyHaEejhLOdsS9pqVUGAEIJsu4+OL+m3UmkBcw2gkdtsg=="
+      },
       "NodaTime": {
         "type": "Transitive",
         "resolved": "3.2.2",
@@ -1029,6 +1042,19 @@
           "SharpZipLib": "1.4.2"
         }
       },
+      "TickerQ.Utilities": {
+        "type": "Transitive",
+        "resolved": "10.2.0",
+        "contentHash": "nmgD9Ochpdur8p0V7M74jFedgY/vBd7RC6jH+m/0wZqeudWh9toDEydGREu0NcKBp/E/KPKpJ6+7+HMhJinpRg==",
+        "dependencies": {
+          "Microsoft.Extensions.Caching.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Hosting.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
+          "NCrontab": "3.3.0"
+        }
+      },
       "explore.api": {
         "type": "Project",
         "dependencies": {
@@ -1069,7 +1095,11 @@
           "Serilog.Formatting.Compact": "[3.0.0, )",
           "Serilog.Settings.Configuration": "[10.0.0, )",
           "Swashbuckle.AspNetCore": "[10.1.7, )",
-          "System.IdentityModel.Tokens.Jwt": "[8.14.0, )"
+          "System.IdentityModel.Tokens.Jwt": "[8.14.0, )",
+          "TickerQ": "[10.2.0, )",
+          "TickerQ.Dashboard": "[10.2.0, )",
+          "TickerQ.EntityFrameworkCore": "[10.2.0, )",
+          "TickerQ.Instrumentation.OpenTelemetry": "[10.2.0, )"
         }
       },
       "explore.application": {
@@ -1881,6 +1911,48 @@
         "dependencies": {
           "Microsoft.IdentityModel.JsonWebTokens": "8.14.0",
           "Microsoft.IdentityModel.Tokens": "8.14.0"
+        }
+      },
+      "TickerQ": {
+        "type": "CentralTransitive",
+        "requested": "[10.2.0, )",
+        "resolved": "10.2.0",
+        "contentHash": "H62elWaLx55yA1CXNzKCgVPb5PshGXiFV+vyCx7hJajkY/HaBd+6wNZqx3IQ+rBF7MmKoLlP1Z9u28VV5PJ+4g==",
+        "dependencies": {
+          "TickerQ.Utilities": "10.2.0"
+        }
+      },
+      "TickerQ.Dashboard": {
+        "type": "CentralTransitive",
+        "requested": "[10.2.0, )",
+        "resolved": "10.2.0",
+        "contentHash": "ksZ7W7WCaE8COkDCdd9I7pojElVlbYIvzDF/1UwHJ7+MoRqcQOO/+8fgqhH6mSKaaKFrCzuv2SysfguNGhksOQ==",
+        "dependencies": {
+          "TickerQ.Utilities": "10.2.0"
+        }
+      },
+      "TickerQ.EntityFrameworkCore": {
+        "type": "CentralTransitive",
+        "requested": "[10.2.0, )",
+        "resolved": "10.2.0",
+        "contentHash": "2Ns2hWf5byvVY2/1C4nvXmXKEDEHO559sCNIpnH9rLAO6IOB+q+62F3tiE7E5J+t/nSZcz8jXzJ9BQXX0Q9xvQ==",
+        "dependencies": {
+          "FlexLabs.EntityFrameworkCore.Upsert": "[10.0.0-beta1, 11.0.0)",
+          "Microsoft.EntityFrameworkCore.Relational": "[10.0.0, 11.0.0)",
+          "TickerQ.Utilities": "10.2.0"
+        }
+      },
+      "TickerQ.Instrumentation.OpenTelemetry": {
+        "type": "CentralTransitive",
+        "requested": "[10.2.0, )",
+        "resolved": "10.2.0",
+        "contentHash": "XAkEBY9l0wCOj34KxDQkevyV+saWSUpy1Qk51bbIYSAYjkQUnTdq/Ey09vtTfO4sCEuBDe43JFYLYyZrnXvF5g==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
+          "OpenTelemetry": "1.7.0",
+          "OpenTelemetry.Extensions.Hosting": "1.7.0",
+          "TickerQ.Utilities": "10.2.0"
         }
       },
       "YamlDotNet": {
