@@ -44,7 +44,7 @@ public static class TickerQSchedulerExtensions
             });
         });
 
-        tickerBuilder.AddOperationalStore(efOptions =>
+        tickerBuilder.AddOperationalStore<TimeTickerEntity, CronTickerEntity>(efOptions =>
         {
             efOptions.UseTickerQDbContext<TickerQDbContext>(dbOptions =>
             {
@@ -55,7 +55,7 @@ public static class TickerQSchedulerExtensions
 
         if (options.DashboardEnabled)
         {
-            tickerBuilder.AddDashboard(dashboard =>
+            tickerBuilder.AddDashboard<TimeTickerEntity, CronTickerEntity>(dashboard =>
             {
                 dashboard.SetBasePath(string.IsNullOrWhiteSpace(options.DashboardPath)
                     ? "/admin/scheduler"
@@ -67,7 +67,7 @@ public static class TickerQSchedulerExtensions
             });
         }
 
-        tickerBuilder.AddOpenTelemetryInstrumentation();
+        tickerBuilder.AddOpenTelemetryInstrumentation<TimeTickerEntity, CronTickerEntity>();
 
         return services;
     }
