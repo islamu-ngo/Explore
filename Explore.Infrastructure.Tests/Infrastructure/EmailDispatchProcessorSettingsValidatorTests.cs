@@ -42,6 +42,18 @@ public sealed class EmailDispatchProcessorSettingsValidatorTests
     }
 
     [Test]
+    public async Task ValidateInvalidModeReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchProcessorSettings
+        {
+            Mode = (EmailDispatchProcessorMode)999
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("Mode");
+    }
+
+    [Test]
     public async Task ValidateInvalidRetryWindowReturnsFailure()
     {
         var result = _validator.Validate(null, new EmailDispatchProcessorSettings
