@@ -2,6 +2,7 @@
 // ABOUTME: Configures chained IExceptionHandler implementations with ProblemDetails.
 
 using Explore.API.ExceptionHandling;
+using Microsoft.AspNetCore.Diagnostics;
 
 namespace Explore.API.Extensions;
 
@@ -29,6 +30,23 @@ public static class ExceptionHandlingExtensions
     public static IApplicationBuilder UseApiExceptionHandling(this IApplicationBuilder app)
     {
         app.UseExceptionHandler();
+        app.UseStatusCodePages(async statusCodeContext =>
+        {
+            var httpContext = statusCodeContext.HttpContext;
+            if (httpContext.Response.StatusCode != StatusCodes.Status415UnsupportedMediaType
+                || httpContext.Response.HasStarted
+                || httpContext.Response.ContentLength.HasValue)
+            {
+                return;
+            }
+
+            var problemDetailsService = httpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
+            await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = httpContext,
+                ProblemDetails = ApiValidationProblemDetailsFactory.CreateUnsupportedMediaType(httpContext)
+            });
+        });
         return app;
     }
 }

@@ -2,6 +2,7 @@
 // ABOUTME: Ensures GlobalExceptionHandler and ValidationExceptionHandler return RFC 7807 compliant responses.
 
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
@@ -66,6 +67,97 @@ public class ProblemDetailsContractTests
         using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
         var detail = document.RootElement.GetProperty("detail").GetString();
         await Assert.That(detail).IsEqualTo("Invalid input data");
+    }
+
+    [Test]
+    public async Task ApiControllerValidation_WhenBodyIsMalformed_ReturnsSafeProblemDetails()
+    {
+        using var content = new StringContent("{ \"eventType\": ", Encoding.UTF8, "application/json");
+
+        var response = await _fixture.Client.PostAsync("/api/a/t", content);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.BadRequest, "Validation failed");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo("One or more validation errors occurred.");
+        await Assert.That(root.TryGetProperty("errors", out var errors)).IsTrue();
+        await Assert.That(errors.TryGetProperty("body", out var bodyErrors)).IsTrue();
+        await Assert.That(bodyErrors[0].GetString()).IsEqualTo("Request body is invalid or contains unsupported fields.");
+
+        var raw = root.GetRawText();
+        await Assert.That(raw).DoesNotContain("\"eventType\"");
+    }
+
+    [Test]
+    public async Task ApiControllerValidation_WhenBodyIsMissing_ReturnsBodyLevelProblemDetails()
+    {
+        using var content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
+
+        var response = await _fixture.Client.PostAsync("/api/a/t", content);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.BadRequest, "Validation failed");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var errors = document.RootElement.GetProperty("errors");
+
+        await Assert.That(errors.TryGetProperty("body", out _)).IsTrue();
+    }
+
+    [Test]
+    public async Task ApiControllerValidation_WhenContentTypeIsUnsupported_ReturnsProblemDetails415()
+    {
+        using var content = new StringContent("{\"eventType\":\"pageview\"}", Encoding.UTF8, "text/plain");
+
+        var response = await _fixture.Client.PostAsync("/api/a/t", content);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.UnsupportedMediaType, "Unsupported media type");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("detail").GetString())
+            .IsEqualTo("The request content type is not supported for this endpoint.");
+    }
+
+    [Test]
+    public async Task ApiControllerValidation_WhenBodyHasUnknownProperty_ReturnsProblemDetailsWithoutBinding()
+    {
+        using var content = new StringContent(
+            "{\"eventType\":\"pageview\",\"unknownField\":\"not allowed\"}",
+            Encoding.UTF8,
+            "application/json");
+
+        var response = await _fixture.Client.PostAsync("/api/a/t", content);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.BadRequest, "Validation failed");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+        var errors = root.GetProperty("errors");
+
+        await Assert.That(errors.TryGetProperty("body", out var bodyErrors)).IsTrue();
+        await Assert.That(bodyErrors[0].GetString()).IsEqualTo("Request body is invalid or contains unsupported fields.");
+        await Assert.That(root.GetRawText()).DoesNotContain("not allowed");
+    }
+
+    [Test]
+    public async Task ApiControllerValidation_WhenBodyOverPostsHalLinks_ReturnsProblemDetails()
+    {
+        using var content = new StringContent(
+            "{\"eventType\":\"pageview\",\"_links\":{\"self\":{\"href\":\"/admin\"}}}",
+            Encoding.UTF8,
+            "application/json");
+
+        var response = await _fixture.Client.PostAsync("/api/a/t", content);
+
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(response, HttpStatusCode.BadRequest, "Validation failed");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var errors = document.RootElement.GetProperty("errors");
+
+        await Assert.That(errors.TryGetProperty("body", out _)).IsTrue();
     }
 
     [Test]

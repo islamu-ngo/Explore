@@ -1,0 +1,51 @@
+<!-- ABOUTME: Slice 1 contract decision log for validation boundary and error-shape choices. -->
+<!-- ABOUTME: Captures pending pre-v1 API/BFF/idempotency/rich-text decisions before implementation begins. -->
+
+# Full User Input Validation & Sanitization Contract Decisions
+
+Last Updated: 2026-05-28 Europe/Brussels
+
+## Purpose
+
+This file is the Slice 1 decision log for `full-input-validation-sanitization-plan.md`. Implementation must not begin until every `Pending` or `Needs design` decision below is resolved, assigned, and backed by a test strategy.
+
+Current status: Slice 1 contract lock is complete. All decisions D-001 through D-018 are accepted and ready for implementation/test work.
+
+Decision status values:
+
+- `Pending` — no decision yet.
+- `Needs design` — direction known, but implementation shape is unresolved.
+- `Accepted` — contract locked; implementation may proceed.
+- `Deferred` — explicitly out of this release slice with rationale.
+
+## Decision Log
+
+| ID | Decision area | Locked contract | Status | Owner | Tests to lock behavior |
+|---|---|---|---|---|---|
+| D-001 | Automatic `[ApiController]` model-state failures | Normalize automatic model-state failures into the repository API ProblemDetails contract: HTTP 400, `application/problem+json`, safe `title/detail`, `traceId`, `timestamp`, `correlationId`, and an `errors` extension keyed by stable camelCase field names. Keep controllers thin; implement through API behavior/problem-details configuration, not action-level checks. | Accepted | API | `Event.API.IntegrationTests`: missing required body property, invalid query binding, max-length binding failure, field-key/correlation assertions. |
+| D-002 | Malformed JSON | Return HTTP 400 ProblemDetails with a body-level field key (`body`) and safe parse category. Never echo the raw payload or formatter exception text. | Accepted | API | Malformed object, truncated JSON, array sent to object endpoint, raw payload not reflected. |
+| D-003 | Missing body | Return HTTP 400 ProblemDetails with stable `body` error key for empty, whitespace, or omitted bodies on endpoints requiring `[FromBody]` request DTOs. | Accepted | API | Empty body, whitespace body, omitted body with `application/json`. |
+| D-004 | Wrong content type | Return HTTP 415 ProblemDetails for unsupported content types on JSON endpoints. Missing content type on an endpoint with a body is rejected consistently with the selected MVC/input-formatter behavior and documented by tests. | Accepted | API | `text/plain`, `multipart/form-data`, missing content type to JSON write endpoint, no raw body echo. |
+| D-005 | Unknown JSON properties | Reject unknown JSON properties on write/admin/setup request bodies pre-v1. Prefer `System.Text.Json` unmapped-member rejection at the request-contract boundary; if a DTO legitimately needs extension data, it must opt in with an allowlist and tests. | Accepted | API/Application | Unknown property, server-owned property, mixed valid+unknown payload, explicit extension-data allowlist case if introduced. |
+| D-006 | Over-posted server-owned fields | Server-owned fields are removed from request DTOs and are never trusted from the body. Because unknown properties are rejected, payloads containing `tenantId`, audit fields, status transitions, computed fields, HAL links, or authorization-only fields fail as bad requests unless a specific route explicitly owns that field. | Accepted | Application/API | Payload includes tenant id, created by/updated by, status, computed fields, `_links`, authorization-only fields. |
+| D-007 | Oversized strings | Every external string has an explicit max length at the DTO/query/BFF boundary. Application validators remain authoritative and use `ValidateAsync`; model-state normalization handles binding-level size/format failures. Errors use stable field keys and do not include submitted values. | Accepted | Application | Boundary length, over limit by 1, very large payload, Unicode multi-byte cases, control-character cases. |
+| D-008 | Invalid enum/model-binding failures | Invalid enum/model-binding failures return safe field-level ProblemDetails. String enums remain the public JSON contract; numeric unknown enum values are rejected for request bodies and query inputs where practical. | Accepted | API/Application | Invalid enum body, invalid enum query, numeric unknown enum, casing behavior, no internal enum dump beyond safe category/field. |
+| D-009 | Public GET/query validation | Public/read queries are validated as external input. Query validators live at the API/Application request boundary for filter objects and high-risk scalar query groups; they must bound page size, date ranges, search length, cursor shape, sort/filter allowlists, module filters, and custom-property filters. Invalid public queries return safe 400 ProblemDetails without tenant/resource existence leaks. | Accepted | API/Application | Bad page size, bad cursor, bad sort, overlong search, invalid custom-property filter, Tenant B lookup id submitted in Tenant A context. |
+| D-010 | Idempotency same key + same payload | Same key replay is valid only when tenant, authenticated principal category, HTTP method, route pattern/path, content type, and canonical request-body fingerprint match. Replay returns the original persisted eligible response and `X-Idempotency-Replay: true`. | Accepted | API/Persistence | Same tenant/key/body replay, same key equivalent JSON formatting, response header/body/status replay. |
+| D-011 | Idempotency same key + different payload | Same key with different fingerprint, content type, route, or method is rejected with HTTP 409 ProblemDetails and stable code `idempotency_key_reuse`. Do not replay a response across different payloads or routes. | Accepted | API/Persistence | Same key different body, different content type, different route, different method, no cross-tenant replay. |
+| D-012 | Idempotency validation failure caching | Do not persist pre-execution model-binding, malformed JSON, missing body, unsupported content type, or Application validation 400 responses. A corrected retry with the same key may proceed if its fingerprint becomes valid. Persist only eligible post-execution responses under the existing size/content-type/5xx exclusions. | Accepted | API/Persistence | Validation failure retry not replayed, corrected retry with same key, oversized ProblemDetails not cached, 5xx not cached. |
+| D-013 | BFF token boundary | Browser never receives access, refresh, or identity tokens. Browser-supplied auth/token/setup-secret headers are ignored or stripped where applicable; forwarding remains server-owned. | Accepted | Blazor/BFF | Serialized auth state, response bodies, logs, storage, proxy header stripping, client-supplied `Authorization`. |
+| D-014 | BFF setup-secret exceptions | Setup-secret routes remain explicit bootstrap exceptions only. They require the BFF setup-secret resolver/source order, protected short-lived setup cookie/session where used, rate limiting, safe ProblemDetails, and no raw provider/setup-secret leakage. Browser `X-Setup-Secret` is never trusted. | Accepted | Blazor/BFF/API | Header spoofing, missing setup secret, invalid setup secret, stale setup cookie, raw provider error leakage. |
+| D-015 | Upload proxy/session contract | Browser upload destination is never caller-controlled. BFF upload uses opaque session ids, trusted HTTPS presigned destination validation, owner binding, content-type binding, expiry checks, corrupt-payload rejection, and consume-once semantics after successful proxy upload. | Accepted | Blazor/BFF/Storage | Reuse, wrong user, content mismatch, arbitrary URL, expired/corrupt session, no presigned URL/token logging. |
+| D-016 | Rich text default | User-authored rich HTML is disabled by default. `PublicExperienceHomeBlockKind.RichText` is treated as plain-text/configured-content until a sanitizer decision record exists. `EmailMessage.HtmlBody` is system-template-only; interpolated user values must be context-encoded before insertion. Any future user-authored rich HTML requires an approved server-side sanitizer profile, patch policy, and XSS regression tests. | Accepted | Application/UI/Security | Dangerous tags, attributes, protocols, SVG/math, markdown/raw transforms, encoded email interpolation, public-experience rendering as text. |
+| D-017 | Validation telemetry | Validation telemetry may include endpoint/route, field name, validator code/category, length bucket, status, trace/correlation id, and safe tenant/resource ids only after authorization. It must not include raw input, request bodies, search terms, custom-property values, secrets, tokens, setup secrets, provider errors, presigned URLs, or arbitrary high-cardinality labels. | Accepted | API/Application/Observability | Log/metric assertions for raw payload/search/custom property/token/setup secret/provider errors/presigned URLs absent. |
+| D-018 | Blazor UI-local validation scope | Blazor validation is UX and accessibility only. UI-local validators may cover required, max length, simple date ordering, URL/email shape, and client-only form composition. Authorization, tenant scope, uniqueness, capacity, quota, dynamic custom-property rules, module enablement, and persistence checks stay server-only and map back into `EditContext`. `Explore.Blazor.Client` must not reference `Explore.Application` validators directly. | Accepted | Blazor/Application | Server error mapping, no Application validator reference, focus/alert/status behavior, HAL-only action affordance gating. |
+
+## Release Gate
+
+Before Slice 3 DTO hardening begins:
+
+- Every decision above must be `Accepted` or `Deferred` with rationale.
+- Every accepted decision must name at least one regression test location.
+- Any change to API response shape must include OpenAPI/client regeneration planning.
+- Any decision touching tenant/resource existence must include a tenant-leak negative test.
