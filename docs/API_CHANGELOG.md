@@ -20,7 +20,9 @@ Key behavior in current code:
 - OutboxProcessor background service for reliable event dispatching with retry and dead-letter.
 - Analytics relay rate limit policy (`AnalyticsRelay`) for `POST /api/a/t`.
 - Event and event-session template sync endpoints for diff/apply/history workflows, including 409 ProblemDetails types `/problems/stale_sync_base` and `/problems/concurrent_update`.
-- Managed-provider provisioning endpoint `POST /api/managed-provider-provisioning/clients:ensure` for instance-admin/provider automation. It creates or rehydrates provider-customer tenants using `ExternalBinding`, creates tenant-local `TenantUser`/`TenantUserProfile` state, grants tenant admin membership, and keeps ERP customer/admin identities out of instance-admin authority.
+- Event create/update/detail APIs split card summaries from long-form copy: `description` is capped at 150 characters for list/card UI, while `content` carries the long event body up to 5000 characters.
+- Managed-provider provisioning endpoint `POST /api/managed-provider-provisioning/clients:ensure` for instance-admin/provider automation. It creates or rehydrates provider-customer tenants using `ExternalBinding`, creates tenant-local `TenantUser`/`TenantUserProfile` state, creates a tenant admin role grant, and keeps ERP customer/admin identities out of instance-admin authority.
+- Breaking tenant authority contract replacement: the former tenant-member public API surface is replaced by `/api/tenant-user-role-grants`, `TenantUserRoleGrantDto`, `TenantUserRoleGrantListDto`, `CreateTenantUserRoleGrantDto`, create/revoke route names, and Cerbos resource kind `islamuevent_tenant_user_role_grant`. Role-grant updates are create/revoke flows; clients should gate create/revoke affordances from HAL `_links`.
 
 ## Historical Baseline (`v0.1.0`)
 

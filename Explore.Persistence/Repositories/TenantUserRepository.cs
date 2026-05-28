@@ -21,7 +21,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
     public async Task<TenantUser?> GetByTenantAndUserAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.TenantUsers
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .Include(x => x.Profile)
             .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == userId, cancellationToken);
     }
@@ -29,7 +29,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
     public async Task<TenantUser?> GetByTenantAndActorAsync(Guid tenantId, Guid actorId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.TenantUsers
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
             .Include(x => x.Profile)
             .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.ActorId == actorId, cancellationToken);
@@ -38,7 +38,7 @@ public class TenantUserRepository : GenericRepository<TenantUser, Guid>, ITenant
     public async Task<bool> IsActiveTenantUserAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.TenantUsers
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
             .AnyAsync(x => x.TenantId == tenantId
                 && x.UserId == userId

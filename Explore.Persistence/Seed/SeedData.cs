@@ -17,7 +17,7 @@ namespace Explore.Persistence.Seed;
 ///
 /// Seeding order matters due to FK constraints and circular dependencies (User/Org ↔ Actor):
 /// 1. Tenant → 2. Users (no ActorId) → 3. Organizations (no ActorId) → 4. Actors →
-    /// 5. Update Users/Orgs with ActorId → 6. TenantMembers, OrgMembers, Storage →
+    /// 5. Update Users/Orgs with ActorId → 6. TenantUsers, role grants, OrgMembers, Storage →
     /// 7. Settings, Capabilities → 8. Categories, Tags, Location → 9. Islamic event catalog
 /// </summary>
 public static class SeedData
@@ -208,42 +208,87 @@ public static class SeedData
         OrganizationId = SeedIds.TechOrgId
     };
 
-    // ===== Tenant Members =====
-    public static TenantMember AdminTenantMember => new()
+    // ===== Tenant Users And Role Grants =====
+    public static TenantUser AdminTenantUser => new()
     {
-        Id = SeedIds.AdminTenantMemberId,
+        Id = SeedIds.AdminTenantUserId,
         UserId = SeedIds.AdminUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        RoleId = (int)RoleEnum.TenantAdmin,
-        Role = null!,
-        GrantedAt = SeedTimestamp,
+        ActorId = SeedIds.AdminUserActorId,
+        Actor = null,
+        StatusId = (int)TenantUserStatusEnum.Active,
+        JoinedAt = SeedTimestamp,
         CreatedAt = SeedTimestamp
     };
 
-    public static TenantMember RegularTenantMember => new()
+    public static TenantUser RegularTenantUser => new()
     {
-        Id = SeedIds.RegularTenantMemberId,
+        Id = SeedIds.RegularTenantUserId,
         UserId = SeedIds.RegularUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        RoleId = (int)RoleEnum.TenantMember,
-        Role = null!,
-        GrantedAt = SeedTimestamp,
+        ActorId = SeedIds.RegularUserActorId,
+        Actor = null,
+        StatusId = (int)TenantUserStatusEnum.Active,
+        JoinedAt = SeedTimestamp,
         CreatedAt = SeedTimestamp
     };
 
-    public static TenantMember ModeratorTenantMember => new()
+    public static TenantUser ModeratorTenantUser => new()
     {
-        Id = SeedIds.ModeratorTenantMemberId,
+        Id = SeedIds.ModeratorTenantUserId,
         UserId = SeedIds.ModeratorUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
+        ActorId = SeedIds.ModeratorUserActorId,
+        Actor = null,
+        StatusId = (int)TenantUserStatusEnum.Active,
+        JoinedAt = SeedTimestamp,
+        CreatedAt = SeedTimestamp
+    };
+
+    public static TenantUserRoleGrant AdminTenantUserRoleGrant => new()
+    {
+        Id = SeedIds.AdminTenantUserRoleGrantId,
+        TenantUserId = SeedIds.AdminTenantUserId,
+        TenantUser = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        RoleId = (int)RoleEnum.TenantAdmin,
+        Role = null!,
+        RoleScopeId = (int)RoleScopeEnum.Tenant,
+        GrantedAt = SeedTimestamp,
+        CreatedAt = SeedTimestamp
+    };
+
+    public static TenantUserRoleGrant RegularTenantUserRoleGrant => new()
+    {
+        Id = SeedIds.RegularTenantUserRoleGrantId,
+        TenantUserId = SeedIds.RegularTenantUserId,
+        TenantUser = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
+        RoleId = (int)RoleEnum.TenantMember,
+        Role = null!,
+        RoleScopeId = (int)RoleScopeEnum.Tenant,
+        GrantedAt = SeedTimestamp,
+        CreatedAt = SeedTimestamp
+    };
+
+    public static TenantUserRoleGrant ModeratorTenantUserRoleGrant => new()
+    {
+        Id = SeedIds.ModeratorTenantUserRoleGrantId,
+        TenantUserId = SeedIds.ModeratorTenantUserId,
+        TenantUser = null!,
+        TenantId = SeedIds.DefaultTenantId,
+        Tenant = null!,
         RoleId = (int)RoleEnum.TenantModerator,
         Role = null!,
+        RoleScopeId = (int)RoleScopeEnum.Tenant,
         GrantedAt = SeedTimestamp,
         CreatedAt = SeedTimestamp
     };
@@ -1045,7 +1090,8 @@ public static class SeedData
         {
             Id = spec.Id,
             Title = spec.Title,
-            Description = spec.Description,
+            Description = BuildCardDescription(spec.Description),
+            Content = spec.Description,
             Slug = spec.Slug,
             EventTypeId = (int)spec.EventType,
             AudienceGenderId = (int)spec.AudienceGender,
@@ -1087,6 +1133,9 @@ public static class SeedData
             BackgroundEffect = "subtle-islamic-pattern"
         };
     }
+
+    private static string BuildCardDescription(string description) =>
+        description.Length <= 150 ? description : description[..150];
 
     private static EventSession CreateSession(
         IslamicEventSpec spec,

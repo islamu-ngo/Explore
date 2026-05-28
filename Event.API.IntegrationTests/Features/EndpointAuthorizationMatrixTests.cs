@@ -264,9 +264,9 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Matrix_Auth_TenantMembers_AnonymousDenied()
+    public async Task Matrix_Auth_TenantUserRoleGrants_CreateAnonymousDenied()
     {
-        await AssertAnonymousUnauthorized("/api/tenantmember");
+        await AssertAnonymousUnauthorized("/api/tenant-user-role-grants", HttpMethod.Post);
     }
 
     [Test]
@@ -593,15 +593,15 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Matrix_TenantAdmin_TenantMemberList_TenantAdminOK()
+    public async Task Matrix_TenantAdmin_TenantUserRoleGrantList_TenantAdminOK()
     {
         var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenantmember", token);
+        using var request = Auth(HttpMethod.Get, "/api/tenant-user-role-grants", token);
 
         var response = await _tenantAdminClient.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant admin should be able to list tenant members");
+            "tenant admin should be able to list tenant user role grants");
     }
 
     [Test]
@@ -761,15 +761,15 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Matrix_CrossRole_InstanceAdmin_CanAccessTenantMembers()
+    public async Task Matrix_CrossRole_InstanceAdmin_CanAccessTenantUserRoleGrants()
     {
         var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenantmember", token);
+        using var request = Auth(HttpMethod.Get, "/api/tenant-user-role-grants", token);
 
         var response = await _instanceAdminClient.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "instance admin can access tenant member management");
+            "instance admin can access tenant user role grant management");
     }
 
     [Test]
@@ -786,15 +786,15 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Matrix_CrossRole_RegularUser_DeniedTenantMemberCreation()
+    public async Task Matrix_CrossRole_RegularUser_DeniedTenantUserRoleGrantCreation()
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/tenantmember", token);
+        using var request = Auth(HttpMethod.Post, "/api/tenant-user-role-grants", token);
 
         var response = await _regularUserClient.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular users should not be able to create tenant members");
+            "regular users should not be able to create tenant user role grants");
     }
 
     [Test]

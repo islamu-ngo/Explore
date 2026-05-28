@@ -63,6 +63,8 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.EventAgendaItem.EventAgendaItemDto),
         typeof(Explore.Application.DTOs.EventAgendaItem.EventAgendaItemListDto),
         typeof(Explore.Application.DTOs.OrganizationReview.OrganizationReviewDto),
+        typeof(Explore.Application.DTOs.TenantUserRoleGrant.TenantUserRoleGrantDto),
+        typeof(Explore.Application.DTOs.TenantUserRoleGrant.TenantUserRoleGrantListDto),
 
         // EventSessionSpeaker DTOs
         typeof(Explore.Application.DTOs.EventSessionSpeaker.EventSessionSpeakerDto),
@@ -86,6 +88,9 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.EventTemplateSync.RetiredOptionDto),
         typeof(Explore.Application.DTOs.EventTemplateSync.UntouchedLocalDefinitionDto),
         typeof(Explore.Application.DTOs.EventTemplateSync.FieldChangeDto),
+
+        // Email dispatch admin DTOs
+        typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchStatusDto),
 
         // Projection admin DTOs
         typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionStatusDto),
@@ -136,7 +141,10 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfEventAgendaItemDto"] = typeof(Explore.Application.DTOs.EventAgendaItem.EventAgendaItemDto),
         ["HalResourceOfEventAgendaItemListDto"] = typeof(Explore.Application.DTOs.EventAgendaItem.EventAgendaItemListDto),
         ["HalResourceOfOrganizationReviewDto"] = typeof(Explore.Application.DTOs.OrganizationReview.OrganizationReviewDto),
+        ["HalResourceOfTenantUserRoleGrantDto"] = typeof(Explore.Application.DTOs.TenantUserRoleGrant.TenantUserRoleGrantDto),
+        ["HalResourceOfTenantUserRoleGrantListDto"] = typeof(Explore.Application.DTOs.TenantUserRoleGrant.TenantUserRoleGrantListDto),
         ["HalResourceOfTemplateDiffDto"] = typeof(Explore.Application.DTOs.EventTemplateSync.TemplateDiffDto),
+        ["HalResourceOfEmailDispatchStatusDto"] = typeof(Explore.Application.DTOs.EmailDispatch.EmailDispatchStatusDto),
         ["HalResourceOfProjectionStatusDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionStatusDto),
         ["HalResourceOfProjectionDirtyScopeDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionDirtyScopeDto),
         ["HalResourceOfTenantBrandingSettingsDocumentDto"] = typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantBrandingSettingsDocumentDto),
@@ -164,9 +172,11 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfLocationRoomListDto"] = "HalResourceOfLocationRoomListDto",
         ["HalCollectionEmbeddedOfOrganizationListDto"] = "HalResourceOfOrganizationListDto",
         ["HalCollectionEmbeddedOfOrganizationReviewDto"] = "HalResourceOfOrganizationReviewDto",
+        ["HalCollectionEmbeddedOfEmailDispatchStatusDto"] = "HalResourceOfEmailDispatchStatusDto",
         ["HalCollectionEmbeddedOfProjectionStatusDto"] = "HalResourceOfProjectionStatusDto",
         ["HalCollectionEmbeddedOfProjectionDirtyScopeDto"] = "HalResourceOfProjectionDirtyScopeDto",
         ["HalCollectionEmbeddedOfTagListDto"] = "HalResourceOfTagListDto",
+        ["HalCollectionEmbeddedOfTenantUserRoleGrantListDto"] = "HalResourceOfTenantUserRoleGrantListDto",
     };
 
     public static bool IsCatalogedDetailResourceSchema(string schemaName)

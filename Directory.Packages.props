@@ -107,6 +107,7 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.EventCounters" Version="1.15.1-alpha.1" />
     <PackageVersion Include="Polly" Version="8.6.6" />
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
     <PackageVersion Include="Refit.HttpClientFactory" Version="10.1.6" />
     <PackageVersion Include="Respawn" Version="7.0.0" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.12.8" />
@@ -122,6 +123,10 @@
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
     <PackageVersion Include="Testcontainers.Keycloak" Version="4.10.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.10.0" />
+    <PackageVersion Include="TickerQ" Version="10.2.0" />
+    <PackageVersion Include="TickerQ.Dashboard" Version="10.2.0" />
+    <PackageVersion Include="TickerQ.EntityFrameworkCore" Version="10.2.0" />
+    <PackageVersion Include="TickerQ.Instrumentation.OpenTelemetry" Version="10.2.0" />
     <PackageVersion Include="TUnit" Version="1.33.0" />
     <PackageVersion Include="Verify.TUnit" Version="31.9.4" />
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />

@@ -23,7 +23,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
 
     private readonly IInstanceBootstrapStateRepository _bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
     private readonly IPlatformUserRoleRepository _platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
-    private readonly ITenantMemberRepository _tenantMemberRepository = Substitute.For<ITenantMemberRepository>();
+    private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrantRepository = Substitute.For<ITenantUserRoleGrantRepository>();
     private readonly ITenantUserRepository _tenantUserRepository = Substitute.For<ITenantUserRepository>();
     private readonly IRoleRepository _roleRepository = Substitute.For<IRoleRepository>();
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
@@ -91,13 +91,18 @@ public class CompleteInstanceOnboardingCommandHandlerTests
         _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
         _systemSettingRepository.Create(Arg.Any<SystemSetting>()).Returns(callInfo => callInfo.Arg<SystemSetting>()!);
         _platformUserRoleRepository.Create(Arg.Any<PlatformUserRole>()).Returns(callInfo => callInfo.Arg<PlatformUserRole>()!);
-        _tenantMemberRepository.Create(Arg.Any<TenantMember>()).Returns(callInfo => callInfo.Arg<TenantMember>()!);
-        _tenantUserRepository.Create(Arg.Any<TenantUser>()).Returns(callInfo => callInfo.Arg<TenantUser>()!);
+        _tenantUserRoleGrantRepository.Create(Arg.Any<TenantUserRoleGrant>()).Returns(callInfo => callInfo.Arg<TenantUserRoleGrant>()!);
+        _tenantUserRepository.Create(Arg.Any<TenantUser>()).Returns(callInfo =>
+        {
+            var tenantUser = callInfo.Arg<TenantUser>();
+            tenantUser.Id = tenantUser.Id == Guid.Empty ? Guid.NewGuid() : tenantUser.Id;
+            return tenantUser;
+        });
 
         _handler = new CompleteInstanceOnboardingCommandHandler(
             _bootstrapRepository,
             _platformUserRoleRepository,
-            _tenantMemberRepository,
+            _tenantUserRoleGrantRepository,
             _tenantUserRepository,
             _roleRepository,
             _userRepository,
@@ -176,11 +181,12 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             && tenantUser.UserId == TestUserId
             && tenantUser.StatusId == (int)TenantUserStatusEnum.Active
             && tenantUser.CreatedBy == TestUserId));
-        await _tenantMemberRepository.Received(1).Create(Arg.Is<TenantMember>(member =>
-            member != null
-            && member.TenantId == PlatformDefaults.DefaultTenantId
-            && member.UserId == TestUserId
-            && member.RoleId == (int)RoleEnum.TenantAdmin));
+        await _tenantUserRoleGrantRepository.Received(1).Create(Arg.Is<TenantUserRoleGrant>(grant =>
+            grant != null
+            && grant.TenantId == PlatformDefaults.DefaultTenantId
+            && grant.RoleId == (int)RoleEnum.TenantAdmin
+            && grant.RoleScopeId == (int)RoleScopeEnum.Tenant
+            && grant.GrantedBy == TestUserId));
         await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(
             PlatformDefaults.DefaultTenantId,
             "Community Events",

@@ -1,3 +1,6 @@
+// ABOUTME: Central Bogus test-data factory for application unit test domain entities.
+// ABOUTME: Keeps builders reusable while preserving explicit defaults for authorization models.
+
 using Bogus;
 using Explore.Domain;
 
@@ -14,7 +17,8 @@ public static class DataBuilder
     public static Faker<Explore.Domain.Event> Event => new Faker<Explore.Domain.Event>()
         .RuleFor(e => e.Id, f => Guid.NewGuid())
         .RuleFor(e => e.Title, f => f.Lorem.Sentence())
-        .RuleFor(e => e.Description, f => f.Lorem.Paragraph())
+        .RuleFor(e => e.Description, f => f.Lorem.Sentence(8))
+        .RuleFor(e => e.Content, f => f.Lorem.Paragraph())
         .RuleFor(e => e.FirstSessionDate, f => f.Date.FutureDateOnly())
         .RuleFor(e => e.LastSessionDate, (f, e) => e.FirstSessionDate?.AddDays(1))
         .RuleFor(e => e.IsRegistrationRequired, f => f.Random.Bool())
@@ -210,9 +214,10 @@ public static class DataBuilder
             IsActiveState = true
         });
 
-    public static Faker<TenantMember> TenantMember => new Faker<TenantMember>()
+    public static Faker<TenantUserRoleGrant> TenantUserRoleGrant => new Faker<TenantUserRoleGrant>()
         .RuleFor(t => t.Id, f => Guid.NewGuid())
         .RuleFor(t => t.RoleId, f => f.Random.Int(1, 3))
+        .RuleFor(t => t.RoleScopeId, _ => (int)Explore.Domain.Enums.RoleScopeEnum.Tenant)
         .RuleFor(t => t.GrantedAt, f => f.Date.Past())
         .RuleFor(t => t.CreatedAt, f => f.Date.Past());
 

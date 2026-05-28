@@ -122,15 +122,15 @@ public class CrossTenantIsolationTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Isolation_TenantAAdmin_CanAccessOwnTenantMembers()
+    public async Task Isolation_TenantAAdmin_CanAccessOwnTenantUserRoleGrants()
     {
         var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenantmember", token);
+        using var request = Auth(HttpMethod.Get, "/api/tenant-user-role-grants", token);
 
         var response = await _tenantAAdminClient.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK,
-            "tenant A admin should be able to list own tenant members");
+            "tenant A admin should be able to list own tenant user role grants");
     }
 
     [Test]
@@ -162,10 +162,10 @@ public class CrossTenantIsolationTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Isolation_InstanceAdmin_CanAccessTenantMembers()
+    public async Task Isolation_InstanceAdmin_CanAccessTenantUserRoleGrants()
     {
         var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenantmember", token);
+        using var request = Auth(HttpMethod.Get, "/api/tenant-user-role-grants", token);
 
         var response = await _instanceAdminClient.SendAsync(request);
 
@@ -203,15 +203,15 @@ public class CrossTenantIsolationTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Isolation_RegularUser_DeniedTenantMemberCreate()
+    public async Task Isolation_RegularUser_DeniedTenantUserRoleGrantCreate()
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/tenantmember", token);
+        using var request = Auth(HttpMethod.Post, "/api/tenant-user-role-grants", token);
 
         var response = await _regularUserClient.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular user should not be able to create tenant members");
+            "regular user should not be able to create tenant user role grants");
     }
 
     [Test]

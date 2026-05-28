@@ -108,7 +108,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
 
             // Tenant-scoped: tenant admin only
             "islamuevent_tenant" => false, // Only instance admins can create/update/delete tenants
-            "islamuevent_tenant_member" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_tenant_user_role_grant" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_category" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_tag" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_location" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
@@ -118,6 +118,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             "islamuevent_custom_property_value" => await EvaluateViewableOrgResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_custom_property_projection" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_custom_property_governance" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "islamuevent_email_dispatch" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "islamuevent_platform_namespace" => action is "view",
 
             // Org-scoped: tenant admin or org admin

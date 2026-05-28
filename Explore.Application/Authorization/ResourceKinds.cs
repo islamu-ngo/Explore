@@ -26,7 +26,7 @@ public static class ResourceKinds
     public const string OrganizationReview = "islamuevent_organization_review";
     public const string Tenant = "islamuevent_tenant";
     public const string TenantSetting = "islamuevent_tenant_setting";
-    public const string TenantMember = "islamuevent_tenant_member";
+    public const string TenantUserRoleGrant = "islamuevent_tenant_user_role_grant";
     public const string Category = "islamuevent_category";
     public const string Tag = "islamuevent_tag";
     public const string Location = "islamuevent_location";
@@ -41,6 +41,7 @@ public static class ResourceKinds
     public const string CustomPropertyValue = "islamuevent_custom_property_value";
     public const string CustomPropertyProjection = "islamuevent_custom_property_projection";
     public const string CustomPropertyGovernance = "islamuevent_custom_property_governance";
+    public const string EmailDispatch = "islamuevent_email_dispatch";
     public const string PlatformNamespace = "islamuevent_platform_namespace";
     public const string Notification = "islamuevent_notification";
     public const string Actor = "islamuevent_actor";

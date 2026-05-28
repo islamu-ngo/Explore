@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for EmailDispatch operator resources. Rows are tenant-scoped durable email side-effect state.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+    },
+    "outboxId": {
+      "type": "string",
+      "description": "Durable EmailDispatchOutbox row identifier."
+    },
+    "sourceType": {
+      "type": "string",
+      "description": "Business source type that created the dispatch intent."
+    },
+    "sourceId": {
+      "type": "string",
+      "description": "Business source identifier that created the dispatch intent."
+    },
+    "deliveryStatus": {
+      "type": "string",
+      "description": "Current durable EmailDispatch delivery status."
+    }
+  },
+  "required": ["tenantId", "outboxId", "deliveryStatus"]
+}

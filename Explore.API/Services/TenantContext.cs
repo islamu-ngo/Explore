@@ -7,6 +7,7 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Infrastructure;
 using Explore.Persistence;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -211,7 +212,7 @@ public class TenantContext : ITenantContext
         var serializedHost = JsonSerializer.Serialize(host);
         var tenantId = dbContext.TenantSettingOverrides
             .AsNoTracking()
-            .IgnoreQueryFilters()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.LegacyTenantResolutionLookup)
             .Where(s => s.SettingKey == GovernanceSettingKeys.Domains.TenantCustomDomain && s.Value == serializedHost)
             .Select(s => s.TenantId)
             .FirstOrDefault();
@@ -249,7 +250,7 @@ public class TenantContext : ITenantContext
         var serializedSubdomain = JsonSerializer.Serialize(candidateSubdomain);
         var tenantId = dbContext.TenantSettingOverrides
             .AsNoTracking()
-            .IgnoreQueryFilters()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.LegacyTenantResolutionLookup)
             .Where(s => s.SettingKey == GovernanceSettingKeys.Domains.TenantSubdomain && s.Value == serializedSubdomain)
             .Select(s => s.TenantId)
             .FirstOrDefault();

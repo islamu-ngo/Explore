@@ -8,7 +8,6 @@
 @using Explore.Blazor.Client.Components.Forms
 
 @inject IInstanceOnboardingService InstanceOnboardingService
-@inject ITenantOnboardingService TenantOnboardingService
 @inject IUserService UserService
 @inject IPublicExperienceService PublicExperienceService
 @inject ITenantPublicExperienceAdminService TenantPublicExperienceAdminService
@@ -352,7 +351,8 @@
 
         if (IsSingleTenantMode)
         {
-            _tenantModel = await TenantOnboardingService.GetSettingsAsync();
+            _tenantModel = new TenantPolicySettingsModel();
+            await TenantPublicExperienceAdminService.ApplySingleTenantPolicySettingsAsync(_tenantModel);
             await TenantPublicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(_tenantModel);
             _hasAnnouncementBar = HasUsableAnnouncementBar(_tenantModel);
             _publicExperienceModel = await TenantPublicExperienceAdminService.GetSettingsAsync();

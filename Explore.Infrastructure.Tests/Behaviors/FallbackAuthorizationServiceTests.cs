@@ -194,27 +194,27 @@ public class FallbackAuthorizationServiceTests
         await Assert.That(result).IsFalse();
     }
 
-    // === Tenant Member Access ===
+    // === Tenant User Role Grant Access ===
 
     [Test]
-    public async Task IsAllowed_TenantAdmin_AllowsTenantMemberCrud()
+    public async Task IsAllowed_TenantAdmin_AllowsTenantUserRoleGrantCreate()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
 
         var attrs = new Dictionary<string, object> { ["tenantId"] = TestTenantId.ToString() };
-        var result = await _service.IsAllowedAsync("islamuevent_tenant_member", Guid.NewGuid().ToString(), "create", attrs);
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_user_role_grant", Guid.NewGuid().ToString(), "create", attrs);
 
         await Assert.That(result).IsTrue();
     }
 
     [Test]
-    public async Task IsAllowed_NonAdmin_DeniesTenantMemberCreate()
+    public async Task IsAllowed_NonAdmin_DeniesTenantUserRoleGrantCreate()
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.IsAllowedAsync("islamuevent_tenant_member", Guid.NewGuid().ToString(), "create");
+        var result = await _service.IsAllowedAsync("islamuevent_tenant_user_role_grant", Guid.NewGuid().ToString(), "create");
 
         await Assert.That(result).IsFalse();
     }
@@ -616,7 +616,7 @@ public class FallbackAuthorizationServiceTests
         var checks = new List<AuthorizationCheck>
         {
             new("islamuevent_notification", Guid.NewGuid().ToString(), "view"),
-            new("islamuevent_tenant_member", Guid.NewGuid().ToString(), "create"),
+            new("islamuevent_tenant_user_role_grant", Guid.NewGuid().ToString(), "create"),
             new("islamuevent_instance_setting", "key", "update"),
             new("islamuevent_group", Guid.NewGuid().ToString(), "view"),
         };
@@ -625,7 +625,7 @@ public class FallbackAuthorizationServiceTests
 
         await Assert.That(results).Count().IsEqualTo(4);
         await Assert.That(results[0]).IsTrue();  // notification: all authenticated
-        await Assert.That(results[1]).IsTrue();  // tenant_member: tenant admin
+        await Assert.That(results[1]).IsTrue();  // tenant_user_role_grant: tenant admin
         await Assert.That(results[2]).IsFalse(); // instance_setting: only instance admin
         await Assert.That(results[3]).IsTrue();  // group view: all authenticated
     }

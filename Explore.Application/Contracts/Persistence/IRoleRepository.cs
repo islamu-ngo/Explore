@@ -55,7 +55,7 @@ public interface IRoleRepository : IGenericRepository<Role, int>
     Task RemoveAllPermissionsAsync(int roleId);
 
     /// <summary>
-    /// Checks if a role has any active members assigned (OrganizationMember or TenantMember with this RoleId).
+    /// Checks if a role has any active members/grants assigned (OrganizationMember or TenantUserRoleGrant with this RoleId).
     /// Used to prevent deletion of roles still in use.
     /// </summary>
     Task<bool> HasActiveMembersAsync(int roleId);

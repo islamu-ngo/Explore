@@ -32,7 +32,7 @@ Profiles:
 Email dispatch modes:
 
 - **Basic Dispatch Mode is implemented and requires no extra Compose profile.** API + PostgreSQL + configured SMTP are sufficient for registration confirmation email. The API-hosted `EmailDispatchProcessor` claims `EmailDispatchOutbox` rows from PostgreSQL and sends through the SMTP abstraction.
-- **RabbitMQ Dispatch Mode is optional future infrastructure.** Do not require RabbitMQ for the self-hosted stack until a dedicated Compose/Aspire profile and reliability tests are added. When that mode exists, it must share the same PostgreSQL `EmailDispatchOutbox` state machine; RabbitMQ is transport only.
+- **RabbitMQ Dispatch Mode is optional transport infrastructure.** The repository now has a local Aspire RabbitMQ resource and an API-side publisher/topology/health foundation for pointer-only dispatch messages, but the production Compose stack still does not require or start RabbitMQ. Do not require RabbitMQ for self-hosting until a dedicated Compose profile, manual-ack consumer, DLQ replay/parking flow, and RabbitMQ integration tests are added. RabbitMQ shares the same PostgreSQL `EmailDispatchOutbox` state machine; it is transport only.
 
 ## Start The Stack
 
@@ -168,6 +168,8 @@ Minimum proxy requirements:
 Treat `Unhealthy` as non-deployable. Treat `Degraded` as acceptable only when the response identifies an optional dependency that is intentionally disabled.
 
 Basic Email Dispatch readiness is reported by the API `email-dispatch` health check. `Degraded` means the worker is intentionally disabled. RabbitMQ is not part of Basic Dispatch Mode readiness.
+
+Optional RabbitMQ dispatch readiness is reported separately by `email-dispatch-rabbitmq`. With `EmailDispatchRabbitMq:Enabled=false` the check is healthy without requiring a broker. If an operator explicitly enables RabbitMQ mode, broker or topology failures make readiness unhealthy because the selected transport cannot safely publish pointer events.
 
 ## Backup And Upgrade
 

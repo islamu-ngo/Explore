@@ -36,7 +36,7 @@ public sealed class TenantUserRepositoryTests(PostgreSqlContainerFixture fixture
     }
 
     [Test]
-    public async Task TenantMemberAuthority_ShouldRequireActiveTenantUserStatePerTenant()
+    public async Task TenantUserRoleGrantAuthority_ShouldRequireActiveTenantUserStatePerTenant()
     {
         await fixture.ResetAsync();
         await using var context = fixture.CreateDbContext();
@@ -47,31 +47,31 @@ public sealed class TenantUserRepositoryTests(PostgreSqlContainerFixture fixture
         var user = NewUser();
         context.Users.Add(user);
         await context.SaveChangesAsync();
-        context.TenantUsers.AddRange(
-            NewTenantUser(activeTenant.Id, user.Id, TenantUserStatusEnum.Active),
-            NewTenantUser(suspendedTenant.Id, user.Id, TenantUserStatusEnum.Suspended),
-            NewTenantUser(bannedTenant.Id, user.Id, TenantUserStatusEnum.Banned),
-            NewTenantUser(removedTenant.Id, user.Id, TenantUserStatusEnum.Removed));
-        context.TenantMembers.AddRange(
-            NewTenantAdmin(activeTenant.Id, user.Id),
-            NewTenantAdmin(suspendedTenant.Id, user.Id),
-            NewTenantAdmin(bannedTenant.Id, user.Id),
-            NewTenantAdmin(removedTenant.Id, user.Id));
+        var activeTenantUser = NewTenantUser(activeTenant.Id, user.Id, TenantUserStatusEnum.Active);
+        var suspendedTenantUser = NewTenantUser(suspendedTenant.Id, user.Id, TenantUserStatusEnum.Suspended);
+        var bannedTenantUser = NewTenantUser(bannedTenant.Id, user.Id, TenantUserStatusEnum.Banned);
+        var removedTenantUser = NewTenantUser(removedTenant.Id, user.Id, TenantUserStatusEnum.Removed);
+        context.TenantUsers.AddRange(activeTenantUser, suspendedTenantUser, bannedTenantUser, removedTenantUser);
+        context.TenantUserRoleGrants.AddRange(
+            NewTenantAdmin(activeTenant.Id, activeTenantUser.Id),
+            NewTenantAdmin(suspendedTenant.Id, suspendedTenantUser.Id),
+            NewTenantAdmin(bannedTenant.Id, bannedTenantUser.Id),
+            NewTenantAdmin(removedTenant.Id, removedTenantUser.Id));
         await context.SaveChangesAsync();
-        var repository = new TenantMemberRepository(context);
+        var repository = new TenantUserRoleGrantRepository(context);
 
-        await Assert.That(await repository.IsTenantMember(activeTenant.Id, user.Id)).IsTrue();
+        await Assert.That(await repository.HasActiveTenantUserRoleGrant(activeTenant.Id, user.Id)).IsTrue();
         await Assert.That(await repository.IsTenantAdmin(activeTenant.Id, user.Id)).IsTrue();
-        await Assert.That(await repository.IsTenantMember(suspendedTenant.Id, user.Id)).IsFalse();
+        await Assert.That(await repository.HasActiveTenantUserRoleGrant(suspendedTenant.Id, user.Id)).IsFalse();
         await Assert.That(await repository.IsTenantAdmin(suspendedTenant.Id, user.Id)).IsFalse();
-        await Assert.That(await repository.IsTenantMember(bannedTenant.Id, user.Id)).IsFalse();
+        await Assert.That(await repository.HasActiveTenantUserRoleGrant(bannedTenant.Id, user.Id)).IsFalse();
         await Assert.That(await repository.IsTenantAdmin(bannedTenant.Id, user.Id)).IsFalse();
-        await Assert.That(await repository.IsTenantMember(removedTenant.Id, user.Id)).IsFalse();
+        await Assert.That(await repository.HasActiveTenantUserRoleGrant(removedTenant.Id, user.Id)).IsFalse();
         await Assert.That(await repository.IsTenantAdmin(removedTenant.Id, user.Id)).IsFalse();
     }
 
     [Test]
-    public async Task TenantMemberAuthority_ShouldIgnoreSoftDeletedTenantUserWithoutChangingGlobalUser()
+    public async Task TenantUserRoleGrantAuthority_ShouldIgnoreSoftDeletedTenantUserWithoutChangingGlobalUser()
     {
         await fixture.ResetAsync();
         await using var context = fixture.CreateDbContext();
@@ -83,15 +83,66 @@ public sealed class TenantUserRepositoryTests(PostgreSqlContainerFixture fixture
         tenantUser.IsDeleted = true;
         tenantUser.DeletedAt = DateTime.UtcNow;
         context.TenantUsers.Add(tenantUser);
-        context.TenantMembers.Add(NewTenantAdmin(tenant.Id, user.Id));
+        context.TenantUserRoleGrants.Add(NewTenantAdmin(tenant.Id, tenantUser.Id));
         await context.SaveChangesAsync();
-        var repository = new TenantMemberRepository(context);
+        var repository = new TenantUserRoleGrantRepository(context);
 
-        await Assert.That(await repository.IsTenantMember(tenant.Id, user.Id)).IsFalse();
+        await Assert.That(await repository.HasActiveTenantUserRoleGrant(tenant.Id, user.Id)).IsFalse();
         await Assert.That(await repository.IsTenantAdmin(tenant.Id, user.Id)).IsFalse();
         var persistedUser = await context.Users.IgnoreQueryFilters().SingleAsync(x => x.Id == user.Id);
         await Assert.That(persistedUser.IsDeleted).IsFalse();
         await Assert.That(persistedUser.Pii.Email).IsEqualTo(user.Pii.Email);
+    }
+
+    [Test]
+    public async Task TenantUserRoleGrant_ShouldRejectNonTenantScopedRole()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "role-grant-role-scope");
+        var user = NewUser();
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+
+        var tenantUser = NewTenantUser(tenant.Id, user.Id, TenantUserStatusEnum.Active);
+        context.TenantUsers.Add(tenantUser);
+        await context.SaveChangesAsync();
+
+        context.TenantUserRoleGrants.Add(new TenantUserRoleGrant
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenant.Id,
+            Tenant = null!,
+            TenantUserId = tenantUser.Id,
+            TenantUser = null!,
+            RoleId = (int)RoleEnum.Admin,
+            Role = null!,
+            RoleScopeId = (int)RoleScopeEnum.Tenant,
+            GrantedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+        });
+
+        await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
+    }
+
+    [Test]
+    public async Task TenantUserRoleGrant_ShouldRejectCrossTenantTenantUserReference()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenantA = await SeedTenantAsync(context, "role-grant-source");
+        var tenantB = await SeedTenantAsync(context, "role-grant-target");
+        var user = NewUser();
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+
+        var tenantUser = NewTenantUser(tenantA.Id, user.Id, TenantUserStatusEnum.Active);
+        context.TenantUsers.Add(tenantUser);
+        await context.SaveChangesAsync();
+
+        context.TenantUserRoleGrants.Add(NewTenantAdmin(tenantB.Id, tenantUser.Id));
+
+        await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
     }
 
     private static async Task<Tenant> SeedTenantAsync(ExploreDbContext context, string slugPrefix)
@@ -137,16 +188,17 @@ public sealed class TenantUserRepositoryTests(PostgreSqlContainerFixture fixture
             CreatedAt = DateTime.UtcNow,
         };
 
-    private static TenantMember NewTenantAdmin(Guid tenantId, Guid userId) =>
+    private static TenantUserRoleGrant NewTenantAdmin(Guid tenantId, Guid tenantUserId) =>
         new()
         {
             Id = Guid.NewGuid(),
             TenantId = tenantId,
             Tenant = null!,
-            UserId = userId,
-            User = null!,
+            TenantUserId = tenantUserId,
+            TenantUser = null!,
             RoleId = (int)RoleEnum.TenantAdmin,
             Role = null!,
+            RoleScopeId = (int)RoleScopeEnum.Tenant,
             GrantedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
         };

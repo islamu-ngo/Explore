@@ -19,6 +19,11 @@ public interface IEmailDispatchOutboxRepository
         int limit,
         CancellationToken cancellationToken);
 
+    Task<EmailDispatchOutbox?> GetByTenantAndId(
+        Guid tenantId,
+        Guid outboxId,
+        CancellationToken cancellationToken);
+
     Task<bool> IsTenantPaused(Guid tenantId, CancellationToken cancellationToken);
 
     Task<EmailDispatchTenantControl> SetTenantPauseState(
@@ -27,6 +32,21 @@ public interface IEmailDispatchOutboxRepository
         string? pauseReason,
         Guid? changedBy,
         DateTime changedAt,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryParkForOperator(
+        Guid tenantId,
+        Guid outboxId,
+        string reason,
+        Guid? changedBy,
+        DateTime parkedAt,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryReplayForOperator(
+        Guid tenantId,
+        Guid outboxId,
+        Guid? changedBy,
+        DateTime replayAt,
         CancellationToken cancellationToken);
 
     Task<bool> TryMarkAsProcessing(

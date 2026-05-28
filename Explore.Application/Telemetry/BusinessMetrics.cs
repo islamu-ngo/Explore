@@ -1,5 +1,5 @@
 // ABOUTME: Defines custom OpenTelemetry business metrics for the platform.
-// ABOUTME: Tracks domain activity plus external API-key lifecycle, authentication, and throttling signals.
+// ABOUTME: Tracks domain activity plus external API-key, email-dispatch, and custom-property governance signals.
 
 using System.Diagnostics.Metrics;
 
@@ -27,6 +27,8 @@ public sealed class BusinessMetrics
     private readonly Counter<long> _externalApiKeyPolicyUpdated;
     private readonly Counter<long> _externalApiKeyRotated;
     private readonly Counter<long> _emailDispatchAttempts;
+    private readonly Counter<long> _emailDispatchRabbitMqPublishes;
+    private readonly Counter<long> _customPropertyPurgeDecisions;
 
     public BusinessMetrics(IMeterFactory meterFactory)
     {
@@ -96,6 +98,16 @@ public sealed class BusinessMetrics
             "explore.email_dispatch.attempts",
             unit: "{attempt}",
             description: "Total Basic Dispatch Mode email dispatch attempts by outcome");
+
+        _emailDispatchRabbitMqPublishes = meter.CreateCounter<long>(
+            "explore.email_dispatch.rabbitmq.publishes",
+            unit: "{publish}",
+            description: "Total RabbitMQ Dispatch Mode pointer publishes by outcome");
+
+        _customPropertyPurgeDecisions = meter.CreateCounter<long>(
+            "explore.custom_properties.purge_decisions",
+            unit: "{decision}",
+            description: "Total custom-property hard-purge decisions by scope, outcome, and bounded blocker category");
     }
 
     public void RecordEventCreated(string? tenantId = null, string? eventType = null)
@@ -189,5 +201,29 @@ public sealed class BusinessMetrics
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("outcome", outcome ?? "unknown"),
             new KeyValuePair<string, object?>("failure_category", failureCategory ?? "none"));
+    }
+
+    public void RecordEmailDispatchRabbitMqPublish(string? tenantId = null, string? outcome = null, string? failureCategory = null)
+    {
+        _emailDispatchRabbitMqPublishes.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("outcome", outcome ?? "unknown"),
+            new KeyValuePair<string, object?>("failure_category", failureCategory ?? "none"));
+    }
+
+    public void RecordCustomPropertyPurgeDecision(string? tenantId, string scope, string outcome, string blockerCategory)
+    {
+        _customPropertyPurgeDecisions.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("scope", NormalizeTag(scope)),
+            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)),
+            new KeyValuePair<string, object?>("blocker_category", NormalizeTag(blockerCategory)));
+    }
+
+    private static string NormalizeTag(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? "unknown"
+            : value.Trim().ToLowerInvariant();
     }
 }

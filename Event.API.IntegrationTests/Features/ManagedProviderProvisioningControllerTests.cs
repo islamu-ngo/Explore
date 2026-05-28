@@ -38,7 +38,7 @@ public sealed class ManagedProviderProvisioningControllerTests
             UserId = Guid.NewGuid(),
             UserActorId = Guid.NewGuid(),
             UserExternalLoginId = Guid.NewGuid(),
-            TenantMemberId = Guid.NewGuid(),
+            TenantUserRoleGrantId = Guid.NewGuid(),
         };
         var response = new BaseCommandResponse<ManagedProviderClientProvisioningResultDto>
         {

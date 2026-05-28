@@ -1,5 +1,5 @@
 # ABOUTME: Validates that governed OpenAPI and generated API client artifacts are current.
-# ABOUTME: Regenerates swagger/client outputs for relevant API-surface changes and fails on drift.
+# ABOUTME: Regenerates openapi/client outputs for relevant API-surface changes and fails on drift.
 
 name: OpenAPI Contract Guard
 
@@ -57,7 +57,7 @@ jobs:
           fi
 
           changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA" || true)"
-          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(Explore\.API/.*\.(cs|csproj|json)$|Explore\.Application/.*\.cs$|Explore\.Domain/.*\.cs$|Event\.API\.IntegrationTests/.*\.(cs|csproj)$|Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|Explore\.API/swagger\.json$|Directory\.Packages\.props$|global\.json$|\.github/workflows/openapi-contract\.yml$)' || true)"
+          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(Explore\.API/.*\.(cs|csproj|json)$|Explore\.Application/.*\.cs$|Explore\.Domain/.*\.cs$|Event\.API\.IntegrationTests/.*\.(cs|csproj)$|Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|schemas/openapi\.json$|docs/API_CONTRACT_INVENTORY\.md$|Directory\.Packages\.props$|global\.json$|\.github/workflows/openapi-contract\.yml$)' || true)"
 
           if [ -n "$relevant_files" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
@@ -103,6 +103,10 @@ jobs:
         if: steps.changes.outputs.relevant == 'true'
         run: dotnet run --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/OpenApiDocument_*" --minimum-expected-tests 5 --no-progress --report-trx --report-trx-filename openapi-invariants.trx
 
+      - name: Regenerate API Contract Inventory
+        if: steps.changes.outputs.relevant == 'true'
+        run: dotnet run --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename api-contract-inventory.trx
+
       - name: Regenerate Blazor API Client
         if: steps.changes.outputs.relevant == 'true'
         run: dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
@@ -114,16 +118,17 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/openapi-contract
 
-          git diff -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs > artifacts/openapi-contract/generated-contract.diff
-          cp Explore.API/swagger.json artifacts/openapi-contract/swagger.json
+          git diff -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md Explore.Blazor.Client/Clients/EventApiClient.g.cs > artifacts/openapi-contract/generated-contract.diff
+          cp schemas/openapi.json artifacts/openapi-contract/openapi.json
+          cp docs/API_CONTRACT_INVENTORY.md artifacts/openapi-contract/API_CONTRACT_INVENTORY.md
           cp Explore.Blazor.Client/Clients/EventApiClient.g.cs artifacts/openapi-contract/EventApiClient.g.cs
 
-          if [ -e Explore.API/swagger_event-api.json ]; then
-            echo "Unexpected generated OpenAPI suffix artifact exists: Explore.API/swagger_event-api.json" >&2
+          if [ -e schemas/openapi_event-api.json ]; then
+            echo "Unexpected generated OpenAPI suffix artifact exists: schemas/openapi_event-api.json" >&2
             exit 1
           fi
 
-          if git diff --quiet -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs; then
+          if git diff --quiet -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md Explore.Blazor.Client/Clients/EventApiClient.g.cs; then
             {
               echo "## OpenAPI Contract Drift"
               echo
@@ -135,7 +140,8 @@ jobs:
               echo
               echo "Generated OpenAPI artifacts are stale. Build Explore.API and Explore.Blazor.Client locally, then commit:"
               echo
-              echo "- \`Explore.API/swagger.json\`"
+              echo "- \`schemas/openapi.json\`"
+              echo "- \`docs/API_CONTRACT_INVENTORY.md\`"
               echo "- \`Explore.Blazor.Client/Clients/EventApiClient.g.cs\`"
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
@@ -144,6 +150,10 @@ jobs:
       - name: Verify OpenAPI Determinism
         if: steps.changes.outputs.relevant == 'true'
         run: dotnet build Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity quiet
+
+      - name: Verify API Contract Inventory Determinism
+        if: steps.changes.outputs.relevant == 'true'
+        run: dotnet run --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename api-contract-inventory-determinism.trx
 
       - name: Verify Client Determinism
         if: steps.changes.outputs.relevant == 'true'
@@ -154,14 +164,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git diff -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs > artifacts/openapi-contract/determinism.diff
+          git diff -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md Explore.Blazor.Client/Clients/EventApiClient.g.cs > artifacts/openapi-contract/determinism.diff
 
-          if [ -e Explore.API/swagger_event-api.json ]; then
-            echo "Unexpected generated OpenAPI suffix artifact exists after deterministic rebuild: Explore.API/swagger_event-api.json" >&2
+          if [ -e schemas/openapi_event-api.json ]; then
+            echo "Unexpected generated OpenAPI suffix artifact exists after deterministic rebuild: schemas/openapi_event-api.json" >&2
             exit 1
           fi
 
-          if git diff --quiet -- Explore.API/swagger.json Explore.Blazor.Client/Clients/EventApiClient.g.cs; then
+          if git diff --quiet -- schemas/openapi.json docs/API_CONTRACT_INVENTORY.md Explore.Blazor.Client/Clients/EventApiClient.g.cs; then
             {
               echo "## OpenAPI Determinism"
               echo

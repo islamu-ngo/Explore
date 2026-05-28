@@ -172,7 +172,7 @@ public partial class FallbackAuthorizationService
             || resourceKind == ResourceKinds.PlatformNamespace
             || resourceKind == ResourceKinds.Tenant
             || resourceKind == ResourceKinds.TenantSetting
-            || resourceKind == ResourceKinds.TenantMember)
+            || resourceKind == ResourceKinds.TenantUserRoleGrant)
         {
             return false;
         }
@@ -213,7 +213,7 @@ public partial class FallbackAuthorizationService
     private static bool IsTenantWideResource(string resourceKind) =>
         resourceKind == ResourceKinds.Tenant
         || resourceKind == ResourceKinds.TenantSetting
-        || resourceKind == ResourceKinds.TenantMember
+        || resourceKind == ResourceKinds.TenantUserRoleGrant
         || resourceKind == ResourceKinds.Category
         || resourceKind == ResourceKinds.Tag
         || resourceKind == ResourceKinds.Location

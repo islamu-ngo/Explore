@@ -23,6 +23,7 @@ public class TenantUser : ITenantEntity, IAuditableEntity, ISoftDeletable
     public Guid? RemovedBy { get; set; }
     public string? ModerationNote { get; set; }
     public TenantUserProfile? Profile { get; set; }
+    public ICollection<TenantUserRoleGrant> RoleGrants { get; set; } = new List<TenantUserRoleGrant>();
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }

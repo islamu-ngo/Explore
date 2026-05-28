@@ -62,6 +62,14 @@ Commonly consumed sections in code:
 - `SecretProvider:*`
 - `SecretRefresh:*`
 - `EmailDispatchProcessor:*` (Basic Dispatch Mode background worker)
+- `EmailDispatchRabbitMq:*` (optional RabbitMQ Dispatch Mode transport foundation)
+- `Persistence:*` (database runtime options)
+
+### Persistence Configuration
+
+| Key | Default | Description |
+|---|---:|---|
+| `Persistence:EnableRlsTenantSession` | `false` | Registers the PostgreSQL tenant-session interceptor that sets `app.current_tenant_id` when EF Core opens a connection. This does not enable RLS policies by itself; keep disabled outside prototype environments until runtime app-role, migration-role, admin/system-path, and table-policy rollout work is complete. |
 
 ### Cerbos Authorization Configuration
 
@@ -96,7 +104,31 @@ Static worker settings bind from `EmailDispatchProcessor` and are validated at s
 | `ConsumerId` | machine name | Worker identity recorded in receipts and logs. Must not be blank. |
 | `VerboseLogging` | `false` | Enables additional worker logs when troubleshooting. Logs must remain free of bodies, recipients, and secrets. |
 
-SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. RabbitMQ Dispatch Mode is not part of Basic mode. If RabbitMQ mode is added later, it must be a separate optional profile sharing the same `EmailDispatchOutbox` state machine rather than replacing PostgreSQL as business truth.
+SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. RabbitMQ Dispatch Mode is not part of Basic mode.
+
+### Email Dispatch RabbitMQ Configuration
+
+RabbitMQ Dispatch Mode is optional transport infrastructure over the same PostgreSQL `EmailDispatchOutbox` state machine. The first RabbitMQ slice declares topology, publishes pointer-only dispatch messages with mandatory routing and publisher confirms, exposes a readiness check, and wires Aspire local development. It does **not** replace the Basic SMTP worker and does not make RabbitMQ required for non-Aspire/basic deployments.
+
+Static RabbitMQ transport settings bind from `EmailDispatchRabbitMq` and are validated at startup with `ValidateOnStart`:
+
+| Key | Default | Description |
+|---|---|---|
+| `Enabled` | `false` | Enables optional RabbitMQ Dispatch Mode transport checks/publishing. Disabled mode is health-safe and leaves Basic Dispatch Mode independent. |
+| `ConnectionStringName` | `messaging` | Named connection string/resource used to resolve RabbitMQ, including Aspire `ConnectionStrings:messaging` or `MESSAGING_URI`. Must not be blank. |
+| `ConnectionString` | unset | Optional direct AMQP URI override. Do not log or expose raw values. |
+| `ExchangeName` | `explore.email-dispatch` | Durable direct exchange for pointer-only dispatch messages. |
+| `DispatchQueueName` | `explore.email-dispatch.dispatch` | Durable dispatch queue bound to the exchange. |
+| `DispatchRoutingKey` | `email-dispatch.dispatch` | Routing key used for mandatory pointer publishes. |
+| `DeadLetterExchangeName` | `explore.email-dispatch.dlx` | Durable direct DLX for rejected/poison messages in later consumer slices. |
+| `DeadLetterQueueName` | `explore.email-dispatch.dlq` | Durable DLQ bound to the DLX. |
+| `DeadLetterRoutingKey` | `email-dispatch.dead-letter` | DLQ routing key configured on the dispatch queue. |
+| `ParkingQueueName` | `explore.email-dispatch.parking` | Durable parking queue for future operator replay/parking tooling. |
+| `ParkingRoutingKey` | `email-dispatch.parking` | Parking queue routing key. |
+| `ClientProvidedName` | `explore-email-dispatch` | RabbitMQ client identity for broker/operator diagnostics. |
+| `PublishTimeoutSeconds` | `15` | Timeout around topology/publish confirm work. Must be greater than zero. |
+
+The RabbitMQ payload is `EmailDispatchPointer`: tenant ID, stable `PublishEventId`, kind, source IDs, and optional event/registration/user IDs only. It intentionally excludes recipient email, subject, plain text body, HTML body, reply-to, provider message IDs, raw provider errors, and SMTP credentials.
 
 ## Secret Provider Configuration
 

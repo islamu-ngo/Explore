@@ -1,5 +1,5 @@
 // ABOUTME: Seeds all lookup/enum tables at runtime in ALL environments.
-// Replaces HasData() in entity configurations to avoid EF Core circular FK migration bug (#36682).
+// ABOUTME: Replaces HasData() in entity configurations to avoid EF Core circular FK migration bug (#36682).
 
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -663,7 +663,7 @@ public static class LookupTableSeeder
 
         // Users group
         AddPermissions("user", "Users", RoleScopeEnum.Platform, readOnly);
-        AddPermissions("tenant_member", "Users", RoleScopeEnum.Tenant, crud);
+        AddPermissions("tenant_user_role_grant", "Users", RoleScopeEnum.Tenant, crud);
 
         // Tenant management group
         AddPermissions("tenant", "Tenants", RoleScopeEnum.Platform, crud, isFiltered: true);

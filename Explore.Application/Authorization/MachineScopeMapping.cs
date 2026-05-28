@@ -79,8 +79,9 @@ public static class MachineScopeMapping
                     : HasAny(scopeSet, ExternalApiKeyScopes.LookupsRead, ExternalApiKeyScopes.AdminTenant);
 
             case ResourceKinds.Tenant:
-            case ResourceKinds.TenantMember:
+            case ResourceKinds.TenantUserRoleGrant:
             case ResourceKinds.TenantSetting:
+            case ResourceKinds.EmailDispatch:
                 return HasAny(scopeSet, ExternalApiKeyScopes.AdminTenant);
 
             case ResourceKinds.InstanceSetting:

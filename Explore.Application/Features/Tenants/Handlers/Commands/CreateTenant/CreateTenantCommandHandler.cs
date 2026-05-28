@@ -1,5 +1,5 @@
 // ABOUTME: Handles tenant creation with optional automatic admin assignment for the requesting user.
-// ABOUTME: Validates input, enforces slug uniqueness, and atomically creates tenant, branding, and member records.
+// ABOUTME: Validates input, enforces slug uniqueness, and atomically creates tenant, branding, and role grants.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -16,7 +16,8 @@ namespace Explore.Application.Features.Tenants.Handlers.Commands.CreateTenant;
 public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, BaseCommandResponse<Guid>>
 {
     private readonly ITenantRepository _tenantRepository;
-    private readonly ITenantMemberRepository _tenantMemberRepository;
+    private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrantRepository;
+    private readonly ITenantUserRepository _tenantUserRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly ILogger<CreateTenantCommandHandler> _logger;
@@ -24,14 +25,16 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
 
     public CreateTenantCommandHandler(
         ITenantRepository tenantRepository,
-        ITenantMemberRepository tenantMemberRepository,
+        ITenantUserRoleGrantRepository tenantUserRoleGrantRepository,
+        ITenantUserRepository tenantUserRepository,
         IRoleRepository roleRepository,
         ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
         ILogger<CreateTenantCommandHandler> logger,
         IUnitOfWork unitOfWork)
     {
         _tenantRepository = tenantRepository;
-        _tenantMemberRepository = tenantMemberRepository;
+        _tenantUserRoleGrantRepository = tenantUserRoleGrantRepository;
+        _tenantUserRepository = tenantUserRepository;
         _roleRepository = roleRepository;
         _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
         _logger = logger;
@@ -106,17 +109,31 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
             return;
         }
 
-        var existing = await _tenantMemberRepository.GetByTenantAndUser(tenantId, userId);
+        var existing = await _tenantUserRoleGrantRepository.GetByTenantAndUser(tenantId, userId);
         if (existing != null) return;
 
-        await _tenantMemberRepository.Create(new TenantMember
+        var tenantUser = await _tenantUserRepository.GetByTenantAndUserAsync(tenantId, userId, ct)
+            ?? await _tenantUserRepository.Create(new TenantUser
+            {
+                TenantId = tenantId,
+                Tenant = null!,
+                UserId = userId,
+                User = null!,
+                StatusId = (int)TenantUserStatusEnum.Active,
+                JoinedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = userId
+            });
+
+        await _tenantUserRoleGrantRepository.Create(new TenantUserRoleGrant
         {
             TenantId = tenantId,
             Tenant = null!,
-            UserId = userId,
-            User = null!,
+            TenantUserId = tenantUser.Id,
+            TenantUser = null!,
             RoleId = tenantAdminRole.Id,
             Role = null!,
+            RoleScopeId = (int)RoleScopeEnum.Tenant,
             GrantedAt = DateTime.UtcNow,
             GrantedBy = userId
         });

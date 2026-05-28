@@ -1,0 +1,78 @@
+// ABOUTME: HATEOAS link policy for EmailDispatch operator status rows.
+// ABOUTME: Emits server-authored replay and park affordances from durable PostgreSQL state.
+
+using System.Security.Claims;
+using Explore.API.Hateoas;
+using Explore.Application.Authorization;
+using Explore.Application.Contracts.Hateoas;
+using Explore.Application.DTOs.EmailDispatch;
+using Explore.Application.Hateoas;
+
+namespace Explore.API.Hateoas.Policies;
+
+/// <summary>
+/// Detail policy for EmailDispatch status rows rendered outside a collection.
+/// </summary>
+public sealed class EmailDispatchStatusDetailLinkPolicy : ILinkPolicy<EmailDispatchStatusDto>
+{
+    private readonly EmailDispatchStatusCollectionLinkPolicy _collectionPolicy = new();
+
+    public IEnumerable<LinkDefinition> GetLinks(EmailDispatchStatusDto dto, ClaimsPrincipal? user)
+        => _collectionPolicy.GetItemLinks(dto, user);
+}
+
+/// <summary>
+/// Collection-item policy for EmailDispatch operator status rows.
+/// </summary>
+public sealed class EmailDispatchStatusCollectionLinkPolicy : ICollectionLinkPolicy<EmailDispatchStatusDto>
+{
+    private static readonly string[] ReplayableStatuses =
+    [
+        "DeadLettered",
+        "Parked",
+        "Unknown",
+        "RetryScheduled"
+    ];
+
+    public IEnumerable<LinkDefinition> GetItemLinks(EmailDispatchStatusDto dto, ClaimsPrincipal? user)
+    {
+        var routeValues = new { tenantId = dto.TenantId, outboxId = dto.OutboxId };
+
+        if (IsReplayable(dto.DeliveryStatus))
+        {
+            yield return new LinkDefinition(
+                "replay",
+                RouteNames.ReplayEmailDispatch,
+                routeValues,
+                "POST",
+                "Replay email dispatch",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.EmailDispatches.Update,
+                    ResourceDescriptors.EmailDispatchStatus,
+                    dto);
+        }
+
+        if (CanPark(dto.DeliveryStatus))
+        {
+            yield return new LinkDefinition(
+                "park",
+                RouteNames.ParkEmailDispatch,
+                routeValues,
+                "PUT",
+                "Park email dispatch",
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.EmailDispatches.Update,
+                    ResourceDescriptors.EmailDispatchStatus,
+                    dto);
+        }
+    }
+
+    public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user) => [];
+
+    private static bool IsReplayable(string deliveryStatus)
+        => ReplayableStatuses.Contains(deliveryStatus, StringComparer.Ordinal);
+
+    private static bool CanPark(string deliveryStatus)
+        => !string.Equals(deliveryStatus, "Sent", StringComparison.Ordinal) &&
+           !string.Equals(deliveryStatus, "Parked", StringComparison.Ordinal);
+}

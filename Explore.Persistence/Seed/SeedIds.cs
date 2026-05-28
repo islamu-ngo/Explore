@@ -40,10 +40,13 @@ public static class SeedIds
     public static readonly Guid AdminTechCoOwnerId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000045");
     public static readonly Guid RegularTechCreatorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000046");
 
-    // ===== Tenant Members (Development) =====
-    public static readonly Guid AdminTenantMemberId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000070");
-    public static readonly Guid RegularTenantMemberId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000071");
-    public static readonly Guid ModeratorTenantMemberId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000072");
+    // ===== Tenant Users And Role Grants (Development) =====
+    public static readonly Guid AdminTenantUserRoleGrantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000070");
+    public static readonly Guid RegularTenantUserRoleGrantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000071");
+    public static readonly Guid ModeratorTenantUserRoleGrantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000072");
+    public static readonly Guid AdminTenantUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000073");
+    public static readonly Guid RegularTenantUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000074");
+    public static readonly Guid ModeratorTenantUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000075");
 
     // ===== Storage Objects (Development) =====
     public static readonly Guid DefaultEventImageId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000050");

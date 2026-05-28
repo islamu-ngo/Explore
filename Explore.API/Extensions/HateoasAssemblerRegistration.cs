@@ -1,3 +1,6 @@
+// ABOUTME: Registers HAL resource assemblers and link policies for API controllers.
+// ABOUTME: Keeps HATEOAS dependency injection wiring centralized by DTO resource family.
+
 namespace Explore.API.Extensions;
 
 using Explore.API.Hateoas;
@@ -11,6 +14,7 @@ using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.CustomPropertyGovernance;
 using Explore.Application.DTOs.CustomPropertyProjection;
+using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventCustomProperty;
@@ -34,7 +38,7 @@ using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
-using Explore.Application.DTOs.TenantMember;
+using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.User;
 
@@ -138,10 +142,10 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ICollectionLinkPolicy<TenantListDto>, TenantCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<TenantDto, TenantListDto>, TenantResourceAssembler>();
 
-        // TenantMember (relationship with payload)
-        services.AddScoped<ILinkPolicy<TenantMemberDto>, TenantMemberDetailLinkPolicy>();
-        services.AddScoped<ICollectionLinkPolicy<TenantMemberListDto>, TenantMemberCollectionLinkPolicy>();
-        services.AddScoped<IResourceAssembler<TenantMemberDto, TenantMemberListDto>, TenantMemberResourceAssembler>();
+        // TenantUserRoleGrant (auditable tenant-local role grant)
+        services.AddScoped<ILinkPolicy<TenantUserRoleGrantDto>, TenantUserRoleGrantDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<TenantUserRoleGrantListDto>, TenantUserRoleGrantCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<TenantUserRoleGrantDto, TenantUserRoleGrantListDto>, TenantUserRoleGrantResourceAssembler>();
 
         // Tenant typed settings documents
         services.AddScoped<ILinkPolicy<TenantBrandingSettingsDocumentDto>, TenantBrandingSettingsDocumentLinkPolicy>();
@@ -197,6 +201,11 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<IResourceAssembler<ProjectionDirtyScopeDto, ProjectionDirtyScopeDto>, ProjectionDirtyScopeResourceAssembler>();
         services.AddScoped<ILinkPolicy<RebuildProjectionResponseDto>, RebuildProjectionResponseLinkPolicy>();
         services.AddScoped<ILinkPolicy<DrainDirtyScopesResponseDto>, DrainDirtyScopesResponseLinkPolicy>();
+
+        // Email Dispatch Admin (operator replay/park affordances)
+        services.AddScoped<ILinkPolicy<EmailDispatchStatusDto>, EmailDispatchStatusDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EmailDispatchStatusDto>, EmailDispatchStatusCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EmailDispatchStatusDto, EmailDispatchStatusDto>, EmailDispatchStatusResourceAssembler>();
 
         // Custom Property Governance (D2 Operability)
         services.AddScoped<ICollectionLinkPolicy<CustomPropertyGovernanceRowDto>, CustomPropertyGovernanceCollectionLinkPolicy>();

@@ -37,7 +37,7 @@ public partial class AuthorizationParityTests
         "organization_review",
         "tenant",
         "tenant_setting",
-        "tenant_member",
+        "tenant_user_role_grant",
         "category",
         "tag",
         "location",

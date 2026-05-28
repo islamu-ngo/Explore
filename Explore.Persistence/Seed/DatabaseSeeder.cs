@@ -5,6 +5,7 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Modules;
 using Explore.Domain.Settings.Documents;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 
@@ -24,17 +25,30 @@ public static class DatabaseSeeder
         IHostEnvironment environment,
         CancellationToken cancellationToken = default)
     {
-        // Lookup tables are required in ALL environments
-        await LookupTableSeeder.SeedAsync(context, cancellationToken);
+        var shouldClearBypass = !context.IsTenantFilterBypassed;
+        context.EnableTenantFilterBypass(TenantFilterBypassReasons.DatabaseSeeding);
 
-        // Business entities are seeded only in Development for testing
-        if (environment.IsDevelopment())
+        try
         {
-            await SeedDevelopmentDataAsync(context, cancellationToken);
-            await SeedDevelopmentSmtpAsync(context, cancellationToken);
-        }
+            // Lookup tables are required in ALL environments
+            await LookupTableSeeder.SeedAsync(context, cancellationToken);
 
-        await EnsureTenantBrandingDocumentsAsync(context, cancellationToken);
+            // Business entities are seeded only in Development for testing
+            if (environment.IsDevelopment())
+            {
+                await SeedDevelopmentDataAsync(context, cancellationToken);
+                await SeedDevelopmentSmtpAsync(context, cancellationToken);
+            }
+
+            await EnsureTenantBrandingDocumentsAsync(context, cancellationToken);
+        }
+        finally
+        {
+            if (shouldClearBypass)
+            {
+                context.ClearTenantFilterBypass();
+            }
+        }
     }
 
 
@@ -125,11 +139,16 @@ public static class DatabaseSeeder
         techOrg.ActorId = SeedIds.TechOrgActorId;
         await context.SaveChangesAsync(ct);
 
-        // Phase 6: Tenant members, organization members, storage objects
-        context.Set<TenantMember>().AddRange(
-            SeedData.AdminTenantMember,
-            SeedData.RegularTenantMember,
-            SeedData.ModeratorTenantMember);
+        // Phase 6: Tenant users, tenant role grants, organization members, storage objects
+        context.Set<TenantUser>().AddRange(
+            SeedData.AdminTenantUser,
+            SeedData.RegularTenantUser,
+            SeedData.ModeratorTenantUser);
+
+        context.Set<TenantUserRoleGrant>().AddRange(
+            SeedData.AdminTenantUserRoleGrant,
+            SeedData.RegularTenantUserRoleGrant,
+            SeedData.ModeratorTenantUserRoleGrant);
 
         context.Set<OrganizationMember>().AddRange(
             SeedData.AdminIslamuCreator,

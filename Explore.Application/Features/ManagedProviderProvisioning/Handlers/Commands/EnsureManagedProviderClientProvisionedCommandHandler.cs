@@ -1,5 +1,5 @@
-// ABOUTME: Application-layer orchestration for provider-provisioned tenant, user actor, and tenant-admin membership creation.
-// ABOUTME: Uses tenant-scoped memberships and optional organizer actors without granting platform/instance administrator roles.
+// ABOUTME: Application-layer orchestration for provider-provisioned tenant, user actor, and tenant-admin role grant creation.
+// ABOUTME: Uses tenant-scoped role grants and optional organizer actors without granting platform/instance administrator roles.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
@@ -21,7 +21,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
     IUserExternalLoginRepository userExternalLoginRepository,
     ITenantUserRepository tenantUserRepository,
     ITenantUserProfileRepository tenantUserProfileRepository,
-    ITenantMemberRepository tenantMemberRepository,
+    ITenantUserRoleGrantRepository tenantUserRoleGrantRepository,
     IRoleRepository roleRepository,
     IOrganizationRepository organizationRepository,
     IOrganizationMemberRepository organizationMemberRepository,
@@ -93,7 +93,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         var tenantUserProfileId = Guid.NewGuid();
         var userActorId = Guid.NewGuid();
         var userExternalLoginId = existingLogin?.Id ?? Guid.NewGuid();
-        var tenantMemberId = Guid.NewGuid();
+        var tenantUserRoleGrantId = Guid.NewGuid();
         var organizerId = dto.Organizer == null ? (Guid?)null : Guid.NewGuid();
         var organizerActorId = dto.Organizer == null ? (Guid?)null : Guid.NewGuid();
         var organizerMembershipId = dto.Organizer == null ? (Guid?)null : Guid.NewGuid();
@@ -123,7 +123,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                 });
             }
 
-            var tenantMember = await EnsureTenantAdminMembershipAsync(tenant.Id, user.Id, tenantMemberId);
+            var tenantUserRoleGrant = await EnsureTenantAdminRoleGrantAsync(tenant.Id, tenantUser.Id, user.Id, tenantUserRoleGrantId);
             var organizerResult = dto.Organizer == null
                 ? (OrganizerId: (Guid?)null, ActorId: (Guid?)null, MembershipId: (Guid?)null)
                 : await CreateOrganizerAsync(dto.Organizer, tenant.Id, user.Id, organizerId!.Value, organizerActorId!.Value, organizerMembershipId!.Value, ct);
@@ -240,7 +240,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                 TenantUserProfileId = tenantUserProfile.Id,
                 UserActorId = userActor.Id,
                 UserExternalLoginId = existingLogin?.Id ?? userExternalLoginId,
-                TenantMemberId = tenantMember.Id,
+                TenantUserRoleGrantId = tenantUserRoleGrant.Id,
                 OrganizerId = organizerResult.OrganizerId,
                 OrganizerActorId = organizerResult.ActorId,
                 OrganizerKind = dto.Organizer?.Kind,
@@ -388,9 +388,9 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         });
     }
 
-    private async Task<TenantMember> EnsureTenantAdminMembershipAsync(Guid tenantId, Guid userId, Guid tenantMemberId)
+    private async Task<TenantUserRoleGrant> EnsureTenantAdminRoleGrantAsync(Guid tenantId, Guid tenantUserId, Guid userId, Guid tenantUserRoleGrantId)
     {
-        var existing = await tenantMemberRepository.GetByTenantAndUser(tenantId, userId);
+        var existing = await tenantUserRoleGrantRepository.GetByTenantAndUser(tenantId, userId);
         if (existing != null)
         {
             return existing;
@@ -411,15 +411,16 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             };
         }
 
-        return await tenantMemberRepository.Create(new TenantMember
+        return await tenantUserRoleGrantRepository.Create(new TenantUserRoleGrant
         {
-            Id = tenantMemberId,
+            Id = tenantUserRoleGrantId,
             TenantId = tenantId,
             Tenant = null!,
-            UserId = userId,
-            User = null!,
+            TenantUserId = tenantUserId,
+            TenantUser = null!,
             RoleId = tenantAdminRole.Id,
             Role = null!,
+            RoleScopeId = (int)RoleScopeEnum.Tenant,
             GrantedAt = DateTime.UtcNow,
             GrantedBy = userId
         });
@@ -642,13 +643,13 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             normalizedSubject,
             tenant.Id,
             cancellationToken);
-        var tenantMember = await tenantMemberRepository.GetByTenantAndUser(tenant.Id, user.Id);
+        var tenantUserRoleGrant = await tenantUserRoleGrantRepository.GetByTenantAndUser(tenant.Id, user.Id);
 
-        if (actorBinding == null || tenantUserBinding == null || tenantUserProfileBinding == null || loginBinding == null || tenantMember == null)
+        if (actorBinding == null || tenantUserBinding == null || tenantUserProfileBinding == null || loginBinding == null || tenantUserRoleGrant == null)
         {
             return Failure(
                 "Managed provider provisioning binding is incomplete.",
-                "The existing provider customer binding is missing the tenant user state, user actor, external login, or tenant-admin membership.");
+                "The existing provider customer binding is missing the tenant user state, user actor, external login, or tenant-admin role grant.");
         }
 
         var response = new BaseCommandResponse<ManagedProviderClientProvisioningResultDto>
@@ -663,7 +664,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                 TenantUserProfileId = tenantUserProfileBinding.InternalId,
                 UserActorId = actorBinding.InternalId,
                 UserExternalLoginId = loginBinding.InternalId,
-                TenantMemberId = tenantMember.Id
+                TenantUserRoleGrantId = tenantUserRoleGrant.Id
             }
         };
 

@@ -47,9 +47,10 @@ Sensitive values are redacted before output. Do not add checks that print raw co
 
 `Explore.AppHost/AppHost.cs` starts services in this order:
 
-1. `Event.MigrationService`
-2. `Explore.API` (waits for migration completion)
-3. `Explore.Blazor` (waits for migration completion and API readiness)
+1. RabbitMQ resource `messaging` for optional local RabbitMQ Dispatch Mode experiments
+2. `Event.MigrationService`
+3. `Explore.API` (waits for migration completion, Redis, and RabbitMQ in Aspire local development)
+4. `Explore.Blazor` (waits for migration completion and API readiness)
 
 The Blazor app resolves the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Do not hardcode the Compose/API host port into AppHost documentation.
 
@@ -85,6 +86,7 @@ Readiness interpretation:
 | `oidc-discovery` | API, Blazor | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
 | `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
 | `email-dispatch` | API | Basic Dispatch Mode worker is enabled | Worker is intentionally disabled | Invalid worker options fail startup; RabbitMQ is not checked in Basic mode |
+| `email-dispatch-rabbitmq` | API | RabbitMQ Dispatch Mode is disabled, or enabled and topology can be declared | Not used | RabbitMQ mode is enabled but the broker/topology is unreachable or invalid |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
 | `islamu-event-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
 | `secret_provider` | API, Blazor | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
@@ -97,6 +99,7 @@ Operational rules:
 - Instance Cerbos readiness follows authorization fail-closed semantics: if the operator selected `authorization.provider=cerbos`, an unreachable PDP makes `/health` unhealthy rather than silently falling back to local RBAC.
 - Local authorization mode skips Cerbos readiness, so self-hosted/local deployments do not need a Cerbos PDP unless explicitly selected.
 - Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only.
+- RabbitMQ Dispatch Mode is optional transport infrastructure. When `EmailDispatchRabbitMq:Enabled=false`, the `email-dispatch-rabbitmq` check is healthy without opening a broker connection. When enabled, missing broker connectivity or failed topology declaration is unhealthy because the operator explicitly selected RabbitMQ transport.
 
 ## Deployment Protection and Evidence
 
@@ -211,6 +214,7 @@ Current counters include:
 - `explore.authorization.decisions` (`resource`, `action`, `result`)
 - `event_role_assignment.changed` (`operation`, `outcome`, `role`)
 - `explore.email_dispatch.attempts` (`tenant_id`, `outcome`, `failure_category`) — Basic Dispatch Mode email outcomes; labels intentionally exclude recipient, subject, body, provider message ID, and raw error text.
+- `explore.email_dispatch.rabbitmq.publishes` (`tenant_id`, `outcome`, `failure_category`) — optional RabbitMQ pointer-publish outcomes; labels intentionally exclude recipient, subject, body, provider message ID, raw broker error text, and connection strings.
 
 ### Basic Email Dispatch Operations
 
@@ -230,6 +234,20 @@ Operator signals:
 | Structured worker logs | Include dispatch/outbox IDs, tenant IDs, outcomes, retry delay, and normalized failure category; do not include bodies, recipients, subjects, secrets, provider message IDs, or raw SMTP error text. |
 
 Timeout-like SMTP outcomes are recorded as `Unknown` instead of blind retry. Dead-lettered rows remain in PostgreSQL for operator inspection and later replay tooling.
+
+### Optional RabbitMQ Dispatch Operations
+
+RabbitMQ Dispatch Mode is an optional transport foundation over the same PostgreSQL-owned `EmailDispatchOutbox` state machine. The current implemented slice declares RabbitMQ topology, publishes pointer-only `EmailDispatchPointer` messages with mandatory routing and publisher confirmations, exposes `email-dispatch-rabbitmq` readiness, and wires the local Aspire `messaging` resource. It does **not** replace the Basic SMTP worker and does not yet include the manual-ack consumer or DLQ replay/parking operator flow.
+
+Operator signals:
+
+| Signal | Meaning |
+|---|---|
+| `email-dispatch-rabbitmq` health check | Disabled mode is healthy and independent; enabled mode proves broker connectivity and topology declaration. |
+| `explore.email_dispatch.rabbitmq.publishes` | Outcome counter for disabled, confirmed, returned, nacked, failed, and timeout publish attempts. |
+| Structured RabbitMQ transport logs | Include dispatch IDs, tenant IDs, topology names, outcomes, and normalized failure categories; do not include recipient addresses, subjects, bodies, provider message IDs, raw broker errors, or AMQP connection strings. |
+
+The RabbitMQ payload is a pointer contract only: tenant ID, stable `PublishEventId`, dispatch kind, source IDs, and optional event/registration/user IDs. Email body, subject, recipient, reply-to, SMTP settings, provider message IDs, and raw provider errors remain out of broker payloads and logs.
 
 ## Cerbos PDP Operations
 
@@ -576,7 +594,17 @@ Custom property projections are denormalized, read-optimized rows derived from L
 ```
 GET /api/admin/custom-property-projections/status?tenantId={tenantId}
 ```
-Returns: `State` (Idle/Rebuilding/Failed), `LastRebuildStartedAt`, `LastRebuildCompletedAt`, `RowsProcessed`, `RowsFailed`, `LastErrorMessage`.
+Returns: `State` (Idle/Rebuilding/Failed), `LastRebuildStartedAt`, `LastRebuildCompletedAt`, `RowsProcessed`, `RowsFailed`, `LastErrorMessage`, `PendingDirtyScopeCount`, `OperationalState`, `RequiresOperatorAction`, and `RecommendedAction`.
+
+`OperationalState` is intentionally bounded for dashboarding:
+
+| State | Meaning | First action |
+|---|---|---|
+| `healthy` | Projection is idle and no dirty-scope backlog is pending | No action |
+| `dirty_backlog_pending` | Inline writers skipped during rebuild contention and queued dirty scopes | Drain dirty scopes or run a tenant rebuild |
+| `rebuilding` | Rebuild is currently active and not yet stale | Monitor until completion |
+| `rebuild_stale` | Rebuild has been active for more than 10 minutes | Investigate PostgreSQL advisory-lock waits and worker health |
+| `failed` | Last rebuild failed | Inspect `LastErrorMessage`, fix the root cause, then rebuild |
 
 **Dirty-scope backlog:**
 ```
@@ -634,6 +662,23 @@ Processes pending dirty-scope rows without triggering a full rebuild. Idempotent
 - **ConcurrencyStamp:** All mutable EAV entities carry an EF Core `ConcurrencyStamp` (`Guid`). `DbUpdateConcurrencyException` is translated to HTTP 409 with `code: concurrent_update`.
 - **Quota errors:** Business quota breaches return HTTP 422 with `code: quota_exceeded`, `quotaKey`, `limit`, `scope`, and optional `actual`/`attempted` fields.
 - **Admin purge:** Hard purge is separate from normal delete. It is admin-only, writes an audit summary, and is blocked when historical values, projection rows, audit references, or sync provenance exist.
+
+### Metrics
+
+Use these meters for custom-property projection and lifecycle dashboards:
+
+| Meter | Metric | Safe dimensions |
+|---|---|---|
+| `Explore.Projections` | `explore.projections.rebuild_total` | `tenant_id`, `projection_type`, `lock_acquired` |
+| `Explore.Projections` | `explore.projections.rebuild_failures_total` | `tenant_id`, `projection_type`, `lock_acquired` |
+| `Explore.Projections` | `explore.projections.rebuild_duration_seconds` | `tenant_id`, `projection_type`, `lock_acquired` |
+| `Explore.Projections` | `explore.projections.drain_total` | `tenant_id`, `projection_type` |
+| `Explore.Projections` | `explore.projections.drained_scopes_total` | `tenant_id`, `projection_type` |
+| `Explore.Projections` | `explore.projections.dirty_scope_skips_total` | `tenant_id`, `projection_type`, `operation`, `reason` |
+| `Explore.Projections` | `explore.projections.quota_exceeded_total` | `tenant_id`, `projection_type`, `quota_key`, `scope` |
+| `Explore.Business` | `explore.custom_properties.purge_decisions` | `tenant_id`, `scope`, `outcome`, `blocker_category` |
+
+Do not add raw custom-property `Namespace`, `Key`, display names, event IDs, session IDs, or purge reasons as metric dimensions. Those values are high-cardinality and may expose tenant-specific semantics. Use admin API responses for targeted inspection instead.
 
 ### Hard limits
 

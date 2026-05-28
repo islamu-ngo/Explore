@@ -1,3 +1,6 @@
+// ABOUTME: HATEOAS link policies for tenant detail and collection resources.
+// ABOUTME: Adds tenant-scoped affordances such as role grants through named API routes.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
@@ -32,13 +35,13 @@ public sealed class TenantDetailLinkPolicy : ILinkPolicy<TenantDto>
             "GET",
             "All tenants");
 
-        // Users link
+        // Tenant user role grants link
         yield return new LinkDefinition(
-            "users",
-            RouteNames.GetTenantMembers,
+            "tenant-user-role-grants",
+            RouteNames.GetTenantUserRoleGrants,
             new { tenantId = dto.Id },
             "GET",
-            "Tenant users",
+            "Tenant user role grants",
             RequiresAuth: true);
         // Edit link - requires authentication
         yield return new LinkDefinition(

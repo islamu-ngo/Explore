@@ -40,7 +40,7 @@ public class TenantLookupSource : ITenantLookupSource
         var tenantIds = tenants.Select(tenant => tenant.TenantId).ToArray();
 
         var domainSettings = await _dbContext.TenantSettingOverrides
-            .IgnoreQueryFilters([QueryFilterNames.Tenant])
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantLookupCacheWarmup)
             .AsNoTracking()
             .Where(setting => tenantIds.Contains(setting.TenantId)
                 && (setting.SettingKey == GovernanceSettingKeys.Domains.TenantSubdomain

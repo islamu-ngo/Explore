@@ -1,5 +1,5 @@
 // ABOUTME: Database-first identity service resolving admin authority from database tables only.
-// Caches per-user authority profiles in IMemoryCache with 5-minute sliding expiration.
+// ABOUTME: Caches per-user authority profiles in IMemoryCache with 5-minute sliding expiration.
 
 using System.Security.Claims;
 using Explore.Application.Contracts.Identity;
@@ -16,7 +16,7 @@ namespace Explore.Infrastructure.Identity;
 /// <summary>
 /// Resolves the current user's administrative authority using database tables only.
 /// Identity is read from authenticated claims (sub/nameidentifier/sid) and authority
-/// is resolved from platform role assignments, TenantMembers, OrganizationMembers, and GroupMembers.
+/// is resolved from platform role assignments, tenant user role grants, OrganizationMembers, and GroupMembers.
 /// </summary>
 public class AdminContext : IAdminContext, IAdminCacheInvalidator
 {
@@ -24,7 +24,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IPlatformUserRoleRepository _platformUserRoleRepository;
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
-    private readonly ITenantMemberRepository _tenantAdminRepo;
+    private readonly ITenantUserRoleGrantRepository _tenantAdminRepo;
     private readonly IOrganizationMemberRepository _orgMemberRepo;
     private readonly IGroupMemberRepository _groupMemberRepo;
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
@@ -40,7 +40,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         IHttpContextAccessor httpContextAccessor,
         IPlatformUserRoleRepository platformUserRoleRepository,
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
-        ITenantMemberRepository tenantAdminRepo,
+        ITenantUserRoleGrantRepository tenantAdminRepo,
         IOrganizationMemberRepository orgMemberRepo,
         IGroupMemberRepository groupMemberRepo,
         IUserExternalLoginRepository userExternalLoginRepository,

@@ -4,6 +4,7 @@
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
+using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventCustomProperty;
@@ -26,7 +27,7 @@ using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
-using Explore.Application.DTOs.TenantMember;
+using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.User;
 
@@ -114,12 +115,13 @@ public static class ResourceDescriptors
         },
         dto => new AuthorizationScope(TenantId: dto.SourceScopeId.ToString()));
 
-    public static readonly ResourceDescriptor<TenantMemberDto> TenantMember = new(
-        ResourceKinds.TenantMember,
+    public static readonly ResourceDescriptor<TenantUserRoleGrantDto> TenantUserRoleGrant = new(
+        ResourceKinds.TenantUserRoleGrant,
         dto => dto.Id.ToString(),
         dto => new Dictionary<string, object>
         {
             ["tenantId"] = dto.TenantId.ToString(),
+            ["tenantUserId"] = dto.TenantUserId.ToString(),
             ["userId"] = dto.UserId.ToString()
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
@@ -306,6 +308,19 @@ public static class ResourceDescriptors
         dto => new Dictionary<string, object>
         {
             ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EmailDispatchStatusDto> EmailDispatchStatus = new(
+        ResourceKinds.EmailDispatch,
+        dto => dto.OutboxId.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["outboxId"] = dto.OutboxId.ToString(),
+            ["sourceType"] = dto.SourceType,
+            ["sourceId"] = dto.SourceId.ToString(),
+            ["deliveryStatus"] = dto.DeliveryStatus
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 

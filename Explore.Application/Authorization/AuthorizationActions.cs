@@ -175,12 +175,11 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
-    /// <summary>Valid actions for the <c>islamuevent_tenant_member</c> resource kind.</summary>
-    public static class TenantMembers
+    /// <summary>Valid actions for the <c>islamuevent_tenant_user_role_grant</c> resource kind.</summary>
+    public static class TenantUserRoleGrants
     {
         public const string View = AuthorizationActions.View;
         public const string Create = AuthorizationActions.Create;
-        public const string Update = AuthorizationActions.Update;
         public const string Delete = AuthorizationActions.Delete;
     }
 
@@ -324,6 +323,16 @@ public static class AuthorizationActions
     public static class CustomPropertyGovernance
     {
         public const string View = AuthorizationActions.View;
+    }
+
+    /// <summary>
+    /// Valid actions for the <c>email_dispatch</c> resource kind.
+    /// Covers operator status inspection plus replay and park actions.
+    /// </summary>
+    public static class EmailDispatches
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Update = AuthorizationActions.Update;
     }
 
     /// <summary>

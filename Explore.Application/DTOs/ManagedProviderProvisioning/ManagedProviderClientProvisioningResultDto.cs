@@ -1,5 +1,5 @@
 // ABOUTME: Result payload returned after a managed provider customer is provisioned.
-// ABOUTME: Exposes tenant, user actor, tenant-admin membership, and optional organizer IDs without implying platform authority.
+// ABOUTME: Exposes tenant, user actor, tenant-admin role grant, and optional organizer IDs without implying platform authority.
 
 namespace Explore.Application.DTOs.ManagedProviderProvisioning;
 
@@ -11,7 +11,7 @@ public class ManagedProviderClientProvisioningResultDto
     public Guid TenantUserProfileId { get; init; }
     public Guid UserActorId { get; init; }
     public Guid UserExternalLoginId { get; init; }
-    public Guid TenantMemberId { get; init; }
+    public Guid TenantUserRoleGrantId { get; init; }
     public Guid? OrganizerId { get; init; }
     public Guid? OrganizerActorId { get; init; }
     public ManagedProviderOrganizerKindDto? OrganizerKind { get; init; }

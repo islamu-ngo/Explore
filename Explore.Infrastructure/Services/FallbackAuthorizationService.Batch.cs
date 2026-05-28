@@ -92,7 +92,7 @@ public partial class FallbackAuthorizationService
             "islamuevent_instance_setting" => false,
             "islamuevent_tenant_setting" => EvaluateTenantSettingWithProfile(profile, resourceId, action, resourceAttributes),
             "islamuevent_tenant" => false,
-            "islamuevent_tenant_member" or "islamuevent_category" or "islamuevent_tag" or "islamuevent_location" or "islamuevent_location_room"
+            "islamuevent_tenant_user_role_grant" or "islamuevent_category" or "islamuevent_tag" or "islamuevent_location" or "islamuevent_location_room"
                 => profile.IsTenantAdmin,
             "islamuevent_custom_property_definition" or "islamuevent_custom_property_template" or "islamuevent_actor"
                 => action is "view" || profile.IsTenantAdmin,

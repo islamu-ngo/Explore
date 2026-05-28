@@ -8,8 +8,8 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
     <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
-    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)</OpenApiDocumentsDirectory>
-    <OpenApiGenerateDocumentsOptions>--document-name event-api --file-name swagger</OpenApiGenerateDocumentsOptions>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../schemas</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--document-name event-api --file-name openapi</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -58,6 +58,10 @@
     <PackageReference Include="Serilog.Settings.Configuration" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    <PackageReference Include="TickerQ" />
+    <PackageReference Include="TickerQ.Dashboard" />
+    <PackageReference Include="TickerQ.EntityFrameworkCore" />
+    <PackageReference Include="TickerQ.Instrumentation.OpenTelemetry" />
   </ItemGroup>
 
   <ItemGroup>
@@ -68,18 +72,18 @@
     <ProjectReference Include="..\Explore.ServiceDefaults\Explore.ServiceDefaults.csproj" />
   </ItemGroup>
 
-  <!-- Include swagger.json as content (committed to source control) -->
+  <!-- Include openapi.json as content (committed to source control) -->
   <ItemGroup>
-    <None Include="swagger.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('swagger.json')" />
+    <None Include="../schemas/openapi.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../schemas/openapi.json')" />
   </ItemGroup>
 
-  <Target Name="InvalidateOpenApiDocumentCacheWhenCanonicalDocumentIsMissing" BeforeTargets="GenerateOpenApiDocuments" Condition="!Exists('$(MSBuildProjectDirectory)/swagger.json') And Exists('$(BaseIntermediateOutputPath)$(MSBuildProjectName).OpenApiFiles.cache')">
+  <Target Name="InvalidateOpenApiDocumentCacheWhenCanonicalDocumentIsMissing" BeforeTargets="GenerateOpenApiDocuments" Condition="!Exists('$(MSBuildProjectDirectory)/../schemas/openapi.json') And Exists('$(BaseIntermediateOutputPath)$(MSBuildProjectName).OpenApiFiles.cache')">
     <Delete Files="$(BaseIntermediateOutputPath)$(MSBuildProjectName).OpenApiFiles.cache" />
   </Target>
 
-  <Target Name="NormalizeGeneratedOpenApiDocument" AfterTargets="GenerateOpenApiDocuments" Condition="Exists('$(MSBuildProjectDirectory)/swagger_event-api.json')">
-    <Copy SourceFiles="$(MSBuildProjectDirectory)/swagger_event-api.json" DestinationFiles="$(MSBuildProjectDirectory)/swagger.json" SkipUnchangedFiles="true" />
-    <Delete Files="$(MSBuildProjectDirectory)/swagger_event-api.json" />
+  <Target Name="NormalizeGeneratedOpenApiDocument" AfterTargets="GenerateOpenApiDocuments" Condition="Exists('$(MSBuildProjectDirectory)/../schemas/openapi_event-api.json')">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../schemas/openapi_event-api.json" DestinationFiles="$(MSBuildProjectDirectory)/../schemas/openapi.json" SkipUnchangedFiles="true" />
+    <Delete Files="$(MSBuildProjectDirectory)/../schemas/openapi_event-api.json" />
   </Target>
 
 </Project>

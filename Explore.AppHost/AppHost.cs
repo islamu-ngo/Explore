@@ -24,6 +24,11 @@ builder.Services.AddHealthChecks().AddCheck("startup-delay", () =>
 // Redis for distributed cache (deployment mode, settings)
 var cache = builder.AddRedis("cache");
 
+// Optional RabbitMQ Dispatch Mode transport for EmailDispatch pointer messages.
+// Basic Dispatch Mode remains API + PostgreSQL + SMTP and does not require this resource outside AppHost.
+var messaging = builder.AddRabbitMQ("messaging")
+    .WithManagementPlugin();
+
 // Migration service runs first
 // It loads its own connection string via AddInfisicalCompatibility() in its Program.cs
 var migrations = builder.AddProject<Projects.Event_MigrationService>("event-migrationservice");
@@ -35,6 +40,9 @@ var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WaitForCompletion(migrations)
     .WithReference(cache)
     .WaitFor(cache)
+    .WithReference(messaging)
+    .WaitFor(messaging)
+    .WithEnvironment("EmailDispatchRabbitMq__Enabled", "true")
     .WithEnvironment("Cerbos__PolicyPackagePath", cerbosPolicyPackagePath);
 
 // Explore Blazor - loads its own secrets via AddInfisicalCompatibility()

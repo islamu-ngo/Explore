@@ -125,10 +125,10 @@ public class RoleRepository : GenericRepository<Role, int>, IRoleRepository
 
         if (hasOrgMembers) return true;
 
-        var hasTenantMembers = await _dbContext.TenantMembers
-            .AnyAsync(tm => tm.RoleId == roleId);
+        var hasTenantRoleGrants = await _dbContext.TenantUserRoleGrants
+            .AnyAsync(grant => grant.RoleId == roleId && grant.RevokedAt == null);
 
-        if (hasTenantMembers) return true;
+        if (hasTenantRoleGrants) return true;
 
         return await _dbContext.EventRoleAssignments
             .AnyAsync(a => a.RoleId == roleId);

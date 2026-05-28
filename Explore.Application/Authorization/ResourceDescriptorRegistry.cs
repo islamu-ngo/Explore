@@ -7,6 +7,7 @@ using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
+using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
@@ -23,7 +24,7 @@ using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
-using Explore.Application.DTOs.TenantMember;
+using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
 using Explore.Application.DTOs.User;
 
@@ -62,9 +63,9 @@ public static class ResourceDescriptorRegistry
         // User
         [typeof(UserDto)] = global::Explore.Application.Authorization.ResourceKinds.User,
 
-        // Tenant Member
-        [typeof(TenantMemberDto)] = global::Explore.Application.Authorization.ResourceKinds.TenantMember,
-        [typeof(TenantMemberListDto)] = global::Explore.Application.Authorization.ResourceKinds.TenantMember,
+        // Tenant User Role Grant
+        [typeof(TenantUserRoleGrantDto)] = global::Explore.Application.Authorization.ResourceKinds.TenantUserRoleGrant,
+        [typeof(TenantUserRoleGrantListDto)] = global::Explore.Application.Authorization.ResourceKinds.TenantUserRoleGrant,
 
         // Tag
         [typeof(TagDto)] = global::Explore.Application.Authorization.ResourceKinds.Tag,
@@ -115,6 +116,9 @@ public static class ResourceDescriptorRegistry
         // Notification
         [typeof(NotificationDto)] = global::Explore.Application.Authorization.ResourceKinds.Notification,
         [typeof(NotificationListDto)] = global::Explore.Application.Authorization.ResourceKinds.Notification,
+
+        // Email Dispatch
+        [typeof(EmailDispatchStatusDto)] = global::Explore.Application.Authorization.ResourceKinds.EmailDispatch,
 
         // Actor
         [typeof(ActorDto)] = global::Explore.Application.Authorization.ResourceKinds.Actor,

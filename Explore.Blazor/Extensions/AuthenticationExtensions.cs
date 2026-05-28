@@ -38,7 +38,7 @@ public static class AuthenticationExtensions
             {
                 options.LoginPath = "/login";
                 options.LogoutPath = "/logout";
-                options.ExpireTimeSpan = TimeSpan.FromDays(7);
+                options.ExpireTimeSpan = TimeSpan.FromDays(180);
                 options.SlidingExpiration = true;
 
                 options.Cookie.HttpOnly = true;

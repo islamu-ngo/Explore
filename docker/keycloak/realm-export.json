@@ -20,11 +20,13 @@
   "quickLoginCheckMilliSeconds": 1000,
   "maxDeltaTimeSeconds": 43200,
   "accessTokenLifespan": 300,
-  "ssoSessionIdleTimeout": 1800,
-  "ssoSessionMaxLifespan": 36000,
-  "offlineSessionIdleTimeout": 2592000,
-  "offlineSessionMaxLifespan": 5184000,
-  "offlineSessionMaxLifespanEnabled": true,
+  "ssoSessionIdleTimeout": 15552000,
+  "ssoSessionMaxLifespan": 31536000,
+  "ssoSessionIdleTimeoutRememberMe": 15552000,
+  "ssoSessionMaxLifespanRememberMe": 31536000,
+  "offlineSessionIdleTimeout": 15552000,
+  "offlineSessionMaxLifespan": 31536000,
+  "offlineSessionMaxLifespanEnabled": false,
   "accessCodeLifespan": 60,
   "accessCodeLifespanUserAction": 300,
   "accessCodeLifespanLogin": 1800,
@@ -36,6 +38,22 @@
     "acr"
   ],
   "defaultOptionalClientScopes": ["offline_access", "address", "phone"],
+  "roles": {
+    "realm": [
+      {
+        "name": "default-roles-islamu",
+        "description": "Composite role for default ISLAMU realm",
+        "composite": true,
+        "composites": {
+          "realm": ["offline_access"]
+        }
+      },
+      {
+        "name": "offline_access",
+        "description": "Offline access role"
+      }
+    ]
+  },
   "clientScopes": [
     {
       "name": "openid",
@@ -227,10 +245,9 @@
         "profile",
         "email",
         "web-origins",
-        "acr",
-        "offline_access"
+        "acr"
       ],
-      "optionalClientScopes": ["address", "phone"],
+      "optionalClientScopes": ["offline_access", "address", "phone"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:7002/*##https://localhost:7177/*##http://localhost/*##https://localhost/*##https://100.64.0.2:7177/*##https://100.64.0.2/*##http://100.64.0.2:7177/*##http://100.64.0.2/*",

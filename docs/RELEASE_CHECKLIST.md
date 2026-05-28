@@ -68,7 +68,7 @@ Use this checklist before tagging or publishing a release. A release is not read
 
 ## CI/CD Evidence Contract
 
-- [ ] OpenAPI drift artifacts are clean, or generated `swagger.json` / NSwag client changes are reviewed and committed.
+- [ ] OpenAPI drift artifacts are clean, or generated `openapi.json` / NSwag client changes are reviewed and committed.
 - [ ] Container image digest, SBOM/provenance, Trivy scan output, and image tag evidence are recorded when images are published.
 - [ ] Deployment evidence includes environment, commit SHA, webhook result, smoke-check result, workflow run link, and rollback note.
 - [ ] Production deployment approval and branch restrictions are configured in GitHub Environment settings.

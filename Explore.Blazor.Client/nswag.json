@@ -2,7 +2,7 @@
   "runtime": "Net100",
   "documentGenerator": {
     "fromDocument": {
-      "json": "../Explore.API/swagger.json",
+      "json": "../schemas/openapi.json",
       "url": "",
       "output": null
     }

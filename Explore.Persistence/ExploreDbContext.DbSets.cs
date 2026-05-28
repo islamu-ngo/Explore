@@ -18,7 +18,7 @@ public partial class ExploreDbContext
     public DbSet<Tenant> Tenants { get; set; }
     public DbSet<TenantUser> TenantUsers { get; set; }
     public DbSet<TenantUserProfile> TenantUserProfiles { get; set; }
-    public DbSet<TenantMember> TenantMembers { get; set; }
+    public DbSet<TenantUserRoleGrant> TenantUserRoleGrants { get; set; }
     public DbSet<TenantOnboardingState> TenantOnboardingStates { get; set; }
     public DbSet<TenantInvitation> TenantInvitations { get; set; }
     public DbSet<TenantLifecycleLog> TenantLifecycleLogs { get; set; }

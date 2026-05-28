@@ -41,7 +41,7 @@ public class CerbosPolicyContractTests : IDisposable
         yield return ("islamuevent_location", (string[])["view", "create", "update", "delete"]);
         yield return ("islamuevent_location_room", (string[])["view", "create", "update", "delete"]);
         yield return ("islamuevent_actor", (string[])["view", "create", "update", "delete"]);
-        yield return ("islamuevent_tenant_member", (string[])["view", "create", "update", "delete"]);
+        yield return ("islamuevent_tenant_user_role_grant", (string[])["view", "create", "delete"]);
         yield return ("islamuevent_organization_member", (string[])["view", "create", "update", "delete", "manage_members"]);
         yield return ("islamuevent_group", (string[])["view", "create", "update", "delete"]);
         yield return ("islamuevent_group_member", (string[])["view", "create", "update", "delete"]);
@@ -536,7 +536,7 @@ public class CerbosPolicyContractTests : IDisposable
         yield return "islamuevent_tag";
         yield return "islamuevent_location";
         yield return "islamuevent_actor";
-        yield return "islamuevent_tenant_member";
+        yield return "islamuevent_tenant_user_role_grant";
         yield return "islamuevent_organization_member";
         yield return "islamuevent_group";
         yield return "islamuevent_group_member";

@@ -359,8 +359,9 @@ Non-interactive callers (direct API consumers, integrations, automation) authent
 ### Tenant Isolation
 
 - API key rows are tenant-scoped (`TenantId` FK) except for `InstanceAdmin` keys (nullable). Every non-auth query applies the `Tenant` query filter.
-- Auth lookups are the **only** code path permitted to bypass the tenant filter — narrowly scoped to `GetByKeyIdForAuthentication` via `IgnoreTenantFilter`.
+- API-key auth lookups are the **only API-key path** permitted to bypass the tenant filter — narrowly scoped to `GetByKeyIdForAuthentication` via `IgnoreTenantFilter`.
 - `ApiTenantPostAuthenticationMiddleware` enforces that the API-key `TenantId` matches the resolved request tenant. Mismatches return `404 Not Found` (not `401` — to avoid leaking tenant existence).
+- Tenant user authority is rooted in `TenantUserRoleGrant`, which must reference a matching `(TenantId, TenantUserId)` pair and a tenant-scoped role. Effective tenant-admin checks also require the linked `TenantUser` to be active and not soft-deleted.
 
 ### Scope Model
 
@@ -392,25 +393,43 @@ Related authorization references:
 - [API.md](API.md) — API authentication, API-key routing, and error contracts.
 - [BLAZOR.md](BLAZOR.md) — BFF proxy/token/setup-secret boundaries.
 
-## Row-Level Security (RLS) — Planned
+## Row-Level Security (RLS) — Prototype Support
 
-**Status:** Not yet implemented. Strategy documented for post-v1.0.
+**Status:** Prototype tenant-session infrastructure exists; production table policies are not enabled yet.
 
-**Current tenant isolation:** EF Core named query filters (`HasQueryFilter(name: "Tenant", ...)`) ensure all queries are tenant-scoped at the application layer. This is sufficient when all data access flows through the application.
+**Current tenant isolation:** EF Core named query filters (`HasQueryFilter(name: "Tenant", ...)`) and tenant-safe database foreign keys are the current production enforcement layers. EF tenant filters now fail closed when `TenantContext` is missing; approved system/admin paths must opt in through an explicit bypass reason. RLS is still defense-in-depth work, not the authority for application authorization.
+
+**Implemented prototype pieces:**
+- `Explore.Persistence/Security/PostgresTenantSessionInterceptor.cs` sets PostgreSQL session setting `app.current_tenant_id` with `set_config(..., false)` whenever EF Core opens a connection.
+- Runtime registration is disabled by default and guarded by `Persistence:EnableRlsTenantSession`.
+- `Event.Persistence.IntegrationTests/TenantIsolation/PostgresTenantSessionRlsPrototypeTests.cs` proves a forced RLS policy filters tenant A, tenant B, and missing-tenant access through a non-superuser app-style role.
+- No production migration currently enables RLS on tenant tables.
 
 **Why RLS matters for defense-in-depth:**
 - Direct database access (migrations, reporting, debugging, data exports) bypasses EF query filters.
 - A compromised application layer could disable filters and leak cross-tenant data.
 - PostgreSQL RLS adds kernel-level row filtering that cannot be bypassed from SQL.
 
-**Planned approach:**
-1. Add a `current_tenant_id` session variable set via `SET app.current_tenant_id = '<guid>'` on each connection checkout.
-2. Create RLS policies on all tenant-scoped tables: `CREATE POLICY tenant_isolation ON events USING (tenant_id = current_setting('app.current_tenant_id')::uuid)`.
-3. Apply to: events, event_sessions, organizations, groups, actors, event_registrations, storage_objects, audit_logs, notifications, configuration_change_logs, tenant_members, tenant_setting_overrides, and tenant_settings_documents.
-4. The EF DbContext connection interceptor sets the session variable before first query.
-5. Superadmin connections use `SET ROLE` to bypass RLS for cross-tenant operations.
+**Policy pattern proven by the prototype:**
+
+```sql
+CREATE POLICY tenant_isolation ON events
+    USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+    WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+```
+
+The `missing_ok=true` form plus `NULLIF(..., '')` makes absent tenant context fail closed instead of raising a cast error. The interceptor sets an empty string when `ExploreDbContext.TenantContext` is missing or returns `Guid.Empty`.
+
+**Production rollout prerequisites:**
+1. Use a non-superuser, non-`BYPASSRLS` application database role. PostgreSQL superusers always bypass RLS, even when a table uses `FORCE ROW LEVEL SECURITY`.
+2. Keep migration/maintenance credentials separate from the runtime app role so migrations and operator maintenance can intentionally bypass RLS.
+3. Audit all direct `IDbContextFactory<ExploreDbContext>` callers and system/admin paths before enabling policies on real tables; factory-created contexts do not automatically receive scoped property injection.
+4. Enable RLS table families in bounded migrations with integration tests for tenant access, absent-tenant denial, cross-tenant denial, and required host-admin/system paths.
+5. Apply first to high-value tenant tables such as events, event_sessions, organizations, groups, actors, event_registrations, storage_objects, audit_logs, notifications, configuration_change_logs, tenant_user_role_grants, tenant_setting_overrides, and tenant_settings_documents.
 
 **Risks:**
-- Connection pooling: Session variables must be set per checkout, not per pool. Npgsql connection interceptors handle this.
+- Connection pooling: Session variables must be set every time EF opens a connection. Npgsql resets pooled connection state on close by default, and the interceptor rebinds the tenant on open.
+- Role design: A superuser or `BYPASSRLS` runtime connection makes policies ineffective.
+- System/admin reads: cross-tenant maintenance paths need explicit role/session design before real table policies are enabled.
 - Performance: RLS adds a predicate to every query. Indexes on `tenant_id` (already exist) mitigate this.
-- Migrations: Must run with a superuser role that bypasses RLS.
+- Migrations: Must run with a maintenance role that bypasses RLS intentionally.

@@ -82,7 +82,7 @@ public class CerbosPolicyCompilationTests : IDisposable
         yield return "islamuevent_location";
         yield return "islamuevent_location_room";
         yield return "islamuevent_actor";
-        yield return "islamuevent_tenant_member";
+        yield return "islamuevent_tenant_user_role_grant";
         yield return "islamuevent_organization_member";
         yield return "islamuevent_organization_review";
         yield return "islamuevent_group";

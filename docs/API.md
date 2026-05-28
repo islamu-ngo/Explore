@@ -6,7 +6,7 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API
-> **Last Verified:** 2026-05-23
+> **Last Verified:** 2026-05-27
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
@@ -270,6 +270,24 @@ Security and tenancy rules:
 - Tenant-local user status/profile/moderation state is stored in `TenantUser` and `TenantUserProfile`; the global `User` remains the auth/account anchor.
 - Do not send arbitrary tenant headers as provisioning authority. The command creates or resolves the tenant from trusted bindings and returns the resulting internal IDs.
 - Send `Idempotency-Key` on HTTP retries. The durable source of truth is still the `ExternalBinding` uniqueness model, so a replay with the same provider/customer IDs returns the existing provisioning result.
+
+### Tenant User Role Grants
+
+Tenant role authority is exposed through explicit role-grant endpoints, not the former tenant-member contract:
+
+| Verb | Route | Route Name | Purpose | Response |
+|---|---|---|---|---|
+| `GET` | `/api/tenant-user-role-grants` | `GetTenantUserRoleGrants` | List active/revoked tenant-local role grants visible in the resolved tenant context. | HAL collection of `TenantUserRoleGrantListDto` |
+| `GET` | `/api/tenant-user-role-grants/{id}` | `GetTenantUserRoleGrantById` | Retrieve one tenant-local role grant. | HAL resource of `TenantUserRoleGrantDto` |
+| `POST` | `/api/tenant-user-role-grants` | `CreateTenantUserRoleGrant` | Grant a tenant-scoped role to an active `TenantUser`. | `BaseCommandResponse<Guid>` |
+| `DELETE` | `/api/tenant-user-role-grants/{id}` | `RevokeTenantUserRoleGrant` | Revoke a grant and populate revoke audit fields. | `204 No Content` |
+
+Contract rules:
+
+- Create accepts `TenantUserId` and tenant-scoped `RoleId`; tenant identity is derived from `ITenantContext`, not request body `TenantId`.
+- Handlers validate that the `TenantUser` belongs to the resolved tenant, is active, is not soft-deleted, and that the role has tenant scope.
+- Grant changes are create/revoke, not update-in-place. HAL detail resources may expose `revoke`; collection resources may expose `create`; clients must render actions from `_links`.
+- Cerbos/local authorization uses resource kind `islamuevent_tenant_user_role_grant`.
 
 ---
 
@@ -635,11 +653,12 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 
 ## OpenAPI Export And Client Generation
 
-1. Building `Explore.API/Explore.API.csproj` runs ASP.NET Core build-time OpenAPI generation and refreshes the checked-in `Explore.API/swagger.json` contract.
+1. Building `Explore.API/Explore.API.csproj` runs ASP.NET Core build-time OpenAPI generation and refreshes the checked-in `schemas/openapi.json` contract.
 2. Contract invariant and parity tests assert the runtime `/openapi/event-api.json` shape without writing generated files.
-3. HAL schema transformers shape OpenAPI schemas so generated clients preserve HAL extension data.
-4. `Explore.Blazor.Client/Explore.Blazor.Client.csproj` uses `Explore.API/swagger.json` as NSwag input and regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` before `CoreCompile`.
-5. DTO changes should follow API-first regeneration workflow (see `docs/CONTRIBUTING.md`).
+3. `ApiContractInventoryGeneratorTests` writes the committed endpoint inventory to [API_CONTRACT_INVENTORY.md](API_CONTRACT_INVENTORY.md).
+4. HAL schema transformers shape OpenAPI schemas so generated clients preserve HAL extension data.
+5. `Explore.Blazor.Client/Explore.Blazor.Client.csproj` uses `schemas/openapi.json` as NSwag input and regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` before `CoreCompile`.
+6. DTO changes should follow API-first regeneration workflow (see `docs/CONTRIBUTING.md`).
 
 ---
 

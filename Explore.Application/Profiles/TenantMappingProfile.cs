@@ -1,10 +1,10 @@
-// ABOUTME: AutoMapper profile for Tenant, TenantNavigationLink, TenantMember, and Footer entities.
+// ABOUTME: AutoMapper profile for Tenant, TenantNavigationLink, tenant role grants, and Footer entities.
 // ABOUTME: Split from monolithic MappingProfile.cs for domain-cohesion.
 
 using AutoMapper;
 using Explore.Application.DTOs.Footer;
 using Explore.Application.DTOs.Tenant;
-using Explore.Application.DTOs.TenantMember;
+using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Domain;
 
 namespace Explore.Application.Profiles;
@@ -22,18 +22,19 @@ public class TenantMappingProfile : Profile
         CreateMap<CreateTenantNavigationLinkDto, TenantNavigationLink>();
         CreateMap<UpdateTenantNavigationLinkDto, TenantNavigationLink>();
 
-        CreateMap<TenantMember, TenantMemberDto>()
-            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
-            .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
+        CreateMap<TenantUserRoleGrant, TenantUserRoleGrantDto>()
+            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.TenantUser.UserId))
+            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.TenantUser.User != null ? src.TenantUser.User.Email : null))
+            .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.TenantUser.User != null ? $"{src.TenantUser.User.FirstName} {src.TenantUser.User.LastName}" : null))
             .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
             .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
-        CreateMap<TenantMember, TenantMemberListDto>()
-            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
-            .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
+        CreateMap<TenantUserRoleGrant, TenantUserRoleGrantListDto>()
+            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.TenantUser.UserId))
+            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.TenantUser.User != null ? src.TenantUser.User.Email : null))
+            .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.TenantUser.User != null ? $"{src.TenantUser.User.FirstName} {src.TenantUser.User.LastName}" : null))
             .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
             .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
-        CreateMap<CreateTenantMemberDto, TenantMember>();
-        CreateMap<UpdateTenantMemberDto, TenantMember>();
+        CreateMap<CreateTenantUserRoleGrantDto, TenantUserRoleGrant>();
 
         CreateMap<TenantFooterLink, FooterLinkItemDto>();
 

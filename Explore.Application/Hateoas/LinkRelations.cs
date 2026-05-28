@@ -1,3 +1,6 @@
+// ABOUTME: Central link-relation catalog for HAL resources emitted by the API.
+// ABOUTME: Separates standard IANA relations from ISLAMU Event custom action relations.
+
 namespace Explore.Application.Hateoas;
 
 /// <summary>
@@ -240,6 +243,11 @@ public static class LinkRelations
     /// Cancel action for events or registrations.
     /// </summary>
     public const string Cancel = "cancel";
+
+    /// <summary>
+    /// Revoke action for grants, invitations, or other auditable authority records.
+    /// </summary>
+    public const string Revoke = "revoke";
 
     #endregion
 }

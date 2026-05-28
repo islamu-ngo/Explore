@@ -38,6 +38,7 @@ public static class InfrastructureServicesRegistration
         // Instance admin can lock settings to enforce SaaS-wide SMTP or let tenants override
         services.AddScoped<ISmtpConfigResolver, SmtpConfigResolver>();
         services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddSingleton<IEmailDispatchDrainService, EmailDispatchDrainService>();
         services.AddScoped<IEmailUnsubscribeTokenService, EmailUnsubscribeTokenService>();
 
         // Object storage: provider-agnostic S3-compatible via AWS SDK
@@ -219,6 +220,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IMessagingConfigResolver, MessagingConfigResolver>();
         services.AddScoped<RuntimeMessagingProvider>();
         services.AddScoped<IMessagingProvider>(sp => sp.GetRequiredService<RuntimeMessagingProvider>());
+        services.AddSingleton<IEmailDispatchTransport, RabbitMqEmailDispatchTransport>();
 
         // Generic Outbox Processor settings and dispatcher
         services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));
@@ -227,6 +229,10 @@ public static class InfrastructureServicesRegistration
             .Bind(configuration.GetSection(EmailDispatchProcessorSettings.SectionName))
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<EmailDispatchProcessorSettings>, EmailDispatchProcessorSettingsValidator>();
+        services.AddOptions<EmailDispatchRabbitMqSettings>()
+            .Bind(configuration.GetSection(EmailDispatchRabbitMqSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<EmailDispatchRabbitMqSettings>, EmailDispatchRabbitMqSettingsValidator>();
 
         // PDS Synchronization services
         services.Configure<PdsSyncSettings>(configuration.GetSection(PdsSyncSettings.SectionName));

@@ -144,9 +144,19 @@ public class MachineScopeMappingTests
 
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.Tenant, AuthorizationActions.Update)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.TenantSetting, AuthorizationActions.Update)).IsTrue();
-        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.TenantMember, AuthorizationActions.Create)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.TenantUserRoleGrant, AuthorizationActions.Create)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.Category, AuthorizationActions.Create)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.Actor, AuthorizationActions.View)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Update)).IsTrue();
+    }
+
+    [Test]
+    public async Task ScopesPermit_WithNonAdminTenantScope_DeniesEmailDispatchOperations()
+    {
+        var scopes = new[] { ExternalApiKeyScopes.EventsWrite };
+
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.View)).IsFalse();
+        await Assert.That(MachineScopeMapping.ScopesPermit(scopes, ResourceKinds.EmailDispatch, AuthorizationActions.EmailDispatches.Update)).IsFalse();
     }
 
     [Test]

@@ -38,7 +38,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// <para>Uses real Keycloak JWTs for authentication and NSubstitute mocks for
 /// IAdminContext/ITenantContext to control which role each test persona has,
 /// since test users in Keycloak don't have matching domain state
-/// (PlatformUserRoles, TenantMembers, etc.) in the InMemory DB.</para>
+/// (PlatformUserRoles, tenant role grants, etc.) in the InMemory DB.</para>
 /// </summary>
 [Category(TestCategories.Security)]
 [ClassDataSource<KeycloakOnlyFixture>(Shared = SharedType.PerAssembly)]

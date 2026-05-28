@@ -81,6 +81,94 @@ public class TenantPublicExperienceAdminServiceTests
     }
 
     [Test]
+    public async Task ApplySingleTenantPolicySettingsAsync_MapsPolicyAndAiAssistantTenantSettings()
+    {
+        // Arrange
+        var model = new TenantPolicySettingsModel();
+
+        _apiClient.GetTenantScopedSettingsAsync(
+                "Events",
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns(new SettingGroupResponseDto
+            {
+                Category = "Events",
+                Settings =
+                [
+                    Setting("events.user_submission_enabled", "false"),
+                    Setting("events.organization_submission_enabled", "true"),
+                    Setting("events.group_submission_enabled", "false"),
+                    Setting("events.require_approval", "true"),
+                    Setting("events.card_click_opens_detail_page", "true")
+                ]
+            });
+        _apiClient.GetTenantScopedSettingsAsync(
+                "Organizations",
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns(new SettingGroupResponseDto
+            {
+                Category = "Organizations",
+                Settings =
+                [
+                    Setting("organizations.verification_required", "false"),
+                    Setting("organizations.self_registration_enabled", "false")
+                ]
+            });
+        _apiClient.GetTenantScopedSettingsAsync(
+                "Groups",
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns(new SettingGroupResponseDto
+            {
+                Category = "Groups",
+                Settings =
+                [
+                    Setting("groups.self_registration_enabled", "false")
+                ]
+            });
+        _apiClient.GetTenantScopedSettingsAsync(
+                "AiAssistant",
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns(new SettingGroupResponseDto
+            {
+                Category = "AiAssistant",
+                Settings =
+                [
+                    Setting("ai_assistant.enabled", "true"),
+                    Setting("ai_assistant.endpoint_url", "\"https://ai.example.test\""),
+                    Setting("ai_assistant.api_key", "\"secret-ref\""),
+                    Setting("ai_assistant.allow_anonymous_access", "true")
+                ]
+            });
+
+        // Act
+        await _service.ApplySingleTenantPolicySettingsAsync(model);
+
+        // Assert
+        await Assert.That(model.AllowUserSubmittedEvents).IsFalse();
+        await Assert.That(model.AllowOrganizationSubmittedEvents).IsTrue();
+        await Assert.That(model.AllowGroupSubmittedEvents).IsFalse();
+        await Assert.That(model.RequireEventApproval).IsTrue();
+        await Assert.That(model.EventCardClickOpensDetailPage).IsTrue();
+        await Assert.That(model.RequireOrganizationVerification).IsFalse();
+        await Assert.That(model.AllowOrganizationSelfRegistration).IsFalse();
+        await Assert.That(model.AllowGroupSelfRegistration).IsFalse();
+        await Assert.That(model.AiAssistantEnabled).IsTrue();
+        await Assert.That(model.AiAssistantEndpointUrl).IsEqualTo("https://ai.example.test");
+        await Assert.That(model.AiAssistantApiKey).IsEqualTo("secret-ref");
+        await Assert.That(model.AiAssistantAllowAnonymousAccess).IsTrue();
+        await Assert.That(model.CanTenantOmitVerification).IsTrue();
+        await Assert.That(model.CanOverrideEventCardClickBehavior).IsTrue();
+        await Assert.That(model.CanOverrideAiAssistant).IsTrue();
+    }
+
+    [Test]
     public async Task SaveAsync_UsesStrictBatchAndNormalizesEditableValues()
     {
         // Arrange
@@ -228,7 +316,7 @@ public class TenantPublicExperienceAdminServiceTests
     }
 
     [Test]
-    public async Task SaveSingleTenantPolicySettingsAsync_UsesTenantSettingBatches()
+    public async Task SaveSingleTenantPolicySettingsAsync_UsesTenantSettingBatches_WhenAiOverrideFlagIsFalse()
     {
         // Arrange
         var model = new TenantPolicySettingsModel
@@ -241,7 +329,7 @@ public class TenantPublicExperienceAdminServiceTests
             RequireOrganizationVerification = true,
             AllowOrganizationSelfRegistration = false,
             AllowGroupSelfRegistration = true,
-            CanOverrideAiAssistant = true,
+            CanOverrideAiAssistant = false,
             AiAssistantEnabled = true,
             AiAssistantEndpointUrl = "https://ai.example.test",
             AiAssistantApiKey = "secret-ref",
@@ -271,6 +359,7 @@ public class TenantPublicExperienceAdminServiceTests
         await Assert.That(batches[0].Values["events.group_submission_enabled"]).IsEqualTo("false");
         await Assert.That(batches[1].Values["organizations.verification_required"]).IsEqualTo("true");
         await Assert.That(batches[2].Values["groups.self_registration_enabled"]).IsEqualTo("true");
+        await Assert.That(batches[3].Values["ai_assistant.enabled"]).IsEqualTo("true");
         await Assert.That(batches[3].Values["ai_assistant.endpoint_url"]).IsEqualTo("https://ai.example.test");
     }
 

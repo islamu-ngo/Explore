@@ -19,7 +19,8 @@ public class CreateTenantCommandHandlerTests
     private static readonly Guid TestUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000222");
 
     private readonly ITenantRepository _tenantRepository;
-    private readonly ITenantMemberRepository _tenantMemberRepository;
+    private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrantRepository;
+    private readonly ITenantUserRepository _tenantUserRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
     private readonly ILogger<CreateTenantCommandHandler> _logger;
@@ -29,7 +30,8 @@ public class CreateTenantCommandHandlerTests
     public CreateTenantCommandHandlerTests()
     {
         _tenantRepository = Substitute.For<ITenantRepository>();
-        _tenantMemberRepository = Substitute.For<ITenantMemberRepository>();
+        _tenantUserRoleGrantRepository = Substitute.For<ITenantUserRoleGrantRepository>();
+        _tenantUserRepository = Substitute.For<ITenantUserRepository>();
         _roleRepository = Substitute.For<IRoleRepository>();
         _tenantBrandingProvisioningService = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
         _tenantBrandingProvisioningService
@@ -46,10 +48,17 @@ public class CreateTenantCommandHandlerTests
                 var op = callInfo.Arg<Func<CancellationToken, Task<Guid>>>();
                 return op(CancellationToken.None);
             });
+        _tenantUserRepository.Create(Arg.Any<TenantUser>()).Returns(callInfo =>
+        {
+            var tenantUser = callInfo.Arg<TenantUser>();
+            tenantUser.Id = tenantUser.Id == Guid.Empty ? Guid.NewGuid() : tenantUser.Id;
+            return tenantUser;
+        });
 
         _handler = new CreateTenantCommandHandler(
             _tenantRepository,
-            _tenantMemberRepository,
+            _tenantUserRoleGrantRepository,
+            _tenantUserRepository,
             _roleRepository,
             _tenantBrandingProvisioningService,
             _logger,
@@ -70,7 +79,7 @@ public class CreateTenantCommandHandlerTests
         await Assert.That(result.Id).IsEqualTo(createdTenant.Id);
         await _tenantRepository.Received(1).Create(Arg.Any<Tenant>());
         await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(createdTenant.Id, dto.FullName, Arg.Any<CancellationToken>());
-        await _tenantMemberRepository.DidNotReceive().Create(Arg.Any<TenantMember>());
+        await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
     }
 
     [Test]
@@ -88,26 +97,34 @@ public class CreateTenantCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenAssignCurrentUserAsTenantAdmin_CreatesTenantMember()
+    public async Task Handle_WhenAssignCurrentUserAsTenantAdmin_CreatesTenantUserRoleGrant()
     {
         var dto = CreateValidDto(assignAdmin: true);
         var tenantId = Guid.NewGuid();
         _tenantRepository.GetTenantBySlug(dto.Slug).Returns((Tenant?)null);
         _tenantRepository.Create(Arg.Any<Tenant>()).Returns(new Tenant { Id = tenantId, FullName = dto.FullName, Slug = dto.Slug, TenantStatus = null! });
         _roleRepository.GetByMasterCodeAsync("tenant.admin").Returns(new Role { Id = (int)RoleEnum.TenantAdmin, MasterCode = "tenant.admin", FullName = "Admin", Scope = RoleScopeEnum.Tenant });
-        _tenantMemberRepository.GetByTenantAndUser(tenantId, TestUserId).Returns((TenantMember?)null);
+        _tenantUserRoleGrantRepository.GetByTenantAndUser(tenantId, TestUserId).Returns((TenantUserRoleGrant?)null);
+        _tenantUserRepository.GetByTenantAndUserAsync(tenantId, TestUserId, Arg.Any<CancellationToken>()).Returns((TenantUser?)null);
 
         var result = await _handler.Handle(
             new CreateTenantCommand { TenantDto = dto, RequestingUserId = TestUserId },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _tenantMemberRepository.Received(1).Create(Arg.Is<TenantMember>(m =>
-            m.TenantId == tenantId && m.UserId == TestUserId && m.RoleId == (int)RoleEnum.TenantAdmin));
+        await _tenantUserRepository.Received(1).Create(Arg.Is<TenantUser>(tenantUser =>
+            tenantUser.TenantId == tenantId &&
+            tenantUser.UserId == TestUserId &&
+            tenantUser.StatusId == (int)TenantUserStatusEnum.Active));
+        await _tenantUserRoleGrantRepository.Received(1).Create(Arg.Is<TenantUserRoleGrant>(grant =>
+            grant.TenantId == tenantId &&
+            grant.RoleId == (int)RoleEnum.TenantAdmin &&
+            grant.RoleScopeId == (int)RoleScopeEnum.Tenant &&
+            grant.GrantedBy == TestUserId));
     }
 
     [Test]
-    public async Task Handle_WhenAssignAdminFlagFalse_DoesNotCreateTenantMember()
+    public async Task Handle_WhenAssignAdminFlagFalse_DoesNotCreateTenantUserRoleGrant()
     {
         var dto = CreateValidDto(assignAdmin: false);
         var tenantId = Guid.NewGuid();
@@ -119,27 +136,27 @@ public class CreateTenantCommandHandlerTests
             CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _tenantMemberRepository.DidNotReceive().Create(Arg.Any<TenantMember>());
+        await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
         await _roleRepository.DidNotReceive().GetByMasterCodeAsync(Arg.Any<string>());
     }
 
     [Test]
-    public async Task Handle_WhenUserAlreadyTenantMember_DoesNotCreateDuplicate()
+    public async Task Handle_WhenUserAlreadyHasTenantUserRoleGrant_DoesNotCreateDuplicate()
     {
         var dto = CreateValidDto(assignAdmin: true);
         var tenantId = Guid.NewGuid();
         _tenantRepository.GetTenantBySlug(dto.Slug).Returns((Tenant?)null);
         _tenantRepository.Create(Arg.Any<Tenant>()).Returns(new Tenant { Id = tenantId, FullName = dto.FullName, Slug = dto.Slug, TenantStatus = null! });
         _roleRepository.GetByMasterCodeAsync("tenant.admin").Returns(new Role { Id = (int)RoleEnum.TenantAdmin, MasterCode = "tenant.admin", FullName = "Admin", Scope = RoleScopeEnum.Tenant });
-        _tenantMemberRepository.GetByTenantAndUser(tenantId, TestUserId)
-            .Returns(new TenantMember { TenantId = tenantId, UserId = TestUserId, Tenant = null!, User = null!, Role = null!, RoleId = (int)RoleEnum.TenantAdmin });
+        _tenantUserRoleGrantRepository.GetByTenantAndUser(tenantId, TestUserId)
+            .Returns(new TenantUserRoleGrant { TenantId = tenantId, TenantUserId = Guid.NewGuid(), Tenant = null!, TenantUser = null!, Role = null!, RoleId = (int)RoleEnum.TenantAdmin });
 
         var result = await _handler.Handle(
             new CreateTenantCommand { TenantDto = dto, RequestingUserId = TestUserId },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _tenantMemberRepository.DidNotReceive().Create(Arg.Any<TenantMember>());
+        await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
     }
 
     [Test]
@@ -157,7 +174,7 @@ public class CreateTenantCommandHandlerTests
             CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _tenantMemberRepository.DidNotReceive().Create(Arg.Any<TenantMember>());
+        await _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
     }
 
     private static CreateTenantDto CreateValidDto(bool assignAdmin = false) =>

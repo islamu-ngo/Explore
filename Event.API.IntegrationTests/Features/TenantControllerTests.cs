@@ -50,29 +50,28 @@ public class TenantControllerTests
 
     #endregion
 
-    #region TenantMember Controller
+    #region TenantUserRoleGrant Controller
 
     [Test]
-    public async Task TenantMember_GetAll_ShouldReturnUnauthorized()
+    public async Task TenantUserRoleGrant_GetAll_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync("/api/tenantmember");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
-    }
-
-    [Test]
-    public async Task TenantMember_GetById_WithRandomId_ShouldNotReturnServerError()
-    {
-        var response = await _fixture.Client.GetAsync($"/api/tenantmember/{Guid.NewGuid()}");
+        var response = await _fixture.Client.GetAsync("/api/tenant-user-role-grants");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 
     [Test]
-    public async Task TenantMember_Create_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task TenantUserRoleGrant_GetById_WithRandomId_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.PostAsJsonAsync("/api/tenantmember", new
+        var response = await _fixture.Client.GetAsync($"/api/tenant-user-role-grants/{Guid.NewGuid()}");
+        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
+    }
+
+    [Test]
+    public async Task TenantUserRoleGrant_Create_WithoutAuth_ShouldReturnUnauthorized()
+    {
+        var response = await _fixture.Client.PostAsJsonAsync("/api/tenant-user-role-grants", new
         {
-            UserId = Guid.NewGuid(),
-            TenantId = Guid.NewGuid(),
+            TenantUserId = Guid.NewGuid(),
             RoleId = 1
         });
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);

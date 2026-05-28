@@ -23,7 +23,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 {
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly IPlatformUserRoleRepository _platformUserRoleRepository;
-    private readonly ITenantMemberRepository _tenantMemberRepository;
+    private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrantRepository;
     private readonly ITenantUserRepository _tenantUserRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IUserRepository _userRepository;
@@ -42,7 +42,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     public CompleteInstanceOnboardingCommandHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         IPlatformUserRoleRepository platformUserRoleRepository,
-        ITenantMemberRepository tenantMemberRepository,
+        ITenantUserRoleGrantRepository tenantUserRoleGrantRepository,
         ITenantUserRepository tenantUserRepository,
         IRoleRepository roleRepository,
         IUserRepository userRepository,
@@ -60,7 +60,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _platformUserRoleRepository = platformUserRoleRepository;
-        _tenantMemberRepository = tenantMemberRepository;
+        _tenantUserRoleGrantRepository = tenantUserRoleGrantRepository;
         _tenantUserRepository = tenantUserRepository;
         _roleRepository = roleRepository;
         _userRepository = userRepository;
@@ -548,9 +548,9 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private async Task EnsureDefaultTenantAdministratorAsync(Guid tenantId, User user)
     {
         var userId = user.Id;
-        await EnsureActiveTenantUserAsync(tenantId, user);
+        var tenantUser = await EnsureActiveTenantUserAsync(tenantId, user);
 
-        var tenantMember = await _tenantMemberRepository.GetByTenantAndUser(tenantId, userId);
+        var tenantUserRoleGrant = await _tenantUserRoleGrantRepository.GetByTenantAndUser(tenantId, userId);
         
         // Resolve the tenant admin role using the canonical master code.
         var tenantAdminRole = await _roleRepository.GetByMasterCodeAsync("tenant.admin");
@@ -565,34 +565,35 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             throw new InvalidOperationException("Critical system error: Tenant Admin role not found in database.");
         }
 
-        if (tenantMember == null)
+        if (tenantUserRoleGrant == null)
         {
-            await _tenantMemberRepository.Create(new TenantMember
+            await _tenantUserRoleGrantRepository.Create(new TenantUserRoleGrant
             {
                 TenantId = tenantId,
                 Tenant = null!,
-                UserId = userId,
-                User = null!,
+                TenantUserId = tenantUser.Id,
+                TenantUser = null!,
                 RoleId = tenantAdminRole.Id,
                 Role = null!,
+                RoleScopeId = (int)RoleScopeEnum.Tenant,
                 GrantedAt = DateTime.UtcNow,
                 GrantedBy = userId
             });
             return;
         }
 
-        if (tenantMember.RoleId == tenantAdminRole.Id) return;
+        if (tenantUserRoleGrant.RoleId == tenantAdminRole.Id) return;
         
-        tenantMember.RoleId = tenantAdminRole.Id;
-        await _tenantMemberRepository.Update(tenantMember);
+        tenantUserRoleGrant.RoleId = tenantAdminRole.Id;
+        await _tenantUserRoleGrantRepository.Update(tenantUserRoleGrant);
     }
 
-    private async Task EnsureActiveTenantUserAsync(Guid tenantId, User user)
+    private async Task<TenantUser> EnsureActiveTenantUserAsync(Guid tenantId, User user)
     {
         var tenantUser = await _tenantUserRepository.GetByTenantAndUserAsync(tenantId, user.Id);
         if (tenantUser == null)
         {
-            await _tenantUserRepository.Create(new TenantUser
+            return await _tenantUserRepository.Create(new TenantUser
             {
                 TenantId = tenantId,
                 Tenant = null!,
@@ -605,12 +606,11 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = user.Id
             });
-            return;
         }
 
         if (tenantUser.StatusId == (int)TenantUserStatusEnum.Active && !tenantUser.IsDeleted)
         {
-            return;
+            return tenantUser;
         }
 
         tenantUser.StatusId = (int)TenantUserStatusEnum.Active;
@@ -620,5 +620,6 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         tenantUser.UpdatedAt = DateTime.UtcNow;
         tenantUser.UpdatedBy = user.Id;
         await _tenantUserRepository.Update(tenantUser);
+        return tenantUser;
     }
 }

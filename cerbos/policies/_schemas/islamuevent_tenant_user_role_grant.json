@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for tenant_user_role_grant resources. Populated by ResourceDescriptors.TenantUserRoleGrant.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+    },
+    "tenantUserId": {
+      "type": "string",
+      "description": "Tenant-local user state that the grant belongs to."
+    },
+    "userId": {
+      "type": "string",
+      "description": "Global user identifier for the tenant-local user."
+    }
+  },
+  "required": ["tenantId", "tenantUserId", "userId"]
+}

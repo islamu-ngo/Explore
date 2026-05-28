@@ -1,3 +1,6 @@
+// ABOUTME: Central route name catalog for API endpoint metadata and HAL link generation.
+// ABOUTME: Keeps controller route names stable and discoverable for OpenAPI and clients.
+
 namespace Explore.API.Hateoas;
 
 /// <summary>
@@ -251,6 +254,8 @@ public static class RouteNames
     public const string GetEmailDispatchStatus = "GetEmailDispatchStatus";
     public const string PauseEmailDispatchTenant = "PauseEmailDispatchTenant";
     public const string ResumeEmailDispatchTenant = "ResumeEmailDispatchTenant";
+    public const string ParkEmailDispatch = "ParkEmailDispatch";
+    public const string ReplayEmailDispatch = "ReplayEmailDispatch";
 
     #endregion
 
@@ -276,13 +281,12 @@ public static class RouteNames
 
     #endregion
 
-    #region Tenant Member Routes
+    #region Tenant User Role Grant Routes
 
-    public const string GetTenantMembers = "GetTenantMembers";
-    public const string GetTenantMemberById = "GetTenantMemberById";
-    public const string CreateTenantMember = "CreateTenantMember";
-    public const string UpdateTenantMember = "UpdateTenantMember";
-    public const string DeleteTenantMember = "DeleteTenantMember";
+    public const string GetTenantUserRoleGrants = "GetTenantUserRoleGrants";
+    public const string GetTenantUserRoleGrantById = "GetTenantUserRoleGrantById";
+    public const string CreateTenantUserRoleGrant = "CreateTenantUserRoleGrant";
+    public const string RevokeTenantUserRoleGrant = "RevokeTenantUserRoleGrant";
 
     #endregion
 

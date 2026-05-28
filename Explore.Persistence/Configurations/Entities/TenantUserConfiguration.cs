@@ -39,6 +39,9 @@ public class TenantUserConfiguration : IEntityTypeConfiguration<TenantUser>
             .IsUnique()
             .HasDatabaseName("ix_tenantusers_tenant_user");
 
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id })
+            .HasName("ak_tenant_users_tenant_id_id");
+
         builder.HasIndex(e => new { e.TenantId, e.ActorId })
             .IsUnique()
             .HasFilter("actor_id IS NOT NULL")

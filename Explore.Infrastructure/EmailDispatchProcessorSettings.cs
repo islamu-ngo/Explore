@@ -8,6 +8,7 @@ public class EmailDispatchProcessorSettings
     public const string SectionName = "EmailDispatchProcessor";
 
     public bool Enabled { get; set; } = true;
+    public EmailDispatchProcessorMode Mode { get; set; } = EmailDispatchProcessorMode.TickerQ;
     public int PollingIntervalSeconds { get; set; } = 5;
     public int BatchSize { get; set; } = 50;
     public int MaxAttemptCount { get; set; } = 5;
@@ -22,4 +23,11 @@ public class EmailDispatchProcessorSettings
         var delay = InitialRetryDelaySeconds * (int)Math.Pow(2, exponent);
         return Math.Min(delay, MaxRetryDelaySeconds);
     }
+}
+
+public enum EmailDispatchProcessorMode
+{
+    Disabled = 0,
+    TickerQ = 1,
+    HostedService = 2
 }

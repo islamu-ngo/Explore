@@ -243,9 +243,9 @@ public class CoverageGovernanceTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Governance_Admin_TenantMemberCreate_DeniesRegularUser()
+    public async Task Governance_Admin_TenantUserRoleGrantCreate_DeniesRegularUser()
     {
-        await AssertRegularUserDenied(HttpMethod.Post, "/api/tenantmember");
+        await AssertRegularUserDenied(HttpMethod.Post, "/api/tenant-user-role-grants");
     }
 
     #endregion

@@ -380,6 +380,10 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _instanceOnboardingService.GetActiveTenantCountAsync().Returns(1);
 
         _tenantOnboardingService.GetSettingsAsync().Returns(new TenantPolicySettingsModel());
+        _publicExperienceAdminService.ApplySingleTenantPolicySettingsAsync(
+                Arg.Any<TenantPolicySettingsModel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         _publicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(
                 Arg.Any<TenantPolicySettingsModel>(),
                 Arg.Any<CancellationToken>())

@@ -1,3 +1,6 @@
+// ABOUTME: API host composition root for services, middleware, OpenAPI, and development utilities.
+// ABOUTME: Wires Clean Architecture layers, tenant-aware HTTP pipeline, and migration/admin endpoints.
+
 using System.IO.Compression;
 using System.Net;
 using Explore.API.BackgroundServices;
@@ -14,6 +17,7 @@ using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Explore.Infrastructure.HealthChecks;
 using Explore.Persistence;
+using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
 using Explore.Secrets.Extensions;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -27,6 +31,7 @@ using OpenFeature.Hosting.Providers.Memory;
 using Scalar.AspNetCore;
 using Serilog;
 using static Microsoft.AspNetCore.Http.StatusCodes;
+using TickerQ.DependencyInjection;
 
 // Graceful shutdown tracking for zero-downtime deployments
 // SIGTERM: 25 second grace period (health returns 503, still accepts requests)
@@ -107,6 +112,15 @@ builder.Services.ConfigureApplicationServices();
 builder.Services.ConfigureInfrastructureServices(builder.Configuration);
 builder.Services.Configure<CerbosPolicyBootSyncOptions>(
     builder.Configuration.GetSection(CerbosPolicyBootSyncOptions.SectionName));
+var emailDispatchProcessorSettings = builder.Configuration
+    .GetSection(EmailDispatchProcessorSettings.SectionName)
+    .Get<EmailDispatchProcessorSettings>() ?? new EmailDispatchProcessorSettings();
+var useTickerQEmailDispatch = emailDispatchProcessorSettings.Enabled
+    && emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.TickerQ;
+builder.Services.AddApiTickerQScheduler(
+    builder.Configuration,
+    builder.Environment,
+    enabled: useTickerQEmailDispatch && !isOpenApiGeneration);
 
 // Skip DbContext registration if running in Testing environment (integration tests register their own)
 // or build-time OpenAPI generation (the endpoint graph is needed, not live persistence).
@@ -114,7 +128,8 @@ var skipDbContext = builder.Environment.IsEnvironment("Testing") || isOpenApiGen
 builder.Services.ConfigurePersistenceServices(
     builder.Configuration,
     skipDbContextRegistration: skipDbContext,
-    skipLookupCacheInitializer: isOpenApiGeneration);
+    skipLookupCacheInitializer: isOpenApiGeneration,
+    environmentName: builder.Environment.EnvironmentName);
 
 // Register shared tenant context; API middleware is authoritative for normal tenant resolution.
 builder.Services.AddScoped<ITenantResolverService, Explore.Infrastructure.Services.TenantResolverService>();
@@ -143,11 +158,17 @@ builder.Services.AddControllers()
             Explore.Application.Serialization.ExploreJsonContext.Default);
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow;
         // Serialize all enums as strings by default — matches client DTO expectations
         // (e.g. DeploymentModeDto.Mode) and industry best practice for public APIs.
         options.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory =
+        Explore.API.ExceptionHandling.ApiValidationProblemDetailsFactory.CreateInvalidModelStateResponse;
+});
 
 builder.Services.AddApiExceptionHandling();
 
@@ -202,7 +223,11 @@ if (!isOpenApiGeneration)
 if (!isOpenApiGeneration)
 {
     builder.Services.AddHostedService<OutboxProcessor>();
-    builder.Services.AddHostedService<EmailDispatchProcessor>();
+    if (emailDispatchProcessorSettings.Enabled &&
+        emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.HostedService)
+    {
+        builder.Services.AddHostedService<EmailDispatchProcessor>();
+    }
 }
 
 // Register zero-touch Cerbos policy package boot synchronization.
@@ -263,6 +288,10 @@ builder.Services.AddHealthChecks()
         "email-dispatch",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "email", "dispatch", "infrastructure"])
+    .AddCheck<EmailDispatchRabbitMqHealthCheck>(
+        "email-dispatch-rabbitmq",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "email", "dispatch", "rabbitmq", "infrastructure"])
     .AddCheck<CerbosReadinessHealthCheck>(
         "cerbos",
         failureStatus: HealthStatus.Unhealthy,
@@ -338,6 +367,7 @@ if (!builder.Environment.IsEnvironment("Testing") && !isOpenApiGeneration)
         {
             logger.LogInformation("Applying database migrations...");
             await db.Database.MigrateAsync();
+            await PostgresModelConstraintApplier.ApplyAsync(db);
             logger.LogInformation("Database migrations completed successfully.");
         }
         else
@@ -350,6 +380,13 @@ if (!builder.Environment.IsEnvironment("Testing") && !isOpenApiGeneration)
         // Run seeding (lookup tables in all environments, dev data in Development)
         await DatabaseSeeder.SeedAsync(db, app.Environment);
         logger.LogInformation("Database seeding completed.");
+
+        if (useTickerQEmailDispatch)
+        {
+            logger.LogInformation("Applying TickerQ scheduler migrations...");
+            await app.MigrateTickerQSchedulerAsync();
+            logger.LogInformation("TickerQ scheduler migrations completed successfully.");
+        }
     }
     catch (Exception ex)
     {
@@ -427,6 +464,7 @@ if (app.Environment.IsDevelopment())
             {
                 logger.LogInformation(" Applying database migrations...");
                 await context.Database.MigrateAsync();
+                await PostgresModelConstraintApplier.ApplyAsync(context);
                 logger.LogInformation(" Database migrations applied successfully!");
                 return Results.Ok(new { message = "Migrations applied successfully" });
             }
@@ -473,6 +511,10 @@ app.UseRequestLocalization();
 app.UseMiddleware<IdempotencyMiddleware>();
 app.UseRateLimiter();
 app.UseAuthorization();
+if (useTickerQEmailDispatch && TickerQSchedulerExtensions.IsTickerQSchedulerEnabled(app.Configuration, app.Environment))
+{
+    app.UseTickerQ();
+}
 app.UseOutputCache();
 
 // Performance: ETag / conditional requests (after output cache)

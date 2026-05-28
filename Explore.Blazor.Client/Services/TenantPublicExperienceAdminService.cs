@@ -10,6 +10,7 @@ namespace Explore.Blazor.Client.Services;
 public interface ITenantPublicExperienceAdminService
 {
     Task<TenantPublicExperienceAdminModel> GetSettingsAsync(CancellationToken cancellationToken = default);
+    Task ApplySingleTenantPolicySettingsAsync(TenantPolicySettingsModel model, CancellationToken cancellationToken = default);
     Task ApplyAnnouncementBarSettingsAsync(TenantPolicySettingsModel model, CancellationToken cancellationToken = default);
     Task<PublicExperienceAdminSaveResult> SaveAsync(TenantPublicExperienceAdminModel model, CancellationToken cancellationToken = default);
     Task<PublicExperienceAdminSaveResult> SaveSingleTenantPolicySettingsAsync(TenantPolicySettingsModel model, CancellationToken cancellationToken = default);
@@ -89,6 +90,84 @@ public sealed class TenantPublicExperienceAdminService(
         {
             logger.LogError(ex, "Failed to load tenant public experience settings.");
             return new TenantPublicExperienceAdminModel();
+        }
+    }
+
+    public async Task ApplySingleTenantPolicySettingsAsync(
+        TenantPolicySettingsModel model,
+        CancellationToken cancellationToken = default)
+    {
+        model.CanTenantOmitVerification = true;
+        model.CanOverrideEventCardClickBehavior = true;
+        model.CanOverrideAiAssistant = true;
+
+        try
+        {
+            Dictionary<string, EffectiveSettingDto> eventSettings = await GetTenantSettingsDictionaryAsync(
+                EventsCategory,
+                cancellationToken);
+            Dictionary<string, EffectiveSettingDto> organizationSettings = await GetTenantSettingsDictionaryAsync(
+                OrganizationsCategory,
+                cancellationToken);
+            Dictionary<string, EffectiveSettingDto> groupSettings = await GetTenantSettingsDictionaryAsync(
+                GroupsCategory,
+                cancellationToken);
+            Dictionary<string, EffectiveSettingDto> aiAssistantSettings = await GetTenantSettingsDictionaryAsync(
+                AiAssistantCategory,
+                cancellationToken);
+
+            model.AllowUserSubmittedEvents = GetBoolean(
+                eventSettings,
+                EventsUserSubmissionEnabledKey,
+                model.AllowUserSubmittedEvents);
+            model.AllowOrganizationSubmittedEvents = GetBoolean(
+                eventSettings,
+                EventsOrganizationSubmissionEnabledKey,
+                model.AllowOrganizationSubmittedEvents);
+            model.AllowGroupSubmittedEvents = GetBoolean(
+                eventSettings,
+                EventsGroupSubmissionEnabledKey,
+                model.AllowGroupSubmittedEvents);
+            model.RequireEventApproval = GetBoolean(
+                eventSettings,
+                EventsRequireApprovalKey,
+                model.RequireEventApproval);
+            model.EventCardClickOpensDetailPage = GetBoolean(
+                eventSettings,
+                EventsCardClickOpensDetailPageKey,
+                model.EventCardClickOpensDetailPage);
+            model.RequireOrganizationVerification = GetBoolean(
+                organizationSettings,
+                OrganizationsVerificationRequiredKey,
+                model.RequireOrganizationVerification);
+            model.AllowOrganizationSelfRegistration = GetBoolean(
+                organizationSettings,
+                OrganizationsSelfRegistrationEnabledKey,
+                model.AllowOrganizationSelfRegistration);
+            model.AllowGroupSelfRegistration = GetBoolean(
+                groupSettings,
+                GroupsSelfRegistrationEnabledKey,
+                model.AllowGroupSelfRegistration);
+            model.AiAssistantEnabled = GetBoolean(
+                aiAssistantSettings,
+                AiAssistantEnabledKey,
+                model.AiAssistantEnabled);
+            model.AiAssistantEndpointUrl = GetString(
+                aiAssistantSettings,
+                AiAssistantEndpointUrlKey,
+                model.AiAssistantEndpointUrl);
+            model.AiAssistantApiKey = GetString(
+                aiAssistantSettings,
+                AiAssistantApiKeyKey,
+                model.AiAssistantApiKey);
+            model.AiAssistantAllowAnonymousAccess = GetBoolean(
+                aiAssistantSettings,
+                AiAssistantAllowAnonymousAccessKey,
+                model.AiAssistantAllowAnonymousAccess);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load single-tenant policy settings.");
         }
     }
 
@@ -222,11 +301,6 @@ public sealed class TenantPublicExperienceAdminService(
                 return groupsResult;
             }
 
-            if (!model.CanOverrideAiAssistant)
-            {
-                return PublicExperienceAdminSaveResult.Successful();
-            }
-
             return await SaveBatchAsync(
                 AiAssistantCategory,
                 new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -275,6 +349,19 @@ public sealed class TenantPublicExperienceAdminService(
             logger.LogError(ex, "Failed to save tenant announcement bar settings.");
             return PublicExperienceAdminSaveResult.Failed("Failed to save announcement bar settings.");
         }
+    }
+
+    private async Task<Dictionary<string, EffectiveSettingDto>> GetTenantSettingsDictionaryAsync(
+        string category,
+        CancellationToken cancellationToken)
+    {
+        SettingGroupResponseDto response = await apiClient.GetTenantScopedSettingsAsync(
+            category,
+            cancellationToken: cancellationToken);
+
+        return response.Settings
+            .Where(setting => !string.IsNullOrWhiteSpace(setting.Key))
+            .ToDictionary(setting => setting.Key, StringComparer.OrdinalIgnoreCase);
     }
 
     private static Dictionary<string, string> BuildEditableValues(TenantPublicExperienceAdminModel model)

@@ -11,6 +11,11 @@ public sealed class EmailDispatchProcessorSettingsValidator : IValidateOptions<E
     {
         var failures = new List<string>();
 
+        if (!Enum.IsDefined(options.Mode))
+        {
+            failures.Add("EmailDispatchProcessor:Mode must be Disabled, TickerQ, or HostedService.");
+        }
+
         if (options.PollingIntervalSeconds <= 0)
         {
             failures.Add("EmailDispatchProcessor:PollingIntervalSeconds must be greater than zero.");
