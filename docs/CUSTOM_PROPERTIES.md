@@ -1,5 +1,5 @@
-ABOUTME: Governance and lifecycle rules for Layer 3 custom properties across Event and EventSession.
-ABOUTME: Defines the boundary between Layer 1 core fields, Layer 2 typed sector schema, Layer 3 custom extensions, and aggregate read views.
+<!-- ABOUTME: Governance and lifecycle rules for Layer 3 custom properties across Event and EventSession. -->
+<!-- ABOUTME: Defines the boundary between Layer 1 core fields, Layer 2 typed sector schema, Layer 3 custom extensions, and aggregate read views. -->
 
 # Custom Properties
 
@@ -54,6 +54,14 @@ Rules:
 1. Tenant-owned properties must not use reserved platform or sector namespaces.
 2. Platform/system-owned definitions may force specific governance flags.
 3. Layer 3 keys must not collide with reserved Layer 2 meanings even if the namespace differs.
+
+Reserved Layer 2 semantic keys are centralized in
+`CustomPropertySemanticReservations` and enforced through
+`CustomPropertyGovernancePolicy` before duplicate reads or writes. This means a
+tenant namespace such as `tenant.community/madhab_id` or
+`tenant.sessions/offset_minutes` is rejected just like the corresponding
+`sector.*` definition, because the collision is semantic rather than only
+namespace-based.
 
 ## Collision Policy
 
@@ -116,6 +124,49 @@ Flag meanings are fixed.
 
 Handlers, jobs, and UI must not reinterpret these flags locally.
 
+## Quota Enforcement
+
+Custom-property quotas are resolved through `ICustomPropertyQuotaResolver`, backed by
+tenant settings, system settings, then `CustomPropertyQuotaSettingDefinitions`
+defaults. Quotas are application governance rules: handlers and application services
+enforce them before creating or replacing definitions, options, value rows, template
+payloads, or projection rebuild work.
+
+Current covered paths:
+
+- shared Organization/Group definitions enforce per-scope definition count and
+  per-definition option count,
+- event-local and session-local runtime definitions enforce per-resource definition
+  count and per-definition option count,
+- event and event-session templates enforce per-template definition count and
+  per-definition option count before publishing or replacement,
+- event and event-session template sync apply preflights the resulting runtime
+  definition count and per-definition option count before mutating runtime
+  definitions or options,
+- event and session multi-value writes enforce the maximum ordinal row count per
+  replacement payload,
+- projection rebuild and drain paths enforce tenant batch-size limits,
+- projection dirty-scope writes enforce tenant backlog limits before adding another
+  pending row,
+- governance reporting reads the same quota definitions for operator visibility.
+
+The 2026-05-28 Phase 4.1 audit found template and template-sync quota gaps. Those
+quota gaps are closed in the Phase 4.2 quota slice: template create/update paths
+now enforce option caps, session-template create/update paths enforce definition
+and option caps, and sync apply paths enforce the resulting runtime cardinality
+before writes.
+
+The Phase 4.2 semantic-reservation slice now prevents known event and session
+Layer 2 concepts from being recreated as Layer 3 fields under tenant namespaces.
+The purge/retire lifecycle slice makes normal delete and hard purge behavior
+explicit across shared, event, and session custom-property definitions.
+
+The Phase 4.3 operator-signal slice adds bounded projection status fields and
+metrics for projection quota rejections plus hard-purge decisions. These signals
+intentionally use bounded dimensions such as projection type, quota key, scope,
+outcome, and blocker category. Raw custom-property namespace/key pairs, display
+names, resource IDs, and purge reasons remain inspection data, not metric tags.
+
 ## Export And Moderation Boundaries
 
 Custom-property export and moderation payloads must be explicit consumers of
@@ -177,6 +228,31 @@ Lifecycle:
 - projection rows are invalidated when relevant definitions, flags, options, or values change,
 - projection rebuild tooling must be able to recompute them from source-of-truth rows,
 - projection tables are a read-side optimization, not a business-rule engine.
+
+## Definition Lifecycle
+
+Layer 3 definitions have two deletion paths:
+
+1. Normal delete is retirement. It deactivates and soft-deletes the definition,
+   retires options, soft-deletes values, and clears the default option. Event and
+   session deletes also remove derived projection rows in the same application
+   transaction. The `Namespace + Key` remains reserved while the retired
+   definition or historical rows remain, so re-creation is not accidental.
+2. Hard purge is an explicit audited operator action. It requires a non-blank
+   reason and is allowed only when the definition has no historical values, no
+   projection rows, no audit log references, and no template-sync provenance.
+   Dependency-free options may be physically deleted as part of the purge.
+
+Purge eligibility is enforced twice: handlers return structured blocked
+responses from a dependency summary, and repositories re-check dependencies
+before executing physical deletes. The EF model also treats definition-to-value
+and definition-to-projection relationships as restrictive rather than cascading,
+so future regenerated migrations should preserve value/projection history from
+accidental hard deletes.
+
+Template-sync retirement is not a hard purge. Retiring a template-derived
+definition or option deactivates the runtime row, clears defaults when needed,
+and preserves historical value rows and provenance for supportability.
 
 ## Template Provenance And Versioning
 

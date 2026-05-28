@@ -92,7 +92,7 @@ public class EventSessionCustomPropertyDefinitionConfiguration : IEntityTypeConf
         builder.HasMany(e => e.Values)
             .WithOne(v => v.Definition)
             .HasForeignKey(v => v.EventSessionCustomPropertyDefinitionId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.EventSessionId, e.Namespace, e.Key })
             .HasDatabaseName("ix_escpd_session_namespace_key")

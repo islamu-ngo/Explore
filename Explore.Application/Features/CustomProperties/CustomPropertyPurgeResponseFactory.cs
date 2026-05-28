@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.CustomPropertyDefinition;
+using Explore.Application.Responses;
 using Explore.Domain;
 
 namespace Explore.Application.Features.CustomProperties;
@@ -61,6 +62,18 @@ internal static class CustomPropertyPurgeResponseFactory
             Timestamp = DateTime.UtcNow
         };
 
+    public static void ApplyBlockedResponse(
+        BaseCommandResponse<CustomPropertyPurgeResultDto> response,
+        CustomPropertyPurgeDependencySummary summary,
+        string reason,
+        string message)
+    {
+        response.Success = false;
+        response.Message = message;
+        response.Id = ToResult(summary, false, null, reason);
+        response.Errors = ToBlockingErrors(summary).ToList();
+    }
+
     public static IReadOnlyList<string> ToBlockingErrors(CustomPropertyPurgeDependencySummary summary)
     {
         var errors = new List<string>();
@@ -86,5 +99,22 @@ internal static class CustomPropertyPurgeResponseFactory
         }
 
         return errors;
+    }
+
+    public static string GetPrimaryBlockerCategory(CustomPropertyPurgeDependencySummary summary)
+    {
+        if (summary.ValueCount > 0)
+            return "value";
+
+        if (summary.ProjectionCount > 0)
+            return "projection";
+
+        if (summary.AuditLogCount > 0)
+            return "audit_log";
+
+        if (summary.SyncProvenanceCount > 0)
+            return "sync_provenance";
+
+        return "none";
     }
 }

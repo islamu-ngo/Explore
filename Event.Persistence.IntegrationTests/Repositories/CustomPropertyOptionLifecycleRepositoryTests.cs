@@ -230,6 +230,7 @@ public sealed class CustomPropertyOptionLifecycleRepositoryTests
             .Options;
 
         var context = new ExploreDbContext(options);
+        context.EnableTenantFilterBypass("Custom property option lifecycle repository tests use a system context.");
         context.Database.EnsureCreated();
         return context;
     }

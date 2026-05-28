@@ -9,6 +9,7 @@ using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.Features.CustomPropertyDefinitions.Handlers.Commands;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Settings.Definitions;
@@ -86,6 +87,39 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Errors).Contains("Layer 3 custom properties cannot redefine reserved Layer 2 semantics.");
+        await _customPropertyDefinitionRepository.DidNotReceiveWithAnyArgs().CreateWithOptions(default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task Handle_WithTenantLayer2SemanticKey_ReturnsFailureBeforeRepositoryReads()
+    {
+        var tenantId = Guid.NewGuid();
+        var dto = CreateValidDto();
+        dto.Namespace = "tenant.community";
+        dto.Key = "Madhab Id";
+        dto.DisplayName = "Madhab";
+        var command = new CreateCustomPropertyDefinitionCommand
+        {
+            DefinitionDto = dto
+        };
+        var handler = new CreateCustomPropertyDefinitionCommandHandler(
+            _customPropertyDefinitionRepository,
+            new CustomPropertyGovernancePolicy(),
+            _quotaResolver,
+            _tenantContext,
+            _currentUserService,
+            _mapper,
+            _cache,
+            _unitOfWork);
+
+        _tenantContext.TenantId.Returns(tenantId);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains("Layer 3 custom properties cannot redefine reserved Layer 2 semantics.");
+        await _customPropertyDefinitionRepository.DidNotReceiveWithAnyArgs()
+            .ExistsScopedMachineKey(default, default!, default!, default!);
         await _customPropertyDefinitionRepository.DidNotReceiveWithAnyArgs().CreateWithOptions(default!, default!, default, default);
     }
 

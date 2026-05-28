@@ -54,6 +54,13 @@ public class RebuildEventCustomPropertyProjectionCommandHandler
 
             if (request.RequestDto.BatchSize.Value > maxBatchSize)
             {
+                var scope = "event_custom_property_projection_rebuild";
+                _metrics.RecordQuotaExceeded(
+                    request.RequestDto.TenantId.ToString(),
+                    IEventCustomPropertyProjectionUpdater.ProjectionName,
+                    CustomPropertyQuotaSettingDefinitions.ProjectionRebuildBatchSize.Key,
+                    scope);
+
                 response.SetQuotaExceeded(
                     "Projection rebuild request validation failed.",
                     new QuotaExceededDetails(
@@ -61,7 +68,7 @@ public class RebuildEventCustomPropertyProjectionCommandHandler
                         maxBatchSize,
                         null,
                         request.RequestDto.BatchSize.Value,
-                        "event_custom_property_projection_rebuild",
+                        scope,
                         request.RequestDto.TenantId));
                 return response;
             }

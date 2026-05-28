@@ -92,7 +92,7 @@ public class EventCustomPropertyDefinitionConfiguration : IEntityTypeConfigurati
         builder.HasMany(e => e.Values)
             .WithOne(v => v.Definition)
             .HasForeignKey(v => v.EventCustomPropertyDefinitionId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.EventId, e.Namespace, e.Key })
             .HasDatabaseName("ix_ecpd_event_namespace_key")

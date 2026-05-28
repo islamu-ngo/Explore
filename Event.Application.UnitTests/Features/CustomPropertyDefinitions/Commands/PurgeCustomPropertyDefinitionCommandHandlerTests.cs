@@ -111,4 +111,42 @@ public sealed class PurgeCustomPropertyDefinitionCommandHandlerTests
             && audit.EntityId == definitionId.ToString()
             && audit.Action == "CustomPropertyDefinitionPurged"));
     }
+
+    [Test]
+    public async Task Handle_WhenPurgePreflightBecomesStale_ReturnsBlockedResponseAndDoesNotAudit()
+    {
+        var definitionId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new PurgeCustomPropertyDefinitionCommand
+        {
+            Id = definitionId,
+            Reason = "operator cleanup"
+        };
+        var cleanSummary = new CustomPropertyPurgeDependencySummary(
+            definitionId,
+            tenantId,
+            "custom_property_definition",
+            OptionCount: 1,
+            ValueCount: 0,
+            ProjectionCount: 0,
+            AuditLogCount: 0,
+            SyncProvenanceCount: 0);
+        var blockedSummary = cleanSummary with { ValueCount = 1 };
+
+        _repository.GetPurgeDependencies(definitionId, Arg.Any<CancellationToken>())
+            .Returns(cleanSummary, blockedSummary);
+        _repository.PurgeDefinition(definitionId, Arg.Any<CancellationToken>()).Returns(false);
+        _unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<bool>>>().Invoke(CancellationToken.None));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Custom-property definition purge blocked.");
+        await Assert.That(result.Id).IsNotNull();
+        await Assert.That(result.Id!.Purged).IsFalse();
+        await Assert.That(result.Id.ValueCount).IsEqualTo(1);
+        await Assert.That(result.Errors).Contains(error => error.Contains("historical custom-property value", StringComparison.Ordinal));
+        await _auditLogRepository.DidNotReceiveWithAnyArgs().Create(default!);
+    }
 }

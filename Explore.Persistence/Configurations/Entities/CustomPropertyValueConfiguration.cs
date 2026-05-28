@@ -33,7 +33,7 @@ public class CustomPropertyValueConfiguration : IEntityTypeConfiguration<CustomP
         builder.HasOne(e => e.Definition)
             .WithMany(d => d.Values)
             .HasForeignKey(e => e.CustomPropertyDefinitionId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Option)
             .WithMany()

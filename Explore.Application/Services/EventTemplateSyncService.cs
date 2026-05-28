@@ -144,6 +144,8 @@ public class EventTemplateSyncService : IEventTemplateSyncService
                 var conflicts = new List<SyncConflictDto>();
                 var now = DateTimeOffset.UtcNow;
 
+                await EnforceResultingQuotaAsync(plan, diff, targetTemplate, trackedDefinitions, trackedEvent.TenantId, ct);
+
                 await ApplyAddedDefinitions(plan, diff, targetTemplate, trackedEvent, applied, skipped, trackedDefinitions, now, ct);
                 await ApplyModifiedDefinitions(plan, diff, targetTemplate, trackedDefinitions, applied, skipped, conflicts, now, ct);
                 await ApplyRetiredDefinitions(plan, diff, trackedDefinitions, applied, skipped, conflicts, now, ct);
@@ -170,10 +172,132 @@ public class EventTemplateSyncService : IEventTemplateSyncService
         {
             return BuildConflictOutcome(requestedKeys, ConcurrencyConflictException.ConcurrentUpdate, plan.TargetTemplateVersion, @event.SourceTemplateVersion ?? 0);
         }
+        catch (QuotaExceededException)
+        {
+            throw;
+        }
         catch
         {
             return BuildConflictOutcome(requestedKeys, "apply_failed", plan.TargetTemplateVersion, @event.SourceTemplateVersion ?? 0);
         }
+    }
+
+    private async Task EnforceResultingQuotaAsync(
+        TemplateSyncPlanDto plan,
+        TemplateDiffDto diff,
+        EventTemplate targetTemplate,
+        List<EventCustomPropertyDefinition> trackedDefinitions,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        var addedDefinitionKeys = GetApplicableAddedDefinitionKeys(plan, diff, targetTemplate).ToList();
+        var maxDefinitions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key,
+            tenantId,
+            cancellationToken);
+        var attemptedDefinitionCount = trackedDefinitions.Count + addedDefinitionKeys.Count;
+        if (attemptedDefinitionCount > maxDefinitions)
+        {
+            throw new QuotaExceededException(
+                "Template sync would exceed the event custom-property definition quota.",
+                CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key,
+                maxDefinitions,
+                trackedDefinitions.Count,
+                attemptedDefinitionCount,
+                "event_custom_property_definitions",
+                tenantId);
+        }
+
+        var maxOptions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+            tenantId,
+            cancellationToken);
+        var templateDefinitions = targetTemplate.Definitions.ToDictionary(x => ComposeKey(x.Namespace, x.Key), StringComparer.OrdinalIgnoreCase);
+        foreach (var key in addedDefinitionKeys)
+        {
+            var optionCount = templateDefinitions[key].Options.Count;
+            if (optionCount > maxOptions)
+            {
+                throw new QuotaExceededException(
+                    "Template sync would exceed the event custom-property option quota.",
+                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                    maxOptions,
+                    null,
+                    optionCount,
+                    "event_custom_property_options",
+                    tenantId);
+            }
+        }
+
+        foreach (var (trackedDefinition, addedOptionCount) in GetApplicableAddedOptionCounts(plan, diff, targetTemplate, trackedDefinitions))
+        {
+            var currentOptionCount = trackedDefinition.Options.Count;
+            var attemptedOptionCount = currentOptionCount + addedOptionCount;
+            if (attemptedOptionCount > maxOptions)
+            {
+                throw new QuotaExceededException(
+                    "Template sync would exceed the event custom-property option quota.",
+                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                    maxOptions,
+                    currentOptionCount,
+                    attemptedOptionCount,
+                    "event_custom_property_options",
+                    tenantId);
+            }
+        }
+    }
+
+    private static IEnumerable<string> GetApplicableAddedDefinitionKeys(
+        TemplateSyncPlanDto plan,
+        TemplateDiffDto diff,
+        EventTemplate targetTemplate)
+    {
+        var allowed = new HashSet<string>(diff.AddedDefinitions.Select(x => ComposeKey(x.Namespace, x.Key)), StringComparer.OrdinalIgnoreCase);
+        var templateDefinitions = targetTemplate.Definitions.ToDictionary(x => ComposeKey(x.Namespace, x.Key), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var key in plan.AddedDefinitionKeys)
+        {
+            if (allowed.Contains(key) && templateDefinitions.ContainsKey(key))
+            {
+                yield return key;
+            }
+        }
+    }
+
+    private static IEnumerable<(EventCustomPropertyDefinition Definition, int AddedOptionCount)> GetApplicableAddedOptionCounts(
+        TemplateSyncPlanDto plan,
+        TemplateDiffDto diff,
+        EventTemplate targetTemplate,
+        List<EventCustomPropertyDefinition> trackedDefinitions)
+    {
+        var allowed = new HashSet<string>(diff.AddedOptions.Select(x => ComposeKey(x.Namespace, x.Key)), StringComparer.OrdinalIgnoreCase);
+        var counts = new Dictionary<Guid, (EventCustomPropertyDefinition Definition, int Count)>();
+
+        foreach (var key in plan.AddedOptionKeys)
+        {
+            if (!allowed.Contains(key))
+            {
+                continue;
+            }
+
+            var parentDefinition = targetTemplate.Definitions.FirstOrDefault(x => x.Options.Any(o => ComposeKey(o.Namespace, o.Key).Equals(key, StringComparison.OrdinalIgnoreCase)));
+            if (parentDefinition is null)
+            {
+                continue;
+            }
+
+            var trackedDefinition = trackedDefinitions.FirstOrDefault(x => ComposeKey(x.Namespace, x.Key).Equals(ComposeKey(parentDefinition.Namespace, parentDefinition.Key), StringComparison.OrdinalIgnoreCase));
+            if (trackedDefinition is null)
+            {
+                continue;
+            }
+
+            counts[trackedDefinition.Id] = counts.TryGetValue(trackedDefinition.Id, out var existing)
+                ? (trackedDefinition, existing.Count + 1)
+                : (trackedDefinition, 1);
+        }
+
+        return counts.Values.Select(x => (x.Definition, x.Count));
     }
 
     private async Task ApplyAddedDefinitions(

@@ -229,6 +229,61 @@ public sealed class CustomPropertyOptionLifecyclePostgreSqlTests(PostgreSqlConta
     }
 
     [Test]
+    public async Task SharedPurgeDefinition_OnPostgreSql_ReturnsFalseWhenValuesExistAndKeepsRows()
+    {
+        await _fixture.ResetAsync();
+
+        Guid definitionId;
+        Guid valueId;
+
+        await using (var seedContext = _fixture.CreateDbContext())
+        {
+            var tenant = CreateTenant();
+            await seedContext.Tenants.AddAsync(tenant);
+            await seedContext.SaveChangesAsync();
+
+            var definition = CreateSharedDefinition(tenant.Id);
+            var value = new CustomPropertyValue
+            {
+                Id = Guid.NewGuid(),
+                CustomPropertyDefinitionId = definition.Id,
+                EntityId = Guid.NewGuid(),
+                TenantId = tenant.Id,
+                Ordinal = 0,
+                TextValue = "historical",
+                ConcurrencyStamp = Guid.NewGuid(),
+            };
+
+            await seedContext.CustomPropertyDefinitions.AddAsync(definition);
+            await seedContext.SaveChangesAsync();
+            await seedContext.CustomPropertyValues.AddAsync(value);
+            await seedContext.SaveChangesAsync();
+
+            definitionId = definition.Id;
+            valueId = value.Id;
+        }
+
+        await using (var purgeContext = _fixture.CreateDbContext())
+        {
+            var repository = new CustomPropertyDefinitionRepository(purgeContext);
+            var purged = await repository.PurgeDefinition(definitionId, CancellationToken.None);
+
+            await Assert.That(purged).IsFalse();
+        }
+
+        await using var verifyContext = _fixture.CreateDbContext();
+        var definitionExists = await verifyContext.CustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AnyAsync(x => x.Id == definitionId);
+        var valueExists = await verifyContext.CustomPropertyValues
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AnyAsync(x => x.Id == valueId);
+
+        await Assert.That(definitionExists).IsTrue();
+        await Assert.That(valueExists).IsTrue();
+    }
+
+    [Test]
     public async Task EventPurgeDependencies_OnPostgreSql_BlockWhenValuesAndProjectionsExist()
     {
         await _fixture.ResetAsync();
@@ -287,6 +342,18 @@ public sealed class CustomPropertyOptionLifecyclePostgreSqlTests(PostgreSqlConta
         await Assert.That(summary!.HasBlockingDependencies).IsTrue();
         await Assert.That(summary.ValueCount).IsEqualTo(1);
         await Assert.That(summary.ProjectionCount).IsEqualTo(1);
+
+        var purged = await repository.PurgeDefinition(definition.Id, CancellationToken.None);
+
+        await Assert.That(purged).IsFalse();
+        await Assert.That(await context.EventCustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AnyAsync(x => x.Id == definition.Id)).IsTrue();
+        await Assert.That(await context.EventCustomPropertyValues
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AnyAsync(x => x.Id == value.Id)).IsTrue();
+        await Assert.That(await context.EventCustomPropertyProjections
+            .AnyAsync(x => x.EventCustomPropertyDefinitionId == definition.Id)).IsTrue();
     }
 
     [Test]
@@ -351,6 +418,18 @@ public sealed class CustomPropertyOptionLifecyclePostgreSqlTests(PostgreSqlConta
         await Assert.That(summary!.HasBlockingDependencies).IsTrue();
         await Assert.That(summary.ValueCount).IsEqualTo(1);
         await Assert.That(summary.ProjectionCount).IsEqualTo(1);
+
+        var purged = await repository.PurgeDefinition(definition.Id, CancellationToken.None);
+
+        await Assert.That(purged).IsFalse();
+        await Assert.That(await context.EventSessionCustomPropertyDefinitions
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AnyAsync(x => x.Id == definition.Id)).IsTrue();
+        await Assert.That(await context.EventSessionCustomPropertyValues
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+            .AnyAsync(x => x.Id == value.Id)).IsTrue();
+        await Assert.That(await context.EventSessionCustomPropertyProjections
+            .AnyAsync(x => x.EventSessionCustomPropertyDefinitionId == definition.Id)).IsTrue();
     }
 
     [Test]

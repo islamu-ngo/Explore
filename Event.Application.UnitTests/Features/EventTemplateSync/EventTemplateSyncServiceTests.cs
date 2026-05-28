@@ -35,6 +35,10 @@ public class EventTemplateSyncServiceTests
             .Returns(10);
         _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxPayloadBytes.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(262_144);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(20);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(50);
         _currentUserService.UserId.Returns(Guid.NewGuid());
         _unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -121,6 +125,68 @@ public class EventTemplateSyncServiceTests
         await Assert.That(exception.Details.TenantId).IsEqualTo(_tenantId);
 
         await _templateRepository.DidNotReceiveWithAnyArgs().GetPublishedTemplateVersion(default, default!, default, default);
+    }
+
+    [Test]
+    public async Task ApplySyncAsync_WhenAddedDefinitionWouldExceedRuntimeDefinitionQuota_ThrowsQuotaExceededException()
+    {
+        var currentEvent = CreateEvent();
+        var existingDefinition = CreateRuntimeDefinition();
+        var addedDefinitionId = Guid.NewGuid();
+        var templateDefinition = CreateTemplateDefinition("tenant.sync", "new_field", addedDefinitionId, "New Field");
+        var template = CreateTemplate(2, templateDefinition);
+        var diff = new TemplateDiffDto(2, 1, [CreateAddedDefinitionDto("tenant.sync", "new_field")], [], [], [], [], [], []);
+
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key, _tenantId, Arg.Any<CancellationToken>()).Returns(1);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key, _tenantId, Arg.Any<CancellationToken>()).Returns(10);
+        _eventRepository.GetById(_eventId).Returns(currentEvent, currentEvent);
+        _diffService.ComputeDiffAsync(_eventId, 2, Arg.Any<CancellationToken>()).Returns(diff);
+        _runtimeRepository.GetTrackedDefinitionsForEvent(_eventId, Arg.Any<CancellationToken>()).Returns([existingDefinition]);
+        _templateRepository.GetPublishedTemplateVersion(_tenantId, currentEvent.SourceTemplateKey!, 2, Arg.Any<CancellationToken>()).Returns(template);
+
+        var exception = await Assert.ThrowsAsync<QuotaExceededException>(async () =>
+            await CreateSut().ApplySyncAsync(_eventId, CreatePlan(addedDefinitionKeys: ["tenant.sync/new_field"]), 1, CancellationToken.None));
+
+        await Assert.That(exception.Details.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key);
+        await Assert.That(exception.Details.Limit).IsEqualTo(1);
+        await Assert.That(exception.Details.Actual).IsEqualTo(1);
+        await Assert.That(exception.Details.Attempted).IsEqualTo(2);
+        await Assert.That(exception.Details.Scope).IsEqualTo("event_custom_property_definitions");
+        await Assert.That(exception.Details.TenantId).IsEqualTo(_tenantId);
+        await _runtimeRepository.DidNotReceiveWithAnyArgs().CreateWithOptions(default!, default!, default, default);
+    }
+
+    [Test]
+    public async Task ApplySyncAsync_WhenAddedOptionWouldExceedRuntimeOptionQuota_ThrowsQuotaExceededException()
+    {
+        var currentEvent = CreateEvent();
+        var trackedDefinition = CreateRuntimeDefinition(propertyType: PropertyType.Option);
+        var existingOption = CreateRuntimeOption(trackedDefinition.Id, "tenant.sync", "existing", sourceTemplateOptionId: Guid.NewGuid(), displayName: "Existing");
+        SetOptions(trackedDefinition, [existingOption]);
+
+        var templateDefinition = CreateTemplateDefinition(trackedDefinition.Namespace, trackedDefinition.Key, trackedDefinition.SourceTemplateDefinitionId!.Value, "Field", PropertyType.Option);
+        var templateOption = CreateTemplateOption(templateDefinition.Id, "tenant.sync", "new_option", Guid.NewGuid(), "New Option");
+        SetTemplateOptions(templateDefinition, [templateOption]);
+        var template = CreateTemplate(2, templateDefinition);
+        var diff = new TemplateDiffDto(2, 1, [], [], [], [CreateAddedOptionDto("tenant.sync", "new_option")], [], [], []);
+
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerEvent.Key, _tenantId, Arg.Any<CancellationToken>()).Returns(10);
+        _quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key, _tenantId, Arg.Any<CancellationToken>()).Returns(1);
+        _eventRepository.GetById(_eventId).Returns(currentEvent, currentEvent);
+        _diffService.ComputeDiffAsync(_eventId, 2, Arg.Any<CancellationToken>()).Returns(diff);
+        _runtimeRepository.GetTrackedDefinitionsForEvent(_eventId, Arg.Any<CancellationToken>()).Returns([trackedDefinition]);
+        _templateRepository.GetPublishedTemplateVersion(_tenantId, currentEvent.SourceTemplateKey!, 2, Arg.Any<CancellationToken>()).Returns(template);
+
+        var exception = await Assert.ThrowsAsync<QuotaExceededException>(async () =>
+            await CreateSut().ApplySyncAsync(_eventId, CreatePlan(addedOptionKeys: ["tenant.sync/new_option"]), 1, CancellationToken.None));
+
+        await Assert.That(exception.Details.QuotaKey).IsEqualTo(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key);
+        await Assert.That(exception.Details.Limit).IsEqualTo(1);
+        await Assert.That(exception.Details.Actual).IsEqualTo(1);
+        await Assert.That(exception.Details.Attempted).IsEqualTo(2);
+        await Assert.That(exception.Details.Scope).IsEqualTo("event_custom_property_options");
+        await Assert.That(exception.Details.TenantId).IsEqualTo(_tenantId);
+        await _runtimeRepository.DidNotReceiveWithAnyArgs().CreateOption(default!, default);
     }
 
     [Test]
@@ -245,6 +311,7 @@ public class EventTemplateSyncServiceTests
         IReadOnlyList<string>? addedDefinitionKeys = null,
         IReadOnlyList<string>? modifiedDefinitionKeys = null,
         IReadOnlyList<string>? retiredDefinitionKeys = null,
+        IReadOnlyList<string>? addedOptionKeys = null,
         IReadOnlyList<string>? retiredOptionKeys = null)
         => new()
         {
@@ -253,6 +320,7 @@ public class EventTemplateSyncServiceTests
             AddedDefinitionKeys = addedDefinitionKeys ?? [],
             ModifiedDefinitionKeys = modifiedDefinitionKeys ?? [],
             RetiredDefinitionKeys = retiredDefinitionKeys ?? [],
+            AddedOptionKeys = addedOptionKeys ?? [],
             RetiredOptionKeys = retiredOptionKeys ?? []
         };
 
@@ -288,6 +356,36 @@ public class EventTemplateSyncServiceTests
             ExposureLevel = ExposureLevel.Public
         };
 
+    private static AddedDefinitionDto CreateAddedDefinitionDto(string ns, string key)
+        => new(
+            ns,
+            key,
+            "New Field",
+            null,
+            PropertyType.Text.ToString(),
+            false,
+            false,
+            null,
+            ExposureLevel.Public.ToString(),
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            []);
+
+    private static AddedOptionDto CreateAddedOptionDto(string ns, string key)
+        => new(ns, key, "New Option", null, key, false, true, 1, null);
+
     private static EventCustomPropertyDefinition CreateRuntimeDefinition(string ns = "tenant.sync", string key = "field", string displayName = "Field", PropertyType propertyType = PropertyType.Text)
         => new()
         {
@@ -322,6 +420,25 @@ public class EventTemplateSyncServiceTests
             SourceTemplateVersion = 1,
             ConcurrencyStamp = Guid.NewGuid()
         };
+
+    private static EventTemplateCustomPropertyOption CreateTemplateOption(Guid definitionId, string ns, string key, Guid id, string displayName)
+        => new()
+        {
+            Id = id,
+            EventTemplateCustomPropertyDefinitionId = definitionId,
+            Namespace = ns,
+            Key = key,
+            DisplayName = displayName,
+            Value = key,
+            IsActive = true
+        };
+
+    private static void SetTemplateOptions(EventTemplateCustomPropertyDefinition definition, IEnumerable<EventTemplateCustomPropertyOption> options)
+    {
+        var field = typeof(EventTemplateCustomPropertyDefinition).GetField("_options", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        var list = (List<EventTemplateCustomPropertyOption>)field.GetValue(definition)!;
+        list.AddRange(options);
+    }
 
     private static void SetOptions(EventCustomPropertyDefinition definition, IEnumerable<EventCustomPropertyOption> options)
     {

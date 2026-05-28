@@ -47,6 +47,34 @@ public class CustomPropertyGovernancePolicyTests
     }
 
     [Test]
+    public async Task EvaluateDefinition_WithTenantNamespaceAndLayer2SemanticKey_ReturnsError()
+    {
+        var result = _policy.EvaluateDefinition("tenant.community", "Madhab Id");
+
+        await Assert.That(result.IsValid).IsFalse();
+        await Assert.That(result.Errors.Any(e => e.Contains("Layer 2 semantics", StringComparison.Ordinal))).IsTrue();
+    }
+
+    [Test]
+    public async Task EvaluateDefinition_WithTenantNamespaceAndSessionLayer2SemanticKey_ReturnsError()
+    {
+        var result = _policy.EvaluateDefinition("tenant.sessions", "Offset Minutes");
+
+        await Assert.That(result.IsValid).IsFalse();
+        await Assert.That(result.Errors.Any(e => e.Contains("Layer 2 semantics", StringComparison.Ordinal))).IsTrue();
+    }
+
+    [Test]
+    public async Task EvaluateDefinition_WithSimilarButNonReservedTenantKey_Passes()
+    {
+        var result = _policy.EvaluateDefinition("tenant.community", "Prayer Notes");
+
+        await Assert.That(result.IsValid).IsTrue();
+        await Assert.That(result.NormalizedNamespace).IsEqualTo("tenant.community");
+        await Assert.That(result.NormalizedKey).IsEqualTo("prayer_notes");
+    }
+
+    [Test]
     public async Task EvaluateDefinition_WithUnsupportedNamespace_ReturnsError()
     {
         var result = _policy.EvaluateDefinition("community", "local_tag");

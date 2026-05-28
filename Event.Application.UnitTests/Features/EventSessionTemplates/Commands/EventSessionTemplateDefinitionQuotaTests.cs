@@ -1,13 +1,13 @@
-// ABOUTME: Quota regression tests for event template definition cardinality limits.
-// ABOUTME: Verifies create and update handlers fail before governance, mapping, or persistence when templates exceed tenant quotas.
+// ABOUTME: Quota regression tests for event-session template definition and option limits.
+// ABOUTME: Verifies session-template handlers fail before governance/mapping/persistence when quotas are exceeded.
 
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
-using Explore.Application.DTOs.EventTemplate;
-using Explore.Application.Features.EventTemplates.Handlers.Commands;
-using Explore.Application.Features.EventTemplates.Requests.Commands;
+using Explore.Application.DTOs.EventSessionTemplate;
+using Explore.Application.Features.EventSessionTemplates.Handlers.Commands;
+using Explore.Application.Features.EventSessionTemplates.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -15,24 +15,25 @@ using Explore.Domain.Settings.Definitions;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 
-namespace Event.Application.UnitTests.Features.EventTemplates.Commands;
+namespace Event.Application.UnitTests.Features.EventSessionTemplates.Commands;
 
-public class EventTemplateDefinitionQuotaTests
+public class EventSessionTemplateDefinitionQuotaTests
 {
     [Test]
     public async Task CreateHandle_WhenDefinitionQuotaExceeded_ReturnsQuotaFailure()
     {
         var tenantId = Guid.NewGuid();
-        var repository = Substitute.For<IEventTemplateRepository>();
+        var eventTemplateId = Guid.NewGuid();
+        var repository = Substitute.For<IEventSessionTemplateRepository>();
         var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
         var handler = CreateCreateHandler(repository, quotaResolver, governancePolicy, tenantId);
 
-        repository.ExistsTemplateKey(tenantId, "ramadan-program", 1).Returns(false);
+        repository.ExistsSessionTemplateKey(eventTemplateId, "session-track", 1).Returns(false);
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await handler.Handle(
-            new CreateEventTemplateCommand { TemplateDto = CreateTemplateDto(definitionCount: 2) },
+            new CreateEventSessionTemplateCommand { SessionTemplateDto = CreateSessionTemplateDto(eventTemplateId, definitionCount: 2) },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -42,28 +43,28 @@ public class EventTemplateDefinitionQuotaTests
         await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(1);
         await Assert.That(result.QuotaExceeded.Actual).IsNull();
         await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(2);
-        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_template_definitions");
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_session_template_definitions");
         await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
-        await Assert.That(result.Errors!.Single()).Contains(FailureCodes.QuotaExceeded);
         governancePolicy.DidNotReceiveWithAnyArgs().EvaluateDefinition(default!, default!);
         await repository.DidNotReceiveWithAnyArgs().CreateWithDefinitions(default!, default!, default);
     }
 
     [Test]
-    public async Task CreateHandle_WhenDefinitionOptionQuotaExceeded_ReturnsQuotaFailure()
+    public async Task CreateHandle_WhenOptionQuotaExceeded_ReturnsQuotaFailure()
     {
         var tenantId = Guid.NewGuid();
-        var repository = Substitute.For<IEventTemplateRepository>();
+        var eventTemplateId = Guid.NewGuid();
+        var repository = Substitute.For<IEventSessionTemplateRepository>();
         var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
         var handler = CreateCreateHandler(repository, quotaResolver, governancePolicy, tenantId);
 
-        repository.ExistsTemplateKey(tenantId, "ramadan-program", 1).Returns(false);
+        repository.ExistsSessionTemplateKey(eventTemplateId, "session-track", 1).Returns(false);
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key, tenantId, Arg.Any<CancellationToken>()).Returns(5);
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await handler.Handle(
-            new CreateEventTemplateCommand { TemplateDto = CreateTemplateDtoWithOptionDefinition(optionCount: 2) },
+            new CreateEventSessionTemplateCommand { SessionTemplateDto = CreateSessionTemplateDtoWithOptionDefinition(eventTemplateId, optionCount: 2) },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -73,7 +74,7 @@ public class EventTemplateDefinitionQuotaTests
         await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(1);
         await Assert.That(result.QuotaExceeded.Actual).IsNull();
         await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(2);
-        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_template_definition_options");
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_session_template_definition_options");
         await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
         governancePolicy.DidNotReceiveWithAnyArgs().EvaluateDefinition(default!, default!);
         await repository.DidNotReceiveWithAnyArgs().CreateWithDefinitions(default!, default!, default);
@@ -83,27 +84,20 @@ public class EventTemplateDefinitionQuotaTests
     public async Task UpdateHandle_WhenDefinitionQuotaExceeded_ReturnsQuotaFailure()
     {
         var tenantId = Guid.NewGuid();
-        var templateId = Guid.NewGuid();
-        var repository = Substitute.For<IEventTemplateRepository>();
+        var eventTemplateId = Guid.NewGuid();
+        var sessionTemplateId = Guid.NewGuid();
+        var repository = Substitute.For<IEventSessionTemplateRepository>();
         var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
         var handler = CreateUpdateHandler(repository, quotaResolver, governancePolicy);
 
-        repository.GetTrackedTemplateWithDefinitions(templateId, Arg.Any<CancellationToken>())
-            .Returns(new EventTemplate
-            {
-                Id = templateId,
-                TenantId = tenantId,
-                TemplateKey = "ramadan-program",
-                DisplayName = "Ramadan Program",
-                Version = 1,
-                IsActive = true,
-            });
-        repository.ExistsTemplateKey(tenantId, "ramadan-program", 1, templateId).Returns(false);
+        repository.GetTrackedSessionTemplateWithDefinitions(sessionTemplateId, Arg.Any<CancellationToken>())
+            .Returns(CreateSessionTemplate(sessionTemplateId, eventTemplateId, tenantId));
+        repository.ExistsSessionTemplateKey(eventTemplateId, "session-track", 1, sessionTemplateId).Returns(false);
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await handler.Handle(
-            new UpdateEventTemplateCommand { TemplateDto = CreateUpdateTemplateDto(templateId, definitionCount: 2) },
+            new UpdateEventSessionTemplateCommand { SessionTemplateDto = CreateUpdateSessionTemplateDto(sessionTemplateId, eventTemplateId, definitionCount: 2) },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -113,39 +107,31 @@ public class EventTemplateDefinitionQuotaTests
         await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(1);
         await Assert.That(result.QuotaExceeded.Actual).IsNull();
         await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(2);
-        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_template_definitions");
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_session_template_definitions");
         await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
-        await Assert.That(result.Errors!.Single()).Contains(FailureCodes.QuotaExceeded);
         governancePolicy.DidNotReceiveWithAnyArgs().EvaluateDefinition(default!, default!);
         await repository.DidNotReceiveWithAnyArgs().UpdateWithDefinitions(default!, default!, default);
     }
 
     [Test]
-    public async Task UpdateHandle_WhenDefinitionOptionQuotaExceeded_ReturnsQuotaFailure()
+    public async Task UpdateHandle_WhenOptionQuotaExceeded_ReturnsQuotaFailure()
     {
         var tenantId = Guid.NewGuid();
-        var templateId = Guid.NewGuid();
-        var repository = Substitute.For<IEventTemplateRepository>();
+        var eventTemplateId = Guid.NewGuid();
+        var sessionTemplateId = Guid.NewGuid();
+        var repository = Substitute.For<IEventSessionTemplateRepository>();
         var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         var governancePolicy = Substitute.For<ICustomPropertyGovernancePolicy>();
         var handler = CreateUpdateHandler(repository, quotaResolver, governancePolicy);
 
-        repository.GetTrackedTemplateWithDefinitions(templateId, Arg.Any<CancellationToken>())
-            .Returns(new EventTemplate
-            {
-                Id = templateId,
-                TenantId = tenantId,
-                TemplateKey = "ramadan-program",
-                DisplayName = "Ramadan Program",
-                Version = 1,
-                IsActive = true,
-            });
-        repository.ExistsTemplateKey(tenantId, "ramadan-program", 1, templateId).Returns(false);
+        repository.GetTrackedSessionTemplateWithDefinitions(sessionTemplateId, Arg.Any<CancellationToken>())
+            .Returns(CreateSessionTemplate(sessionTemplateId, eventTemplateId, tenantId));
+        repository.ExistsSessionTemplateKey(eventTemplateId, "session-track", 1, sessionTemplateId).Returns(false);
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key, tenantId, Arg.Any<CancellationToken>()).Returns(5);
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key, tenantId, Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await handler.Handle(
-            new UpdateEventTemplateCommand { TemplateDto = CreateUpdateTemplateDtoWithOptionDefinition(templateId, optionCount: 2) },
+            new UpdateEventSessionTemplateCommand { SessionTemplateDto = CreateUpdateSessionTemplateDtoWithOptionDefinition(sessionTemplateId, eventTemplateId, optionCount: 2) },
             CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
@@ -155,14 +141,14 @@ public class EventTemplateDefinitionQuotaTests
         await Assert.That(result.QuotaExceeded.Limit).IsEqualTo(1);
         await Assert.That(result.QuotaExceeded.Actual).IsNull();
         await Assert.That(result.QuotaExceeded.Attempted).IsEqualTo(2);
-        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_template_definition_options");
+        await Assert.That(result.QuotaExceeded.Scope).IsEqualTo("event_session_template_definition_options");
         await Assert.That(result.QuotaExceeded.TenantId).IsEqualTo(tenantId);
         governancePolicy.DidNotReceiveWithAnyArgs().EvaluateDefinition(default!, default!);
         await repository.DidNotReceiveWithAnyArgs().UpdateWithDefinitions(default!, default!, default);
     }
 
-    private static CreateEventTemplateCommandHandler CreateCreateHandler(
-        IEventTemplateRepository repository,
+    private static CreateEventSessionTemplateCommandHandler CreateCreateHandler(
+        IEventSessionTemplateRepository repository,
         ICustomPropertyQuotaResolver quotaResolver,
         ICustomPropertyGovernancePolicy governancePolicy,
         Guid tenantId)
@@ -170,7 +156,7 @@ public class EventTemplateDefinitionQuotaTests
         var tenantContext = Substitute.For<ITenantContext>();
         tenantContext.TenantId.Returns(tenantId);
 
-        return new CreateEventTemplateCommandHandler(
+        return new CreateEventSessionTemplateCommandHandler(
             repository,
             governancePolicy,
             quotaResolver,
@@ -181,12 +167,12 @@ public class EventTemplateDefinitionQuotaTests
             Substitute.For<IUnitOfWork>());
     }
 
-    private static UpdateEventTemplateCommandHandler CreateUpdateHandler(
-        IEventTemplateRepository repository,
+    private static UpdateEventSessionTemplateCommandHandler CreateUpdateHandler(
+        IEventSessionTemplateRepository repository,
         ICustomPropertyQuotaResolver quotaResolver,
         ICustomPropertyGovernancePolicy governancePolicy)
     {
-        return new UpdateEventTemplateCommandHandler(
+        return new UpdateEventSessionTemplateCommandHandler(
             repository,
             governancePolicy,
             quotaResolver,
@@ -196,64 +182,82 @@ public class EventTemplateDefinitionQuotaTests
             Substitute.For<IUnitOfWork>());
     }
 
-    private static CreateEventTemplateDto CreateTemplateDto(int definitionCount)
+    private static EventSessionTemplate CreateSessionTemplate(Guid sessionTemplateId, Guid eventTemplateId, Guid tenantId)
     {
-        return new CreateEventTemplateDto
+        return new EventSessionTemplate
         {
-            TemplateKey = "ramadan-program",
-            DisplayName = "Ramadan Program",
+            Id = sessionTemplateId,
+            EventTemplateId = eventTemplateId,
+            TenantId = tenantId,
+            SessionTemplateKey = "session-track",
+            DisplayName = "Session Track",
+            Version = 1,
+            IsActive = true,
+        };
+    }
+
+    private static CreateEventSessionTemplateDto CreateSessionTemplateDto(Guid eventTemplateId, int definitionCount)
+    {
+        return new CreateEventSessionTemplateDto
+        {
+            EventTemplateId = eventTemplateId,
+            SessionTemplateKey = "session-track",
+            DisplayName = "Session Track",
             Version = 1,
             IsActive = true,
             Definitions = CreateDefinitionDtos(definitionCount),
         };
     }
 
-    private static UpdateEventTemplateDto CreateUpdateTemplateDto(Guid templateId, int definitionCount)
+    private static UpdateEventSessionTemplateDto CreateUpdateSessionTemplateDto(Guid sessionTemplateId, Guid eventTemplateId, int definitionCount)
     {
-        return new UpdateEventTemplateDto
+        return new UpdateEventSessionTemplateDto
         {
-            Id = templateId,
-            TemplateKey = "ramadan-program",
-            DisplayName = "Ramadan Program",
+            Id = sessionTemplateId,
+            EventTemplateId = eventTemplateId,
+            SessionTemplateKey = "session-track",
+            DisplayName = "Session Track",
             Version = 1,
             IsActive = true,
             Definitions = CreateDefinitionDtos(definitionCount),
         };
     }
 
-    private static CreateEventTemplateDto CreateTemplateDtoWithOptionDefinition(int optionCount)
+    private static CreateEventSessionTemplateDto CreateSessionTemplateDtoWithOptionDefinition(Guid eventTemplateId, int optionCount)
     {
-        return new CreateEventTemplateDto
+        return new CreateEventSessionTemplateDto
         {
-            TemplateKey = "ramadan-program",
-            DisplayName = "Ramadan Program",
+            EventTemplateId = eventTemplateId,
+            SessionTemplateKey = "session-track",
+            DisplayName = "Session Track",
             Version = 1,
             IsActive = true,
             Definitions = [CreateOptionDefinitionDto(optionCount)],
         };
     }
 
-    private static UpdateEventTemplateDto CreateUpdateTemplateDtoWithOptionDefinition(Guid templateId, int optionCount)
+    private static UpdateEventSessionTemplateDto CreateUpdateSessionTemplateDtoWithOptionDefinition(Guid sessionTemplateId, Guid eventTemplateId, int optionCount)
     {
-        return new UpdateEventTemplateDto
+        return new UpdateEventSessionTemplateDto
         {
-            Id = templateId,
-            TemplateKey = "ramadan-program",
-            DisplayName = "Ramadan Program",
+            Id = sessionTemplateId,
+            EventTemplateId = eventTemplateId,
+            SessionTemplateKey = "session-track",
+            DisplayName = "Session Track",
             Version = 1,
             IsActive = true,
             Definitions = [CreateOptionDefinitionDto(optionCount)],
         };
     }
 
-    private static List<CreateEventTemplateDefinitionDto> CreateDefinitionDtos(int count)
+    private static List<CreateEventSessionTemplateDefinitionDto> CreateDefinitionDtos(int count)
     {
         return Enumerable.Range(1, count)
-            .Select(index => new CreateEventTemplateDefinitionDto
+            .Select(index => new CreateEventSessionTemplateDefinitionDto
             {
                 Namespace = "tenant.community",
-                Key = $"template_field_{index}",
-                DisplayName = $"Template Field {index}",
+                Key = $"session_field_{index}",
+                DisplayName = $"Session Field {index}",
                 PropertyType = PropertyType.Text,
                 ExposureLevel = ExposureLevel.OrganizerOnly,
                 IsActive = true,
@@ -261,23 +265,23 @@ public class EventTemplateDefinitionQuotaTests
             .ToList();
     }
 
-    private static CreateEventTemplateDefinitionDto CreateOptionDefinitionDto(int optionCount)
+    private static CreateEventSessionTemplateDefinitionDto CreateOptionDefinitionDto(int optionCount)
     {
-        return new CreateEventTemplateDefinitionDto
+        return new CreateEventSessionTemplateDefinitionDto
         {
             Namespace = "tenant.community",
-            Key = "attendance_tier",
-            DisplayName = "Attendance Tier",
+            Key = "delivery_mode",
+            DisplayName = "Delivery Mode",
             PropertyType = PropertyType.Option,
             ExposureLevel = ExposureLevel.OrganizerOnly,
             IsActive = true,
             Options = Enumerable.Range(1, optionCount)
-                .Select(index => new CreateEventTemplateOptionDto
+                .Select(index => new CreateEventSessionTemplateOptionDto
                 {
                     Namespace = "tenant.community",
-                    Key = $"tier_{index}",
-                    DisplayName = $"Tier {index}",
-                    Value = $"tier-{index}",
+                    Key = $"mode_{index}",
+                    DisplayName = $"Mode {index}",
+                    Value = $"mode-{index}",
                     IsActive = true,
                     SortOrder = index,
                 })

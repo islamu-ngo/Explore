@@ -11,6 +11,7 @@ using Explore.Application.Features.EventSessionTemplates.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -20,6 +21,7 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
 {
     private readonly IEventSessionTemplateRepository _sessionTemplateRepository;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -29,6 +31,7 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
     public CreateEventSessionTemplateCommandHandler(
         IEventSessionTemplateRepository sessionTemplateRepository,
         ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
+        ICustomPropertyQuotaResolver quotaResolver,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IMapper mapper,
@@ -37,6 +40,7 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
     {
         _sessionTemplateRepository = sessionTemplateRepository;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
+        _quotaResolver = quotaResolver;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -66,6 +70,44 @@ public class CreateEventSessionTemplateCommandHandler : IRequestHandler<CreateEv
             response.Success = false;
             response.Message = "Event session template creation failed.";
             response.Errors = ["A session template with the same SessionTemplateKey and Version already exists for this event template."];
+            return response;
+        }
+
+        var maxDefinitions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+            _tenantContext.TenantId,
+            cancellationToken);
+        if (request.SessionTemplateDto.Definitions.Count > maxDefinitions)
+        {
+            response.SetQuotaExceeded(
+                "Event session template creation failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+                    maxDefinitions,
+                    null,
+                    request.SessionTemplateDto.Definitions.Count,
+                    "event_session_template_definitions",
+                    _tenantContext.TenantId));
+            return response;
+        }
+
+        var maxOptions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+            _tenantContext.TenantId,
+            cancellationToken);
+        var overOptionDefinition = request.SessionTemplateDto.Definitions
+            .FirstOrDefault(definition => definition.Options.Count > maxOptions);
+        if (overOptionDefinition is not null)
+        {
+            response.SetQuotaExceeded(
+                "Event session template creation failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                    maxOptions,
+                    null,
+                    overOptionDefinition.Options.Count,
+                    "event_session_template_definition_options",
+                    _tenantContext.TenantId));
             return response;
         }
 

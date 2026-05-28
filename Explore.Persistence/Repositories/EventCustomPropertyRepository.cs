@@ -270,11 +270,8 @@ public class EventCustomPropertyRepository : GenericRepository<EventCustomProper
 
     public async Task<bool> PurgeDefinition(Guid id, CancellationToken cancellationToken)
     {
-        var exists = await _dbContext.EventCustomPropertyDefinitions
-            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
-            .AnyAsync(x => x.Id == id, cancellationToken);
-
-        if (!exists)
+        var dependencies = await GetPurgeDependencies(id, cancellationToken);
+        if (dependencies is null || dependencies.HasBlockingDependencies)
         {
             return false;
         }

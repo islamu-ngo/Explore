@@ -270,11 +270,8 @@ public class EventSessionCustomPropertyRepository : GenericRepository<EventSessi
 
     public async Task<bool> PurgeDefinition(Guid id, CancellationToken cancellationToken)
     {
-        var exists = await _dbContext.EventSessionCustomPropertyDefinitions
-            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
-            .AnyAsync(x => x.Id == id, cancellationToken);
-
-        if (!exists)
+        var dependencies = await GetPurgeDependencies(id, cancellationToken);
+        if (dependencies is null || dependencies.HasBlockingDependencies)
         {
             return false;
         }

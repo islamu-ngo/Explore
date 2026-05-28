@@ -241,11 +241,8 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
 
     public async Task<bool> PurgeDefinition(Guid id, CancellationToken cancellationToken)
     {
-        var exists = await _dbContext.CustomPropertyDefinitions
-            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
-            .AnyAsync(x => x.Id == id, cancellationToken);
-
-        if (!exists)
+        var dependencies = await GetPurgeDependencies(id, cancellationToken);
+        if (dependencies is null || dependencies.HasBlockingDependencies)
         {
             return false;
         }

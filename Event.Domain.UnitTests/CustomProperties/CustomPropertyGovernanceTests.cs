@@ -53,9 +53,11 @@ public class CustomPropertyGovernanceTests
     public async Task IsReservedLayer2Semantic_ShouldMatchKnownTypedSectorSemantics()
     {
         var reserved = CustomPropertySemanticReservations.IsReservedLayer2Semantic("sector.islamic", "madhab_id");
-        var notReserved = CustomPropertySemanticReservations.IsReservedLayer2Semantic("tenant.local", "madhab_id");
+        var tenantReserved = CustomPropertySemanticReservations.IsReservedLayer2Semantic("tenant.local", "madhab_id");
+        var notReserved = CustomPropertySemanticReservations.IsReservedLayer2Semantic("tenant.local", "prayer_notes");
 
         await Assert.That(reserved).IsTrue();
+        await Assert.That(tenantReserved).IsTrue();
         await Assert.That(notReserved).IsFalse();
     }
 }

@@ -84,7 +84,7 @@ public class CustomPropertyDefinitionConfiguration : IEntityTypeConfiguration<Cu
         builder.HasMany(e => e.Values)
             .WithOne(v => v.Definition)
             .HasForeignKey(v => v.CustomPropertyDefinitionId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.EntityTypeName, e.Namespace, e.Key })
             .HasDatabaseName("ix_cpd_tenant_entity_namespace_key")

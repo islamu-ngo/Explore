@@ -28,7 +28,7 @@ public sealed class CustomPropertyAdminServiceTests
                             ProjectionVersion = 1,
                             TenantId = tenantId,
                             RowsProcessed = 7,
-                            _links = new Dictionary<string, Anonymous39>
+                            _links = new Dictionary<string, Anonymous40>
                             {
                                 ["rebuild"] = new() { Href = "/rebuild" },
                                 ["drain-dirty-scopes"] = new() { Href = "/drain" }
@@ -71,7 +71,7 @@ public sealed class CustomPropertyAdminServiceTests
                             ScopeType = 1,
                             ScopeId = Guid.NewGuid(),
                             Reason = "retry",
-                            _links = new Dictionary<string, Anonymous38>
+                            _links = new Dictionary<string, Anonymous39>
                             {
                                 ["drain"] = new() { Href = "/drain" }
                             }

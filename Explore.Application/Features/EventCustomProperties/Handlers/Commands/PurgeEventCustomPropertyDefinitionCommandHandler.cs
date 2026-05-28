@@ -7,6 +7,7 @@ using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.Features.CustomProperties;
 using Explore.Application.Features.EventCustomProperties.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -19,19 +20,22 @@ public sealed class PurgeEventCustomPropertyDefinitionCommandHandler : IRequestH
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly HybridCache _cache;
+    private readonly BusinessMetrics? _metrics;
 
     public PurgeEventCustomPropertyDefinitionCommandHandler(
         IEventCustomPropertyRepository repository,
         IAuditLogRepository auditLogRepository,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
-        HybridCache cache)
+        HybridCache cache,
+        BusinessMetrics? metrics = null)
     {
         _repository = repository;
         _auditLogRepository = auditLogRepository;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _cache = cache;
+        _metrics = metrics;
     }
 
     public async Task<BaseCommandResponse<CustomPropertyPurgeResultDto>> Handle(PurgeEventCustomPropertyDefinitionCommand request, CancellationToken cancellationToken)
@@ -56,10 +60,12 @@ public sealed class PurgeEventCustomPropertyDefinitionCommandHandler : IRequestH
 
         if (summary.HasBlockingDependencies)
         {
-            response.Success = false;
-            response.Message = "Event custom-property definition purge blocked.";
-            response.Id = CustomPropertyPurgeResponseFactory.ToResult(summary, false, null, reason);
-            response.Errors = CustomPropertyPurgeResponseFactory.ToBlockingErrors(summary).ToList();
+            CustomPropertyPurgeResponseFactory.ApplyBlockedResponse(
+                response,
+                summary,
+                reason,
+                "Event custom-property definition purge blocked.");
+            RecordPurgeDecision(summary, "blocked");
             return response;
         }
 
@@ -81,11 +87,27 @@ public sealed class PurgeEventCustomPropertyDefinitionCommandHandler : IRequestH
             },
             cancellationToken);
 
+        if (!purged)
+        {
+            var latestSummary = await _repository.GetPurgeDependencies(request.Id, cancellationToken);
+            if (latestSummary?.HasBlockingDependencies == true)
+            {
+                CustomPropertyPurgeResponseFactory.ApplyBlockedResponse(
+                    response,
+                    latestSummary,
+                    reason,
+                    "Event custom-property definition purge blocked.");
+                RecordPurgeDecision(latestSummary, "blocked_after_recheck");
+                return response;
+            }
+        }
+
         response.Success = purged;
         response.Message = purged
             ? "Event custom-property definition purged successfully."
             : "Event custom-property definition purge failed.";
         response.Id = purged ? result : CustomPropertyPurgeResponseFactory.ToResult(summary, false, null, reason);
+        RecordPurgeDecision(summary, purged ? "purged" : "failed");
 
         if (purged)
         {
@@ -93,5 +115,14 @@ public sealed class PurgeEventCustomPropertyDefinitionCommandHandler : IRequestH
         }
 
         return response;
+    }
+
+    private void RecordPurgeDecision(CustomPropertyPurgeDependencySummary summary, string outcome)
+    {
+        _metrics?.RecordCustomPropertyPurgeDecision(
+            summary.TenantId.ToString(),
+            summary.Scope,
+            outcome,
+            CustomPropertyPurgeResponseFactory.GetPrimaryBlockerCategory(summary));
     }
 }

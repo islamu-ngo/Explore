@@ -48,7 +48,7 @@ public class EventSessionCustomPropertyProjectionConfiguration : IEntityTypeConf
         builder.HasOne(e => e.Definition)
             .WithMany()
             .HasForeignKey(e => e.EventSessionCustomPropertyDefinitionId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Value)
             .WithMany()

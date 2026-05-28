@@ -97,6 +97,26 @@ public class UpdateEventTemplateCommandHandler : IRequestHandler<UpdateEventTemp
             return response;
         }
 
+        var maxOptions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+            template.TenantId,
+            cancellationToken);
+        var overOptionDefinition = request.TemplateDto.Definitions
+            .FirstOrDefault(definition => definition.Options.Count > maxOptions);
+        if (overOptionDefinition is not null)
+        {
+            response.SetQuotaExceeded(
+                "Event template update failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                    maxOptions,
+                    null,
+                    overOptionDefinition.Options.Count,
+                    "event_template_definition_options",
+                    template.TenantId));
+            return response;
+        }
+
         var definitionsResult = BuildDefinitionEntities(request.TemplateDto.Definitions, template.TenantId);
         if (definitionsResult.Errors.Count > 0)
         {

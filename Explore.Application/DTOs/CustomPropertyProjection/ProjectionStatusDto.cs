@@ -17,4 +17,8 @@ public class ProjectionStatusDto
     public long RowsFailed { get; set; }
     public string? LastCheckpoint { get; set; }
     public string? LastErrorMessage { get; set; }
+    public int PendingDirtyScopeCount { get; set; }
+    public bool RequiresOperatorAction { get; set; }
+    public string OperationalState { get; set; } = "unknown";
+    public string RecommendedAction { get; set; } = "Inspect projection status and dirty-scope backlog.";
 }

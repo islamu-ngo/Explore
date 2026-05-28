@@ -11,6 +11,7 @@ using Explore.Application.Features.EventSessionTemplates.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Settings.Definitions;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -20,6 +21,7 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
 {
     private readonly IEventSessionTemplateRepository _sessionTemplateRepository;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
@@ -28,6 +30,7 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
     public UpdateEventSessionTemplateCommandHandler(
         IEventSessionTemplateRepository sessionTemplateRepository,
         ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
+        ICustomPropertyQuotaResolver quotaResolver,
         ICurrentUserService currentUserService,
         IMapper mapper,
         HybridCache cache,
@@ -35,6 +38,7 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
     {
         _sessionTemplateRepository = sessionTemplateRepository;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
+        _quotaResolver = quotaResolver;
         _currentUserService = currentUserService;
         _mapper = mapper;
         _cache = cache;
@@ -72,6 +76,44 @@ public class UpdateEventSessionTemplateCommandHandler : IRequestHandler<UpdateEv
             response.Success = false;
             response.Message = "Event session template update failed.";
             response.Errors = ["A session template with the same SessionTemplateKey and Version already exists for this event template."];
+            return response;
+        }
+
+        var maxDefinitions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+            sessionTemplate.TenantId,
+            cancellationToken);
+        if (request.SessionTemplateDto.Definitions.Count > maxDefinitions)
+        {
+            response.SetQuotaExceeded(
+                "Event session template update failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxDefinitionsPerTemplate.Key,
+                    maxDefinitions,
+                    null,
+                    request.SessionTemplateDto.Definitions.Count,
+                    "event_session_template_definitions",
+                    sessionTemplate.TenantId));
+            return response;
+        }
+
+        var maxOptions = await _quotaResolver.GetIntAsync(
+            CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+            sessionTemplate.TenantId,
+            cancellationToken);
+        var overOptionDefinition = request.SessionTemplateDto.Definitions
+            .FirstOrDefault(definition => definition.Options.Count > maxOptions);
+        if (overOptionDefinition is not null)
+        {
+            response.SetQuotaExceeded(
+                "Event session template update failed.",
+                new QuotaExceededDetails(
+                    CustomPropertyQuotaSettingDefinitions.MaxOptionsPerDefinition.Key,
+                    maxOptions,
+                    null,
+                    overOptionDefinition.Options.Count,
+                    "event_session_template_definition_options",
+                    sessionTemplate.TenantId));
             return response;
         }
 

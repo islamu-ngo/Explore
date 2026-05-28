@@ -18,6 +18,7 @@ public sealed class ProjectionMetrics
     private readonly Counter<long> _drainedScopesTotal;
     private readonly Counter<long> _inlineUpdatesTotal;
     private readonly Counter<long> _dirtyScopeSkipsTotal;
+    private readonly Counter<long> _quotaExceededTotal;
 
     public ProjectionMetrics(IMeterFactory meterFactory)
     {
@@ -67,6 +68,11 @@ public sealed class ProjectionMetrics
             "explore.projections.dirty_scope_skips_total",
             unit: "{skip}",
             description: "Total projection updater operations deferred into the dirty-scope backlog");
+
+        _quotaExceededTotal = meter.CreateCounter<long>(
+            "explore.projections.quota_exceeded_total",
+            unit: "{rejection}",
+            description: "Total projection operation quota rejections by bounded quota key and scope");
     }
 
     public void RecordRebuild(string tenantId, string projectionType, long rowsProcessed, long rowsFailed, double durationSeconds, bool lockAcquired)
@@ -125,5 +131,14 @@ public sealed class ProjectionMetrics
             new KeyValuePair<string, object?>("projection_type", projectionType),
             new KeyValuePair<string, object?>("operation", operation),
             new KeyValuePair<string, object?>("reason", reason));
+    }
+
+    public void RecordQuotaExceeded(string tenantId, string projectionType, string quotaKey, string scope)
+    {
+        _quotaExceededTotal.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId),
+            new KeyValuePair<string, object?>("projection_type", projectionType),
+            new KeyValuePair<string, object?>("quota_key", quotaKey),
+            new KeyValuePair<string, object?>("scope", scope));
     }
 }
