@@ -21,10 +21,22 @@ public class EventContactShareConsentConfiguration : IEntityTypeConfiguration<Ev
 
         // FK behaviour
         builder.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(e => e.SourceEvent).WithMany().HasForeignKey(e => e.SourceEventId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.SourceEvent)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.SourceEventId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(e => e.RecipientActor).WithMany().HasForeignKey(e => e.RecipientActorId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(e => e.SourceEventRegistrationIntent).WithMany().HasForeignKey(e => e.SourceEventRegistrationIntentId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(e => e.RecipientActor)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.RecipientActorId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.SourceEventRegistrationIntent)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.SourceEventRegistrationIntentId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Unique index: one consent per tenant + user + recipient actor + purpose
         builder.HasIndex(e => new { e.TenantId, e.UserId, e.RecipientActorId, e.PurposeCode })

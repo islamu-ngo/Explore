@@ -20,14 +20,14 @@ public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, I
     public async Task<TenantSetting?> GetByTenantAndKey(Guid tenantId, string key)
     {
         return await _dbContext.TenantSettingOverrides
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
     }
 
     public async Task<List<TenantSetting>> GetAllForTenant(Guid tenantId)
     {
         return await _dbContext.TenantSettingOverrides
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
             .Where(s => s.TenantId == tenantId)
             .ToListAsync();
@@ -36,7 +36,7 @@ public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, I
     public async Task<bool> RemoveOverride(Guid tenantId, string key)
     {
         var setting = await _dbContext.TenantSettingOverrides
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
 
         if (setting == null)
@@ -50,7 +50,7 @@ public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, I
     public async Task<bool> LockAsync(Guid tenantId, string key)
     {
         var setting = await _dbContext.TenantSettingOverrides
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
 
         if (setting == null)
@@ -64,7 +64,7 @@ public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, I
     public async Task<bool> UnlockAsync(Guid tenantId, string key)
     {
         var setting = await _dbContext.TenantSettingOverrides
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
 
         if (setting == null)
@@ -78,7 +78,7 @@ public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, I
     public async Task<List<TenantSetting>> GetLockedForTenant(Guid tenantId)
     {
         return await _dbContext.TenantSettingOverrides
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
             .Where(s => s.TenantId == tenantId && s.IsLocked)
             .ToListAsync();

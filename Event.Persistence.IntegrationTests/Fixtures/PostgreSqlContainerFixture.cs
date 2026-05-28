@@ -1,7 +1,9 @@
 // ABOUTME: PostgreSQL container fixture for persistence integration tests using Testcontainers.
 // ABOUTME: Provides container lifecycle, schema migration via MigrateAsync, lookup seeding, and Respawn-based reset.
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Persistence;
+using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -45,6 +47,7 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         // Apply all migrations for production-faithful schema
         await using var context = CreateDbContextInternal();
         await context.Database.MigrateAsync();
+        await PostgresModelConstraintApplier.ApplyAsync(context);
         await LookupTableSeeder.SeedAsync(context);
 
         // Initialize Respawn for deterministic reset between tests
@@ -70,7 +73,19 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
     /// </summary>
     public ExploreDbContext CreateDbContext()
     {
-        return CreateDbContextInternal();
+        var context = CreateDbContextInternal();
+        context.EnableTenantFilterBypass("Persistence integration test system context.");
+        return context;
+    }
+
+    /// <summary>
+    /// Creates a DbContext with tenant filters enforced. Use for tenant-isolation tests.
+    /// </summary>
+    public ExploreDbContext CreateTenantFilteredDbContext(ITenantContext? tenantContext = null)
+    {
+        var context = CreateDbContextInternal();
+        context.TenantContext = tenantContext;
+        return context;
     }
 
     /// <summary>

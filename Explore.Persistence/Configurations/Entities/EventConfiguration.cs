@@ -1,3 +1,6 @@
+// ABOUTME: EF configuration for Event aggregate identity, ownership, lookups, aspects, and listing indexes.
+// ABOUTME: Uses tenant-scoped alternate keys so child event-graph rows cannot reference cross-tenant parents.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -17,17 +20,20 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.UseTptMappingStrategy();
 
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
         builder.Property(e => e.TotalViews).HasDefaultValue(0);
         builder.Property(e => e.IsUserReported).HasDefaultValue(false);
 
         builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
         builder.Property(e => e.Subtitle).HasMaxLength(200);
-        builder.Property(e => e.Description).HasMaxLength(5000);
+        builder.Property(e => e.Description).HasMaxLength(150);
+        builder.Property(e => e.Content).HasMaxLength(5000);
         builder.Property(e => e.Slug).HasMaxLength(200);
         builder.Property(e => e.CurrencyCode).HasMaxLength(3);
         builder.Property(e => e.EventUrl).HasMaxLength(2048);
         builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(2048);
         builder.Property(e => e.Timezone).HasMaxLength(100);
+        builder.Property(e => e.EventTimeZoneId).HasMaxLength(100);
         builder.Property(e => e.Price).HasPrecision(19, 4);
 
         builder.HasOne(e => e.EventType)
@@ -47,7 +53,8 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
         builder.HasOne(e => e.Actor)
             .WithMany()
-            .HasForeignKey(e => e.ActorId)
+            .HasForeignKey(e => new { e.TenantId, e.ActorId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.FeaturedImage)
@@ -133,9 +140,21 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.HasIndex(e => new { e.TenantId, e.Slug })
             .HasDatabaseName("ix_events_tenant_slug");
 
-        builder.ToTable(t => t.HasCheckConstraint(
-            "CK_Event_NonNegativePrice",
-            "price IS NULL OR price >= 0"));
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint(
+                "CK_Event_NonNegativePrice",
+                "price IS NULL OR price >= 0");
+            t.HasCheckConstraint(
+                "CK_Event_SessionDateRange",
+                "first_session_date IS NULL OR last_session_date IS NULL OR first_session_date <= last_session_date");
+            t.HasCheckConstraint(
+                "CK_Event_SessionStartUtcRange",
+                "first_session_start_utc IS NULL OR last_session_start_utc IS NULL OR first_session_start_utc <= last_session_start_utc");
+            t.HasCheckConstraint(
+                "CK_Event_TimeZoneIdNotBlank",
+                "event_time_zone_id IS NULL OR length(btrim(event_time_zone_id)) > 0");
+        });
 
         // Optimistic concurrency control (database-agnostic)
         builder.Property(e => e.ConcurrencyStamp)

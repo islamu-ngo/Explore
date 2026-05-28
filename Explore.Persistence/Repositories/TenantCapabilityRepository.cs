@@ -20,7 +20,7 @@ public class TenantCapabilityRepository : GenericRepository<TenantCapability, Gu
     public async Task<List<TenantCapability>> GetByTenantId(Guid tenantId)
     {
         return await _dbContext.TenantCapabilities
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantCapabilityResolution)
             .AsNoTracking()
             .Include(c => c.Module)
             .Where(c => c.TenantId == tenantId)
@@ -30,7 +30,7 @@ public class TenantCapabilityRepository : GenericRepository<TenantCapability, Gu
     public async Task<List<TenantCapability>> GetEnabledByTenantId(Guid tenantId)
     {
         return await _dbContext.TenantCapabilities
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantCapabilityResolution)
             .AsNoTracking()
             .Include(c => c.Module)
             .Where(c => c.TenantId == tenantId && c.IsEnabled && c.Module != null && c.Module.IsActive)
@@ -41,7 +41,7 @@ public class TenantCapabilityRepository : GenericRepository<TenantCapability, Gu
     public async Task<bool> IsModuleEnabled(Guid tenantId, string moduleKey)
     {
         return await _dbContext.TenantCapabilities
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantCapabilityResolution)
             .AsNoTracking()
             .Include(c => c.Module)
             .AnyAsync(c => c.TenantId == tenantId
@@ -54,7 +54,7 @@ public class TenantCapabilityRepository : GenericRepository<TenantCapability, Gu
     public async Task<TenantCapability?> GetByTenantAndModuleKey(Guid tenantId, string moduleKey)
     {
         return await _dbContext.TenantCapabilities
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantCapabilityResolution)
             .Include(c => c.Module)
             .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Module != null && c.Module.ModuleKey == moduleKey);
     }

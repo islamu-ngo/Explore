@@ -1,3 +1,6 @@
+// ABOUTME: EF configuration for agenda rows owned by a specific EventSession.
+// ABOUTME: Composite FKs bind session-owned agenda items to same-tenant sessions and locations.
+
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -15,13 +18,15 @@ public class EventSessionAgendaItemConfiguration : IEntityTypeConfiguration<Even
 
         builder.HasOne(e => e.EventSession)
             .WithMany()
-            .HasForeignKey(e => e.EventSessionId)
+            .HasForeignKey(e => new { e.TenantId, e.EventSessionId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Location)
             .WithMany()
-            .HasForeignKey(e => e.LocationId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(e => new { e.TenantId, e.LocationId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Tenant)
             .WithMany()

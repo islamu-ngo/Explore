@@ -16,12 +16,14 @@ public class EventSessionTagConfiguration : IEntityTypeConfiguration<EventSessio
 
         builder.HasOne(e => e.EventSession)
             .WithMany()
-            .HasForeignKey(e => e.EventSessionId)
+            .HasForeignKey(e => new { e.TenantId, e.EventSessionId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Tag)
             .WithMany()
-            .HasForeignKey(e => e.TagId)
+            .HasForeignKey(e => new { e.TenantId, e.TagId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Tenant)

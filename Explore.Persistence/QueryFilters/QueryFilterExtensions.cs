@@ -1,5 +1,5 @@
 // ABOUTME: Extension methods for selectively ignoring named query filters in EF Core 10+ queries.
-// Provides fluent API for including soft-deleted entities or querying across tenants.
+// ABOUTME: Requires explicit reasons for tenant or full-filter bypasses while preserving tenant-safe soft-delete access.
 
 namespace Explore.Persistence.QueryFilters;
 
@@ -26,28 +26,40 @@ public static class QueryFilterExtensions
 
     /// <summary>
     /// Ignores the tenant filter, querying across all tenants.
-    /// WARNING: Use only for admin operations. This exposes data from all tenants.
+    /// WARNING: Use only for admin/system operations with an explicit tenant predicate or privileged scope.
     /// Soft delete filter is still enforced.
     /// </summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
     /// <param name="query">The queryable to modify.</param>
+    /// <param name="reason">Documented reason for the tenant-filter bypass.</param>
     /// <returns>The queryable with the tenant filter disabled.</returns>
-    public static IQueryable<TEntity> IgnoreTenantFilter<TEntity>(this IQueryable<TEntity> query)
+    public static IQueryable<TEntity> IgnoreTenantFilter<TEntity>(this IQueryable<TEntity> query, string reason)
         where TEntity : class
     {
+        EnsureBypassReason(reason);
         return query.IgnoreQueryFilters([QueryFilterNames.Tenant]);
     }
 
     /// <summary>
     /// Ignores all query filters (tenant and soft delete).
-    /// WARNING: Use only for admin operations requiring full data access.
+    /// WARNING: Use only for maintenance operations requiring full data access.
     /// </summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
     /// <param name="query">The queryable to modify.</param>
+    /// <param name="reason">Documented reason for the full-filter bypass.</param>
     /// <returns>The queryable with all filters disabled.</returns>
-    public static IQueryable<TEntity> IgnoreAllFilters<TEntity>(this IQueryable<TEntity> query)
+    public static IQueryable<TEntity> IgnoreAllFilters<TEntity>(this IQueryable<TEntity> query, string reason)
         where TEntity : class
     {
+        EnsureBypassReason(reason);
         return query.IgnoreQueryFilters();
+    }
+
+    private static void EnsureBypassReason(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException("Query filter bypasses require a non-empty reason.", nameof(reason));
+        }
     }
 }

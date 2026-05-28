@@ -20,7 +20,7 @@ public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : 
         _dbContext = dbContext;
     }
 
-    public async Task<T> Create(T entity)
+    public virtual async Task<T> Create(T entity)
     {
         try
         {
@@ -98,7 +98,7 @@ public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : 
         return await _dbContext.Set<T>().FindAsync(id);
     }
 
-    public async Task Update(T entity)
+    public virtual async Task Update(T entity)
     {
         var entry = _dbContext.Entry(entity);
         if (entry.State != EntityState.Detached)

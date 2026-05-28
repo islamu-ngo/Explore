@@ -46,6 +46,7 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
             foreach (var child in children)
             {
                 child.EventRegistrationIntentId = intent.Id;
+                child.EventId = intent.EventId;
                 await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
             }
 
@@ -87,6 +88,7 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
             foreach (var child in children)
             {
                 child.EventRegistrationIntentId = intent.Id;
+                child.EventId = intent.EventId;
                 await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
             }
 

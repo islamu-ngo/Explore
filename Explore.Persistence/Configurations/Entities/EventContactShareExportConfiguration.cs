@@ -16,8 +16,16 @@ public class EventContactShareExportConfiguration : IEntityTypeConfiguration<Eve
         builder.Property(e => e.Format).HasMaxLength(20);
 
         builder.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(e => e.RecipientActor).WithMany().HasForeignKey(e => e.RecipientActorId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(e => e.Event).WithMany().HasForeignKey(e => e.EventId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.RecipientActor)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.RecipientActorId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.Event)
+            .WithMany()
+            .HasForeignKey(e => new { e.TenantId, e.EventId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(e => e.ExportedByUser).WithMany().HasForeignKey(e => e.ExportedByUserId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.RecipientActorId, e.CreatedAt })

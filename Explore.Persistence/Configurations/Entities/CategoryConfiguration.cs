@@ -1,3 +1,6 @@
+// ABOUTME: EF configuration for tenant-scoped event categories and parent category hierarchy.
+// ABOUTME: Composite self-FKs prevent categories from nesting under parents owned by another tenant.
+
 using Explore.Domain;
 using Explore.Persistence.Seed;
 using Explore.Persistence.ValueGenerators;
@@ -11,13 +14,15 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
     public void Configure(EntityTypeBuilder<Category> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.Property(e => e.MasterCode).HasMaxLength(100).IsRequired();
         builder.Property(e => e.FullName).HasMaxLength(200).IsRequired();
 
         builder.HasOne(e => e.Parent)
             .WithMany()
-            .HasForeignKey(e => e.ParentId)
+            .HasForeignKey(e => new { e.TenantId, e.ParentId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Tenant)

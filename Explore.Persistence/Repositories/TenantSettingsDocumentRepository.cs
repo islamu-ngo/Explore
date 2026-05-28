@@ -23,7 +23,7 @@ public sealed class TenantSettingsDocumentRepository : GenericRepository<TenantS
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.TenantSettingsDocuments
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 document => document.TenantId == tenantId && document.DocumentKey == documentKey,
@@ -36,7 +36,7 @@ public sealed class TenantSettingsDocumentRepository : GenericRepository<TenantS
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.TenantSettingsDocuments
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .FirstOrDefaultAsync(
                 document => document.TenantId == tenantId && document.DocumentKey == documentKey,
                 cancellationToken);
@@ -58,7 +58,7 @@ public sealed class TenantSettingsDocumentRepository : GenericRepository<TenantS
         }
 
         return await _dbContext.TenantSettingsDocuments
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
             .Where(document => document.TenantId == tenantId && keys.Contains(document.DocumentKey))
             .ToListAsync(cancellationToken);

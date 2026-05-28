@@ -606,6 +606,7 @@ Table "roles" {
   indexes {
     master_code [unique, name: 'ix_roles_mastercode']
     role_scope_id [name: 'ix_roles_role_scope_id']
+    (id, role_scope_id) [unique, name: 'ak_roles_id_role_scope_id']
   }
 }
 
@@ -748,6 +749,135 @@ Table "outbox_messages" {
 }
 
 // ============================================================
+// Email Dispatch (Basic Dispatch Mode)
+// ============================================================
+
+Table "email_dispatch_outbox" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "publish_event_id" uuid [not null]
+  "kind" int [not null]
+  "source_type" varchar(100) [not null]
+  "source_id" uuid [not null]
+  "event_id" uuid
+  "registration_intent_id" uuid
+  "user_id" uuid
+  "recipient_email" varchar(320) [not null]
+  "subject" varchar(500) [not null]
+  "plain_text_body" text
+  "html_body" text
+  "reply_to" varchar(320)
+  "status" int [not null]
+  "attempt_count" int [not null]
+  "max_attempts" int [not null, default: 5]
+  "next_attempt_at" timestamptz
+  "processing_started_at" timestamptz
+  "processing_lease_token" uuid
+  "sent_at" timestamptz
+  "dead_lettered_at" timestamptz
+  "parked_at" timestamptz
+  "unknown_at" timestamptz
+  "last_failure_category" varchar(100)
+  "last_error" varchar(2000)
+  "last_failure_at" timestamptz
+  "provider_message_id" varchar(500)
+  "correlation_id" varchar(200)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    event_id [name: 'ix_email_dispatch_outbox_event_id']
+    registration_intent_id [name: 'ix_email_dispatch_outbox_registration_intent_id']
+    user_id [name: 'ix_email_dispatch_outbox_user_id']
+    (tenant_id, publish_event_id) [unique, name: 'ux_email_dispatch_outbox_tenant_publish_event']
+    (status, next_attempt_at, created_at) [name: 'ix_email_dispatch_outbox_worker_poll']
+    (tenant_id, status, last_failure_at) [name: 'ix_email_dispatch_outbox_tenant_status']
+    (tenant_id, source_type, source_id, kind) [unique, name: 'ux_email_dispatch_outbox_tenant_source_kind', note: 'filter: is_deleted = false']
+  }
+
+  Note: 'Durable email intent/outbox row for Basic Dispatch Mode retries, dead-lettering, parking, and replay.'
+}
+
+Table "email_dispatch_attempts" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "email_dispatch_outbox_id" uuid [not null]
+  "attempt_number" int [not null]
+  "transport" varchar(50) [not null]
+  "provider" varchar(100)
+  "outcome" int [not null]
+  "started_at" timestamptz [not null]
+  "completed_at" timestamptz
+  "failure_category" varchar(100)
+  "sanitized_error_message" varchar(2000)
+  "provider_message_id" varchar(500)
+  "correlation_id" varchar(200)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (email_dispatch_outbox_id, attempt_number) [unique, name: 'ux_email_dispatch_attempts_outbox_attempt']
+    (tenant_id, started_at) [name: 'ix_email_dispatch_attempts_tenant_started']
+  }
+
+  Note: 'Per-attempt immutable delivery ledger for SMTP or future transports.'
+}
+
+Table "email_dispatch_receipts" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "publish_event_id" uuid [not null]
+  "email_dispatch_outbox_id" uuid [not null]
+  "status" int [not null]
+  "consumer_id" varchar(200)
+  "first_seen_at" timestamptz [not null]
+  "processing_started_at" timestamptz
+  "completed_at" timestamptz
+  "failed_at" timestamptz
+  "failure_code" varchar(100)
+  "failure_message" varchar(1000)
+  "provider_message_id" varchar(500)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (email_dispatch_outbox_id, status) [name: 'ix_email_dispatch_receipts_outbox_status']
+    (tenant_id, publish_event_id) [unique, name: 'ux_email_dispatch_receipts_tenant_publish_event']
+  }
+
+  Note: 'Idempotency receipt shared by current Basic Mode and future queue-backed dispatch modes.'
+}
+
+Table "email_dispatch_tenant_controls" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "is_paused" boolean [not null]
+  "pause_reason" varchar(500)
+  "paused_at" timestamptz
+  "paused_by" uuid
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    tenant_id [unique, name: 'ux_email_dispatch_tenant_controls_tenant']
+    (is_paused, updated_at) [name: 'ix_email_dispatch_tenant_controls_pause_state']
+  }
+
+  Note: 'Tenant-scoped operational pause/resume control for email dispatch.'
+}
+
+// ============================================================
 // Modules
 // ============================================================
 
@@ -845,6 +975,7 @@ Table "tenant_setting_overrides"{
   "tenant_id" uuid [not null]
   "setting_key" varchar(256) [not null]
   "value" text [not null]
+  "is_locked" boolean [not null, default: false]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -951,12 +1082,10 @@ Table "ui_theme_presets" {
   "display_name" varchar(200) [not null]
   "description" varchar(1000)
   "is_active" boolean [not null]
-  "is_archived" boolean [not null]
   "is_system" boolean [not null]
   "is_editable" boolean [not null]
   "seed_version" int [not null]
   "deprecated_at" timestamptz
-  "sort_order" int [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -1059,23 +1188,6 @@ Table "tenant_invitations" {
   }
 }
 
-Table "tenant_members" {
-  "id" uuid [pk, not null, note: 'uuidv7 app-side']
-  "user_id" uuid [not null]
-  "tenant_id" uuid [not null]
-  "role_id" int [not null]
-  "granted_at" timestamptz [not null]
-  "granted_by" uuid
-  "created_at" timestamptz [not null]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
-
-  indexes {
-    (user_id, tenant_id) [unique, name: 'ix_tenantmembers_user_tenant']
-  }
-}
-
 Table "tenant_users" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "tenant_id" uuid [not null]
@@ -1102,9 +1214,35 @@ Table "tenant_users" {
     user_id [name: 'ix_tenant_users_user_id']
     (tenant_id, actor_id) [unique, name: 'ix_tenantusers_tenant_actor', note: 'filter: actor_id IS NOT NULL']
     (tenant_id, user_id) [unique, name: 'ix_tenantusers_tenant_user']
+    (tenant_id, id) [unique, name: 'ak_tenant_users_tenant_id_id']
   }
 
   Note: 'Tenant-local membership/moderation state for a global user. Check: ck_tenant_users_status (1..4).'
+}
+
+Table "tenant_user_role_grants" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "tenant_user_id" uuid [not null]
+  "role_id" int [not null]
+  "role_scope_id" int [not null, default: 1]
+  "granted_at" timestamptz [not null, default: `NOW()`]
+  "granted_by" uuid
+  "revoked_at" timestamptz
+  "revoked_by" uuid
+  "revocation_reason" varchar(1000)
+  "created_at" timestamptz [not null, default: `NOW()`]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, tenant_user_id, role_id) [unique, name: 'ix_tenant_user_role_grants_active_tenant_user_role', note: 'filter: revoked_at IS NULL']
+    (role_id, role_scope_id) [name: 'ix_tenant_user_role_grants_role_id_role_scope_id']
+    (tenant_id, role_id) [name: 'ix_tenant_user_role_grants_tenant_role']
+  }
+
+  Note: 'Auditable tenant-role grant rooted in TenantUser lifecycle. Check: ck_tenant_user_role_grants_role_scope (role_scope_id = Tenant/1).'
 }
 
 Table "tenant_user_profiles" {
@@ -1221,7 +1359,9 @@ Table "categories" {
   "tenant_id" uuid [not null]
 
   Indexes {
+    (tenant_id, id) [unique, name: 'ak_categories_tenant_id_id']
     (tenant_id, master_code) [unique]
+    (tenant_id, parent_id) [name: 'ix_categories_tenant_id_parent_id']
   }
 }
 
@@ -1239,6 +1379,7 @@ Table "tags" {
   "tenant_id" uuid [not null]
 
   Indexes {
+    (tenant_id, id) [unique, name: 'ak_tags_tenant_id_id']
     (tenant_id, master_code) [unique, name: 'ix_tags_tenant_master_code']
   }
 }
@@ -1862,6 +2003,7 @@ Table "locations" {
   "timezone" varchar(500)
 
   indexes {
+    (tenant_id, id) [unique, name: 'ak_locations_tenant_id_id']
     tenant_id
     (tenant_id, city) [name: 'ix_locations_tenant_city']
     (tenant_id, country) [name: 'ix_locations_tenant_country']
@@ -1887,6 +2029,8 @@ Table "location_rooms" {
   "concurrency_stamp" uuid [not null]
 
   indexes {
+    (tenant_id, id) [unique, name: 'ak_location_rooms_tenant_id_id']
+    (tenant_id, location_id, id) [unique, name: 'ak_location_rooms_tenant_id_location_id_id']
     (tenant_id, location_id, name) [unique, name: 'ix_location_rooms_tenant_location_name']
     (tenant_id, location_id, sort_order) [name: 'ix_location_rooms_tenant_location_sort']
   }
@@ -1941,6 +2085,7 @@ Table "actors" {
     (organization_id) [unique, name: 'ix_actors_organization_id', note: 'filtered: organization_id IS NOT NULL']
     (group_id) [unique, name: 'ix_actors_group_id', note: 'filtered: group_id IS NOT NULL']
     (profile_picture_id) [name: 'ix_actors_profile_picture_id']
+    (tenant_id, id) [unique, name: 'ak_actors_tenant_id_id']
     (tenant_id) [name: 'ix_actors_tenant_id']
   }
 
@@ -2091,7 +2236,6 @@ Table "user_appearance_profiles" {
   "is_archived" boolean [not null]
   "is_user_editable" boolean [not null]
   "theme_mode" varchar(10) [not null]
-  "theme_key" varchar(128)
   "source_preset_id" uuid
   "source_preset_key" varchar(128)
   "source_preset_seed_version" int
@@ -2252,6 +2396,8 @@ Table "groups" {
   "approval_status_id" int [not null]
   "tenant_id" uuid [not null]
   "actor_id" uuid
+  "parent_organization_id" uuid
+  "parent_group_id" uuid
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -2262,10 +2408,16 @@ Table "groups" {
   "concurrency_stamp" uuid [not null]
 
   indexes {
-    (tenant_id, is_deleted, approval_status_id) [name: 'ix_groups_tenant_active']
+    actor_id [name: 'ix_groups_actor_id']
+    approval_status_id [name: 'ix_groups_approval_status_id']
+    profile_picture_id [name: 'ix_groups_profile_picture_id']
+    (tenant_id, full_name) [name: 'ix_groups_tenant_name']
+    (tenant_id, parent_group_id) [name: 'ix_groups_tenant_parent_group']
+    (tenant_id, parent_organization_id) [name: 'ix_groups_tenant_parent_organization']
+    (tenant_id, is_deleted, approval_status_id) [name: 'ix_groups_tenant_active_status']
   }
 
-  Note: 'Community groups. Approval-gated, soft-deletable, concurrency-protected.'
+  Note: 'Community groups. Approval-gated, soft-deletable, concurrency-protected. Checks: ck_groups_no_self_parent, ck_groups_parent_exclusive.'
 }
 
 Table "group_members" {
@@ -2368,7 +2520,8 @@ Table "events" {
   "event_type_id" int
   "title" varchar(200) [not null]
   "subtitle" varchar(200)
-  "description" varchar(5000)
+  "description" varchar(150)
+  "content" varchar(5000)
   "audience_gender_id" int
   "audience_age_id" int
   "actor_id" uuid [not null]
@@ -2391,7 +2544,7 @@ Table "events" {
   "timezone" varchar(100)
   "first_session_start_utc" timestamptz
   "last_session_start_utc" timestamptz
-  "event_time_zone_id" text
+  "event_time_zone_id" varchar(100)
   "event_series_id" uuid
   "series_order" int
   "registration_policy_id" int [note: 'FK to event_registration_policies. Null = Flexible.']
@@ -2415,13 +2568,13 @@ Table "events" {
   "background_image_id" uuid
 
   indexes {
+    (tenant_id, id) [unique, name: 'ak_events_tenant_id_id']
     (tenant_id, is_deleted, event_status_id) [name: 'ix_events_tenant_active_status']
     (tenant_id, actor_id, created_at) [name: 'ix_events_tenant_actor_created']
     (tenant_id, first_session_date, last_session_date) [name: 'ix_events_tenant_daterange']
     (tenant_id, event_type_id) [name: 'ix_events_tenant_eventtype']
     (tenant_id, slug) [name: 'ix_events_tenant_slug']
     (tenant_id, visibility_type_id) [name: 'ix_events_tenant_visibility']
-    (actor_id) [name: 'ix_events_actor_id']
     (atproto_record_id) [name: 'ix_events_atproto_record_id']
     (audience_age_id) [name: 'ix_events_audience_age_id']
     (audience_gender_id) [name: 'ix_events_audience_gender_id']
@@ -2436,7 +2589,7 @@ Table "events" {
     (visibility_type_id) [name: 'ix_events_visibility_type_id']
   }
 
-  Note: 'Core aggregate. Check: CK_Event_NonNegativePrice (price >= 0). Soft-deletable, tenant-scoped, concurrency-protected.'
+  Note: 'Core aggregate. Checks: CK_Event_NonNegativePrice (price >= 0), CK_Event_SessionDateRange, CK_Event_SessionStartUtcRange, CK_Event_TimeZoneIdNotBlank. Soft-deletable, tenant-scoped, concurrency-protected. Event graph child rows use (tenant_id, id) as the principal key. UTC session starts are source of truth; local dates are server-owned projections.'
 }
 
 
@@ -2485,6 +2638,8 @@ Table "event_days" {
   "concurrency_stamp" uuid [not null]
 
   indexes {
+    (tenant_id, id) [unique, name: 'ak_event_days_tenant_id_id']
+    (tenant_id, event_id, id) [unique, name: 'ak_event_days_tenant_id_event_id_id']
     (tenant_id, event_id, local_date) [unique, name: 'ix_event_days_tenant_event_local_date', note: 'partial: is_deleted = false']
     (tenant_id, event_id, sort_order) [name: 'ix_event_days_tenant_event_sort']
     (tenant_id, event_id, is_published) [name: 'ix_event_days_tenant_event_published']
@@ -2522,11 +2677,14 @@ Table "event_agenda_items" {
   "concurrency_stamp" uuid [not null]
 
   indexes {
+    (tenant_id, event_id, event_day_id) [name: 'ix_event_agenda_items_tenant_id_event_id_event_day_id']
+    (tenant_id, location_id) [name: 'ix_event_agenda_items_tenant_id_location_id']
+    (tenant_id, location_id, room_id) [name: 'ix_event_agenda_items_tenant_id_location_id_room_id']
     (tenant_id, event_id, local_start_date, local_start_minute_of_day) [name: 'ix_event_agenda_items_tenant_event_local_start']
     (tenant_id, event_id, sort_order) [name: 'ix_event_agenda_items_tenant_event_sort']
   }
 
-  Note: 'Non-session schedule entries (breaks, prayers). Check: CK_EventAgendaItem_DurationPositive.'
+  Note: 'Non-session schedule entries (breaks, prayers). Checks: CK_EventAgendaItem_EndAfterStart, CK_EventAgendaItem_RoomRequiresLocation, CK_EventAgendaItem_LocalStartMinuteRange, CK_EventAgendaItem_LocalEndMinuteRange, CK_EventAgendaItem_LocalStartMinuteMatchesTime, CK_EventAgendaItem_LocalEndMinuteMatchesTime. UTC times are source of truth; local fields are server-owned projections.'
 }
 
 Table "event_sessions" {
@@ -2570,19 +2728,19 @@ Table "event_sessions" {
   "concurrency_stamp" uuid [not null]
 
   indexes {
+    (tenant_id, id) [unique, name: 'ak_event_sessions_tenant_id_id']
+    (tenant_id, event_id, id) [unique, name: 'ak_event_sessions_tenant_id_event_id_id']
+    (tenant_id, event_id, event_day_id) [name: 'ix_event_sessions_tenant_id_event_id_event_day_id']
+    (tenant_id, location_id) [name: 'ix_event_sessions_tenant_id_location_id']
     (tenant_id, event_id, local_start_date, local_start_minute_of_day) [name: 'ix_event_sessions_tenant_event_local_start']
-    (tenant_id, room_id, start_time, end_time) [name: 'ix_event_sessions_tenant_room_time']
+    (tenant_id, location_id, room_id, start_time, end_time) [name: 'ix_event_sessions_tenant_location_room_time']
     (tenant_id, event_day_id, sort_order) [name: 'ix_event_sessions_tenant_day_sort']
     (event_session_kind_id) [name: 'ix_event_sessions_event_session_kind_id']
-    (event_day_id) [name: 'ix_event_sessions_event_day_id']
-    (event_id) [name: 'ix_event_sessions_event_id']
     (registration_mode_id) [name: 'ix_event_sessions_registration_mode_id']
     (featured_image_id) [name: 'ix_event_sessions_featured_image_id']
-    (location_id) [name: 'ix_event_sessions_location_id']
-    (room_id) [name: 'ix_event_sessions_room_id']
   }
 
-  Note: 'Check: CK_EventSession_NonNegativePrice, CK_EventSession_DurationPositive.'
+  Note: 'Checks: CK_EventSession_NonNegativePrice, CK_EventSession_EndAfterStart, CK_EventSession_RoomRequiresLocation, CK_EventSession_LocalStartMinuteRange, CK_EventSession_LocalEndMinuteRange, CK_EventSession_LocalStartMinuteMatchesTime, CK_EventSession_LocalEndMinuteMatchesTime. Model-owned exclusion: EX_EventSession_RoomNoOverlap prevents overlapping active sessions in the same tenant/location/room using tstzrange(start_time, end_time, ''[)'') and is applied from EF metadata after migrations. UTC times are source of truth; local fields are server-owned projections.'
 }
 
 Table "event_session_groups" {
@@ -2607,13 +2765,14 @@ Table "event_session_groups" {
   "concurrency_stamp" uuid [not null]
 
   indexes {
+    (tenant_id, id) [unique, name: 'ak_event_session_groups_tenant_id_id']
+    (tenant_id, event_id, id) [unique, name: 'ak_event_session_groups_tenant_id_event_id_id']
+    (tenant_id, location_id) [name: 'ix_event_session_groups_tenant_id_location_id']
+    (tenant_id, location_id, room_id) [name: 'ix_event_session_groups_tenant_id_location_id_room_id']
     (tenant_id, event_id, sort_order) [name: 'ix_event_session_groups_tenant_event_sort']
-    (event_id) [name: 'ix_event_session_groups_event_id']
-    (location_id) [name: 'ix_event_session_groups_location_id']
-    (room_id) [name: 'ix_event_session_groups_room_id']
   }
 
-  Note: 'Tenant-scoped program section/track/devroom grouping for sessions inside an event.'
+  Note: 'Tenant-scoped program section/track/devroom grouping for sessions inside an event. Check: CK_EventSessionGroup_RoomRequiresLocation.'
 }
 
 Table "event_session_group_sessions" {
@@ -2633,10 +2792,9 @@ Table "event_session_group_sessions" {
   "deleted_by" uuid
 
   indexes {
+    (tenant_id, event_id, event_session_group_id, event_session_id) [unique, name: 'ix_event_session_group_sessions_tenant_event_group_session', note: 'filter: is_deleted = false']
+    (tenant_id, event_id, event_session_id, is_primary) [unique, name: 'ix_event_session_group_sessions_tenant_event_session_primary', note: 'filter: is_primary = true AND is_deleted = false']
     (tenant_id, event_session_group_id, sort_order) [name: 'ix_event_session_group_sessions_tenant_group_sort']
-    (tenant_id, event_session_id) [name: 'ix_event_session_group_sessions_tenant_session']
-    (event_session_id) [name: 'ix_event_session_group_sessions_event_session_id']
-    (event_session_group_id, event_session_id) [unique, name: 'ix_event_session_group_sessions_group_session_unique']
   }
 
   Note: 'Explicit join assigning EventSession program items to tracks/devrooms/sections.'
@@ -2644,13 +2802,13 @@ Table "event_session_group_sessions" {
 
 Table "event_session_islamic_aspects" {
   "event_session_id" uuid [pk, not null, note: 'shared PK with event_sessions']
-  "start_time_type" int [not null, default: 1]
+  "start_time_type" int [not null]
   "reference_prayer" int
   "offset_minutes" int
   "requires_wudu" boolean [not null, default: false]
   "ritual_requirements_json" jsonb
 
-  Note: 'Check: CK_EventSessionIslamicAspect_RelativeStartFields.'
+  Note: 'Checks: CK_EventSessionIslamicAspect_StartTimeState, CK_EventSessionIslamicAspect_OffsetRange, CK_EventSessionIslamicAspect_ReferencePrayerRange. Fixed sessions require null prayer fields; prayer-relative sessions require reference_prayer and offset_minutes, with offsets between -180 and 180 minutes.'
 }
 
 Table "event_session_agenda_items" {
@@ -2662,6 +2820,11 @@ Table "event_session_agenda_items" {
   "description" varchar(500)
   "location_id" uuid
   "tenant_id" uuid [not null]
+
+  indexes {
+    (tenant_id, event_session_id) [name: 'ix_event_session_agenda_items_tenant_id_event_session_id']
+    (tenant_id, location_id) [name: 'ix_event_session_agenda_items_tenant_id_location_id']
+  }
 }
 
 Table "event_session_languages" {
@@ -2671,7 +2834,7 @@ Table "event_session_languages" {
   "tenant_id" uuid [not null]
 
   indexes {
-    (event_session_id, language_id) [unique]
+    (tenant_id, event_session_id, language_id) [unique, name: 'ix_eventsessionlanguages_session_language']
   }
 }
 
@@ -2683,6 +2846,7 @@ Table "event_session_speakers" {
 
   indexes {
     (tenant_id, event_session_id, actor_id) [unique, name: 'ix_event_session_speakers_tenant_session_actor']
+    (tenant_id, actor_id) [name: 'ix_event_session_speakers_tenant_id_actor_id']
   }
 }
 
@@ -2698,6 +2862,7 @@ Table "event_categories" {
 
   indexes {
     (tenant_id, event_id, category_id) [unique, name: 'ix_event_categories_tenant_event_category']
+    (tenant_id, category_id) [name: 'ix_event_categories_tenant_id_category_id']
   }
 }
 
@@ -2713,11 +2878,13 @@ Table "event_tags" {
 
   indexes {
     (tenant_id, event_id, tag_id) [unique, name: 'ix_event_tags_tenant_event_tag']
+    (tenant_id, tag_id) [name: 'ix_event_tags_tenant_id_tag_id']
   }
 }
 
 Table "event_registrations" {
   "id" uuid [pk, not null, note: 'uuidv7()']
+  "event_id" uuid [not null, note: 'denormalized from EventSession for same-event composite FK enforcement']
   "user_id" uuid [not null]
   "event_session_id" uuid [not null]
   "event_registration_intent_id" uuid
@@ -2733,9 +2900,9 @@ Table "event_registrations" {
   "deleted_by" uuid
 
   indexes {
-    (event_session_id, user_id) [unique, name: 'ix_eventregistrations_session_user']
+    (tenant_id, event_id, event_session_id, user_id) [unique, name: 'ix_eventregistrations_session_user', note: 'filter: is_deleted = false']
     user_id [name: 'ix_eventregistrations_user']
-    event_registration_intent_id [name: 'ix_eventregistrations_intent']
+    (tenant_id, event_id, event_registration_intent_id) [name: 'ix_eventregistrations_intent']
   }
 }
 
@@ -2758,6 +2925,8 @@ Table "event_registration_intents" {
   "concurrency_stamp" uuid [not null]
 
   indexes {
+    (tenant_id, id) [unique, name: 'ak_event_registration_intents_tenant_id_id']
+    (tenant_id, event_id, id) [unique, name: 'ak_event_registration_intents_tenant_id_event_id_id']
     (tenant_id, event_id, user_id, registration_scope_id) [name: 'ix_event_registration_intents_tenant_event_user_scope']
     (tenant_id, event_id, selected_event_day_id) [name: 'ix_event_registration_intents_tenant_event_day']
     (tenant_id, user_id) [name: 'ix_event_registration_intents_tenant_user']
@@ -2778,10 +2947,8 @@ Table "event_session_categories" {
   "updated_by" uuid
 
   indexes {
-    category_id [name: 'ix_event_session_categories_category_id']
-    event_session_id [name: 'ix_event_session_categories_event_session_id']
-    (event_session_id, category_id) [unique]
-    (tenant_id, event_session_id, category_id) [name: 'ix_event_session_categories_tenant_session_category']
+    (tenant_id, category_id) [name: 'ix_event_session_categories_tenant_id_category_id']
+    (tenant_id, event_session_id, category_id) [unique, name: 'ix_event_session_categories_tenant_session_category']
   }
 }
 
@@ -2797,10 +2964,8 @@ Table "event_session_tags" {
   "updated_by" uuid
 
   indexes {
-    event_session_id [name: 'ix_event_session_tags_event_session_id']
-    tag_id [name: 'ix_event_session_tags_tag_id']
-    (event_session_id, tag_id) [unique]
-    (tenant_id, event_session_id, tag_id) [name: 'ix_event_session_tags_tenant_session_tag']
+    (tenant_id, tag_id) [name: 'ix_event_session_tags_tenant_id_tag_id']
+    (tenant_id, event_session_id, tag_id) [unique, name: 'ix_event_session_tags_tenant_session_tag']
   }
 }
 
@@ -2829,6 +2994,8 @@ Table "event_contact_share_consents" {
     (tenant_id, user_id, recipient_actor_id, purpose_code) [unique, name: 'ix_eventcontactshareconsents_scope_unique']
     (tenant_id, recipient_actor_id, status) [name: 'ix_eventcontactshareconsents_recipient_status']
     (tenant_id, user_id, status) [name: 'ix_eventcontactshareconsents_user_status']
+    (tenant_id, source_event_id) [name: 'ix_event_contact_share_consents_tenant_id_source_event_id']
+    (tenant_id, source_event_registration_intent_id) [name: 'ix_event_contact_share_consents_tenant_id_source_event_registration_intent_id']
   }
 }
 
@@ -2844,8 +3011,7 @@ Table "event_contact_share_exports" {
 
   indexes {
     (tenant_id, recipient_actor_id, created_at) [name: 'ix_eventcontactshareexports_recipient_date']
-    (recipient_actor_id) [name: 'ix_event_contact_share_exports_recipient_actor_id']
-    (event_id) [name: 'ix_event_contact_share_exports_event_id']
+    (tenant_id, event_id) [name: 'ix_event_contact_share_exports_tenant_id_event_id']
     (exported_by_user_id) [name: 'ix_event_contact_share_exports_exported_by_user_id']
   }
 }
@@ -2890,21 +3056,19 @@ Table "notifications" {
   "tenant_id" uuid [not null]
   "user_id" uuid [not null]
   "notification_type_id" int [not null]
-  "notification_reason_id" int [not null]
-  "source_entity_type_id" int [not null]
-  "notification_entity_type_id" int [not null]
+  "notification_reason_id" int
+  "notification_entity_type_id" int
   "source_actor_id" uuid
   "recipient_context_actor_id" uuid
-  "notification_scope_id" int
+  "notification_scope_id" int [not null]
   "entity_id" varchar(200)
   "title" varchar(500) [not null]
-  "body" varchar(2000) [not null]
+  "body" varchar(2000)
   "snoozed_until" timestamptz
   "is_read" boolean [not null]
   "read_at" timestamptz
   "is_archived" boolean [not null]
   "archived_at" timestamptz
-  "notification_reason_id" int [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -3055,8 +3219,14 @@ Ref: "tenant_policy_sets"."tenant_id" - "tenants"."id" [delete: cascade]
 Ref: "tenant_capabilities"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_capabilities"."module_id" > "module_definitions"."id" [delete: restrict]
 Ref: "tenant_invitations"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tenant_members"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tenant_members"."user_id" > "users"."id" [delete: cascade]
+Ref: "tenant_users"."tenant_id" > "tenants"."id" [delete: cascade]
+Ref: "tenant_users"."user_id" > "users"."id" [delete: cascade]
+Ref: "tenant_users"."actor_id" > "actors"."id" [delete: set null]
+Ref: "tenant_user_role_grants"."tenant_id" > "tenants"."id" [delete: cascade]
+Ref: "tenant_user_role_grants".("tenant_id", "tenant_user_id") > "tenant_users".("tenant_id", "id") [delete: cascade]
+Ref: "tenant_user_role_grants".("role_id", "role_scope_id") > "roles".("id", "role_scope_id") [delete: restrict]
+Ref: "tenant_user_profiles"."tenant_id" > "tenants"."id" [delete: cascade]
+Ref: "tenant_user_profiles"."tenant_user_id" - "tenant_users"."id" [delete: cascade]
 
 // Users & Roles
 Ref: "user_pii"."user_id" - "users"."id" [delete: cascade]
@@ -3073,6 +3243,7 @@ Ref: "user_notification_preferences"."user_id" > "users"."id" [delete: restrict]
 Ref: "user_appearance_profiles"."user_id" > "users"."id" [delete: restrict]
 Ref: "user_appearance_preferences"."user_id" > "users"."id" [delete: restrict]
 Ref: "user_appearance_preferences"."active_profile_id" > "user_appearance_profiles"."id" [delete: restrict]
+Ref: "external_bindings"."scope_tenant_id" > "tenants"."id" [delete: restrict]
 
 // Actors & Identity
 Ref: "actors"."actor_type_id" > "actor_types"."id" [delete: restrict]
@@ -3095,13 +3266,18 @@ Ref: "organization_setting_overrides"."organization_id" > "organizations"."id" [
 Ref: "organization_policy_sets"."organization_id" - "organizations"."id" [delete: cascade]
 Ref: "groups"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
 Ref: "groups"."actor_id" - "actors"."id" [delete: restrict]
+Ref: "groups"."profile_picture_id" > "storage_objects"."id" [delete: set null]
+Ref: "groups"."parent_group_id" > "groups"."id" [delete: restrict]
+Ref: "groups"."parent_organization_id" > "organizations"."id" [delete: restrict]
 Ref: "group_members"."group_id" > "groups"."id" [delete: restrict]
 Ref: "group_members"."user_id" > "users"."id" [delete: restrict]
 Ref: "group_members"."group_position_id" > "group_positions"."id" [delete: restrict]
 Ref: "group_setting_overrides"."group_id" > "groups"."id" [delete: restrict]
 
 // Taxonomy
-Ref: "categories"."parent_id" > "categories"."id" [delete: restrict]
+// Tenant-scoped event-graph FKs below intentionally include tenant_id in the physical database model.
+// This prevents a tenant-owned row from linking to a parent aggregate owned by another tenant.
+Ref: "categories".("tenant_id", "parent_id") > "categories".("tenant_id", "id") [delete: restrict]
 Ref: "category_type_categories"."category_id" > "categories"."id" [delete: restrict]
 Ref: "category_type_categories"."category_type_id" > "category_types"."id" [delete: restrict]
 Ref: "tag_type_tags"."tag_id" > "tags"."id" [delete: restrict]
@@ -3110,10 +3286,11 @@ Ref: "tag_type_tags"."tag_type_id" > "tag_types"."id" [delete: restrict]
 // Storage
 Ref: "storage_objects"."file_type_id" > "file_types"."id" [delete: restrict]
 Ref: "storage_objects"."actor_id" > "actors"."id" [delete: restrict]
+Ref: "location_rooms".("tenant_id", "location_id") > "locations".("tenant_id", "id") [delete: cascade]
 
 // Events Core
 Ref: "events"."event_type_id" > "event_types"."id" [delete: restrict]
-Ref: "events"."actor_id" > "actors"."id" [delete: restrict]
+Ref: "events".("tenant_id", "actor_id") > "actors".("tenant_id", "id") [delete: restrict]
 Ref: "events"."event_status_id" > "event_statuses"."id" [delete: restrict]
 Ref: "events"."event_format_id" > "event_formats"."id" [delete: restrict]
 Ref: "events"."visibility_type_id" > "visibility_types"."id" [delete: restrict]
@@ -3129,46 +3306,69 @@ Ref: "event_islamic_aspects"."id" - "events"."id" [delete: cascade]
 Ref: "event_tech_aspects"."id" - "events"."id" [delete: cascade]
 
 // Event Structure
-Ref: "event_days"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_agenda_items"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_agenda_items"."event_day_id" > "event_days"."id" [delete: restrict]
+Ref: "event_days".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
+Ref: "event_agenda_items".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
+Ref: "event_agenda_items".("tenant_id", "event_id", "event_day_id") > "event_days".("tenant_id", "event_id", "id") [delete: restrict]
+Ref: "event_agenda_items".("tenant_id", "location_id") > "locations".("tenant_id", "id") [delete: restrict]
+Ref: "event_agenda_items".("tenant_id", "location_id", "room_id") > "location_rooms".("tenant_id", "location_id", "id") [delete: restrict]
 Ref: "event_agenda_items"."kind_id" > "schedule_item_kinds"."id" [delete: restrict]
-Ref: "event_sessions"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_sessions"."event_day_id" > "event_days"."id" [delete: restrict]
+Ref: "event_sessions".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
+Ref: "event_sessions".("tenant_id", "event_id", "event_day_id") > "event_days".("tenant_id", "event_id", "id") [delete: restrict]
+Ref: "event_sessions".("tenant_id", "location_id") > "locations".("tenant_id", "id") [delete: restrict]
+Ref: "event_sessions".("tenant_id", "location_id", "room_id") > "location_rooms".("tenant_id", "location_id", "id") [delete: restrict]
 Ref: "event_sessions"."registration_mode_id" > "registration_modes"."id" [delete: restrict]
+Ref: "event_session_groups".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
+Ref: "event_session_groups".("tenant_id", "location_id") > "locations".("tenant_id", "id") [delete: restrict]
+Ref: "event_session_groups".("tenant_id", "location_id", "room_id") > "location_rooms".("tenant_id", "location_id", "id") [delete: restrict]
+Ref: "event_session_group_sessions".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
+Ref: "event_session_group_sessions".("tenant_id", "event_id", "event_session_group_id") > "event_session_groups".("tenant_id", "event_id", "id") [delete: cascade]
+Ref: "event_session_group_sessions".("tenant_id", "event_id", "event_session_id") > "event_sessions".("tenant_id", "event_id", "id") [delete: cascade]
 Ref: "event_session_islamic_aspects"."event_session_id" - "event_sessions"."id" [delete: cascade]
-Ref: "event_session_agenda_items"."event_session_id" > "event_sessions"."id" [delete: cascade]
-Ref: "event_session_languages"."event_session_id" > "event_sessions"."id" [delete: cascade]
+Ref: "event_session_agenda_items".("tenant_id", "event_session_id") > "event_sessions".("tenant_id", "id") [delete: cascade]
+Ref: "event_session_agenda_items".("tenant_id", "location_id") > "locations".("tenant_id", "id") [delete: restrict]
+Ref: "event_session_languages".("tenant_id", "event_session_id") > "event_sessions".("tenant_id", "id") [delete: cascade]
 Ref: "event_session_languages"."language_id" > "languages"."id" [delete: restrict]
-Ref: "event_session_speakers"."event_session_id" > "event_sessions"."id" [delete: cascade]
-Ref: "event_session_speakers"."actor_id" > "actors"."id" [delete: restrict]
-Ref: "event_categories"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_categories"."category_id" > "categories"."id" [delete: restrict]
-Ref: "event_tags"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_tags"."tag_id" > "tags"."id" [delete: restrict]
-Ref: "event_session_categories"."event_session_id" > "event_sessions"."id" [delete: cascade]
-Ref: "event_session_categories"."category_id" > "categories"."id" [delete: restrict]
-Ref: "event_session_tags"."event_session_id" > "event_sessions"."id" [delete: cascade]
-Ref: "event_session_tags"."tag_id" > "tags"."id" [delete: restrict]
+Ref: "event_session_speakers".("tenant_id", "event_session_id") > "event_sessions".("tenant_id", "id") [delete: cascade]
+Ref: "event_session_speakers".("tenant_id", "actor_id") > "actors".("tenant_id", "id") [delete: cascade]
+Ref: "event_categories".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
+Ref: "event_categories".("tenant_id", "category_id") > "categories".("tenant_id", "id") [delete: cascade]
+Ref: "event_tags".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
+Ref: "event_tags".("tenant_id", "tag_id") > "tags".("tenant_id", "id") [delete: cascade]
+Ref: "event_session_categories".("tenant_id", "event_session_id") > "event_sessions".("tenant_id", "id") [delete: cascade]
+Ref: "event_session_categories".("tenant_id", "category_id") > "categories".("tenant_id", "id") [delete: cascade]
+Ref: "event_session_tags".("tenant_id", "event_session_id") > "event_sessions".("tenant_id", "id") [delete: cascade]
+Ref: "event_session_tags".("tenant_id", "tag_id") > "tags".("tenant_id", "id") [delete: cascade]
 
 // Registration
-Ref: "event_registration_intents"."event_id" > "events"."id" [delete: restrict]
+Ref: "event_registration_intents".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
 Ref: "event_registration_intents"."user_id" > "users"."id" [delete: restrict]
 Ref: "event_registration_intents"."registration_scope_id" > "registration_scopes"."id" [delete: restrict]
-Ref: "event_registration_intents"."selected_event_day_id" > "event_days"."id" [delete: restrict]
+Ref: "event_registration_intents".("tenant_id", "event_id", "selected_event_day_id") > "event_days".("tenant_id", "event_id", "id") [delete: restrict]
 Ref: "event_registration_intents"."registration_policy_snapshot_id" > "event_registration_policies"."id" [delete: restrict]
 Ref: "event_registration_intents"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
-Ref: "event_registrations"."event_registration_intent_id" > "event_registration_intents"."id" [delete: cascade]
-Ref: "event_registrations"."event_session_id" > "event_sessions"."id" [delete: cascade]
+Ref: "event_registrations".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: cascade]
+Ref: "event_registrations".("tenant_id", "event_id", "event_registration_intent_id") > "event_registration_intents".("tenant_id", "event_id", "id") [delete: cascade]
+Ref: "event_registrations".("tenant_id", "event_id", "event_session_id") > "event_sessions".("tenant_id", "event_id", "id") [delete: cascade]
 Ref: "event_registrations"."user_id" > "users"."id" [delete: restrict]
+
+// Email Dispatch
+Ref: "email_dispatch_outbox"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "email_dispatch_outbox"."event_id" > "events"."id" [delete: restrict]
+Ref: "email_dispatch_outbox"."registration_intent_id" > "event_registration_intents"."id" [delete: restrict]
+Ref: "email_dispatch_outbox"."user_id" > "users"."id" [delete: restrict]
+Ref: "email_dispatch_attempts"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "email_dispatch_attempts"."email_dispatch_outbox_id" > "email_dispatch_outbox"."id" [delete: cascade]
+Ref: "email_dispatch_receipts"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "email_dispatch_receipts"."email_dispatch_outbox_id" > "email_dispatch_outbox"."id" [delete: cascade]
+Ref: "email_dispatch_tenant_controls"."tenant_id" > "tenants"."id" [delete: restrict]
 
 // Contact Share
 Ref: "event_contact_share_consents"."user_id" > "users"."id" [delete: restrict]
-Ref: "event_contact_share_consents"."recipient_actor_id" > "actors"."id" [delete: restrict]
-Ref: "event_contact_share_consents"."source_event_id" > "events"."id" [delete: restrict]
-Ref: "event_contact_share_consents"."source_event_registration_intent_id" > "event_registration_intents"."id" [delete: restrict]
-Ref: "event_contact_share_exports"."recipient_actor_id" > "actors"."id" [delete: restrict]
-Ref: "event_contact_share_exports"."event_id" > "events"."id" [delete: restrict]
+Ref: "event_contact_share_consents".("tenant_id", "recipient_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_consents".("tenant_id", "source_event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_consents".("tenant_id", "source_event_registration_intent_id") > "event_registration_intents".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_exports".("tenant_id", "recipient_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
+Ref: "event_contact_share_exports".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
 Ref: "event_contact_share_exports"."exported_by_user_id" > "users"."id" [delete: restrict]
 Ref: "event_contact_share_export_items"."export_id" > "event_contact_share_exports"."id" [delete: cascade]
 Ref: "event_contact_share_export_items"."consent_id" > "event_contact_share_consents"."id" [delete: restrict]

@@ -1,11 +1,11 @@
 // ABOUTME: Persistence integration tests for DB-enforced constraints on scheduling entities.
-// ABOUTME: Tests unique constraints (EventDay date, LocationRoom name) and check constraints (capacity, end > start).
+// ABOUTME: Covers unique, check, and exclusion constraints for event days, rooms, sessions, and aspects.
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Domain;
 using Explore.Domain.Services.Scheduling;
-using Explore.Domain.Services.Scheduling;
 using Explore.Persistence;
+using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Assertions;
@@ -241,6 +241,220 @@ public class SchedulingConstraintTests
         await Assert.That(result).IsNotNull();
     }
 
+    [Test]
+    public async Task EventSession_ShouldRejectEndTimeBeforeStartTime()
+    {
+        using var context = _fixture.CreateDbContext();
+        var (tenant, @event) = await SetupEventAsync(context);
+
+        var session = new EventSession
+        {
+            EventId = @event.Id,
+            Event = null!,
+            StartTime = new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero),
+            EndTime = new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
+            TenantId = tenant.Id,
+            Tenant = null!
+        };
+        context.EventSessions.Add(session);
+
+        await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
+    }
+
+    [Test]
+    public async Task EventSession_ShouldRejectLocalMinuteThatDoesNotMatchLocalTime()
+    {
+        using var context = _fixture.CreateDbContext();
+        var (tenant, @event) = await SetupEventAsync(context);
+
+        var session = new EventSession
+        {
+            EventId = @event.Id,
+            Event = null!,
+            StartTime = new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
+            EndTime = new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero),
+            TenantId = tenant.Id,
+            Tenant = null!
+        };
+        session.Reschedule(session.StartTime, session.EndTime, "Europe/Brussels", new EventScheduleProjectionCalculator());
+        context.EventSessions.Add(session);
+        await context.SaveChangesAsync();
+
+        context.Entry(session).Property(nameof(EventSession.LocalStartMinuteOfDay)).CurrentValue = 999;
+
+        await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
+    }
+
+    [Test]
+    public async Task EventSession_ShouldRejectOverlappingSessionsInSameRoom()
+    {
+        using var context = _fixture.CreateDbContext();
+        var scope = await SetupRoomScopeAsync(context);
+
+        context.EventSessions.Add(CreateRoomSession(
+            scope,
+            new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero)));
+        await context.SaveChangesAsync();
+
+        context.EventSessions.Add(CreateRoomSession(
+            scope,
+            new DateTimeOffset(2026, 7, 1, 9, 30, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 7, 1, 10, 30, 0, TimeSpan.Zero)));
+
+        await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
+    }
+
+    [Test]
+    public async Task EventSession_ShouldAllowAdjacentSessionsInSameRoom()
+    {
+        using var context = _fixture.CreateDbContext();
+        var scope = await SetupRoomScopeAsync(context);
+
+        context.EventSessions.Add(CreateRoomSession(
+            scope,
+            new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero)));
+        context.EventSessions.Add(CreateRoomSession(
+            scope,
+            new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 7, 1, 11, 0, 0, TimeSpan.Zero)));
+
+        await context.SaveChangesAsync();
+
+        await Assert.That(await context.EventSessions.CountAsync(s => s.RoomId == scope.Room.Id)).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task EventSession_ShouldAllowOverlappingSessionsInDifferentRooms()
+    {
+        using var context = _fixture.CreateDbContext();
+        var scope = await SetupRoomScopeAsync(context);
+        var secondRoom = new LocationRoom
+        {
+            LocationId = scope.Location.Id,
+            Location = null!,
+            Name = "Workshop Room",
+            Capacity = 80,
+            SortOrder = 2,
+            TenantId = scope.Tenant.Id,
+            Tenant = null!
+        };
+        context.LocationRooms.Add(secondRoom);
+        await context.SaveChangesAsync();
+
+        context.EventSessions.Add(CreateRoomSession(
+            scope,
+            new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero)));
+
+        var secondScope = scope with { Room = secondRoom };
+        context.EventSessions.Add(CreateRoomSession(
+            secondScope,
+            new DateTimeOffset(2026, 7, 1, 9, 30, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 7, 1, 10, 30, 0, TimeSpan.Zero)));
+
+        await context.SaveChangesAsync();
+
+        await Assert.That(await context.EventSessions.CountAsync(s => s.LocationId == scope.Location.Id)).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task EventSession_ShouldAllowOverlapAfterConflictingSessionSoftDeleted()
+    {
+        using var context = _fixture.CreateDbContext();
+        var scope = await SetupRoomScopeAsync(context);
+        var first = CreateRoomSession(
+            scope,
+            new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero));
+        context.EventSessions.Add(first);
+        await context.SaveChangesAsync();
+
+        context.EventSessions.Remove(first);
+        await context.SaveChangesAsync();
+
+        context.EventSessions.Add(CreateRoomSession(
+            scope,
+            new DateTimeOffset(2026, 7, 1, 9, 30, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 7, 1, 10, 30, 0, TimeSpan.Zero)));
+
+        await context.SaveChangesAsync();
+
+        await Assert.That(await context.EventSessions.IncludeDeleted().CountAsync(s => s.RoomId == scope.Room.Id)).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task EventSessionIslamicAspect_ShouldRejectFixedScheduleWithPrayerFields()
+    {
+        using var context = _fixture.CreateDbContext();
+        var session = await SetupSessionAsync(context);
+
+        context.EventSessionIslamicAspects.Add(new EventSessionIslamicAspect
+        {
+            EventSessionId = session.Id,
+            StartTimeType = SessionStartTimeType.Fixed,
+            ReferencePrayer = PrayerTime.Dhuhr,
+            OffsetMinutes = 0
+        });
+
+        await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
+    }
+
+    [Test]
+    public async Task EventSessionIslamicAspect_ShouldRejectRelativeScheduleWithoutOffset()
+    {
+        using var context = _fixture.CreateDbContext();
+        var session = await SetupSessionAsync(context);
+
+        context.EventSessionIslamicAspects.Add(new EventSessionIslamicAspect
+        {
+            EventSessionId = session.Id,
+            StartTimeType = SessionStartTimeType.RelativeToPrayer,
+            ReferencePrayer = PrayerTime.Asr,
+            OffsetMinutes = null
+        });
+
+        await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
+    }
+
+    [Test]
+    public async Task EventSessionIslamicAspect_ShouldRejectOffsetOutsideEnterpriseRange()
+    {
+        using var context = _fixture.CreateDbContext();
+        var session = await SetupSessionAsync(context);
+
+        context.EventSessionIslamicAspects.Add(new EventSessionIslamicAspect
+        {
+            EventSessionId = session.Id,
+            StartTimeType = SessionStartTimeType.RelativeToPrayer,
+            ReferencePrayer = PrayerTime.Maghrib,
+            OffsetMinutes = 181
+        });
+
+        await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
+    }
+
+    [Test]
+    public async Task EventSessionIslamicAspect_ShouldAcceptExactRelativeScheduleState()
+    {
+        using var context = _fixture.CreateDbContext();
+        var session = await SetupSessionAsync(context);
+
+        var aspect = new EventSessionIslamicAspect
+        {
+            EventSessionId = session.Id,
+            RequiresWudu = true
+        };
+        aspect.ApplyScheduling(SessionStartTimeType.RelativeToPrayer, PrayerTime.Dhuhr, -30);
+        context.EventSessionIslamicAspects.Add(aspect);
+
+        await context.SaveChangesAsync();
+
+        await Assert.That(aspect.ReferencePrayer).IsEqualTo(PrayerTime.Dhuhr);
+        await Assert.That(aspect.OffsetMinutes).IsEqualTo(-30);
+    }
+
     private static async Task<(Tenant tenant, Explore.Domain.Event @event)> SetupEventAsync(ExploreDbContext context)
     {
         var activeStatus = await context.TenantStatuses.FindAsync(2);
@@ -295,6 +509,78 @@ public class SchedulingConstraintTests
         return (tenant, @event);
     }
 
+    private static async Task<RoomScheduleScope> SetupRoomScopeAsync(ExploreDbContext context)
+    {
+        var (tenant, @event) = await SetupEventAsync(context);
+        var location = new Location
+        {
+            FullName = "Constraint Test Venue",
+            Country = "BE",
+            City = "Brussels",
+            Pii = new LocationPii { Address = "123 Test St", Postcode = "1000" },
+            TenantId = tenant.Id,
+            Tenant = null!
+        };
+        context.Locations.Add(location);
+        await context.SaveChangesAsync();
+
+        var room = new LocationRoom
+        {
+            LocationId = location.Id,
+            Location = null!,
+            Name = "Main Hall",
+            Capacity = 200,
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = null!
+        };
+        context.LocationRooms.Add(room);
+        await context.SaveChangesAsync();
+
+        return new RoomScheduleScope(tenant, @event, location, room);
+    }
+
+    private static EventSession CreateRoomSession(
+        RoomScheduleScope scope,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc)
+    {
+        var session = new EventSession
+        {
+            EventId = scope.Event.Id,
+            Event = null!,
+            LocationId = scope.Location.Id,
+            Location = null!,
+            RoomId = scope.Room.Id,
+            Room = null!,
+            StartTime = startUtc,
+            EndTime = endUtc,
+            TenantId = scope.Tenant.Id,
+            Tenant = null!
+        };
+        session.Reschedule(startUtc, endUtc, "UTC", new EventScheduleProjectionCalculator());
+
+        return session;
+    }
+
+    private static async Task<EventSession> SetupSessionAsync(ExploreDbContext context)
+    {
+        var (tenant, @event) = await SetupEventAsync(context);
+        var session = new EventSession
+        {
+            EventId = @event.Id,
+            Event = null!,
+            StartTime = new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
+            EndTime = new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero),
+            TenantId = tenant.Id,
+            Tenant = null!
+        };
+        session.Reschedule(session.StartTime, session.EndTime, "UTC", new EventScheduleProjectionCalculator());
+        context.EventSessions.Add(session);
+        await context.SaveChangesAsync();
+        return session;
+    }
+
     private static async Task<(Tenant tenant, Location location)> SetupLocationAsync(ExploreDbContext context)
     {
         var (tenant, @event) = await SetupEventAsync(context);
@@ -313,4 +599,10 @@ public class SchedulingConstraintTests
 
         return (tenant, location);
     }
+
+    private sealed record RoomScheduleScope(
+        Tenant Tenant,
+        Explore.Domain.Event Event,
+        Location Location,
+        LocationRoom Room);
 }

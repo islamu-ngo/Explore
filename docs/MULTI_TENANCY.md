@@ -66,10 +66,15 @@ Isolation is enforced in `ExploreDbContext` with named global filters:
 - `Tenant` filter for tenant-scoped entities,
 - `SoftDelete` filter for soft-deletable entities.
 
+Tenant filters fail closed when no ambient `TenantContext` is bound. Missing tenant context no longer means "query all tenant rows"; request-scoped reads must resolve a tenant before touching tenant-scoped data. System, admin, seeding, cache warmup, authentication, and worker paths that intentionally cross tenants must opt in explicitly through `ExploreDbContext.EnableTenantFilterBypass(reason)` or `IgnoreTenantFilter(reason)` and still apply a bounded predicate such as tenant id, owner id, key id, status, or outbox id. Soft-deleted row access should continue to use `IgnoreQueryFilters([QueryFilterNames.SoftDelete])` so tenant isolation remains active.
+
+PostgreSQL RLS is not enabled on production tenant tables yet. A bounded prototype now exists in persistence: `PostgresTenantSessionInterceptor` can bind `app.current_tenant_id` on EF Core connection open when `Persistence:EnableRlsTenantSession=true`, and integration tests prove forced RLS behavior through a non-superuser role. Keep EF named filters and tenant-safe foreign keys as the current enforcement model until a dedicated RLS rollout adds app/migration role separation, table policies, and admin/system-path tests.
+
 Notable cases:
 
 - `User` is soft-delete filtered but not tenant-scoped.
 - `TenantUser` and `TenantUserProfile` hold tenant-local participation, status, profile, consent, and moderation state for a global `User`; tenant-admin actions such as suspend, ban, remove, or profile moderation must target these tenant-local rows rather than mutating global account identity.
+- `TenantUserRoleGrant` holds tenant role authority as an auditable child of `TenantUser`. Effective tenant membership/admin checks require an active, non-deleted tenant user and an unrevoked tenant-scoped role grant.
 - `Actor` is tenant-scoped. User actors are unique by `(UserId, TenantId)` so the same global account can have separate tenant personas.
 - some entities combine tenant and soft-delete filters.
 
@@ -79,7 +84,7 @@ Trusted managed-provider automation creates tenant boundaries explicitly rather 
 
 1. Provider/operator authority calls `POST /api/managed-provider-provisioning/clients:ensure` with instance-admin authorization.
 2. The command creates or resolves a `Tenant` for the provider customer and records provider-neutral `ExternalBinding` rows for durable idempotency.
-3. The external administrator is linked to the minimal global `User` account through stable IdP identifiers, then gets tenant-local `TenantUser`, `TenantUserProfile`, user `Actor`, and `TenantMember` tenant-admin state inside the new tenant.
+3. The external administrator is linked to the minimal global `User` account through stable IdP identifiers, then gets tenant-local `TenantUser`, `TenantUserProfile`, user `Actor`, and `TenantUserRoleGrant` tenant-admin authority inside the new tenant.
 4. Optional organizer semantics create an approved `Organization` or `Group` plus actor inside the tenant. These are tenant-scoped organizer entities, not tenancy boundaries.
 5. ERP customer/admin identities receive tenant-admin authority for their tenant, not instance-admin authority. Customer-as-instance-admin is reserved for separate managed-hosting/dedicated-instance product models.
 

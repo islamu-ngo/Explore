@@ -1,3 +1,6 @@
+// ABOUTME: EF configuration for tenant-scoped event locations and location PII partitioning.
+// ABOUTME: Exposes a tenant-scoped alternate key for composite FKs from sessions, rooms, and agenda rows.
+
 using Explore.Domain;
 using Explore.Persistence.Seed;
 using Explore.Persistence.ValueGenerators;
@@ -11,6 +14,7 @@ public class LocationConfiguration : IEntityTypeConfiguration<Location>
     public void Configure(EntityTypeBuilder<Location> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Country).HasMaxLength(500).IsRequired();

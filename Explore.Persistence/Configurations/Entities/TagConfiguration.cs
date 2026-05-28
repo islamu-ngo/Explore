@@ -1,3 +1,6 @@
+// ABOUTME: EF configuration for tenant-scoped event tags.
+// ABOUTME: Exposes a tenant-scoped alternate key for composite FKs from event/session tag assignments.
+
 using Explore.Domain;
 using Explore.Persistence.Seed;
 using Explore.Persistence.ValueGenerators;
@@ -11,6 +14,7 @@ public class TagConfiguration : IEntityTypeConfiguration<Tag>
     public void Configure(EntityTypeBuilder<Tag> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.Property(e => e.MasterCode).HasMaxLength(100).IsRequired();
         builder.Property(e => e.FullName).HasMaxLength(200).IsRequired();

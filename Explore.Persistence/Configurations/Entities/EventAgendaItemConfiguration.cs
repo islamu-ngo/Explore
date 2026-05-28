@@ -19,23 +19,27 @@ public class EventAgendaItemConfiguration : IEntityTypeConfiguration<EventAgenda
 
         builder.HasOne(e => e.Event)
             .WithMany(e => e.AgendaItems)
-            .HasForeignKey(e => e.EventId)
+            .HasForeignKey(e => new { e.TenantId, e.EventId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.EventDay)
             .WithMany()
-            .HasForeignKey(e => e.EventDayId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventDayId })
+            .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Location)
             .WithMany()
-            .HasForeignKey(e => e.LocationId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(e => new { e.TenantId, e.LocationId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Room)
             .WithMany()
-            .HasForeignKey(e => e.RoomId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(e => new { e.TenantId, e.LocationId, e.RoomId })
+            .HasPrincipalKey(e => new { e.TenantId, e.LocationId, e.Id })
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Kind)
             .WithMany()
@@ -53,9 +57,27 @@ public class EventAgendaItemConfiguration : IEntityTypeConfiguration<EventAgenda
         builder.HasIndex(e => new { e.TenantId, e.EventId, e.SortOrder })
             .HasDatabaseName("ix_event_agenda_items_tenant_event_sort");
 
-        builder.ToTable(t => t.HasCheckConstraint(
-            "CK_EventAgendaItem_EndAfterStart",
-            "end_time > start_time"));
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint(
+                "CK_EventAgendaItem_EndAfterStart",
+                "end_time > start_time");
+            t.HasCheckConstraint(
+                "CK_EventAgendaItem_LocalStartMinuteRange",
+                "local_start_minute_of_day BETWEEN 0 AND 1439");
+            t.HasCheckConstraint(
+                "CK_EventAgendaItem_LocalEndMinuteRange",
+                "local_end_minute_of_day BETWEEN 0 AND 1439");
+            t.HasCheckConstraint(
+                "CK_EventAgendaItem_LocalStartMinuteMatchesTime",
+                "local_start_minute_of_day = ((EXTRACT(HOUR FROM local_start_time)::int * 60) + EXTRACT(MINUTE FROM local_start_time)::int)");
+            t.HasCheckConstraint(
+                "CK_EventAgendaItem_LocalEndMinuteMatchesTime",
+                "local_end_minute_of_day = ((EXTRACT(HOUR FROM local_end_time)::int * 60) + EXTRACT(MINUTE FROM local_end_time)::int)");
+            t.HasCheckConstraint(
+                "CK_EventAgendaItem_RoomRequiresLocation",
+                "room_id IS NULL OR location_id IS NOT NULL");
+        });
 
         builder.Property(e => e.ConcurrencyStamp).IsConcurrencyToken();
     }

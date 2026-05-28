@@ -13,14 +13,17 @@ public class EventDayConfiguration : IEntityTypeConfiguration<EventDay>
     public void Configure(EntityTypeBuilder<EventDay> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
+        builder.HasAlternateKey(e => new { e.TenantId, e.EventId, e.Id });
 
         builder.Property(e => e.Label).HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(5000);
         builder.Property(e => e.BannerText).HasMaxLength(500);
 
         builder.HasOne(e => e.Event)
-            .WithMany()
-            .HasForeignKey(e => e.EventId)
+            .WithMany(e => e.Days)
+            .HasForeignKey(e => new { e.TenantId, e.EventId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.BannerImage)

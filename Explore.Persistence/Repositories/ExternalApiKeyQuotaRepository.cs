@@ -125,7 +125,7 @@ public class ExternalApiKeyQuotaRepository : GenericRepository<ExternalApiKeyQuo
         DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
     {
         return await _dbContext.ExternalApiKeyQuotas
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.ExternalApiKeyPlatformUsageReport)
             .AsNoTracking()
             .Include(q => q.ExternalApiKey)
             .Where(q => q.PeriodStart >= from && q.PeriodEnd <= to)

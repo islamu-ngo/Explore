@@ -1,4 +1,8 @@
+// ABOUTME: Hosted worker that applies Explore database migrations, model-owned PostgreSQL constraints, and seed data.
+// ABOUTME: Runs once in the migration service process before stopping the host.
+
 using Explore.Persistence;
+using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +22,10 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
         logger.LogInformation("Applying database migrations...");
         await db.Database.MigrateAsync(stoppingToken);
         logger.LogInformation("Database migrations applied successfully.");
+
+        logger.LogInformation("Applying model-owned PostgreSQL constraints...");
+        await PostgresModelConstraintApplier.ApplyAsync(db, stoppingToken);
+        logger.LogInformation("Model-owned PostgreSQL constraints applied successfully.");
 
         logger.LogInformation("Applying Data Protection key-ring migrations...");
         await dataProtectionDb.Database.MigrateAsync(stoppingToken);

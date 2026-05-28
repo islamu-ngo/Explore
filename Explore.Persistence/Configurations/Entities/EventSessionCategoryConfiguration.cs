@@ -16,12 +16,14 @@ public class EventSessionCategoryConfiguration : IEntityTypeConfiguration<EventS
 
         builder.HasOne(e => e.EventSession)
             .WithMany()
-            .HasForeignKey(e => e.EventSessionId)
+            .HasForeignKey(e => new { e.TenantId, e.EventSessionId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Category)
             .WithMany()
-            .HasForeignKey(e => e.CategoryId)
+            .HasForeignKey(e => new { e.TenantId, e.CategoryId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Tenant)

@@ -1,3 +1,6 @@
+// ABOUTME: EF configuration for EventSessionLanguage junction rows.
+// ABOUTME: Keeps language lookup global while binding session membership through a tenant-scoped composite FK.
+
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -10,7 +13,8 @@ public class EventSessionLanguageConfiguration : IEntityTypeConfiguration<EventS
     {
         builder.HasOne(e => e.EventSession)
             .WithMany()
-            .HasForeignKey(e => e.EventSessionId)
+            .HasForeignKey(e => new { e.TenantId, e.EventSessionId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Language)
@@ -24,7 +28,7 @@ public class EventSessionLanguageConfiguration : IEntityTypeConfiguration<EventS
             .OnDelete(DeleteBehavior.Restrict);
 
         // Unique constraint: one language per event session
-        builder.HasIndex(e => new { e.EventSessionId, e.LanguageId })
+        builder.HasIndex(e => new { e.TenantId, e.EventSessionId, e.LanguageId })
             .IsUnique()
             .HasDatabaseName("ix_eventsessionlanguages_session_language");
     }

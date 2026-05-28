@@ -16,17 +16,20 @@ public class EventSessionGroupSessionConfiguration : IEntityTypeConfiguration<Ev
 
         builder.HasOne(e => e.EventSessionGroup)
             .WithMany(e => e.Sessions)
-            .HasForeignKey(e => e.EventSessionGroupId)
+            .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventSessionGroupId })
+            .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.EventSession)
             .WithMany(e => e.SessionGroups)
-            .HasForeignKey(e => e.EventSessionId)
+            .HasForeignKey(e => new { e.TenantId, e.EventId, e.EventSessionId })
+            .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Event)
             .WithMany()
-            .HasForeignKey(e => e.EventId)
+            .HasForeignKey(e => new { e.TenantId, e.EventId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Tenant)

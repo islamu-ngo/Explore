@@ -1,3 +1,6 @@
+// ABOUTME: Registers EF Core persistence, repositories, caches, and unit-of-work services.
+// ABOUTME: Keeps DbContext pooling compatible with property-injected scoped tenant and user dependencies.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -7,9 +10,11 @@ using Explore.Application.Contracts.Services;
 using Explore.Persistence.Caching;
 using Explore.Persistence.Extensions;
 using Explore.Persistence.Repositories;
+using Explore.Persistence.Security;
 using Explore.Persistence.Services;
 using Explore.Secrets.Bootstrap;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -28,7 +33,8 @@ public static class PersistenceServicesRegistration
     public static IServiceCollection ConfigurePersistenceServices(this IServiceCollection services,
         IConfiguration configuration,
         bool skipDbContextRegistration = false,
-        bool skipLookupCacheInitializer = false)
+        bool skipLookupCacheInitializer = false,
+        string? environmentName = null)
     {
         // Skip DbContext registration when running integration tests (they register their own)
         if (!skipDbContextRegistration)
@@ -68,10 +74,19 @@ public static class PersistenceServicesRegistration
                     })
                     .UseSnakeCaseNamingConvention();
 
-                var environmentName = configuration["ASPNETCORE_ENVIRONMENT"] ?? configuration["DOTNET_ENVIRONMENT"];
-                if (string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase))
+                if (IsEnabled(configuration["Persistence:EnableRlsTenantSession"]))
+                {
+                    options.AddInterceptors(PostgresTenantSessionInterceptor.Instance);
+                }
+
+                var runtimeEnvironmentName = environmentName
+                                             ?? configuration["ASPNETCORE_ENVIRONMENT"]
+                                             ?? configuration["DOTNET_ENVIRONMENT"];
+                if (string.Equals(runtimeEnvironmentName, "Development", StringComparison.OrdinalIgnoreCase))
                 {
                     options.EnableDetailedErrors();
+                    options.ConfigureWarnings(warnings =>
+                        warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
                 }
             });
 
@@ -83,6 +98,7 @@ public static class PersistenceServicesRegistration
                 var context = factory.CreateDbContext();
 
                 // Set scoped dependencies via property injection (null during migrations, populated during API requests)
+                context.ClearTenantFilterBypass();
                 context.TenantContext = sp.GetService<ITenantContext>();
                 context.CurrentUserService = sp.GetService<ICurrentUserService>();
 
@@ -134,7 +150,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IPlatformUserRoleRepository, PlatformUserRoleRepository>();
         services.AddScoped<ITenantUserRepository, TenantUserRepository>();
         services.AddScoped<ITenantUserProfileRepository, TenantUserProfileRepository>();
-        services.AddScoped<ITenantMemberRepository, TenantMemberRepository>();
+        services.AddScoped<ITenantUserRoleGrantRepository, TenantUserRoleGrantRepository>();
         services.AddScoped<ITenantOnboardingStateRepository, TenantOnboardingStateRepository>();
         services.AddScoped<ITenantNavigationLinkRepository, TenantNavigationLinkRepository>();
         services.AddScoped<IFooterLinkGroupRepository, FooterLinkGroupRepository>();
@@ -274,5 +290,10 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
 
         return services;
+    }
+
+    private static bool IsEnabled(string? value)
+    {
+        return bool.TryParse(value, out var enabled) && enabled;
     }
 }

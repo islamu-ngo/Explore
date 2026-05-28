@@ -1,3 +1,6 @@
+// ABOUTME: EF configuration for event-to-tag assignments with tenant-scoped relational integrity.
+// ABOUTME: Composite FKs prevent assigning an event to a tag owned by another tenant.
+
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -10,12 +13,14 @@ public class EventTagsConfiguration : IEntityTypeConfiguration<EventTags>
     {
         builder.HasOne(e => e.Event)
             .WithMany()
-            .HasForeignKey(e => e.EventId)
+            .HasForeignKey(e => new { e.TenantId, e.EventId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Tag)
             .WithMany()
-            .HasForeignKey(e => e.TagId)
+            .HasForeignKey(e => new { e.TenantId, e.TagId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Tenant)

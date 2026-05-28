@@ -1,3 +1,6 @@
+// ABOUTME: EF configuration for tenant-scoped actors and their owner/profile relationships.
+// ABOUTME: Exposes a tenant-scoped alternate key for event organizer, speaker, and contact-sharing FKs.
+
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence.Seed;
@@ -12,6 +15,7 @@ public class ActorConfiguration : IEntityTypeConfiguration<Actor>
     public void Configure(EntityTypeBuilder<Actor> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
 
         builder.Property(e => e.PdsHost).HasMaxLength(500);
         builder.Property(e => e.Description).HasMaxLength(500);

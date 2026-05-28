@@ -13,10 +13,13 @@ public class EventRegistrationIntentConfiguration : IEntityTypeConfiguration<Eve
     public void Configure(EntityTypeBuilder<EventRegistrationIntent> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
+        builder.HasAlternateKey(e => new { e.TenantId, e.Id });
+        builder.HasAlternateKey(e => new { e.TenantId, e.EventId, e.Id });
 
         builder.HasOne(e => e.Event)
             .WithMany()
-            .HasForeignKey(e => e.EventId)
+            .HasForeignKey(e => new { e.TenantId, e.EventId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.User)
@@ -31,7 +34,8 @@ public class EventRegistrationIntentConfiguration : IEntityTypeConfiguration<Eve
 
         builder.HasOne(e => e.SelectedEventDay)
             .WithMany()
-            .HasForeignKey(e => e.SelectedEventDayId)
+            .HasForeignKey(e => new { e.TenantId, e.EventId, e.SelectedEventDayId })
+            .HasPrincipalKey(e => new { e.TenantId, e.EventId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.RegistrationPolicySnapshot)

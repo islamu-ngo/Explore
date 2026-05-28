@@ -28,7 +28,8 @@ public class EventRoleAssignmentConfiguration : IEntityTypeConfiguration<EventRo
 
         builder.HasOne(e => e.Event)
             .WithMany()
-            .HasForeignKey(e => e.EventId)
+            .HasForeignKey(e => new { e.TenantId, e.EventId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.User)

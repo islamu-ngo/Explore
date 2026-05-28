@@ -1,7 +1,11 @@
+// ABOUTME: Migration service composition root for database bootstrap, DbContexts, and hosted migration work.
+// ABOUTME: Configures runtime EF Core behavior separately from design-time migration generation.
+
 using Aspire.Npgsql.EntityFrameworkCore.PostgreSQL;
 using Event.MigrationService.Extensions;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 namespace Event.MigrationService;
@@ -22,7 +26,15 @@ public class Program
 
         builder.AddNpgsqlDbContext<ExploreDbContext>(
             "EventMigrationService", configureDbContextOptions: options =>
-                options.UseSnakeCaseNamingConvention());
+            {
+                options.UseSnakeCaseNamingConvention();
+
+                if (builder.Environment.IsDevelopment())
+                {
+                    options.ConfigureWarnings(warnings =>
+                        warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+                }
+            });
 
         builder.AddNpgsqlDbContext<DataProtectionKeyContext>(
             "EventMigrationService", configureDbContextOptions: options =>

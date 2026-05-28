@@ -1,3 +1,6 @@
+// ABOUTME: EF configuration for assigning tenant-scoped actors as speakers on event sessions.
+// ABOUTME: Composite FKs prevent speaker/session links from crossing tenant boundaries.
+
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -10,12 +13,14 @@ public class EventSessionSpeakerConfiguration : IEntityTypeConfiguration<EventSe
     {
         builder.HasOne(e => e.Actor)
             .WithMany()
-            .HasForeignKey(e => e.ActorId)
+            .HasForeignKey(e => new { e.TenantId, e.ActorId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.EventSession)
             .WithMany()
-            .HasForeignKey(e => e.EventSessionId)
+            .HasForeignKey(e => new { e.TenantId, e.EventSessionId })
+            .HasPrincipalKey(e => new { e.TenantId, e.Id })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.Tenant)

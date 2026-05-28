@@ -60,11 +60,13 @@ public class EavTenantIsolationTests(ProjectionTestContainerFixture fixture)
         var tenantB = await SeedEventCustomPropertyGraphAsync(seedContext, "deleted-tenant-b", "B deleted");
 
         var tenantADefinition = await seedContext.EventCustomPropertyDefinitions
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .FirstAsync(d => d.Id == tenantA.DefinitionId);
         tenantADefinition.IsDeleted = true;
         tenantADefinition.DeletedAt = DateTime.UtcNow;
 
         var tenantBDefinition = await seedContext.EventCustomPropertyDefinitions
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .FirstAsync(d => d.Id == tenantB.DefinitionId);
         tenantBDefinition.IsDeleted = true;
         tenantBDefinition.DeletedAt = DateTime.UtcNow;
@@ -82,11 +84,11 @@ public class EavTenantIsolationTests(ProjectionTestContainerFixture fixture)
             .Select(d => d.Id)
             .ToListAsync();
         var tenantFilterDisabledCount = await tenantAContext.EventCustomPropertyDefinitions
-            .IgnoreTenantFilter()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
             .CountAsync(d => d.Id == tenantA.DefinitionId || d.Id == tenantB.DefinitionId);
         var allFiltersDisabledCount = await tenantAContext.EventCustomPropertyDefinitions
-            .IgnoreAllFilters()
+            .IgnoreAllFilters(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
             .AsNoTracking()
             .CountAsync(d => d.Id == tenantA.DefinitionId || d.Id == tenantB.DefinitionId);
 
