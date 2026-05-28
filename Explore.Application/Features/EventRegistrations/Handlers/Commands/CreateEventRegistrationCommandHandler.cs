@@ -147,6 +147,8 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         var childRows = childSessionIds
             .Select(sessionId => new EventRegistration
             {
+                EventId = dto.EventId,
+                Event = null!,
                 UserId = dto.UserId,
                 User = null!,
                 EventSessionId = sessionId,

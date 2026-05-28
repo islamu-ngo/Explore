@@ -1,8 +1,12 @@
+// ABOUTME: Unit tests for CreateEventSessionCommandHandler validation and schedule projection behavior.
+// ABOUTME: Verifies event-session creation, day linking, room guards, and Islamic aspect invariants.
+
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession;
+using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Domain;
@@ -161,6 +165,77 @@ public class CreateEventSessionCommandHandlerTests
         // Assert
         await Assert.That(result.Success).IsFalse();
         await _eventSessionRepository.DidNotReceive().Create(Arg.Any<EventSession>());
+    }
+
+    [Test]
+    public async Task Handle_WithFixedIslamicAspectPrayerFields_ReturnsValidationError()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var command = new CreateEventSessionCommand
+        {
+            EventSessionDto = new CreateEventSessionDto
+            {
+                EventId = eventId,
+                StartTime = DateTimeOffset.UtcNow.AddDays(1),
+                EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
+                Title = "Fixed Session",
+                IslamicAspect = new EventSessionIslamicAspectDto
+                {
+                    StartTimeType = SessionStartTimeType.Fixed,
+                    ReferencePrayer = PrayerTime.Dhuhr,
+                    OffsetMinutes = 0
+                }
+            }
+        };
+
+        _eventRepository.Exists(eventId).Returns(true);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
+        await _eventSessionRepository.DidNotReceive()
+            .CreateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WithRelativeIslamicAspectOffsetOutOfRange_ReturnsValidationError()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        var command = new CreateEventSessionCommand
+        {
+            EventSessionDto = new CreateEventSessionDto
+            {
+                EventId = eventId,
+                LocationId = locationId,
+                StartTime = DateTimeOffset.UtcNow.AddDays(1),
+                EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
+                Title = "Relative Session",
+                IslamicAspect = new EventSessionIslamicAspectDto
+                {
+                    StartTimeType = SessionStartTimeType.RelativeToPrayer,
+                    ReferencePrayer = PrayerTime.Asr,
+                    OffsetMinutes = 181
+                }
+            }
+        };
+
+        _eventRepository.Exists(eventId).Returns(true);
+        _locationRepository.Exists(locationId).Returns(true);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains(EventSessionIslamicAspectValidationRules.OffsetRangeMessage);
+        await _eventSessionRepository.DidNotReceive()
+            .CreateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

@@ -678,13 +678,13 @@ private CreateEventDraftRequestDto createDto = new();
         }
     }
 
-    // ========== Description Dialog ==========
+    // ========== Content Dialog ==========
 
     private async Task OpenDescriptionDialog()
     {
         var parameters = new DialogParameters<DescriptionDialog>
         {
-            { x => x.Description, createDto.Description }
+            { x => x.Content, createDto.Content }
         };
 
         var options = DialogOptionsFactory.Editor();
@@ -696,7 +696,7 @@ private CreateEventDraftRequestDto createDto = new();
 
         if (result is not null && !result.Canceled)
         {
-            createDto.Description = result.Data?.ToString();
+            createDto.Content = result.Data?.ToString();
         }
     }
 

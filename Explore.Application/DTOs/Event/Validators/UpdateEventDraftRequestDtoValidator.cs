@@ -2,6 +2,7 @@
 // ABOUTME: Keeps public draft update validation narrower than the legacy internal UpdateEventDto validator.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Domain.Services.Scheduling;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.Event.Validators;
@@ -29,7 +30,10 @@ public sealed class UpdateEventDraftRequestDtoValidator : AbstractValidator<Upda
             .MaximumLength(200).WithMessage("{PropertyName} must not exceed 200 characters.");
 
         RuleFor(request => request.Description)
-            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
+            .MaximumLength(150).WithMessage("{PropertyName} must not exceed 150 characters.");
+
+        RuleFor(request => request.Content)
+            .MaximumLength(5000).WithMessage("{PropertyName} must not exceed 5000 characters.");
 
         RuleFor(request => request.Slug)
             .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
@@ -84,6 +88,14 @@ public sealed class UpdateEventDraftRequestDtoValidator : AbstractValidator<Upda
             .MaximumLength(500).When(request => !string.IsNullOrEmpty(request.EventTimeZoneId))
             .WithMessage("{PropertyName} must not exceed 500 characters.");
 
+        RuleFor(request => request)
+            .Must(HaveValidScheduleTimeZone)
+            .WithMessage("EventTimeZoneId/Timezone must be a valid system timezone id.");
+
+        RuleFor(request => request)
+            .Must(HaveConsistentTimeZoneAliases)
+            .WithMessage("EventTimeZoneId and Timezone must match when both are provided.");
+
         RuleFor(request => request.EventUrl)
             .MaximumLength(500).When(request => !string.IsNullOrEmpty(request.EventUrl))
             .WithMessage("{PropertyName} must not exceed 500 characters.");
@@ -100,5 +112,28 @@ public sealed class UpdateEventDraftRequestDtoValidator : AbstractValidator<Upda
             .GreaterThanOrEqualTo(0)
             .When(request => request.SeriesOrder.HasValue)
             .WithMessage("{PropertyName} must be non-negative.");
+    }
+
+    private static bool HaveValidScheduleTimeZone(UpdateEventDraftRequestDto request)
+    {
+        return ScheduleTimeZoneResolver.IsValidOrBlank(request.EventTimeZoneId ?? request.Timezone);
+    }
+
+    private static bool HaveConsistentTimeZoneAliases(UpdateEventDraftRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.EventTimeZoneId) || string.IsNullOrWhiteSpace(request.Timezone))
+        {
+            return true;
+        }
+
+        try
+        {
+            return ScheduleTimeZoneResolver.NormalizeOrUtc(request.EventTimeZoneId)
+                == ScheduleTimeZoneResolver.NormalizeOrUtc(request.Timezone);
+        }
+        catch (ArgumentException)
+        {
+            return true;
+        }
     }
 }

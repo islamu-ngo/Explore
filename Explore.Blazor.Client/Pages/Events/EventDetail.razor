@@ -1,3 +1,6 @@
+@* ABOUTME: Public event detail page that renders full event content, registration, and schedule context. *@
+@* ABOUTME: Uses HAL links for edit/delete affordances and metadata helpers for SEO/social previews. *@
+
 @rendermode InteractiveServer
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
@@ -305,7 +308,7 @@
                         <h3 class="event-section-title">About Event</h3>
                         
                         <div class="event-description">
-                            @_eventDetails.Description
+                            @GetAboutText()
                         </div>
 
                         @* Tags & Categories *@

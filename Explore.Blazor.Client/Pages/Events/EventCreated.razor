@@ -1,3 +1,6 @@
+@* ABOUTME: Confirmation page shown after an event is created successfully. *@
+@* ABOUTME: Displays the persisted short summary and long content from the event detail API. *@
+
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Blazouter.Services
@@ -46,9 +49,17 @@
                 </MudItem>
 
                 <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Description</MudText>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">Summary</MudText>
                     <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.Description</MudText>
                 </MudItem>
+
+                @if (!string.IsNullOrWhiteSpace(eventDetails.Content))
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Content</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-3">@eventDetails.Content</MudText>
+                    </MudItem>
+                }
 
                 <MudItem xs="12" sm="6">
                     <MudText Typo="Typo.subtitle2" Color="Color.Primary">Event Format</MudText>

@@ -1,3 +1,6 @@
+// ABOUTME: Legacy scalar event update DTO for metadata fields; schedule rollups are server-owned projections.
+// ABOUTME: Timezone aliases remain during development but handlers normalize them before reprojecting child schedules.
+
 using System;
 
 namespace Explore.Application.DTOs.Event;
@@ -8,6 +11,7 @@ public class UpdateEventDto
     public required string Title { get; set; }
     public string? Subtitle { get; set; }
     public string? Description { get; set; }
+    public string? Content { get; set; }
     public string? Slug { get; set; }
 
     // Event Type

@@ -1,7 +1,11 @@
+// ABOUTME: Unit tests for UpdateEventSessionCommandHandler validation and schedule re-linking behavior.
+// ABOUTME: Verifies event-session updates, event-day movement, and Islamic aspect invariants.
+
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession;
+using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Domain;
@@ -48,6 +52,42 @@ public class UpdateEventSessionCommandHandlerTests
             _eventDayRepository,
             _mapper
         );
+    }
+
+    [Test]
+    public async Task Handle_WithFixedIslamicAspectPrayerFields_ReturnsValidationError()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var command = new UpdateEventSessionCommand
+        {
+            EventSessionDto = new UpdateEventSessionDto
+            {
+                Id = sessionId,
+                EventId = eventId,
+                StartTime = DateTimeOffset.UtcNow.AddDays(1),
+                EndTime = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
+                Title = "Fixed Session",
+                IslamicAspect = new EventSessionIslamicAspectDto
+                {
+                    StartTimeType = SessionStartTimeType.Fixed,
+                    ReferencePrayer = PrayerTime.Dhuhr,
+                    OffsetMinutes = 0
+                }
+            }
+        };
+
+        _eventRepository.Exists(eventId).Returns(true);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
+        await _eventSessionRepository.DidNotReceive()
+            .UpdateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

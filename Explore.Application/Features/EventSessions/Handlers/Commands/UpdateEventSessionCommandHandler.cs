@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
@@ -130,14 +131,15 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         }
         else if (existingIslamicAspect == null)
         {
-            var newAspect = _mapper.Map<EventSessionIslamicAspect>(request.EventSessionDto.IslamicAspect);
+            var newAspect = new EventSessionIslamicAspect();
             newAspect.EventSessionId = eventSession.Id;
             newAspect.EventSession = null;
+            ApplyIslamicAspectDto(newAspect, request.EventSessionDto.IslamicAspect);
             await _eventSessionIslamicAspectRepository.Create(newAspect);
         }
         else
         {
-            _mapper.Map(request.EventSessionDto.IslamicAspect, existingIslamicAspect);
+            ApplyIslamicAspectDto(existingIslamicAspect, request.EventSessionDto.IslamicAspect);
             await _eventSessionIslamicAspectRepository.Update(existingIslamicAspect);
         }
 
@@ -146,5 +148,14 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         response.Message = "Event session updated successfully.";
 
         return response;
+    }
+
+    private static void ApplyIslamicAspectDto(
+        EventSessionIslamicAspect aspect,
+        EventSessionIslamicAspectDto dto)
+    {
+        aspect.ApplyScheduling(dto.StartTimeType, dto.ReferencePrayer, dto.OffsetMinutes);
+        aspect.RequiresWudu = dto.RequiresWudu;
+        aspect.RitualRequirementsJson = dto.RitualRequirementsJson;
     }
 }

@@ -11,6 +11,7 @@ using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -29,6 +30,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IEventSeriesRepository _eventSeriesRepository;
     private readonly IEventRegistrationPolicyRepository _eventRegistrationPolicyRepository;
+    private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly HybridCache _cache;
 
     public UpdateEventDraftCommandHandler(
@@ -41,6 +43,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         IStorageObjectRepository storageObjectRepository,
         IEventSeriesRepository eventSeriesRepository,
         IEventRegistrationPolicyRepository eventRegistrationPolicyRepository,
+        IEventScheduleProjectionCalculator scheduleProjectionCalculator,
         HybridCache cache)
     {
         _eventRepository = eventRepository;
@@ -52,6 +55,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         _storageObjectRepository = storageObjectRepository;
         _eventSeriesRepository = eventSeriesRepository;
         _eventRegistrationPolicyRepository = eventRegistrationPolicyRepository;
+        _scheduleProjectionCalculator = scheduleProjectionCalculator;
         _cache = cache;
     }
 
@@ -77,7 +81,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
             return response;
         }
 
-        var eventEntity = await _eventRepository.GetById(request.Id);
+        var eventEntity = await _eventRepository.GetScheduleGraphForUpdateAsync(request.Id, cancellationToken);
         if (eventEntity is null)
         {
             response.Success = false;
@@ -98,6 +102,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         eventEntity.Title = draft.Title;
         eventEntity.Subtitle = draft.Subtitle;
         eventEntity.Description = draft.Description;
+        eventEntity.Content = draft.Content;
         eventEntity.Slug = draft.Slug;
         eventEntity.EventTypeId = draft.EventTypeId;
         eventEntity.AudienceGenderId = draft.AudienceGenderId;
@@ -110,8 +115,9 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         eventEntity.VisibilityTypeId = draft.VisibilityTypeId;
         eventEntity.EventFormatId = draft.EventFormatId;
         eventEntity.MadhabId = draft.MadhabId;
-        eventEntity.Timezone = draft.Timezone ?? draft.EventTimeZoneId;
-        eventEntity.EventTimeZoneId = draft.EventTimeZoneId ?? draft.Timezone;
+        var timezoneId = ScheduleTimeZoneResolver.NormalizeOrUtc(draft.EventTimeZoneId ?? draft.Timezone);
+        eventEntity.Timezone = timezoneId;
+        eventEntity.EventTimeZoneId = timezoneId;
         eventEntity.EventUrl = draft.EventUrl;
         eventEntity.BackgroundColor = draft.BackgroundColor;
         eventEntity.BackgroundEffect = draft.BackgroundEffect;
@@ -120,6 +126,7 @@ public sealed class UpdateEventDraftCommandHandler : IRequestHandler<UpdateEvent
         eventEntity.EventSeriesId = draft.EventSeriesId;
         eventEntity.SeriesOrder = draft.SeriesOrder;
         eventEntity.RegistrationPolicyId = draft.RegistrationPolicyId;
+        eventEntity.ApplyScheduleTimeZone(timezoneId, _scheduleProjectionCalculator);
 
         await _eventRepository.Update(eventEntity);
 

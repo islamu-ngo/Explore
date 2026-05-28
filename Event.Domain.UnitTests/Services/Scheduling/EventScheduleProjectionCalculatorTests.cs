@@ -126,15 +126,13 @@ public class EventScheduleProjectionCalculatorTests
     }
 
     [Test]
-    public async Task Project_InvalidTimezone_FallsBackToUtc()
+    public async Task Project_InvalidTimezone_ThrowsArgumentException()
     {
         var start = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
         var end = new DateTimeOffset(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
 
-        var result = _calculator.Project(start, end, "Invalid/NotATimezone");
-
-        await Assert.That(result.LocalStartTime).IsEqualTo(new TimeOnly(10, 0));
-        await Assert.That(result.LocalEndTime).IsEqualTo(new TimeOnly(12, 0));
+        await Assert.That(() => _calculator.Project(start, end, "Invalid/NotATimezone"))
+            .Throws<ArgumentException>();
     }
 
     [Test]
@@ -148,14 +146,12 @@ public class EventScheduleProjectionCalculatorTests
     }
 
     [Test]
-    public async Task Project_EqualStartAndEnd_DoesNotThrow()
+    public async Task Project_EqualStartAndEnd_ThrowsArgumentException()
     {
         var time = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
 
-        var result = _calculator.Project(time, time, "Europe/Brussels");
-
-        await Assert.That(result.LocalStartDate).IsEqualTo(result.LocalEndDate);
-        await Assert.That(result.LocalStartTime).IsEqualTo(result.LocalEndTime);
+        await Assert.That(() => _calculator.Project(time, time, "Europe/Brussels"))
+            .Throws<ArgumentException>();
     }
 
     [Test]

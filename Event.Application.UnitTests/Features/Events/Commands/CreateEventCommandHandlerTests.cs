@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for CreateEventCommandHandler aggregate creation workflows.
+// ABOUTME: Verifies event graph creation, validation failures, cache invalidation, and schedule invariants.
+
 using System.Diagnostics.Metrics;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Identity;
@@ -5,6 +8,8 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventSession;
+using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
@@ -291,6 +296,36 @@ public class CreateEventCommandHandlerTests
             && entity.FirstSessionStartUtc == null
             && entity.LastSessionStartUtc == null));
         await _eventSessionRepository.DidNotReceive().Create(Arg.Any<EventSession>());
+    }
+
+    [Test]
+    public async Task Handle_WithFixedIslamicSessionPrayerFields_ReturnsValidationError()
+    {
+        var userId = Guid.NewGuid();
+        var session = CreateSessionRequest();
+        session.IslamicAspect = new EventSessionIslamicAspectDto
+        {
+            StartTimeType = SessionStartTimeType.Fixed,
+            ReferencePrayer = PrayerTime.Dhuhr,
+            OffsetMinutes = 0
+        };
+
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Invalid Islamic Event",
+                Sessions = [session]
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Errors).Contains(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
+        await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
     }
 
     [Test]

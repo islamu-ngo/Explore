@@ -18,7 +18,7 @@ public class RegistrationMappingProfile : Profile
     public RegistrationMappingProfile()
     {
         CreateMap<EventRegistration, EventRegistrationDto>()
-            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventSession.EventId))
+            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventId))
             .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.EventSession != null && src.EventSession.Event != null ? src.EventSession.Event.Title : null))
             .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
             .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
@@ -26,7 +26,7 @@ public class RegistrationMappingProfile : Profile
             .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
             .ForMember(dest => dest.ApprovalStatusMasterCode, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.MasterCode : null));
         CreateMap<EventRegistration, EventRegistrationListDto>()
-            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventSession.EventId))
+            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventId))
             .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null))
             .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
             .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))

@@ -1,3 +1,6 @@
+// ABOUTME: Repository contract for Event aggregate reads and tracked schedule-graph updates.
+// ABOUTME: Repositories return domain entities so handlers and domain methods own mapping and invariants.
+
 using Explore.Application.Specifications.Events;
 using Explore.Domain;
 
@@ -6,6 +9,7 @@ namespace Explore.Application.Contracts.Persistence;
 public interface IEventRepository : IGenericRepository<Event, Guid>
 {
     Task<Event?> GetEventWithDetails(Guid id);
+    Task<Event?> GetScheduleGraphForUpdateAsync(Guid id, CancellationToken cancellationToken);
     Task<List<Event>> GetEventsWithDetails();
     Task<List<Event>> GetMyEventsWithDetails(string userId);
 

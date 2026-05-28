@@ -1,5 +1,5 @@
-// ABOUTME: EventSession repository with the two-layer same-room overlap enforcement used by scheduling commands.
-// ABOUTME: Layer A is a read for validators; Layer B wraps the re-check + save in a Serializable transaction.
+// ABOUTME: EventSession repository with friendly same-room overlap checks backed by a PostgreSQL exclusion constraint.
+// ABOUTME: Validators use read checks, command writes re-check, and DB exclusion violations map to domain-facing conflicts.
 
 using System.Data;
 using Explore.Application.Contracts.Persistence;
@@ -8,11 +8,14 @@ using Explore.Application.Specifications.EventSessions;
 using Explore.Domain;
 using Explore.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Explore.Persistence.Repositories;
 
 public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEventSessionRepository
 {
+    private const string RoomNoOverlapConstraintName = "EX_EventSession_RoomNoOverlap";
+    private const string ExclusionViolationSqlState = "23P01";
     private readonly ExploreDbContext _dbContext;
 
     public EventSessionRepository(ExploreDbContext dbContext) : base(dbContext)
@@ -107,6 +110,30 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             .ToListAsync(cancellationToken);
     }
 
+    public override async Task<EventSession> Create(EventSession entity)
+    {
+        try
+        {
+            return await base.Create(entity);
+        }
+        catch (DbUpdateException ex) when (IsRoomNoOverlapViolation(ex, entity.RoomId))
+        {
+            throw CreateRoomScheduleConflict(entity.RoomId!.Value);
+        }
+    }
+
+    public override async Task Update(EventSession entity)
+    {
+        try
+        {
+            await base.Update(entity);
+        }
+        catch (DbUpdateException ex) when (IsRoomNoOverlapViolation(ex, entity.RoomId))
+        {
+            throw CreateRoomScheduleConflict(entity.RoomId!.Value);
+        }
+    }
+
     public async Task<EventSession> CreateWithRoomOverlapGuardAsync(
         EventSession session,
         CancellationToken cancellationToken)
@@ -129,9 +156,17 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             throw new RoomScheduleConflictException(session.RoomId.Value, conflicts);
         }
 
-        await _dbContext.EventSessions.AddAsync(session, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await tx.CommitAsync(cancellationToken);
+        try
+        {
+            await _dbContext.EventSessions.AddAsync(session, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsRoomNoOverlapViolation(ex, session.RoomId))
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw CreateRoomScheduleConflict(session.RoomId!.Value);
+        }
 
         return session;
     }
@@ -170,9 +205,30 @@ public class EventSessionRepository : GenericRepository<EventSession, Guid>, IEv
             entry.State = EntityState.Modified;
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await tx.CommitAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsRoomNoOverlapViolation(ex, session.RoomId))
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw CreateRoomScheduleConflict(session.RoomId!.Value);
+        }
     }
+
+    private static bool IsRoomNoOverlapViolation(DbUpdateException ex, Guid? roomId)
+    {
+        return roomId.HasValue
+            && ex.InnerException is PostgresException
+            {
+                SqlState: ExclusionViolationSqlState,
+                ConstraintName: RoomNoOverlapConstraintName
+            };
+    }
+
+    private static RoomScheduleConflictException CreateRoomScheduleConflict(Guid roomId) =>
+        new(roomId, Array.Empty<Guid>());
 
     private IQueryable<EventSession> BuildOverlapQuery(
         Guid roomId,

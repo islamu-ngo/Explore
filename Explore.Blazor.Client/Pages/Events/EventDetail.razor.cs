@@ -647,6 +647,16 @@ public partial class EventDetail : ComponentBase
             : plainText;
     }
 
+    private string GetAboutText()
+    {
+        if (!string.IsNullOrWhiteSpace(_eventDetails?.Content))
+            return _eventDetails.Content;
+
+        return string.IsNullOrWhiteSpace(_eventDetails?.Description)
+            ? "No event content available."
+            : _eventDetails.Description;
+    }
+
     private string GetOgImageUrl()
     {
         if (_eventDetails?.FeaturedImageId != Guid.Empty && _eventDetails?.FeaturedImageId != null)

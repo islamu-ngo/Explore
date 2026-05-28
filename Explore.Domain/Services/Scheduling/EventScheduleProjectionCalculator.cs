@@ -9,12 +9,12 @@ public sealed class EventScheduleProjectionCalculator : IEventScheduleProjection
 {
     public LocalScheduleProjection Project(DateTimeOffset startUtc, DateTimeOffset endUtc, string? timezoneId)
     {
-        if (endUtc < startUtc)
+        if (endUtc <= startUtc)
         {
-            throw new ArgumentException("endUtc must be greater than or equal to startUtc.", nameof(endUtc));
+            throw new ArgumentException("endUtc must be strictly greater than startUtc.", nameof(endUtc));
         }
 
-        var timezone = ResolveTimezone(timezoneId);
+        var timezone = ScheduleTimeZoneResolver.ResolveOrUtc(timezoneId);
 
         var localStart = TimeZoneInfo.ConvertTime(startUtc, timezone);
         var localEnd = TimeZoneInfo.ConvertTime(endUtc, timezone);
@@ -36,24 +36,4 @@ public sealed class EventScheduleProjectionCalculator : IEventScheduleProjection
             endMinute);
     }
 
-    private static TimeZoneInfo ResolveTimezone(string? timezoneId)
-    {
-        if (string.IsNullOrWhiteSpace(timezoneId))
-        {
-            return TimeZoneInfo.Utc;
-        }
-
-        try
-        {
-            return TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
-        }
-        catch (TimeZoneNotFoundException)
-        {
-            return TimeZoneInfo.Utc;
-        }
-        catch (InvalidTimeZoneException)
-        {
-            return TimeZoneInfo.Utc;
-        }
-    }
 }

@@ -1,5 +1,5 @@
 // ABOUTME: Islamic extension entity for event sessions using strict 1:1 vertical partitioning.
-// Stores prayer-relative scheduling and ritual requirements without bloating the core event_sessions table.
+// ABOUTME: Owns prayer-relative session scheduling state and ritual requirements outside event_sessions.
 
 namespace Explore.Domain;
 
@@ -7,6 +7,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 public class EventSessionIslamicAspect
 {
+    public const int MinOffsetMinutes = -180;
+    public const int MaxOffsetMinutes = 180;
+
     /// <summary>
     /// Shared key with EventSession.Id (PK + FK).
     /// </summary>
@@ -39,4 +42,65 @@ public class EventSessionIslamicAspect
     /// Optional JSON payload for module-specific ritual requirements.
     /// </summary>
     public string? RitualRequirementsJson { get; set; }
+
+    public void ApplyScheduling(
+        SessionStartTimeType startTimeType,
+        PrayerTime? referencePrayer,
+        int? offsetMinutes)
+    {
+        switch (startTimeType)
+        {
+            case SessionStartTimeType.Fixed:
+                if (referencePrayer.HasValue || offsetMinutes.HasValue)
+                {
+                    throw new ArgumentException("Fixed Islamic session scheduling must not include prayer reference fields.", nameof(startTimeType));
+                }
+
+                StartTimeType = SessionStartTimeType.Fixed;
+                ReferencePrayer = null;
+                OffsetMinutes = null;
+                return;
+
+            case SessionStartTimeType.RelativeToPrayer:
+                if (!referencePrayer.HasValue || !offsetMinutes.HasValue)
+                {
+                    throw new ArgumentException("Prayer-relative Islamic session scheduling requires ReferencePrayer and OffsetMinutes.", nameof(startTimeType));
+                }
+
+                ValidateOffset(offsetMinutes.Value);
+                StartTimeType = SessionStartTimeType.RelativeToPrayer;
+                ReferencePrayer = referencePrayer.Value;
+                OffsetMinutes = offsetMinutes.Value;
+                return;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(startTimeType), startTimeType, "Unsupported Islamic session start-time type.");
+        }
+    }
+
+    public static bool IsValidSchedulingState(
+        SessionStartTimeType startTimeType,
+        PrayerTime? referencePrayer,
+        int? offsetMinutes)
+    {
+        return startTimeType switch
+        {
+            SessionStartTimeType.Fixed => !referencePrayer.HasValue && !offsetMinutes.HasValue,
+            SessionStartTimeType.RelativeToPrayer => referencePrayer.HasValue
+                && offsetMinutes.HasValue
+                && offsetMinutes.Value is >= MinOffsetMinutes and <= MaxOffsetMinutes,
+            _ => false
+        };
+    }
+
+    private static void ValidateOffset(int offsetMinutes)
+    {
+        if (offsetMinutes is < MinOffsetMinutes or > MaxOffsetMinutes)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(offsetMinutes),
+                offsetMinutes,
+                $"Prayer-relative offset must be between {MinOffsetMinutes} and {MaxOffsetMinutes} minutes.");
+        }
+    }
 }

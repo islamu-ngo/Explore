@@ -9,6 +9,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Domain;
+using Explore.Domain.Services.Scheduling;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -39,6 +40,7 @@ public class EventListCacheInvalidationCommandHandlerTests
             Substitute.For<IStorageObjectRepository>(),
             Substitute.For<IEventSeriesRepository>(),
             Substitute.For<IEventRegistrationPolicyRepository>(),
+            new EventScheduleProjectionCalculator(),
             Substitute.For<IMapper>(),
             cache);
 
@@ -77,7 +79,7 @@ public class EventListCacheInvalidationCommandHandlerTests
             sessionRepository,
             actorRepository,
             Substitute.For<IOrganizationMemberRepository>(),
-            Substitute.For<ITenantMemberRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
             Substitute.For<IRoleRepository>(),
             currentUserService,
             Substitute.For<ILogger<DeleteEventCommandHandler>>(),

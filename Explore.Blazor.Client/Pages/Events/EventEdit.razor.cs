@@ -387,6 +387,7 @@ public partial class EventEdit
             Title = currentEvent.Title,
             Subtitle = currentEvent.Subtitle,
             Description = currentEvent.Description,
+            Content = currentEvent.Content,
             AudienceGenderId = currentEvent.AudienceGenderId,
             AudienceAgeId = currentEvent.AudienceAgeId,
             Price = currentEvent.Price,
@@ -496,7 +497,7 @@ public partial class EventEdit
         }
     }
 
-    // ========== Description Dialog ==========
+    // ========== Content Dialog ==========
 
     private async Task OpenDescriptionDialog()
     {
@@ -504,7 +505,7 @@ public partial class EventEdit
 
         var parameters = new DialogParameters<DescriptionDialog>
         {
-            { x => x.Description, updateDto.Description }
+            { x => x.Content, updateDto.Content }
         };
 
         var options = DialogOptionsFactory.Editor();
@@ -516,7 +517,7 @@ public partial class EventEdit
 
         if (result is not null && !result.Canceled)
         {
-            updateDto.Description = result.Data?.ToString();
+            updateDto.Content = result.Data?.ToString();
         }
     }
 

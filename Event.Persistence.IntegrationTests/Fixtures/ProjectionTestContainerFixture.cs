@@ -61,7 +61,12 @@ public class ProjectionTestContainerFixture : IAsyncInitializer, IAsyncDisposabl
         await _container.DisposeAsync();
     }
 
-    public ExploreDbContext CreateDbContext() => CreateDbContextInternal();
+    public ExploreDbContext CreateDbContext()
+    {
+        var context = CreateDbContextInternal();
+        context.EnableTenantFilterBypass("Projection integration test system context.");
+        return context;
+    }
 
     public ExploreDbContext CreateDbContext(ITenantContext tenantContext)
     {

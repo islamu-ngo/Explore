@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
@@ -128,9 +129,10 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
 
         if (request.EventSessionDto.IslamicAspect != null)
         {
-            var islamicAspect = _mapper.Map<EventSessionIslamicAspect>(request.EventSessionDto.IslamicAspect);
+            var islamicAspect = new EventSessionIslamicAspect();
             islamicAspect.EventSessionId = eventSession.Id;
             islamicAspect.EventSession = null;
+            ApplyIslamicAspectDto(islamicAspect, request.EventSessionDto.IslamicAspect);
 
             await _eventSessionIslamicAspectRepository.Create(islamicAspect);
         }
@@ -183,5 +185,14 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         response.Message = "Event session created successfully.";
 
         return response;
+    }
+
+    private static void ApplyIslamicAspectDto(
+        EventSessionIslamicAspect aspect,
+        EventSessionIslamicAspectDto dto)
+    {
+        aspect.ApplyScheduling(dto.StartTimeType, dto.ReferencePrayer, dto.OffsetMinutes);
+        aspect.RequiresWudu = dto.RequiresWudu;
+        aspect.RitualRequirementsJson = dto.RitualRequirementsJson;
     }
 }

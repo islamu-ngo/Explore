@@ -1,3 +1,6 @@
+// ABOUTME: Detailed event DTO returned by event detail APIs and HAL resources.
+// ABOUTME: Separates short card description from longer event content for full detail views.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -14,6 +17,7 @@ public class EventDto
     public required string Title { get; set; }
     public string? Subtitle { get; set; }
     public string? Description { get; set; }
+    public string? Content { get; set; }
     public string? Slug { get; set; }
 
     // Event Type

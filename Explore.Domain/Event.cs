@@ -1,7 +1,12 @@
+// ABOUTME: Event aggregate root owning tenant-scoped event metadata, publication state, and schedule rollup projections.
+// ABOUTME: UTC session instants are authoritative; timezone and local projection updates flow through aggregate methods.
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 using Explore.Domain.Interfaces;
+using Explore.Domain.Services.Scheduling;
 
 namespace Explore.Domain;
 
@@ -16,6 +21,7 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public required string Title { get; set; }
     public string? Subtitle { get; set; }
     public string? Description { get; set; }
+    public string? Content { get; set; }
 
     [ForeignKey("AudienceGender")]
     public int? AudienceGenderId { get; set; }
@@ -52,6 +58,7 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public ICollection<EventSession> Sessions { get; set; } = new List<EventSession>();
     public ICollection<EventSessionGroup> SessionGroups { get; set; } = new List<EventSessionGroup>();
     public ICollection<EventAgendaItem> AgendaItems { get; set; } = new List<EventAgendaItem>();
+    public ICollection<EventDay> Days { get; set; } = new List<EventDay>();
 
     public string? Slug { get; set; }
 
@@ -135,4 +142,69 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     [ForeignKey("BackgroundImage")]
     public Guid? BackgroundImageId { get; set; }
     public StorageObject? BackgroundImage { get; set; }
+
+    public string GetEffectiveScheduleTimeZoneId()
+    {
+        return ScheduleTimeZoneResolver.NormalizeOrUtc(EventTimeZoneId ?? Timezone);
+    }
+
+    public void ApplyScheduleTimeZone(
+        string? timezoneId,
+        IEventScheduleProjectionCalculator calculator)
+    {
+        ArgumentNullException.ThrowIfNull(calculator);
+
+        var canonicalTimeZoneId = ScheduleTimeZoneResolver.NormalizeOrUtc(timezoneId);
+        EventTimeZoneId = canonicalTimeZoneId;
+        Timezone = canonicalTimeZoneId;
+
+        var daysByDate = Days
+            .Where(day => !day.IsDeleted)
+            .GroupBy(day => day.LocalDate)
+            .ToDictionary(
+                group => group.Key,
+                group => group.OrderBy(day => day.SortOrder).ThenBy(day => day.Id).First());
+
+        foreach (var session in Sessions.Where(session => !session.IsDeleted))
+        {
+            session.ReprojectLocalTimes(canonicalTimeZoneId, calculator);
+            session.EventDayId = daysByDate.TryGetValue(session.LocalStartDate, out var day) ? day.Id : null;
+        }
+
+        foreach (var agendaItem in AgendaItems.Where(item => !item.IsDeleted))
+        {
+            agendaItem.ReprojectLocalTimes(canonicalTimeZoneId, calculator);
+            agendaItem.EventDayId = daysByDate.TryGetValue(agendaItem.LocalStartDate, out var day) ? day.Id : null;
+        }
+
+        RecalculateScheduleSummaryFromSessions();
+    }
+
+    public void RecalculateScheduleSummaryFromSessions()
+    {
+        var activeSessions = Sessions
+            .Where(session => !session.IsDeleted)
+            .OrderBy(session => session.StartTime)
+            .ThenBy(session => session.SortOrder)
+            .ThenBy(session => session.Id)
+            .ToList();
+
+        SessionCount = activeSessions.Count;
+
+        if (activeSessions.Count == 0)
+        {
+            FirstSessionDate = null;
+            LastSessionDate = null;
+            FirstSessionStartUtc = null;
+            LastSessionStartUtc = null;
+            return;
+        }
+
+        var first = activeSessions.First();
+        var last = activeSessions.Last();
+        FirstSessionDate = first.LocalStartDate;
+        LastSessionDate = last.LocalStartDate;
+        FirstSessionStartUtc = first.StartTime;
+        LastSessionStartUtc = last.StartTime;
+    }
 }

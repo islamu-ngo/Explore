@@ -149,8 +149,10 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.ActorId, opt => opt.Ignore())
             .ForMember(dest => dest.TotalViews, opt => opt.Ignore())
             .ForMember(dest => dest.TenantId, opt => opt.Ignore())
-            .ForMember(dest => dest.FirstSessionStartUtc, opt => opt.MapFrom(src => src.FirstSessionStartUtc))
-            .ForMember(dest => dest.LastSessionStartUtc, opt => opt.MapFrom(src => src.LastSessionStartUtc))
+            .ForMember(dest => dest.FirstSessionDate, opt => opt.Ignore())
+            .ForMember(dest => dest.LastSessionDate, opt => opt.Ignore())
+            .ForMember(dest => dest.FirstSessionStartUtc, opt => opt.Ignore())
+            .ForMember(dest => dest.LastSessionStartUtc, opt => opt.Ignore())
             .ForMember(dest => dest.EventTimeZoneId, opt => opt.MapFrom(src => src.EventTimeZoneId ?? src.Timezone))
             .ForMember(dest => dest.Timezone, opt => opt.MapFrom(src => src.Timezone ?? src.EventTimeZoneId));
 
@@ -170,8 +172,12 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.KindFullName, opt => opt.MapFrom(src => src.Kind != null ? src.Kind.FullName : null));
         CreateMap<EventAgendaItem, EventAgendaItemListDto>()
             .ForMember(dest => dest.KindFullName, opt => opt.MapFrom(src => src.Kind != null ? src.Kind.FullName : null));
-        CreateMap<CreateEventAgendaItemDto, EventAgendaItem>();
-        CreateMap<UpdateEventAgendaItemDto, EventAgendaItem>();
+        CreateMap<CreateEventAgendaItemDto, EventAgendaItem>()
+            .ForMember(dest => dest.StartTime, opt => opt.Ignore())
+            .ForMember(dest => dest.EndTime, opt => opt.Ignore());
+        CreateMap<UpdateEventAgendaItemDto, EventAgendaItem>()
+            .ForMember(dest => dest.StartTime, opt => opt.Ignore())
+            .ForMember(dest => dest.EndTime, opt => opt.Ignore());
 
         // Event Tags
         CreateMap<EventTags, EventTagsDto>()

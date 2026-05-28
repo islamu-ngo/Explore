@@ -1,3 +1,6 @@
+// ABOUTME: Event filter specification factories used by repository query composition.
+// ABOUTME: Keeps searchable event fields aligned with card descriptions and long content.
+
 using System.Linq.Expressions;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -108,12 +111,13 @@ public sealed class EventFilter : IFilterSpecification<Event>
         new(e => e.ActorId == actorId);
 
     /// <summary>
-    /// Searches events by title or description (case-insensitive).
+    /// Searches events by title, card description, or long content (case-insensitive).
     /// Translates to SQL ILIKE/LIKE for database-level search.
     /// </summary>
     public static EventFilter SearchTerm(string searchTerm) =>
         new(e => e.Title.Contains(searchTerm) ||
-                 (e.Description != null && e.Description.Contains(searchTerm)));
+                 (e.Description != null && e.Description.Contains(searchTerm)) ||
+                 (e.Content != null && e.Content.Contains(searchTerm)));
 
     /// <summary>
     /// Filters events with first session date on or after the specified date.

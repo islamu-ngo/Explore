@@ -98,6 +98,8 @@ public sealed class UpdateEventRegistrationCommandHandlerTests
     private static EventRegistration CreateRegistration(Guid id) => new()
     {
         Id = id,
+        EventId = Guid.NewGuid(),
+        Event = null!,
         UserId = Guid.NewGuid(),
         User = null!,
         EventSessionId = Guid.NewGuid(),

@@ -1,3 +1,6 @@
+// ABOUTME: EF Core repository for Event aggregate queries, schedule graph updates, and listing specifications.
+// ABOUTME: Query methods return domain entities; mapping and schedule invariant decisions stay in application/domain layers.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Specifications.Events;
 using Explore.Domain;
@@ -40,6 +43,16 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .IncludeStandardDetails()
             .Include(e => e.AtprotoRecord)
             .FirstOrDefaultAsync(e => e.Id == id);
+    }
+
+    public async Task<Event?> GetScheduleGraphForUpdateAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Events
+            .AsSplitQuery()
+            .Include(e => e.Days)
+            .Include(e => e.Sessions)
+            .Include(e => e.AgendaItems)
+            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
 
     public async Task<List<Event>> GetMyEventsWithDetails(string userId)

@@ -17,6 +17,12 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventDraftReq
         RuleFor(x => x.Subtitle)
             .MaximumLength(200).WithMessage("Event subtitle cannot exceed 200 characters.");
 
+        RuleFor(x => x.Description)
+            .MaximumLength(150).WithMessage("Event card description cannot exceed 150 characters.");
+
+        RuleFor(x => x.Content)
+            .MaximumLength(5000).WithMessage("Event content cannot exceed 5000 characters.");
+
         RuleFor(x => x.EventTypeId)
             .GreaterThan(0).WithMessage("Please select an event type.");
 

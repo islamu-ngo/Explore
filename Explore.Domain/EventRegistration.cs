@@ -1,3 +1,6 @@
+// ABOUTME: Concrete per-session registration access row derived from a parent EventRegistrationIntent.
+// ABOUTME: Denormalizes EventId so persistence can enforce same-event intent/session membership with composite FKs.
+
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
@@ -7,6 +10,10 @@ namespace Explore.Domain;
 public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable
 {
     public Guid Id { get; set; }
+
+    [ForeignKey("Event")]
+    public Guid EventId { get; set; }
+    public required Event Event { get; set; }
 
     [ForeignKey("User")]
     public Guid UserId { get; set; }

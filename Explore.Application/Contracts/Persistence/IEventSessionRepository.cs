@@ -1,3 +1,6 @@
+// ABOUTME: Repository contract for scheduled EventSession rows and their room-overlap guard paths.
+// ABOUTME: Exposes entity-returning reads plus write methods that preserve friendly room-conflict errors.
+
 using Explore.Application.Specifications.EventSessions;
 using Explore.Domain;
 

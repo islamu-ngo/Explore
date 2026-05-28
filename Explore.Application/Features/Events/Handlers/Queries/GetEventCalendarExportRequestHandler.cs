@@ -38,7 +38,7 @@ public sealed class GetEventCalendarExportRequestHandler(
         return new EventCalendarExportDto(
             entity.Id,
             entity.Title,
-            entity.Description,
+            entity.Content ?? entity.Description,
             entity.Slug,
             primarySession.StartTime.ToUniversalTime(),
             primarySession.EndTime.ToUniversalTime(),

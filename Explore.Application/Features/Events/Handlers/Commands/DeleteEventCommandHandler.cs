@@ -33,7 +33,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
-    private readonly ITenantMemberRepository _tenantMemberRepository;
+    private readonly ITenantUserRoleGrantRepository _tenantUserRoleGrantRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<DeleteEventCommandHandler> _logger;
@@ -44,7 +44,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         IEventSessionRepository eventSessionRepository,
         IActorRepository actorRepository,
         IOrganizationMemberRepository organizationMemberRepository,
-        ITenantMemberRepository tenantMemberRepository,
+        ITenantUserRoleGrantRepository tenantUserRoleGrantRepository,
         IRoleRepository roleRepository,
         ICurrentUserService currentUserService,
         ILogger<DeleteEventCommandHandler> logger,
@@ -54,7 +54,7 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         _eventSessionRepository = eventSessionRepository;
         _actorRepository = actorRepository;
         _organizationMemberRepository = organizationMemberRepository;
-        _tenantMemberRepository = tenantMemberRepository;
+        _tenantUserRoleGrantRepository = tenantUserRoleGrantRepository;
         _roleRepository = roleRepository;
         _currentUserService = currentUserService;
         _logger = logger;
@@ -189,10 +189,10 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
         try
         {
             // Use targeted query: Check if user has admin tenant assignment
-            // This avoids loading ALL PlatformUserRoles and ALL TenantMembers into memory (O(1) vs O(n))
-            var tenantMembers = await _tenantMemberRepository.GetByUserId(userId);
-            return tenantMembers.Any(tm => tm.Role?.MasterCode != null &&
-                tm.Role.MasterCode.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+            // This avoids loading ALL PlatformUserRoles and ALL tenant role grants into memory (O(1) vs O(n))
+            var tenantUserRoleGrants = await _tenantUserRoleGrantRepository.GetByUserId(userId);
+            return tenantUserRoleGrants.Any(grant => grant.Role?.MasterCode != null &&
+                grant.Role.MasterCode.Equals("Admin", StringComparison.OrdinalIgnoreCase));
         }
         catch (Exception ex)
         {

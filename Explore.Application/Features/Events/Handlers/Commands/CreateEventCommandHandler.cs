@@ -254,6 +254,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             Title = dto.Title,
             Subtitle = dto.Subtitle,
             Description = dto.Description,
+            Content = dto.Content,
             Slug = string.IsNullOrWhiteSpace(dto.Slug) ? SlugGenerator.FromTitle(dto.Title, "event") : dto.Slug,
             EventTypeId = dto.EventTypeId,
             AudienceGenderId = dto.AudienceGenderId,
@@ -267,7 +268,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             VisibilityTypeId = dto.VisibilityTypeId == 0 ? 1 : dto.VisibilityTypeId,
             EventFormatId = dto.EventFormatId == 0 ? 1 : dto.EventFormatId,
             MadhabId = dto.MadhabId,
-            Timezone = dto.Timezone,
+            Timezone = timezoneId,
             EventTimeZoneId = timezoneId,
             EventUrl = dto.EventUrl,
             BackgroundColor = dto.BackgroundColor,
@@ -460,16 +461,19 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     {
         if (sessionDto.IslamicAspect is null) return;
 
-        await _eventSessionIslamicAspectRepository.Create(new EventSessionIslamicAspect
+        var aspect = new EventSessionIslamicAspect
         {
             EventSessionId = session.Id,
             EventSession = null,
-            StartTimeType = sessionDto.IslamicAspect.StartTimeType,
-            ReferencePrayer = sessionDto.IslamicAspect.ReferencePrayer,
-            OffsetMinutes = sessionDto.IslamicAspect.OffsetMinutes,
             RequiresWudu = sessionDto.IslamicAspect.RequiresWudu,
             RitualRequirementsJson = sessionDto.IslamicAspect.RitualRequirementsJson
-        });
+        };
+        aspect.ApplyScheduling(
+            sessionDto.IslamicAspect.StartTimeType,
+            sessionDto.IslamicAspect.ReferencePrayer,
+            sessionDto.IslamicAspect.OffsetMinutes);
+
+        await _eventSessionIslamicAspectRepository.Create(aspect);
     }
 
     private async Task CreateSessionLanguagesAsync(CreateEventSessionRequest sessionDto, EventSession session, CancellationToken ct)
@@ -649,8 +653,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     }
 
     private static string ResolveTimezoneId(CreateEventRequest dto) =>
-        !string.IsNullOrWhiteSpace(dto.EventTimeZoneId)
-            ? dto.EventTimeZoneId
-            : dto.Timezone ?? string.Empty;
+        ScheduleTimeZoneResolver.NormalizeOrUtc(
+            !string.IsNullOrWhiteSpace(dto.EventTimeZoneId)
+                ? dto.EventTimeZoneId
+                : dto.Timezone);
 
 }

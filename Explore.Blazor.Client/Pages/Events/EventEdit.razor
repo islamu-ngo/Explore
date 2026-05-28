@@ -153,6 +153,16 @@
                                          Class="edit-event__timezone-autocomplete mb-3" />
                     }
 
+                    <MudTextField T="string" @bind-Value="updateDto.Description"
+                                  Label="Card description"
+                                  Placeholder="Short summary for event cards"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true"
+                                  Immediate="true"
+                                  MaxLength="150"
+                                  Class="mb-3" />
+
                     @if (sessions.Count > 0)
                     {
                         var primarySession = sessions.First();
@@ -173,20 +183,20 @@
                         </MudText>
                     }
 
-                    @* --- Add Description Button (Luma-style popup) --- *@
+                    @* --- Add Content Button (Luma-style popup) --- *@
                     <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Notes"
                                Variant="Variant.Text"
                                Color="Color.Default"
                                FullWidth="true"
                                Class="edit-event__action-button justify-start"
                                OnClick="OpenDescriptionDialog">
-                        @if (!string.IsNullOrEmpty(updateDto.Description))
+                        @if (!string.IsNullOrEmpty(updateDto.Content))
                         {
-                            <span class="text-truncate" style="max-width: 400px; text-align: left;">@updateDto.Description</span>
+                            <span class="text-truncate" style="max-width: 400px; text-align: left;">@updateDto.Content</span>
                         }
                         else
                         {
-                            <span>Add a description</span>
+                            <span>Add full content</span>
                         }
                     </MudButton>
 

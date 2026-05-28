@@ -11,6 +11,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -27,6 +28,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IEventSeriesRepository _eventSeriesRepository;
     private readonly IEventRegistrationPolicyRepository _eventRegistrationPolicyRepository;
+    private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
 
@@ -40,6 +42,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         IStorageObjectRepository storageObjectRepository,
         IEventSeriesRepository eventSeriesRepository,
         IEventRegistrationPolicyRepository eventRegistrationPolicyRepository,
+        IEventScheduleProjectionCalculator scheduleProjectionCalculator,
         IMapper mapper,
         HybridCache cache)
     {
@@ -52,6 +55,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         _storageObjectRepository = storageObjectRepository;
         _eventSeriesRepository = eventSeriesRepository;
         _eventRegistrationPolicyRepository = eventRegistrationPolicyRepository;
+        _scheduleProjectionCalculator = scheduleProjectionCalculator;
         _mapper = mapper;
         _cache = cache;
     }
@@ -60,7 +64,9 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var @event = await _eventRepository.GetById(request.Id);
+        var @event = request.EventDto is null
+            ? await _eventRepository.GetById(request.Id)
+            : await _eventRepository.GetScheduleGraphForUpdateAsync(request.Id, cancellationToken);
         if (@event == null)
         {
             response.Success = false;
@@ -86,6 +92,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
             }
 
             _mapper.Map(request.EventDto, @event);
+            @event.ApplyScheduleTimeZone(@event.EventTimeZoneId ?? @event.Timezone, _scheduleProjectionCalculator);
         }
 
         if (request.EventStatusDto is not null)

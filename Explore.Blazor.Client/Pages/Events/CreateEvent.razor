@@ -273,20 +273,30 @@
                                       Class="mb-3" />
                     }
 
-                    @* --- Add Description Button (Luma-style popup) --- *@
+                    <MudTextField T="string" @bind-Value="createDto.Description"
+                                  Label="Card description"
+                                  Placeholder="Short summary for event cards"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true"
+                                  Immediate="true"
+                                  MaxLength="150"
+                                  Class="mb-2" />
+
+                    @* --- Add Content Button (Luma-style popup) --- *@
                     <MudButton Elevation="0" StartIcon="@Icons.Material.Filled.Notes"
                                Variant="Variant.Text"
                                Color="Color.Default"
                                FullWidth="true"
                                Class="create-event__action-button justify-start"
                                OnClick="OpenDescriptionDialog">
-                        @if (!string.IsNullOrEmpty(createDto.Description))
+                        @if (!string.IsNullOrEmpty(createDto.Content))
                         {
-                            <span class="text-truncate" style="max-width: 400px; text-align: start;">@createDto.Description</span>
+                            <span class="text-truncate" style="max-width: 400px; text-align: start;">@createDto.Content</span>
                         }
                         else
                         {
-                            <span>Add a description</span>
+                            <span>Add full content</span>
                         }
                     </MudButton>
 

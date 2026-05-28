@@ -1,5 +1,9 @@
+// ABOUTME: FluentValidation rules for legacy scalar event updates while preserving server-owned schedule projections.
+// ABOUTME: Validates lookup references and rejects invalid timezone aliases before handlers reproject the schedule graph.
+
 using System;
 using Explore.Application.Contracts.Persistence;
+using Explore.Domain.Services.Scheduling;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.Event.Validators;
@@ -45,7 +49,10 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
         RuleFor(p => p.Description)
             .NotEmpty().WithMessage("{PropertyName} is required.")
             .NotNull()
-            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
+            .MaximumLength(150).WithMessage("{PropertyName} must not exceed 150 characters.");
+
+        RuleFor(p => p.Content)
+            .MaximumLength(5000).WithMessage("{PropertyName} must not exceed 5000 characters.");
 
         RuleFor(p => p.Slug)
             .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters.");
@@ -123,6 +130,18 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
             .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.Timezone))
             .WithMessage("{PropertyName} must not exceed 500 characters.");
 
+        RuleFor(p => p.EventTimeZoneId)
+            .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.EventTimeZoneId))
+            .WithMessage("{PropertyName} must not exceed 500 characters.");
+
+        RuleFor(p => p)
+            .Must(HaveValidScheduleTimeZone)
+            .WithMessage("EventTimeZoneId/Timezone must be a valid system timezone id.");
+
+        RuleFor(p => p)
+            .Must(HaveConsistentTimeZoneAliases)
+            .WithMessage("EventTimeZoneId and Timezone must match when both are provided.");
+
         RuleFor(p => p.EventUrl)
             .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.EventUrl))
             .WithMessage("{PropertyName} must not exceed 500 characters.");
@@ -152,6 +171,29 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
             .GreaterThanOrEqualTo(0)
             .When(p => p.SeriesOrder.HasValue)
             .WithMessage("{PropertyName} must be non-negative.");
+    }
+
+    private static bool HaveValidScheduleTimeZone(UpdateEventDto request)
+    {
+        return ScheduleTimeZoneResolver.IsValidOrBlank(request.EventTimeZoneId ?? request.Timezone);
+    }
+
+    private static bool HaveConsistentTimeZoneAliases(UpdateEventDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.EventTimeZoneId) || string.IsNullOrWhiteSpace(request.Timezone))
+        {
+            return true;
+        }
+
+        try
+        {
+            return ScheduleTimeZoneResolver.NormalizeOrUtc(request.EventTimeZoneId)
+                == ScheduleTimeZoneResolver.NormalizeOrUtc(request.Timezone);
+        }
+        catch (ArgumentException)
+        {
+            return true;
+        }
     }
 
 }

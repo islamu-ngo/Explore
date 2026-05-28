@@ -1,3 +1,6 @@
+// ABOUTME: Scheduled event child content with UTC start/end as truth and cached local projection columns for queries.
+// ABOUTME: Reschedule/ReprojectLocalTimes are the only supported domain write paths for derived local schedule fields.
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;

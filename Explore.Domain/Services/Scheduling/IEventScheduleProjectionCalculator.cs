@@ -12,6 +12,6 @@ public interface IEventScheduleProjectionCalculator
     /// </summary>
     /// <param name="startUtc">Inclusive UTC start of the interval.</param>
     /// <param name="endUtc">Exclusive UTC end of the interval; must be strictly greater than <paramref name="startUtc"/>.</param>
-    /// <param name="timezoneId">IANA timezone id (e.g. "Europe/Brussels"). If null/empty the calculator falls back to UTC.</param>
+    /// <param name="timezoneId">System timezone id (for example "Europe/Brussels"). If null/empty the calculator falls back to UTC.</param>
     LocalScheduleProjection Project(DateTimeOffset startUtc, DateTimeOffset endUtc, string? timezoneId);
 }

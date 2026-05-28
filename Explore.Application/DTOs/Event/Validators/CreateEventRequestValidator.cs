@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Domain;
+using Explore.Domain.Services.Scheduling;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.Event.Validators;
@@ -36,12 +38,19 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
             .MaximumLength(200).WithMessage("{PropertyName} must not exceed 200 characters.");
 
         RuleFor(p => p.Subtitle).MaximumLength(200);
-        RuleFor(p => p.Description).MaximumLength(5000).When(p => !string.IsNullOrWhiteSpace(p.Description));
+        RuleFor(p => p.Description).MaximumLength(150).When(p => !string.IsNullOrWhiteSpace(p.Description));
+        RuleFor(p => p.Content).MaximumLength(5000).When(p => !string.IsNullOrWhiteSpace(p.Content));
         RuleFor(p => p.Slug).MaximumLength(500).When(p => !string.IsNullOrWhiteSpace(p.Slug));
         RuleFor(p => p.CurrencyCode).MaximumLength(3).When(p => !string.IsNullOrWhiteSpace(p.CurrencyCode));
         RuleFor(p => p.ExternalRegistrationUrl).MaximumLength(500).When(p => !string.IsNullOrWhiteSpace(p.ExternalRegistrationUrl));
         RuleFor(p => p.Timezone).MaximumLength(100).When(p => !string.IsNullOrWhiteSpace(p.Timezone));
         RuleFor(p => p.EventTimeZoneId).MaximumLength(100).When(p => !string.IsNullOrWhiteSpace(p.EventTimeZoneId));
+        RuleFor(p => p)
+            .Must(HaveValidScheduleTimeZone)
+            .WithMessage("EventTimeZoneId/Timezone must be a valid system timezone id.");
+        RuleFor(p => p)
+            .Must(HaveConsistentTimeZoneAliases)
+            .WithMessage("EventTimeZoneId and Timezone must match when both are provided.");
         RuleFor(p => p.EventUrl).MaximumLength(500).When(p => !string.IsNullOrWhiteSpace(p.EventUrl));
         RuleFor(p => p.BackgroundColor).MaximumLength(32).When(p => !string.IsNullOrWhiteSpace(p.BackgroundColor));
         RuleFor(p => p.BackgroundEffect).MaximumLength(64).When(p => !string.IsNullOrWhiteSpace(p.BackgroundEffect));
@@ -138,7 +147,7 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
 
         RuleFor(p => p).Must(HaveUniqueTempKeys).WithMessage("Temp keys must be unique within days, rooms, and sessions.");
         RuleFor(p => p).Must(HaveValidTempReferences).WithMessage("One or more day or room temp-key references are invalid.");
-        RuleFor(p => p).Must(HaveRelativePrayerRequirements).WithMessage("Islamic session scheduling requires LocationId, ReferencePrayer, and OffsetMinutes when StartTimeType is RelativeToPrayer.");
+        RuleFor(p => p).Must(HaveValidIslamicSessionScheduling).WithMessage(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
 
         RuleFor(p => p).MustAsync(async (request, _) => await AllLocationsExistAsync(request, locationRepository))
             .WithMessage("One or more locations do not exist.");
@@ -175,6 +184,29 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
             && IsUnique(request.Sessions.Select(s => s.TempKey));
     }
 
+    private static bool HaveValidScheduleTimeZone(CreateEventRequest request)
+    {
+        return ScheduleTimeZoneResolver.IsValidOrBlank(request.EventTimeZoneId ?? request.Timezone);
+    }
+
+    private static bool HaveConsistentTimeZoneAliases(CreateEventRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.EventTimeZoneId) || string.IsNullOrWhiteSpace(request.Timezone))
+        {
+            return true;
+        }
+
+        try
+        {
+            return ScheduleTimeZoneResolver.NormalizeOrUtc(request.EventTimeZoneId)
+                == ScheduleTimeZoneResolver.NormalizeOrUtc(request.Timezone);
+        }
+        catch (ArgumentException)
+        {
+            return true;
+        }
+    }
+
     private static bool IsUnique(IEnumerable<string?> keys)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -198,19 +230,12 @@ public class CreateEventRequestValidator : AbstractValidator<CreateEventRequest>
     private static bool IsBlankOrContained(string? value, HashSet<string> allowed) =>
         string.IsNullOrWhiteSpace(value) || allowed.Contains(value.Trim());
 
-    private static bool HaveRelativePrayerRequirements(CreateEventRequest request)
+    private static bool HaveValidIslamicSessionScheduling(CreateEventRequest request)
     {
         return request.Sessions.All(session =>
-        {
-            if (session.IslamicAspect is null || session.IslamicAspect.StartTimeType == SessionStartTimeType.Fixed)
-            {
-                return true;
-            }
-
-            return session.LocationId.HasValue
-                && session.IslamicAspect.ReferencePrayer.HasValue
-                && session.IslamicAspect.OffsetMinutes.HasValue;
-        });
+            EventSessionIslamicAspectValidationRules.HasValidSchedulingState(
+                session.IslamicAspect,
+                session.LocationId));
     }
 
     private static async Task<bool> AllLocationsExistAsync(CreateEventRequest request, ILocationRepository repository)

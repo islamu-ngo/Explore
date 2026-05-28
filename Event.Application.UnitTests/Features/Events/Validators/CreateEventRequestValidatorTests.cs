@@ -99,6 +99,51 @@ public class CreateEventRequestValidatorTests
     }
 
     [Test]
+    public async Task Validate_WithDescriptionOver150Characters_ReturnsDescriptionError()
+    {
+        var request = new CreateEventRequest
+        {
+            Title = "Draft with long card summary",
+            Description = new string('a', 151)
+        };
+
+        var result = await _validator.ValidateAsync(request);
+
+        await Assert.That(result.IsValid).IsFalse();
+        await Assert.That(result.Errors.Any(e => e.PropertyName == nameof(CreateEventRequest.Description))).IsTrue();
+    }
+
+    [Test]
+    public async Task Validate_WithContentOver5000Characters_ReturnsContentError()
+    {
+        var request = new CreateEventRequest
+        {
+            Title = "Draft with long content",
+            Content = new string('a', 5001)
+        };
+
+        var result = await _validator.ValidateAsync(request);
+
+        await Assert.That(result.IsValid).IsFalse();
+        await Assert.That(result.Errors.Any(e => e.PropertyName == nameof(CreateEventRequest.Content))).IsTrue();
+    }
+
+    [Test]
+    public async Task Validate_WithDescriptionAndContentAtLimits_ReturnsTrue()
+    {
+        var request = new CreateEventRequest
+        {
+            Title = "Draft at content limits",
+            Description = new string('a', 150),
+            Content = new string('b', 5000)
+        };
+
+        var result = await _validator.ValidateAsync(request);
+
+        await Assert.That(result.IsValid).IsTrue();
+    }
+
+    [Test]
     public async Task Validate_WithNoSessions_ReturnsTrue()
     {
         var request = new CreateEventRequest

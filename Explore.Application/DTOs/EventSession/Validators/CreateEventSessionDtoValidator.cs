@@ -1,3 +1,6 @@
+// ABOUTME: FluentValidation rules for standalone event-session creation payloads.
+// ABOUTME: Validates timing, lookup references, room conflicts, and Islamic aspect scheduling state.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using FluentValidation;
@@ -91,24 +94,21 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
             .MaximumLength(3).When(p => !string.IsNullOrWhiteSpace(p.CurrencyCode))
             .WithMessage("{PropertyName} must be a valid 3-letter currency code.");
 
+        RuleFor(p => p.IslamicAspect!.StartTimeType)
+            .IsInEnum()
+            .When(p => p.IslamicAspect is not null)
+            .WithMessage("Invalid Islamic session start-time type.");
+
+        RuleFor(p => p.IslamicAspect!.OffsetMinutes)
+            .InclusiveBetween(
+                EventSessionIslamicAspect.MinOffsetMinutes,
+                EventSessionIslamicAspect.MaxOffsetMinutes)
+            .When(p => p.IslamicAspect?.OffsetMinutes is not null)
+            .WithMessage(EventSessionIslamicAspectValidationRules.OffsetRangeMessage);
+
         RuleFor(p => p)
-            .Must(p =>
-            {
-                if (p.IslamicAspect == null)
-                {
-                    return true;
-                }
-
-                if (p.IslamicAspect.StartTimeType == SessionStartTimeType.Fixed)
-                {
-                    return true;
-                }
-
-                return p.IslamicAspect.ReferencePrayer.HasValue
-                    && p.IslamicAspect.OffsetMinutes.HasValue
-                    && p.LocationId.HasValue;
-            })
-            .WithMessage("Islamic session scheduling requires LocationId, ReferencePrayer, and OffsetMinutes when StartTimeType is RelativeToPrayer.");
+            .Must(p => EventSessionIslamicAspectValidationRules.HasValidSchedulingState(p.IslamicAspect, p.LocationId))
+            .WithMessage(EventSessionIslamicAspectValidationRules.SchedulingStateMessage);
 
         RuleFor(p => p.SessionTemplateId)
             .MustAsync(async (id, cancellation) =>
@@ -119,8 +119,8 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
             .When(p => p.SessionTemplateId.HasValue)
             .WithMessage("Event session template does not exist.");
 
-        // Layer A (necessary but not sufficient) same-room overlap check.
-        // Layer B serializable re-check runs inside EventSessionRepository.CreateWithRoomOverlapGuardAsync.
+        // Friendly same-room overlap check. The repository re-check and PostgreSQL exclusion constraint
+        // remain authoritative for racing writes and non-validator persistence paths.
         RuleFor(p => p)
             .MustAsync(async (dto, cancellation) =>
             {

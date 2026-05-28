@@ -17,7 +17,7 @@ public class EventSessionMappingProfile : Profile
     public EventSessionMappingProfile()
     {
         // Event Session Islamic Aspect
-        CreateMap<EventSessionIslamicAspect, EventSessionIslamicAspectDto>().ReverseMap();
+        CreateMap<EventSessionIslamicAspect, EventSessionIslamicAspectDto>();
 
         // Event Session
         CreateMap<EventSessionGroupSession, EventSessionGroupAssignmentDto>()
@@ -70,8 +70,12 @@ public class EventSessionMappingProfile : Profile
                 .OrderByDescending(assignment => assignment.IsPrimary)
                 .ThenBy(assignment => assignment.SortOrder)));
         CreateMap<CreateEventSessionDto, EventSession>()
+            .ForMember(dest => dest.StartTime, opt => opt.Ignore())
+            .ForMember(dest => dest.EndTime, opt => opt.Ignore())
             .ForMember(dest => dest.IslamicAspect, opt => opt.Ignore());
         CreateMap<UpdateEventSessionDto, EventSession>()
+            .ForMember(dest => dest.StartTime, opt => opt.Ignore())
+            .ForMember(dest => dest.EndTime, opt => opt.Ignore())
             .ForMember(dest => dest.IslamicAspect, opt => opt.Ignore());
 
         // Event Session Agenda Item

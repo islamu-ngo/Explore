@@ -8,6 +8,7 @@ public sealed class CreateEventDraftRequestDto
     public required string Title { get; set; }
     public string? Subtitle { get; set; }
     public string? Description { get; set; }
+    public string? Content { get; set; }
     public string? Slug { get; set; }
     public int? EventTypeId { get; set; }
     public int? AudienceGenderId { get; set; }
@@ -40,6 +41,7 @@ public sealed class CreateEventDraftRequestDto
         Title = Title,
         Subtitle = Subtitle,
         Description = Description,
+        Content = Content,
         Slug = Slug,
         EventTypeId = EventTypeId,
         AudienceGenderId = AudienceGenderId,

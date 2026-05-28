@@ -7,6 +7,7 @@ using Explore.Application.Exceptions;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Domain;
+using Explore.Domain.Services.Scheduling;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 
@@ -30,6 +31,7 @@ public class UpdateEventDraftCommandHandlerConcurrencyTests
             Substitute.For<IStorageObjectRepository>(),
             Substitute.For<IEventSeriesRepository>(),
             Substitute.For<IEventRegistrationPolicyRepository>(),
+            new EventScheduleProjectionCalculator(),
             Substitute.For<HybridCache>());
 
         var eventId = Guid.NewGuid();
@@ -39,7 +41,7 @@ public class UpdateEventDraftCommandHandlerConcurrencyTests
 
         visibilityTypeRepository.Exists(1).Returns(true);
         eventFormatRepository.Exists(1).Returns(true);
-        eventRepository.GetById(eventId).Returns(existingEvent);
+        eventRepository.GetScheduleGraphForUpdateAsync(eventId, Arg.Any<CancellationToken>()).Returns(existingEvent);
 
         var command = new UpdateEventDraftCommand
         {
