@@ -76,9 +76,9 @@ Explore.Domain/
 **Entity categories:**
 - **Main entities** (Guid PK): Event, Organization, Actor, User, Tenant, Location, StorageObject, Category, Tag
 - **Lookup tables** (int PK): EventType, EventStatus, EventFormat, AudienceAge, AudienceGender, Madhab, Language, VisibilityType, RegistrationMode, Role, OrganizationPosition
-- **Link/junction tables** (composite PK): EventCategories, EventTags, EventSessionLanguage, EventSessionSpeaker, TagTypeTags, OrganizationMember, TenantUser, RolePermission
+- **Link/junction tables** (composite PK): EventCategories, EventTags, EventSessionLanguage, EventSessionSpeaker, TagTypeTags, OrganizationMember, RolePermission
 - **Aspect tables** (1:1 optional): EventIslamicAspect, EventTechAspect
-- **Admin/onboarding**: InstanceAdministrator, InstanceBootstrapState, TenantMember, TenantOnboardingState
+- **Admin/onboarding**: InstanceAdministrator, InstanceBootstrapState, TenantUser, TenantUserRoleGrant, TenantOnboardingState
 
 ---
 
@@ -284,7 +284,7 @@ Explore.API/
 │   ├── OutboxProcessor.cs         — Polls outbox_messages, dispatches events, retry + dead-letter
 │   └── PdsSyncWorker.cs           — ATProto PDS synchronization (outbox pattern, exponential backoff)
 ├── Static/                        — Static file serving configuration
-├── swagger.json                   — Generated OpenAPI specification
+├── schemas/openapi.json           — Generated OpenAPI specification
 └── Properties/
     └── launchSettings.json        — Development server URLs and profiles
 ```

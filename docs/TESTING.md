@@ -254,6 +254,8 @@ The API integration tests use a **three-host-profile model** to balance speed, f
 | **RealRuntime** | PostgreSQL (Testcontainers) | Disabled | Production-faithful behavior: persistence, tenant isolation, auth families, migrations |
 | **Stress** | PostgreSQL (Testcontainers) | Enabled (low thresholds) | Timing-sensitive: rate limiting enforcement, 429 response format |
 
+These profiles are correctness tests, not performance benchmarks. Runtime benchmark runs live in [BENCHMARKS.md](BENCHMARKS.md) and use BenchmarkDotNet so contributors can compare relative endpoint cost, allocations, and diagnoser output under controlled runs.
+
 ### Fixture Architecture
 
 ```
@@ -283,6 +285,20 @@ Per Test: ResetAsync (Respawn) → Seed scenario data → Execute test
 ```
 
 Respawn resets ALL tables except `__EFMigrationsHistory` and 27 lookup tables.
+
+### Testcontainers Benchmarks Versus Tests
+
+`Event.Benchmarks` has a PostgreSQL/Testcontainers API benchmark lane that intentionally borrows the integration-test infrastructure shape without becoming a test project:
+
+| Concern | API Integration Tests | PostgreSQL API Benchmarks |
+|---|---|---|
+| Goal | Prove correctness: status codes, HAL contracts, auth behavior, tenant isolation, migrations, and persistence rules. | Compare endpoint cost through ASP.NET Core `TestServer`, EF Core, Npgsql, and PostgreSQL for performance work. |
+| Runner | TUnit via `dotnet test --project ...`; never solution-level `dotnet test`. | BenchmarkDotNet via `dotnet run --configuration Release --project Event.Benchmarks -- --filter "*ApiEndpointPostgreSqlBenchmarks*"`. |
+| Database setup | PostgreSQL Testcontainer, `MigrateAsync()`, lookup seeding, Respawn reset per scenario. | PostgreSQL Testcontainer in BenchmarkDotNet `GlobalSetup`, current EF model schema via `EnsureCreatedAsync()`, PostgreSQL model constraints, lookup and benchmark-owned event seed data. |
+| Measured body | Assertions and scenario behavior; setup and assertions are part of the test. | Timed method only sends the HTTP request and reads the response; container start, schema creation, and seeding are outside measured iterations. |
+| Caching/auth | Uses profile-specific auth, Cerbos, rate-limit, and reset conventions according to the test purpose. | Uses benchmark auth and allow-all authorization; PostgreSQL suite disables output-cache replay with a no-op store so controller/MediatR/EF/Npgsql/PostgreSQL work remains visible. |
+
+Use integration tests when behavior must be proven. Use the PostgreSQL API benchmark when the question is whether an implementation change makes representative read endpoints faster, slower, or more allocation-heavy. Benchmark numbers are relative evidence from one controlled run, not production SLOs or load-test proof.
 
 ### Builders vs Seeds
 
@@ -325,7 +341,7 @@ Key conventions:
 - Do not share data across tests — each test resets and seeds its own.
 - Do not assert `IsNotEqualTo(InternalServerError)` — assert the exact expected status code.
 - Do not guard assertions with `if (items.Length > 0)` — seed data to guarantee items exist.
-- Do not use `EnsureCreated()` for PostgreSQL fixtures — use `MigrateAsync()`.
+- Do not use `EnsureCreated()` for PostgreSQL test fixtures — use `MigrateAsync()`. The BenchmarkDotNet PostgreSQL harness is the intentional exception because it measures active-development current-model API performance rather than migration correctness.
 - Do not test non-existent endpoints.
 - Do not test auth gates in isolation when covered by auth-family matrix tests.
 

@@ -341,7 +341,7 @@ Defined in `Explore.Domain/Constants/GovernanceSettingKeys.cs`.
 > Governed by [docs/GOVERNANCE.md#api-contract-rules](GOVERNANCE.md#api-contract-rules).
 > These rules are enforced by `ContractInvariantsTests` (Event.API.IntegrationTests),
 > `ApiClientNamingTests` (Explore.Blazor.Client.Tests), and the auto-generated inventory
-> at `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md`.
+> at [API_CONTRACT_INVENTORY.md](API_CONTRACT_INVENTORY.md).
 
 ### Controller Route
 

@@ -184,7 +184,7 @@ When DTO contracts change, sequence matters to avoid false compile failures.
 
 1. Update DTOs, validators, mappings, and handlers in API/Application layers
 2. Build API: `dotnet build --project Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`
-3. Confirm the API build refreshed `Explore.API/swagger.json` through build-time OpenAPI generation
+3. Confirm the API build refreshed `schemas/openapi.json` through build-time OpenAPI generation
 4. Build Blazor client: `dotnet build --project Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --verbosity quiet`
 5. Update Blazor services/components that use the generated client types
 6. Rebuild and rerun all tests

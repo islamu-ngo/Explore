@@ -5,7 +5,7 @@ ABOUTME: Captures what you cannot guess from reading ARCHITECTURE.md alone — i
 
 > Non-intuitive patterns, hidden knowledge, and things requiring deep analysis.
 > This document captures what you cannot guess from reading ARCHITECTURE.md alone.
-> Last Updated: April 2026
+> Last Updated: 2026-05-27
 
 ---
 
@@ -18,7 +18,7 @@ Multi-tenancy is a **middleware-plus-query-filter pipeline**. `ApiTenantResoluti
 1. **ApiTenantResolutionMiddleware** resolves tenant identity from trusted slug/host request context before tenant-scoped data access
 2. **ExploreDbContext** receives TenantContext via **property injection** (not constructor injection) because the DbContext uses pooling
 3. **Named query filters** on every tenant-scoped entity automatically filter by `TenantId`
-4. The filter expression is: `TenantContext == null || e.TenantId == TenantContext.TenantId` — the null check allows migrations and seeding to bypass tenant filtering
+4. Tenant filters fail closed when `TenantContext` is missing. Cross-tenant system/admin paths must opt in explicitly with `EnableTenantFilterBypass(reason)` or `IgnoreTenantFilter(reason)` and keep a bounded predicate.
 
 ### Tenant Resolution Priority
 
@@ -307,7 +307,7 @@ Mappings are split into **10 domain-specific profiles** in `Explore.Application/
 
 | Profile | Covers |
 |---|---|
-| `TenantMappingProfile` | Tenant, TenantMember, Footer |
+| `TenantMappingProfile` | Tenant, tenant role grant to current TenantMember DTO bridge, Footer |
 | `EventMappingProfile` | Event, EventSeries, EventDay, EventAgendaItem, Tags, Categories, Aspects |
 | `EventSessionMappingProfile` | EventSession, SessionAgendaItem, SessionSpeaker, SessionLanguage |
 | `CustomPropertyMappingProfile` | All custom property definitions, templates, options, values |
@@ -329,10 +329,10 @@ When adding a new entity/DTO pair, add the mapping to the appropriate domain pro
 The Blazor client uses an **NSwag-generated API client**:
 
 - `EventApiClient.cs` — Hand-written interface (`IEventApiClient`) with additional methods
-- `EventApiClient.g.cs` — Auto-generated code from `swagger.json`
+- `EventApiClient.g.cs` — Auto-generated code from `openapi.json`
 - The generated client is registered in WASM `Program.cs` with the BFF HttpClient
 
-To regenerate: build `Explore.API` to refresh `swagger.json` through build-time OpenAPI generation, then run/build the Blazor client so NSwag regenerates the API client.
+To regenerate: build `Explore.API` to refresh `openapi.json` through build-time OpenAPI generation, then run/build the Blazor client so NSwag regenerates the API client.
 
 ---
 

@@ -6,7 +6,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 > **Audience:** Operators | Contributors | Admins | Integrators | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-05-12
+> **Last Verified:** 2026-05-28
 > **Source Anchors:** `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`, `.github/workflows/agent-context.yml`
 
 ## Audience Paths
@@ -30,6 +30,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [ARCHITECTURE.md](ARCHITECTURE.md) - layer boundaries, BFF model, CQRS flow.
 - [DOMAIN.md](DOMAIN.md) - domain entities and important relationships.
 - [API.md](API.md) - API conventions, HAL behavior, filters, caching, error shape.
+- [API_CONTRACT_INVENTORY.md](API_CONTRACT_INVENTORY.md) - generated inventory of every OpenAPI operation.
 - [API_COOKBOOK.md](API_COOKBOOK.md) - task-first API integration guidance.
 - [BLAZOR.md](BLAZOR.md) - client architecture, render policy, service patterns.
 - [DOCK_LAYOUT.md](DOCK_LAYOUT.md) - dock engine, responsive behavior, shell/workspace stacking, inspector overlays, and persistence.
@@ -71,7 +72,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [SECURITY.md](SECURITY.md) - auth/authz model and trust boundaries.
 - [OPERATIONS.md](OPERATIONS.md) - deployment, health, observability.
 - [TESTING.md](TESTING.md) - TUnit framework, test projects, TDD workflow.
-- [BENCHMARKS.md](BENCHMARKS.md) - BenchmarkDotNet runtime benchmarks and cold-start agent benchmark boundaries.
+- [BENCHMARKS.md](BENCHMARKS.md) - BenchmarkDotNet runtime benchmarks, API pipeline benchmarks, PostgreSQL/Testcontainers benchmark runs, and cold-start agent benchmark boundaries.
 - [SELF_HOSTING.md](SELF_HOSTING.md) - Docker Compose, Keycloak, MinIO, reverse proxy.
 - [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) - backup, restore, upgrade, and rollback runbook.
 - [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) - release readiness and documentation contract.
@@ -101,7 +102,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [PROJECT.md](PROJECT.md) - product context and current scope.
 - [CODEBASE_STRUCTURE.md](CODEBASE_STRUCTURE.md) - file and folder map.
 - [CODEBASE_INSIGHTS.md](CODEBASE_INSIGHTS.md) - non-intuitive patterns and hidden knowledge.
-- [BENCHMARKS.md](BENCHMARKS.md) - runtime benchmark project and benchmark interpretation rules.
+- [BENCHMARKS.md](BENCHMARKS.md) - runtime benchmark project, API performance harnesses, Testcontainers-backed benchmark lane, and benchmark interpretation rules.
 - [ACCESSIBILITY.md](ACCESSIBILITY.md) - WCAG AA compliance, service contracts, testing.
 - [ACCESSIBILITY_ARTIFACTS.md](ACCESSIBILITY_ARTIFACTS.md) - statement, AT matrix, release gate checklist.
 - [PUBLIC_DOCS_ROADMAP.md](PUBLIC_DOCS_ROADMAP.md) - deferred public documentation website plan.
