@@ -5,6 +5,8 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using Explore.API.Authentication;
+using Explore.API.Configuration;
+using Explore.Application.Authorization;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -193,7 +195,10 @@ public static class AuthenticationExtensions
             .AddPolicy("template_admin", policy => policy.RequireAuthenticatedUser())
             .AddPolicy("event_editor", policy => policy.RequireAuthenticatedUser())
             .AddPolicy("property_governance_admin", policy => policy.RequireAuthenticatedUser())
-            .AddPolicy("platform_namespace_editor", policy => policy.RequireAuthenticatedUser());
+            .AddPolicy("platform_namespace_editor", policy => policy.RequireAuthenticatedUser())
+            .AddPolicy(TickerQSchedulerOptions.InstanceAdminPolicyName, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireClaim(AdminClaimTypes.InstanceAdmin, "true"));
 
         return services;
     }
