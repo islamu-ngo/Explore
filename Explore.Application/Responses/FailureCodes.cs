@@ -10,6 +10,14 @@ namespace Explore.Application.Responses;
 public static class FailureCodes
 {
     public const string QuotaExceeded = "quota_exceeded";
+    public const string StorageUploadTooLarge = "storage_upload_too_large";
+    public const string StorageUploadSessionNotFound = "storage_upload_session_not_found";
+    public const string StorageUploadSessionFinalized = "storage_upload_session_finalized";
+    public const string StorageUploadSessionExpired = "storage_upload_session_expired";
+    public const string StorageUploadSessionInvalidState = "storage_upload_session_invalid_state";
+    public const string StorageUploadSizeMismatch = "storage_upload_size_mismatch";
+    public const string StorageUploadContentTypeMismatch = "storage_upload_content_type_mismatch";
+    public const string StorageUploadWriteFailed = "storage_upload_write_failed";
 
     /// <summary>
     /// Multi-Tenant → Single-Tenant mode switch blocked because more than one active tenant exists.
