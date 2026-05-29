@@ -86,6 +86,61 @@ public sealed class ExternalBindingRepositoryTests(PostgreSqlContainerFixture fi
     }
 
     [Test]
+    public async Task Create_WhenExternalInternalPairIsNotRegistered_ThrowsPredictableValidationError()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var repository = new ExternalBindingRepository(context);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await repository.Create(NewBinding(
+                ExternalBindingTypes.External.ProviderCustomer,
+                "customer-invalid-pair",
+                ExternalBindingTypes.Internal.User,
+                Guid.NewGuid(),
+                scopeTenantId: null)));
+
+        await Assert.That(exception.Message).Contains("is not registered");
+    }
+
+    [Test]
+    public async Task Create_WhenTenantScopedBindingHasNoScopeTenant_ThrowsPredictableValidationError()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var repository = new ExternalBindingRepository(context);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await repository.Create(NewBinding(
+                ExternalBindingTypes.External.ExternalAdminUser,
+                "subject-no-scope",
+                ExternalBindingTypes.Internal.User,
+                Guid.NewGuid(),
+                scopeTenantId: null)));
+
+        await Assert.That(exception.Message).Contains("requires ScopeTenantId");
+    }
+
+    [Test]
+    public async Task Create_WhenManagedProviderCustomerBindingIsRegistered_PersistsBinding()
+    {
+        await fixture.ResetAsync();
+        await using var context = fixture.CreateDbContext();
+        var tenant = await SeedTenantAsync(context, "managed-provider");
+        var repository = new ExternalBindingRepository(context);
+
+        var binding = await repository.Create(NewBinding(
+            ExternalBindingTypes.External.ProviderCustomer,
+            "customer-managed-provider",
+            ExternalBindingTypes.Internal.Tenant,
+            tenant.Id,
+            scopeTenantId: null));
+
+        await Assert.That(binding.Id).IsNotEqualTo(Guid.Empty);
+        await Assert.That(binding.ScopeTenantId).IsNull();
+    }
+
+    [Test]
     public async Task ActorIndexes_ShouldAllowOneUserActorPerTenant()
     {
         await fixture.ResetAsync();

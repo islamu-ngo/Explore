@@ -2,6 +2,7 @@
 // ABOUTME: Keeps validation focused on payload correctness rather than policy ownership or duplicate detection.
 
 using Explore.Domain.Enums;
+using Explore.Domain.References;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.CustomPropertyDefinition.Validators;
@@ -11,7 +12,7 @@ public class CreateCustomPropertyDefinitionDtoValidator : AbstractValidator<Crea
     public CreateCustomPropertyDefinitionDtoValidator()
     {
         RuleFor(x => x.EntityTypeName)
-            .Must(entityTypeName => entityTypeName is EntityTypeName.Organization or EntityTypeName.Group)
+            .Must(ReferenceTypeRegistry.SupportsSharedCustomPropertyDefinitions)
             .WithMessage("Only Organization and Group shared custom-property definitions are supported in this slice.");
 
         RuleFor(x => x.Namespace)

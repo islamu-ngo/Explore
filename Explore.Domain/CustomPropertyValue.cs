@@ -16,8 +16,8 @@ public class CustomPropertyValue : ITenantEntity, IAuditableEntity, ISoftDeletab
     public CustomPropertyDefinition? Definition { get; set; }
 
     /// <summary>
-    /// Polymorphic reference to Event.Id, Organization.Id, or Group.Id.
-    /// Discriminated by the parent definition's EntityTypeName. No DB FK constraint.
+    /// Polymorphic reference to an Organization.Id or Group.Id for shared Layer 3 values.
+    /// Discriminated by the parent definition's EntityTypeName and governed by ReferenceTypeRegistry. No DB FK constraint.
     /// </summary>
     public Guid EntityId { get; set; }
 
