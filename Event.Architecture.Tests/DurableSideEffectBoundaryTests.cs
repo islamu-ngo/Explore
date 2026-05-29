@@ -12,6 +12,12 @@ public sealed class DurableSideEffectBoundaryTests
     private static readonly Regex DirectBrokerOperationPattern = new(
         @"BasicPublish\s*\(|BasicAck\s*\(|BasicReject\s*\(|BasicNack\s*\(|RabbitMQ\.Client|MQContract\.RabbitMQ",
         RegexOptions.Compiled);
+    private static readonly Regex SchedulerOperationPattern = new(
+        @"TickerQ|TickerFunction|AddTickerQ|UseTickerQ|ITicker|TimeTicker|CronTicker",
+        RegexOptions.Compiled);
+    private static readonly Regex SchedulerPayloadSensitivePattern = new(
+        @"EmailMessage|Recipient|RecipientEmail|ToAddress|Subject|Body|HtmlBody|TextBody|Smtp|ProviderMessageId|RawError|ExceptionMessage|AccessToken|Secret",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     [Test]
     public async Task ApplicationHandlersShouldNotSendEmailOrPublishBrokerMessagesDirectly()
@@ -40,10 +46,12 @@ public sealed class DurableSideEffectBoundaryTests
             {
                 violations.Add($"{GetRelativePath(repoRoot, file)} references a side-effect transport contract; create durable intent instead.");
             }
+
+            AddForbiddenMatches(violations, file, content, SchedulerOperationPattern, "direct scheduler operation");
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("Application handlers must create durable intent rows and leave SMTP/RabbitMQ side effects to approved background infrastructure.");
+            .Because("Application handlers must create durable intent rows and leave SMTP/RabbitMQ/TickerQ side effects to approved background infrastructure.");
     }
 
     [Test]
@@ -68,10 +76,54 @@ public sealed class DurableSideEffectBoundaryTests
             {
                 AddForbiddenMatches(violations, file, content, BrokerMethodPattern, "direct broker operation");
             }
+
+            AddForbiddenMatches(violations, file, content, SchedulerOperationPattern, "direct scheduler operation");
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("API controllers may dispatch MediatR requests or run safe config checks, but must not perform SMTP sends or broker operations directly.");
+            .Because("API controllers may dispatch MediatR requests or run safe config checks, but must not perform SMTP sends, broker operations, or scheduler side effects directly.");
+    }
+
+    [Test]
+    public async Task DomainShouldNotReferenceSideEffectTransportsOrSchedulers()
+    {
+        string repoRoot = FindRepoRoot();
+        string domainRoot = Path.Combine(repoRoot, "Explore.Domain");
+
+        var violations = new List<string>();
+
+        foreach (string file in EnumerateSourceFiles(domainRoot, "*.cs"))
+        {
+            string content = await File.ReadAllTextAsync(file);
+            AddForbiddenMatches(violations, file, content, DirectBrokerOperationPattern, "direct broker operation");
+            AddForbiddenMatches(violations, file, content, SchedulerOperationPattern, "direct scheduler operation");
+
+            if (ReferencesEmailTransport(content) || ReferencesBrokerTransport(content))
+            {
+                violations.Add($"{GetRelativePath(repoRoot, file)} references a side-effect transport contract; keep Domain persistence- and infrastructure-free.");
+            }
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("Domain entities may model durable intent and state, but must not know SMTP, RabbitMQ, or TickerQ.");
+    }
+
+    [Test]
+    public async Task TickerQEmailDispatchJobShouldNotCarryEmailPayloadOrSecrets()
+    {
+        string repoRoot = FindRepoRoot();
+        string schedulerRoot = Path.Combine(repoRoot, "Explore.API", "Scheduling");
+
+        var violations = new List<string>();
+
+        foreach (string file in EnumerateSourceFiles(schedulerRoot, "*.cs"))
+        {
+            string content = await File.ReadAllTextAsync(file);
+            AddForbiddenMatches(violations, file, content, SchedulerPayloadSensitivePattern, "scheduler payload or sensitive email field");
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("TickerQ jobs must trigger pointer-only or payload-free work; email body, recipients, subjects, provider IDs, raw errors, and secrets stay out of scheduler state.");
     }
 
     private static IEnumerable<string> EnumerateHandlerSourceFiles(string root)

@@ -156,6 +156,10 @@ public class SettingRegistryTests
             GovernanceSettingKeys.Email.FromName,
             GovernanceSettingKeys.Email.SmtpTimeoutSeconds,
             GovernanceSettingKeys.Email.SmtpSkipCertValidation,
+            GovernanceSettingKeys.Storage.Provider,
+            GovernanceSettingKeys.Storage.DefaultMaxUploadBytes,
+            GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
+            GovernanceSettingKeys.Storage.InstanceMaxUploadBytes,
             GovernanceSettingKeys.Storage.Endpoint,
             GovernanceSettingKeys.Storage.PublicEndpoint,
             GovernanceSettingKeys.Storage.BucketName,
@@ -248,6 +252,39 @@ public class SettingRegistryTests
         await Assert.That(definition!.Category).IsEqualTo("Appearance");
         await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.User);
         await Assert.That(definition.AllowedValues).IsEquivalentTo(new[] { "system", "light", "dark" });
+    }
+
+    [Test]
+    public async Task Registry_StorageProviderDefaultsToLocalAndSupportsTenantOverrides()
+    {
+        var definition = SettingRegistry.Get(GovernanceSettingKeys.Storage.Provider);
+
+        await Assert.That(definition).IsNotNull();
+        await Assert.That(definition!.Category).IsEqualTo("ObjectStorage");
+        await Assert.That(definition.ValueType).IsEqualTo(SettingValueType.String);
+        await Assert.That(definition.DefaultValue).IsEqualTo("\"local\"");
+        await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.Tenant);
+        await Assert.That(definition.AllowedValues).IsEquivalentTo(new[] { "local", "s3_compatible", "legacy_external" });
+    }
+
+    [Test]
+    public async Task Registry_StorageQuotaSettingsUseLongValues()
+    {
+        var tenantQuota = SettingRegistry.Get(GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes);
+        var uploadLimit = SettingRegistry.Get(GovernanceSettingKeys.Storage.DefaultMaxUploadBytes);
+        var instanceLimit = SettingRegistry.Get(GovernanceSettingKeys.Storage.InstanceMaxUploadBytes);
+
+        await Assert.That(tenantQuota).IsNotNull();
+        await Assert.That(tenantQuota!.ValueType).IsEqualTo(SettingValueType.Long);
+        await Assert.That(tenantQuota.MaxScope).IsEqualTo(SettingScope.Tenant);
+
+        await Assert.That(uploadLimit).IsNotNull();
+        await Assert.That(uploadLimit!.ValueType).IsEqualTo(SettingValueType.Long);
+        await Assert.That(uploadLimit.MaxScope).IsEqualTo(SettingScope.Tenant);
+
+        await Assert.That(instanceLimit).IsNotNull();
+        await Assert.That(instanceLimit!.ValueType).IsEqualTo(SettingValueType.Long);
+        await Assert.That(instanceLimit.MaxScope).IsEqualTo(SettingScope.Instance);
     }
 
     [Test]
