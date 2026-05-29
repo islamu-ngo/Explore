@@ -98,6 +98,11 @@ public static class RouteNames
     public const string CreateActor = "CreateActor";
     public const string UpdateActor = "UpdateActor";
     public const string DeleteActor = "DeleteActor";
+    public const string GetActorSubscriptions = "GetActorSubscriptions";
+    public const string GetActorSubscriptionByActor = "GetActorSubscriptionByActor";
+    public const string SubscribeToActor = "SubscribeToActor";
+    public const string UpdateActorSubscriptionNotificationLevel = "UpdateActorSubscriptionNotificationLevel";
+    public const string UnsubscribeFromActor = "UnsubscribeFromActor";
     public const string GetActorEvents = "GetActorEvents";
     public const string GetActorKeyStores = "GetActorKeyStores";
     public const string GetActorKeyStoreById = "GetActorKeyStoreById";

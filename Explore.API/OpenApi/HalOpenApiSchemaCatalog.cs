@@ -38,6 +38,8 @@ internal static class HalOpenApiSchemaCatalog
         // Actor DTOs
         typeof(Explore.Application.DTOs.Actor.ActorDto),
         typeof(Explore.Application.DTOs.Actor.ActorListDto),
+        typeof(Explore.Application.DTOs.ActorSubscription.ActorSubscriptionDto),
+        typeof(Explore.Application.DTOs.ActorSubscription.ActorSubscriptionListDto),
 
         // Public metadata DTOs
         typeof(Explore.Application.DTOs.CustomPropertyDefinition.CustomPropertyDefinitionDto),
@@ -116,6 +118,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfOrganizationListDto"] = typeof(Explore.Application.DTOs.Organization.OrganizationListDto),
         ["HalResourceOfActorDto"] = typeof(Explore.Application.DTOs.Actor.ActorDto),
         ["HalResourceOfActorListDto"] = typeof(Explore.Application.DTOs.Actor.ActorListDto),
+        ["HalResourceOfActorSubscriptionDto"] = typeof(Explore.Application.DTOs.ActorSubscription.ActorSubscriptionDto),
+        ["HalResourceOfActorSubscriptionListDto"] = typeof(Explore.Application.DTOs.ActorSubscription.ActorSubscriptionListDto),
         ["HalResourceOfEventSessionGroupDto"] = typeof(Explore.Application.DTOs.EventSessionGroup.EventSessionGroupDto),
         ["HalResourceOfEventSessionGroupListDto"] = typeof(Explore.Application.DTOs.EventSessionGroup.EventSessionGroupListDto),
         ["HalResourceOfCustomPropertyDefinitionDto"] = typeof(Explore.Application.DTOs.CustomPropertyDefinition.CustomPropertyDefinitionDto),
@@ -153,6 +157,7 @@ internal static class HalOpenApiSchemaCatalog
     public static IReadOnlyDictionary<string, string> CollectionEmbeddedItemResourceMappings { get; } = new Dictionary<string, string>
     {
         ["HalCollectionEmbeddedOfActorListDto"] = "HalResourceOfActorListDto",
+        ["HalCollectionEmbeddedOfActorSubscriptionListDto"] = "HalResourceOfActorSubscriptionListDto",
         ["HalCollectionEmbeddedOfCategoryListDto"] = "HalResourceOfCategoryListDto",
         ["HalCollectionEmbeddedOfCustomPropertyDefinitionListDto"] = "HalResourceOfCustomPropertyDefinitionListDto",
         ["HalCollectionEmbeddedOfEventAgendaItemListDto"] = "HalResourceOfEventAgendaItemListDto",

@@ -9,6 +9,7 @@ using Explore.API.Hateoas.Policies;
 using Explore.Application.Contracts.Hateoas;  // For ILinkPolicy, ICollectionLinkPolicy
 using Explore.API.Hateoas.Resources;
 using Explore.Application.DTOs.Actor;
+using Explore.Application.DTOs.ActorSubscription;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
@@ -81,6 +82,11 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<ActorDto>, ActorDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<ActorListDto>, ActorCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<ActorDto, ActorListDto>, ActorResourceAssembler>();
+
+        // ActorSubscription (current-user notification subscriptions)
+        services.AddScoped<ILinkPolicy<ActorSubscriptionDto>, ActorSubscriptionDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ActorSubscriptionListDto>, ActorSubscriptionCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<ActorSubscriptionDto, ActorSubscriptionListDto>, ActorSubscriptionResourceAssembler>();
 
         // Location
         services.AddScoped<ILinkPolicy<LocationDto>, LocationDetailLinkPolicy>();
