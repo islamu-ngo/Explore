@@ -155,27 +155,31 @@ public static class BffPreferenceEndpoints
 
     private static async Task<IResult> HandleSetThemeModeAsync(HttpContext ctx, SetThemeModeRequestDto request, CancellationToken cancellationToken)
     {
+        var preferenceValidation = GetPreferenceValidation(ctx);
+        var mode = preferenceValidation.NormalizeThemeMode(request.ThemeMode);
+        if (mode is null)
+        {
+            return Results.Problem(
+                detail: preferenceValidation.ThemeModeValidationMessage,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid theme mode");
+        }
+
         if (ctx.User.Identity?.IsAuthenticated != true)
         {
-            var preferenceValidation = GetPreferenceValidation(ctx);
-            var mode = preferenceValidation.NormalizeThemeMode(request.ThemeMode);
-            if (mode is null)
-            {
-                return Results.Problem(detail: preferenceValidation.ThemeModeValidationMessage, statusCode: StatusCodes.Status400BadRequest, title: "Invalid theme mode");
-            }
-
             GetPreferenceCookies(ctx).PersistThemeCookie(ctx, mode);
             return Results.Ok(new { themeMode = mode });
         }
 
-        using var response = await GetPreferenceForwarding(ctx).SetThemeModeAsync(request, cancellationToken);
+        var normalizedRequest = new SetThemeModeRequestDto { ThemeMode = mode };
+        using var response = await GetPreferenceForwarding(ctx).SetThemeModeAsync(normalizedRequest, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
             return BffForwardingResults.Problem(response, "Could not set theme mode.", "Theme mode update failed");
         }
 
-        GetPreferenceCookies(ctx).PersistThemeCookie(ctx, request.ThemeMode ?? "system");
+        GetPreferenceCookies(ctx).PersistThemeCookie(ctx, mode);
         return await BffForwardingResults.JsonStreamOrProblemAsync(response, "Could not set theme mode.", "Theme mode update failed", cancellationToken);
     }
 

@@ -30,4 +30,33 @@ public class IdempotencyRepository : IIdempotencyRepository
         await _dbContext.IdempotencyRecords.AddAsync(record, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<int> CountExpiredAsync(
+        DateTime expiresBeforeUtc,
+        int batchSize,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.IdempotencyRecords
+            .AsNoTracking()
+            .Where(record => record.ExpiresAt <= expiresBeforeUtc)
+            .OrderBy(record => record.ExpiresAt)
+            .Take(batchSize)
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> DeleteExpiredAsync(
+        DateTime expiresBeforeUtc,
+        int batchSize,
+        CancellationToken cancellationToken = default)
+    {
+        var expiredRecordIds = _dbContext.IdempotencyRecords
+            .Where(record => record.ExpiresAt <= expiresBeforeUtc)
+            .OrderBy(record => record.ExpiresAt)
+            .Select(record => record.Id)
+            .Take(batchSize);
+
+        return await _dbContext.IdempotencyRecords
+            .Where(record => expiredRecordIds.Contains(record.Id))
+            .ExecuteDeleteAsync(cancellationToken);
+    }
 }

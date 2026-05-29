@@ -620,12 +620,7 @@ public class CoverageGovernanceTests : IAsyncDisposable
             {
                 services.RemoveExploreDbContextRegistrations();
 
-                services.AddDbContext<ExploreDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase($"GovernanceDb_{Guid.NewGuid():N}");
-                    options.ConfigureWarnings(x =>
-                        x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-                });
+                services.AddInMemoryExploreDbContext($"GovernanceDb_{Guid.NewGuid():N}");
 
                 services.RemoveAll<IDistributedCache>();
                 services.AddDistributedMemoryCache();

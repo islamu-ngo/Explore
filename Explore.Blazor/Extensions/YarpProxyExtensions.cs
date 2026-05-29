@@ -61,6 +61,7 @@ public static class YarpProxyExtensions
             {
                 context.AddRequestTransform(async transformContext =>
                 {
+                    BffProxyHeaderSanitizer.RemoveBrowserControlledHeaders(transformContext.ProxyRequest);
                     await ForwardBearerTokenAsync(transformContext);
                     ForwardTenantHeaders(transformContext);
                     await ForwardSetupSecretAsync(transformContext);

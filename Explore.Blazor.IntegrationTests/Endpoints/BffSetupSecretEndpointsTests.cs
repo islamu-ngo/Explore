@@ -1,0 +1,195 @@
+// ABOUTME: Integration tests for browser-facing setup-secret BFF endpoint sanitization.
+// ABOUTME: Verifies local request validation and safe upstream error translation.
+
+using System.Text;
+using System.Threading.RateLimiting;
+using Explore.Blazor.Extensions;
+using Explore.Blazor.Services;
+using FluentAssertions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
+
+namespace Explore.Blazor.IntegrationTests.Endpoints;
+
+public sealed class BffSetupSecretEndpointsTests
+{
+    [Test]
+    public async Task SetupSecret_Post_WhenUpstreamForbiddenIncludesRawError_ReturnsSafeProblem()
+    {
+        using var handler = new ValidateSecretHandler(
+            HttpStatusCode.Forbidden,
+            """{"valid":false,"error":"provider rejected secret raw-secret-value"}""");
+        await using var app = await CreateAppAsync(handler);
+
+        using var response = await app.Client.PostAsJsonAsync("/bff/setup-secret", new { secret = "candidate-secret" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("Invalid setup secret.");
+        body.Should().NotContain("provider rejected");
+        body.Should().NotContain("raw-secret-value");
+    }
+
+    [Test]
+    public async Task SetupSecret_Post_WhenUpstreamValidFalseIncludesRawError_ReturnsSafeProblem()
+    {
+        using var handler = new ValidateSecretHandler(
+            HttpStatusCode.OK,
+            """{"valid":false,"error":"database said exact setup secret hash mismatch"}""");
+        await using var app = await CreateAppAsync(handler);
+
+        using var response = await app.Client.PostAsJsonAsync("/bff/setup-secret", new { secret = "candidate-secret" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("Invalid setup secret.");
+        body.Should().NotContain("database said");
+        body.Should().NotContain("hash mismatch");
+    }
+
+    [Test]
+    public async Task SetupSecret_Post_WhenRequestJsonMalformed_ReturnsSafeBadRequest()
+    {
+        using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
+        await using var app = await CreateAppAsync(handler);
+        using var content = new StringContent("{", Encoding.UTF8, "application/json");
+
+        using var response = await app.Client.PostAsync("/bff/setup-secret", content);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("Setup secret request body must be valid JSON.");
+        body.Should().NotContain("JsonException");
+        handler.CallCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task SetupSecret_Post_WhenSecretTooLong_DoesNotCallApi()
+    {
+        using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
+        await using var app = await CreateAppAsync(handler);
+        var tooLongSecret = new string('a', 513);
+
+        using var response = await app.Client.PostAsJsonAsync("/bff/setup-secret", new { secret = tooLongSecret });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("512 characters or fewer");
+        handler.CallCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task SetupSecret_Post_WithBrowserSetupSecretHeader_ValidatesOnlyBodySecret()
+    {
+        using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
+        await using var app = await CreateAppAsync(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/setup-secret");
+        request.Headers.Add("X-Setup-Secret", "browser-controlled-secret");
+        request.Content = JsonContent.Create(new { secret = "body-secret" });
+
+        using var response = await app.Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        handler.CallCount.Should().Be(1);
+        handler.CapturedRequestBody.Should().Contain("body-secret");
+        handler.CapturedRequestBody.Should().NotContain("browser-controlled-secret");
+        handler.CapturedSetupSecretHeader.Should().BeNull();
+    }
+
+    private static async Task<TestBffApp> CreateAppAsync(ValidateSecretHandler handler)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = "Testing"
+        });
+        builder.WebHost.UseTestServer();
+        builder.Services.AddRouting();
+        builder.Services.AddLogging();
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.AddPolicy(RateLimitingExtensions.SetupSecretPolicy, _ =>
+                RateLimitPartition.GetNoLimiter<string>("test"));
+        });
+        builder.Services.AddSingleton<SetupSecretSessionService>();
+        builder.Services.AddSingleton<ISetupSecretSessionService>(sp => sp.GetRequiredService<SetupSecretSessionService>());
+        builder.Services.AddSingleton<ISetupSecretCookieProtector, PassThroughSetupSecretCookieProtector>();
+        builder.Services.AddSingleton<ISetupSecretResolver, EmptySetupSecretResolver>();
+        builder.Services.AddSingleton<IHttpClientFactory>(new ValidateSecretHttpClientFactory(handler));
+
+        var app = builder.Build();
+        app.MapSetupSecretEndpoints();
+        await app.StartAsync();
+
+        return new TestBffApp(app, app.GetTestClient());
+    }
+
+    private sealed class TestBffApp(WebApplication app, HttpClient client) : IAsyncDisposable
+    {
+        public HttpClient Client { get; } = client;
+
+        public async ValueTask DisposeAsync()
+        {
+            Client.Dispose();
+            await app.DisposeAsync();
+        }
+    }
+
+    private sealed class ValidateSecretHttpClientFactory(ValidateSecretHandler handler) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name)
+        {
+            return new HttpClient(handler, disposeHandler: false)
+            {
+                BaseAddress = new Uri("https://api.example.test/")
+            };
+        }
+    }
+
+    private sealed class ValidateSecretHandler(HttpStatusCode statusCode, string responseJson) : HttpMessageHandler
+    {
+        public int CallCount { get; private set; }
+        public string? CapturedRequestBody { get; private set; }
+        public string? CapturedSetupSecretHeader { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            CallCount++;
+            CapturedRequestBody = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            CapturedSetupSecretHeader = request.Headers.TryGetValues("X-Setup-Secret", out var values)
+                ? values.SingleOrDefault()
+                : null;
+
+            return new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+            };
+        }
+    }
+
+    private sealed class PassThroughSetupSecretCookieProtector : ISetupSecretCookieProtector
+    {
+        public string Protect(string secret) => secret.Trim();
+
+        public bool TryUnprotect(string? protectedValue, out string? secret)
+        {
+            secret = protectedValue?.Trim();
+            return !string.IsNullOrWhiteSpace(secret);
+        }
+    }
+
+    private sealed class EmptySetupSecretResolver : ISetupSecretResolver
+    {
+        public SetupSecretResolutionResult Resolve(
+            HttpContext? httpContext = null,
+            HttpRequestMessage? outboundRequest = null)
+        {
+            return SetupSecretResolutionResult.NotFound("test_secret_missing");
+        }
+    }
+}

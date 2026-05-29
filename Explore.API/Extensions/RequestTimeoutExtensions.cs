@@ -32,11 +32,14 @@ public static class RequestTimeoutExtensions
 
         services.AddRequestTimeouts(options =>
         {
-            options.DefaultPolicy = new RequestTimeoutPolicy
+            var defaultPolicy = new RequestTimeoutPolicy
             {
                 Timeout = TimeSpan.FromSeconds(defaultSeconds),
                 TimeoutStatusCode = StatusCodes.Status504GatewayTimeout
             };
+
+            options.DefaultPolicy = defaultPolicy;
+            options.AddPolicy(DefaultPolicy, defaultPolicy);
 
             options.AddPolicy(LookupPolicy, new RequestTimeoutPolicy
             {

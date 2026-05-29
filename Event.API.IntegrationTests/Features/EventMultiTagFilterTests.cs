@@ -28,10 +28,7 @@ public class EventMultiTagFilterTests : IAsyncDisposable
             builder.ConfigureServices(services =>
             {
         services.RemoveExploreDbContextRegistrations();
-                services.AddDbContext<ExploreDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase($"InMemoryDb_{Guid.NewGuid()}");
-                });
+                services.AddInMemoryExploreDbContext($"InMemoryDb_{Guid.NewGuid()}");
 
                 // Mock ITenantSlugCache to always resolve our tenant
                 services.RemoveAll<ITenantSlugCache>();

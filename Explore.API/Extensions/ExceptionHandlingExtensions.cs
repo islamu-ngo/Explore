@@ -18,6 +18,11 @@ public static class ExceptionHandlingExtensions
                 context.ProblemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
                 context.ProblemDetails.Extensions["correlationId"] =
                     context.HttpContext.Items["CorrelationId"] as string;
+
+                if (context.ProblemDetails.Status == StatusCodes.Status415UnsupportedMediaType)
+                {
+                    context.ProblemDetails.Detail ??= "The request content type is not supported for this endpoint.";
+                }
             };
         });
 

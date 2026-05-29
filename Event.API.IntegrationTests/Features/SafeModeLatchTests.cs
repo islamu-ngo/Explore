@@ -386,12 +386,7 @@ public class SafeModeLatchTests : IAsyncDisposable
             {
             services.RemoveExploreDbContextRegistrations();
 
-                services.AddDbContext<ExploreDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase($"SafeModeDb_{Guid.NewGuid():N}");
-                    options.ConfigureWarnings(x =>
-                        x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-                });
+                services.AddInMemoryExploreDbContext($"SafeModeDb_{Guid.NewGuid():N}");
 
                 services.RemoveAll<IDistributedCache>();
                 services.AddDistributedMemoryCache();

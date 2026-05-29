@@ -402,12 +402,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
             {
             services.RemoveExploreDbContextRegistrations();
 
-                services.AddDbContext<ExploreDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase($"LocalRbacDb_{Guid.NewGuid():N}");
-                    options.ConfigureWarnings(x =>
-                        x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-                });
+                services.AddInMemoryExploreDbContext($"LocalRbacDb_{Guid.NewGuid():N}");
 
                 services.RemoveAll<IDistributedCache>();
                 services.AddDistributedMemoryCache();

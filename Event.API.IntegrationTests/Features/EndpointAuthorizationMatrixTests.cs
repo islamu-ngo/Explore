@@ -976,12 +976,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
             {
             services.RemoveExploreDbContextRegistrations();
 
-                services.AddDbContext<ExploreDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase($"MatrixDb_{Guid.NewGuid():N}");
-                    options.ConfigureWarnings(x =>
-                        x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-                });
+                services.AddInMemoryExploreDbContext($"MatrixDb_{Guid.NewGuid():N}");
 
                 services.RemoveAll<IDistributedCache>();
                 services.AddDistributedMemoryCache();

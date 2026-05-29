@@ -21,15 +21,15 @@ namespace Event.Api.IntegrationTests.Features;
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class ApiEndpointSmokeTests
 {
-    private static readonly HashSet<string> ScopedOptionalQueryParameters =
-    [
+    private static readonly HashSet<string> ScopedOptionalQueryParameters = new(StringComparer.OrdinalIgnoreCase)
+    {
         "actorId",
         "eventId",
         "eventSessionId",
         "eventTemplateId",
         "locationId",
         "tenantId"
-    ];
+    };
 
     private readonly ApiTestFixture _fixture;
 
@@ -44,7 +44,6 @@ public class ApiEndpointSmokeTests
         var endpoints = GetApiDescriptions()
             .Where(description => IsHttpMethod(description, HttpMethod.Get))
             .Where(description => !IsProtected(description))
-            .Where(description => !IsExternalDependencyEndpoint(description))
             .Where(description => !IsPublicSmokeException(description));
 
         var failures = new List<string>();
@@ -110,8 +109,7 @@ public class ApiEndpointSmokeTests
     {
         var endpoints = GetApiDescriptions()
             .Where(description => !IsProtected(description))
-            .Where(description => !IsHttpMethod(description, HttpMethod.Get))
-            .Where(description => !IsExternalDependencyEndpoint(description));
+            .Where(description => !IsHttpMethod(description, HttpMethod.Get));
 
         var failures = new List<string>();
 
@@ -161,12 +159,6 @@ public class ApiEndpointSmokeTests
     private static bool IsHttpMethod(ApiDescription description, HttpMethod method)
     {
         return string.Equals(description.HttpMethod, method.Method, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsExternalDependencyEndpoint(ApiDescription description)
-    {
-        var path = description.RelativePath ?? string.Empty;
-        return path.Contains("storageobject/file/", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsProtectedSmokeException(ApiDescription description)

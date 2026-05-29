@@ -3,11 +3,21 @@
 
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
+using System.Text.Json;
 
 namespace Explore.Blazor.Extensions;
 
 public static class BffSetupSecretEndpoints
 {
+    private const int MaxSetupSecretLength = 512;
+    private const string SetupSecretRequiredDetail = "Setup secret is required.";
+    private const string InvalidSetupSecretDetail = "Invalid setup secret.";
+    private const string SetupAlreadyCompletedDetail = "Setup is already completed.";
+    private const string TooManyAttemptsDetail = "Too many setup-secret attempts. Please wait and try again.";
+    private const string ValidationUnavailableDetail = "Could not validate setup secret at this time.";
+    private const string ValidationFailedDetail = "Setup secret validation failed.";
+
     /// <summary>
     /// Maps setup-secret endpoints: POST /bff/setup-secret, POST /bff/setup-secret/sync, DELETE /bff/setup-secret.
     /// </summary>
@@ -91,18 +101,17 @@ public static class BffSetupSecretEndpoints
     {
         var env = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
         var sessionService = (ISetupSecretSessionService)ctx.RequestServices.GetRequiredService<SetupSecretSessionService>();
-        var payload = await ctx.Request.ReadFromJsonAsync<SetupSecretCookieRequest>();
-        var secret = payload?.Secret?.Trim();
+        var request = await ReadSetupSecretRequestAsync(ctx);
+        if (!request.IsValid)
+        {
+            await WriteProblemAsync(ctx, StatusCodes.Status400BadRequest, "Bad Request", request.Error);
+            return;
+        }
 
+        var secret = request.Secret;
         if (string.IsNullOrWhiteSpace(secret))
         {
-            ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await ctx.Response.WriteAsJsonAsync(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Bad Request",
-                Detail = "Setup secret is required."
-            });
+            await WriteProblemAsync(ctx, StatusCodes.Status400BadRequest, "Bad Request", SetupSecretRequiredDetail);
             return;
         }
 
@@ -114,13 +123,7 @@ public static class BffSetupSecretEndpoints
                 ClearSetupSecret(ctx, sessionService, !env.IsDevelopment());
             }
 
-            ctx.Response.StatusCode = validation.StatusCode;
-            await ctx.Response.WriteAsJsonAsync(new ProblemDetails
-            {
-                Status = validation.StatusCode,
-                Title = "Setup Secret Validation Failed",
-                Detail = validation.Error
-            });
+            await WriteProblemAsync(ctx, validation.StatusCode, "Setup Secret Validation Failed", validation.Error);
             return;
         }
 
@@ -131,7 +134,13 @@ public static class BffSetupSecretEndpoints
     {
         var env = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
         var sessionService = (ISetupSecretSessionService)ctx.RequestServices.GetRequiredService<SetupSecretSessionService>();
-        var payload = await ctx.Request.ReadFromJsonAsync<SetupSecretCookieRequest>();
+        var request = await ReadSetupSecretRequestAsync(ctx);
+        if (!request.IsValid)
+        {
+            await WriteProblemAsync(ctx, StatusCodes.Status400BadRequest, "Bad Request", request.Error);
+            return;
+        }
+
         var userId = ResolveUserId(ctx);
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -139,7 +148,7 @@ public static class BffSetupSecretEndpoints
             return;
         }
 
-        var secret = payload?.Secret?.Trim();
+        var secret = request.Secret;
         if (string.IsNullOrWhiteSpace(secret))
         {
             var secretResolver = ctx.RequestServices.GetRequiredService<ISetupSecretResolver>();
@@ -148,13 +157,7 @@ public static class BffSetupSecretEndpoints
 
         if (string.IsNullOrWhiteSpace(secret))
         {
-            ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await ctx.Response.WriteAsJsonAsync(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Bad Request",
-                Detail = "Setup secret is required."
-            });
+            await WriteProblemAsync(ctx, StatusCodes.Status400BadRequest, "Bad Request", SetupSecretRequiredDetail);
             return;
         }
 
@@ -166,13 +169,7 @@ public static class BffSetupSecretEndpoints
                 ClearSetupSecret(ctx, sessionService, !env.IsDevelopment(), userId);
             }
 
-            ctx.Response.StatusCode = validation.StatusCode;
-            await ctx.Response.WriteAsJsonAsync(new ProblemDetails
-            {
-                Status = validation.StatusCode,
-                Title = "Setup Secret Validation Failed",
-                Detail = validation.Error
-            });
+            await WriteProblemAsync(ctx, validation.StatusCode, "Setup Secret Validation Failed", validation.Error);
             return;
         }
 
@@ -214,6 +211,65 @@ public static class BffSetupSecretEndpoints
         return result.Found ? result.Secret?.Trim() : null;
     }
 
+    private static async Task<SetupSecretRequestReadResult> ReadSetupSecretRequestAsync(HttpContext ctx)
+    {
+        try
+        {
+            var payload = await ctx.Request.ReadFromJsonAsync<SetupSecretCookieRequest>(
+                cancellationToken: ctx.RequestAborted);
+            return ValidateRequestSecret(payload?.Secret);
+        }
+        catch (JsonException)
+        {
+            return SetupSecretRequestReadResult.Invalid("Setup secret request body must be valid JSON.");
+        }
+        catch (BadHttpRequestException)
+        {
+            return SetupSecretRequestReadResult.Invalid("Setup secret request body could not be read.");
+        }
+        catch (NotSupportedException)
+        {
+            return SetupSecretRequestReadResult.Invalid("Setup secret request body must be JSON.");
+        }
+    }
+
+    private static SetupSecretRequestReadResult ValidateRequestSecret(string? rawSecret)
+    {
+        var secret = rawSecret?.Trim();
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            return SetupSecretRequestReadResult.Valid(null);
+        }
+
+        if (secret.Length > MaxSetupSecretLength)
+        {
+            return SetupSecretRequestReadResult.Invalid(
+                $"Setup secret must be {MaxSetupSecretLength} characters or fewer.");
+        }
+
+        if (secret.Any(char.IsControl))
+        {
+            return SetupSecretRequestReadResult.Invalid("Setup secret contains invalid characters.");
+        }
+
+        return SetupSecretRequestReadResult.Valid(secret);
+    }
+
+    private static async Task WriteProblemAsync(
+        HttpContext ctx,
+        int statusCode,
+        string title,
+        string detail)
+    {
+        ctx.Response.StatusCode = statusCode;
+        await ctx.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Status = statusCode,
+            Title = title,
+            Detail = detail
+        }, ctx.RequestAborted);
+    }
+
     private static async Task<SetupSecretValidationResult> ValidateSetupSecretAsync(
         HttpContext ctx,
         string secret,
@@ -236,9 +292,19 @@ public static class BffSetupSecretEndpoints
                 body = await response.Content.ReadFromJsonAsync<SetupSecretValidationResponse>(
                     cancellationToken: cancellationToken);
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
-                logger.LogDebug(ex, "Could not parse setup secret validation response body.");
+                logger.LogDebug(
+                    "Could not parse setup secret validation response body. StatusCode: {StatusCode}; ExceptionType: {ExceptionType}",
+                    (int)response.StatusCode,
+                    ex.GetType().Name);
+            }
+            catch (NotSupportedException ex)
+            {
+                logger.LogDebug(
+                    "Unsupported setup secret validation response body. StatusCode: {StatusCode}; ExceptionType: {ExceptionType}",
+                    (int)response.StatusCode,
+                    ex.GetType().Name);
             }
 
             // Preserve upstream meaning: previously every non-2xx (incl. 429 from rate limiter and
@@ -248,35 +314,42 @@ public static class BffSetupSecretEndpoints
             {
                 return new SetupSecretValidationResult(
                     false, StatusCodes.Status410Gone,
-                    body?.Error ?? "Setup already completed.");
+                    SetupAlreadyCompletedDetail);
             }
 
             if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
             {
                 return new SetupSecretValidationResult(
                     false, StatusCodes.Status429TooManyRequests,
-                    body?.Error ?? "Too many setup secret validation attempts. Please wait a minute and try again.");
+                    TooManyAttemptsDetail);
             }
 
             if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
             {
                 return new SetupSecretValidationResult(
                     false, StatusCodes.Status403Forbidden,
-                    body?.Error ?? "Invalid setup secret.");
+                    InvalidSetupSecretDetail);
             }
 
             if ((int)response.StatusCode >= 500)
             {
                 return new SetupSecretValidationResult(
                     false, StatusCodes.Status502BadGateway,
-                    "Could not validate setup secret at this time.");
+                    ValidationUnavailableDetail);
             }
 
             if (!response.IsSuccessStatusCode)
             {
                 return new SetupSecretValidationResult(
                     false, (int)response.StatusCode,
-                    body?.Error ?? "Setup secret validation failed.");
+                    ResolveSafeValidationFailureDetail(response.StatusCode));
+            }
+
+            if (body is null)
+            {
+                return new SetupSecretValidationResult(
+                    false, StatusCodes.Status502BadGateway,
+                    ValidationUnavailableDetail);
             }
 
             if (body?.Valid == true)
@@ -286,15 +359,33 @@ public static class BffSetupSecretEndpoints
 
             return new SetupSecretValidationResult(
                 false, StatusCodes.Status400BadRequest,
-                body?.Error ?? "Invalid setup secret.");
+                InvalidSetupSecretDetail);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Setup secret validation request failed.");
+            logger.LogWarning(
+                "Setup secret validation request failed. ExceptionType: {ExceptionType}",
+                ex.GetType().Name);
             return new SetupSecretValidationResult(
                 false, StatusCodes.Status503ServiceUnavailable,
-                "Could not validate setup secret at this time.");
+                ValidationUnavailableDetail);
         }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(
+                "Setup secret validation request timed out. ExceptionType: {ExceptionType}",
+                ex.GetType().Name);
+            return new SetupSecretValidationResult(
+                false, StatusCodes.Status503ServiceUnavailable,
+                ValidationUnavailableDetail);
+        }
+    }
+
+    private static string ResolveSafeValidationFailureDetail(HttpStatusCode statusCode)
+    {
+        return statusCode == HttpStatusCode.BadRequest
+            ? InvalidSetupSecretDetail
+            : ValidationFailedDetail;
     }
 
     private static void PersistSetupSecret(
@@ -383,6 +474,13 @@ public static class BffSetupSecretEndpoints
         public bool HasPersistedSecret { get; set; }
         public bool IsValid { get; set; }
         public string? Error { get; set; }
+    }
+
+    internal sealed record SetupSecretRequestReadResult(bool IsValid, string? Secret, string Error)
+    {
+        public static SetupSecretRequestReadResult Valid(string? secret) => new(true, secret, string.Empty);
+
+        public static SetupSecretRequestReadResult Invalid(string error) => new(false, null, error);
     }
 
     internal sealed record SetupSecretValidationResult(bool IsValid, int StatusCode, string Error);

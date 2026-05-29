@@ -23,6 +23,13 @@ public class IdempotencyRecordConfiguration : IEntityTypeConfiguration<Idempoten
         // Optional user tracking
         builder.Property(e => e.UserId).HasMaxLength(256);
 
+        // Request fingerprint metadata used to reject same-key reuse across different writes
+        builder.Property(e => e.RequestMethod).HasMaxLength(16).IsRequired();
+        builder.Property(e => e.RequestTarget).HasMaxLength(512).IsRequired();
+        builder.Property(e => e.RequestContentType).HasMaxLength(256);
+        builder.Property(e => e.RequestBodyHash).HasMaxLength(64).IsRequired();
+        builder.Property(e => e.PrincipalFingerprint).HasMaxLength(64).IsRequired();
+
         // Cached response data
         builder.Property(e => e.ResponseBody).HasColumnType("text");
         builder.Property(e => e.ContentType).HasMaxLength(256);

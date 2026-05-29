@@ -388,17 +388,27 @@ public static class BffAuthEndpoints
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unhandled exception in HandleGetProviders");
+            var diagnostics = ctx.RequestServices.GetRequiredService<ISafeAuthDiagnosticsPolicy>();
+            var diagnostic = diagnostics.CreateDiagnostic("auth_provider_resolution_failed", ex);
+
+            logger.LogError(
+                "Unhandled exception in HandleGetProviders " +
+                "(errorCode={ErrorCode}, correlationId={CorrelationId}, failureCategory={FailureCategory})",
+                diagnostic.ErrorCode,
+                diagnostic.CorrelationId,
+                diagnostic.FailureCategory);
+
             if (!ctx.Response.HasStarted)
             {
-                ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                ctx.Response.ContentType = "application/json";
-                await ctx.Response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails
-                {
-                    Status = StatusCodes.Status500InternalServerError,
-                    Title = "Provider Resolution Failed",
-                    Detail = ex.Message
-                });
+                await Results.Problem(
+                    detail: "Authentication providers could not be resolved.",
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Provider Resolution Failed",
+                    extensions: new Dictionary<string, object?>
+                    {
+                        ["code"] = diagnostic.ErrorCode,
+                        ["correlationId"] = diagnostic.CorrelationId
+                    }).ExecuteAsync(ctx);
             }
         }
     }

@@ -1,0 +1,314 @@
+// ABOUTME: Contract tests for public API query DTO validation rules.
+// ABOUTME: Verifies abusive public discovery query inputs fail before repository access.
+
+using System.ComponentModel.DataAnnotations;
+using Explore.API.Models;
+using Explore.Application.DTOs.CustomPropertyProjection;
+using Explore.Domain.Enums;
+
+namespace Event.Api.IntegrationTests.Features;
+
+public sealed class PublicQueryValidationTests
+{
+    [Test]
+    public async Task EventFilterRequest_WhenPaginationIsOutOfRange_IsInvalid()
+    {
+        var request = new EventFilterRequest
+        {
+            PageNumber = 0,
+            PageSize = 101
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.PageNumber)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.PageSize)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventFilterRequest_WhenSortFieldIsUnknown_IsInvalid()
+    {
+        var request = new EventFilterRequest
+        {
+            SortBy = "drop-table"
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.SortBy)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventFilterRequest_WhenDateRangeIsInverted_IsInvalid()
+    {
+        var request = new EventFilterRequest
+        {
+            DateFrom = new DateOnly(2026, 6, 2),
+            DateTo = new DateOnly(2026, 6, 1)
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.DateFrom)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.DateTo)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventFilterRequest_WhenModeIsUnknown_IsInvalid()
+    {
+        var request = new EventFilterRequest
+        {
+            InclusionMode = "xor"
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.InclusionMode)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventFilterRequest_WhenLookupListContainsNonPositiveValue_IsInvalid()
+    {
+        var request = new EventFilterRequest
+        {
+            FormatIds = [1, 0]
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.FormatIds)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventFilterRequest_WhenGuidFiltersContainEmptyGuid_IsInvalid()
+    {
+        var request = new EventFilterRequest
+        {
+            ActorId = Guid.Empty,
+            IncludedTagIds = [Guid.NewGuid(), Guid.Empty]
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.ActorId)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventFilterRequest.IncludedTagIds)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventFilterRequest_WhenCustomPropertyFilterShapeIsInvalid_IsInvalid()
+    {
+        var request = new EventFilterRequest
+        {
+            CustomPropertyFilters =
+            [
+                new CustomPropertyFilterCriterion
+                {
+                    Namespace = "tenant",
+                    Key = "region",
+                    Operator = CustomPropertyFilterOperator.OptionIn
+                }
+            ]
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, "CustomPropertyFilters[0].OptionIds"))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventFilterRequest_WhenCustomPropertyOptionIdIsEmpty_IsInvalid()
+    {
+        var request = new EventFilterRequest
+        {
+            CustomPropertyFilters =
+            [
+                new CustomPropertyFilterCriterion
+                {
+                    Namespace = "tenant",
+                    Key = "region",
+                    Operator = CustomPropertyFilterOperator.OptionEquals,
+                    OptionId = Guid.Empty
+                }
+            ]
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, "CustomPropertyFilters[0].OptionId"))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventSessionFilterRequest_WhenSearchTermIsTooLong_IsInvalid()
+    {
+        var request = new EventSessionFilterRequest
+        {
+            CustomPropertySearchTerm = new string('x', 201)
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventSessionFilterRequest.CustomPropertySearchTerm)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventSessionFilterRequest_WhenCustomPropertyFilterDateRangeIsInverted_IsInvalid()
+    {
+        var request = new EventSessionFilterRequest
+        {
+            CustomPropertyFilters =
+            [
+                new CustomPropertyFilterCriterion
+                {
+                    Namespace = "tenant",
+                    Key = "track",
+                    Operator = CustomPropertyFilterOperator.DateRange,
+                    DateFrom = new DateTimeOffset(2026, 6, 2, 0, 0, 0, TimeSpan.Zero),
+                    DateTo = new DateTimeOffset(2026, 6, 1, 0, 0, 0, TimeSpan.Zero)
+                }
+            ]
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, "CustomPropertyFilters[0].DateFrom"))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, "CustomPropertyFilters[0].DateTo"))).IsTrue();
+    }
+
+    [Test]
+    public async Task PaginationQueryRequest_WhenPaginationIsOutOfRange_IsInvalid()
+    {
+        var request = new PaginationQueryRequest
+        {
+            PageNumber = -1,
+            PageSize = 101
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(PaginationQueryRequest.PageNumber)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(PaginationQueryRequest.PageSize)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventSeriesListQueryRequest_WhenActorIdIsEmpty_IsInvalid()
+    {
+        var request = new EventSeriesListQueryRequest
+        {
+            ActorId = Guid.Empty
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(request.PageSize).IsEqualTo(10);
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventSeriesListQueryRequest.ActorId)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventTemplateListQueryRequest_WhenEventTypeIdIsNonPositive_IsInvalid()
+    {
+        var request = new EventTemplateListQueryRequest
+        {
+            EventTypeId = 0
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventTemplateListQueryRequest.EventTypeId)))).IsTrue();
+    }
+
+    [Test]
+    public async Task EventSessionTemplateListQueryRequest_WhenParentTemplateIdIsMissing_IsInvalid()
+    {
+        var request = new EventSessionTemplateListQueryRequest
+        {
+            EventTemplateId = Guid.Empty
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(EventSessionTemplateListQueryRequest.EventTemplateId)))).IsTrue();
+    }
+
+    [Test]
+    public async Task NotificationListQueryRequest_WhenLookupFilterIsNonPositive_IsInvalid()
+    {
+        var request = new NotificationListQueryRequest
+        {
+            NotificationTypeId = -1,
+            NotificationScopeId = 0
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(NotificationListQueryRequest.NotificationTypeId)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(NotificationListQueryRequest.NotificationScopeId)))).IsTrue();
+    }
+
+    [Test]
+    public async Task ContactShareConsentListQueryRequest_WhenEmailSearchIsTooLong_IsInvalid()
+    {
+        var request = new ContactShareConsentListQueryRequest
+        {
+            EmailSearch = new string('x', 201)
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(ContactShareConsentListQueryRequest.EmailSearch)))).IsTrue();
+    }
+
+    [Test]
+    public async Task CustomPropertyGovernanceReportQueryRequest_WhenTenantAndEnumAreInvalid_IsInvalid()
+    {
+        var request = new CustomPropertyGovernanceReportQueryRequest
+        {
+            TenantId = Guid.Empty,
+            Recommendation = (PromotionRecommendation)999
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(CustomPropertyGovernanceReportQueryRequest.TenantId)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(CustomPropertyGovernanceReportQueryRequest.Recommendation)))).IsTrue();
+    }
+
+    [Test]
+    public async Task CustomPropertyProjectionDirtyScopesQueryRequest_WhenProjectionNameIsMissing_IsInvalid()
+    {
+        var request = new CustomPropertyProjectionDirtyScopesQueryRequest
+        {
+            TenantId = Guid.NewGuid(),
+            ProjectionName = " "
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(CustomPropertyProjectionDirtyScopesQueryRequest.ProjectionName)))).IsTrue();
+    }
+
+    [Test]
+    public async Task TemplateSyncHistoryQueryRequest_WhenPageOrPageSizeIsOutOfRange_IsInvalid()
+    {
+        var request = new TemplateSyncHistoryQueryRequest
+        {
+            Page = 0,
+            PageSize = 101
+        };
+
+        var results = Validate(request);
+
+        await Assert.That(results.Any(result => HasMember(result, nameof(TemplateSyncHistoryQueryRequest.Page)))).IsTrue();
+        await Assert.That(results.Any(result => HasMember(result, nameof(TemplateSyncHistoryQueryRequest.PageSize)))).IsTrue();
+    }
+
+    private static List<ValidationResult> Validate(object request)
+    {
+        var results = new List<ValidationResult>();
+        var context = new ValidationContext(request);
+        Validator.TryValidateObject(request, context, results, validateAllProperties: true);
+        return results;
+    }
+
+    private static bool HasMember(ValidationResult result, string memberName)
+        => result.MemberNames.Contains(memberName, StringComparer.Ordinal);
+}

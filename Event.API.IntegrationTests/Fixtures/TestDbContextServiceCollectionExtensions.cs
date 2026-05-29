@@ -2,13 +2,65 @@
 // ABOUTME: Removes pooled factory services before tests add an in-memory ExploreDbContext.
 
 using Explore.Persistence;
+using Explore.Application.Contracts.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Event.Api.IntegrationTests.Fixtures;
 
 internal static class TestDbContextServiceCollectionExtensions
 {
+    public static IServiceCollection AddInMemoryExploreDbContext(
+        this IServiceCollection services,
+        string databaseName)
+    {
+        services.AddDbContextFactory<ExploreDbContext>(options =>
+        {
+            options.UseInMemoryDatabase(databaseName);
+            options.ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning));
+        });
+
+        services.AddScoped(sp =>
+        {
+            var factory = sp.GetRequiredService<IDbContextFactory<ExploreDbContext>>();
+            var context = factory.CreateDbContext();
+
+            context.ClearTenantFilterBypass();
+            context.TenantContext = sp.GetService<ITenantContext>();
+            context.CurrentUserService = sp.GetService<ICurrentUserService>();
+
+            return context;
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddPostgreSqlExploreDbContext(
+        this IServiceCollection services,
+        string connectionString)
+    {
+        services.AddDbContextFactory<ExploreDbContext>(options =>
+        {
+            options.UseNpgsql(connectionString);
+            options.UseSnakeCaseNamingConvention();
+        });
+
+        services.AddScoped(sp =>
+        {
+            var factory = sp.GetRequiredService<IDbContextFactory<ExploreDbContext>>();
+            var context = factory.CreateDbContext();
+
+            context.ClearTenantFilterBypass();
+            context.TenantContext = sp.GetService<ITenantContext>();
+            context.CurrentUserService = sp.GetService<ICurrentUserService>();
+
+            return context;
+        });
+
+        return services;
+    }
+
     public static IServiceCollection RemoveExploreDbContextRegistrations(this IServiceCollection services)
     {
         var descriptors = services

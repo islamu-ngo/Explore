@@ -470,12 +470,7 @@ public class CrossTenantIsolationTests : IAsyncDisposable
             {
                 services.RemoveExploreDbContextRegistrations();
 
-                services.AddDbContext<ExploreDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase($"IsolationDb_{Guid.NewGuid():N}");
-                    options.ConfigureWarnings(x =>
-                        x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-                });
+                services.AddInMemoryExploreDbContext($"IsolationDb_{Guid.NewGuid():N}");
 
                 services.RemoveAll<IDistributedCache>();
                 services.AddDistributedMemoryCache();

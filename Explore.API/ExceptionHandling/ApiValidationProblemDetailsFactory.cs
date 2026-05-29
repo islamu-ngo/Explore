@@ -71,7 +71,7 @@ internal static class ApiValidationProblemDetailsFactory
             .ToDictionary(
                 group => group.Key,
                 group => group
-                    .SelectMany(entry => entry.Value!.Errors.Select(NormalizeMessage))
+                    .SelectMany(entry => entry.Value!.Errors.Select(error => NormalizeMessage(group.Key, error)))
                     .Distinct(StringComparer.Ordinal)
                     .ToArray(),
                 StringComparer.Ordinal);
@@ -92,6 +92,11 @@ internal static class ApiValidationProblemDetailsFactory
         }
 
         var normalized = key.Trim();
+        if (normalized.StartsWith('$'))
+        {
+            return BodyKey;
+        }
+
         if (normalized.StartsWith("$.", StringComparison.Ordinal))
         {
             normalized = normalized[2..];
@@ -106,9 +111,9 @@ internal static class ApiValidationProblemDetailsFactory
         return char.ToLowerInvariant(normalized[0]) + normalized[1..];
     }
 
-    private static string NormalizeMessage(ModelError error)
+    private static string NormalizeMessage(string fieldKey, ModelError error)
     {
-        if (error.Exception is not null)
+        if (fieldKey == BodyKey || error.Exception is not null)
         {
             return "Request body is invalid or contains unsupported fields.";
         }

@@ -64,12 +64,7 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
         {
             services.RemoveExploreDbContextRegistrations();
 
-            // InMemory database
-            services.AddDbContext<ExploreDbContext>(options =>
-            {
-                options.UseInMemoryDatabase(_databaseName);
-                options.ConfigureWarnings(x => x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-            });
+            services.AddInMemoryExploreDbContext(_databaseName);
 
             // Override Redis with in-memory distributed cache for tests
             services.RemoveAll<IDistributedCache>();

@@ -9,4 +9,6 @@ public interface IIdempotencyRepository
 {
     Task<IdempotencyRecord?> FindAsync(string key, Guid tenantId, CancellationToken cancellationToken = default);
     Task SaveAsync(IdempotencyRecord record, CancellationToken cancellationToken = default);
+    Task<int> CountExpiredAsync(DateTime expiresBeforeUtc, int batchSize, CancellationToken cancellationToken = default);
+    Task<int> DeleteExpiredAsync(DateTime expiresBeforeUtc, int batchSize, CancellationToken cancellationToken = default);
 }

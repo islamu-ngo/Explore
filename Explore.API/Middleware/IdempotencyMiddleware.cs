@@ -88,11 +88,21 @@ public sealed class IdempotencyMiddleware
         var tenantContext = context.RequestServices.GetRequiredService<ITenantContext>();
         var repository = context.RequestServices.GetRequiredService<IIdempotencyRepository>();
         var tenantId = tenantContext.TenantId;
+        var requestIdentity = await IdempotencyRequestIdentityFactory.CreateAsync(
+            context,
+            _streamManager,
+            context.RequestAborted);
 
         // Check for existing cached response
         var existing = await repository.FindAsync(key, tenantId, context.RequestAborted);
         if (existing is not null)
         {
+            if (!MatchesRequestIdentity(existing, requestIdentity))
+            {
+                await WriteKeyReuseConflictAsync(context);
+                return;
+            }
+
             context.Response.StatusCode = existing.StatusCode;
             context.Response.Headers[ReplayHeader] = "true";
 
@@ -144,9 +154,12 @@ public sealed class IdempotencyMiddleware
                 Id = Guid.CreateVersion7(),
                 Key = key,
                 TenantId = tenantId,
-                UserId = context.User?.FindFirst("sub")?.Value
-                         ?? context.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-                         ?? context.User?.FindFirst("sid")?.Value,
+                UserId = requestIdentity.UserId,
+                RequestMethod = requestIdentity.Method,
+                RequestTarget = requestIdentity.RequestTarget,
+                RequestContentType = requestIdentity.ContentType,
+                RequestBodyHash = requestIdentity.BodyHash,
+                PrincipalFingerprint = requestIdentity.PrincipalFingerprint,
                 StatusCode = context.Response.StatusCode,
                 ResponseBody = responseBody,
                 ContentType = context.Response.ContentType,
@@ -179,9 +192,46 @@ public sealed class IdempotencyMiddleware
         await bufferStream.CopyToAsync(originalBodyStream, context.RequestAborted);
     }
 
+    private static bool MatchesRequestIdentity(
+        IdempotencyRecord record,
+        IdempotencyRequestIdentity requestIdentity)
+    {
+        return string.Equals(record.RequestMethod, requestIdentity.Method, StringComparison.Ordinal)
+               && string.Equals(record.RequestTarget, requestIdentity.RequestTarget, StringComparison.Ordinal)
+               && string.Equals(record.RequestContentType, requestIdentity.ContentType, StringComparison.Ordinal)
+               && string.Equals(record.RequestBodyHash, requestIdentity.BodyHash, StringComparison.Ordinal)
+               && string.Equals(record.PrincipalFingerprint, requestIdentity.PrincipalFingerprint, StringComparison.Ordinal);
+    }
+
+    private static async Task WriteKeyReuseConflictAsync(HttpContext context)
+    {
+        context.Response.StatusCode = StatusCodes.Status409Conflict;
+        var problemDetails = new ProblemDetails
+        {
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+            Title = "Conflict",
+            Status = StatusCodes.Status409Conflict,
+            Detail = "Idempotency-Key has already been used with a different request.",
+            Instance = context.Request.Path
+        };
+        problemDetails.Extensions["code"] = "idempotency_key_reuse";
+
+        var problemDetailsService = context.RequestServices.GetRequiredService<IProblemDetailsService>();
+        await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = context,
+            ProblemDetails = problemDetails
+        });
+    }
+
     private static bool ShouldPersistResponse(HttpResponse response, long responseBodyLength)
     {
         if (response.StatusCode < StatusCodes.Status200OK || response.StatusCode >= StatusCodes.Status500InternalServerError)
+        {
+            return false;
+        }
+
+        if (response.StatusCode is StatusCodes.Status400BadRequest or StatusCodes.Status415UnsupportedMediaType)
         {
             return false;
         }

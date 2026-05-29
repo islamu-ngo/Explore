@@ -141,11 +141,7 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
         {
             services.RemoveExploreDbContextRegistrations();
 
-            services.AddDbContext<ExploreDbContext>(options =>
-            {
-                options.UseInMemoryDatabase(_databaseName);
-                options.ConfigureWarnings(x => x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-            });
+            services.AddInMemoryExploreDbContext(_databaseName);
 
             // Override Redis with in-memory distributed cache for tests
             services.RemoveAll<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();

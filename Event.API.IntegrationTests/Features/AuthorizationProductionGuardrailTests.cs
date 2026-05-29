@@ -123,6 +123,8 @@ public class AuthorizationProductionGuardrailTests
                     ["Deployment:DefaultTenantId"] = PlatformDefaults.DefaultTenantId.ToString(),
                     ["Cerbos:GrpcEndpoint"] = "http://localhost:19999",
                     ["Cerbos:PlaintextMode"] = "true",
+                    ["EmailDispatchProcessor:Enabled"] = "false",
+                    ["Scheduler:TickerQ:Enabled"] = "false",
                 };
 
                 config.AddInMemoryCollection(testConfig);
@@ -132,12 +134,7 @@ public class AuthorizationProductionGuardrailTests
             {
                 services.RemoveExploreDbContextRegistrations();
 
-                services.AddDbContext<ExploreDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase($"GuardrailDb_{Guid.NewGuid():N}");
-                    options.ConfigureWarnings(x =>
-                        x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-                });
+                services.AddInMemoryExploreDbContext($"GuardrailDb_{Guid.NewGuid():N}");
 
                 services.RemoveAll<IDistributedCache>();
                 services.AddDistributedMemoryCache();
@@ -184,6 +181,8 @@ public class AuthorizationProductionGuardrailTests
                     ["Deployment:DefaultTenantId"] = PlatformDefaults.DefaultTenantId.ToString(),
                     ["Cerbos:GrpcEndpoint"] = "http://localhost:19999",
                     ["Cerbos:PlaintextMode"] = "true",
+                    ["EmailDispatchProcessor:Enabled"] = "false",
+                    ["Scheduler:TickerQ:Enabled"] = "false",
                 };
 
                 config.AddInMemoryCollection(testConfig);
@@ -193,12 +192,7 @@ public class AuthorizationProductionGuardrailTests
             {
                 services.RemoveExploreDbContextRegistrations();
 
-                services.AddDbContext<ExploreDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase($"NoAuthDb_{Guid.NewGuid():N}");
-                    options.ConfigureWarnings(x =>
-                        x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-                });
+                services.AddInMemoryExploreDbContext($"NoAuthDb_{Guid.NewGuid():N}");
 
                 services.RemoveAll<IDistributedCache>();
                 services.AddDistributedMemoryCache();

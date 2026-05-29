@@ -44,11 +44,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         {
             // Since skipDbContextRegistration=true in "Testing" environment,
             // no Npgsql provider is registered. We simply add InMemory.
-            services.AddDbContext<ExploreDbContext>(options =>
-            {
-                options.UseInMemoryDatabase("InMemoryDbForTesting");
-                options.ConfigureWarnings(x => x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-            });
+            services.AddInMemoryExploreDbContext("InMemoryDbForTesting");
 
             // Override Redis with in-memory distributed cache for tests
             services.RemoveAll<IDistributedCache>();

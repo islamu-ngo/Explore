@@ -71,11 +71,7 @@ public class PostgreSqlApiWebApplicationFactory : WebApplicationFactory<Program>
         {
             services.RemoveExploreDbContextRegistrations();
 
-            services.AddDbContext<ExploreDbContext>(options =>
-            {
-                options.UseNpgsql(_connectionString);
-                options.UseSnakeCaseNamingConvention();
-            });
+            services.AddPostgreSqlExploreDbContext(_connectionString);
 
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();

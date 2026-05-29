@@ -1,11 +1,12 @@
 // ABOUTME: Query-bindable model for EventSessionController.GetAll session discovery endpoint.
 // ABOUTME: Transport concern only; mapped to GetEventSessionListRequest (MediatR) in the controller.
 
+using System.ComponentModel.DataAnnotations;
 using Explore.Application.DTOs.CustomPropertyProjection;
 
 namespace Explore.API.Models;
 
-public sealed class EventSessionFilterRequest
+public sealed class EventSessionFilterRequest : IValidatableObject
 {
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 20;
@@ -18,4 +19,21 @@ public sealed class EventSessionFilterRequest
     public List<CustomPropertyFilterCriterion>? CustomPropertyFilters { get; set; }
 
     public string? CustomPropertySearchTerm { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        foreach (var result in QueryValidationRules.ValidatePagination(PageNumber, PageSize))
+            yield return result;
+
+        foreach (var result in QueryValidationRules.ValidateBoundedText(
+                     CustomPropertySearchTerm,
+                     nameof(CustomPropertySearchTerm),
+                     QueryValidationRules.MaxSearchTermLength))
+            yield return result;
+
+        foreach (var result in QueryValidationRules.ValidateCustomPropertyFilters(
+                     CustomPropertyFilters,
+                     nameof(CustomPropertyFilters)))
+            yield return result;
+    }
 }

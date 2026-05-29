@@ -226,12 +226,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
             {
                 services.RemoveExploreDbContextRegistrations();
 
-                services.AddDbContext<ExploreDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase(_dbName);
-                    options.ConfigureWarnings(x =>
-                        x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
-                });
+                services.AddInMemoryExploreDbContext(_dbName);
 
                 services.RemoveAll<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
                 services.AddDistributedMemoryCache();
