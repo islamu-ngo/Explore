@@ -1,5 +1,5 @@
 # ABOUTME: CI workflow running build and all test suites on push/PR to main and develop.
-# ABOUTME: Skips non-code changes (docs, AI configs, assets). Ensures code compiles and tests pass before merge.
+# ABOUTME: Always reports a status check, running tests only when build/test-relevant files change.
 
 name: "Build & Test"
 
@@ -9,84 +9,104 @@ permissions:
 on:
   push:
     branches: [main, develop]
-    paths-ignore:
-      # AI / tool configuration directories
-      - ".claude/**"
-      - ".codex/**"
-      - ".copilot/**"
-      - ".gemini/**"
-      - ".opencode/**"
-      - ".repomix/**"
-      - ".sisyphus/**"
-      - ".taskmaster/**"
-      # BMAD framework
-      - "_bmad/**"
-      - "_bmad-output/**"
-      # Documentation & metadata
-      - "docs/**"
-      - "schemas/**"
-      - "assets/**"
-      - "dev/**"
-      # Project management (Plane)
-      - "event/**"
-      # Cerbos policies (has own workflow)
-      - "cerbos/**"
-      # Local dev infrastructure
-      - "docker/**"
-      - "docker-compose.yml"
-      - "Explore.AppHost/**"
-      - "Event.Benchmarks/**"
-      # Empty / unused directories
-      - "amp/**"
-      # Markdown & root meta files
-      - "**.md"
-      - "LICENSE"
-      - ".editorconfig"
-      - ".dockerignore"
-      - ".mcp.json"
-      - "repomix.config.json"
-      - "opencode.json"
-      - "jean.json"
   pull_request:
     branches: [main, develop]
-    paths-ignore:
-      - ".claude/**"
-      - ".codex/**"
-      - ".copilot/**"
-      - ".gemini/**"
-      - ".opencode/**"
-      - ".repomix/**"
-      - ".sisyphus/**"
-      - ".taskmaster/**"
-      - "_bmad/**"
-      - "_bmad-output/**"
-      - "docs/**"
-      - "schemas/**"
-      - "assets/**"
-      - "dev/**"
-      - "event/**"
-      - "cerbos/**"
-      - "docker/**"
-      - "docker-compose.yml"
-      - "Explore.AppHost/**"
-      - "Event.Benchmarks/**"
-      - "amp/**"
-      - "**.md"
-      - "LICENSE"
-      - ".editorconfig"
-      - ".dockerignore"
-      - ".mcp.json"
-      - "repomix.config.json"
-      - "opencode.json"
-      - "jean.json"
+  merge_group:
+    types: [checks_requested]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  detect-build-test-changes:
+    name: Detect Build/Test-Relevant Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run-tests: ${{ steps.changes.outputs.run-tests }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Build/Test-Relevant Changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          is_build_test_ignored() {
+            case "$1" in
+              .claude/*|.codex/*|.copilot/*|.gemini/*|.opencode/*|.repomix/*|.sisyphus/*|.taskmaster/*) return 0 ;;
+              _bmad/*|_bmad-output/*) return 0 ;;
+              docs/*|schemas/*|assets/*|dev/*|event/*) return 0 ;;
+              cerbos/*|docker/*|docker-compose.yml|Explore.AppHost/*|Event.Benchmarks/*|amp/*) return 0 ;;
+              *.md|LICENSE|.editorconfig|.dockerignore|.mcp.json|repomix.config.json|opencode.json|jean.json) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          base_sha=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+          elif [ "${{ github.event_name }}" = "merge_group" ]; then
+            base_sha="${{ github.event.merge_group.base_sha }}"
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            base_sha="${{ github.event.before }}"
+          fi
+
+          if [ -z "$base_sha" ]; then
+            base_sha="HEAD~1"
+          fi
+
+          changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA" || true)"
+
+          if [ -z "$changed_files" ]; then
+            echo "run-tests=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Build & Test Change Detection"
+              echo
+              echo "Could not determine changed files; running the full build/test lane."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          relevant_files=""
+          while IFS= read -r changed_file; do
+            [ -z "$changed_file" ] && continue
+
+            if ! is_build_test_ignored "$changed_file"; then
+              relevant_files="${relevant_files}${changed_file}"$'\n'
+            fi
+          done <<< "$changed_files"
+
+          if [ -n "$relevant_files" ]; then
+            echo "run-tests=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Build & Test Change Detection"
+              echo
+              echo "Build/test-relevant changes detected; running the full fast lane."
+              echo
+              echo '```text'
+              printf '%s' "$relevant_files"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run-tests=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Build & Test Change Detection"
+              echo
+              echo "Only paths owned by dedicated or documentation workflows changed; Build & Test will report an intentional no-op pass."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   run-tests:
+    needs: detect-build-test-changes
     uses: ./.github/workflows/_build-test.yml
     with:
+      run-fast-tests: ${{ needs.detect-build-test-changes.outputs.run-tests == 'true' }}
       run-integration-tests: false
       configuration: Release

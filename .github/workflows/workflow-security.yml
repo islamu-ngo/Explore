@@ -1,0 +1,94 @@
+# ABOUTME: Validates GitHub Actions workflow supply-chain policy for action references.
+# ABOUTME: Always reports a check and scans workflow files only when CI/CD governance inputs change.
+
+name: Workflow Security
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-action-pins:
+    name: Validate GitHub Action Pins
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect workflow-security-relevant changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base_sha=""
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+          elif [[ "${{ github.event_name }}" == "merge_group" ]]; then
+            base_sha="${{ github.event.merge_group.base_sha }}"
+          elif [[ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+            base_sha="${{ github.event.before }}"
+          fi
+
+          if [[ -z "$base_sha" ]]; then
+            base_sha="HEAD~1"
+          fi
+
+          changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA" || true)"
+          if [[ -z "$changed_files" ]]; then
+            echo "run-scan=true" >> "$GITHUB_OUTPUT"
+            echo "Could not determine changed files; running workflow security validation." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          relevant_files=""
+          while IFS= read -r changed_file; do
+            case "$changed_file" in
+              .github/workflows/*|.github/scripts/*|.github/dependabot.yml|docs/CI_CD_GOVERNANCE.md)
+                relevant_files="${relevant_files}${changed_file}"$'\n'
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          if [[ -n "$relevant_files" ]]; then
+            echo "run-scan=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "Workflow security validation will run for:"
+              echo '```'
+              printf '%s' "$relevant_files"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run-scan=false" >> "$GITHUB_OUTPUT"
+            echo "No workflow security inputs changed; reporting intentional no-op pass." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Validate external action pins
+        if: ${{ steps.changes.outputs.run-scan == 'true' }}
+        shell: bash
+        run: python3 .github/scripts/validate-action-pins.py .github/workflows
+
+      - name: No-Op for Non-Workflow Changes
+        if: ${{ steps.changes.outputs.run-scan != 'true' }}
+        shell: bash
+        run: |
+          {
+            echo "## Workflow Security"
+            echo "No workflow security inputs changed. The required check is intentionally passing without scanning."
+          } >> "$GITHUB_STEP_SUMMARY"

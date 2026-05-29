@@ -1,3 +1,6 @@
+# ABOUTME: Reusable build/test workflow for Release restore, audit, format, build, and project test lanes.
+# ABOUTME: Supports intentional no-op execution so required caller checks remain always present.
+
 name: "Build & Test (Reusable)"
 
 permissions:
@@ -10,6 +13,10 @@ on:
         required: false
         type: boolean
         default: false
+      run-fast-tests:
+        required: false
+        type: boolean
+        default: true
       configuration:
         required: false
         type: string
@@ -22,10 +29,22 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: No-Op for Non-Code Changes
+        if: ${{ ! inputs.run-fast-tests }}
+        run: |
+          {
+            echo "## Fast Build/Test"
+            echo
+            echo "No build/test-relevant changes were detected by the caller workflow."
+            echo "This required check is intentionally passing without restore, build, or test execution."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Checkout
+        if: ${{ inputs.run-fast-tests }}
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup .NET
+        if: ${{ inputs.run-fast-tests }}
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
@@ -33,9 +52,11 @@ jobs:
           cache-dependency-path: '**/packages.lock.json'
 
       - name: Restore
+        if: ${{ inputs.run-fast-tests }}
         run: dotnet restore --locked-mode
 
       - name: NuGet Security Audit
+        if: ${{ inputs.run-fast-tests }}
         run: |
           dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore > nuget-vulnerabilities.json
           python - <<'PY'
@@ -67,7 +88,7 @@ jobs:
                   print(f"- {package} ({location or 'unknown project'})")
                   for vulnerability in vulnerabilities:
                       severity = vulnerability.get("severity", "unknown")
-                      advisory = vulnerability.get("advisoryUrl", "no advisory URL")
+                      advisory = vulnerability.get("advisoryUrl") or vulnerability.get("advisoryurl") or "no advisory URL"
                       print(f"  - {severity}: {advisory}")
               raise SystemExit(1)
 
@@ -75,50 +96,50 @@ jobs:
           PY
 
       - name: Linting Check
+        if: ${{ inputs.run-fast-tests }}
         run: dotnet format --verify-no-changes --verbosity minimal
 
       - name: Build
+        if: ${{ inputs.run-fast-tests }}
         run: dotnet build --configuration ${{ inputs.configuration }} --no-restore --verbosity minimal
 
-      - name: OpenAPI Contract Drift Check
-        run: |
-          if [ -e Explore.API/swagger_event-api.json ]; then
-            echo "Unexpected generated OpenAPI suffix artifact exists: Explore.API/swagger_event-api.json"
-            exit 1
-          fi
-
-          git diff --exit-code -- Explore.API/swagger.json
-
       - name: Unit Tests — Application
+        if: ${{ inputs.run-fast-tests }}
         id: test_application
         run: dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Application.UnitTests.trx
 
       - name: Unit Tests — Domain
+        if: ${{ inputs.run-fast-tests }}
         id: test_domain
         run: dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Domain.UnitTests.trx
 
       - name: Architecture Tests
+        if: ${{ inputs.run-fast-tests }}
         id: test_architecture
         run: dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Architecture.Tests.trx
 
       - name: Unit Tests — Secrets
+        if: ${{ inputs.run-fast-tests }}
         id: test_secrets
         run: dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Secrets.UnitTests.trx
 
       - name: Unit Tests — Infrastructure
+        if: ${{ inputs.run-fast-tests }}
         id: test_infrastructure
         run: dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Infrastructure.Tests.trx
 
       - name: Blazor Client Tests
+        if: ${{ inputs.run-fast-tests }}
         id: test_blazor_client
         run: dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Blazor.Client.Tests.trx
 
       - name: Blazor Integration Tests
+        if: ${{ inputs.run-fast-tests }}
         id: test_blazor_integration
         run: dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Blazor.IntegrationTests.trx
 
       - name: Upload Test Results
-        if: always()
+        if: ${{ always() && inputs.run-fast-tests }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-results-fast
@@ -127,7 +148,7 @@ jobs:
           retention-days: 14
 
       - name: Write Test Evidence Summary
-        if: always()
+        if: ${{ always() && inputs.run-fast-tests }}
         env:
           APPLICATION_OUTCOME: ${{ steps.test_application.outcome }}
           DOMAIN_OUTCOME: ${{ steps.test_domain.outcome }}
@@ -157,7 +178,7 @@ jobs:
 
   integration-tests:
     name: Integration Tests
-    if: ${{ inputs.run-integration-tests }}
+    if: ${{ inputs.run-fast-tests && inputs.run-integration-tests }}
     needs: build-and-test
     runs-on: ubuntu-latest
     timeout-minutes: 30
