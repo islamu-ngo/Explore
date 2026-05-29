@@ -19,6 +19,9 @@ public sealed class EmailDispatchDrainService(
     BusinessMetrics metrics,
     ILogger<EmailDispatchDrainService> logger) : IEmailDispatchDrainService
 {
+    private const string ProcessingLeaseExpiredFailureCategory = "processing_lease_expired";
+    private const string ProcessingLeaseExpiredMessage = "Email dispatch processing lease expired before a durable outcome was recorded. Outcome is unknown and requires operator review or replay.";
+
     private readonly EmailDispatchProcessorSettings _settings = settings.Value;
 
     public async Task<EmailDispatchDrainResult> ProcessBatchAsync(CancellationToken cancellationToken)
@@ -54,29 +57,30 @@ public sealed class EmailDispatchDrainService(
                 break;
             }
 
-            var outcome = await ProcessSingleAsync(dispatch, cancellationToken);
+            var result = await ProcessDispatchAsync(dispatch, _settings.ConsumerId, cancellationToken);
+            var outcome = result.Outcome;
             switch (outcome)
             {
-                case DrainOutcome.Sent:
+                case EmailDispatchDrainOutcome.Sent:
                     sent++;
                     processed++;
                     break;
-                case DrainOutcome.RetryScheduled:
+                case EmailDispatchDrainOutcome.RetryScheduled:
                     retryScheduled++;
                     processed++;
                     break;
-                case DrainOutcome.DeadLettered:
+                case EmailDispatchDrainOutcome.DeadLettered:
                     deadLettered++;
                     processed++;
                     break;
-                case DrainOutcome.Unknown:
+                case EmailDispatchDrainOutcome.Unknown:
                     unknown++;
                     processed++;
                     break;
-                case DrainOutcome.TenantPaused:
+                case EmailDispatchDrainOutcome.TenantPaused:
                     tenantPaused++;
                     break;
-                case DrainOutcome.AlreadyClaimed:
+                case EmailDispatchDrainOutcome.AlreadyClaimed:
                     alreadyClaimed++;
                     break;
             }
@@ -93,7 +97,93 @@ public sealed class EmailDispatchDrainService(
             alreadyClaimed);
     }
 
-    private async Task<DrainOutcome> ProcessSingleAsync(EmailDispatchOutbox dispatch, CancellationToken cancellationToken)
+    public async Task<EmailDispatchRecoveryResult> RecoverStaleProcessingAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IEmailDispatchOutboxRepository>();
+        var recoveredAt = DateTime.UtcNow;
+        var processingStartedBefore = recoveredAt.AddSeconds(-_settings.ProcessingLeaseTimeoutSeconds);
+        var recovered = await repository.MarkStaleProcessingAsUnknown(
+            processingStartedBefore,
+            recoveredAt,
+            ProcessingLeaseExpiredFailureCategory,
+            ProcessingLeaseExpiredMessage,
+            _settings.BatchSize,
+            cancellationToken);
+
+        if (recovered > 0)
+        {
+            logger.LogWarning(
+                "Recovered {RecoveredCount} stale email dispatch processing rows as unknown. ProcessingStartedBefore={ProcessingStartedBefore:o}",
+                recovered,
+                processingStartedBefore);
+        }
+        else if (_settings.VerboseLogging)
+        {
+            logger.LogDebug(
+                "No stale email dispatch processing rows found before {ProcessingStartedBefore:o}",
+                processingStartedBefore);
+        }
+
+        return new EmailDispatchRecoveryResult(recovered, processingStartedBefore);
+    }
+
+    public async Task<EmailDispatchSingleDrainResult> ProcessSingleAsync(
+        Guid tenantId,
+        Guid publishEventId,
+        string consumerId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(consumerId))
+        {
+            throw new ArgumentException("Consumer id is required for email dispatch drainage.", nameof(consumerId));
+        }
+
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IEmailDispatchOutboxRepository>();
+        var dispatch = await repository.GetByTenantAndPublishEventId(tenantId, publishEventId, cancellationToken);
+        if (dispatch is null)
+        {
+            metrics.RecordEmailDispatchRabbitMqConsume(tenantId.ToString(), "rejected", "missing_outbox");
+            logger.LogWarning(
+                "Email dispatch pointer for tenant {TenantId} and publish event {PublishEventId} has no durable outbox row",
+                tenantId,
+                publishEventId);
+            return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Missing);
+        }
+
+        if (IsSettled(dispatch.Status))
+        {
+            metrics.RecordEmailDispatchRabbitMqConsume(tenantId.ToString(), "acked", "already_settled");
+            logger.LogInformation(
+                "Email dispatch pointer {PublishEventId} for outbox row {OutboxId} is already settled with status {Status}",
+                publishEventId,
+                dispatch.Id,
+                dispatch.Status);
+            return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.AlreadySettled, dispatch.Id);
+        }
+
+        if (dispatch.Status == EmailDispatchStatus.Processing)
+        {
+            metrics.RecordEmailDispatchRabbitMqConsume(tenantId.ToString(), "acked", "already_processing");
+            return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.AlreadyClaimed, dispatch.Id);
+        }
+
+        if (dispatch.Status == EmailDispatchStatus.RetryScheduled
+            && dispatch.NextAttemptAt is { } nextAttemptAt
+            && nextAttemptAt > DateTime.UtcNow)
+        {
+            metrics.RecordEmailDispatchRabbitMqConsume(tenantId.ToString(), "acked", "retry_deferred");
+            return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Deferred, dispatch.Id);
+        }
+
+        return await ProcessDispatchAsync(dispatch, consumerId, cancellationToken);
+    }
+
+    private async Task<EmailDispatchSingleDrainResult> ProcessDispatchAsync(
+        EmailDispatchOutbox dispatch,
+        string consumerId,
+        CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var repository = scope.ServiceProvider.GetRequiredService<IEmailDispatchOutboxRepository>();
@@ -107,7 +197,7 @@ public sealed class EmailDispatchDrainService(
                 "Email dispatch for tenant {TenantId} is paused; row {Id} remains pending",
                 dispatch.TenantId,
                 dispatch.Id);
-            return DrainOutcome.TenantPaused;
+            return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.TenantPaused, dispatch.Id);
         }
 
         var now = DateTime.UtcNow;
@@ -120,7 +210,7 @@ public sealed class EmailDispatchDrainService(
                 logger.LogDebug("Email dispatch row {Id} was already claimed", dispatch.Id);
             }
 
-            return DrainOutcome.AlreadyClaimed;
+            return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.AlreadyClaimed, dispatch.Id);
         }
 
         EmailDispatchReceipt? receipt = null;
@@ -134,7 +224,7 @@ public sealed class EmailDispatchDrainService(
                 PublishEventId = dispatch.PublishEventId,
                 EmailDispatchOutboxId = dispatch.Id,
                 Status = EmailDispatchReceiptStatus.Processing,
-                ConsumerId = _settings.ConsumerId,
+                ConsumerId = consumerId,
                 FirstSeenAt = now,
                 ProcessingStartedAt = now
             };
@@ -193,7 +283,7 @@ public sealed class EmailDispatchDrainService(
                     dispatch.TenantId,
                     dispatch.SourceType,
                     dispatch.SourceId);
-                return DrainOutcome.Sent;
+                return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Sent, dispatch.Id);
             }
 
             var error = result.ErrorMessage ?? "Email send failed without provider details.";
@@ -210,7 +300,7 @@ public sealed class EmailDispatchDrainService(
                     "Email dispatch {Id} outcome is unknown with failure category {FailureCategory}",
                     dispatch.Id,
                     "smtp_outcome_unknown");
-                return DrainOutcome.Unknown;
+                return new EmailDispatchSingleDrainResult(EmailDispatchDrainOutcome.Unknown, dispatch.Id);
             }
 
             var failureCategory = ClassifyFailureCategory(error);
@@ -241,7 +331,9 @@ public sealed class EmailDispatchDrainService(
                 delay.TotalSeconds,
                 failureCategory);
 
-            return isRetryExhausted ? DrainOutcome.DeadLettered : DrainOutcome.RetryScheduled;
+            return new EmailDispatchSingleDrainResult(
+                isRetryExhausted ? EmailDispatchDrainOutcome.DeadLettered : EmailDispatchDrainOutcome.RetryScheduled,
+                dispatch.Id);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -264,12 +356,12 @@ public sealed class EmailDispatchDrainService(
                 CorrelationId = dispatch.CorrelationId
             }, cancellationToken);
 
-            DrainOutcome outcome;
+            EmailDispatchDrainOutcome outcome;
             if (IsUnknownOutcome(error))
             {
                 await repository.MarkAsUnknown(dispatch.Id, "smtp_outcome_unknown", error, failedAt, cancellationToken);
                 metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), "unknown", "smtp_outcome_unknown");
-                outcome = DrainOutcome.Unknown;
+                outcome = EmailDispatchDrainOutcome.Unknown;
             }
             else
             {
@@ -288,7 +380,7 @@ public sealed class EmailDispatchDrainService(
                     failedAt,
                     cancellationToken);
                 metrics.RecordEmailDispatchAttempt(dispatch.TenantId.ToString(), failureOutcome, failureCategory);
-                outcome = isRetryExhausted ? DrainOutcome.DeadLettered : DrainOutcome.RetryScheduled;
+                outcome = isRetryExhausted ? EmailDispatchDrainOutcome.DeadLettered : EmailDispatchDrainOutcome.RetryScheduled;
             }
 
             if (receipt is not null)
@@ -297,7 +389,7 @@ public sealed class EmailDispatchDrainService(
             }
 
             logger.LogError(ex, "Email dispatch {Id} failed with exception", dispatch.Id);
-            return outcome;
+            return new EmailDispatchSingleDrainResult(outcome, dispatch.Id);
         }
         finally
         {
@@ -327,13 +419,11 @@ public sealed class EmailDispatchDrainService(
         return failedAttemptCount >= Math.Min(dispatch.MaxAttempts, _settings.MaxAttemptCount);
     }
 
-    private enum DrainOutcome
+    private static bool IsSettled(EmailDispatchStatus status)
     {
-        Sent,
-        RetryScheduled,
-        DeadLettered,
-        Unknown,
-        TenantPaused,
-        AlreadyClaimed
+        return status is EmailDispatchStatus.Sent
+            or EmailDispatchStatus.DeadLettered
+            or EmailDispatchStatus.Parked
+            or EmailDispatchStatus.Unknown;
     }
 }

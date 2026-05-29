@@ -24,6 +24,11 @@ public interface IEmailDispatchOutboxRepository
         Guid outboxId,
         CancellationToken cancellationToken);
 
+    Task<EmailDispatchOutbox?> GetByTenantAndPublishEventId(
+        Guid tenantId,
+        Guid publishEventId,
+        CancellationToken cancellationToken);
+
     Task<bool> IsTenantPaused(Guid tenantId, CancellationToken cancellationToken);
 
     Task<EmailDispatchTenantControl> SetTenantPauseState(
@@ -53,6 +58,14 @@ public interface IEmailDispatchOutboxRepository
         Guid id,
         Guid leaseToken,
         DateTime startedAt,
+        CancellationToken cancellationToken);
+
+    Task<int> MarkStaleProcessingAsUnknown(
+        DateTime processingStartedBefore,
+        DateTime recoveredAt,
+        string failureCategory,
+        string errorMessage,
+        int batchSize,
         CancellationToken cancellationToken);
 
     Task MarkAsSent(

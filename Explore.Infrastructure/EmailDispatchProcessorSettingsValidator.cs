@@ -41,6 +41,11 @@ public sealed class EmailDispatchProcessorSettingsValidator : IValidateOptions<E
             failures.Add("EmailDispatchProcessor:MaxRetryDelaySeconds must be greater than or equal to InitialRetryDelaySeconds.");
         }
 
+        if (options.ProcessingLeaseTimeoutSeconds <= 0)
+        {
+            failures.Add("EmailDispatchProcessor:ProcessingLeaseTimeoutSeconds must be greater than zero.");
+        }
+
         if (string.IsNullOrWhiteSpace(options.ConsumerId))
         {
             failures.Add("EmailDispatchProcessor:ConsumerId is required when Basic Dispatch Mode is configured.");

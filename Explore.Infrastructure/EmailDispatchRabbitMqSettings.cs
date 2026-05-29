@@ -31,5 +31,15 @@ public sealed class EmailDispatchRabbitMqSettings
 
     public string ClientProvidedName { get; set; } = "explore-email-dispatch-rabbitmq";
 
+    public string ConsumerId { get; set; } = "explore-email-dispatch-rabbitmq-consumer";
+
+    public bool DeadLetterReplayEnabled { get; set; }
+
+    public string DeadLetterReplayConsumerId { get; set; } = "explore-email-dispatch-dlq-replay";
+
+    public ushort PrefetchCount { get; set; } = 10;
+
+    public ushort DeadLetterReplayPrefetchCount { get; set; } = 5;
+
     public int PublishTimeoutSeconds { get; set; } = 15;
 }

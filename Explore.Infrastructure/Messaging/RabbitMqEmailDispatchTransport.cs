@@ -339,16 +339,11 @@ public sealed class RabbitMqEmailDispatchTransport : IEmailDispatchTransport, IA
                 return current;
             }
 
-            string connectionString = ResolveConnectionString(options);
-            var factory = new ConnectionFactory
-            {
-                Uri = new Uri(connectionString, UriKind.Absolute),
-                AutomaticRecoveryEnabled = true,
-                TopologyRecoveryEnabled = true,
-                ClientProvidedName = options.ClientProvidedName
-            };
-
-            _connection = await factory.CreateConnectionAsync(cancellationToken);
+            _connection = await RabbitMqEmailDispatchConnectionFactory.CreateConnectionAsync(
+                _configuration,
+                options,
+                options.ClientProvidedName,
+                cancellationToken);
             return _connection;
         }
         finally
@@ -356,33 +351,6 @@ public sealed class RabbitMqEmailDispatchTransport : IEmailDispatchTransport, IA
             _connectionLock.Release();
         }
     }
-
-    private string ResolveConnectionString(EmailDispatchRabbitMqSettings options)
-    {
-        if (!string.IsNullOrWhiteSpace(options.ConnectionString))
-        {
-            return options.ConnectionString;
-        }
-
-        string? connectionString = _configuration.GetConnectionString(options.ConnectionStringName);
-        if (!string.IsNullOrWhiteSpace(connectionString))
-        {
-            return connectionString;
-        }
-
-        string environmentKey = $"{NormalizeEnvironmentName(options.ConnectionStringName)}_URI";
-        connectionString = _configuration[environmentKey];
-        if (!string.IsNullOrWhiteSpace(connectionString))
-        {
-            return connectionString;
-        }
-
-        throw new InvalidOperationException(
-            $"RabbitMQ Dispatch Mode is enabled but no connection string was found for '{options.ConnectionStringName}'.");
-    }
-
-    private static string NormalizeEnvironmentName(string value) =>
-        value.Replace("-", "_", StringComparison.Ordinal).ToUpperInvariant();
 
     private static async Task CloseAndDisposeChannelAsync(IChannel channel, CancellationToken cancellationToken)
     {

@@ -21,6 +21,18 @@ public sealed class EmailDispatchRabbitMqSettingsValidator : IValidateOptions<Em
         RequireNonBlank(options.ParkingQueueName, nameof(options.ParkingQueueName), failures);
         RequireNonBlank(options.ParkingRoutingKey, nameof(options.ParkingRoutingKey), failures);
         RequireNonBlank(options.ClientProvidedName, nameof(options.ClientProvidedName), failures);
+        RequireNonBlank(options.ConsumerId, nameof(options.ConsumerId), failures);
+        RequireNonBlank(options.DeadLetterReplayConsumerId, nameof(options.DeadLetterReplayConsumerId), failures);
+
+        if (options.PrefetchCount == 0)
+        {
+            failures.Add("PrefetchCount must be greater than zero.");
+        }
+
+        if (options.DeadLetterReplayPrefetchCount == 0)
+        {
+            failures.Add("DeadLetterReplayPrefetchCount must be greater than zero.");
+        }
 
         if (options.PublishTimeoutSeconds <= 0)
         {

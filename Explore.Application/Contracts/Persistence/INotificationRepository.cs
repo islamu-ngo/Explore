@@ -7,6 +7,8 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface INotificationRepository : IGenericRepository<Notification, Guid>
 {
+    Task<bool> ExistsByDeduplicationKeyAsync(Guid tenantId, Guid userId, string deduplicationKey, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets paginated notifications for a specific user with optional filtering.
     /// </summary>

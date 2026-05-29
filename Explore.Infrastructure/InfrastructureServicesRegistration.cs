@@ -1,3 +1,6 @@
+// ABOUTME: Registers Infrastructure services, providers, options, and validators for the platform.
+// ABOUTME: Keeps application contracts wired to concrete infrastructure implementations at composition time.
+
 using Amazon;
 using Amazon.S3;
 using Cerbos.Sdk;
@@ -9,6 +12,7 @@ using Explore.Application.Contracts.Strategies;
 using Explore.Application.Models;
 using Explore.Application.Utilities;
 using Explore.Infrastructure.Analytics;
+using Explore.Infrastructure.Ai;
 using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Localization;
 using Explore.Infrastructure.Localization.Resilience;
@@ -41,11 +45,16 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<IEmailDispatchDrainService, EmailDispatchDrainService>();
         services.AddScoped<IEmailUnsubscribeTokenService, EmailUnsubscribeTokenService>();
 
-        // Object storage: provider-agnostic S3-compatible via AWS SDK
-        // Config resolved per-tenant from cascading settings engine (SystemSetting → TenantSetting)
-        // Instance admin can lock settings to enforce SaaS-wide storage or let tenants override
+        // Legacy S3-compatible object storage service. New local-first flows use IFileStorageProvider.
         services.AddScoped<IS3ConfigResolver, S3ConfigResolver>();
+        services.AddSingleton<IS3ClientFactory, S3ClientFactory>();
         services.AddScoped<IObjectStorageService, ObjectStorageService>();
+        services.AddOptions<LocalFileStorageOptions>()
+            .Bind(configuration.GetSection(LocalFileStorageOptions.SectionName));
+        services.AddSingleton<IValidateOptions<LocalFileStorageOptions>, LocalFileStorageOptionsValidator>();
+        services.AddSingleton<IFileStorageProvider, LocalFileStorageProvider>();
+        services.AddScoped<IFileStorageProvider, S3FileStorageProvider>();
+        services.AddScoped<IFileStorageProviderResolver, FileStorageProviderResolver>();
 
         // Identity services
         services.AddScoped<IUserContext, UserContext>();
@@ -169,6 +178,19 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IAnalyticsProvider>(sp => sp.GetRequiredService<RuntimeAnalyticsProvider>());
         services.AddScoped<IAnalyticsFeatureFlagProvider>(sp => sp.GetRequiredService<RuntimeAnalyticsProvider>());
 
+        // AI provider foundation. Runtime provider selection is added later; keep fake concrete-only for now.
+        services.AddOptions<AiProviderSettings>()
+            .Bind(configuration.GetSection(AiProviderSettings.SectionName));
+        services.AddSingleton<AiProviderSettingsValidator>();
+        services.AddSingleton<IValidateOptions<AiProviderSettings>>(sp => sp.GetRequiredService<AiProviderSettingsValidator>());
+        services.AddSingleton<AiProviderHealthReporter>();
+        services.AddScoped<FakeAiChatProvider>();
+        services.AddHttpClient(OpenAiCompatibleChatProvider.HttpClientName, client =>
+        {
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
+        services.AddScoped<OpenAiCompatibleChatProvider>();
+
         // Translation Management System providers (runtime-switchable via GovernanceSettings "localization.tms_provider")
         // All concrete providers are always registered; RuntimeTranslationProvider delegates at runtime.
         // None → OfflineTranslationProvider (bundled .json files), Tolgee → TolgeeTranslationProvider, Weblate → WeblateTranslationProvider
@@ -224,7 +246,8 @@ public static class InfrastructureServicesRegistration
 
         // Generic Outbox Processor settings and dispatcher
         services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));
-        services.AddScoped<IOutboxMessageDispatcher, MqContractOutboxMessageDispatcher>();
+        services.AddScoped<MqContractOutboxMessageDispatcher>();
+        services.AddScoped<IOutboxMessageDispatcher, CompositeOutboxMessageDispatcher>();
         services.AddOptions<EmailDispatchProcessorSettings>()
             .Bind(configuration.GetSection(EmailDispatchProcessorSettings.SectionName))
             .ValidateOnStart();
@@ -233,6 +256,11 @@ public static class InfrastructureServicesRegistration
             .Bind(configuration.GetSection(EmailDispatchRabbitMqSettings.SectionName))
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<EmailDispatchRabbitMqSettings>, EmailDispatchRabbitMqSettingsValidator>();
+        services.AddOptions<IdempotencyCleanupSettings>()
+            .Bind(configuration.GetSection(IdempotencyCleanupSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<IdempotencyCleanupSettings>, IdempotencyCleanupSettingsValidator>();
+        services.AddScoped<IIdempotencyCleanupService, IdempotencyCleanupService>();
 
         // PDS Synchronization services
         services.Configure<PdsSyncSettings>(configuration.GetSection(PdsSyncSettings.SectionName));

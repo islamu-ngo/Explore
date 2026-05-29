@@ -14,6 +14,7 @@ public class EmailDispatchProcessorSettings
     public int MaxAttemptCount { get; set; } = 5;
     public int InitialRetryDelaySeconds { get; set; } = 5;
     public int MaxRetryDelaySeconds { get; set; } = 3600;
+    public int ProcessingLeaseTimeoutSeconds { get; set; } = 900;
     public string ConsumerId { get; set; } = Environment.MachineName;
     public bool VerboseLogging { get; set; }
 
