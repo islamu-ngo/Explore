@@ -15,7 +15,7 @@
         "operationId": "GetActors",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -23,12 +23,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -36,8 +35,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -67,6 +65,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfActorListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -545,7 +560,7 @@
             }
           },
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -553,12 +568,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -566,8 +580,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -597,6 +610,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfActorListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -1005,6 +1035,605 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/actor-subscriptions": {
+      "get": {
+        "tags": [
+          "ActorSubscription"
+        ],
+        "summary": "Get current user's actor subscriptions",
+        "description": "Retrieve the authenticated tenant user's actor subscriptions as HAL resources.",
+        "operationId": "GetActorSubscriptions",
+        "parameters": [
+          {
+            "name": "PageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfActorSubscriptionListDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfActorSubscriptionListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "post": {
+        "tags": [
+          "ActorSubscription"
+        ],
+        "summary": "Subscribe to actor",
+        "description": "Subscribe the authenticated tenant user to an organization or group actor.",
+        "operationId": "SubscribeToActor",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscribeToActorDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscribeToActorDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/actor-subscriptions/actors/{targetActorId}": {
+      "get": {
+        "tags": [
+          "ActorSubscription"
+        ],
+        "summary": "Get actor subscription state",
+        "description": "Retrieve the authenticated tenant user's subscription state for one actor.",
+        "operationId": "GetActorSubscriptionByActor",
+        "parameters": [
+          {
+            "name": "targetActorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfActorSubscriptionDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfActorSubscriptionDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "delete": {
+        "tags": [
+          "ActorSubscription"
+        ],
+        "summary": "Unsubscribe from actor",
+        "description": "Unsubscribe the authenticated tenant user from an actor while preserving subscription history.",
+        "operationId": "UnsubscribeFromActor",
+        "parameters": [
+          {
+            "name": "targetActorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeFromActorDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeFromActorDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeFromActorDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/actor-subscriptions/actors/{targetActorId}/notification-level": {
+      "patch": {
+        "tags": [
+          "ActorSubscription"
+        ],
+        "summary": "Update actor subscription notification level",
+        "description": "Update notification delivery level for the authenticated tenant user's actor subscription.",
+        "operationId": "UpdateActorSubscriptionNotificationLevel",
+        "parameters": [
+          {
+            "name": "targetActorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateActorSubscriptionNotificationLevelDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateActorSubscriptionNotificationLevelDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/actortype": {
       "get": {
         "tags": [
@@ -1143,6 +1772,103 @@
           }
         },
         "x-endpoint-class": "Public"
+      }
+    },
+    "/api/ai/assistant/bootstrap": {
+      "get": {
+        "tags": [
+          "AiAssistant"
+        ],
+        "summary": "Get AI assistant bootstrap",
+        "description": "Returns authenticated AI assistant availability, model choices, feature flags, limits, and HAL links without exposing provider secrets.",
+        "operationId": "GetAiAssistantBootstrap",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfAiAssistantBootstrapDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfAiAssistantBootstrapDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/a/t": {
@@ -1853,7 +2579,7 @@
         "operationId": "GetCategories",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -1861,12 +2587,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -1874,8 +2599,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -1905,6 +2629,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfCategoryListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -2663,7 +3404,7 @@
             }
           },
           {
-            "name": "eventId",
+            "name": "EventId",
             "in": "query",
             "schema": {
               "type": "string",
@@ -2671,14 +3412,14 @@
             }
           },
           {
-            "name": "emailSearch",
+            "name": "EmailSearch",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -2686,12 +3427,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -2699,8 +3439,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -2735,6 +3474,26 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/PaginatedResultOfSharedContactDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -2847,14 +3606,14 @@
         "operationId": "GetCustomPropertyDefinitions",
         "parameters": [
           {
-            "name": "entityTypeName",
+            "name": "EntityTypeName",
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/EntityTypeName"
             }
           },
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -2862,12 +3621,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -2875,8 +3633,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -2906,6 +3663,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -3470,7 +4244,7 @@
         "operationId": "GetCustomPropertyGovernanceReport",
         "parameters": [
           {
-            "name": "tenantId",
+            "name": "TenantId",
             "in": "query",
             "schema": {
               "type": "string",
@@ -3478,21 +4252,21 @@
             }
           },
           {
-            "name": "scope",
+            "name": "Scope",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "recommendation",
+            "name": "Recommendation",
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/PromotionRecommendation"
             }
           },
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -3500,12 +4274,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -3513,8 +4286,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -3549,6 +4321,26 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/PaginatedResultOfCustomPropertyGovernanceRowDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -3894,7 +4686,7 @@
         "operationId": "GetCustomPropertyProjectionDirtyScopes",
         "parameters": [
           {
-            "name": "tenantId",
+            "name": "TenantId",
             "in": "query",
             "schema": {
               "type": "string",
@@ -3902,14 +4694,14 @@
             }
           },
           {
-            "name": "projectionName",
+            "name": "ProjectionName",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -3917,12 +4709,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -3930,8 +4721,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -3961,6 +4751,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfProjectionDirtyScopeDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -6033,6 +6840,23 @@
               "application/json": { },
               "application/hal+json": { }
             }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
           }
         },
         "x-endpoint-class": "Public"
@@ -6141,7 +6965,7 @@
         "operationId": "GetMyEvents",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -6149,12 +6973,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -6162,8 +6985,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -6193,6 +7015,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfEventListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -7687,7 +8526,7 @@
         "operationId": "GetEventCustomPropertyDefinitions",
         "parameters": [
           {
-            "name": "eventId",
+            "name": "EventId",
             "in": "query",
             "schema": {
               "type": "string",
@@ -7695,7 +8534,7 @@
             }
           },
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -7703,12 +8542,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -7716,8 +8554,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -7747,6 +8584,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfEventCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -9153,7 +10007,7 @@
         "operationId": "GetEventRegistrations",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -9161,12 +10015,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -9174,8 +10027,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -9210,6 +10062,26 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/PaginatedResultOfEventRegistrationListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -9838,37 +10710,35 @@
         "operationId": "GetEventSeries",
         "parameters": [
           {
-            "name": "pageNumber",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32",
-              "default": 1
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32",
-              "default": 10
-            }
-          },
-          {
-            "name": "actorId",
+            "name": "ActorId",
             "in": "query",
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "PageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
             }
           },
           {
@@ -9898,6 +10768,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/PaginatedResultOfEventSeriesListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -10291,7 +11178,7 @@
         "operationId": "GetEventSessionAgendaItems",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -10299,12 +11186,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -10312,8 +11198,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -10348,6 +11233,26 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/PaginatedResultOfEventSessionAgendaItemListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -10740,6 +11645,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -11176,7 +12098,7 @@
         "operationId": "GetEventSessionCustomPropertyDefinitions",
         "parameters": [
           {
-            "name": "eventSessionId",
+            "name": "EventSessionId",
             "in": "query",
             "schema": {
               "type": "string",
@@ -11184,7 +12106,7 @@
             }
           },
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -11192,12 +12114,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -11205,8 +12126,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -11236,6 +12156,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -13125,7 +14062,7 @@
         "operationId": "GetEventSessionTemplates",
         "parameters": [
           {
-            "name": "eventTemplateId",
+            "name": "EventTemplateId",
             "in": "query",
             "schema": {
               "type": "string",
@@ -13133,7 +14070,7 @@
             }
           },
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -13141,12 +14078,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -13154,8 +14090,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -13185,6 +14120,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionTemplateListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -13899,12 +14851,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -13912,8 +14863,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -14188,7 +15138,7 @@
         "operationId": "GetEventTemplates",
         "parameters": [
           {
-            "name": "eventTypeId",
+            "name": "EventTypeId",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -14200,7 +15150,7 @@
             }
           },
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -14208,12 +15158,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -14221,8 +15170,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -14252,6 +15200,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfEventTemplateListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -15000,12 +15965,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -15013,8 +15977,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -16738,7 +17701,7 @@
         "operationId": "GetGroups",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -16746,12 +17709,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -16759,8 +17721,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -16790,6 +17751,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfGroupListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -16903,7 +17881,7 @@
         "operationId": "GetMyGroups",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -16911,12 +17889,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -16924,8 +17901,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -16955,6 +17931,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfGroupListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -22361,7 +23354,7 @@
         "operationId": "GetLocations",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -22369,12 +23362,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -22382,8 +23374,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -22413,6 +23404,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfLocationListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -24053,40 +25061,14 @@
         "operationId": "GetNotifications",
         "parameters": [
           {
-            "name": "pageNumber",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32",
-              "default": 1
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32",
-              "default": 20
-            }
-          },
-          {
-            "name": "isRead",
+            "name": "IsRead",
             "in": "query",
             "schema": {
               "type": "boolean"
             }
           },
           {
-            "name": "notificationTypeId",
+            "name": "NotificationTypeId",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -24098,7 +25080,7 @@
             }
           },
           {
-            "name": "notificationScopeId",
+            "name": "NotificationScopeId",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -24110,7 +25092,7 @@
             }
           },
           {
-            "name": "notificationReasonId",
+            "name": "NotificationReasonId",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -24122,17 +25104,41 @@
             }
           },
           {
-            "name": "isArchived",
+            "name": "IsArchived",
             "in": "query",
             "schema": {
               "type": "boolean"
             }
           },
           {
-            "name": "isSnoozed",
+            "name": "IsSnoozed",
             "in": "query",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "PageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
             }
           },
           {
@@ -24167,6 +25173,26 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/PaginatedResultOfNotificationListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -24842,7 +25868,7 @@
         "operationId": "GetOrganizations",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -24850,12 +25876,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -24863,8 +25888,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -24894,6 +25918,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfOrganizationListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -25007,7 +26048,7 @@
         "operationId": "GetMyOrganizations",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -25015,12 +26056,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -25028,8 +26068,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -25059,6 +26098,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfOrganizationListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -27862,7 +28918,7 @@
         "operationId": "GetStorageObjects",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -27870,12 +28926,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -27883,8 +28938,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -27919,6 +28973,26 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/PaginatedResultOfStorageObjectListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -28327,21 +29401,22 @@
         "x-endpoint-class": "Authenticated"
       }
     },
-    "/api/storageobject/file/{fileKey}": {
+    "/api/storageobject/{id}/content": {
       "get": {
         "tags": [
           "StorageObject"
         ],
-        "summary": "Get File Content",
-        "description": "Retrieve the content of a file from storage by its key",
-        "operationId": "GetStorageObjectFile",
+        "summary": "Get Storage Object Content",
+        "description": "Streams stored file content by stable storage object ID. Provider keys and local paths are never accepted from the browser.",
+        "operationId": "GetStorageObjectContent",
         "parameters": [
           {
-            "name": "fileKey",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -28362,6 +29437,26 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "x-endpoint-class": "Public"
@@ -28519,96 +29614,6 @@
         "x-endpoint-class": "Public"
       }
     },
-    "/api/storageobject/presigned-url-by-key/{objectKey}": {
-      "get": {
-        "tags": [
-          "StorageObject"
-        ],
-        "summary": "Get Presigned Download URL by Key",
-        "description": "Generate a time-limited presigned URL for viewing/downloading a file using its object key",
-        "operationId": "GetStorageObjectPresignedDownloadUrlByKey",
-        "parameters": [
-          {
-            "name": "objectKey",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "expirationMinutes",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32",
-              "default": 60
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/PresignedDownloadUrlResponseDto"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/PresignedDownloadUrlResponseDto"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/PresignedDownloadUrlResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Public"
-      }
-    },
     "/api/storageobject/generate-upload-url": {
       "post": {
         "tags": [
@@ -28696,6 +29701,471 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/storageobject/upload-sessions": {
+      "post": {
+        "tags": [
+          "StorageObject"
+        ],
+        "summary": "Create provider-neutral upload session",
+        "description": "Reserve tenant storage quota and return a server-bound upload session. The browser does not choose provider, object key, local path, or destination URL.",
+        "operationId": "CreateStorageUploadSession",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStorageUploadSessionDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStorageUploadSessionDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStorageUploadSessionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/storageobject/upload-sessions/{uploadSessionId}/content": {
+      "put": {
+        "tags": [
+          "StorageObject"
+        ],
+        "summary": "Upload bytes for a reserved storage session",
+        "description": "Streams request bytes into the server-selected storage provider and finalizes the upload session metadata.",
+        "operationId": "UploadStorageUploadSessionContent",
+        "parameters": [
+          {
+            "name": "uploadSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/storageobject/upload-sessions/{uploadSessionId}": {
+      "delete": {
+        "tags": [
+          "StorageObject"
+        ],
+        "summary": "Cancel a provider-neutral upload session",
+        "description": "Cancel a pending upload session and release its reserved tenant storage quota.",
+        "operationId": "CancelStorageUploadSession",
+        "parameters": [
+          {
+            "name": "uploadSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfStorageUploadSessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
@@ -29126,7 +30596,7 @@
         "operationId": "GetTags",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -29134,12 +30604,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -29147,8 +30616,7 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           },
           {
@@ -29178,6 +30646,23 @@
               "application/hal+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalCollectionResourceOfTagListDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": { },
@@ -34911,6 +36396,198 @@
           }
         }
       },
+      "ActorSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subscriberTenantUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subscriberUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetActorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetActorTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "targetActorTypeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "targetActorName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "statusName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notificationLevelId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notificationLevelCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notificationLevelName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "subscribedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unsubscribedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ActorSubscriptionListDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetActorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetActorTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "targetActorTypeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "targetActorName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "statusName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notificationLevelId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notificationLevelCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notificationLevelName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "subscribedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unsubscribedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "ActorTypeDto": {
         "required": [
           "masterCode",
@@ -36345,6 +38022,55 @@
               },
               {
                 "$ref": "#/components/schemas/RebuildProjectionResponseDto"
+              }
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quotaExceeded": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QuotaExceededDetails"
+              }
+            ]
+          }
+        }
+      },
+      "BaseCommandResponseOfStorageUploadSessionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StorageUploadSessionDto"
               }
             ]
           },
@@ -39130,11 +40856,38 @@
           "uri": {
             "type": "string"
           },
+          "objectKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
           "fullName": {
             "type": "string"
           },
+          "safeDisplayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "extension": {
             "type": "string"
+          },
+          "contentType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sha256Checksum": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "size": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -39143,6 +40896,28 @@
               "string"
             ],
             "format": "int64"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "lifecycleState": {
+            "type": "string"
+          },
+          "owningResourceKind": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "owningResourceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "tenantId": {
             "type": "string",
@@ -39154,6 +40929,65 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "CreateStorageUploadSessionDto": {
+        "required": [
+          "contentType"
+        ],
+        "type": "object",
+        "properties": {
+          "expectedSizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "originalFileName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "safeDisplayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "extension": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "owningResourceKind": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "owningResourceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "idempotencyKey": {
+            "type": "string"
           }
         }
       },
@@ -46383,6 +48217,17 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfActorSubscriptionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfActorSubscriptionListDto"
+            }
+          }
+        }
+      },
       "HalCollectionEmbeddedOfCategoryListDto": {
         "type": "object",
         "properties": {
@@ -46696,6 +48541,58 @@
           },
           "_embedded": {
             "$ref": "#/components/schemas/HalCollectionEmbeddedOfActorListDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfActorSubscriptionListDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfActorSubscriptionListDto"
           }
         }
       },
@@ -48360,6 +50257,261 @@
           }
         }
       },
+      "HalResourceOfActorSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subscriberTenantUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subscriberUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetActorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetActorTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "targetActorTypeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "targetActorName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "statusName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notificationLevelId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notificationLevelCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notificationLevelName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "subscribedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unsubscribedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "href": {
+                  "type": "string",
+                  "description": "Link URL"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "HTTP method"
+                },
+                "title": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "description": "Link title"
+                }
+              }
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfActorSubscriptionListDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetActorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetActorTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "targetActorTypeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "targetActorName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "statusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "statusCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "statusName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notificationLevelId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notificationLevelCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notificationLevelName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "subscribedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unsubscribedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "href": {
+                  "type": "string",
+                  "description": "Link URL"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "HTTP method"
+                },
+                "title": {
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "description": "Link title"
+                }
+              }
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfAiAssistantBootstrapDto": { },
       "HalResourceOfCategoryDto": {
         "required": [
           "masterCode",
@@ -58586,8 +60738,13 @@
       "StorageObjectDto": {
         "required": [
           "uri",
+          "provider",
           "fullName",
-          "extension"
+          "safeDisplayName",
+          "extension",
+          "visibility",
+          "purpose",
+          "lifecycleState"
         ],
         "type": "object",
         "properties": {
@@ -58618,11 +60775,35 @@
           "uri": {
             "type": "string"
           },
+          "objectKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
           "fullName": {
+            "type": "string"
+          },
+          "safeDisplayName": {
             "type": "string"
           },
           "extension": {
             "type": "string"
+          },
+          "contentType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sha256Checksum": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "size": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -58631,6 +60812,28 @@
               "string"
             ],
             "format": "int64"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "lifecycleState": {
+            "type": "string"
+          },
+          "owningResourceKind": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "owningResourceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "tenantId": {
             "type": "string",
@@ -58654,14 +60857,42 @@
               "null",
               "string"
             ]
+          },
+          "isDeleted": {
+            "type": "boolean"
+          },
+          "deletedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "quarantinedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "quarantineReason": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
       "StorageObjectListDto": {
         "required": [
           "uri",
+          "provider",
           "fullName",
-          "extension"
+          "safeDisplayName",
+          "extension",
+          "visibility",
+          "purpose",
+          "lifecycleState"
         ],
         "type": "object",
         "properties": {
@@ -58686,11 +60917,29 @@
           "uri": {
             "type": "string"
           },
+          "objectKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
           "fullName": {
+            "type": "string"
+          },
+          "safeDisplayName": {
             "type": "string"
           },
           "extension": {
             "type": "string"
+          },
+          "contentType": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "size": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -58700,9 +60949,184 @@
             ],
             "format": "int64"
           },
+          "visibility": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "lifecycleState": {
+            "type": "string"
+          },
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "StorageUploadSessionDto": {
+        "required": [
+          "provider",
+          "contentType",
+          "safeDisplayName",
+          "purpose",
+          "visibility",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "expectedSizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reservedBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "originalFileName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "safeDisplayName": {
+            "type": "string"
+          },
+          "extension": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "storageObjectId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "storedSizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "sha256Checksum": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "uploadStartedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "finalizedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "canceledAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "failedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxUploadBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "tenantQuotaBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "usedBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalReservedBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -58739,6 +61163,15 @@
           },
           "hasValue": {
             "type": "boolean"
+          }
+        }
+      },
+      "SubscribeToActorDto": {
+        "type": "object",
+        "properties": {
+          "targetActorId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -59902,6 +62335,19 @@
           }
         }
       },
+      "UnsubscribeFromActorDto": {
+        "type": "object",
+        "properties": {
+          "targetActorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedConcurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "UntouchedLocalDefinitionDto": {
         "required": [
           "namespace",
@@ -60133,6 +62579,27 @@
                 "$ref": "#/components/schemas/UpdateActorAppearanceDto"
               }
             ]
+          }
+        }
+      },
+      "UpdateActorSubscriptionNotificationLevelDto": {
+        "type": "object",
+        "properties": {
+          "targetActorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notificationLevelId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "expectedConcurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -61966,11 +64433,38 @@
           "uri": {
             "type": "string"
           },
+          "objectKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
           "fullName": {
             "type": "string"
           },
+          "safeDisplayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "extension": {
             "type": "string"
+          },
+          "contentType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sha256Checksum": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "size": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -61979,6 +64473,28 @@
               "string"
             ],
             "format": "int64"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "lifecycleState": {
+            "type": "string"
+          },
+          "owningResourceKind": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "owningResourceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "tenantId": {
             "type": "string",
@@ -63066,7 +65582,13 @@
       "name": "ActorKeyStore"
     },
     {
+      "name": "ActorSubscription"
+    },
+    {
       "name": "ActorType"
+    },
+    {
+      "name": "AiAssistant"
     },
     {
       "name": "AnalyticsRelay"

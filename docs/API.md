@@ -466,6 +466,13 @@ All responses use **RFC 7807 ProblemDetails** with extensions:
 - `timestamp` — UTC ISO 8601
 - `correlationId` — from `X-Correlation-ID` / `X-Request-ID` header or generated UUID
 
+Validation payloads normalize serializer/model-binding paths before returning
+them to callers. JSON-path style keys such as `$`, `$._links`, or other
+serializer internals are reported as `body` with a generic invalid-body message
+so API responses do not leak parser implementation details or unsupported-field
+paths. Unsupported media type responses use `415` ProblemDetails with a stable
+title and detail.
+
 Custom-property quota failures use stable extensions `code`, `quotaKey`, `limit`,
 `scope`, and optional `actual`/`attempted`. The generic API mapper intentionally
 does not emit `tenantId`; tenant identifiers are only safe on explicitly
@@ -543,6 +550,8 @@ Meter name: `Explore.Business`. Tags vary by counter and include dimensions such
 | `explore.external_api_keys.throttled` | External API-key throttling events |
 | `explore.external_api_keys.policy_updated` | External API-key policy updates |
 | `explore.external_api_keys.rotated` | External API-key rotations |
+| `explore.idempotency.cleanup_runs` | Expired idempotency cleanup attempts by bounded `mode` and `outcome` tags |
+| `explore.idempotency.cleanup_rows` | Expired idempotency cleanup eligible/deleted row counts by bounded `mode` and `outcome` tags |
 | `event_role_assignment.changed` | Event role assignment changes |
 
 Authorization decisions are also traced via `ActivitySource` named `Explore.Authorization` with `resource.kind`, `resource.action`, and `request.type` tags.
@@ -584,10 +593,11 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 - Client sends `Idempotency-Key: <UUID>` on POST/PUT/PATCH/DELETE requests.
 - Server caches eligible responses by `(Key, TenantId)` in PostgreSQL.
 - Duplicate requests within 24 hours replay the cached response with original status code when the original response was persisted.
+- Reusing the same key for a different write request is rejected with `409 Conflict`. The request identity includes method, normalized target, content type, request-body hash, and a principal fingerprint.
 - Persisted responses must have status `200` through `499`, body size at or below 1 MB, and blank, `application/json`, or `application/problem+json` content type.
 - `5xx`, large, or non-JSON responses are not persisted for replay.
-- Keys expire after 24 hours via background cleanup.
-- Entity: `IdempotencyRecord` with `Key`, `TenantId`, `StatusCode`, `ResponseBody`, `CreatedAt`, `ExpiresAt`.
+- Keys expire after 24 hours for replay eligibility. Expired rows are ignored by reads; the `IdempotencyCleanupProcessor` physically deletes expired rows after the configured `IdempotencyCleanup:ExpirationGraceHours` safety buffer.
+- Entity: `IdempotencyRecord` with `Key`, `TenantId`, request fingerprint fields, `StatusCode`, `ResponseBody`, `CreatedAt`, and `ExpiresAt`.
 
 ---
 

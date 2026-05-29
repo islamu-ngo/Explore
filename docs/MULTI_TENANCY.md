@@ -68,6 +68,15 @@ Isolation is enforced in `ExploreDbContext` with named global filters:
 
 Tenant filters fail closed when no ambient `TenantContext` is bound. Missing tenant context no longer means "query all tenant rows"; request-scoped reads must resolve a tenant before touching tenant-scoped data. System, admin, seeding, cache warmup, authentication, and worker paths that intentionally cross tenants must opt in explicitly through `ExploreDbContext.EnableTenantFilterBypass(reason)` or `IgnoreTenantFilter(reason)` and still apply a bounded predicate such as tenant id, owner id, key id, status, or outbox id. Soft-deleted row access should continue to use `IgnoreQueryFilters([QueryFilterNames.SoftDelete])` so tenant isolation remains active.
 
+Custom `ExploreDbContext` registrations, especially integration-test hosts and
+`IDbContextFactory<ExploreDbContext>` callers, must mirror production scoped
+property injection. After creating the context, bind `TenantContext` and
+`CurrentUserService` from the request scope and clear any stale tenant-filter
+bypass state. API integration tests should use the shared test registration
+helpers instead of raw `AddDbContext(...UseInMemoryDatabase...)`; otherwise the
+fail-closed tenant filters correctly hide tenant rows and make fixtures drift
+from runtime behavior.
+
 PostgreSQL RLS is not enabled on production tenant tables yet. A bounded prototype now exists in persistence: `PostgresTenantSessionInterceptor` can bind `app.current_tenant_id` on EF Core connection open when `Persistence:EnableRlsTenantSession=true`, and integration tests prove forced RLS behavior through a non-superuser role. Keep EF named filters and tenant-safe foreign keys as the current enforcement model until a dedicated RLS rollout adds app/migration role separation, table policies, and admin/system-path tests.
 
 Notable cases:

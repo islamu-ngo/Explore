@@ -1343,7 +1343,7 @@ Table "external_bindings" {
     (provider_key, external_system, internal_type, internal_id, scope_tenant_id) [unique, name: 'ix_external_bindings_internal_tenant_unique', note: 'filter: scope_tenant_id IS NOT NULL']
   }
 
-  Note: 'Provider-neutral external identity binding. Checks: ck_external_bindings_status (1..3), ck_external_bindings_text_not_blank.'
+  Note: 'Provider-neutral external identity binding. Checks: ck_external_bindings_status (1..3), ck_external_bindings_text_not_blank, ck_external_bindings_registered_pair_scope.'
 }
 
 
@@ -1442,6 +1442,8 @@ Table "custom_property_definitions" {
     (tenant_id, entity_type_name, is_active) [name: 'ix_cpd_tenant_entity_active']
     (tenant_id, entity_type_name, is_searchable, is_filterable) [name: 'ix_cpd_tenant_entity_search_filter']
   }
+
+  Note: 'Shared custom-property definitions. Check: ck_custom_property_definitions_shared_entity_type allows only registry-approved shared targets.'
 }
 
 Table "custom_property_options" {
@@ -2464,22 +2466,106 @@ Table "storage_objects" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "file_type_id" int [not null]
   "uri" varchar(1000) [not null]
+  "object_key" varchar(1024)
+  "provider" varchar(50) [not null, note: 'local | s3_compatible | legacy_external']
   "full_name" varchar(500) [not null]
+  "safe_display_name" varchar(500) [not null]
   "extension" varchar(50) [not null]
+  "content_type" varchar(255)
+  "sha256_checksum" varchar(64)
   "size" bigint [not null]
+  "visibility" varchar(50) [not null, note: 'public_image | authenticated_tenant | private_owner']
+  "purpose" varchar(100) [not null, note: 'legacy_image | profile_image | event_image | attachment | document | system_asset']
+  "lifecycle_state" varchar(50) [not null, note: 'pending | active | quarantined | delete_requested | deleted']
+  "owning_resource_kind" varchar(100)
+  "owning_resource_id" uuid
+  "quarantined_at" timestamptz
+  "quarantined_by" uuid
+  "quarantine_reason" varchar(500)
   "tenant_id" uuid [not null]
   "actor_id" uuid
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+  "is_deleted" bool [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
-    tenant_id
     actor_id
+    (tenant_id, provider, lifecycle_state)
+    (tenant_id, visibility, purpose)
+    (tenant_id, owning_resource_kind, owning_resource_id) [note: 'Filtered when owning resource fields are present.']
+    (provider, object_key) [unique, note: 'Filtered when object_key is present.']
   }
 
-  Note: 'File metadata. Actual blobs stored in external object storage.'
+  Note: 'Tenant-scoped file metadata. Provider keys are internal; public access resolves through application metadata and visibility.'
+}
+
+Table "storage_upload_sessions" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "user_id" uuid
+  "provider" varchar(50) [not null]
+  "expected_size_bytes" bigint [not null]
+  "reserved_bytes" bigint [not null]
+  "content_type" varchar(255) [not null]
+  "original_file_name" varchar(500)
+  "safe_display_name" varchar(500) [not null]
+  "extension" varchar(50)
+  "purpose" varchar(100) [not null]
+  "visibility" varchar(50) [not null]
+  "status" varchar(50) [not null, note: 'reserved | uploading | finalized | canceled | failed | expired']
+  "object_key" varchar(1024)
+  "sha256_checksum" varchar(64)
+  "storage_object_id" uuid
+  "idempotency_key" varchar(128)
+  "failure_code" varchar(100)
+  "failure_message" varchar(500)
+  "expires_at" timestamptz [not null]
+  "upload_started_at" timestamptz
+  "finalized_at" timestamptz
+  "canceled_at" timestamptz
+  "failed_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, status, expires_at)
+    (tenant_id, idempotency_key) [unique, note: 'Filtered when idempotency_key is present.']
+    (provider, object_key) [note: 'Filtered when object_key is present.']
+    storage_object_id
+    user_id
+  }
+
+  Note: 'Tenant/user scoped upload reservation before bytes are accepted.'
+}
+
+Table "storage_usage_counters" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "provider" varchar(50) [not null]
+  "used_bytes" bigint [not null]
+  "reserved_bytes" bigint [not null]
+  "quarantined_bytes" bigint [not null]
+  "object_count" bigint [not null]
+  "last_recalculated_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, provider) [unique]
+  }
+
+  Note: 'Tenant/provider storage usage and reservation aggregate for quota checks.'
 }
 
 // ============================================================
@@ -3090,6 +3176,8 @@ Table "notifications" {
     (user_id, notification_scope_id, is_read) [name: 'ix_notifications_user_scope']
     (user_id, is_archived, created_at) [name: 'ix_notifications_user_archived', note: 'descending: created_at']
   }
+
+  Note: 'User notification inbox row. Check: ck_notifications_entity_reference_shape keeps polymorphic entity references null/null or Guid-shaped.'
 }
 
 
@@ -3116,6 +3204,11 @@ Table "idempotency_records" {
   "key" varchar(128) [not null]
   "tenant_id" uuid [not null]
   "user_id" varchar(256)
+  "request_method" varchar(16) [not null]
+  "request_target" varchar(512) [not null]
+  "request_content_type" varchar(256)
+  "request_body_hash" varchar(64) [not null]
+  "principal_fingerprint" varchar(64) [not null]
   "expires_at" timestamptz [not null]
   "status_code" int
   "content_type" varchar(256)
@@ -3126,6 +3219,8 @@ Table "idempotency_records" {
     (key, tenant_id) [unique, name: 'IX_IdempotencyRecords_Key_TenantId']
     expires_at [name: 'IX_IdempotencyRecords_ExpiresAt']
   }
+
+  Note: 'Ephemeral write-retry replay cache. Request fingerprint columns reject same-key reuse for a different write request or principal fingerprint.'
 }
 
 
@@ -3285,7 +3380,12 @@ Ref: "tag_type_tags"."tag_type_id" > "tag_types"."id" [delete: restrict]
 
 // Storage
 Ref: "storage_objects"."file_type_id" > "file_types"."id" [delete: restrict]
-Ref: "storage_objects"."actor_id" > "actors"."id" [delete: restrict]
+Ref: "storage_objects"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "storage_objects"."actor_id" > "actors"."id" [delete: set null]
+Ref: "storage_upload_sessions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "storage_upload_sessions"."user_id" > "users"."id" [delete: restrict]
+Ref: "storage_upload_sessions"."storage_object_id" > "storage_objects"."id" [delete: restrict]
+Ref: "storage_usage_counters"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "location_rooms".("tenant_id", "location_id") > "locations".("tenant_id", "id") [delete: cascade]
 
 // Events Core

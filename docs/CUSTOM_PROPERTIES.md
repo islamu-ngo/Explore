@@ -229,6 +229,31 @@ Lifecycle:
 - projection rebuild tooling must be able to recompute them from source-of-truth rows,
 - projection tables are a read-side optimization, not a business-rule engine.
 
+## Automation Condition Guardrails
+
+Custom properties may participate in Event lifecycle automation conditions only
+when an application-layer policy explicitly approves the definition. The current
+policy is `ICustomPropertyAutomationConditionPolicy` / `CustomPropertyAutomationConditionPolicy`.
+
+Eligibility rules:
+
+1. the definition must be tenant-owned (`tenant.*`) and not system-owned,
+2. the definition must be active,
+3. the definition must be filterable so automation evaluates projection-backed,
+   indexed values rather than raw EAV rows,
+4. the property type must be bounded and type-validated (`Text`, `Number`,
+   `Option`, `Boolean`, or `DateTime`),
+5. the `Namespace + Key` must not collide with reserved Layer 2 semantics, and
+6. workflow-critical state must remain explicit domain state, never generic
+   Layer 3 EAV.
+
+The following concepts are explicitly not valid custom-property automation
+conditions: dispatch status, email dispatch replay/parking state, automation
+execution status, registration lifecycle/status, delivery attempt state, tenant
+pause state, idempotency keys, and deduplication keys. If one of these concepts
+is required by automation, model it as Layer 1/2 state or a dedicated durable
+runtime table instead.
+
 ## Definition Lifecycle
 
 Layer 3 definitions have two deletion paths:
@@ -238,6 +263,10 @@ Layer 3 definitions have two deletion paths:
    session deletes also remove derived projection rows in the same application
    transaction. The `Namespace + Key` remains reserved while the retired
    definition or historical rows remain, so re-creation is not accidental.
+   Repository delete paths must implement this as state mutation, not
+   `DbSet.Remove`, because value and projection relationships are intentionally
+   restrictive. Normal delete must therefore preserve historical rows instead of
+   severing required relationships.
 2. Hard purge is an explicit audited operator action. It requires a non-blank
    reason and is allowed only when the definition has no historical values, no
    projection rows, no audit log references, and no template-sync provenance.

@@ -104,7 +104,17 @@ The platform provides a flexible EAV-based extension system across multiple scop
 
 Explicit admin purge is the only hard-delete path for dependency-free custom-property definitions. Normal delete remains retire + soft delete so historical values, projections, and audit evidence stay recoverable.
 
-### 5) Tenant and Soft-Delete Interfaces
+### 5) Polymorphic Reference Registry
+
+Polymorphic references that cannot use a direct FK are governed by `Explore.Domain.References.ReferenceTypeRegistry`. The registry is the domain source of truth for target kind, ID shape, ownership, tenant-scope rule, cleanup behavior, and validation wording. Current registries cover:
+
+- `ExternalBinding`: allowed external/internal type pairs from `ExternalBindingTypes`, including the tenant/customer provisioning binding, admin user, tenant-local user state, profile, actor, login, organization, and group organizer bindings.
+- `Notification`: every `NotificationEntityTypeEnum` value maps to a registered target kind. `Notification.EntityId` is a string column for compatibility with lookup-driven deep links, but registered targets currently require Guid-form entity IDs and retain historical references when the linked entity is deleted or hidden.
+- Shared custom properties: every `EntityTypeName` value is represented. `Organization` and `Group` support shared `CustomPropertyDefinition`/`CustomPropertyValue` rows. `Event` is deliberately registered as unsupported for shared definitions because event custom properties use `EventCustomPropertyDefinition`, `EventCustomPropertyValue`, and template materialization instead.
+
+Write-time enforcement happens at the repository/application boundary: external-binding, notification, and shared custom-property definition writes validate against the registry before saving. EF model metadata also declares check constraints for registered external-binding pair/scope combinations, shared custom-property target types, and notification entity reference shape. Migration regeneration is intentionally separate in the development workflow, so the registry and repository guards remain the immediate runtime enforcement until generated migrations are refreshed.
+
+### 6) Tenant and Soft-Delete Interfaces
 
 Isolation and lifecycle are enforced via marker interfaces:
 
@@ -112,7 +122,7 @@ Isolation and lifecycle are enforced via marker interfaces:
 - `IAuditableEntity` -> `CreatedAt/By`, `UpdatedAt/By` (Auto-populated in SaveChanges)
 - `ISoftDeletable` -> `IsDeleted`, `DeletedAt/By` (Converted from Delete state in SaveChanges)
 
-### 6) Tenant-Local User Authority
+### 7) Tenant-Local User Authority
 
 `TenantUser` is the tenant-local user root. It owns tenant participation status, moderation lifecycle, actor/profile links, and soft-delete state for a global `User` inside one tenant.
 

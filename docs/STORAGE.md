@@ -6,7 +6,7 @@ ABOUTME: Separates implemented object flows from UI/client gaps so operators do 
 > **Audience:** Operators | Admins | Contributors
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-05-29
 > **Source Anchors:** `Explore.Infrastructure/Storage/`, `Explore.Infrastructure/Services/ObjectStorageService.cs`, `Explore.API/Controllers/StorageObjectController.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Storage uses S3-compatible object storage for uploaded assets and metadata-backed `StorageObject` records for application discovery.
@@ -15,9 +15,9 @@ Storage uses S3-compatible object storage for uploaded assets and metadata-backe
 
 | Area | Implemented Behavior |
 |---|---|
-| Runtime storage | `ObjectStorageService` generates presigned upload/download URLs, streams files, and tests S3 connectivity. |
+| Runtime storage | Provider-neutral upload sessions and metadata-backed reads are implemented for local-first storage; `ObjectStorageService` remains only for legacy S3-compatible presigned flows. |
 | Configuration resolution | `S3ConfigResolver` resolves tenant-aware settings from persisted settings first, then `IConfiguration`, with a five-minute cache. |
-| Public reads | `StorageObjectController` exposes public read and presigned-read endpoints for storage objects and object keys. |
+| Public reads | `StorageObjectController` streams file content by `StorageObject.Id`; public images use the same metadata reader with public-image visibility checks. Caller-supplied object-key read and presign routes are removed. |
 | Authenticated writes | Upload URL generation requires authentication; `StorageObject` create/update/delete operations require authentication and `storage_object` resource authorization. |
 | Admin settings | Instance admins can read, update, and test storage settings through instance settings endpoints and the admin UI. |
 | Local self-hosting | Docker Compose can run MinIO through the optional `storage` profile. |
@@ -40,22 +40,24 @@ For external secret providers, keep the naming distinction from [SECRETS.md](SEC
 
 ## Upload And Download Flow
 
-1. An authenticated caller asks the API for a presigned upload URL, or a browser caller asks the Blazor BFF for an upload session.
-2. `ObjectStorageService.GeneratePresignedUploadUrl` creates an object key under `uploads/` with a timestamp, unique id, sanitized name, and original extension.
-3. Browser uploads use `/bff/storage/upload-session` first. The BFF stores the exact server-issued destination in distributed cache and returns an opaque `uploadSessionId` instead of asking the browser to trust or replay a raw upload URL.
-4. Browser uploads send `uploadSessionId`, `contentType`, and `file` to `/bff/storage/upload-proxy`; the proxy resolves the server-approved destination and rejects arbitrary client-supplied URLs.
-5. Server/non-browser upload paths may still upload directly to a trusted presigned URL generated for that request.
+1. Browser callers ask the Blazor BFF for an upload session with filename, content type, and expected byte count.
+2. The BFF calls the provider-neutral API upload-session endpoint. The API resolves tenant policy, max upload size, provider, quota, and reservation state.
+3. The BFF stores only the API upload-session id, owner, content type, expected size, and expiry in distributed cache, then returns an opaque `uploadSessionId` to the browser.
+4. Browser uploads send `uploadSessionId`, `contentType`, and `file` to `/bff/storage/upload-proxy`; the proxy rejects raw destination fields, enforces session owner/content type/exact size, and streams bytes to `/api/storageobject/upload-sessions/{id}/content`.
+5. Server/non-browser legacy paths may still upload directly to a trusted presigned URL generated for that request while older S3-compatible flows remain.
 6. The application stores or updates `StorageObject` metadata through authenticated write endpoints.
-7. Readers use public storage object endpoints, public image endpoints, or presigned download URL endpoints depending on the caller path.
+7. Readers use metadata-backed content endpoints (`/api/storageobject/{id}/content`), public image endpoints (`/api/storageobject/{id}/public`), or the ID-based S3-compatible presigned download endpoint depending on the caller path.
 
 `GetFileStream` translates S3 404 responses into `KeyNotFoundException`, which is useful when diagnosing broken metadata-to-object references.
+
+Direct object-key read routes are not part of the local-first contract. The removed `file/{fileKey}` and `presigned-url-by-key/{objectKey}` endpoints bypassed metadata visibility and owner checks; clients must carry a `StorageObject.Id` instead of raw provider keys.
 
 ## API Surface
 
 | Endpoint Group | Authentication Boundary |
 |---|---|
 | List/read storage objects | Public read behavior is implemented in `StorageObjectController`. |
-| Get file/public image/presigned download URL | Public read behavior is implemented for object delivery paths. |
+| Get file/public image/presigned download URL | Public file and image reads resolve by `StorageObject.Id`; arbitrary object-key read/presign endpoints are removed. |
 | Generate upload URL | Requires authentication. |
 | Create/update/delete storage object metadata | Requires authentication and `storage_object` resource authorization. |
 | Instance storage settings read/update/test | Instance-admin/setup-secret boundaries are handled by instance settings endpoints. |
