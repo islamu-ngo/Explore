@@ -1,7 +1,11 @@
+// ABOUTME: HATEOAS link policies for event detail and collection resources.
+// ABOUTME: Emits event navigation, management, registration, and organizer subscription affordances.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.API.Hateoas;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Event;
@@ -168,6 +172,35 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             "GET",
             dto.ActorDisplayName);
 
+        if (CanSubscribeToOrganizer(dto.ActorTypeId))
+        {
+            yield return new LinkDefinition(
+                "organizer-subscription",
+                RouteNames.GetActorSubscriptionByActor,
+                new { targetActorId = dto.ActorId },
+                "GET",
+                "My subscription to this organizer",
+                RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.ActorSubscriptions.View,
+                    ResourceKinds.ActorSubscription,
+                    dto.ActorId.ToString(),
+                    SubscriptionAttributes(dto.ActorId));
+
+            yield return new LinkDefinition(
+                "subscribe-organizer",
+                RouteNames.SubscribeToActor,
+                null,
+                "POST",
+                "Subscribe to this organizer",
+                RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.ActorSubscriptions.Create,
+                    ResourceKinds.ActorSubscription,
+                    dto.ActorId.ToString(),
+                    SubscriptionAttributes(dto.ActorId));
+        }
+
         // Edit link - requires authentication
         yield return new LinkDefinition(
             LinkRelations.Edit,
@@ -229,6 +262,13 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             }
         }
     }
+
+    private static bool CanSubscribeToOrganizer(int actorTypeId) => actorTypeId is (int)ActorTypeEnum.Organization or (int)ActorTypeEnum.Group;
+
+    private static IReadOnlyDictionary<string, object> SubscriptionAttributes(Guid targetActorId) => new Dictionary<string, object>
+    {
+        ["targetActorId"] = targetActorId.ToString()
+    };
 }
 
 /// <summary>

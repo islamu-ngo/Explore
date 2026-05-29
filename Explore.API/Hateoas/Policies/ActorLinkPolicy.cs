@@ -1,8 +1,14 @@
+// ABOUTME: HATEOAS link policies for actor detail and collection resources.
+// ABOUTME: Adds public navigation plus authenticated subscription affordances for organization and group actors.
+
 namespace Explore.API.Hateoas.Policies;
 
 using System.Security.Claims;
+using Explore.API.Hateoas;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Actor;
+using Explore.Domain.Enums;
 using Explore.Application.Hateoas;
 
 /// <summary>
@@ -47,7 +53,43 @@ public sealed class ActorDetailLinkPolicy : ILinkPolicy<ActorDto>
                 "GET",
                 "Organization");
         }
+
+        if (CanSubscribe(dto.ActorTypeId))
+        {
+            yield return new LinkDefinition(
+                "subscription",
+                RouteNames.GetActorSubscriptionByActor,
+                new { targetActorId = dto.Id },
+                "GET",
+                "My subscription to this actor",
+                RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.ActorSubscriptions.View,
+                    ResourceKinds.ActorSubscription,
+                    dto.Id.ToString(),
+                    SubscriptionAttributes(dto.Id));
+
+            yield return new LinkDefinition(
+                "subscribe",
+                RouteNames.SubscribeToActor,
+                null,
+                "POST",
+                "Subscribe to this actor",
+                RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.ActorSubscriptions.Create,
+                    ResourceKinds.ActorSubscription,
+                    dto.Id.ToString(),
+                    SubscriptionAttributes(dto.Id));
+        }
     }
+
+    private static bool CanSubscribe(int actorTypeId) => actorTypeId is (int)ActorTypeEnum.Organization or (int)ActorTypeEnum.Group;
+
+    private static IReadOnlyDictionary<string, object> SubscriptionAttributes(Guid targetActorId) => new Dictionary<string, object>
+    {
+        ["targetActorId"] = targetActorId.ToString()
+    };
 }
 
 /// <summary>
@@ -73,6 +115,35 @@ public sealed class ActorCollectionLinkPolicy : ICollectionLinkPolicy<ActorListD
             new { actorId = dto.Id },
             "GET",
             "Events");
+
+        if (CanSubscribe(dto.ActorTypeId))
+        {
+            yield return new LinkDefinition(
+                "subscription",
+                RouteNames.GetActorSubscriptionByActor,
+                new { targetActorId = dto.Id },
+                "GET",
+                "My subscription to this actor",
+                RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.ActorSubscriptions.View,
+                    ResourceKinds.ActorSubscription,
+                    dto.Id.ToString(),
+                    SubscriptionAttributes(dto.Id));
+
+            yield return new LinkDefinition(
+                "subscribe",
+                RouteNames.SubscribeToActor,
+                null,
+                "POST",
+                "Subscribe to this actor",
+                RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.ActorSubscriptions.Create,
+                    ResourceKinds.ActorSubscription,
+                    dto.Id.ToString(),
+                    SubscriptionAttributes(dto.Id));
+        }
     }
 
     /// <inheritdoc />
@@ -81,4 +152,11 @@ public sealed class ActorCollectionLinkPolicy : ICollectionLinkPolicy<ActorListD
         // Actors are typically read-only (created via user/organization registration)
         yield break;
     }
+
+    private static bool CanSubscribe(int actorTypeId) => actorTypeId is (int)ActorTypeEnum.Organization or (int)ActorTypeEnum.Group;
+
+    private static IReadOnlyDictionary<string, object> SubscriptionAttributes(Guid targetActorId) => new Dictionary<string, object>
+    {
+        ["targetActorId"] = targetActorId.ToString()
+    };
 }
