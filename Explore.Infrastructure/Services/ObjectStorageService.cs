@@ -1,31 +1,31 @@
 // ABOUTME: S3-compatible object storage service that resolves config per-tenant via cascading settings.
-// Supports any S3-compatible provider (Hetzner, MinIO, AWS, Backblaze B2, Wasabi, R2, etc.).
+// ABOUTME: Supports legacy presigned URL flows while newer local-first code uses provider-neutral storage.
 
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using Amazon;
-using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.StorageObject;
-using Explore.Application.Models;
-using FluentValidation;
+using Explore.Infrastructure.Storage;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Services;
 
 public class ObjectStorageService : IObjectStorageService
 {
     private readonly IS3ConfigResolver _configResolver;
+    private readonly IS3ClientFactory _clientFactory;
     private readonly ILogger<ObjectStorageService> _logger;
 
-    public ObjectStorageService(IS3ConfigResolver configResolver, ILogger<ObjectStorageService> logger)
+    public ObjectStorageService(
+        IS3ConfigResolver configResolver,
+        IS3ClientFactory clientFactory,
+        ILogger<ObjectStorageService> logger)
     {
         _configResolver = configResolver;
+        _clientFactory = clientFactory;
         _logger = logger;
     }
 
@@ -50,7 +50,7 @@ public class ObjectStorageService : IObjectStorageService
 
         var objectKey = $"uploads/{timestamp}/{uniqueId}-{sanitizedName}{extension}";
 
-        var presignClient = CreatePresignClient(config);
+        var presignClient = _clientFactory.CreatePresignClient(config);
 
         var request = new GetPreSignedUrlRequest
         {
@@ -99,7 +99,7 @@ public class ObjectStorageService : IObjectStorageService
         if (config is null)
             throw new InvalidOperationException("S3 storage is not configured.");
 
-        var client = CreateS3Client(config);
+        var client = _clientFactory.CreateDataClient(config);
 
         try
         {
@@ -130,7 +130,7 @@ public class ObjectStorageService : IObjectStorageService
         if (config is null)
             throw new InvalidOperationException("S3 storage is not configured.");
 
-        var presignClient = CreatePresignClient(config);
+        var presignClient = _clientFactory.CreatePresignClient(config);
 
         var request = new GetPreSignedUrlRequest
         {
@@ -166,7 +166,7 @@ public class ObjectStorageService : IObjectStorageService
 
         try
         {
-            var client = CreateS3Client(config);
+            var client = _clientFactory.CreateDataClient(config);
             await client.ListBucketsAsync(cancellationToken);
             return true;
         }
@@ -175,58 +175,5 @@ public class ObjectStorageService : IObjectStorageService
             _logger.LogWarning(ex, "S3 connection test failed for endpoint {Endpoint}", config.Endpoint);
             return false;
         }
-    }
-
-    private static IAmazonS3 CreateS3Client(S3Configuration config)
-    {
-        var s3Config = new AmazonS3Config
-        {
-            ForcePathStyle = config.ForcePathStyle
-        };
-
-        var endpoint = config.Endpoint.Trim();
-        if (!endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-            !endpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            endpoint = $"https://{endpoint}";
-        }
-
-        s3Config.ServiceURL = endpoint;
-        s3Config.UseHttp = endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
-        s3Config.AuthenticationRegion = string.IsNullOrWhiteSpace(config.Region) ? "us-east-1" : config.Region;
-
-        return new AmazonS3Client(config.AccessKeyId, config.SecretAccessKey, s3Config);
-    }
-
-    private static IAmazonS3 CreatePresignClient(S3Configuration config)
-    {
-        // If no separate public endpoint, use the regular client for presigning
-        if (string.IsNullOrWhiteSpace(config.PublicEndpoint))
-        {
-            return CreateS3Client(config);
-        }
-
-        if (string.Equals(config.PublicEndpoint.Trim(), config.Endpoint.Trim(), StringComparison.OrdinalIgnoreCase))
-        {
-            return CreateS3Client(config);
-        }
-
-        var s3Config = new AmazonS3Config
-        {
-            ForcePathStyle = config.ForcePathStyle
-        };
-
-        var endpoint = config.PublicEndpoint.Trim();
-        if (!endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-            !endpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            endpoint = $"https://{endpoint}";
-        }
-
-        s3Config.ServiceURL = endpoint;
-        s3Config.UseHttp = endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
-        s3Config.AuthenticationRegion = string.IsNullOrWhiteSpace(config.Region) ? "us-east-1" : config.Region;
-
-        return new AmazonS3Client(config.AccessKeyId, config.SecretAccessKey, s3Config);
     }
 }

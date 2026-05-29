@@ -153,6 +153,9 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             // Notification: personal data, all authenticated can manage own notifications
             "islamuevent_notification" => true,
 
+            // Actor subscriptions: authenticated users reach handlers; handlers enforce current-user ownership.
+            "islamuevent_actor_subscription" => true,
+
             // Actor: read-only for all authenticated; writes require tenant admin
             "islamuevent_actor" => await EvaluateActorAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
 
