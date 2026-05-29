@@ -2,8 +2,14 @@
 // ABOUTME: Uses PostgreSQL-backed scheduler state while keeping business outbox truth in Explore.Persistence.
 
 using Explore.API.Configuration;
+using Explore.API.Scheduling;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Secrets.Bootstrap;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using TickerQ.Dashboard.DependencyInjection;
 using TickerQ.DependencyInjection;
 using TickerQ.EntityFrameworkCore.DbContextFactory;
@@ -24,7 +30,10 @@ public static class TickerQSchedulerExtensions
         var options = configuration.GetSection(TickerQSchedulerOptions.SectionName).Get<TickerQSchedulerOptions>()
             ?? new TickerQSchedulerOptions();
 
-        services.Configure<TickerQSchedulerOptions>(configuration.GetSection(TickerQSchedulerOptions.SectionName));
+        services.AddOptions<TickerQSchedulerOptions>()
+            .Bind(configuration.GetSection(TickerQSchedulerOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<TickerQSchedulerOptions>, TickerQSchedulerOptionsValidator>();
 
         if (!enabled || !options.Enabled || environment.IsEnvironment("Testing"))
         {
@@ -33,7 +42,10 @@ public static class TickerQSchedulerExtensions
 
         var connectionString = ResolvePostgresConnectionString(configuration);
 
-        var tickerBuilder = services.AddTickerQ<TimeTickerEntity, CronTickerEntity>(tickerOptions =>
+        services.RemoveAll<IScheduledEmailDispatchTrigger>();
+        services.AddScoped<IScheduledEmailDispatchTrigger, TickerQScheduledEmailDispatchTrigger>();
+
+        services.AddTickerQ<TimeTickerEntity, CronTickerEntity>(tickerOptions =>
         {
             tickerOptions.ConfigureScheduler(scheduler =>
             {
@@ -42,34 +54,82 @@ public static class TickerQSchedulerExtensions
                     ? Environment.MachineName
                     : options.NodeIdentifier;
             });
-        });
 
-        tickerBuilder.AddOperationalStore<TimeTickerEntity, CronTickerEntity>(efOptions =>
-        {
-            efOptions.UseTickerQDbContext<TickerQDbContext>(dbOptions =>
+            tickerOptions.AddOperationalStore(efOptions =>
             {
-                dbOptions.UseNpgsql(connectionString);
+                efOptions.SetSchema(ApiTickerQDbContext.Schema);
+                efOptions.UseTickerQDbContext<ApiTickerQDbContext>(dbOptions =>
+                {
+                    dbOptions.UseNpgsql(connectionString);
+                });
             });
-            efOptions.SetSchema(string.IsNullOrWhiteSpace(options.Schema) ? "ticker" : options.Schema);
+
+            if (options.DashboardEnabled)
+            {
+                tickerOptions.AddDashboard(dashboard =>
+                {
+                    dashboard.SetBasePath(string.IsNullOrWhiteSpace(options.DashboardPath)
+                        ? "/admin/scheduler"
+                        : options.DashboardPath);
+                    dashboard.WithHostAuthentication(string.IsNullOrWhiteSpace(options.DashboardAuthorizationPolicy)
+                        ? TickerQSchedulerOptions.InstanceAdminPolicyName
+                        : options.DashboardAuthorizationPolicy);
+                    dashboard.WithSessionTimeout(Math.Max(1, options.DashboardSessionTimeoutMinutes));
+                });
+            }
+
+            tickerOptions.AddOpenTelemetryInstrumentation();
         });
 
-        if (options.DashboardEnabled)
+        return services;
+    }
+
+    public static IApplicationBuilder UseApiTickerQScheduler(this WebApplication app)
+    {
+        var schedulerOptions = app.Configuration.GetSection(TickerQSchedulerOptions.SectionName).Get<TickerQSchedulerOptions>()
+            ?? new TickerQSchedulerOptions();
+
+        if (schedulerOptions.DashboardEnabled)
         {
-            tickerBuilder.AddDashboard<TimeTickerEntity, CronTickerEntity>(dashboard =>
+            var dashboardPath = string.IsNullOrWhiteSpace(schedulerOptions.DashboardPath)
+                ? "/admin/scheduler"
+                : schedulerOptions.DashboardPath;
+            var dashboardPolicy = string.IsNullOrWhiteSpace(schedulerOptions.DashboardAuthorizationPolicy)
+                ? TickerQSchedulerOptions.InstanceAdminPolicyName
+                : schedulerOptions.DashboardAuthorizationPolicy;
+
+            app.Use(async (context, next) =>
             {
-                dashboard.SetBasePath(string.IsNullOrWhiteSpace(options.DashboardPath)
-                    ? "/admin/scheduler"
-                    : options.DashboardPath);
-                dashboard.WithHostAuthentication(string.IsNullOrWhiteSpace(options.DashboardAuthorizationPolicy)
-                    ? TickerQSchedulerOptions.InstanceAdminPolicyName
-                    : options.DashboardAuthorizationPolicy);
-                dashboard.WithSessionTimeout(Math.Max(1, options.DashboardSessionTimeoutMinutes));
+                if (!context.Request.Path.StartsWithSegments(dashboardPath))
+                {
+                    await next();
+                    return;
+                }
+
+                var authorizationService = context.RequestServices.GetRequiredService<IAuthorizationService>();
+                var authorizationResult = await authorizationService.AuthorizeAsync(
+                    context.User,
+                    resource: null,
+                    dashboardPolicy);
+
+                if (authorizationResult.Succeeded)
+                {
+                    await next();
+                    return;
+                }
+
+                if (context.User.Identity?.IsAuthenticated == true)
+                {
+                    await context.ForbidAsync();
+                    return;
+                }
+
+                await context.ChallengeAsync();
             });
         }
 
-        tickerBuilder.AddOpenTelemetryInstrumentation<TimeTickerEntity, CronTickerEntity>();
-
-        return services;
+        app.UseTickerQ();
+        return app;
     }
 
     public static async Task MigrateTickerQSchedulerAsync(this WebApplication app)
@@ -80,7 +140,8 @@ public static class TickerQSchedulerExtensions
         }
 
         await using var scope = app.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<TickerQDbContext>();
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApiTickerQDbContext>>();
+        await using var db = await dbFactory.CreateDbContextAsync();
         if (db.Database.IsRelational())
         {
             await db.Database.MigrateAsync();

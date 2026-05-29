@@ -92,6 +92,33 @@ public sealed class EmailDispatchAdminControllerTests
     }
 
     [Test]
+    public async Task ReplayDispatch_WhenEmailDispatchMisconfigured_ReturnsServiceUnavailableProblemDetails()
+    {
+        var tenantId = Guid.NewGuid();
+        var outboxId = Guid.NewGuid();
+        using var mediator = new EmailDispatchMediatorStub(_ => Failure(
+            "Email dispatch RabbitMQ parking queue is not configured.",
+            EmailDispatchFailureCodes.Misconfigured));
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/replay");
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.ServiceUnavailable);
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/problem+json");
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("status").GetInt32()).IsEqualTo((int)HttpStatusCode.ServiceUnavailable);
+        await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("Email dispatch is misconfigured");
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo(EmailDispatchFailureCodes.Misconfigured);
+        await Assert.That(root.TryGetProperty("traceId", out _)).IsTrue();
+        await Assert.That(root.TryGetProperty("timestamp", out _)).IsTrue();
+    }
+
+    [Test]
     public async Task ReplayAndParkRoutes_UseStableRouteNamesAndWritePolicy()
     {
         MethodInfo park = typeof(EmailDispatchAdminController).GetMethod(nameof(EmailDispatchAdminController.ParkDispatch))!;

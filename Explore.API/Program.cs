@@ -16,6 +16,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Explore.Infrastructure.HealthChecks;
+using Explore.Infrastructure.Messaging;
 using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
@@ -31,7 +32,6 @@ using OpenFeature.Hosting.Providers.Memory;
 using Scalar.AspNetCore;
 using Serilog;
 using static Microsoft.AspNetCore.Http.StatusCodes;
-using TickerQ.DependencyInjection;
 
 // Graceful shutdown tracking for zero-downtime deployments
 // SIGTERM: 25 second grace period (health returns 503, still accepts requests)
@@ -115,6 +115,9 @@ builder.Services.Configure<CerbosPolicyBootSyncOptions>(
 var emailDispatchProcessorSettings = builder.Configuration
     .GetSection(EmailDispatchProcessorSettings.SectionName)
     .Get<EmailDispatchProcessorSettings>() ?? new EmailDispatchProcessorSettings();
+var emailDispatchRabbitMqSettings = builder.Configuration
+    .GetSection(EmailDispatchRabbitMqSettings.SectionName)
+    .Get<EmailDispatchRabbitMqSettings>() ?? new EmailDispatchRabbitMqSettings();
 var useTickerQEmailDispatch = emailDispatchProcessorSettings.Enabled
     && emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.TickerQ;
 builder.Services.AddApiTickerQScheduler(
@@ -168,6 +171,9 @@ builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options 
 {
     options.InvalidModelStateResponseFactory =
         Explore.API.ExceptionHandling.ApiValidationProblemDetailsFactory.CreateInvalidModelStateResponse;
+    options.ClientErrorMapping[StatusCodes.Status415UnsupportedMediaType].Title = "Unsupported media type";
+    options.ClientErrorMapping[StatusCodes.Status415UnsupportedMediaType].Link =
+        "https://tools.ietf.org/html/rfc9110#section-15.5.16";
 });
 
 builder.Services.AddApiExceptionHandling();
@@ -223,10 +229,24 @@ if (!isOpenApiGeneration)
 if (!isOpenApiGeneration)
 {
     builder.Services.AddHostedService<OutboxProcessor>();
+    if (!builder.Environment.IsEnvironment("Testing"))
+    {
+        builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
+    }
+
     if (emailDispatchProcessorSettings.Enabled &&
         emailDispatchProcessorSettings.Mode == EmailDispatchProcessorMode.HostedService)
     {
         builder.Services.AddHostedService<EmailDispatchProcessor>();
+    }
+
+    if (emailDispatchRabbitMqSettings.Enabled)
+    {
+        builder.Services.AddHostedService<EmailDispatchRabbitMqConsumerService>();
+        if (emailDispatchRabbitMqSettings.DeadLetterReplayEnabled)
+        {
+            builder.Services.AddHostedService<EmailDispatchRabbitMqDeadLetterReplayService>();
+        }
     }
 }
 
@@ -292,10 +312,18 @@ builder.Services.AddHealthChecks()
         "email-dispatch-rabbitmq",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "email", "dispatch", "rabbitmq", "infrastructure"])
+    .AddCheck<IdempotencyCleanupHealthCheck>(
+        "idempotency-cleanup",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "idempotency", "cleanup", "infrastructure"])
     .AddCheck<CerbosReadinessHealthCheck>(
         "cerbos",
         failureStatus: HealthStatus.Unhealthy,
-        tags: ["ready", "cerbos", "infrastructure"]);
+        tags: ["ready", "cerbos", "infrastructure"])
+    .AddCheck<AiProviderHealthCheck>(
+        "ai-provider",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "ai", "provider", "infrastructure"]);
 
 // Request timeouts: default 30s, lookups 10s, complex 60s
 builder.Services.AddApiRequestTimeouts(builder.Configuration);
@@ -515,7 +543,7 @@ if (!isOpenApiGeneration &&
     useTickerQEmailDispatch &&
     TickerQSchedulerExtensions.IsTickerQSchedulerEnabled(app.Configuration, app.Environment))
 {
-    app.UseTickerQ();
+    app.UseApiTickerQScheduler();
 }
 app.UseOutputCache();
 

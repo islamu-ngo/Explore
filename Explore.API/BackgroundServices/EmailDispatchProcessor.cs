@@ -61,6 +61,7 @@ public sealed class EmailDispatchProcessor(
     {
         await using var scope = serviceProvider.CreateAsyncScope();
         var drainService = scope.ServiceProvider.GetRequiredService<IEmailDispatchDrainService>();
+        await drainService.RecoverStaleProcessingAsync(stoppingToken);
         await drainService.ProcessBatchAsync(stoppingToken);
     }
 }

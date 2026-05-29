@@ -192,6 +192,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             EmailDispatchFailureCodes.NotFound => StatusCodes.Status404NotFound,
             EmailDispatchFailureCodes.InvalidTransition => StatusCodes.Status409Conflict,
             EmailDispatchFailureCodes.ConcurrentTransition => StatusCodes.Status409Conflict,
+            EmailDispatchFailureCodes.Misconfigured => StatusCodes.Status503ServiceUnavailable,
             _ => StatusCodes.Status400BadRequest
         };
 
@@ -206,12 +207,14 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
         {
             StatusCodes.Status404NotFound => "Email dispatch row not found",
             StatusCodes.Status409Conflict => "Email dispatch state transition conflict",
+            StatusCodes.Status503ServiceUnavailable => "Email dispatch is misconfigured",
             _ => "Email dispatch validation failed"
         };
         problemDetails.Type = statusCode switch
         {
             StatusCodes.Status404NotFound => "https://tools.ietf.org/html/rfc9110#section-15.5.5",
             StatusCodes.Status409Conflict => "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+            StatusCodes.Status503ServiceUnavailable => "https://tools.ietf.org/html/rfc9110#section-15.6.4",
             _ => "https://tools.ietf.org/html/rfc9110#section-15.5.1"
         };
         problemDetails.Detail = response.Message ?? "Email dispatch command failed.";
