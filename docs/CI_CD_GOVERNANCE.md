@@ -23,7 +23,7 @@ Recommended checks after the PR1-PR8 governance baseline stabilizes:
 
 | Check | Workflow | Job name | Branch-protection status | Notes |
 |---|---|---|---:|---|
-| Fast build/test | `Build & Test` (`.github/workflows/test.yml`) | `run-tests` / reusable `build-and-test` | Require only after path filters are removed or an always-running no-op wrapper exists | Main fast PR gate for code paths. Keep name stable unless branch protection is migrated. |
+| Fast build/test | `Build & Test` (`.github/workflows/test.yml`) | `run-tests` / reusable `build-and-test` | Ready after repository-side check-name verification | Always-present wrapper detects build/test-relevant paths and intentionally no-ops for dedicated docs/schema/ops-only changes. Keep name stable unless branch protection is migrated. |
 | OpenAPI drift | `OpenAPI Contract Guard` | `OpenAPI Contract Guard` | Required | Always-present workflow with internal no-op detection for unrelated changes. |
 | Code scanning | `CodeQL Advanced` | `Analyze (csharp)`, `Analyze (javascript-typescript)`, `Analyze (actions)` | Require only after path filters are removed or an always-running no-op wrapper exists | C# uses manual Release build. Keep schedule enabled. |
 | Dependency review | `Dependency Review` | `Dependency Review` | Yes for PRs | Reviews dependency changes; read-only token permissions. |
@@ -31,9 +31,23 @@ Recommended checks after the PR1-PR8 governance baseline stabilizes:
 | Cerbos policy | `Cerbos Policy Validation` | `Cerbos Policy Validation` | Required only for policy/authz paths initially | Also scheduled nightly; do not make globally required while path-filtered. |
 | Agent context | `agent-context` | `Validate AI-Context Contract` | Required only for agent/docs-context changes | Validates AI governance docs; do not make globally required while path-filtered. |
 
-Do **not** require workflows that are skipped by `paths` filters unless the workflow contains an always-running no-op job. GitHub can leave skipped required checks pending, which blocks merges without useful feedback.
+Do **not** require workflows that are skipped by `paths` filters unless the workflow contains an always-running no-op job. GitHub can leave skipped required checks pending, which blocks merges without useful feedback. `Build & Test` now uses workflow-internal change detection instead of trigger-level path skips, so its required check remains present while avoiding unnecessary restore/build/test work for paths owned by dedicated workflows.
 
-If merge queue is enabled, ensure required workflows that gate merges include `merge_group`. `OpenAPI Contract Guard` and `CodeQL Advanced` already do; add it to other required workflows before marking them merge-queue-required.
+If merge queue is enabled, ensure required workflows that gate merges include `merge_group`. `Build & Test`, `OpenAPI Contract Guard`, and `CodeQL Advanced` include merge-queue triggers; add the same event to any newly required workflow before marking it merge-queue-required.
+
+### Repository Settings Evidence Checklist
+
+Record evidence for these settings before treating the repository as enterprise-ready. Store screenshots, GitHub API output, or maintainer attestations with the release or security evidence package; workflow YAML alone is not sufficient.
+
+| Control | Expected setting | Evidence required | Current evidence |
+|---|---|---|---|
+| Default branch protection / ruleset | `main` requires pull requests, current required checks, linear history or reviewed merge policy, and stale review dismissal when available. | Ruleset export, branch protection API output, or maintainer screenshot. | Not yet verified. |
+| Development branch protection / ruleset | `develop` requires pull requests and current required checks before merge. | Ruleset export, branch protection API output, or maintainer screenshot. | Not yet verified. |
+| Required check names | Check names match the table above and are stable before branch protection is updated. | Branch protection required-check export. | Not yet verified. |
+| Merge queue | Enabled only after all required workflows have `merge_group` or always-present wrappers. | Ruleset export showing queue status and required checks. | Not yet verified. |
+| Environments | `staging` and `production` exist with environment-scoped secrets. Production requires reviewers and branch/tag restrictions. | Environment settings screenshot/API output with secret names redacted. | Not yet verified. |
+| Security features | Secret scanning, push protection, Dependabot security updates, dependency graph, and CodeQL alerts are enabled. | Security settings screenshot/API output. | Not yet verified. |
+| CODEOWNERS owner resolution | Every team/user referenced by `.github/CODEOWNERS` exists and has write access. | GitHub CODEOWNERS validation or maintainer confirmation. | Not yet verified. |
 
 ### Deployment Environments
 
@@ -56,11 +70,29 @@ Confirm these GitHub security features at repository or organization level:
 - Dependency graph enabled.
 - Code scanning alerts enabled for CodeQL results.
 
+### Contributor Legal Governance
+
+The repository has not yet chosen a contributor legal gate. Do not add an enforcing CLA/DCO workflow until the project owner or legal reviewer records the decision.
+
+The decision record must include:
+
+- whether the project uses CLA only, DCO only, CLA plus DCO, or inbound=outbound without a separate agreement;
+- inbound license and patent scope;
+- the approved legal document path, such as `docs/legal/CLA.md` or `docs/legal/DCO.md`;
+- signature storage location, access model, and privacy retention period;
+- bot allowlist policy;
+- token model for any automation;
+- threat model for any `pull_request_target` workflow.
+
+Until that record exists, legal checks may be planned but must not block contributors.
+
 ### GitHub Actions Supply-Chain Pins
 
 External `uses:` references in `.github/workflows/*.yml` are pinned to full-length commit SHAs with a same-line version comment, for example `owner/action@<sha> # vX.Y.Z`. This makes the executable action reference immutable while preserving human-readable upgrade intent.
 
 Local reusable workflows remain path-based (`./.github/workflows/...`) because they are controlled by this repository's review history. Dependabot's `github-actions` ecosystem in `.github/dependabot.yml` keeps external SHA pins maintainable.
+
+`Workflow Security` enforces this policy with `.github/scripts/validate-action-pins.py`. The check always reports a status, scans workflow-security inputs when `.github/workflows/**`, `.github/scripts/**`, `.github/dependabot.yml`, or this governance document changes, and intentionally no-ops for unrelated changes. Do not add external actions without a full SHA and a same-line version comment.
 
 ### NuGet Locked Restore Policy
 
@@ -69,6 +101,12 @@ GitHub Actions restore steps and deployable Docker build stages use `dotnet rest
 Package input changes must commit the matching lock-file changes in the same PR. Regenerate lock files with normal restore or `dotnet restore --force-evaluate`; never hand-edit `packages.lock.json`.
 
 Dockerfiles must copy the root restore inputs (`global.json`, `Directory.Build.props`, `Directory.Packages.props`), project files, and relevant `packages.lock.json` files before running `dotnet restore --locked-mode` inside the build stage. This preserves Docker layer caching while keeping NuGet resolution deterministic.
+
+### NuGet Vulnerability Audit Policy
+
+Fast CI runs `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` after locked restore. Any vulnerable direct or transitive package reported by NuGet fails the `Build & Test` lane; temporary advisory exceptions require an owner, date, advisory URL, affected package/version, compensating control, and removal condition recorded in this document before the workflow may be weakened.
+
+The current policy is remediation-first. `MailKit` was upgraded from `4.15.1` to `4.16.0` to clear GitHub Advisory `GHSA-9j88-vvj5-vhgr` / `CVE-2026-41319` rather than making the audit advisory.
 
 ## Required vs Advisory Gates
 

@@ -191,7 +191,7 @@ When DTO contracts change, sequence matters to avoid false compile failures.
 
 ### Why This Sequence
 
-The Blazor client auto-generates API types from `swagger.json` via NSwag. If UI code is changed before client regeneration, you get false compile failures because generated types still reflect the old API contract.
+The Blazor client auto-generates API types from `schemas/openapi.json` via NSwag. If UI code is changed before client regeneration, you get false compile failures because generated types still reflect the old API contract.
 
 ## TDD Workflow
 

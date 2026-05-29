@@ -116,3 +116,4 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [adr/ADR-005-footer-customization.md](adr/ADR-005-footer-customization.md) - tenant footer customization.
 - [adr/ADR-006-custom-properties-runtime-boundary.md](adr/ADR-006-custom-properties-runtime-boundary.md) - custom properties versus runtime schema engine boundary.
 - [adr/ADR-008-email-dispatch-state-machine.md](adr/ADR-008-email-dispatch-state-machine.md) - email dispatch state machine and optional RabbitMQ dispatch profiles.
+- [adr/ADR-009-postgresql-partitioning-deferral.md](adr/ADR-009-postgresql-partitioning-deferral.md) - PostgreSQL partitioning deferral, activation gates, and runbook requirements.

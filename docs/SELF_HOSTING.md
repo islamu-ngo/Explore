@@ -31,7 +31,7 @@ Profiles:
 
 Email dispatch modes:
 
-- **Basic Dispatch Mode is implemented and requires no extra Compose profile.** API + PostgreSQL + configured SMTP are sufficient for registration confirmation email. The API-hosted `EmailDispatchProcessor` claims `EmailDispatchOutbox` rows from PostgreSQL and sends through the SMTP abstraction.
+- **Basic Dispatch Mode is implemented and requires no extra Compose profile.** API + PostgreSQL + configured SMTP are sufficient for registration confirmation email. By default, API-hosted TickerQ schedules `email-dispatch-drain`, which claims `EmailDispatchOutbox` rows from PostgreSQL through the shared drain service and sends through the SMTP abstraction. `EmailDispatchProcessor:Mode=HostedService` is a fallback trigger, not a separate business workflow.
 - **RabbitMQ Dispatch Mode is optional transport infrastructure.** The repository now has a local Aspire RabbitMQ resource and an API-side publisher/topology/health foundation for pointer-only dispatch messages, but the production Compose stack still does not require or start RabbitMQ. Do not require RabbitMQ for self-hosting until a dedicated Compose profile, manual-ack consumer, DLQ replay/parking flow, and RabbitMQ integration tests are added. RabbitMQ shares the same PostgreSQL `EmailDispatchOutbox` state machine; it is transport only.
 
 ## Start The Stack
@@ -146,6 +146,24 @@ There are two migration paths:
 
 The production Compose file does not currently start `Event.MigrationService` as a separate container. Do not document Compose as if the migration service runs there unless the Compose file is changed with it.
 
+### Creating Initial Migrations From Scratch
+
+When bootstrapping EF Core migrations from a clean repository state, run the commands from the repository root in this order:
+
+1. Create the data-protection migration first so the dedicated key-store context keeps its own migration history and output folder:
+
+   ```bash
+   dotnet ef migrations add init --context DataProtectionKeyContext --project Explore.Persistence --startup-project Explore.API --output-dir Migrations/DataProtection
+   ```
+
+2. Create the primary application schema migration for `ExploreDbContext`:
+
+   ```bash
+   dotnet ef migrations add init --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API
+   ```
+
+Do not reverse this order when starting from scratch; both contexts are part of the supported schema bootstrap path.
+
 ## Reverse Proxy
 
 Place TLS termination in front of `islamu-event-ui` and route browser traffic to port `8080` inside the container. The Blazor BFF proxies API calls; browsers should not need direct API access.
@@ -167,9 +185,11 @@ Minimum proxy requirements:
 
 Treat `Unhealthy` as non-deployable. Treat `Degraded` as acceptable only when the response identifies an optional dependency that is intentionally disabled.
 
-Basic Email Dispatch readiness is reported by the API `email-dispatch` health check. `Degraded` means the worker is intentionally disabled. RabbitMQ is not part of Basic Dispatch Mode readiness.
+Basic Email Dispatch readiness is reported by the API `email-dispatch` health check. `Degraded` means dispatch is intentionally disabled. `Unhealthy` means the selected trigger is not usable, for example `EmailDispatchProcessor:Mode=TickerQ` while `Scheduler:TickerQ:Enabled=false`. RabbitMQ is not part of Basic Dispatch Mode readiness.
 
 Optional RabbitMQ dispatch readiness is reported separately by `email-dispatch-rabbitmq`. With `EmailDispatchRabbitMq:Enabled=false` the check is healthy without requiring a broker. If an operator explicitly enables RabbitMQ mode, broker or topology failures make readiness unhealthy because the selected transport cannot safely publish pointer events.
+
+Expired write-retry replay-cache cleanup is reported by `idempotency-cleanup`. `Healthy` means cleanup is enabled in delete or dry-run mode. `Degraded` means cleanup is intentionally disabled; expired keys remain ineligible for replay, but physical cleanup is paused.
 
 ## Backup And Upgrade
 

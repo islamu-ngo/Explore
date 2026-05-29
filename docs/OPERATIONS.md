@@ -63,6 +63,21 @@ On startup (except `Testing` environment), API performs:
 
 If migration fails, startup fails (application does not continue).
 
+Development catalog reseeding is provider-aware. Relational providers use
+set-based cleanup such as `ExecuteDeleteAsync` and bounded SQL where needed;
+non-relational test providers materialize and remove tracked rows because EF
+Core's in-memory provider cannot translate relational set-based delete
+operations. Do not copy the in-memory fallback into production cleanup jobs.
+
+When creating EF Core migrations from scratch in the repository, run the commands from the repo root in this order:
+
+```bash
+dotnet ef migrations add init --context DataProtectionKeyContext --project Explore.Persistence --startup-project Explore.API --output-dir Migrations/DataProtection
+dotnet ef migrations add init --context ExploreDbContext --project Explore.Persistence --startup-project Explore.API
+```
+
+This preserves the dedicated data-protection migration path before the primary `ExploreDbContext` bootstrap migration.
+
 ## Health and Metrics Endpoints
 
 Via `Explore.ServiceDefaults` + app-specific checks:
@@ -85,8 +100,10 @@ Readiness interpretation:
 | `distributed-cache` | API, Blazor | Effective cache round-trip works | Configured Redis fell back to in-memory cache | Effective cache round-trip failed |
 | `oidc-discovery` | API, Blazor | OIDC metadata valid, or OIDC is not configured | Not used | Configured OIDC metadata endpoint is unreachable or invalid |
 | `smtp` | API | SMTP connection/auth succeeds | SMTP is not configured | Configured SMTP is unreachable or authentication fails |
-| `email-dispatch` | API | Basic Dispatch Mode worker is enabled | Worker is intentionally disabled | Invalid worker options fail startup; RabbitMQ is not checked in Basic mode |
+| `email-dispatch` | API | Selected Basic Dispatch trigger is enabled (`TickerQ` scheduler or hosted-service fallback) | Dispatch is intentionally disabled | TickerQ mode selected while scheduler is disabled; invalid dispatch/scheduler options fail startup; RabbitMQ is not checked in Basic mode |
 | `email-dispatch-rabbitmq` | API | RabbitMQ Dispatch Mode is disabled, or enabled and topology can be declared | Not used | RabbitMQ mode is enabled but the broker/topology is unreachable or invalid |
+| `idempotency-cleanup` | API | Expired idempotency cleanup is enabled in delete or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
+| `ai-provider` | API | AI provider integration is disabled, deterministic fake provider is enabled, or OpenAI-compatible settings are valid | Not used | AI provider is enabled but no runnable provider is configured, or provider endpoint/settings fail egress validation |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
 | `islamu-event-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
 | `secret_provider` | API, Blazor | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
@@ -98,8 +115,10 @@ Operational rules:
 - Treat `Unhealthy` as non-deployable for rolling updates; fix the dependency or intentionally switch the related feature/provider off.
 - Instance Cerbos readiness follows authorization fail-closed semantics: if the operator selected `authorization.provider=cerbos`, an unreachable PDP makes `/health` unhealthy rather than silently falling back to local RBAC.
 - Local authorization mode skips Cerbos readiness, so self-hosted/local deployments do not need a Cerbos PDP unless explicitly selected.
-- Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only.
+- Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only. The default trigger is TickerQ `email-dispatch-drain`; the hosted service mode is a fallback over the same drain service.
 - RabbitMQ Dispatch Mode is optional transport infrastructure. When `EmailDispatchRabbitMq:Enabled=false`, the `email-dispatch-rabbitmq` check is healthy without opening a broker connection. When enabled, missing broker connectivity or failed topology declaration is unhealthy because the operator explicitly selected RabbitMQ transport.
+- Idempotency cleanup is an optional operational worker over the PostgreSQL replay cache. `Degraded` means cleanup is intentionally disabled; stale rows remain ignored for replay but are not physically deleted until cleanup is re-enabled.
+- AI provider readiness is intentionally configuration-first. `AiProvider:Enabled=false` is healthy-disabled. If enabled, unsupported providers, missing required OpenAI-compatible endpoint/key/model values, local/private endpoints without explicit opt-in, embedded endpoint credentials, query strings, or fragments make readiness unhealthy before chat/send is broadly enabled. The readiness payload exposes only bounded booleans and provider/status labels, not endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, or raw provider errors.
 
 ## Deployment Protection and Evidence
 
@@ -215,29 +234,53 @@ Current counters include:
 - `event_role_assignment.changed` (`operation`, `outcome`, `role`)
 - `explore.email_dispatch.attempts` (`tenant_id`, `outcome`, `failure_category`) — Basic Dispatch Mode email outcomes; labels intentionally exclude recipient, subject, body, provider message ID, and raw error text.
 - `explore.email_dispatch.rabbitmq.publishes` (`tenant_id`, `outcome`, `failure_category`) — optional RabbitMQ pointer-publish outcomes; labels intentionally exclude recipient, subject, body, provider message ID, raw broker error text, and connection strings.
+- `explore.email_dispatch.rabbitmq.consumes` (`tenant_id`, `outcome`, `failure_category`) — future manual-ack RabbitMQ delivery outcomes; labels intentionally exclude recipient, subject, body, provider message ID, publish event ID, delivery tag, raw broker error text, and connection strings.
+- `explore.ai.provider.health_checks` (`provider`, `status`, `reason`) — AI provider readiness outcomes; labels intentionally exclude endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, and raw errors.
+- `explore.ai.provider.requests` (`provider`, `outcome`, `failure_category`) — future AI provider call outcomes; labels intentionally exclude tenant/user prompt content, selected reference content, model IDs, endpoint URLs, provider request IDs, and raw provider errors.
 
 ### Basic Email Dispatch Operations
 
 Registration confirmation email is handled as a durable side effect:
 
 1. The registration command creates an `EmailDispatchOutbox` row in the same PostgreSQL transaction as the registration state.
-2. `EmailDispatchProcessor` polls due rows, checks tenant pause state, atomically claims one row, and sets tenant context before resolving SMTP settings.
-3. SMTP is called through `IEmailService`; handlers and controllers do not send SMTP or publish RabbitMQ directly.
-4. The worker records `EmailDispatchAttempt` and `EmailDispatchReceipt` state, then marks the outbox row `Sent`, `RetryScheduled`, `DeadLettered`, or `Unknown`.
+2. TickerQ `email-dispatch-drain` triggers the shared drain service. In fallback mode, `EmailDispatchProcessor` triggers the same service with a hosted timer.
+3. The drain service checks tenant pause state, atomically claims one row, and sets tenant context before resolving SMTP settings.
+4. SMTP is called through `IEmailService`; handlers and controllers do not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly.
+5. The drain records `EmailDispatchAttempt` and `EmailDispatchReceipt` state, then marks the outbox row `Sent`, `RetryScheduled`, `DeadLettered`, or `Unknown`.
+6. TickerQ `email-dispatch-recovery-scan` marks stale `Processing` rows as `Unknown` after `EmailDispatchProcessor:ProcessingLeaseTimeoutSeconds`; the hosted-service fallback runs the same recovery scan before each drain loop.
 
 Operator signals:
 
 | Signal | Meaning |
 |---|---|
-| `email-dispatch` health check | Worker enabled/disabled state and safe worker settings. |
+| `email-dispatch` health check | Selected dispatch mode, TickerQ enabled state, dashboard enabled state, and safe dispatch settings. |
 | `explore.email_dispatch.attempts` | Outcome counter for sent, tenant paused, unknown, retry-scheduled, and dead-lettered attempts. |
-| Structured worker logs | Include dispatch/outbox IDs, tenant IDs, outcomes, retry delay, and normalized failure category; do not include bodies, recipients, subjects, secrets, provider message IDs, or raw SMTP error text. |
+| TickerQ dashboard | Optional instance-admin-only scheduler internals. It is disabled by default and is not the product/operator source of truth for email delivery state. |
+| Structured drain logs | Include dispatch/outbox IDs, tenant IDs, outcomes, retry delay, and normalized failure category; do not include bodies, recipients, subjects, secrets, provider message IDs, or raw SMTP error text. |
 
 Timeout-like SMTP outcomes are recorded as `Unknown` instead of blind retry. Dead-lettered rows remain in PostgreSQL for operator inspection and later replay tooling.
 
+Crash-window recovery is intentionally conservative. If a node dies after claiming a row but before persisting a final delivery state, the stale-processing recovery scan clears the processing lease, marks the outbox row `Unknown` with failure category `processing_lease_expired`, and marks any processing receipt `Unknown`. Operators should inspect the HAL-gated EmailDispatch admin status and replay only when the business context makes another send safe. The recovery path does not infer SMTP success from TickerQ job state.
+
+TickerQ retries are infrastructure retries. Expected SMTP/provider outcomes should be caught by the drain service and persisted in `EmailDispatchOutbox`; only unexpected infrastructure failures should bubble to TickerQ as failed job executions.
+
+TickerQ operational state is stored by the API-owned `ApiTickerQDbContext` in the PostgreSQL `ticker` schema. The schema is fixed to `ticker` by startup validation because the scheduler migration owns concrete table placement; do not change `Scheduler:TickerQ:Schema` without adding a matching migration path.
+
+Dashboard protection is enforced twice: TickerQ is configured with host authentication, and the API wraps `UseTickerQ()` with an instance-admin authorization guard for the configured dashboard path. If `Scheduler:TickerQ:DashboardEnabled=false`, the dashboard route is not exposed.
+
+The scheduler job catalog is Application-owned through `IScheduledJobRegistry`. Current implemented jobs are:
+
+| Job | Schedule type | Payload | Source of truth |
+|---|---|---|---|
+| `email-dispatch-drain` | Cron, every 10 seconds | None | `EmailDispatchOutbox` pending/retry state |
+| `email-dispatch-recovery-scan` | Cron, every minute | None | Stale `EmailDispatchOutbox` processing leases |
+| `event-reminder-dispatch` | One-off time trigger | Pointer-only IDs | Pre-persisted `EmailDispatchOutbox` row |
+
+Planned-only jobs are `general-outbox-drain`, `pds-sync-drain`, `dead-letter-summary`, `waitlist-promotion-scan`, and `tenant-maintenance-scan`. Do not migrate general outbox or PDS workers to TickerQ until EmailDispatch has green multi-node duplicate execution and crash-window recovery proof.
+
 ### Optional RabbitMQ Dispatch Operations
 
-RabbitMQ Dispatch Mode is an optional transport foundation over the same PostgreSQL-owned `EmailDispatchOutbox` state machine. The current implemented slice declares RabbitMQ topology, publishes pointer-only `EmailDispatchPointer` messages with mandatory routing and publisher confirmations, exposes `email-dispatch-rabbitmq` readiness, and wires the local Aspire `messaging` resource. It does **not** replace the Basic SMTP worker and does not yet include the manual-ack consumer or DLQ replay/parking operator flow.
+RabbitMQ Dispatch Mode is optional transport infrastructure over the same PostgreSQL-owned `EmailDispatchOutbox` state machine. It declares RabbitMQ topology, publishes pointer-only `EmailDispatchPointer` messages with mandatory routing and publisher confirmations, exposes `email-dispatch-rabbitmq` readiness, wires the local Aspire `messaging` resource, and can run manual-ack dispatch and DLQ replay workers when explicitly enabled. It does **not** replace Basic Dispatch Mode; API + PostgreSQL + SMTP remains sufficient when RabbitMQ is disabled.
 
 Operator signals:
 
@@ -245,9 +288,14 @@ Operator signals:
 |---|---|
 | `email-dispatch-rabbitmq` health check | Disabled mode is healthy and independent; enabled mode proves broker connectivity and topology declaration. |
 | `explore.email_dispatch.rabbitmq.publishes` | Outcome counter for disabled, confirmed, returned, nacked, failed, and timeout publish attempts. |
+| `explore.email_dispatch.rabbitmq.consumes` | Manual-ack dispatch and DLQ replay delivery counter with low-cardinality `tenant_id`, `outcome`, and `failure_category` tags only. |
 | Structured RabbitMQ transport logs | Include dispatch IDs, tenant IDs, topology names, outcomes, and normalized failure categories; do not include recipient addresses, subjects, bodies, provider message IDs, raw broker errors, or AMQP connection strings. |
 
 The RabbitMQ payload is a pointer contract only: tenant ID, stable `PublishEventId`, dispatch kind, source IDs, and optional event/registration/user IDs. Email body, subject, recipient, reply-to, SMTP settings, provider message IDs, and raw provider errors remain out of broker payloads and logs.
+
+Manual-ack dispatch consumption is bounded by `EmailDispatchRabbitMq:PrefetchCount`; ACKs are sent only after `IEmailDispatchDrainService.ProcessSingleAsync(...)` returns a durable PostgreSQL-backed outcome. Malformed or missing pointers are rejected to the queue's DLX/DLQ path, while unexpected transient failures are NACKed with requeue.
+
+DLQ replay is opt-in with `EmailDispatchRabbitMq:DeadLetterReplayEnabled=true`. The replay worker consumes the DLQ with bounded `DeadLetterReplayPrefetchCount`, validates tenant/publish-event/event metadata against the database row, resets replayable durable rows before republishing, parks unsafe messages to the parking queue, and ACKs the original DLQ delivery only after replay or parking publish succeeds. Missing parking topology makes `email-dispatch-rabbitmq` unhealthy because topology declaration is part of the enabled RabbitMQ readiness check.
 
 ## Cerbos PDP Operations
 
@@ -562,7 +610,113 @@ AI-agent workflow rules are not runtime operations. Keep them in [../AGENTS.md](
 
 ## Planned Capacity Work
 
-Partitioning is not implemented. Treat partitioning notes as future capacity planning only; do not document partitioned-table behavior as a current operator contract. Revisit this when tenant-scoped or append-only tables approach sizes where normal indexing and query-filter pruning no longer meet SLOs.
+Partitioning is not implemented. Treat partitioning notes as future capacity planning only; do not document partitioned-table behavior as a current operator contract. Revisit this when tenant-scoped or append-only tables approach sizes where normal indexing and query-filter pruning no longer meet SLOs. This is an intentional architecture decision recorded in [ADR-009](adr/ADR-009-postgresql-partitioning-deferral.md): the product stays simple for Tier 1/Tier 2 self-hosters, while Tier 3 operators get clear activation thresholds and a runbook path before PostgreSQL partitioning becomes production behavior.
+
+## Data Lifecycle And Retention Matrix
+
+This matrix is the Phase 6 source of truth for high-growth operational data. It records current behavior and target policy. Unless a row explicitly says cleanup is implemented, no automated retention job currently exists.
+
+Context7 research notes:
+
+- PostgreSQL declarative range partitioning works best when the partition key appears in query and retention predicates. Partition pruning is driven by partition-key constraints, and old data can be removed operationally by detaching or dropping old partitions.
+- EF Core migrations can use `migrationBuilder.Sql(...)` for provider-specific database features that EF does not model directly. PostgreSQL partitioning, partition attachment, and concurrent partition maintenance should therefore be introduced through explicit migration SQL/runbooks, not hidden inside normal entity configuration.
+
+Lifecycle classes:
+
+| Class | Meaning | Cleanup posture |
+|---|---|---|
+| Compliance evidence | Security, admin, audit, or consent evidence | Retain by default; purge only through documented operator retention policy and legal-hold checks. |
+| Durable side-effect ledger | Outbox intent, attempts, receipts, and delivery evidence | Completed rows may age out after operator-safe windows; unresolved rows stay until parked/replayed/resolved. |
+| User-facing operational state | User inbox or active workflow state | Keep active rows; archive/delete only after user/admin lifecycle rules are explicit. |
+| Rebuildable projection/cache | Derived from canonical tables | Safe to rebuild; cleanup should be tied to source deletion or projection rebuild/drain semantics. |
+| Ephemeral safety cache | Short-lived duplicate/retry protection | Delete after expiry plus a small clock-skew buffer. |
+| External mirror/index | Copy of another system or object-store metadata | Retention follows source/integration policy; never assume local rows can be dropped without reconciliation. |
+
+| Table family | Lifecycle class | Source of truth / owner | Current cleanup | Target default retention | Partitioning trigger and shape | Phase 6 follow-up |
+|---|---|---|---|---|---|---|
+| `audit_logs` | Compliance evidence | EF audit writes in `ExploreDbContext` | No automated cleanup | 7 years by default for production/self-hosted compliance, configurable only with legal-hold support | Consider monthly `Timestamp` range partitions when table exceeds 100M rows total, 10M rows per tenant, or time-range audit queries miss SLOs | Add retention settings, export-before-purge runbook, and legal-hold guard before any delete job |
+| `configuration_change_logs`, `tenant_lifecycle_logs` | Compliance evidence | Admin/governance and tenant lifecycle workflows | No automated cleanup | 7 years by default; tenant lifecycle logs retained for tenant lifetime plus retention window | Consider yearly or monthly `Timestamp`/`TransitionedAt` range partitions only after audit-log partitioning patterns are proven | Keep append-only; add operator export and retention policy before cleanup |
+| `event_contact_share_exports`, `event_contact_share_export_items` | Compliance evidence with PII snapshots | Contact-share export workflow | No automated cleanup | 3 years by default, or longer where operator policy requires consent/export evidence | Consider monthly `CreatedAt` range partitions if export volume becomes large; item rows must stay co-located by export lifecycle | Add policy-controlled purge that preserves aggregate counts/audit evidence while deleting email snapshots when retention expires |
+| `notifications` | User-facing operational state | Notification handlers/repository | Soft delete/archive only through user workflows; no age cleanup | Keep unread/unsnoozed rows; retain read or archived rows for 365 days by default after last update | Consider monthly `CreatedAt` range partitions when inbox queries exceed index-only performance or table exceeds 50M rows | Add tenant/user-scoped notification retention job with opt-out for compliance notification types |
+| `outbox_messages`, `pds_sync_outbox`, `policy_change_outbox` | Durable side-effect ledger | Transactional outbox processors | Processors update status; no completed-row cleanup | Completed rows: 30 days. Failed/dead-lettered rows: retain until operator resolution, then 90 days | Consider monthly `CreatedAt` range partitions when completed rows dominate scans; worker indexes must keep pending/retry rows hot | Add cleanup that deletes only completed/resolved rows and never deletes pending, processing, retry, failed, or dead-letter rows |
+| `email_dispatch_outbox` | Durable side-effect ledger with email PII snapshots | Registration/email dispatch state machine | Delivery state changes, soft delete fields, parking/replay; no age cleanup | Sent rows: 180 days. Dead-lettered/unknown/parked rows: retain until operator resolution, then 180 days | Consider monthly `CreatedAt` range partitions when dispatch history exceeds 25M rows or status polling slows | Add PII-aware retention that redacts body/recipient snapshots before or instead of deleting unresolved evidence |
+| `email_dispatch_attempts`, `email_dispatch_receipts` | Durable side-effect ledger | Email dispatch drain/consumer idempotency | No automated cleanup; child rows cascade only if parent is physically deleted | Attempts/receipts follow parent retention; failed/unknown evidence stays while parent is unresolved | Partition only with parent strategy; independent partitioning risks expensive parent/child maintenance | Add parent-aware cleanup/redaction tests so child evidence cannot outlive or disappear before parent policy |
+| `idempotency_records` | Ephemeral safety cache | `IdempotencyMiddleware` / `IIdempotencyRepository` | Implemented: reads ignore expired rows, and `IdempotencyCleanupProcessor` deletes rows older than `ExpiresAt + IdempotencyCleanup:ExpirationGraceHours` in bounded batches; dry-run is available | Delete after `ExpiresAt + 24h` safety buffer by default | Do not partition initially; TTL delete by `ExpiresAt` should be enough unless write volume is extreme | Monitor `idempotency-cleanup` readiness and cleanup metrics; revisit only if delete volume or index bloat threatens SLOs |
+| `custom_property_projection_dirty_scope` | Rebuildable projection/cache backlog | Projection rebuild/drain coordination | Drained rows remain; pending rows are quota-bounded | Pending rows stay until drained; drained rows retained 7 days for diagnostics | No partitioning initially; the table is quota-bounded per tenant | Add drained-row cleanup and metrics for deleted/drained/pending counts |
+| `event_custom_property_projections`, `event_session_custom_property_projections` | Rebuildable projection/cache | Projection updaters from Layer 3 values | Rebuild and source deletes replace/remove rows; no age cleanup | No independent age retention; rows live while source values and exposure rules require them | Consider tenant/hash or event-date-adjacent strategy only after projection query SLOs require it; range partitioning by `UpdatedAt` is not useful for most lookup predicates | Keep rebuild-first recovery; add periodic consistency checks before partitioning |
+| `external_api_key_quotas` | Operational accounting ledger | External API key quota service | Cascade delete when key is physically deleted; no age cleanup | 24 monthly periods by default for usage reporting | Do not partition initially; one row per key per period should stay small | Add retention by `PeriodEnd` with tenant/admin reporting guardrails |
+| `atproto_records`, `indexed_dids`, `sync_states` | External mirror/index | Federation indexer/PDS sync | No automated cleanup | Retain while the indexed actor/record is active or until federation reconciliation marks it stale | Consider partitioning only if indexer query patterns become time-based; current keys are DID/collection/record oriented | Define federation stale-record reconciliation before cleanup |
+| `storage_objects` | External mirror/index with blob lifecycle risk | Storage metadata plus external object store | No automated cleanup | Retain metadata while owning domain reference exists; orphan candidates require quarantine before object deletion | Do not partition initially; metadata cleanup depends on object ownership graph, not time alone | Add orphan detector, quarantine window, and blob-delete idempotency before any purge |
+
+Retention implementation rules:
+
+1. Cleanup jobs must be tenant-aware unless they are explicitly instance/system scoped.
+2. Cleanup jobs must be dry-run capable before destructive mode is enabled.
+3. Metrics must use bounded dimensions only: table family, lifecycle class, outcome, tenant ID when tenant-scoped, and failure category. Do not tag raw entity IDs, emails, setting keys, custom-property keys, subjects, provider message IDs, or exception text.
+4. Hard deletion of compliance evidence requires an operator-visible retention policy, legal-hold check, and audit summary.
+5. Partitioning work must include migration/runbook rollback behavior. Detaching a partition for archival is preferred over immediate destructive dropping when evidence value is uncertain.
+
+### Partitioning Decision And Activation Runbook
+
+Current decision: PostgreSQL partitioning is deferred. [ADR-009](adr/ADR-009-postgresql-partitioning-deferral.md) is the durable source of truth. Do not add partitioned tables, partition-maintenance workers, or generated partition migrations until an operator need or load-test result crosses the activation gates below.
+
+Decision rationale:
+
+- Tier 1 self-hosters should not inherit high-scale database maintenance before they need it.
+- Existing Phase 6 work now has lifecycle classification and one low-risk cleanup implementation for ephemeral idempotency rows.
+- PostgreSQL partitioning changes insert routing, migration operations, backup/restore expectations, and retention procedures.
+- EF Core does not model PostgreSQL partition lifecycle directly; partition DDL belongs in explicit SQL migrations and runbooks.
+
+Activation gates:
+
+| Gate | Default trigger | Evidence required |
+|---|---:|---|
+| Total table size | Candidate table exceeds the matrix threshold, for example `audit_logs` over 100M rows or email dispatch history over 25M rows | Database statistics, index bloat report, and table growth trend |
+| Tenant concentration | One tenant exceeds the per-tenant threshold for a candidate table, for example `audit_logs` over 10M rows | Tenant-scoped count query and operator impact assessment |
+| Query SLO pressure | Normal indexes and query-filter pruning miss production SLOs for time-range or worker scans | Query plans with timing before/after index tuning |
+| Retention pressure | Deleting or archiving old rows creates unacceptable locks, vacuum debt, or maintenance windows | Retention dry-run timings and maintenance logs |
+| Backup/restore pressure | Backup, restore, or export windows exceed operator objectives because of one append-heavy table family | Backup/restore timing evidence and recovery objective |
+
+Candidate order:
+
+1. `audit_logs`: first candidate only after legal-hold/export posture exists. Use monthly `Timestamp` range partitions because the table is append-only and naturally queried by time.
+2. Completed outbox ledgers: consider only after completed/resolved cleanup exists. Keep pending, processing, retry, failed, and dead-letter rows in hot indexes and never partition them in a way that hides unresolved work from operators.
+3. `event_contact_share_exports`: consider after PII-aware purge/export policy exists. Partition export items only with the parent export lifecycle.
+4. `notifications`: consider only after read/archive retention rules are implemented and compliance notification categories are protected.
+5. `email_dispatch_outbox` plus attempts/receipts: defer until parent-aware redaction/retention exists. Independent child partitioning is not allowed because attempts and receipts must follow parent evidence semantics.
+
+Required implementation package before partitioning becomes current behavior:
+
+1. A decision record naming the table family, partition key, partition interval, retention policy, and rollback plan.
+2. An explicit PostgreSQL migration using `migrationBuilder.Sql(...)` or an approved migration extension. Do not hide partition DDL in entity configuration.
+3. A preflight script that checks existing data fits the proposed partition bounds and reports rows that would fail routing.
+4. A partition creation/attachment runbook. New partitions must be created before writes reach their date range.
+5. A detach/archive/drop runbook. Detach before destructive drop when evidence value is uncertain.
+6. Integration tests proving insert routing, partition-bound rejection, expected query predicates, and rollback/finalize behavior where feasible.
+7. Backup/restore documentation covering parent and child partition tables.
+
+Rollback posture:
+
+- Prefer `DETACH PARTITION` over immediate drop for evidence-bearing tables.
+- Do not implement destructive `Down()` behavior that silently loses retained evidence.
+- If partitioning is disabled or rolled back, operators must have a tested path to keep accepting new writes without data loss.
+- Retention cleanup and legal-hold checks must continue to operate by lifecycle class, not by partition name alone.
+
+### Idempotency Cleanup Operations
+
+The `idempotency-cleanup` readiness check reports the current cleanup posture:
+
+- `Healthy` when cleanup is enabled in delete mode or dry-run mode.
+- `Degraded` when cleanup is intentionally disabled.
+
+The worker is explicitly instance/system-scoped because `idempotency_records` are an ephemeral replay cache. It does not delete protected audit, dead-letter, email-dispatch, notification, export, or source-of-truth rows. Use `IdempotencyCleanup:DryRun=true` before first enabling destructive cleanup in an environment, then watch logs and `Explore.Business` metrics:
+
+| Metric | Bounded tags | Meaning |
+|---|---|---|
+| `explore.idempotency.cleanup_runs` | `mode`, `outcome` | One cleanup attempt in `dry_run` or `delete` mode, with `succeeded` or `failed` outcome. |
+| `explore.idempotency.cleanup_rows` | `mode`, `outcome` | Eligible row count in dry-run mode or deleted row count in delete mode. |
+
+Metric tags and logs intentionally exclude raw idempotency keys, request paths, response bodies, tenant IDs, and exception text.
 
 ---
 

@@ -107,12 +107,12 @@ The system uses a transactional outbox for reliable asynchronous event delivery:
 5. After `MaxRetryCount` exhausted, messages are dead-lettered and remain in the database for manual inspection.
 6. Optimistic concurrency via `TryMarkAsProcessing` prevents duplicate processing across workers.
 
-Handlers, controllers, automation executors, and sequence processors create durable intent only. They must not send SMTP or publish RabbitMQ directly. Side effects are owned by approved background workers or Infrastructure dispatch components.
+Handlers, controllers, automation executors, and sequence processors create durable intent only. They must not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly. Side effects are owned by approved background workers, scheduler functions, or Infrastructure dispatch components.
 
 Specialized outbox variants exist for specific subsystems:
 - `PdsSyncOutbox` — AT Protocol federation sync (DID, Collection, RecordKey, PdsHost).
 - `PolicyChangeOutbox` — authorization policy change propagation (SettingScope).
-- `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. PostgreSQL owns delivery state; SMTP/RabbitMQ are transports only.
+- `EmailDispatchOutbox` — Basic Dispatch Mode email delivery state for registration confirmation and future lifecycle email workflows. PostgreSQL owns delivery state; TickerQ schedules drain execution; SMTP/RabbitMQ are transports only.
 
 See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration, and monitoring details.
 
@@ -122,9 +122,10 @@ See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration,
 |---|---|---|
 | `OutboxProcessor` | General outbox message dispatch with retry/dead-letter | Configurable (default 5s) |
 | `PdsSyncWorker` | AT Protocol PDS synchronization from `PdsSyncOutbox` | Configurable with exponential backoff |
-| `EmailDispatchProcessor` | Basic Dispatch Mode SMTP dispatch from `EmailDispatchOutbox` with attempts, receipts, retry, dead-letter, unknown state, tenant pause, and metrics | Configurable (default 5s) |
+| TickerQ `email-dispatch-drain` | Default Basic Dispatch Mode trigger for draining `EmailDispatchOutbox` through the shared drain service | Cron, default every 10s |
+| `EmailDispatchProcessor` | Hosted-service fallback trigger over the same EmailDispatch drain service | Configurable fallback |
 
-Both services use optimistic locking for multi-worker safety and are availability-gated (skip processing when dependent services are unavailable).
+These background services and scheduler triggers use optimistic locking or durable claim semantics for multi-worker safety and are availability-gated where dependent services are required.
 
 ## Local Runtime Endpoints
 - API dev: `https://localhost:7039`

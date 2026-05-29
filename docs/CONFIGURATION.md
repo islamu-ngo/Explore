@@ -63,6 +63,8 @@ Commonly consumed sections in code:
 - `SecretRefresh:*`
 - `EmailDispatchProcessor:*` (Basic Dispatch Mode background worker)
 - `EmailDispatchRabbitMq:*` (optional RabbitMQ Dispatch Mode transport foundation)
+- `IdempotencyCleanup:*` (expired write-retry replay-cache cleanup)
+- `AiProvider:*` (AI provider readiness/egress validation foundation)
 - `Persistence:*` (database runtime options)
 
 ### Persistence Configuration
@@ -70,6 +72,27 @@ Commonly consumed sections in code:
 | Key | Default | Description |
 |---|---:|---|
 | `Persistence:EnableRlsTenantSession` | `false` | Registers the PostgreSQL tenant-session interceptor that sets `app.current_tenant_id` when EF Core opens a connection. This does not enable RLS policies by itself; keep disabled outside prototype environments until runtime app-role, migration-role, admin/system-path, and table-policy rollout work is complete. |
+
+### AI Provider Static Configuration
+
+`AiProvider:*` is the deployment/admin-controlled readiness and egress-validation surface for Infrastructure AI adapters. The governance keys below remain the tenant/runtime source for assistant availability; this static section lets operators validate provider wiring without putting endpoint URLs or credentials in browser-controlled request data.
+
+| Key | Default | Description |
+|---|---:|---|
+| `AiProvider:Enabled` | `false` | Enables provider readiness evaluation. Disabled reports healthy-disabled and performs no provider network call. |
+| `AiProvider:Provider` | `none` | Supported values: `none`, `fake`, `openai-compatible`. |
+| `AiProvider:EndpointUrl` | unset | Admin/deployment-controlled provider base URL. Must be absolute HTTP/HTTPS, with no embedded credentials, query string, or fragment. Local/private endpoints require explicit opt-in. |
+| `AiProvider:ApiKey` | unset | Sensitive provider credential. Never expose in browser payloads, health data, logs, metrics, traces, screenshots, or issue templates. |
+| `AiProvider:ModelId` | unset | Default model identifier for the concrete adapter. Health/metrics use only boolean presence flags, not the raw model ID. |
+| `AiProvider:AllowLocalProviderEndpoints` | `false` | Allows loopback/link-local/private provider URLs for deliberate self-hosted/local-model deployments. Keep `false` for public SaaS/provider endpoints. |
+| `AiProvider:MaxInputTokens` | `8000` | Provider request input budget seed. Handlers must still enforce prompt/reference bounds. |
+| `AiProvider:MaxOutputTokens` | `1024` | Provider response budget seed. |
+| `AiProvider:Temperature` | `0.2` | Provider sampling temperature. Must be between 0 and 2. |
+| `AiProvider:TimeoutSeconds` | `30` | Provider call timeout budget. Must be between 1 and 300. |
+| `AiProvider:RetentionDays` | `30` | Retention seed; enforcement is separate from provider health. |
+| `AiProvider:DailyMessageLimit` | `50` | Abuse/cost-control seed; enforcement is separate from provider health. |
+
+The `ai-provider` readiness check reports safe booleans such as `endpointConfigured`, `apiKeyConfigured`, and `modelConfigured`; it never reports raw endpoint URLs, API keys, prompts, responses, model IDs, provider request IDs, or provider exception bodies.
 
 ### Cerbos Authorization Configuration
 
@@ -87,24 +110,41 @@ Endpoint and secret safety rules:
 - A tenant with `cerbos.mode=custom_endpoint` and a blank PDP endpoint remains in BYO mode. Runtime authorization applies the tenant `failure_mode` instead of falling back to the instance PDP, while any explicit BYO Admin API configuration is still preserved for package operations.
 - `failure_mode=closed` activates provider-instance safe mode for local fallback decisions; `failure_mode=open` uses standard local RBAC fallback only for that tenant BYO failure path.
 
-### Email Dispatch Processor Configuration
+### Email Dispatch Scheduler Configuration
 
-Basic Dispatch Mode uses PostgreSQL as the durable source of truth and the existing SMTP abstraction as the transport. It does **not** require RabbitMQ. Registration confirmation currently creates an `EmailDispatchOutbox` row in the registration transaction; `EmailDispatchProcessor` later claims due rows, rebinds tenant context, calls `IEmailService`, records attempts/receipts, and advances final delivery state.
+Basic Dispatch Mode uses PostgreSQL as the durable source of truth and the existing SMTP abstraction as the transport. It does **not** require RabbitMQ. Registration confirmation currently creates an `EmailDispatchOutbox` row in the registration transaction; the default TickerQ `email-dispatch-drain` cron job triggers the drain service, which claims due rows, rebinds tenant context, calls `IEmailService`, records attempts/receipts, and advances final delivery state.
 
-Static worker settings bind from `EmailDispatchProcessor` and are validated at startup with `ValidateOnStart`:
+Static dispatch settings bind from `EmailDispatchProcessor` and are validated at startup with `ValidateOnStart`:
 
 | Key | Default | Description |
 |---|---:|---|
-| `Enabled` | `true` | Enables the Basic Dispatch Mode worker. When disabled, the `email-dispatch` readiness check reports `Degraded` intentionally. |
+| `Enabled` | `true` | Enables Basic Dispatch Mode. When disabled, the `email-dispatch` readiness check reports `Degraded` intentionally. |
+| `Mode` | `TickerQ` | Selects the trigger mechanism: `TickerQ`, `HostedService`, or `Disabled`. `TickerQ` is the default scheduler; `HostedService` is a fallback timer wrapper over the same drain service. |
 | `PollingIntervalSeconds` | `5` | Delay between polling loops. Must be greater than zero. |
 | `BatchSize` | `50` | Maximum due outbox rows loaded per loop. Must be greater than zero. |
 | `MaxAttemptCount` | `5` | Worker-level cap used with per-row `MaxAttempts` before dead-lettering. Must be greater than zero. |
 | `InitialRetryDelaySeconds` | `5` | Base retry delay for failed SMTP dispatch. Must be greater than zero. |
 | `MaxRetryDelaySeconds` | `3600` | Maximum retry delay cap. Must be greater than or equal to `InitialRetryDelaySeconds`. |
-| `ConsumerId` | machine name | Worker identity recorded in receipts and logs. Must not be blank. |
-| `VerboseLogging` | `false` | Enables additional worker logs when troubleshooting. Logs must remain free of bodies, recipients, and secrets. |
+| `ProcessingLeaseTimeoutSeconds` | `900` | Maximum age for a `Processing` row before the recovery scan marks it `Unknown` for operator review. Must be greater than zero. |
+| `ConsumerId` | machine name | Drain identity recorded in receipts and logs. Must not be blank. |
+| `VerboseLogging` | `false` | Enables additional drain logs when troubleshooting. Logs must remain free of bodies, recipients, and secrets. |
 
 SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. RabbitMQ Dispatch Mode is not part of Basic mode.
+
+TickerQ host settings bind from `Scheduler:TickerQ`:
+
+| Key | Default | Description |
+|---|---:|---|
+| `Enabled` | `true` | Enables the TickerQ scheduler host when `EmailDispatchProcessor:Mode=TickerQ`. If this is `false` while EmailDispatch is in `TickerQ` mode, `email-dispatch` readiness is unhealthy. |
+| `Schema` | `ticker` | PostgreSQL schema for TickerQ operational tables. This is migration-backed and currently must remain `ticker`; changing it requires a matching scheduler migration strategy. |
+| `MaxConcurrency` | processor count | Maximum TickerQ scheduler concurrency. Must be greater than zero. |
+| `NodeIdentifier` | machine name | Scheduler node identity for multi-node diagnostics. Must not be blank. |
+| `DashboardEnabled` | `false` | Enables the TickerQ dashboard. Keep disabled unless instance operators explicitly need scheduler internals. |
+| `DashboardPath` | `/admin/scheduler` | Absolute non-root dashboard path when enabled. |
+| `DashboardAuthorizationPolicy` | `tickerq_instance_admin` | Host authorization policy for the dashboard. Must not be blank or anonymous when dashboard is enabled. The API enforces this policy on the dashboard path before TickerQ serves dashboard content. |
+| `DashboardSessionTimeoutMinutes` | `30` | Dashboard session timeout. Must be greater than zero when dashboard is enabled. |
+
+TickerQ is scheduler state only. It must not contain email bodies, recipients, subjects, SMTP credentials, provider message IDs, raw exceptions, tenant secrets, or access tokens. The product/operator source of truth remains `EmailDispatchOutbox` and the HAL-gated EmailDispatch admin API, not the TickerQ dashboard.
 
 ### Email Dispatch RabbitMQ Configuration
 
@@ -126,9 +166,31 @@ Static RabbitMQ transport settings bind from `EmailDispatchRabbitMq` and are val
 | `ParkingQueueName` | `explore.email-dispatch.parking` | Durable parking queue for future operator replay/parking tooling. |
 | `ParkingRoutingKey` | `email-dispatch.parking` | Parking queue routing key. |
 | `ClientProvidedName` | `explore-email-dispatch` | RabbitMQ client identity for broker/operator diagnostics. |
+| `ConsumerId` | `explore-email-dispatch-rabbitmq-consumer` | Stable consumer identity that future manual-ack RabbitMQ deliveries record in `EmailDispatchReceipt`. Must not be blank. |
+| `PrefetchCount` | `10` | Bounded unacknowledged delivery window for the future manual-ack consumer. Must be greater than zero; `0` is not allowed because RabbitMQ treats it as unbounded. |
+| `DeadLetterReplayEnabled` | `false` | Enables the optional DLQ replay worker. Keep disabled until operators intentionally want RabbitMQ DLQ redrive/parking. |
+| `DeadLetterReplayConsumerId` | `explore-email-dispatch-dlq-replay` | Stable consumer tag for the DLQ replay worker. Must not be blank. |
+| `DeadLetterReplayPrefetchCount` | `5` | Bounded unacknowledged delivery window for DLQ replay. Must be greater than zero. |
 | `PublishTimeoutSeconds` | `15` | Timeout around topology/publish confirm work. Must be greater than zero. |
 
-The RabbitMQ payload is `EmailDispatchPointer`: tenant ID, stable `PublishEventId`, kind, source IDs, and optional event/registration/user IDs only. It intentionally excludes recipient email, subject, plain text body, HTML body, reply-to, provider message IDs, raw provider errors, and SMTP credentials.
+The RabbitMQ payload is `EmailDispatchPointer`: tenant ID, stable `PublishEventId`, kind, source IDs, and optional event/registration/user IDs only. It intentionally excludes recipient email, subject, plain text body, HTML body, reply-to, provider message IDs, raw provider errors, and SMTP credentials. The DLQ replay worker validates pointer metadata against the PostgreSQL row before redriving; unsafe payloads are routed to the parking queue instead of being blindly replayed.
+
+### Idempotency Cleanup Configuration
+
+Write-operation idempotency uses PostgreSQL `idempotency_records` as a short-lived replay cache keyed by `(Idempotency-Key, TenantId)`. Expired records are not eligible for replay reads. The cleanup processor is an API-hosted background service that physically deletes only records whose `ExpiresAt` is older than the configured grace window.
+
+Static cleanup settings bind from `IdempotencyCleanup` and are validated at startup with `ValidateOnStart`:
+
+| Key | Default | Description |
+|---|---:|---|
+| `Enabled` | `true` | Enables the hosted cleanup loop. When disabled, the `idempotency-cleanup` readiness check reports `Degraded` intentionally. |
+| `DryRun` | `false` | Counts eligible rows and emits metrics/logs without deleting. Use this before enabling destructive cleanup in a new environment. |
+| `InitialDelaySeconds` | `30` | Delay before the first cleanup pass after API startup. Must be zero or greater. |
+| `PollingIntervalMinutes` | `60` | Delay between cleanup passes. Must be greater than zero. |
+| `BatchSize` | `500` | Maximum expired rows counted/deleted per pass. Must be greater than zero. |
+| `ExpirationGraceHours` | `24` | Safety buffer after `ExpiresAt` before a row is eligible for physical delete. Must be zero or greater. |
+
+Cleanup is instance/system-scoped because idempotency rows are ephemeral replay-cache entries, not tenant-owned source-of-truth or compliance evidence. Logs, health data, and metrics expose only bounded settings/counts; they must not include raw idempotency keys, request paths, response bodies, or tenant IDs.
 
 ## Secret Provider Configuration
 
@@ -217,6 +279,7 @@ Major groups:
 - `authorization.*`
 - `cerbos.*`
 - `analytics.*`
+- `ai_assistant.*`
 - `auth.*`
 - `federation.*`
 - `localization.*`
@@ -231,8 +294,40 @@ Sensitive runtime credentials use a separate secret-setting key space. Do not ex
 | S3-compatible storage | `s3.*` | `s3.access_key_id`, `s3.secret_access_key` |
 | Authentication | `auth.*` | `auth.keycloak_client_secret`, `auth.google_client_secret` |
 | Cerbos admin credentials | `cerbos.*` | `cerbos.custom_admin_username`, `cerbos.custom_admin_password` |
+| AI assistant | `ai_assistant.*` | `ai_assistant.api_key` |
 
 `SecretDefinitionRegistry` recognizes provider folders for `/api`, `/storage`, `/keycloak`, `/cerbos`, `/postgresql`, `/smtp`, `/analytics`, and `/ai`. Blazor maps Google client values from `/blazor`; do not claim Google is part of the current secret-catalog folder list unless the registry changes.
+
+## AI Assistant Settings (Governance)
+
+AI assistant configuration is governed through `ai_assistant.*` keys. The Application layer resolves these into `AiAssistantSettingGroup`; provider SDKs and concrete network clients stay behind Infrastructure adapters and must not leak into Domain, Application DTOs, browser responses, logs, or tests.
+
+Canonical keys:
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ai_assistant.enabled` | bool | `false` | Master enable switch. Disabled remains the safe default until provider health, egress validation, auth, quotas, and retention gates are implemented. |
+| `ai_assistant.provider` | string | `"none"` | Active provider: `none`, `fake`, or `openai-compatible`. `fake` is for deterministic tests/dev flows; real providers require model and credential configuration. |
+| `ai_assistant.endpoint_url` | string | `""` | Provider base URL for self-hosted or OpenAI-compatible adapters. This is deployment/admin-controlled; browser or request payloads must never choose outbound provider hosts. |
+| `ai_assistant.api_key` | string | `""` | Sensitive provider credential. Treat as write-only/redacted; never expose to Blazor, API responses, logs, screenshots, traces, or issue templates. |
+| `ai_assistant.model_id` | string | `""` | Default model ID. Real providers are not considered configured unless both API key and model ID are present. |
+| `ai_assistant.max_input_tokens` | int | `8000` | Prompt/context budget used before provider calls. Handlers must still enforce bounded context and prompt length. |
+| `ai_assistant.max_output_tokens` | int | `1024` | Maximum requested provider completion size. |
+| `ai_assistant.temperature` | decimal | `0.2` | Provider sampling temperature. Keep low for structured assistant workflows. |
+| `ai_assistant.timeout_seconds` | int | `30` | Provider call timeout budget. Cancellation tokens must still flow through all calls. |
+| `ai_assistant.retention_days` | int | `30` | Default persisted conversation retention window. Retention/redaction enforcement is required before broad history enablement. |
+| `ai_assistant.daily_message_limit` | int | `50` | Per-user/per-tenant daily message limit seed. Abuse/cost controls must be enforced before broad enablement. |
+| `ai_assistant.tool_proposals_enabled` | bool | `false` | Allows provider output to become persisted proposed actions only. Mutating tools still require server validation, HAL affordance checks, user confirmation, idempotency, and audit before execution. |
+| `ai_assistant.streaming_enabled` | bool | `false` | Enables streaming only after transport, cancellation, timeout, and logging safety are implemented. |
+| `ai_assistant.allow_anonymous_access` | bool | `false` | Legacy/public-availability flag for safe bootstrap surfaces only. Private conversation/history/send/action endpoints must remain authenticated. |
+
+Important notes:
+
+- `AiAssistantSettingGroup.IsConfigured` treats `fake` as configured for deterministic tests, but `openai-compatible` requires both `ai_assistant.api_key` and `ai_assistant.model_id`.
+- Provider output is untrusted data. It may produce structured action candidates, but those candidates must be persisted as proposals and require explicit confirmation before any write command runs.
+- Do not log raw prompts, model responses, selected reference content, provider request IDs tied to content, endpoint credentials, or provider exception bodies.
+- Provider endpoint URLs are deployment/admin-controlled. Browser payloads and per-request DTOs must never choose outbound provider hosts.
+- Tenant delegation/admin editing for the expanded provider/model/limit settings is intentionally separate from defining the keys. Do not assume a key is tenant-admin editable until the tenant policy service and UI explicitly expose it.
 
 ## Analytics Settings (Governance)
 
@@ -378,14 +473,6 @@ Hard-limit quota definitions for Layer 3 custom properties (Rule 16). Each has a
 | `custom_properties.max_multi_value_rows_per_value` | int | `20` | Max rows for multi-valued property. Max: 200. |
 | `custom_properties.projection_rebuild_batch_size` | int | `500` | Batch size for projection worker. Max: 5000. |
 | `custom_properties.projection_discovery_enabled` | bool | `false` | Tenant feature flag for projection-backed search/filter. |
-
-## AI Assistant Settings (Governance)
-
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `ai_assistant.enabled` | bool | `false` | Enable AI assistant features |
-| `ai_assistant.endpoint_url` | string | `""` | AI provider API base URL |
-| `ai_assistant.api_key` | string | `""` | AI provider API key |
 
 ## Tenant Delegation & Locking (Governance)
 
