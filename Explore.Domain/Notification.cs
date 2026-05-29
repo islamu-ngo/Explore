@@ -20,6 +20,7 @@ public class Notification : ITenantEntity, IAuditableEntity, ISoftDeletable
 
     public required string Title { get; set; }
     public string? Body { get; set; }
+    public required string DeduplicationKey { get; set; }
 
     public bool IsRead { get; set; }
     public DateTime? ReadAt { get; set; }

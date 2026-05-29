@@ -1,0 +1,44 @@
+// ABOUTME: Idempotency guard and progress record for asynchronous notification fanout work.
+// ABOUTME: Tracks fanout status and cursor counts without storing recipient PII in worker metadata.
+
+using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Interfaces;
+
+namespace Explore.Domain;
+
+public class NotificationFanoutRun : ITenantEntity, IAuditableEntity, IConcurrencyAware
+{
+    public Guid Id { get; set; }
+
+    [ForeignKey("Tenant")]
+    public Guid TenantId { get; set; }
+    public required Tenant Tenant { get; set; }
+
+    public required string FanoutKind { get; set; }
+
+    [ForeignKey("NotificationEntityType")]
+    public int NotificationEntityTypeId { get; set; }
+    public required NotificationEntityType NotificationEntityType { get; set; }
+
+    public Guid EntityId { get; set; }
+
+    [ForeignKey("SourceActor")]
+    public Guid SourceActorId { get; set; }
+    public required Actor SourceActor { get; set; }
+
+    public required string Status { get; set; }
+    public Guid? CursorSubscriberTenantUserId { get; set; }
+    public int ProcessedCount { get; set; }
+    public int CreatedNotificationCount { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public DateTime? FailedAt { get; set; }
+    public string? LastError { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+
+    public Guid ConcurrencyStamp { get; set; }
+}

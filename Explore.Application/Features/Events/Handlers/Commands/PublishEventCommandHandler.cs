@@ -3,6 +3,7 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Models.InternalEvents;
 using Explore.Application.Models.IntegrationEvents;
 using Explore.Application.Responses;
 using Explore.Application.Services;
@@ -21,6 +22,9 @@ public class PublishEventCommandHandler(
 {
     private const string ConcurrencyConflictCode = "event_publish_concurrency_conflict";
     private const string ReadinessFailedCode = "event_publish_readiness_failed";
+    private const string EventAggregateType = "Event";
+    public const string EventPublishedEventType = "EventPublished";
+    public const string EventPublishedNotificationFanoutRequestedEventType = "EventPublishedNotificationFanoutRequested";
 
     public async Task<BaseCommandResponse<Guid>> Handle(PublishEventCommand request, CancellationToken cancellationToken)
     {
@@ -57,7 +61,10 @@ public class PublishEventCommandHandler(
             @event.UpdatedAt = DateTime.UtcNow;
 
             await eventRepository.Update(@event);
+
+            var publishedAt = DateTimeOffset.UtcNow;
             await outboxRepository.Create(CreatePublishedOutboxMessage(@event));
+            await outboxRepository.Create(CreateNotificationFanoutOutboxMessage(@event, publishedAt));
 
             await cache.RemoveAsync($"event:detail:{@event.Id}", token);
             await cache.RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), token);
@@ -81,12 +88,38 @@ public class PublishEventCommandHandler(
         return new OutboxMessage
         {
             Id = Guid.NewGuid(),
-            AggregateType = "Event",
+            AggregateType = EventAggregateType,
             AggregateId = @event.Id,
-            EventType = "EventPublished",
+            EventType = EventPublishedEventType,
             Payload = JsonSerializer.Serialize(payload),
             Status = OutboxMessageStatus.Pending,
             CreatedAt = DateTime.UtcNow,
+            MaxRetries = 5
+        };
+    }
+
+    private static OutboxMessage CreateNotificationFanoutOutboxMessage(Event @event, DateTimeOffset publishedAt)
+    {
+        var payload = new EventPublishedNotificationFanoutRequested
+        {
+            TenantId = @event.TenantId,
+            EventId = @event.Id,
+            EventTitle = @event.Title,
+            SourceActorId = @event.ActorId,
+            StartDate = @event.FirstSessionStartUtc!.Value,
+            EndDate = @event.LastSessionStartUtc,
+            PublishedAt = publishedAt
+        };
+
+        return new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            AggregateType = EventAggregateType,
+            AggregateId = @event.Id,
+            EventType = EventPublishedNotificationFanoutRequestedEventType,
+            Payload = JsonSerializer.Serialize(payload),
+            Status = OutboxMessageStatus.Pending,
+            CreatedAt = publishedAt.UtcDateTime,
             MaxRetries = 5
         };
     }

@@ -11,10 +11,18 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 {
     public void Configure(EntityTypeBuilder<Notification> builder)
     {
+        builder.ToTable(t =>
+            t.HasCheckConstraint(
+                "ck_notifications_entity_reference_shape",
+                "(notification_entity_type_id IS NULL AND entity_id IS NULL) OR " +
+                "(notification_entity_type_id IS NOT NULL AND entity_id ~* " +
+                "'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')"));
+
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
         builder.Property(e => e.Title).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Body).HasMaxLength(2000);
+        builder.Property(e => e.DeduplicationKey).HasMaxLength(500).IsRequired();
         builder.Property(e => e.EntityId).HasMaxLength(200);
 
         builder.Property(e => e.CreatedAt)
@@ -84,5 +92,9 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
         builder.HasIndex(e => new { e.UserId, e.IsArchived, e.CreatedAt })
             .HasDatabaseName("ix_notifications_user_archived")
             .IsDescending(false, false, true);
+
+        builder.HasIndex(e => new { e.TenantId, e.UserId, e.DeduplicationKey })
+            .IsUnique()
+            .HasDatabaseName("ux_notifications_tenant_user_deduplication_key");
     }
 }

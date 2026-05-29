@@ -3,7 +3,9 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.References;
 using Explore.Persistence.Extensions;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -15,6 +17,29 @@ public class NotificationRepository : GenericRepository<Notification, Guid>, INo
     public NotificationRepository(ExploreDbContext dbContext) : base(dbContext)
     {
         _dbContext = dbContext;
+    }
+
+    public async Task<bool> ExistsByDeduplicationKeyAsync(Guid tenantId, Guid userId, string deduplicationKey, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Notifications
+            .IgnoreTenantFilter(TenantFilterBypassReasons.TenantScopedRepositoryExactTenantPredicate)
+            .AsNoTracking()
+            .AnyAsync(notification => notification.TenantId == tenantId
+                && notification.UserId == userId
+                && notification.DeduplicationKey == deduplicationKey,
+                cancellationToken);
+    }
+
+    public override async Task<Notification> Create(Notification entity)
+    {
+        EnsureRegisteredReference(entity);
+        return await base.Create(entity);
+    }
+
+    public override async Task Update(Notification entity)
+    {
+        EnsureRegisteredReference(entity);
+        await base.Update(entity);
     }
 
     public async Task<(List<Notification> Items, int TotalCount)> GetUserNotificationsPaged(
@@ -134,5 +159,14 @@ public class NotificationRepository : GenericRepository<Notification, Guid>, INo
         notification.SnoozedUntil = snoozedUntil;
         await _dbContext.SaveChangesAsync();
         return true;
+    }
+
+    private static void EnsureRegisteredReference(Notification notification)
+    {
+        var errors = ReferenceTypeRegistry.ValidateNotificationReference(notification);
+        if (errors.Count > 0)
+        {
+            throw new InvalidOperationException(string.Join(' ', errors));
+        }
     }
 }
