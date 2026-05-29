@@ -6,6 +6,14 @@ namespace Explore.Application.Contracts.Services;
 public interface IEmailDispatchDrainService
 {
     Task<EmailDispatchDrainResult> ProcessBatchAsync(CancellationToken cancellationToken);
+
+    Task<EmailDispatchRecoveryResult> RecoverStaleProcessingAsync(CancellationToken cancellationToken);
+
+    Task<EmailDispatchSingleDrainResult> ProcessSingleAsync(
+        Guid tenantId,
+        Guid publishEventId,
+        string consumerId,
+        CancellationToken cancellationToken);
 }
 
 public sealed record EmailDispatchDrainResult(
@@ -17,3 +25,34 @@ public sealed record EmailDispatchDrainResult(
     int UnknownCount,
     int TenantPausedCount,
     int AlreadyClaimedCount);
+
+public sealed record EmailDispatchRecoveryResult(
+    int RecoveredCount,
+    DateTime ProcessingStartedBefore);
+
+public sealed record EmailDispatchSingleDrainResult(
+    EmailDispatchDrainOutcome Outcome,
+    Guid? OutboxId = null)
+{
+    public bool IsDurableOutcome => Outcome is EmailDispatchDrainOutcome.Sent
+        or EmailDispatchDrainOutcome.RetryScheduled
+        or EmailDispatchDrainOutcome.DeadLettered
+        or EmailDispatchDrainOutcome.Unknown
+        or EmailDispatchDrainOutcome.TenantPaused
+        or EmailDispatchDrainOutcome.AlreadyClaimed
+        or EmailDispatchDrainOutcome.AlreadySettled
+        or EmailDispatchDrainOutcome.Deferred;
+}
+
+public enum EmailDispatchDrainOutcome
+{
+    Sent,
+    RetryScheduled,
+    DeadLettered,
+    Unknown,
+    TenantPaused,
+    AlreadyClaimed,
+    Missing,
+    AlreadySettled,
+    Deferred
+}

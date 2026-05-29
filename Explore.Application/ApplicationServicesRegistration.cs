@@ -4,6 +4,8 @@ using System.Reflection;
 using Explore.Application.Analytics;
 using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
 using Explore.Application.Settings;
@@ -36,11 +38,14 @@ public static class ApplicationServicesRegistration
 
         // Analytics consent / runtime profile resolution
         services.AddScoped<IAnalyticsRuntimeProfileResolver, AnalyticsRuntimeProfileResolver>();
+        services.AddScoped<IStoragePolicyResolver, StoragePolicyResolver>();
+        services.AddScoped<IStorageObjectContentReader, StorageObjectContentReader>();
 
         // Authorization: dynamic permission infrastructure
         services.AddScoped<ICapabilityCeilingService, CapabilityCeilingService>();
         services.AddScoped<IEventRoleAuthorityCeilingService, EventRoleAuthorityCeilingService>();
         services.AddScoped<ICustomPropertyGovernancePolicy, CustomPropertyGovernancePolicy>();
+        services.AddScoped<ICustomPropertyAutomationConditionPolicy, CustomPropertyAutomationConditionPolicy>();
         services.AddScoped<IEventActorResolver, EventActorResolver>();
         services.AddScoped<IEventTemplateInstantiationService, EventTemplateInstantiationService>();
         services.AddScoped<IEventSessionTemplateInstantiationService, EventSessionTemplateInstantiationService>();
@@ -50,6 +55,11 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IEventSessionTemplateSyncService, EventSessionTemplateSyncService>();
         services.AddScoped<IPermissionRegistryService, PermissionRegistryService>();
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
+        services.AddScoped<IEventLifecycleEmailOutboxFactory, EventLifecycleEmailOutboxFactory>();
+        services.AddScoped<IEventPublishedNotificationFanoutService, EventPublishedNotificationFanoutService>();
+        services.AddScoped<IEventLifecycleScheduler, EventLifecycleScheduler>();
+        services.AddScoped<IScheduledEmailDispatchTrigger, NoOpScheduledEmailDispatchTrigger>();
+        services.AddSingleton<IScheduledJobRegistry, ScheduledJobRegistry>();
 
         // Scheduling domain services (stateless, safe as singleton).
         services.AddSingleton<IEventScheduleProjectionCalculator, EventScheduleProjectionCalculator>();
