@@ -3,18 +3,31 @@
 
 namespace Explore.Domain.Settings.Definitions;
 
+using Explore.Domain.Constants;
+
 public static class AiAssistantSettingDefinitions
 {
+    private static readonly string[] AllowedProviders = ["none", "fake", "openai-compatible"];
+
     public static readonly SettingDefinition Enabled = new(
-        Key: "ai_assistant.enabled",
+        Key: GovernanceSettingKeys.AiAssistant.Enabled,
         ValueType: SettingValueType.Boolean,
         DefaultValue: "false",
         Category: "AiAssistant",
         Description: "Enable AI assistant in the application shell",
         MaxScope: SettingScope.Tenant);
 
+    public static readonly SettingDefinition Provider = new(
+        Key: GovernanceSettingKeys.AiAssistant.Provider,
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"none\"",
+        Category: "AiAssistant",
+        Description: "Selected AI provider. Use fake for deterministic tests and openai-compatible for configured provider endpoints.",
+        MaxScope: SettingScope.Tenant,
+        AllowedValues: AllowedProviders);
+
     public static readonly SettingDefinition EndpointUrl = new(
-        Key: "ai_assistant.endpoint_url",
+        Key: GovernanceSettingKeys.AiAssistant.EndpointUrl,
         ValueType: SettingValueType.String,
         DefaultValue: "\"\"",
         Category: "AiAssistant",
@@ -22,7 +35,7 @@ public static class AiAssistantSettingDefinitions
         MaxScope: SettingScope.Tenant);
 
     public static readonly SettingDefinition ApiKey = new(
-        Key: "ai_assistant.api_key",
+        Key: GovernanceSettingKeys.AiAssistant.ApiKey,
         ValueType: SettingValueType.String,
         DefaultValue: "\"\"",
         Category: "AiAssistant",
@@ -30,13 +43,90 @@ public static class AiAssistantSettingDefinitions
         MaxScope: SettingScope.Tenant,
         IsSensitive: true);
 
+    public static readonly SettingDefinition ModelId = new(
+        Key: GovernanceSettingKeys.AiAssistant.ModelId,
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"\"",
+        Category: "AiAssistant",
+        Description: "Default model identifier used for assistant requests",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition MaxInputTokens = new(
+        Key: GovernanceSettingKeys.AiAssistant.MaxInputTokens,
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "8000",
+        Category: "AiAssistant",
+        Description: "Maximum prompt/context tokens allowed per assistant request",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition MaxOutputTokens = new(
+        Key: GovernanceSettingKeys.AiAssistant.MaxOutputTokens,
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "1024",
+        Category: "AiAssistant",
+        Description: "Maximum generated tokens allowed per assistant response",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition Temperature = new(
+        Key: GovernanceSettingKeys.AiAssistant.Temperature,
+        ValueType: SettingValueType.Decimal,
+        DefaultValue: "0.2",
+        Category: "AiAssistant",
+        Description: "Default model temperature for assistant responses",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition TimeoutSeconds = new(
+        Key: GovernanceSettingKeys.AiAssistant.TimeoutSeconds,
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "30",
+        Category: "AiAssistant",
+        Description: "Maximum provider call duration in seconds",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition RetentionDays = new(
+        Key: GovernanceSettingKeys.AiAssistant.RetentionDays,
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "30",
+        Category: "AiAssistant",
+        Description: "Default retention period for persisted AI conversation history in days",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition DailyMessageLimit = new(
+        Key: GovernanceSettingKeys.AiAssistant.DailyMessageLimit,
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "50",
+        Category: "AiAssistant",
+        Description: "Per-user daily assistant message limit before provider calls are rejected",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition ToolProposalsEnabled = new(
+        Key: GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "AiAssistant",
+        Description: "Allow model output to create persisted proposed actions that still require user confirmation",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition StreamingEnabled = new(
+        Key: GovernanceSettingKeys.AiAssistant.StreamingEnabled,
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "AiAssistant",
+        Description: "Enable streaming assistant responses after streaming transport hardening is complete",
+        MaxScope: SettingScope.Tenant);
+
     public static readonly SettingDefinition AllowAnonymousAccess = new(
-        Key: "ai_assistant.allow_anonymous_access",
+        Key: GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
         ValueType: SettingValueType.Boolean,
         DefaultValue: "false",
         Category: "AiAssistant",
         Description: "Allow unauthenticated visitors to open the AI assistant from the application shell",
         MaxScope: SettingScope.Tenant);
 
-    public static IReadOnlyList<SettingDefinition> All => [Enabled, EndpointUrl, ApiKey, AllowAnonymousAccess];
+    public static IReadOnlyList<SettingDefinition> All =>
+    [
+        Enabled, Provider, EndpointUrl, ApiKey, ModelId, MaxInputTokens, MaxOutputTokens,
+        Temperature, TimeoutSeconds, RetentionDays, DailyMessageLimit,
+        ToolProposalsEnabled, StreamingEnabled, AllowAnonymousAccess
+    ];
 }
