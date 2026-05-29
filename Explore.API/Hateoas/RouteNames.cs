@@ -205,6 +205,7 @@ public static class RouteNames
     public const string GetTagTypeById = "GetTagTypeById";
     public const string GetTagTypesWithTags = "GetTagTypesWithTags";
     public const string GetMyFeatureFlags = "GetMyFeatureFlags";
+    public const string GetAiAssistantBootstrap = "GetAiAssistantBootstrap";
     public const string GetPublicExperienceSettings = "GetPublicExperienceSettings";
     public const string GetPublicExperienceShell = "GetPublicExperienceShell";
     public const string GetTranslationByLanguage = "GetTranslationByLanguage";

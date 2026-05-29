@@ -3,6 +3,7 @@
 
 using System.Text.Json.Serialization;
 using Explore.Application.DTOs.Actor;
+using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.ActorKeyStore;
 using Explore.Application.DTOs.ActorType;
 using Explore.Application.DTOs.AtprotoRecord;
@@ -65,6 +66,10 @@ namespace Explore.Application.Serialization;
     WriteIndented = false,
     Converters = [typeof(JsonStringEnumConverter)])]
 [JsonSerializable(typeof(ActorDto))]
+[JsonSerializable(typeof(AiAssistantBootstrapDto))]
+[JsonSerializable(typeof(AiAssistantModelDto))]
+[JsonSerializable(typeof(AiAssistantFeatureFlagsDto))]
+[JsonSerializable(typeof(AiAssistantLimitsDto))]
 [JsonSerializable(typeof(ActorKeyStoreDto))]
 [JsonSerializable(typeof(ActorKeyStoreListDto))]
 [JsonSerializable(typeof(ActorListDto))]

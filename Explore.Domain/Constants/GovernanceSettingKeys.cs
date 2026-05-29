@@ -216,8 +216,18 @@ public static class GovernanceSettingKeys
     public static class AiAssistant
     {
         public const string Enabled = "ai_assistant.enabled";
+        public const string Provider = "ai_assistant.provider";
         public const string EndpointUrl = "ai_assistant.endpoint_url";
         public const string ApiKey = "ai_assistant.api_key";
+        public const string ModelId = "ai_assistant.model_id";
+        public const string MaxInputTokens = "ai_assistant.max_input_tokens";
+        public const string MaxOutputTokens = "ai_assistant.max_output_tokens";
+        public const string Temperature = "ai_assistant.temperature";
+        public const string TimeoutSeconds = "ai_assistant.timeout_seconds";
+        public const string RetentionDays = "ai_assistant.retention_days";
+        public const string DailyMessageLimit = "ai_assistant.daily_message_limit";
+        public const string ToolProposalsEnabled = "ai_assistant.tool_proposals_enabled";
+        public const string StreamingEnabled = "ai_assistant.streaming_enabled";
         public const string AllowAnonymousAccess = "ai_assistant.allow_anonymous_access";
     }
 
