@@ -3,7 +3,15 @@
 
 # Full User Input Validation & Sanitization Plan
 
-Last Updated: 2026-05-28 Europe/Brussels
+Last Updated: 2026-05-29 Europe/Brussels
+
+## Re-baseline — 2026-05-29 Europe/Brussels
+
+- **Reason:** Implementation has moved past planning into concrete API, BFF, idempotency, query-validation, and storage-upload validation slices. The active docs now need to reflect an implementation handoff rather than a pre-implementation gate.
+- **What changed:** Slice 1 contract decisions and Slice 2 matrix scaffolding are no longer the only completed work. Implemented slices now include API ProblemDetails/model-state normalization, public/query validation, idempotency request fingerprinting, BFF setup/preference/storage/auth hardening, YARP browser-header stripping, and legacy direct storage presigned-upload validation.
+- **Plan impact:** The matrix-first strategy remains valid. Continue executing row-by-row from `full-input-validation-sanitization-input-matrix.md`, but do not restart at the original planning gates. Treat implemented rows as locked unless tests reveal a regression.
+- **Remaining work:** High-priority remaining areas are write DTO hardening, storage metadata/object-key semantic validation beyond the legacy direct presign request, persistence-backed tenant/resource semantic checks, Blazor form convergence after backend field keys stabilize, raw-rendering/rich-text classification, OpenAPI/generated-client regeneration, and observability-safe validation logging audit.
+- **Explicit boundaries:** Do not edit generated EF migrations by hand; make EF model/configuration changes only and let the user regenerate migrations. Do not work on TickerQ/scheduler in this workstream.
 
 ## 1. Executive Summary
 

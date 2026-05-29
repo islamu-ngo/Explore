@@ -3,7 +3,7 @@
 
 # Full User Input Validation & Sanitization Tasks
 
-Last Updated: 2026-05-28 Europe/Brussels
+Last Updated: 2026-05-29 Europe/Brussels
 
 ## Status Legend
 
@@ -35,12 +35,33 @@ Last Updated: 2026-05-28 Europe/Brussels
 - [x] Expanded Slice 2 matrix with grouped endpoint-family rows using `docs/API_CONTRACT_INVENTORY.md` and current API/BFF/Blazor inventories.
 - [!] Session-start Release build is currently red before implementation edits due `Explore.Blazor.Client.Tests/Services/CustomPropertyAdminServiceTests.cs` generated-client anonymous type mismatches.
 - [x] Re-ran workstream-doc verification after Slice 1/2 continuation (`git diff --check`: passed; `Event.Architecture.Tests`: 179 total, 178 succeeded, 1 skipped, 0 failed).
+- [x] Started Slice 4 implementation for the accepted API input-error contract: normalized automatic `[ApiController]` model-state failures, malformed JSON, missing bodies, unsupported content type, unknown JSON properties, and over-posted HAL `_links` into safe RFC7807 responses.
+- [x] Fixed the pre-existing generated-client anonymous type mismatch in `Explore.Blazor.Client.Tests/Services/CustomPropertyAdminServiceTests.cs` so Blazor client tests can compile under the current generated HAL client.
+- [!] API integration verification is currently blocked by work outside this validation slice: the full suite first failed in startup guardrail tests because the in-memory provider cannot execute `DatabaseSeeder.RemovePreviousDevelopmentEventCatalogAsync(... ExecuteDeleteAsync ...)`; later targeted API verification was blocked by concurrent scheduler/TickerQ build churn owned by another implementation lane.
+- [x] Implemented public discovery query validation for `EventFilterRequest` and `EventSessionFilterRequest` with shared API transport rules for pagination, search text, sort/filter allowlists, date ranges, lookup IDs, GUID filters, and custom-property filter shape.
+- [x] Added focused regression coverage for the public query DTO validators, including invalid pagination, unknown sort/mode values, inverted date ranges, non-positive lookup IDs, empty GUIDs, overlong search text, and invalid custom-property filter operands.
+- [x] Verified the targeted public query validation slice: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/PublicQueryValidationTests/*' --maximum-parallel-tests 1` passed with 10 total, 10 succeeded, 0 failed.
+- [x] Re-ran the architecture gate after the query-validation implementation: `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed with 179 total, 178 succeeded, 1 skipped.
+- [x] Implemented idempotency request fingerprinting for same-key replay validation using tenant-scoped persistence plus method, target, content type, canonical body hash, and principal fingerprint metadata.
+- [x] Added regression coverage for equivalent JSON replay, same-key mismatch conflicts by body/content type/route/method/principal, cross-tenant no-replay behavior, and validation-failure non-persistence.
+- [x] Verified the idempotency slice after regenerated EF migrations: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/IdempotencyMiddlewareTests/*' --maximum-parallel-tests 1` passed with 13 total, 13 succeeded, 0 failed.
+- [x] Verified persistence cleanup compatibility with the regenerated idempotency schema: `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/IdempotencyRepositoryTests/*' --maximum-parallel-tests 1` passed with 1 total, 1 succeeded, 0 failed.
+- [x] Re-ran the release build after the regenerated migration state and idempotency work: `dotnet build --configuration Release --verbosity quiet` passed with 0 errors and existing warnings.
+- [x] Implemented the shared paginated-query validation slice for standard list/query surfaces using API query-bound `IValidatableObject` models and the existing `[ApiController]` ProblemDetails path.
+- [x] Converted remaining raw pagination query pairs in API controllers to validated query DTOs, covering actors, categories, groups, organizations, locations, tags, registrations, storage objects, agenda items, event series, event/my, notifications, contact shared contacts, custom-property definitions/governance/projection dirty scopes, event/session custom-property definitions, event/session templates, and template sync history.
+- [x] Added regression coverage for shared pagination bounds, required/non-empty GUID query values, positive lookup filters, enum support, bounded email/search text, projection-name presence, and template-sync history page/page-size bounds.
+- [x] Re-aligned Blazor generated-client consumers/tests affected by OpenAPI query parameter ordering changes (`EventSeriesService`, `NotificationServiceTests`) using named generated-client arguments where production code calls the client.
+- [x] Verified the shared query-validation slice: `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet` passed; `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/PublicQueryValidationTests/*' --maximum-parallel-tests 1` passed with 19 total, 19 succeeded; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/NotificationServiceTests/*' --maximum-parallel-tests 1` passed with 40 total, 40 succeeded; `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed with 181 total, 180 succeeded, 1 skipped; `dotnet build Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed; `dotnet build --configuration Release --verbosity quiet` passed with 0 errors and existing warnings.
+- [x] Implemented legacy direct storage presigned upload request validation in the Application layer: simple filename enforcement, control-character rejection, MIME type parsing, wildcard rejection, handler-side manual validator invocation, and pre-storage side-effect tests.
+- [!] Context7 research is currently blocked by monthly quota exhaustion; the implementation continued from repository conventions and previously recorded ASP.NET Core/FluentValidation research.
+- [x] Verified the legacy direct presign validation slice: targeted validator tests passed with 11 total, command-handler tests passed with 3 total, `Event.Architecture.Tests` passed with 181 total/180 succeeded/1 skipped, `Event.Application.UnitTests` Release build passed, and full Release build passed on rerun with MSBuild parallelism disabled after an initial transient WebAssembly file-lock failure.
+- [!] Handoff-doc verification reran `Event.Architecture.Tests` after markdown updates and the current dirty workspace is now red on `Queries_ShouldResideIn_QueriesNamespace`; investigate before claiming a fully green architecture gate.
 
 ## Current Priority for Next Session
 
-1. Continue converting `Pending inventory` matrix rows into concrete implementation tickets/tests, starting with API ProblemDetails normalization, unknown-property rejection, query validators, and idempotency fingerprinting.
-2. Start Slice 3/4 implementation only for rows marked `Ready for slice`; leave unresolved `Pending inventory` rows as matrix work.
-3. Preserve unrelated dirty files outside `dev/active/full-input-validation-sanitization/`; targeted status shows this workstream directory is untracked and the repository has many unrelated dirty entries.
+1. Continue from the partially implemented `StorageObjectController` upload row by hardening storage metadata/object-key DTOs and semantic checks beyond the completed legacy direct presign filename/content-type validation.
+2. Start Slice 3/4/5 implementation only for rows marked `Ready for slice` or clearly scoped partial rows; leave unresolved `Pending inventory` rows as matrix refinement work.
+3. Preserve unrelated dirty files outside this workstream, especially TickerQ/scheduler files, generated EF migration churn, unrelated active-doc deletions, and local-first storage changes that are not part of the selected validation row.
 
 ## Slice 1 — Contract Lock
 
@@ -121,6 +142,7 @@ Matrix must include:
 - [ ] Standardize date/time/date-range semantics.
 - [ ] Decide unknown-property behavior.
 - [ ] Add OpenAPI examples/format hints where useful.
+- [x] Add direct presigned upload request DTO validation for `UploadRequestDto` filename/content-type shape.
 
 ## Slice 4 — Application Validators and Semantic Checks
 
@@ -128,17 +150,23 @@ Matrix must include:
   - [ ] FluentValidation validator
   - [ ] documented domain-invariant-only validation
   - [ ] documented no-user-input/no-op decision
+- [x] Normalize automatic ASP.NET Core model-binding and model-state validation failures through the API ProblemDetails contract instead of returning framework-default `ValidationProblemDetails`.
+- [x] Reject unknown JSON request-body members globally for API controllers with `JsonUnmappedMemberHandling.Disallow`.
+- [x] Add API contract tests for malformed JSON, missing body, unsupported content type, unknown properties, and over-posted HAL `_links`.
+- [x] Add idempotency request fingerprinting so replay requires the same tenant, principal, method, target, content type, and canonical body hash.
+- [x] Reject same-key/different-request idempotency reuse with HTTP 409 ProblemDetails and stable `idempotency_key_reuse` code.
+- [x] Avoid idempotency persistence for validation/model-binding-style 400 responses and unsupported-content-type 415 responses.
 - [ ] Replace ad hoc validation strings with validators or named application/domain checks where appropriate.
 - [ ] Ensure validators are manually instantiated in handlers/services, not injected as `IValidator<T>`.
 - [ ] Do not add `AddValidatorsFromAssembly(...)` or a global validation pipeline unless the architecture contract is explicitly changed.
 - [ ] Standardize all validation invocation to `ValidateAsync` or `ValidateAndThrowAsync`.
 - [ ] Add cross-field validators for date ranges, session capacity, registration windows, enum/lookup consistency, and dependent options.
-- [ ] Add public read/query validators for search, slug, pagination, cursor, sort/filter allowlists, date ranges, and custom-property filters.
-- [ ] Add or explicitly document no-op validator decisions for `EventFilterRequest` and `EventSessionFilterRequest`.
-- [ ] Add endpoint-level negative tests for malformed public GET query inputs beyond happy-path pagination/filter coverage.
+- [~] Add public read/query validators for search, slug, pagination, cursor, sort/filter allowlists, date ranges, and custom-property filters. Public event/session filters, standard pagination pairs, contact shared-contact search, notifications, template sync history, and custom-property governance/projection admin list queries are implemented; remaining route/header/storage/BFF query surfaces still need row-by-row work.
+- [x] Add or explicitly document no-op validator decisions for `EventFilterRequest` and `EventSessionFilterRequest`.
+- [~] Add endpoint-level negative tests for malformed public GET query inputs beyond happy-path pagination/filter coverage. Focused DTO validator coverage exists for `EventFilterRequest` and `EventSessionFilterRequest`; full runtime endpoint coverage remains for later slices.
 - [ ] Ensure custom-property filters verify property/module/filterable/searchable state for the caller tenant.
 - [ ] Add validator tests for happy path, edge limits, malicious payloads, Unicode/whitespace/control characters, and localization-safe messages.
-- [ ] Add handler tests proving validation runs before persistence side effects.
+- [~] Add handler tests proving validation runs before persistence side effects. Implemented for legacy direct storage presigned upload URL generation; remaining write handlers still need coverage.
 
 ## Slice 5 — Persistence Semantic Tests and Tenant Leakage
 
@@ -153,24 +181,24 @@ Matrix must include:
 
 ## Slice 6 — BFF Unsafe Endpoint Audit
 
-- [ ] Inventory and matrix `BffPreferenceEndpoints.cs`.
-- [ ] Inventory and matrix `BffSetupSecretEndpoints.cs`.
-- [ ] Inventory and matrix `BffStorageEndpoints.cs`.
-- [ ] Inventory and matrix `BffAuthEndpoints.cs`.
-- [ ] Test unsafe preferences/theme/language/appearance writes without CSRF token.
-- [ ] Test setup-secret header spoofing: browser `X-Setup-Secret` stripped, trusted secret resolved server-side.
-- [ ] Test setup-secret diagnostics do not leak raw provider/API errors.
-- [ ] Test browser-visible state, responses, logs, and storage never contain access tokens, refresh tokens, identity tokens, setup secrets, provider diagnostic payloads, or trusted presigned-upload secrets.
-- [ ] Test browser-supplied `Authorization`, token-like, and setup-secret headers are ignored or stripped where applicable.
-- [ ] Test server-side token forwarding remains BFF-owned and is not delegated to Blazor client code.
-- [ ] Add endpoint-level negative tests for invalid BFF preference values (`theme`, `language`, `direction`), not only normalization service tests.
-- [ ] Test upload session reuse / consume-once semantics.
-- [ ] Test upload session used by different user.
-- [ ] Test content type mismatch.
-- [ ] Test arbitrary presigned URL injection is rejected.
-- [ ] Test upload destination is never browser-controlled.
-- [ ] Validate bootstrap/internal routes without `[Authorize]` have documented compensating controls: setup secret, antiforgery, rate limit, short-lived opaque session, or internal trust boundary.
-- [ ] Ensure BFF validation remains local/manual in `Explore.Blazor`; do not couple BFF to Application validators or DI `IValidator<T>`.
+- [x] Inventory and matrix `BffPreferenceEndpoints.cs`.
+- [x] Inventory and matrix `BffSetupSecretEndpoints.cs`.
+- [x] Inventory and matrix `BffStorageEndpoints.cs`.
+- [x] Inventory and matrix `BffAuthEndpoints.cs`.
+- [x] Test unsafe preferences/theme/language/appearance writes without CSRF token.
+- [x] Test setup-secret header spoofing: browser `X-Setup-Secret` stripped, trusted secret resolved server-side.
+- [x] Test setup-secret diagnostics do not leak raw provider/API errors.
+- [~] Test browser-visible state, responses, logs, and storage never contain access tokens, refresh tokens, identity tokens, setup secrets, provider diagnostic payloads, or trusted presigned-upload secrets. BFF setup-secret/provider failure responses, refresh-session response shape, auth-status browser `Authorization`, and storage presigned URL paths are covered; broader raw-render/log assertions remain for later slices.
+- [x] Test browser-supplied `Authorization`, token-like, and setup-secret headers are ignored or stripped where applicable. `/auth/status` browser `Authorization`, setup-secret header spoofing, and YARP proxy credential/header stripping are covered.
+- [x] Test server-side token forwarding remains BFF-owned and is not delegated to Blazor client code.
+- [x] Add endpoint-level negative tests for invalid BFF preference values (`theme`, `language`, `direction`), not only normalization service tests.
+- [x] Test upload session reuse / consume-once semantics.
+- [x] Test upload session used by different user.
+- [x] Test content type mismatch.
+- [x] Test arbitrary presigned URL injection is rejected.
+- [x] Test upload destination is never browser-controlled.
+- [x] Validate bootstrap/internal routes without `[Authorize]` have documented compensating controls: setup secret, antiforgery, rate limit, short-lived opaque session, or internal trust boundary.
+- [x] Ensure BFF validation remains local/manual in `Explore.Blazor`; do not couple BFF to Application validators or DI `IValidator<T>`.
 
 ## Slice 7 — Blazor Form Convergence
 

@@ -3,7 +3,103 @@
 
 # Full User Input Validation & Sanitization Context
 
-Last Updated: 2026-05-28 Europe/Brussels
+Last Updated: 2026-05-29 Europe/Brussels
+
+## SESSION PROGRESS (2026-05-29 Europe/Brussels)
+
+### ✅ COMPLETED
+
+- Continued the input validation/sanitization implementation workstream only; did not work on TickerQ/scheduler and did not manually edit EF migration files.
+- Implemented legacy direct storage presigned-upload request validation in the Application layer:
+  - `UploadRequestDto` now has the required two-line ABOUTME header and remains a narrow browser-input DTO.
+  - `UploadRequestDtoValidator` rejects empty/overlong filenames and content types, control characters, path separators, dot segments, malformed MIME types, and wildcard MIME types.
+  - `GenerateUploadUrlCommandHandler` manually instantiates the validator, calls `ValidateAsync`, throws `FluentValidation.ValidationException` before side effects, and calls `IObjectStorageService` only with normalized values.
+- Added focused unit coverage for validator edge cases and handler pre-storage side-effect behavior.
+- Updated the input matrix and tasks to mark the legacy direct presign filename/content-type slice implemented while keeping storage metadata/object-key semantics pending.
+- Attempted Context7 again for ASP.NET Core validation guidance; the server returned monthly quota exhaustion, so this slice continued from repository conventions and previously recorded ASP.NET Core/FluentValidation guidance.
+
+### 🟡 IN PROGRESS
+
+- Overall hardening remains in progress. The next executable area should stay inside `full-input-validation-sanitization-input-matrix.md` rows and should avoid scheduler/TickerQ and generated migration files.
+- `StorageObjectController` upload APIs are only partially complete: direct presign request shape is covered; `CreateStorageObjectDto`, `UpdateStorageObjectDto`, object-key semantics, metadata size/shape, tenant leakage, and controller/API contract tests still need row-by-row work.
+
+### ⏭️ NEXT
+
+1. Continue Slice 3/4 write-request hardening from the matrix, preferably storage metadata/object-key validators or another high-risk DTO row that already has a clear owner and tests.
+2. For storage metadata/object-key work, inspect `CreateStorageObjectDtoValidator`, `UpdateStorageObjectDtoValidator`, `StorageObjectController`, storage handlers, and storage repository semantics before editing.
+3. Add handler/API tests proving validation occurs before persistence/storage side effects and does not leak tenant/object existence.
+4. Regenerate OpenAPI/generated client only in the explicit Slice 9 step after API DTO shapes stabilize.
+
+### ⚠️ BLOCKERS
+
+- Context7 MCP quota is exhausted until the provider resets quota; document this if further library research is required.
+- Current architecture gate is red in the dirty workspace after the handoff update: `Queries_ShouldResideIn_QueriesNamespace` fails in `Event.Architecture.Tests/CqrsPatternTests.cs`. The failure is unrelated to the markdown handoff and should be investigated before claiming a fully green architecture gate.
+- The workspace contains extensive unrelated dirty changes, including TickerQ/scheduler files, regenerated migration churn, local-first storage work, actor-subscription work, CI/docs changes, and deleted unrelated active docs. Do not revert or fold those into this workstream without explicit user instruction.
+
+## Handoff — 2026-05-29 Europe/Brussels
+
+### Current State
+
+- What is completed: legacy direct storage presigned-upload request validation now runs in the Application command handler before object-storage side effects. Validator and handler tests are green. Active matrix/tasks/context docs are refreshed for this slice.
+- What is in progress: broader input validation/sanitization remains active. Storage upload APIs are partially complete: direct presign filename/content-type shape is implemented; storage object metadata/object-key/tenant semantic checks remain.
+- What changed since the last handoff: this handoff supersedes the old planning-only handoff. Implementation has now completed several validation slices, including this session's storage direct-presign hardening.
+
+### Next Action
+
+1. Read `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `.claude/contract/intents.yaml`, `.claude/rules/application-layer.md`, `.claude/rules/api-controllers.md`, `docs/API.md`, `docs/SECURITY-MODEL.md`, and this workstream's plan/context/tasks/matrix.
+2. Continue from `full-input-validation-sanitization-input-matrix.md`, choosing a row marked ready/partially implemented rather than restarting broad planning.
+3. Recommended next slice: finish storage metadata/object-key validation by inspecting `CreateStorageObjectDtoValidator`, `UpdateStorageObjectDtoValidator`, storage command handlers, `StorageObjectController`, and tenant/object-key repository semantics.
+
+### Blockers
+
+- Context7 MCP returned monthly quota exhaustion during this session.
+- No code blocker remains for the direct presign slice.
+- Full-workspace ownership is mixed; do not take over TickerQ/scheduler, unrelated generated migrations, or unrelated active-doc deletions.
+
+### Modified Files
+
+- `Explore.Application/DTOs/StorageObject/UploadRequestDto.cs` — added required ABOUTME header and kept the direct presign request DTO narrow.
+- `Explore.Application/DTOs/StorageObject/Validators/UploadRequestDtoValidator.cs` — hardened filename/content-type validation and added normalization helpers.
+- `Explore.Application/Features/StorageObjects/Handlers/Commands/GenerateUploadUrlCommandHandler.cs` — manually validates normalized input before calling `IObjectStorageService`.
+- `Event.Application.UnitTests/Features/StorageObjects/Validators/UploadRequestDtoValidatorTests.cs` — new validator tests for unsafe filenames and MIME types.
+- `Event.Application.UnitTests/Features/StorageObjects/Commands/GenerateUploadUrlCommandHandlerTests.cs` — new handler tests proving validation runs before storage side effects.
+- `dev/active/full-input-validation-sanitization/full-input-validation-sanitization-plan.md` — re-baselined from planning-only to active implementation state.
+- `dev/active/full-input-validation-sanitization/full-input-validation-sanitization-context.md` — refreshed current state, validation evidence, and this handoff.
+- `dev/active/full-input-validation-sanitization/full-input-validation-sanitization-tasks.md` — marked direct presign validation and verification complete; kept remaining storage/API work visible.
+- `dev/active/full-input-validation-sanitization/full-input-validation-sanitization-input-matrix.md` — marked the `StorageObjectController` upload row partially implemented for direct presign request validation.
+
+### Validation
+
+- Commands run:
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/UploadRequestDtoValidatorTests/*' --maximum-parallel-tests 1` — passed, 11 total, 11 succeeded.
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/GenerateUploadUrlCommandHandlerTests/*' --maximum-parallel-tests 1` — passed, 3 total, 3 succeeded.
+  - `git diff --check -- <storage validation files and active docs>` — passed.
+  - `dotnet build Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet --property:WarningLevel=0 /clp:ErrorsOnly` — passed, 0 errors.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — passed earlier for the storage validation slice with 181 total, 180 succeeded, 1 skipped.
+  - `dotnet build --configuration Release --verbosity quiet --property:WarningLevel=0 /clp:ErrorsOnly` — first failed on a transient WebAssembly Webcil file lock.
+  - `dotnet build --configuration Release --verbosity quiet --property:WarningLevel=0 --property:BuildInParallel=false --maxcpucount:1 /clp:ErrorsOnly` — passed, 0 errors.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — latest rerun after handoff markdown edits failed: 181 total, 179 succeeded, 1 skipped, 1 failed. Failing test: `Queries_ShouldResideIn_QueriesNamespace`.
+- Commands still needed:
+  - Investigate and fix or isolate the current architecture failure before claiming the workspace is fully green.
+  - Add API/controller-level validation tests when the next storage metadata/object-key slice touches the controller/API surface.
+  - Add persistence integration tests when validation touches tenant/object-key lookup, uniqueness, quota, or repository behavior.
+
+### Documentation Impact
+
+- Updated active dev docs only. No canonical docs or journal entry were needed for this slice.
+- Future DTO/API contract changes may require `docs/API_CHANGELOG.md`, `schemas/openapi.json`, and regenerated `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
+
+### Risks
+
+- Source-grounding risks: storage metadata/object-key semantics are not complete; next agent must inspect current storage model/handler/repository code before editing.
+- Test or build risks: repo-wide dirty state includes unrelated generated-client whitespace and migration churn; use scoped checks for owned files and full build only after understanding concurrent changes.
+- Operator/release risks: direct presigned upload remains a legacy path; BFF upload-session/proxy is more hardened, but API storage metadata semantics still need tenant/object-key leak tests.
+
+### Notes For Next Contributor Or Agent
+
+- Required docs/rules to read: `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, `docs/API.md`, `docs/SECURITY-MODEL.md`, `.claude/rules/application-layer.md`, `.claude/rules/api-controllers.md`, and this workstream's plan/context/tasks/matrix.
+- Assumptions made: development mode allows breaking DTO/API changes; validators stay manually instantiated; canonicalization stays outside validators except pure normalization helpers used before validation in the handler.
+- Do not touch / unrelated dirty files: do not edit generated EF migration files manually; do not work on TickerQ/scheduler in this validation workstream; preserve unrelated active-doc deletions and generated-client changes unless the user explicitly assigns them.
 
 ## SESSION PROGRESS (2026-05-28 Europe/Brussels)
 
@@ -52,6 +148,125 @@ Last Updated: 2026-05-28 Europe/Brussels
 
 1. Start implementation only from matrix rows marked `Ready for slice`, especially API ProblemDetails normalization, unknown-property rejection, public query validators for `EventFilterRequest` / `EventSessionFilterRequest`, shared pagination bounds, and idempotency fingerprinting.
 2. Keep `Pending inventory` rows as matrix refinement work before broad DTO/UI churn.
+
+### IMPLEMENTATION UPDATE (2026-05-28 Europe/Brussels)
+
+- Implemented the first API input-error contract slice from the `Ready for slice` rows:
+  - added `Explore.API/ExceptionHandling/ApiValidationProblemDetailsFactory.cs` to normalize automatic `[ApiController]` model-state failures into the repository RFC7807 shape;
+  - configured MVC `ApiBehaviorOptions.InvalidModelStateResponseFactory` in `Explore.API/Program.cs`;
+  - configured `System.Text.Json` unknown-property rejection with `JsonUnmappedMemberHandling.Disallow`;
+  - added a 415 status-code bridge in `Explore.API/Extensions/ExceptionHandlingExtensions.cs` so unsupported content types receive the same safe ProblemDetails envelope;
+  - added API integration contract tests in `Event.API.IntegrationTests/Features/ProblemDetailsContractTests.cs` for malformed JSON, missing body, unsupported content type, unknown properties, and over-posted HAL `_links`.
+- The model-state factory intentionally redacts parser/exception-backed messages into a generic body-level error: `Request body is invalid or contains unsupported fields.` This prevents raw JSON snippets, rejected property values, parser internals, or over-posted field contents from becoming response data.
+- Fixed the pre-existing Blazor generated-client test compile mismatch in `Explore.Blazor.Client.Tests/Services/CustomPropertyAdminServiceTests.cs` by aligning generated HAL `_links` anonymous types with the current generated client.
+- Verification completed before the unrelated scheduler lane changed:
+  - `dotnet build --configuration Release --verbosity quiet` passed with 0 errors and pre-existing warnings.
+  - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed: 1210 total, 1209 succeeded, 1 skipped.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed: 179 total, 178 succeeded, 1 skipped.
+- API integration verification is not green yet:
+  - full `Event.API.IntegrationTests` failed before reaching this contract slice because startup guardrail tests hit `ExecuteDeleteAsync` in `DatabaseSeeder.RemovePreviousDevelopmentEventCatalogAsync`, which the in-memory provider does not support;
+  - a later targeted TUnit run needed `--treenode-filter` rather than VSTest `--filter`, but targeted API verification was then blocked by concurrent scheduler package/API work outside this validation lane.
+- Do not take over scheduler/TickerQ work in this validation thread. Continue input-validation work by either adding pure unit tests around the new factory or moving to public query validators once the separate scheduler lane restores API build stability.
+
+### PUBLIC QUERY VALIDATION UPDATE (2026-05-28 Europe/Brussels)
+
+- Continued Slice 4 on public discovery query hardening only; no scheduler/TickerQ files were touched.
+- Added `Explore.API/Models/QueryValidationRules.cs` as the shared API transport validation helper for query-bound DTOs. It validates:
+  - page number and page size against `PaginatedResult<T>.MaxPageSize`;
+  - bounded text/search fields and control-character rejection;
+  - sort allowlist: `date`, `title`, `views`, `createdAt`;
+  - filter mode allowlist: `and`, `or`;
+  - `DateFrom <= DateTo`;
+  - list cardinality ceilings;
+  - positive `int` lookup IDs;
+  - non-empty GUID IDs and GUID lists;
+  - custom-property filter count, namespace/key/value bounds, required operands by operator, option GUID integrity, and numeric/date range ordering.
+- `EventFilterRequest` and `EventSessionFilterRequest` now implement `IValidatableObject`, letting ASP.NET Core query model validation feed the existing `[ApiController]` automatic 400 path and the custom ProblemDetails response factory. This keeps controllers thin and avoids introducing API-layer FluentValidation/DI validator registration.
+- Added `ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)` metadata to the public event and event-session list endpoints.
+- Added `Event.API.IntegrationTests/Features/PublicQueryValidationTests.cs` with focused DTO-level regression tests for invalid pagination, unknown sort/mode values, inverted date ranges, invalid lookup IDs, empty GUIDs, overlong search terms, and malformed custom-property filter operands.
+- Context7 confirmation used during this slice: `/dotnet/aspnetcore.docs` documents that `[ApiController]` automatically returns HTTP 400 for model validation errors and that `ApiBehaviorOptions.InvalidModelStateResponseFactory` customizes that response path.
+- Verification status:
+  - `git diff --check -- Explore.API/Models/QueryValidationRules.cs Explore.API/Models/EventFilterRequest.cs Explore.API/Models/EventSessionFilterRequest.cs Explore.API/Controllers/EventController.cs Explore.API/Controllers/EventSessionController.cs Event.API.IntegrationTests/Features/PublicQueryValidationTests.cs` passed.
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/PublicQueryValidationTests/*' --maximum-parallel-tests 1` passed with 10 total, 10 succeeded, 0 failed.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed with 179 total, 178 succeeded, 1 skipped.
+  - `dotnet build --configuration Release --verbosity quiet` failed outside this validation slice because `Event.Persistence.IntegrationTests/Repositories/EmailDispatchOutboxTransitionRepositoryTests.cs` references `EmailDispatchReceipt.StartedAt`, which is not present on the current domain model.
+
+### IDEMPOTENCY FINGERPRINTING UPDATE (2026-05-29 Europe/Brussels)
+
+- Continued Slice 4/5 on the matrix row `Idempotency and cross-cutting headers`; no TickerQ or scheduler files were edited.
+- Used Context7 `/dotnet/aspnetcore.docs` to re-confirm the ASP.NET Core middleware patterns relevant to this slice:
+  - request bodies are streams and must be handled carefully when middleware reads them before MVC model binding;
+  - middleware can write RFC7807 responses through `IProblemDetailsService`.
+- Implemented request identity metadata for replay validation:
+  - `Explore.API/Middleware/IdempotencyRequestIdentity.cs` computes method, route pattern/path plus query, normalized content type, SHA-256 body hash, authenticated/anonymous principal fingerprint, and user id;
+  - JSON bodies are canonicalized with `JsonDocument`/`Utf8JsonWriter` and ordinally sorted object properties before hashing, so formatting and property order do not break legitimate retries;
+  - malformed JSON falls back to raw-body hashing and still lets downstream model binding produce the safe validation response.
+- Updated `Explore.API/Middleware/IdempotencyMiddleware.cs`:
+  - computes the request identity before repository lookup;
+  - persists identity metadata on eligible idempotency records;
+  - replays only when method, target, content type, body hash, and principal fingerprint match;
+  - returns HTTP 409 ProblemDetails with extension `code = idempotency_key_reuse` for same-key reuse with a different request;
+  - no longer persists validation/model-binding-style `400` responses or unsupported-content-type `415` responses.
+- Updated EF model ownership without manually editing generated migrations:
+  - `Explore.Domain/IdempotencyRecord.cs` owns the new persisted fields;
+  - `Explore.Persistence/Configurations/Entities/IdempotencyRecordConfiguration.cs` configures the new columns through EF Core fluent configuration;
+  - generated migration files and snapshots are intentionally left to EF Core regeneration.
+- Expanded `Event.API.IntegrationTests/Features/IdempotencyMiddlewareTests.cs`:
+  - equivalent JSON payloads replay with `X-Idempotency-Replay: true`;
+  - same key with different body, content type, route, method, or authenticated principal returns `409` and does not invoke the next delegate;
+  - same key across different tenants does not replay across tenant scope;
+  - validation failure responses are not persisted and a corrected retry can proceed.
+- Verification:
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/IdempotencyMiddlewareTests/*' --maximum-parallel-tests 1` passed with 13 total, 13 succeeded, 0 failed.
+  - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/IdempotencyRepositoryTests/*' --maximum-parallel-tests 1` passed with 1 total, 1 succeeded, 0 failed.
+  - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet` passed with 0 errors and existing warnings.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed with 181 total, 180 succeeded, 1 skipped.
+  - `dotnet build --configuration Release --verbosity quiet` passed with 0 errors and existing warnings.
+
+### SHARED PAGINATED QUERY VALIDATION UPDATE (2026-05-29 Europe/Brussels)
+
+- Continued Slice 4 on the matrix row for standard paginated list/query pairs and adjacent high-risk query surfaces; no TickerQ/scheduler files or generated EF migration files were edited.
+- Used Context7 `/dotnet/aspnetcore.docs` again for this slice. Relevant confirmation: `[ApiController]` automatically returns HTTP 400 for model-validation failures, and `IValidatableObject` supports class-level validation on bound models. The implementation intentionally uses query-bound API DTOs so invalid query input fails before MediatR handlers/repositories run.
+- Added `Explore.API/Models/PaginatedQueryRequests.cs` with reusable and endpoint-specific query models:
+  - `PaginationQueryRequest` for page/page-size bounds;
+  - endpoint-specific wrappers for event series, templates, event/session custom-property definitions, notification filters, contact shared-contact search, custom-property governance reports, projection dirty scopes, and template sync history;
+  - scalar query validation for required/non-empty GUIDs, optional positive lookup IDs, bounded search/email/projection text, enum support, and template-sync `page`/`pageSize`.
+- Extended `Explore.API/Models/QueryValidationRules.cs` with shared scalar helpers for required GUIDs and optional positive integer filters.
+- Converted raw `pageNumber`/`pageSize` controller parameters to validated query DTOs across the standard list surfaces:
+  - actor, category, event/my, event registration, event series, agenda items, group/my groups, location, notification, organization/my organizations, storage object, tag;
+  - custom-property definition, event custom-property definition, event-session custom-property definition, event template, event-session template;
+  - contact shared contacts, custom-property governance report, projection dirty scopes, event template sync history, and event-session template sync history.
+- Added `400` response metadata where the query-bound validation path now exists.
+- Expanded `Event.API.IntegrationTests/Features/PublicQueryValidationTests.cs` from 10 to 19 validator contract tests, covering shared pagination bounds, event-series actor id, template lookup id, required parent/template GUIDs, notification lookup filters, contact email-search length, governance tenant/recommendation enum values, projection name presence, and template-sync history page/page-size.
+- OpenAPI generation changed generated client parameter ordering for some query models. Production Blazor code was adjusted defensively with named generated-client arguments in `Explore.Blazor.Client/Services/EventSeriesService.cs`; `Explore.Blazor.Client.Tests/Services/NotificationServiceTests.cs` was updated to the regenerated notification client signature.
+- Verification:
+  - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet` passed with 0 errors and existing warnings.
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/PublicQueryValidationTests/*' --maximum-parallel-tests 1` passed with 19 total, 19 succeeded, 0 failed.
+  - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/NotificationServiceTests/*' --maximum-parallel-tests 1` passed with 40 total, 40 succeeded, 0 failed.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed with 181 total, 180 succeeded, 1 skipped.
+  - `dotnet build Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed with 0 errors and existing warnings.
+  - `dotnet build --configuration Release --verbosity quiet` passed with 0 errors and existing warnings.
+
+### LEGACY STORAGE DIRECT PRESIGN VALIDATION UPDATE (2026-05-29 Europe/Brussels)
+
+- Continued the input validation/sanitization workstream on the matrix row `StorageObjectController upload APIs`; no TickerQ/scheduler files and no generated EF migration files were edited.
+- Context7 was attempted again for ASP.NET Core validation guidance, but the server returned monthly quota exhaustion. The implementation therefore followed repository conventions plus the previously recorded Context7 findings for manual FluentValidation and ASP.NET Core ProblemDetails behavior.
+- Hardened the legacy direct presigned upload request path:
+  - `Explore.Application/DTOs/StorageObject/UploadRequestDto.cs` now has the required ABOUTME header and remains a narrow browser-input DTO with only `FileName` and `ContentType`;
+  - `Explore.Application/DTOs/StorageObject/Validators/UploadRequestDtoValidator.cs` now rejects empty/overlong values, control characters, path separators, dot-segments, malformed media types, and wildcard media types;
+  - the validator exposes deterministic normalization helpers for trimming file names/content types and using `MediaTypeHeaderValue` parsing for content-type canonicalization;
+  - `Explore.Application/Features/StorageObjects/Handlers/Commands/GenerateUploadUrlCommandHandler.cs` manually instantiates the validator, uses `ValidateAsync`, throws `FluentValidation.ValidationException` on invalid input, and calls `IObjectStorageService` only after normalization and validation pass.
+- Added focused regression tests:
+  - `Event.Application.UnitTests/Features/StorageObjects/Validators/UploadRequestDtoValidatorTests.cs` covers valid input, path traversal/path-style filenames, dot segments, control characters, malformed content types, and wildcard content types;
+  - `Event.Application.UnitTests/Features/StorageObjects/Commands/GenerateUploadUrlCommandHandlerTests.cs` proves valid input is normalized before storage use and invalid input fails before the object storage service is called.
+- The current workspace also contains the minimal actor-subscription DTO alignment in `Explore.Application/DTOs/ActorSubscription/ActorSubscriptionListDto.cs`, keeping the list DTO compatible with `ResourceDescriptors.ActorSubscriptionList` tenant-scope metadata. This is unrelated to storage validation behavior but required for the current Application test project to compile.
+- Targeted verification:
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/UploadRequestDtoValidatorTests/*' --maximum-parallel-tests 1` passed with 11 total, 11 succeeded, 0 failed.
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/GenerateUploadUrlCommandHandlerTests/*' --maximum-parallel-tests 1` passed with 3 total, 3 succeeded, 0 failed.
+  - `git diff --check -- ...` over the storage validation files, new tests, and active workstream docs passed with no whitespace errors.
+  - `dotnet build Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet --property:WarningLevel=0 /clp:ErrorsOnly` passed with 0 errors.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed with 181 total, 180 succeeded, 1 skipped.
+  - `dotnet build --configuration Release --verbosity quiet --property:WarningLevel=0 /clp:ErrorsOnly` first failed on a transient WebAssembly Webcil file lock for `Explore.Blazor.Client.dll`; rerun with `--property:BuildInParallel=false --maxcpucount:1` passed with 0 errors.
 
 ### ✅ COMPLETED
 
@@ -384,7 +599,157 @@ A second Oracle review was completed after CTO feedback integration. It returned
 
 ## Quick Resume
 
-1. Continue filling `full-input-validation-sanitization-contract-decisions.md` until all Slice 1 decisions are `Accepted` or explicitly deferred.
-2. Continue expanding `full-input-validation-sanitization-input-matrix.md` until every API, BFF, Blazor, upload, query, idempotency, and raw-rendering input has a row.
-3. Use the release slices in `full-input-validation-sanitization-tasks.md` as the execution order once the contract log and matrix gates are satisfied.
-4. No implementation code has been changed yet; this workstream is ready for a future implementation session.
+1. Start by reading the 2026-05-29 handoff above, then `full-input-validation-sanitization-input-matrix.md` and `full-input-validation-sanitization-tasks.md`.
+2. Continue with a concrete matrix row; recommended next slice is storage metadata/object-key validation beyond the already implemented legacy direct presign filename/content-type checks.
+3. Before editing storage metadata/API code, inspect `CreateStorageObjectDtoValidator`, `UpdateStorageObjectDtoValidator`, storage command handlers, `StorageObjectController`, `StorageObjectRepository`, and tenant/object-key semantics.
+4. Do not touch TickerQ/scheduler files or generated EF migrations in this workstream.
+
+## Implementation Update — 2026-05-29 Europe/Brussels
+
+### Completed Slice
+
+- Implemented the Slice 6 `BffSetupSecretEndpoints` local validation/leakage hardening.
+- `Explore.Blazor/Extensions/BffSetupSecretEndpoints.cs` now validates setup-secret request bodies before API forwarding:
+  - malformed JSON returns safe `400` ProblemDetails;
+  - missing secrets still return safe `400`;
+  - setup secrets are trimmed, capped at 512 characters, and rejected when they contain control characters;
+  - invalid local requests do not call the API.
+- Upstream setup-secret validation responses are now translated through a local safe-message allowlist. Browser-facing responses no longer echo upstream `Error` values from the API/provider. The endpoint preserves status meaning for `403`, `410`, `429`, `5xx`, and unexpected failures without leaking provider details.
+- Setup-secret gateway logging no longer logs raw exception messages/objects for upstream validation failures; it records safe status/exception-type metadata only.
+- Added `Explore.Blazor.IntegrationTests/Endpoints/BffSetupSecretEndpointsTests.cs` covering:
+  - raw upstream forbidden errors are not leaked;
+  - raw upstream `valid=false` errors are not leaked;
+  - malformed JSON returns safe `400` and does not call the API;
+  - overlong secrets return safe `400` and do not call the API;
+  - browser-supplied `X-Setup-Secret` is not used as the validation secret.
+
+### Validation
+
+- `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/BffSetupSecretEndpointsTests/*' --maximum-parallel-tests 1` — passed, 5/5.
+- `dotnet build Explore.Blazor/Explore.Blazor.csproj --configuration Release --verbosity quiet` — passed.
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — passed, 181 total, 180 succeeded, 1 skipped.
+- `dotnet build --configuration Release --verbosity quiet` — passed with existing package/analyzer warnings.
+
+### Workstream Notes
+
+- Updated `full-input-validation-sanitization-input-matrix.md` to mark `BffSetupSecretEndpoints` as implemented for local validation/leakage, with remaining brute-force/rate-limit stress as follow-up under the existing setup-secret policy.
+- Updated `full-input-validation-sanitization-tasks.md` to close the setup-secret inventory, spoofing, and raw-provider leakage items.
+- No EF migration files were edited for this slice.
+
+## Implementation Update — 2026-05-29 Europe/Brussels — BFF Preferences
+
+### Completed Slice
+
+- Implemented the Slice 6 `BffPreferenceEndpoints` simple-value validation hardening.
+- `Explore.Blazor/Extensions/BffPreferenceEndpoints.cs` now validates `PUT /bff/appearance/mode` through `IBffPreferenceValidationService` before checking authenticated/anonymous persistence paths. Invalid authenticated requests are rejected locally before API forwarding, and valid authenticated requests forward a normalized `SetThemeModeRequestDto`.
+- Existing anonymous `POST /bff/theme`, `POST /bff/language`, and `POST /bff/direction` local validation remains authoritative for cookies; the new tests lock those endpoint-level failures rather than relying only on service unit tests.
+- Added `Explore.Blazor.IntegrationTests/Endpoints/BffPreferenceValidationEndpointsTests.cs` covering:
+  - invalid `theme` returns safe `400` and does not set the `theme` cookie;
+  - invalid `lang` returns safe `400` and does not set `lang` or `.AspNetCore.Culture`;
+  - invalid `dir` returns safe `400` and does not set `direction`;
+  - authenticated invalid appearance mode returns safe `400` without invoking `IBffPreferenceForwardingService`.
+
+### Validation
+
+- `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/BffPreferenceValidationEndpointsTests/*' --maximum-parallel-tests 1` — passed, 4/4.
+- `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/BffPreferenceAntiforgeryTests/*' --maximum-parallel-tests 1` — passed, 7/7.
+- `dotnet build Explore.Blazor/Explore.Blazor.csproj --configuration Release --verbosity quiet` — passed with existing warnings.
+
+### Workstream Notes
+
+- Updated `full-input-validation-sanitization-input-matrix.md` to mark `BffPreferenceEndpoints` as implemented for antiforgery and simple preference/mode values; profile payload validation remains API-owned and still pending inventory.
+- Updated `full-input-validation-sanitization-tasks.md` to close the BFF preference inventory, CSRF coverage, and endpoint-level invalid-value tests.
+- No EF migration files were edited for this slice.
+
+## Implementation Update — 2026-05-29 Europe/Brussels — BFF Storage
+
+### Completed Slice
+
+- Implemented the Slice 6 `BffStorageEndpoints` validation and upload-session binding hardening.
+- `Explore.Blazor/Extensions/BffStorageEndpoints.cs` now validates upload-session JSON locally before API forwarding:
+  - request bodies are required;
+  - file names are trimmed, capped, and rejected when they contain path segments or control characters;
+  - content types are trimmed, capped, parsed as MIME media types, and rejected when invalid or wildcarded;
+  - only normalized `UploadRequestDto` values are forwarded to `api/storageobject/generate-upload-url`.
+- The multipart upload proxy now rejects malformed form bodies, raw browser-supplied `uploadUrl` fields, invalid opaque session ids, unsafe file names, invalid content types, and mismatched declared/file content types before resolving the server-issued upload session or calling the S3 upload client.
+- The storage BFF validation remains local/manual in `Explore.Blazor`; it does not use DI validators or Application-layer validator coupling. `StorageUploadSessionStore` remains the trust boundary for user-bound, content-type-bound, consume-once upload sessions.
+- Attempted Context7 lookup for current ASP.NET Core upload/antiforgery guidance, but the Context7 quota was exhausted. This slice used the already-loaded repo security model and existing ASP.NET Core antiforgery/minimal API guidance from the prior BFF preference slice.
+- Added/expanded `Explore.Blazor.IntegrationTests/Endpoints/BffStorageUploadProxyTests.cs` covering:
+  - raw presigned-looking browser upload URLs are rejected without S3 calls;
+  - upload-session requests with path-style filenames do not call the API;
+  - upload-session requests with invalid content types do not call the API;
+  - upload proxy content-type mismatch does not upload;
+  - another authenticated user cannot use someone else's upload session;
+  - successful upload consumes the session and reuse is rejected without a second S3 upload.
+
+### Validation
+
+- `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/BffStorageUploadProxyTests/*' --maximum-parallel-tests 1` — passed, 6/6.
+- `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/StorageUploadSessionStoreTests/*' --maximum-parallel-tests 1` — passed, 4/4.
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — passed, 181 total, 180 succeeded, 1 skipped.
+- `dotnet build --configuration Release --verbosity quiet` — passed with existing package/analyzer warnings.
+
+### Workstream Notes
+
+- Updated `full-input-validation-sanitization-input-matrix.md` to mark BFF storage upload-session and upload-proxy validation as implemented for syntactic validation, destination binding, content-type mismatch, cross-user rejection, and consume-once replay behavior.
+- Updated `full-input-validation-sanitization-tasks.md` to close the BFF storage inventory and upload-session proxy abuse cases.
+- No EF migration files were edited for this slice.
+
+## Implementation Update — 2026-05-29 Europe/Brussels — BFF Auth
+
+### Completed Slice
+
+- Implemented the Slice 6 `BffAuthEndpoints` provider-diagnostic leakage hardening.
+- `Explore.Blazor/Extensions/BffAuthEndpoints.cs` now handles `/auth/providers` failures through `ISafeAuthDiagnosticsPolicy`:
+  - browser-visible `ProblemDetails` use a generic detail instead of `ex.Message`;
+  - responses include safe `code` and `correlationId` extensions;
+  - logs record safe error code, correlation id, and exception category without logging the exception object/message.
+- Added `Explore.Blazor.IntegrationTests/Endpoints/BffAuthEndpointValidationTests.cs` covering:
+  - provider-resolution exceptions containing raw provider text, `refresh_token`, secret length, and client id are not echoed in the browser response;
+  - browser-supplied `Authorization: Bearer ...` does not authenticate `/auth/status` and is not echoed;
+  - `POST /bff/auth/refresh-schemes` without antiforgery is rejected;
+  - authenticated `POST /bff/auth/refresh-session` without antiforgery is rejected.
+- Attempted Context7 lookup for current ASP.NET Core BFF auth/antiforgery guidance, but the Context7 quota was exhausted. This slice used the loaded repo security model and prior ASP.NET Core antiforgery guidance from earlier BFF slices.
+
+### Validation
+
+- `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/BffAuthEndpointValidationTests/*' --maximum-parallel-tests 1` — passed, 4/4.
+
+### Workstream Notes
+
+- Updated `full-input-validation-sanitization-input-matrix.md` to mark `BffAuthEndpoints` implemented for provider failure sanitization, auth-status header spoofing, and auth refresh antiforgery checks.
+- Updated `full-input-validation-sanitization-tasks.md` to close BFF auth inventory and bootstrap/internal compensating-control validation; broader proxy header-stripping tests remain pending under the YARP row.
+- No EF migration files were edited for this slice.
+
+## Implementation Update — 2026-05-29 Europe/Brussels — BFF YARP Proxy Header Boundary
+
+### Completed Slice
+
+- Implemented the Slice 6 YARP/BFF proxy header hardening row.
+- `Explore.Blazor/Services/BffProxyHeaderSanitizer.cs` now strips browser-originated credential and tenant-authority headers from the YARP `HttpRequestMessage` before any trusted BFF transform runs:
+  - `Authorization` and `Proxy-Authorization`;
+  - BFF/browser cookies;
+  - `X-Setup-Secret`;
+  - direct API `X-API-Key`;
+  - access/refresh/identity/id token-style headers; and
+  - browser-supplied tenant id/slug headers.
+- `Explore.Blazor/Extensions/YarpProxyExtensions.cs` invokes the sanitizer as the first request transform, then the existing transforms add only server-owned values: BFF access token from the authenticated session, tenant slug from `ITenantRouteContextAccessor`, and setup secret from `ISetupSecretResolver`.
+- `Explore.Application/Features/StorageObjects/Requests/Commands/FinalizeStorageUploadSessionCommand.cs` was corrected to match the current `ISecureRequest.ResourceAttributes` contract (`IDictionary<string, object>?`) so the storage/input-validation build compiles.
+- The untracked `Explore.Persistence/Repositories/ActorSubscriptionRepository.cs` had a compile-only `IQueryable`/`IOrderedQueryable` fix because it blocked all Blazor integration tests; no migration files were edited.
+- Attempted Context7 lookup for YARP request transform documentation, but the Context7 quota was exhausted. This slice used the repo security model and existing BFF/YARP transform implementation.
+
+### Validation
+
+- `dotnet build Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet --property:WarningLevel=0 /clp:ErrorsOnly` — passed, 0 errors.
+- `dotnet test --no-build --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/BffProxyHeaderSanitizerTests/*' --maximum-parallel-tests 1` — passed, 2/2.
+- `dotnet test --no-build --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/AccessTokenForwardingHandlerTests/*' --maximum-parallel-tests 1` — passed, 5/5.
+- `dotnet test --no-build --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter '/*/*/SetupSecretForwardingHandlerTests/*' --maximum-parallel-tests 1` — passed, 8/8.
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — passed, 181 total, 180 succeeded, 1 skipped.
+- `dotnet build --configuration Release --verbosity quiet --property:WarningLevel=0 /clp:ErrorsOnly` — passed, 0 errors, existing warnings.
+- Scoped `git diff --check` over the files touched in this slice passed. Repository-wide `git diff --check` still reports unrelated generated-client trailing whitespace in `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
+
+### Workstream Notes
+
+- Updated `full-input-validation-sanitization-input-matrix.md` to mark the YARP proxy row implemented for browser credential/header stripping.
+- Updated `full-input-validation-sanitization-tasks.md` to close the Slice 6 browser-supplied header stripping task.
+- No EF migration files were edited for this slice.
