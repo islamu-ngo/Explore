@@ -1,0 +1,129 @@
+// ABOUTME: Unit tests for fixed Event lifecycle email automation outbox rows.
+// ABOUTME: Verifies lifecycle actions create durable EmailDispatchOutbox intent without transport dependencies.
+
+using Explore.Application.Services;
+using Explore.Domain;
+
+namespace Event.Application.UnitTests.Services;
+
+public sealed class EventLifecycleEmailOutboxFactoryTests
+{
+    private readonly EventLifecycleEmailOutboxFactory _factory = new();
+
+    [Test]
+    public async Task CreateRegistrationApprovedUsesRegistrationIntentDedupKey()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var registrationIntentId = Guid.NewGuid();
+
+        var outbox = _factory.CreateRegistrationApproved(
+            tenantId,
+            userId,
+            eventId,
+            registrationIntentId,
+            " attendee@example.test ",
+            " Community Iftar ");
+
+        await Assert.That(outbox.TenantId).IsEqualTo(tenantId);
+        await Assert.That(outbox.Kind).IsEqualTo(EmailDispatchKind.RegistrationApproved);
+        await Assert.That(outbox.SourceType).IsEqualTo(EventLifecycleEmailOutboxFactory.RegistrationIntentSourceType);
+        await Assert.That(outbox.SourceId).IsEqualTo(registrationIntentId);
+        await Assert.That(outbox.EventId).IsEqualTo(eventId);
+        await Assert.That(outbox.RegistrationIntentId).IsEqualTo(registrationIntentId);
+        await Assert.That(outbox.UserId).IsEqualTo(userId);
+        await Assert.That(outbox.RecipientEmail).IsEqualTo("attendee@example.test");
+        await Assert.That(outbox.Status).IsEqualTo(EmailDispatchStatus.Pending);
+        await Assert.That(outbox.Subject).IsEqualTo("Registration approved for Community Iftar");
+        await Assert.That(outbox.CorrelationId).IsEqualTo(registrationIntentId.ToString());
+    }
+
+    [Test]
+    public async Task RegistrationLifecycleKindsUseDistinctEmailDispatchKindsForOutboxDeduplication()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var registrationIntentId = Guid.NewGuid();
+
+        var confirmation = _factory.CreateRegistrationConfirmation(
+            tenantId,
+            userId,
+            eventId,
+            registrationIntentId,
+            "attendee@example.test",
+            "Event");
+        var rejected = _factory.CreateRegistrationRejected(
+            tenantId,
+            userId,
+            eventId,
+            registrationIntentId,
+            "attendee@example.test",
+            "Event");
+        var promoted = _factory.CreateWaitlistPromoted(
+            tenantId,
+            userId,
+            eventId,
+            registrationIntentId,
+            "attendee@example.test",
+            "Event");
+        var reminder = _factory.CreateEventReminder(
+            tenantId,
+            userId,
+            eventId,
+            registrationIntentId,
+            "attendee@example.test",
+            "Event",
+            DateTimeOffset.UnixEpoch);
+        var cancelled = _factory.CreateEventCancelled(
+            tenantId,
+            userId,
+            eventId,
+            registrationIntentId,
+            "attendee@example.test",
+            "Event");
+
+        var kinds = new[]
+        {
+            confirmation.Kind,
+            rejected.Kind,
+            promoted.Kind,
+            reminder.Kind,
+            cancelled.Kind
+        };
+
+        await Assert.That(kinds.Distinct().Count()).IsEqualTo(kinds.Length);
+        await Assert.That(kinds).Contains(EmailDispatchKind.RegistrationConfirmation);
+        await Assert.That(kinds).Contains(EmailDispatchKind.RegistrationRejected);
+        await Assert.That(kinds).Contains(EmailDispatchKind.WaitlistPromoted);
+        await Assert.That(kinds).Contains(EmailDispatchKind.EventReminder);
+        await Assert.That(kinds).Contains(EmailDispatchKind.EventCancelled);
+    }
+
+    [Test]
+    public async Task CreateOrganizerNotificationUsesEventSourceKey()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var organizerUserId = Guid.NewGuid();
+
+        var outbox = _factory.CreateOrganizerNotification(
+            tenantId,
+            eventId,
+            organizerUserId,
+            "organizer@example.test",
+            "Fundraiser",
+            "Capacity warning",
+            "The event is almost full.");
+
+        await Assert.That(outbox.TenantId).IsEqualTo(tenantId);
+        await Assert.That(outbox.Kind).IsEqualTo(EmailDispatchKind.OrganizerNotification);
+        await Assert.That(outbox.SourceType).IsEqualTo(EventLifecycleEmailOutboxFactory.EventSourceType);
+        await Assert.That(outbox.SourceId).IsEqualTo(eventId);
+        await Assert.That(outbox.EventId).IsEqualTo(eventId);
+        await Assert.That(outbox.UserId).IsEqualTo(organizerUserId);
+        await Assert.That(outbox.RegistrationIntentId).IsNull();
+        await Assert.That(outbox.CorrelationId).IsEqualTo($"{eventId}:organizer:{organizerUserId}");
+    }
+}

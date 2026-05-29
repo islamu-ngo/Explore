@@ -13,7 +13,6 @@ using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using System.Net;
 
 namespace Explore.Application.Features.EventRegistrations.Handlers.Commands;
 
@@ -28,6 +27,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     private readonly ITenantContext _tenantContext;
     private readonly BusinessMetrics _metrics;
     private readonly IContactShareConsentService _consentService;
+    private readonly IEventLifecycleEmailOutboxFactory _emailOutboxFactory;
     private readonly ILogger<CreateEventRegistrationCommandHandler> _logger;
 
     public CreateEventRegistrationCommandHandler(
@@ -40,6 +40,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         ITenantContext tenantContext,
         BusinessMetrics metrics,
         IContactShareConsentService consentService,
+        IEventLifecycleEmailOutboxFactory emailOutboxFactory,
         ILogger<CreateEventRegistrationCommandHandler> logger)
     {
         _intentRepository = intentRepository;
@@ -51,6 +52,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _tenantContext = tenantContext;
         _metrics = metrics;
         _consentService = consentService;
+        _emailOutboxFactory = emailOutboxFactory;
         _logger = logger;
     }
 
@@ -159,7 +161,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             })
             .ToList();
 
-        var emailDispatchOutbox = CreateRegistrationConfirmationEmail(
+        var emailDispatchOutbox = _emailOutboxFactory.CreateRegistrationConfirmation(
             tenantId,
             dto.UserId,
             dto.EventId,
@@ -206,34 +208,6 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _metrics.RecordRegistrationCreated(tenantId.ToString());
 
         return response;
-    }
-
-    private static EmailDispatchOutbox CreateRegistrationConfirmationEmail(
-        Guid tenantId,
-        Guid userId,
-        Guid eventId,
-        Guid registrationIntentId,
-        string recipientEmail,
-        string eventTitle)
-    {
-        var safeTitle = string.IsNullOrWhiteSpace(eventTitle) ? "the event" : eventTitle.Trim();
-        var encodedTitle = WebUtility.HtmlEncode(safeTitle);
-
-        return new EmailDispatchOutbox
-        {
-            TenantId = tenantId,
-            Kind = EmailDispatchKind.RegistrationConfirmation,
-            SourceType = "event_registration_intent",
-            SourceId = registrationIntentId,
-            EventId = eventId,
-            RegistrationIntentId = registrationIntentId,
-            UserId = userId,
-            RecipientEmail = recipientEmail.Trim(),
-            Subject = $"Registration received for {safeTitle}",
-            PlainTextBody = $"Assalamu alaykum,\n\nYour registration for {safeTitle} has been received. We will keep you updated if any registration status changes.\n\nISLAMU Event",
-            HtmlBody = $"<p>Assalamu alaykum,</p><p>Your registration for <strong>{encodedTitle}</strong> has been received.</p><p>We will keep you updated if any registration status changes.</p><p>ISLAMU Event</p>",
-            CorrelationId = registrationIntentId.ToString()
-        };
     }
 
     private async Task<List<Guid>> ResolveChildSessionsAsync(CreateEventRegistrationDto dto, CancellationToken cancellationToken)

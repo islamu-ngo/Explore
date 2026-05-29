@@ -60,7 +60,13 @@ public class EmailDispatchOutbox : ITenantEntity, IAuditableEntity, ISoftDeletab
 
 public enum EmailDispatchKind
 {
-    RegistrationConfirmation = 1
+    RegistrationConfirmation = 1,
+    RegistrationApproved = 2,
+    RegistrationRejected = 3,
+    WaitlistPromoted = 4,
+    EventReminder = 5,
+    EventCancelled = 6,
+    OrganizerNotification = 7
 }
 
 public enum EmailDispatchStatus
