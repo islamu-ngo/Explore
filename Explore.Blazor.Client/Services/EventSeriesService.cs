@@ -25,7 +25,11 @@ public class EventSeriesService : IEventSeriesService
     {
         try
         {
-            return await _apiClient.GetEventSeriesAsync(pageNumber, pageSize, actorId, cancellationToken: ct);
+            return await _apiClient.GetEventSeriesAsync(
+                actorId: actorId,
+                pageNumber: pageNumber,
+                pageSize: pageSize,
+                cancellationToken: ct);
         }
         catch (Exception ex)
         {
@@ -65,7 +69,10 @@ public class EventSeriesService : IEventSeriesService
     {
         try
         {
-            var result = await _apiClient.GetEventSeriesAsync(1, maxResults, cancellationToken: ct);
+            var result = await _apiClient.GetEventSeriesAsync(
+                pageNumber: 1,
+                pageSize: maxResults,
+                cancellationToken: ct);
             if (result?.Items is null)
                 return [];
 
