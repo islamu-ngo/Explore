@@ -148,6 +148,10 @@ public static class SeedIds
     public static readonly Guid SystemSettingEmailSmtpSkipCertValidationId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000528");
 
     // ===== System Settings — Object Storage / S3 =====
+    public static readonly Guid SystemSettingStorageProviderId = Guid.Parse("018e4e5c-7f00-7000-8000-00000000052c");
+    public static readonly Guid SystemSettingStorageDefaultMaxUploadBytesId = Guid.Parse("018e4e5c-7f00-7000-8000-00000000052d");
+    public static readonly Guid SystemSettingStorageDefaultTenantQuotaBytesId = Guid.Parse("018e4e5c-7f00-7000-8000-00000000052e");
+    public static readonly Guid SystemSettingStorageInstanceMaxUploadBytesId = Guid.Parse("018e4e5c-7f00-7000-8000-00000000052f");
     public static readonly Guid SystemSettingS3EndpointId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000530");
     public static readonly Guid SystemSettingS3PublicEndpointId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000531");
     public static readonly Guid SystemSettingS3BucketNameId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000532");
