@@ -70,6 +70,12 @@ public static class SettingValueSerializer
         => Deserialize(rawValue, defaultValue);
 
     /// <summary>
+    /// Deserializes a long integer setting value with fallback parsing.
+    /// </summary>
+    public static long DeserializeLong(string? rawValue, long defaultValue = 0)
+        => Deserialize(rawValue, defaultValue);
+
+    /// <summary>
     /// Deserializes a boolean setting value with fallback parsing.
     /// </summary>
     public static bool DeserializeBool(string? rawValue, bool defaultValue = false)

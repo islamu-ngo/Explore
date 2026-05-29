@@ -1,10 +1,46 @@
-// ABOUTME: Setting definitions for S3-compatible object storage configuration.
-// ABOUTME: Sensitive keys (access key, secret key) are flagged with IsSensitive = true.
+// ABOUTME: Setting definitions for local-first storage policy and optional S3-compatible configuration.
+// ABOUTME: Local provider defaults are non-secret; S3 credentials remain sensitive optional settings.
+
+using Explore.Domain;
+using Explore.Domain.Constants;
 
 namespace Explore.Domain.Settings.Definitions;
 
 public static class StorageSettingDefinitions
 {
+    public static readonly SettingDefinition Provider = new(
+        Key: GovernanceSettingKeys.Storage.Provider,
+        ValueType: SettingValueType.String,
+        DefaultValue: $"\"{StorageProviders.Local}\"",
+        Category: "ObjectStorage",
+        Description: "Selected storage provider. Local filesystem is the default; S3-compatible storage is optional.",
+        MaxScope: SettingScope.Tenant,
+        AllowedValues: StorageProviders.All);
+
+    public static readonly SettingDefinition DefaultMaxUploadBytes = new(
+        Key: GovernanceSettingKeys.Storage.DefaultMaxUploadBytes,
+        ValueType: SettingValueType.Long,
+        DefaultValue: "10485760",
+        Category: "ObjectStorage",
+        Description: "Default maximum upload size in bytes for tenant storage policy.",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition DefaultTenantQuotaBytes = new(
+        Key: GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
+        ValueType: SettingValueType.Long,
+        DefaultValue: "1073741824",
+        Category: "ObjectStorage",
+        Description: "Default tenant storage quota in bytes.",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition InstanceMaxUploadBytes = new(
+        Key: GovernanceSettingKeys.Storage.InstanceMaxUploadBytes,
+        ValueType: SettingValueType.Long,
+        DefaultValue: "104857600",
+        Category: "ObjectStorage",
+        Description: "Instance-wide upload ceiling in bytes; tenant overrides cannot exceed this value.",
+        MaxScope: SettingScope.Instance);
+
     public static readonly SettingDefinition Endpoint = new(
         Key: "s3.endpoint",
         ValueType: SettingValueType.String,
@@ -73,6 +109,7 @@ public static class StorageSettingDefinitions
 
     public static IReadOnlyList<SettingDefinition> All =>
     [
+        Provider, DefaultMaxUploadBytes, DefaultTenantQuotaBytes, InstanceMaxUploadBytes,
         Endpoint, PublicEndpoint, BucketName, AccessKeyId, SecretAccessKey,
         Region, ForcePathStyle, UploadUrlExpirationMinutes
     ];

@@ -97,5 +97,6 @@ public enum SettingValueType
     Boolean = 2,
     Decimal = 3,
     Json = 4,
-    DateTime = 5
+    DateTime = 5,
+    Long = 6
 }
