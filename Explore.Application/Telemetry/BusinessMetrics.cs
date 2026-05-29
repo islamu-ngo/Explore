@@ -28,7 +28,12 @@ public sealed class BusinessMetrics
     private readonly Counter<long> _externalApiKeyRotated;
     private readonly Counter<long> _emailDispatchAttempts;
     private readonly Counter<long> _emailDispatchRabbitMqPublishes;
+    private readonly Counter<long> _emailDispatchRabbitMqConsumes;
     private readonly Counter<long> _customPropertyPurgeDecisions;
+    private readonly Counter<long> _idempotencyCleanupRuns;
+    private readonly Counter<long> _idempotencyCleanupRows;
+    private readonly Counter<long> _aiProviderHealthChecks;
+    private readonly Counter<long> _aiProviderRequests;
 
     public BusinessMetrics(IMeterFactory meterFactory)
     {
@@ -104,10 +109,35 @@ public sealed class BusinessMetrics
             unit: "{publish}",
             description: "Total RabbitMQ Dispatch Mode pointer publishes by outcome");
 
+        _emailDispatchRabbitMqConsumes = meter.CreateCounter<long>(
+            "explore.email_dispatch.rabbitmq.consumes",
+            unit: "{delivery}",
+            description: "Total RabbitMQ Dispatch Mode pointer deliveries by durable consumer outcome");
+
         _customPropertyPurgeDecisions = meter.CreateCounter<long>(
             "explore.custom_properties.purge_decisions",
             unit: "{decision}",
             description: "Total custom-property hard-purge decisions by scope, outcome, and bounded blocker category");
+
+        _idempotencyCleanupRuns = meter.CreateCounter<long>(
+            "explore.idempotency.cleanup_runs",
+            unit: "{run}",
+            description: "Total idempotency cleanup passes by mode and outcome");
+
+        _idempotencyCleanupRows = meter.CreateCounter<long>(
+            "explore.idempotency.cleanup_rows",
+            unit: "{row}",
+            description: "Total idempotency rows selected or deleted by cleanup mode and outcome");
+
+        _aiProviderHealthChecks = meter.CreateCounter<long>(
+            "explore.ai.provider.health_checks",
+            unit: "{check}",
+            description: "Total AI provider health checks by provider, status, and bounded reason");
+
+        _aiProviderRequests = meter.CreateCounter<long>(
+            "explore.ai.provider.requests",
+            unit: "{request}",
+            description: "Total AI provider requests by provider, outcome, and bounded failure category");
     }
 
     public void RecordEventCreated(string? tenantId = null, string? eventType = null)
@@ -211,6 +241,14 @@ public sealed class BusinessMetrics
             new KeyValuePair<string, object?>("failure_category", failureCategory ?? "none"));
     }
 
+    public void RecordEmailDispatchRabbitMqConsume(string? tenantId = null, string? outcome = null, string? failureCategory = null)
+    {
+        _emailDispatchRabbitMqConsumes.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("outcome", outcome ?? "unknown"),
+            new KeyValuePair<string, object?>("failure_category", failureCategory ?? "none"));
+    }
+
     public void RecordCustomPropertyPurgeDecision(string? tenantId, string scope, string outcome, string blockerCategory)
     {
         _customPropertyPurgeDecisions.Add(1,
@@ -218,6 +256,36 @@ public sealed class BusinessMetrics
             new KeyValuePair<string, object?>("scope", NormalizeTag(scope)),
             new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)),
             new KeyValuePair<string, object?>("blocker_category", NormalizeTag(blockerCategory)));
+    }
+
+    public void RecordIdempotencyCleanupRun(string mode, string outcome)
+    {
+        _idempotencyCleanupRuns.Add(1,
+            new KeyValuePair<string, object?>("mode", NormalizeTag(mode)),
+            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
+    }
+
+    public void RecordIdempotencyCleanupRows(long rowCount, string mode, string outcome)
+    {
+        _idempotencyCleanupRows.Add(rowCount,
+            new KeyValuePair<string, object?>("mode", NormalizeTag(mode)),
+            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
+    }
+
+    public void RecordAiProviderHealthCheck(string? provider, string? status, string? reason)
+    {
+        _aiProviderHealthChecks.Add(1,
+            new KeyValuePair<string, object?>("provider", NormalizeTag(provider)),
+            new KeyValuePair<string, object?>("status", NormalizeTag(status)),
+            new KeyValuePair<string, object?>("reason", NormalizeTag(reason)));
+    }
+
+    public void RecordAiProviderRequest(string? provider, string? outcome, string? failureCategory = null)
+    {
+        _aiProviderRequests.Add(1,
+            new KeyValuePair<string, object?>("provider", NormalizeTag(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeTag(failureCategory ?? "none")));
     }
 
     private static string NormalizeTag(string? value)
