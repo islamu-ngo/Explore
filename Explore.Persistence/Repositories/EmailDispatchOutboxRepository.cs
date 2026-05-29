@@ -68,6 +68,17 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
             .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == outboxId, cancellationToken);
     }
 
+    public async Task<EmailDispatchOutbox?> GetByTenantAndPublishEventId(
+        Guid tenantId,
+        Guid publishEventId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchTenantOperation)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.TenantId == tenantId && e.PublishEventId == publishEventId, cancellationToken);
+    }
+
     public async Task<bool> IsTenantPaused(Guid tenantId, CancellationToken cancellationToken)
     {
         return await _dbContext.EmailDispatchTenantControls
@@ -191,6 +202,66 @@ public class EmailDispatchOutboxRepository : IEmailDispatchOutboxRepository
                 .SetProperty(e => e.UpdatedAt, startedAt), cancellationToken);
 
         return updated > 0;
+    }
+
+    public async Task<int> MarkStaleProcessingAsUnknown(
+        DateTime processingStartedBefore,
+        DateTime recoveredAt,
+        string failureCategory,
+        string errorMessage,
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        var outboxIds = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .AsNoTracking()
+            .Where(e => e.Status == EmailDispatchStatus.Processing
+                && e.ProcessingStartedAt != null
+                && e.ProcessingStartedAt <= processingStartedBefore)
+            .OrderBy(e => e.ProcessingStartedAt)
+            .Take(batchSize)
+            .Select(e => e.Id)
+            .ToListAsync(cancellationToken);
+
+        if (outboxIds.Count == 0)
+        {
+            return 0;
+        }
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var updated = await _dbContext.EmailDispatchOutbox
+            .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+            .Where(e => outboxIds.Contains(e.Id)
+                && e.Status == EmailDispatchStatus.Processing
+                && e.ProcessingStartedAt != null
+                && e.ProcessingStartedAt <= processingStartedBefore)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(e => e.Status, EmailDispatchStatus.Unknown)
+                .SetProperty(e => e.UnknownAt, recoveredAt)
+                .SetProperty(e => e.ProcessingStartedAt, (DateTime?)null)
+                .SetProperty(e => e.ProcessingLeaseToken, (Guid?)null)
+                .SetProperty(e => e.NextAttemptAt, (DateTime?)null)
+                .SetProperty(e => e.LastFailureCategory, Truncate(failureCategory, 100))
+                .SetProperty(e => e.LastError, Truncate(errorMessage, MaxErrorLength))
+                .SetProperty(e => e.LastFailureAt, recoveredAt)
+                .SetProperty(e => e.UpdatedAt, recoveredAt), cancellationToken);
+
+        if (updated > 0)
+        {
+            await _dbContext.EmailDispatchReceipts
+                .IgnoreTenantFilter(TenantFilterBypassReasons.EmailDispatchWorkerCrossTenantQueue)
+                .Where(receipt => outboxIds.Contains(receipt.EmailDispatchOutboxId)
+                    && receipt.Status == EmailDispatchReceiptStatus.Processing)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(receipt => receipt.Status, EmailDispatchReceiptStatus.Unknown)
+                    .SetProperty(receipt => receipt.FailedAt, recoveredAt)
+                    .SetProperty(receipt => receipt.FailureCode, Truncate(failureCategory, 100))
+                    .SetProperty(receipt => receipt.FailureMessage, Truncate(errorMessage, MaxReceiptFailureLength))
+                    .SetProperty(receipt => receipt.UpdatedAt, recoveredAt), cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return updated;
     }
 
     public async Task MarkAsSent(
