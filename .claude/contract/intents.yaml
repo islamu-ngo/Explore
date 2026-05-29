@@ -294,3 +294,48 @@ intents:
       - presentation-engineer-agent
       - librarian-agent
       - quality-verifier-agent
+
+  - id: ci-cd-change
+    title: "Change CI/CD workflows, deployment automation, or release governance"
+    category: infrastructure
+    triggers:
+      - "change GitHub Actions workflow"
+      - "update CI/CD pipeline"
+      - "harden deployment workflow"
+      - "change release governance"
+    must_read_docs:
+      - docs/CI_CD_GOVERNANCE.md
+      - docs/OPERATIONS.md
+      - docs/TESTING.md
+      - docs/RELEASE_CHECKLIST.md
+      - docs/QUICK_REFERENCE.md
+    load_skills: []
+    load_rules: []
+    paths_in_scope:
+      - ".github/**"
+      - "Explore.API/Dockerfile"
+      - "Explore.Blazor/Dockerfile"
+      - "Directory.Packages.props"
+      - "global.json"
+      - "docs/CI_CD_GOVERNANCE.md"
+      - "docs/OPERATIONS.md"
+      - "docs/TESTING.md"
+      - "docs/RELEASE_CHECKLIST.md"
+      - "docs/CONTRIBUTING.md"
+    minimum_tests:
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/CI_CD_GOVERNANCE.md
+      - docs/OPERATIONS.md
+      - docs/RELEASE_CHECKLIST.md
+    unique_acceptance:
+      - "External GitHub Actions remain pinned to full commit SHAs with same-line version comments"
+      - "Required checks are always-present or explicitly documented as path-conditional"
+      - "Deployment changes retain protected environment approval and release evidence"
+    forbidden_without_approval:
+      - "Introducing pull_request_target outside a documented metadata-only legal/status workflow threat model"
+      - "Granting write-token, package, OIDC, registry, or deployment credentials to fork PR code"
+      - "Renaming required workflows or jobs without branch-protection migration evidence"
+    related_agents:
+      - architect-agent
+      - quality-verifier-agent

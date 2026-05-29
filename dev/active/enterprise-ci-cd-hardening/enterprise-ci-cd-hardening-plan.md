@@ -1,555 +1,767 @@
-ABOUTME: Implementation plan for hardening GitHub Actions into an enterprise-grade CI/CD system.
-ABOUTME: Captures phased workflow, OpenAPI contract guard, deployment safety, and supply-chain controls.
+ABOUTME: Re-baselined implementation plan for enterprise-grade GitHub Actions CI/CD hardening.
+ABOUTME: Defines evidence, gaps, target architecture, rollout phases, and verification for the ISLAMU Event pipeline.
 
-# Enterprise CI/CD Hardening Plan
+# Enterprise CI/CD Hardening - Implementation Plan
 
-Last Updated: 2026-05-07
+Last Updated: 2026-05-29 Europe/Brussels
 
-## Executive Summary
+## 0. Planning Metadata
 
-The current GitHub Actions setup provides a useful foundation: reusable build/test logic, CodeQL, Cerbos policy checks, security integration tests, dependency review, reusable container builds, protected deploy jobs, advisory E2E runtime lanes, and Coolify deployment workflows. PR1-PR9 plus the Phase 1B/1C follow-ups now address the first correctness, hygiene, security-gate, container-evidence, deployment-protection, runtime-evidence, governance-documentation, and action supply-chain gaps: fast tests include the infrastructure suite, GitHub Actions restore uses locked NuGet restore, TRX/OpenAPI/security/container/deploy/E2E evidence is produced, fast/integration test summaries identify project outcomes and artifact names, OpenAPI drift is guarded, workflow permissions are explicit, missing timeouts/concurrency are added, Cerbos no longer uses a mutable binary version, C# CodeQL scans a built Release graph, Dependabot update automation is in place, external actions are SHA-pinned with version comments, deployable images emit digests/SBOM/provenance/GHCR attestations/Trivy scan output, deploy jobs use GitHub Environments plus hardened Coolify webhook calls, and `docs/CI_CD_GOVERNANCE.md` documents required checks, repository settings, fork PR policy, generated-artifact review, badges, locked restore, and retention. Remaining enterprise gaps include coverage, Dockerfile locked-restore normalization, full deploy workflow consolidation, Coolify digest/tag consumption, mandatory production smoke URL enforcement, and GitHub repository settings verification.
+- **Request:** Update the old `dev/active/enterprise-ci-cd-hardening/` plan into a stronger enterprise-grade CI/CD program for a pre-v1 self-hostable platform. Backward compatibility is not a goal.
+- **Task directory:** `dev/active/enterprise-ci-cd-hardening/`
+- **Planning status:** Re-baselined draft; old plan history preserved only as current-state evidence.
+- **Matched intents:** `ci-cd-change` now exists in `.claude/contract/intents.yaml`; it routes workflow, deployment, dependency, release, and legal contribution governance changes through the Contribution Contract.
+- **Relevant skills:** `.claude/skills/senior-cto-feedback/SKILL.md` and its resources.
+- **Relevant rules:** No `.claude/rules/*.md` file targets `.github/**`; global repository and docs rules still apply.
+- **Primary layers touched:** DevOps, Docs, Operations, Security, legal contribution governance, API contract governance, release governance.
+- **Estimated complexity:** XL+. This crosses branch protection, GitHub repository settings, workflow security, CLA/DCO contribution intake, release promotion, container supply chain, OpenAPI governance, self-hosting, and operator runbooks.
 
-This plan upgrades CI/CD in phases so reliability comes before strict enforcement. The first milestone keeps current workflow names stable, fixes deterministic build/test behavior, and introduces a dedicated OpenAPI contract guard that regenerates `schemas/openapi.json` and the NSwag client only when API-surface changes require it, then fails CI if generated artifacts were not committed. Later phases add least privilege, artifacts, security scanning, container provenance, protected deployments, smoke checks, and governance documentation.
+### Research And Tooling Provenance
 
-**Execution constraint:** this is not a single implementation PR. Deliver it as small, reviewable PRs with stable required-check names until branch protection is explicitly migrated.
+- **Tavily MCP:** Requested by the user and attempted in the implementation session; Tavily returned plan-limit error `432` for GitHub Actions security and artifact-attestation searches. Refresh external research when quota is available.
+- **Context7 MCP:** Attempted for GitHub Actions and Docker Buildx documentation; Context7 returned monthly quota exhausted. Official primary-source docs were used through web research instead.
+- **Primary sources used:** GitHub Actions secure-use, OIDC, environments, artifact attestations, dependency review, and `pull_request_target` warnings; Docker Buildx SBOM/provenance docs; zizmor docs; OpenSSF Scorecard docs; `contributor-assistant/github-action`; `cla-assistant.io`; `contributoragreements.org`.
 
-## Current State
+## 1. Executive Summary
 
-### Existing Workflows
+The existing CI/CD system has a credible foundation: Release builds, per-project TUnit lanes, OpenAPI drift detection against the canonical root artifact `schemas/openapi.json`, CodeQL, dependency review, pinned external actions, reusable container builds, SBOM/provenance generation, Trivy image scanning, GitHub Environments, Coolify deployment calls, smoke checks, nightly E2E, and CI/CD governance docs.
 
-- `.github/workflows/test.yml` is the main PR/push entrypoint for `main` and `develop`; it calls `./.github/workflows/_build-test.yml`.
-- `.github/workflows/_build-test.yml` restores, audits packages, runs `dotnet format`, builds Release, and runs a subset of test projects, with optional integration tests.
-- `.github/workflows/security-tests.yml` runs security and policy-contract TUnit categories for selected auth/Cerbos paths.
-- `.github/workflows/cerbos-policy-check.yml` compiles Cerbos policies with a fixed Cerbos binary version.
-- `.github/workflows/codeql.yml` now analyzes C# with a manual Release build and covers `main`, `develop`, and merge queues.
-- `.github/workflows/deploy-coolify.yml` and `.github/workflows/deploy-coolify-develop.yml` now call reusable `_container-build.yml` for image build evidence, then deploy through GitHub Environment-gated Coolify webhook jobs with environment-level concurrency, hardened curl, bounded optional smoke checks, deploy summaries, and 90-day deployment evidence artifacts.
-- `.github/workflows/e2e.yml` now runs Aspire-backed Playwright E2E manually and nightly, without becoming a PR-required gate.
-- `.github/workflows/agent-context.yml` validates AI-context governance docs using `global.json`.
+It is not yet "best CI/CD." The current design still has avoidable enterprise gaps:
 
-### Existing OpenAPI Contract Path
+- `Build & Test` now has an always-present detector/no-op wrapper, but required-check behavior is not fully safe while other important workflows still use path filters;
+- path-skipped required-check behavior is still not fully safe for workflows other than `Build & Test` until no-op wrappers or path-filter removal are implemented;
+- `test.yml` now includes `merge_group`, but required-check settings still need external repository evidence before it can be treated as merge-queue-ready;
+- `_build-test.yml` no longer owns OpenAPI drift; `openapi-contract.yml` is the canonical guard for `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs`;
+- deploy workflows are duplicated and still deploy through webhook-side mutable configuration rather than a verified digest promotion contract;
+- attestations are generated but not verified before deployment;
+- workflow YAML now has a lightweight SHA-pin policy gate, but no dedicated `actionlint`/`zizmor` static-analysis gate yet;
+- contribution legal provenance is not enforced by CI; there is no CLA/DCO workflow, CLA document, signature storage policy, or contributor allowlist governance;
+- `.github/CODEOWNERS` now protects `.github/**`, Dockerfiles, dependency manifests, release docs, operations docs, and legal contribution docs, but the referenced GitHub owner/team still needs repository-side validation;
+- branch protection, environment reviewers, secret scanning, push protection, and organization action policies remain out-of-repo settings that must be verified;
+- the active `MailKit` package vulnerability has been remediated and the NuGet audit gate remains blocking; future temporary exceptions require explicit owner/date/advisory/removal-condition evidence.
 
-- `Explore.API/Program.cs` wires `builder.Services.AddOpenApi("event-api", ...)` and `app.MapOpenApi()` in Development/Testing.
-- `Explore.API/Explore.API.csproj` refreshes `schemas/openapi.json` through ASP.NET Core build-time OpenAPI generation.
-- `Explore.Blazor.Client/Explore.Blazor.Client.csproj` runs NSwag before compile when `schemas/openapi.json` changes.
-- `Explore.Blazor.Client/nswag.json` generates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` from `schemas/openapi.json`.
-- `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.Architecture.Tests/ApiContractArchitectureTests.cs`, `Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs`, and `Explore.Blazor.Client.Tests/ApiClientNamingTests.cs` already contain related guardrails, though some contract/client naming checks are skipped pending stabilization.
-- `docs/API_CONTRACT_INVENTORY.md` is generated from `/openapi/event-api.json` and should be kept in sync when inventory generation is intentionally part of a PR.
+The target state is a small, strict, auditable CI/CD control plane:
 
-### Important Gaps
+1. Every PR gets always-present required checks or explicit no-op pass jobs.
+2. Contributor legal status is checked before merge through a hardened CLA/DCO gate.
+3. Workflow definitions are linted and security-scanned before they can change; the first implemented step blocks unpinned external `uses:` references.
+4. API contracts regenerate deterministically and block stale OpenAPI/NSwag diffs.
+5. Images are built once, scanned, SBOM/provenance-attested, and promoted by digest.
+6. Deployment verifies the attested digest, uses environment protection, runs bounded `/alive` and `/health` checks, and retains evidence.
+7. Repository settings enforce the YAML contract instead of relying on documentation alone.
 
-- PR2 now adds `.github/workflows/openapi-contract.yml` for OpenAPI/client drift; advisory `oasdiff`, Spectral, and deterministic action-inventory drift remain future work.
-- PR2 now also runs the stable `OpenApiDocument_*` contract invariant subset inside `.github/workflows/openapi-contract.yml`; advisory `oasdiff`, Spectral, and deterministic action-inventory drift remain future work.
-- PR1 now runs `Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj` in CI and documents the 10-project inventory in `docs/TESTING.md`.
-- PR7 now adds `.github/workflows/e2e.yml` for manual/nightly `Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj` execution.
-- PR3 gives workflows/jobs explicit least-privilege `permissions`.
-- PR1/PR2/PR5/PR6/PR7 now upload TRX, OpenAPI/client drift, container digest/scan, deployment, and E2E runtime evidence artifacts; the Phase 1B follow-up adds fast/integration test evidence summaries; coverage and richer policy outputs remain future work.
-- GitHub Actions restore and deployable Docker build restore now use `dotnet restore --locked-mode`; clean CI image builds still need to validate the container path because the local workspace has unrelated compile/package issues.
-- Deployments now use GitHub Environment bindings in workflow YAML, hardened webhook calls, bounded optional smoke checks, deployment summaries, and deploy concurrency keyed by environment. Production required reviewers, branch restrictions, and environment secrets must still be configured in GitHub repository settings.
-- External actions are full-SHA pinned with same-line version comments; local reusable workflows remain path-based.
-- Deploy workflows now build through a reusable container builder that emits digests/SBOM/provenance, but Coolify still deploys according to its pre-existing configured image/tag source until digest or immutable-SHA tag consumption is confirmed.
+### Senior CTO Deep Feedback Applied
 
-## Future State
+This plan deliberately raises the bar beyond the previous baseline:
 
-### Migration Strategy
+- **Legal contribution intake is now in scope.** Add a CLA/DCO gate, but do it safely because CLA Assistant uses `pull_request_target`.
+- **Canonical OpenAPI path is explicit.** `schemas/openapi.json` is the source-controlled schema artifact; any `Explore.API/swagger.json` language is legacy cleanup only.
+- **Privileged workflows get threat models.** Anything with write tokens, `pull_request_target`, deployment secrets, package publication, or attestations must have a narrowly documented trust boundary.
+- **Evidence beats aspiration.** Build/test/deploy artifacts, settings evidence, CLA signature storage evidence, and release evidence must be retained and reviewed.
+- **No weak compatibility.** Stale workflow names, mutable tags, path-skipped required checks, unverified attestations, and obsolete generated-artifact paths should be removed after branch protection is migrated.
 
-The long-term architecture can converge on cleaner workflow names, but the first implementation milestones must preserve current required-check names where possible. Workflow renames are a repository-settings migration because branch protection and required checks may reference existing job/workflow names.
+Out of scope for this plan: changing application runtime behavior, adding new API endpoints, or preserving old workflow names after branch protection migration is complete.
 
-**Initial rule:** improve existing workflows first, add new standalone workflows only where necessary, and defer consolidation/renaming until branch protection is coordinated.
+## 2. Source-Grounded Current State Report
 
-Recommended implementation PR sequence:
+### 2.1 Evidence Log
 
-1. **PR 1 — CI correctness baseline:** improve `_build-test.yml` and `test.yml`, add `Explore.Infrastructure.Tests`, update `docs/TESTING.md`, add TRX artifacts, and stop Postgres for non-integration lanes.
-2. **PR 2 — OpenAPI drift guard:** add dedicated always-running `openapi-contract.yml` with exact regeneration and diff commands.
-3. **PR 3 — Workflow hygiene:** add explicit permissions, timeouts, concurrency, security path-filter fixes, and fixed Cerbos version.
-4. **PR 4 — Dependency/security review:** add Dependabot update automation, C# CodeQL manual build, dependency review, and security evidence artifacts.
-5. **PR 5 — Container provenance:** extract reusable image build logic, capture digests, add SBOM/provenance, scan images, and retain build evidence while keeping Coolify deploy semantics stable.
-6. **PR 6 — Deployment protection:** add GitHub Environments, environment secrets, deploy concurrency, Coolify webhook hardening, digest/tag consumption decision, and smoke checks.
-7. **PR 7 — Nightly E2E/runtime lanes:** add manual/nightly Aspire-backed E2E and runtime evidence without blocking PRs initially.
-8. **PR 8 — Governance documentation:** document branch protection, required/advisory gates, GitHub Environment settings, fork PR policy, generated-artifact review, artifact retention, and badge policy.
-9. **PR 9 — Action SHA pinning:** pin external GitHub Actions to full-length commit SHAs with same-line version comments while keeping local reusable workflows path-based.
+| Claim | Evidence | Confidence | Notes |
+|---|---|---:|---|
+| Existing workstream has plan/context/tasks but is stale and historical. | `dev/active/enterprise-ci-cd-hardening/*` | High | Old files mix completed PR history with remaining gaps. |
+| CI/CD now has a dedicated intent entry. | `.claude/contract/intents.yaml` | High | `ci-cd-change` routes workflow, deployment, dependency, release, and legal contribution governance work. |
+| Main fast CI is always present and includes `merge_group`. | `.github/workflows/test.yml` | High | Workflow-internal detection runs fast tests for code changes and intentional no-op pass for docs/schema/ops-only changes. Verify repository-side check names before requiring it. |
+| Reusable build/test uses locked restore, NuGet audit, format, build, fast tests, optional integration tests. | `.github/workflows/_build-test.yml` | High | Supports `run-fast-tests` no-op mode. OpenAPI drift moved out; canonical drift remains in `openapi-contract.yml`. |
+| `_build-test.yml` no longer checks `Explore.API/swagger.json`. | `.github/workflows/_build-test.yml` and `.github/workflows/openapi-contract.yml` | High | OpenAPI guard owns contract drift. |
+| OpenAPI guard exists and includes inventory/client drift plus determinism checks. | `.github/workflows/openapi-contract.yml` | High | Keep, then enhance with `oasdiff` and Spectral after rules stabilize. |
+| Canonical OpenAPI artifact is in the root `schemas` folder. | `schemas/openapi.json` | High | Plans and docs must use this path, not `Explore.API/swagger.json`. |
+| External actions are SHA pinned with version comments. | `rg uses: .github/workflows` and `.github/scripts/validate-action-pins.py` | High | Workflow Security now enforces full-SHA pins and same-line version comments. |
+| No workflow static analysis gate exists for actionlint or zizmor. | `rg actionlint|zizmor .github/workflows` | High | Add these to the dedicated workflow security lane after tool selection/pinning. |
+| No CLA workflow exists today. | `find .github/workflows -name '*cla*'` / workflow inventory | High | Add legal contribution gate after legal/security decisions. |
+| CLA Assistant GitHub Action repository is archived. | `https://github.com/contributor-assistant/github-action` | High | Use only after risk acceptance, fork/vendor decision, or replacement evaluation. |
+| CLA Assistant action uses `pull_request_target`. | `contributor-assistant/github-action` README and GitHub docs | High | Must not checkout or run untrusted PR code in the CLA workflow. |
+| Contributor agreements require legal scope decisions. | `https://contributoragreements.org/` | High | Choose CLA/DCO, inbound license model, patent scope, signature formalities, and privacy retention with counsel. |
+| Root `.github/CODEOWNERS` exists. | `.github/CODEOWNERS` | Medium | Verify `@islamu-ngo/platform-ops` exists and has write access, or replace it with the actual maintainer owner. |
+| Deploy workflows are duplicated for staging and production. | `.github/workflows/deploy-coolify.yml`, `.github/workflows/deploy-coolify-develop.yml` | High | Consolidate around one reusable deploy workflow. |
+| Container builds emit digest evidence, Buildx SBOM/provenance, Trivy output, and GitHub artifact attestations. | `.github/workflows/_container-build.yml` | High | Missing deployment-time attestation verification and long-lived evidence export. |
+| Coolify digest consumption remains unresolved. | `docs/OPERATIONS.md`, old context | High | This is now a blocker for "best CI/CD." |
+| Build baseline passes with warnings. | `dotnet build --configuration Release --verbosity quiet` on 2026-05-29 | High | Latest run passed with package/analyzer warnings. Architecture tests are currently red because unrelated untracked AI integration code defines `AiChatRequest` outside the CQRS query namespace convention. |
+| NuGet vulnerability audit is remediation-first and currently clean. | `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` on 2026-05-29 | High | `MailKit` was upgraded from `4.15.1` to `4.16.0` for `GHSA-9j88-vvj5-vhgr` / `CVE-2026-41319`; no vulnerable package entries remained after locked restore regeneration. |
 
-The target architecture is a small set of focused, reusable workflows with explicit responsibilities:
+### 2.2 Existing Implementation
 
-| Workflow | Purpose | Required? | Notes |
-|---|---|---|---|
-| `.github/workflows/ci.yml` | Fast PR gate: restore, format, build, unit/component/architecture tests | Yes | Thin orchestrator calling reusable jobs |
-| `.github/workflows/integration.yml` | API, persistence, BFF integration tests | Yes on relevant PRs once stable | Avoid skipped required workflows by keeping a lightweight always-running gate |
-| `.github/workflows/openapi-contract.yml` | Regenerate OpenAPI + NSwag client, then fail on drift; action inventory joins after deterministic output exists | Yes | Dedicated contract guard requested by user |
-| `.github/workflows/security.yml` | security tests, Cerbos policy checks, dependency review, secret-safety checks | Yes | Can call existing security lanes initially |
-| `.github/workflows/codeql.yml` | CodeQL with C# build/autobuild and scheduled scans | Yes | Preserve least privilege |
-| `.github/workflows/dependency-review.yml` | Review dependency changes for vulnerabilities before merge | Yes on PRs | Complements NuGet audit |
-| `.github/workflows/e2e.yml` | Aspire-backed browser/E2E checks | Nightly/manual initially | Promote to required after reliability proven |
-| `.github/workflows/_container-build.yml` | Reusable API/UI image build, scan, SBOM, provenance, and digest evidence | Required before deploy callers | Upload build summaries and digests |
-| `.github/workflows/deploy.yml` | Environment-protected staging/production deploy using validated digests | Protected | One reusable deploy path with environment inputs |
+Workflow inventory:
 
-Enterprise-grade means every important merge/deploy decision is reproducible, least-privileged, auditable, and tied to a commit, generated artifact, image digest, environment, approver, and verification result.
+- `.github/workflows/test.yml` - fast PR/push CI wrapper around `_build-test.yml`.
+- `.github/workflows/_build-test.yml` - reusable restore/audit/format/build/test workflow.
+- `.github/workflows/openapi-contract.yml` - OpenAPI, contract inventory, NSwag client, and deterministic regeneration guard.
+- `.github/workflows/codeql.yml` - CodeQL for Actions, C#, and JavaScript/TypeScript with manual C# build.
+- `.github/workflows/dependency-review.yml` - PR dependency review and OpenSSF scorecard display.
+- `.github/workflows/workflow-security.yml` - always-present workflow-governance security check for immutable action pins.
+- `.github/scripts/validate-action-pins.py` - local validator for external action SHA pins and same-line version comments.
+- `.github/workflows/security-tests.yml` - path and schedule driven security integration tests.
+- `.github/workflows/cerbos-policy-check.yml` - Cerbos policy validation.
+- `.github/workflows/e2e.yml` - manual/nightly Aspire-backed Playwright E2E lane.
+- `.github/workflows/_container-build.yml` - reusable image build/push/scan/attestation workflow.
+- `.github/workflows/deploy-coolify.yml` and `.github/workflows/deploy-coolify-develop.yml` - duplicated protected deploy workflows.
+- `.github/workflows/agent-context.yml` - AI/context governance validation.
+- No `.github/workflows/cla.yml` exists yet.
+- No `docs/legal/CLA.md`, signature storage policy, or CLA status check is documented yet.
 
-### CI Ownership Model
+Documentation already exists in:
 
-Every workflow must have an explicit owner category so failures route to the right maintainers.
+- `docs/CI_CD_GOVERNANCE.md`
+- `docs/OPERATIONS.md`
+- `docs/TESTING.md`
+- `docs/RELEASE_CHECKLIST.md`
+- `docs/TROUBLESHOOTING.md`
+- `docs/GOVERNANCE.md`
+- `docs/CONFIGURATION.md`
 
-| Area | Owner | Examples |
-|---|---|---|
-| Build/test | Core maintainers | `_build-test.yml`, `test.yml`, architecture/unit/component tests |
-| OpenAPI contract | API/platform maintainers | `openapi-contract.yml`, `swagger.json`, generated NSwag client |
-| Security/Cerbos | Security/platform maintainers | `security-tests.yml`, `cerbos-policy-check.yml`, CodeQL/security workflows |
-| Deployment | Release operators | Coolify deploy workflows, protected environments, smoke checks |
-| E2E/runtime | UI/platform maintainers | Aspire-backed browser/runtime workflows |
+### 2.3 Existing Tests And Verification Coverage
 
-### Required vs Advisory Matrix
+Current verified baseline:
 
-Not every enterprise-grade signal should block every PR. Use this matrix to avoid turning CI into “everything blocks everything.”
+- `dotnet build --configuration Release --verbosity quiet` passed on 2026-05-29 with warnings.
+- CI docs define per-project test execution; solution-level `dotnet test` remains forbidden.
+- Architecture tests enforce repository rules and docs quality, but no architecture test currently validates GitHub workflow policy depth such as required `merge_group`, actionlint/zizmor presence, or stale OpenAPI paths.
 
-| Check | PR required now | Required later | Advisory/nightly |
-|---|---:|---:|---:|
-| Build Release | Yes | Yes | No |
-| Unit/component/architecture tests | Yes | Yes | No |
-| `Explore.Infrastructure.Tests` | Yes after PR 1 | Yes | No |
-| API/Persistence integration | Only once stable for relevant lanes | Yes | No |
-| OpenAPI drift | Yes after PR 2 | Yes | No |
-| `oasdiff` breaking-change report | No | Yes after API policy/versioning rules | Yes |
-| Spectral/OpenAPI lint | No | Maybe after rules stabilize | Yes |
-| E2E/browser journeys | No | Maybe after reliability data | Yes |
-| Container SBOM/provenance | No for normal PRs | Yes before deploy | No |
-| Production smoke checks | Deploy-only | Yes for deploy | No |
+Coverage gaps:
 
-## Non-Negotiable Principles
+- No checked-in `actionlint`/`zizmor` gate for YAML semantics or injection-prone patterns. A checked-in SHA-pin policy gate now exists.
+- No local test proving deploy jobs consume and verify the same digest produced by `_container-build.yml`.
+- No CI assertion that docs and workflow artifact names stay aligned.
+- No repo-visible proof that branch protection and GitHub Environment settings are actually configured.
 
-1. **Repository conventions first**: follow `AGENTS.md`, `docs/TESTING.md`, `docs/GOVERNANCE.md`, `docs/OPERATIONS.md`, `docs/SECURITY-MODEL.md`, and `docs/CONFIGURATION.md` before importing generic CI patterns.
-2. **Per-project tests only**: never introduce solution-level `dotnet test`; CI must run project-specific `dotnet test --project ...` lanes.
-3. **OpenAPI artifacts are generated, never hand-edited**: `schemas/openapi.json` and `Explore.Blazor.Client/Clients/EventApiClient.g.cs` must be refreshed by deterministic commands and committed when API-surface changes require it.
-4. **Fast checks first, strict checks after stability**: do not make flaky long-running lanes merge-blocking until reliability is proven with artifacts and trend data.
-5. **Least privilege by default**: top-level workflow permissions should be read-only or `{}`; jobs elevate only when required.
-6. **Deploy immutable outputs**: staging/production must deploy previously validated image digests, not mutable `latest` tags as the source of truth.
-7. **Environment protection is mandatory for production**: use GitHub Environments, required reviewers, branch restrictions, environment-scoped secrets, and deployment concurrency.
-8. **Evidence is part of the deliverable**: test results, coverage, OpenAPI diffs, policy outputs, SBOMs, provenance, and deployment smoke logs must be retained as artifacts or job summaries.
-9. **Fork PRs are untrusted**: external fork PRs must run validation without deployment secrets, registry write credentials, environment secrets, or privileged tokens; do not use `pull_request_target` unless a separate threat-model review approves the exact usage.
-10. **Generated drift requires human review**: CI detects stale generated files; reviewers decide whether operation ID, route, authorization metadata, DTO shape, HAL action/link, and generated-client method changes are acceptable.
+### 2.4 Existing Documentation And Contracts
 
-## Phase Plan
+Existing docs already explain many rules, but some need correction:
 
-### Phase 0 — Baseline Inventory and Policy Decisions
+- `docs/CI_CD_GOVERNANCE.md` correctly describes required/advisory gates and artifact retention.
+- `docs/OPERATIONS.md` documents digest-preferred deployment but still allows the unresolved Coolify fallback.
+- `docs/CONTRIBUTING.md` now points Blazor client regeneration at `schemas/openapi.json`; canonical contract artifacts are `schemas/openapi.json` and `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
+- `docs/TROUBLESHOOTING.md` explains OpenAPI drift recovery through `schemas/openapi.json` and the generated NSwag client.
+- No current contributor legal intake doc explains whether the project uses CLA, DCO, or inbound=outbound under AGPL-3.0.
 
-**Goal:** Lock the intended workflow architecture and required-check names before editing YAML.
+### 2.5 Current Pain Points / Improvement Areas
+
+1. **Blocker - deployment is not yet digest-promoted.** Images are built and attested, but deploy jobs do not prove Coolify consumed the verified digest.
+2. **Critical - attestations are generated but not verified before deploy.** Provenance is evidence, not enforcement, until deploy verifies it.
+3. **Critical - workflow definitions lack full lint/security analysis.** SHA-pin enforcement now exists; CI still needs actionlint and zizmor.
+4. **Critical - required-check design is still path-filter fragile outside `Build & Test`.** `Build & Test` now has an always-present no-op path; any other globally required workflow must get the same treatment before branch protection requires it.
+5. **Major - deploy workflows are duplicated.** Staging/production drift will continue unless deployment logic is one reusable path.
+6. **Resolved in first slice - stale OpenAPI checks were removed from the build workflow.** Keep one canonical OpenAPI guard in `openapi-contract.yml`; do not reintroduce dead `swagger.json` checks.
+7. **Major - repository settings are documented but not verified.** Branch protection, environment approvals, push protection, and action policies must become an explicit evidence artifact.
+8. **Resolved in first slices - dependency vulnerability posture is remediation-first.** Current `MailKit` advisory warnings were remediated by upgrading to the patched version, and the NuGet audit remains blocking for vulnerable direct or transitive packages.
+9. **Major - no CODEOWNERS for high-risk operational files.** Workflow, Dockerfile, dependency, and release docs changes need owner review.
+10. **Critical - contributor legal governance is missing.** A self-hostable open-source platform needs an explicit contribution agreement posture before broad external contributions scale.
+11. **Critical - CLA automation can become a supply-chain/security risk if copied raw.** The sample workflow uses `pull_request_target` and write permissions; it must be isolated from untrusted PR code and pinned to an immutable SHA.
+
+### 2.6 Unknowns After Investigation
+
+- Whether Coolify can deploy `image@sha256:<digest>` through the current webhook/app model.
+- Whether ATCR supports OIDC or equivalent short-lived credentials; current workflow still uses `ATCR_PASSWORD`.
+- Whether GitHub repository/org settings enforce SHA-pinned actions, allowed actions, secret scanning, push protection, dependency graph, CodeQL, branch rulesets, and protected environments.
+- Whether `docker/build-push-action@v7` and related Docker actions should be adopted immediately or through Dependabot after a controlled workflow-lint PR.
+- Whether OpenAPI `oasdiff` should fail immediately for pre-v1 breaking changes or remain advisory until API versioning and skipped contract tests are stabilized.
+- Whether the project wants CLA, DCO, or both; this requires legal/product governance, not only CI YAML.
+- Whether CLA signatures should live in the same repository, a dedicated private signatures repository, or a dedicated unprotected branch. The action README says the write branch should not be protected; do not use protected source branches for signature writes.
+- Whether using the archived `contributor-assistant/github-action` is acceptable, or whether the repository should fork/vendor it or use another maintained CLA/DCO solution.
+
+## 3. Proposed Future State
+
+The CI/CD architecture should become a promotion pipeline, not a collection of branch-triggered scripts:
+
+```text
+PR / merge queue
+  -> CLA/DCO legal contribution gate
+  -> workflow definition gate (actionlint + zizmor + pin policy)
+  -> fast build/test + architecture + component + BFF tests
+  -> OpenAPI deterministic drift + contract inventory + generated client
+  -> dependency/license/security gates
+  -> optional integration/runtime evidence
+
+trusted main/develop/tag
+  -> build container once
+  -> scan image and dependencies
+  -> attach/export SBOM + provenance
+  -> generate GitHub artifact attestation
+  -> verify attestation and digest
+  -> deploy exact digest to staging/production
+  -> smoke `/alive` and `/health`
+  -> retain deploy evidence and release evidence
+```
+
+## 4. Non-Negotiable Constraints
+
+- Required checks must be always-present; path-skipped required workflows are not acceptable.
+- Deployment secrets must be environment-scoped and unavailable to untrusted PRs.
+- `pull_request_target` is banned for build/test/generation/deployment unless a threat-model document approves the exact pattern.
+- Workflows must use least-privilege `permissions`; jobs elevate only where needed.
+- External actions must remain pinned to full-length SHAs with update automation.
+- Generated OpenAPI and NSwag artifacts are never hand-edited; `schemas/openapi.json` is the canonical checked-in OpenAPI artifact.
+- CLA automation may use `pull_request_target` only for metadata/comment/status work. It must not checkout, build, test, cache, or execute untrusted PR code.
+- CLA signatures must not be written to protected source branches. Prefer a dedicated private signatures repository or a dedicated unprotected signatures branch with narrow write credentials.
+- Container deployment must use an immutable digest or an explicitly documented temporary immutable-tag fallback with resolved digest evidence.
+- Production deploys require GitHub Environment approval, branch restrictions, and retained evidence.
+- CI must continue to run tests per project, not solution-level `dotnet test`.
+- New or updated files must follow repository ABOUTME and docs metadata conventions where applicable.
+
+## 5. Architecture And Design Decisions
+
+### Decision 1 - Keep GitHub Actions, But Treat It As A Controlled Platform
+
+**Why:** The repository already has a mature GitHub Actions base and docs. Replacing the platform would add complexity without solving the current gaps.
+
+**Consequences:** Add linting, CODEOWNERS, settings verification, reusable workflows, and promotion evidence around the existing platform.
+
+### Decision 2 - Promote Digests, Not Branches Or Tags
+
+**Why:** Enterprise deployment must prove production runs the artifact that passed scan and attestation checks.
+
+**Consequences:** `_container-build.yml` must publish digest outputs; deploy workflows must accept digest inputs and verify GitHub attestation before invoking Coolify.
+
+### Decision 3 - Workflow Security Is A Required Gate
+
+**Why:** Workflow YAML is privileged code. A compromised workflow can exfiltrate secrets or change deployments.
+
+**Consequences:** Add actionlint for syntax/semantic checks, zizmor for GitHub Actions security issues, and CODEOWNERS for `.github/**`.
+
+### Decision 4 - One Deploy Path
+
+**Why:** Separate staging and production deploy scripts already duplicate several hundred lines. That is an operational drift risk.
+
+**Consequences:** Create one reusable deploy workflow with environment, component, digest, webhook, smoke URL, and promotion inputs.
+
+### Decision 5 - Repository Settings Are Deliverables
+
+**Why:** Branch protection, environment approvals, action policies, and secret scanning cannot be fully encoded in YAML.
+
+**Consequences:** Add a repository-settings evidence artifact and make release readiness require current screenshots/API output or a maintainer-checked settings manifest.
+
+### Decision 6 - Add A Hardened CLA/DCO Contribution Gate
+
+**Why:** ISLAMU Event is AGPL-3.0 and intended to be open-source and self-hostable. Before external contribution volume grows, the project needs a clear inbound contribution policy and CI evidence that every PR satisfies it.
+
+**Alternatives considered:** No legal gate; DCO-only; hosted CLA Assistant; CLA Assistant GitHub Action; custom GitHub App. No gate is weak for enterprise governance. DCO-only is simpler but may not meet desired patent/assignment/license requirements. The requested CLA Assistant action is convenient but archived and privileged, so it needs a threat model.
+
+**Consequences:** Add legal docs, PR template updates, CLA status check, contributor allowlist governance, signature storage policy, and privacy/retention rules. Implementation must pin the action by SHA, avoid wildcard allowlists such as `bot*`, and avoid running untrusted PR code.
+
+## 6. Implementation Phases
+
+### Phase 0 - Contract And Repository Settings Baseline
+
+**Goal:** Make CI/CD a first-class repository change type before more YAML churn.
+
+**Files:**
+
+- `.claude/contract/intents.yaml`
+- `docs/legal/CLA.md` or `docs/legal/DCO.md` if the legal decision is made in this phase
+- `docs/CI_CD_GOVERNANCE.md`
+- `docs/RELEASE_CHECKLIST.md`
+- `.github/CODEOWNERS`
+- `dev/active/enterprise-ci-cd-hardening/*`
 
 **Tasks:**
-- Document current required branch checks and intended future names in `docs/RELEASE_CHECKLIST.md` or a dedicated CI/CD operations note.
-- Confirm GitHub Environments to create: `staging` and `production`.
-- Decide whether `develop` uses required reviewers or only environment-scoped secrets and deploy concurrency.
-- Decide whether Codecov/SonarCloud badges in `README.md` will be implemented or removed.
-- Decide required check policy for path-sensitive checks; avoid required workflows that are skipped by `paths` filters.
 
-**Acceptance Criteria:**
-- Target workflow names and required-check names are documented.
-- Branch protection implications are clear before workflow renames land.
-- Deployment approval rules are documented for staging and production.
+- Add a `ci-cd-change` intent covering `.github/**`, `.github/dependabot.yml`, Dockerfiles, deployment docs, and release governance docs.
+- Add `.github/CODEOWNERS` for `.github/**`, `Dockerfile`, `*.csproj`, `Directory.Packages.props`, `global.json`, `docs/CI_CD_GOVERNANCE.md`, `docs/RELEASE_CHECKLIST.md`, and `docs/OPERATIONS.md`.
+- Create a repository settings checklist with required checks, merge queue, environments, action policy, secret scanning, push protection, dependency graph, CodeQL, and Dependabot security updates.
+- Decide required check names before workflow renames.
+- Add a legal contribution governance decision record: CLA vs DCO vs both, inbound license scope, patent language, signature storage, privacy retention, and approval owner.
 
-**Effort:** S
+**Exit criteria:**
 
-### Phase 1A — Test Inventory Correctness
+- Future CI/CD changes have an explicit Contribution Contract entry.
+- CODEOWNERS protects privileged files.
+- Repository settings are no longer only tribal knowledge.
 
-**Goal:** Make the fast PR test inventory correct before adding broader evidence or restore-policy changes.
+### Phase 1 - Fix Current Pipeline Defects Before Adding New Gates
 
-**Tasks:**
-- Add `Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj` to the CI project list.
-- Update `docs/TESTING.md` so the documented test inventory matches the repo’s actual test projects.
-- Keep per-project `dotnet test --project ...`; do not introduce solution-level `dotnet test`.
-- Keep `Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj` out of the fast PR lane; add it in Phase 7 as nightly/manual.
+**Goal:** Remove known stale checks and make required-check behavior safe.
 
-**Acceptance Criteria:**
-- `test.yml` runs all fast required test projects, including `Explore.Infrastructure.Tests`.
-- Documentation test inventory matches actual test projects.
-- No solution-level `dotnet test` appears in workflows.
+**Files:**
 
-**Effort:** S/M
-
-### Phase 1B — Test Evidence Artifacts
-
-**Goal:** Make CI failures inspectable without rerunning locally.
+- `.github/workflows/test.yml`
+- `.github/workflows/_build-test.yml`
+- `.github/workflows/openapi-contract.yml`
+- `docs/CONTRIBUTING.md`
+- `docs/CI_CD_GOVERNANCE.md`
 
 **Tasks:**
-- Add TRX output to each per-project test command using the repository's TUnit/Microsoft.Testing.Platform syntax: `-- --report-trx --report-trx-filename <project>.trx`.
-- Upload TRX artifacts on success and failure.
-- Add failure summaries that list failed projects and artifact locations.
-- Defer coverage until TRX/test artifacts are stable; do not couple coverage-badge work to the first CI correctness PR.
 
-**Acceptance Criteria:**
-- CI uploads TRX artifacts for every fast test project.
-- Failed runs expose enough evidence for triage from GitHub Actions.
-- Coverage remains explicitly deferred or separately planned.
+- Remove or replace any legacy `_build-test.yml` OpenAPI drift check that targets `Explore.API/swagger.json`; only `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs` belong in generated-contract drift enforcement.
+- Ensure `test.yml` has `merge_group` before it can be required by merge queue.
+- Replace path-skipped required checks with always-running wrappers or internal no-op jobs.
+- Correct docs that still reference `swagger.json` as the Blazor generated-client source.
+- Keep the NuGet vulnerability gate blocking. Current advisories were remediated; future temporary exceptions require owner/date/advisory/removal-condition evidence before weakening CI.
 
-**Effort:** S/M
+**Exit criteria:**
 
-### Phase 1C — CI Efficiency and Restore Policy
+- No dead OpenAPI guard remains.
+- Required checks cannot get stuck as skipped/pending.
+- Docs name the same canonical artifacts as CI.
 
-**Goal:** Reduce wasted CI work and introduce deterministic restore only after lock-file coverage is understood.
+### Phase 2 - Contributor Legal Gate (CLA/DCO)
+
+**Goal:** Add contribution legal provenance without creating a privileged `pull_request_target` security hole.
+
+**Files:**
+
+- `.github/workflows/cla.yml`
+- `docs/legal/CLA.md` and/or `docs/legal/DCO.md`
+- `docs/CONTRIBUTING.md`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `docs/CI_CD_GOVERNANCE.md`
+- `docs/RELEASE_CHECKLIST.md`
+
+**Required research before implementation:**
+
+- `https://contributoragreements.org/`
+- `https://contributoragreements.org/legal.html`
+- `https://contributoragreements.org/agreement-chooser.html`
+- `https://cla-assistant.io/`
+- `https://github.com/contributor-assistant/github-action`
+- GitHub `pull_request_target` and secure-use documentation.
 
 **Tasks:**
-- Refactor `_build-test.yml` so Postgres starts only for integration lanes.
-- Evaluate `dotnet restore --locked-mode`; enable it in GitHub Actions and deployable Dockerfile restore layers where all relevant lock files support it.
-- Keep `Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj` out of the fast PR lane; add it in Phase 7 as nightly/manual.
-- Align `agent-context.yml` with `global.json` by using `actions/setup-dotnet@v4` with `global-json-file: global.json` and cache settings.
-- Add `permissions: contents: read` to read-only validation workflows.
 
-**Acceptance Criteria:**
-- Non-integration CI no longer starts Postgres unnecessarily.
-- `agent-context.yml` uses the same SDK pin as the rest of the repo.
-- Locked restore behavior is documented before it is made universal.
+- Decide with the project owner/legal reviewer whether ISLAMU Event uses:
+  - CLA only;
+  - DCO only;
+  - both CLA and DCO;
+  - inbound=outbound with no separate contributor agreement.
+- Draft or approve the actual agreement text before enabling the gate. Do not point production contributors at SAP's sample CLA.
+- If using CLA Assistant GitHub Action:
+  - add `.github/workflows/cla.yml`;
+  - pin `contributor-assistant/github-action` to a full commit SHA, not `@v2.6.1`;
+  - record that the upstream repository is archived and either accept, fork/vendor, or replace it;
+  - use `pull_request_target` only for PR metadata, status, and comments;
+  - do not checkout, build, test, cache, or execute PR head code in this workflow;
+  - scope permissions to the smallest viable set;
+  - prefer remote private signature storage or a dedicated signature branch over writing to protected source branches;
+  - avoid broad allowlists such as `bot*`; explicitly allow trusted bots like `dependabot[bot]`, `github-actions[bot]`, and any Renovate bot if configured;
+  - document whether a fine-grained PAT, GitHub App token, or `GITHUB_TOKEN` is used and what it can write.
+- Add branch protection requirement for the CLA status check after the workflow is stable.
+- Add PR template language explaining the CLA/DCO requirement and signing comment.
+- Add a privacy/retention note for contributor signature metadata.
 
-**Effort:** M
+**Hardened workflow shape to design toward:**
 
-### Phase 2 — Dedicated OpenAPI Contract Guard
+```yaml
+name: "CLA Assistant"
 
-**Goal:** Ensure API-surface changes regenerate OpenAPI and the Blazor client when required, while avoiding false positives for unrelated changes.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
 
-**Recommended Workflow:** `.github/workflows/openapi-contract.yml`
+permissions:
+  contents: read # raise only if same-repo signature writes are explicitly approved
+  pull-requests: write
+  statuses: write
 
-**Trigger Strategy:**
-- Always support `workflow_dispatch`.
-- Include `pull_request` and `merge_group`.
-- Prefer an always-running lightweight required workflow/job over `paths`-skipped required workflows. A first job can detect relevant changes and report `no-op` success when no API contract surface changed.
+jobs:
+  cla-assistant:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "CLA Assistant"
+        if: >
+          github.event_name == 'pull_request_target' ||
+          github.event.comment.body == 'recheck' ||
+          github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA'
+        uses: contributor-assistant/github-action@<full-commit-sha-or-approved-fork>
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          path-to-document: 'https://github.com/<owner>/<repo>/blob/main/docs/legal/CLA.md'
+          path-to-signatures: 'signatures/version1/cla.json'
+          branch: 'cla-signatures'
+          allowlist: 'dependabot[bot],github-actions[bot]'
+```
 
-**Relevant Change Detection Inputs:**
-- `Explore.API/Controllers/**`
-- `Explore.API/OpenApi/**`
-- `Explore.API/Attributes/**`
-- `Explore.API/Extensions/ApiVersioningExtensions.cs`
-- `Explore.API/Program.cs`
-- `Explore.Application/**/*.cs` for DTO/request/response/query/command changes exposed through controllers
-- `Explore.Domain/**/*.cs` only where domain types leak into API DTOs or OpenAPI transformers
-- `Explore.API/Explore.API.csproj`
-- `Event.API.IntegrationTests/Features/ApiContractInventoryGeneratorTests.cs`
-- `Explore.Blazor.Client/nswag.json`
-- `Explore.Blazor.Client/Explore.Blazor.Client.csproj`
-- `schemas/openapi.json`
-- `Explore.Blazor.Client/Clients/EventApiClient.g.cs`
+Do not copy the upstream sample blindly. The sample uses `@v2.6.1`, broad write permissions, `branch: main`, and `bot*` style allowlists. This repository should pin to an immutable SHA, avoid protected source branches for signature writes, and keep the workflow metadata-only.
+
+**Exit criteria:**
+
+- Contributor legal status is visible as a PR check.
+- The workflow cannot run untrusted PR code with write credentials.
+- Signature storage is auditable and not mixed into protected source branch changes.
+- Legal docs, PR template, release checklist, and governance docs agree.
+
+### Phase 3 - Workflow Quality And Supply-Chain Guard
+
+**Goal:** Treat workflow changes like security-sensitive code changes.
+
+**Files:**
+
+- `.github/workflows/workflow-security.yml` (new)
+- `.github/workflows/*.yml`
+- `.github/dependabot.yml`
+- `docs/CI_CD_GOVERNANCE.md`
+
+**Tasks:**
+
+- Add `actionlint` with a pinned installer or pinned container/action.
+- Add `zizmor` in auditor mode initially as SARIF/advisory, then promote high-confidence findings to blocking.
+- Add a pin-policy check that fails external non-SHA `uses:` references.
+- Keep local reusable workflows path-based.
+- Configure Dependabot grouping/review rules so SHA pin updates remain maintainable.
+- Add OpenSSF Scorecard as a scheduled/SARIF evidence lane if repository visibility and permissions support it.
+- Add `gitleaks` or an equivalent local secret-scanning lane for PR feedback, while keeping GitHub secret scanning and push protection as repository settings.
+- Add `pinact` or a custom policy check if it gives cleaner enforcement for SHA-pinned actions than ad hoc shell parsing.
+
+**Exit criteria:**
+
+- Workflow YAML changes cannot merge with syntax errors, dangerous contexts, or unpinned third-party actions.
+- Security findings are retained in code scanning or artifacts.
+
+### Phase 4 - Build/Test Evidence, Coverage, License, And Dependency Integrity
+
+**Goal:** Move from "tests ran" to actionable quality evidence.
+
+**Files:**
+
+- `.github/workflows/_build-test.yml`
+- `.github/workflows/test.yml`
+- `docs/TESTING.md`
+- `docs/CI_CD_GOVERNANCE.md`
+
+**Tasks:**
+
+- Keep TRX artifacts and job summaries.
+- Add coverage collection only after stable test lanes are confirmed; choose one provider or keep coverage as artifact-only.
+- Add a warnings budget or analyzer report artifact before making warnings-as-errors broad.
+- Keep the current all-findings NuGet audit blocking; only split by severity/dependency type later if documented false-positive or ecosystem-noise evidence justifies it.
+- Ensure integration tests run for deploy callers and on a reliable schedule.
+- Add license policy scanning for NuGet/npm/container dependencies and document AGPL-compatible allowed/denied licenses.
+- Add cache-poisoning controls: fork PRs should not write privileged caches consumed by trusted deploy/publish workflows.
+
+**Exit criteria:**
+
+- Every failed gate gives maintainers enough evidence to triage from GitHub Actions.
+- Dependency risk is policy-driven, not accidental.
+
+### Phase 5 - OpenAPI Contract Guard V2
+
+**Goal:** Keep contract drift deterministic and add controlled breaking-change intelligence.
+
+**Files:**
+
+- `.github/workflows/openapi-contract.yml`
+- `docs/API_CHANGELOG.md`
 - `docs/API_CONTRACT_INVENTORY.md`
+- `docs/TROUBLESHOOTING.md`
+- `docs/GOVERNANCE.md`
 
-**Guard Steps:**
-1. Checkout with full enough history to compare the base branch when needed.
-2. Setup .NET from `global.json` with NuGet cache.
-3. Restore using locked mode where compatible.
-4. Build required API/test/client projects.
-5. Build `Explore.API/Explore.API.csproj` to refresh `schemas/openapi.json` through build-time OpenAPI generation.
-6. Build `Explore.Blazor.Client/Explore.Blazor.Client.csproj` so the existing `GenerateApiClient` target runs NSwag and refreshes `Explore.Blazor.Client/Clients/EventApiClient.g.cs` when `schemas/openapi.json` changed.
-7. Defer `Event.API.IntegrationTests/Features/ApiContractInventoryGeneratorTests.cs` from the strict PR2 guard until its timestamped output is normalized or regenerated in a deterministic mode.
-8. Run contract invariant tests that are stable today; explicitly leave currently skipped tests alone until their stabilization story enables them.
-9. Fail on uncommitted generated drift:
-   - `git diff --exit-code -- schemas/openapi.json Explore.Blazor.Client/Clients/EventApiClient.g.cs`
-10. Upload generated OpenAPI, generated client diff, TRX reports, and logs as artifacts when the guard runs.
-11. Add a clear job summary explaining which generated files must be committed.
+**Tasks:**
 
-**Exact Command Pattern:**
+- Keep deterministic regeneration for the canonical contract set: `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
+- Add `oasdiff` against the base branch as advisory evidence first.
+- Add Spectral only after the local OpenAPI rules are documented and low-noise.
+- Promote breaking-change detection to blocking once skipped/stale API contract tests are resolved.
+- Require API changelog evidence for intentional breaking changes.
+
+**Exit criteria:**
+
+- Stale generated artifacts block.
+- Breaking-change reports are visible and can become blocking without redesign.
+
+### Phase 6 - Container Build, SBOM, Provenance, And Attestation Verification
+
+**Goal:** Build once, prove what was built, and verify before deployment.
+
+**Files:**
+
+- `.github/workflows/_container-build.yml`
+- `.github/workflows/deploy-*.yml` or new reusable deploy workflow
+- `Explore.API/Dockerfile`
+- `Explore.Blazor/Dockerfile`
+- `docs/OPERATIONS.md`
+- `docs/RELEASE_CHECKLIST.md`
+
+**Tasks:**
+
+- Update Docker actions through Dependabot or a controlled PR, then pin resulting SHAs.
+- Export SBOM/provenance evidence as downloadable artifacts, not only registry-attached metadata.
+- Add Trivy SARIF/code-scanning output in addition to text artifacts where supported.
+- Pin base images by digest or document a digest update policy.
+- Verify GitHub artifact attestations with `gh attestation verify` or equivalent before deployment.
+- Add SLSA provenance verification or document why GitHub artifact attestation is the chosen SLSA-compatible evidence path.
+- Add release artifact integrity manifests with checksums for evidence bundles.
+- Record final image digest per component as the release/deploy source of truth.
+
+**Exit criteria:**
+
+- Deployment cannot start unless image scan and attestation verification pass.
+- Release evidence contains digests, SBOM/provenance references, vulnerability output, and build metadata.
+
+### Phase 7 - Unified Digest-Based Deploy Promotion
+
+**Goal:** Replace branch-triggered deployment scripts with one promotion path.
+
+**Files:**
+
+- `.github/workflows/deploy.yml` (new or replacement)
+- `.github/workflows/_deploy-coolify.yml` (optional reusable workflow)
+- `.github/workflows/deploy-coolify.yml`
+- `.github/workflows/deploy-coolify-develop.yml`
+- `docs/CONFIGURATION.md`
+- `docs/OPERATIONS.md`
+
+**Tasks:**
+
+- Consolidate staging and production deploy logic into one reusable workflow.
+- Pass environment, component, digest, smoke URLs, and webhook secret names as explicit inputs.
+- Confirm Coolify digest support. If unsupported, configure immutable commit-SHA tag deployment and record resolved digest after deployment.
+- Make production smoke checks mandatory when production URL variables exist.
+- Keep staging auto-deploy optional; production must require environment approval.
+- Prefer OIDC/short-lived credentials where the registry or deploy target supports it; otherwise document token scope and rotation.
+- Add deployment freeze/manual override policy with audit notes for urgent security releases.
+
+**Exit criteria:**
+
+- One deploy implementation serves staging and production.
+- Production deploy evidence proves which digest was deployed and whether health checks passed.
+
+### Phase 8 - Repository And Organization Policy Enforcement
+
+**Goal:** Make out-of-repo controls auditable.
+
+**Files:**
+
+- `docs/CI_CD_GOVERNANCE.md`
+- `docs/RELEASE_CHECKLIST.md`
+- `dev/active/enterprise-ci-cd-hardening/enterprise-ci-cd-hardening-context.md`
+
+**Tasks:**
+
+- Verify branch/ruleset protection for `main` and `develop`.
+- Verify required checks match current workflow/job names.
+- Verify GitHub Environments: `staging`, `production`, reviewers, branch restrictions, wait timers if used, and environment secrets.
+- Verify GitHub Actions policy allows only GitHub-owned, verified, or SHA-pinned actions as appropriate.
+- Verify secret scanning, push protection, dependency graph, Dependabot security updates, and CodeQL alerts.
+- Store a redacted settings evidence note in this workstream or release checklist.
+- Add a scheduled repository-settings drift check if GitHub API permissions allow it; otherwise require manual evidence before releases.
+
+**Exit criteria:**
+
+- Maintainers can prove YAML and GitHub settings agree.
+- Release cannot claim enterprise CI/CD until settings evidence is current.
+
+### Phase 9 - Runtime, E2E, Performance, And Release Evidence Maturity
+
+**Goal:** Preserve fast PR feedback while measuring runtime reliability.
+
+**Files:**
+
+- `.github/workflows/e2e.yml`
+- `.github/workflows/security-tests.yml`
+- `.github/workflows/cerbos-policy-check.yml`
+- `docs/TESTING.md`
+- `docs/RELEASE_CHECKLIST.md`
+
+**Tasks:**
+
+- Keep E2E manual/nightly until reliability data supports promotion.
+- Add trend summaries for E2E/security/runtime failures.
+- Add scheduled OpenAPI breaking-change reports.
+- Add scheduled performance/benchmark smoke lanes for endpoints and pages that represent real operator risk; keep benchmarks advisory until stable.
+- Add flaky-test tracking with owner, first-seen date, and promotion/removal criteria.
+- Ensure release notes link or copy long-lived evidence because GitHub artifacts expire.
+
+**Exit criteria:**
+
+- Nightly failures are actionable, not noise.
+- Release evidence survives beyond short artifact retention windows.
+
+### Phase 10 - Release Automation, Compliance, And Maintainer Experience
+
+**Goal:** Turn CI/CD evidence into a repeatable release process instead of a manual artifact hunt.
+
+**Files:**
+
+- `.github/workflows/release.yml`
+- `.github/workflows/release-drafter.yml` or equivalent if chosen
+- `docs/RELEASE_CHECKLIST.md`
+- `docs/CI_CD_GOVERNANCE.md`
+- `docs/CONTRIBUTING.md`
+
+**Tasks:**
+
+- Decide release model: manual tags, GitHub Releases, Release Drafter, semantic versioning, or conventional commits.
+- Generate a release evidence bundle containing commit SHA, image digests, SBOM/provenance references, attestations, scans, OpenAPI diff, test summary, CLA gate status, and deployment smoke results.
+- Attach long-lived evidence or links to GitHub Releases because workflow artifacts expire.
+- Add changelog/release-note checks for security, migrations, config, OpenAPI, and operator-impact changes.
+- Add maintainer runbooks for re-running failed gates without bypassing controls.
+
+**Exit criteria:**
+
+- A release can be audited from GitHub Release notes and durable evidence without searching expired workflow artifacts.
+- Maintainers have documented override and rerun paths with approval requirements.
+
+## 7. Testing Strategy
+
+Minimum verification for plan/document changes:
 
 ```bash
-dotnet build Explore.API/Explore.API.csproj \
-  --configuration Release \
-  --no-restore \
-  --verbosity minimal
-
-dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj \
-  --configuration Release \
-  --verbosity quiet
-
-git diff --exit-code -- \
-  schemas/openapi.json \
-  Explore.Blazor.Client/Clients/EventApiClient.g.cs
+dotnet build --configuration Release --verbosity quiet
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+git diff --check
 ```
 
-If action inventory generation is included in the guard, extend the diff command to include `docs/API_CONTRACT_INVENTORY.md` after running the inventory generator test.
-For PR2, include `docs/API_CONTRACT_INVENTORY.md` in the strict drift guard now that the generator output is deterministic and no longer writes a timestamped `Generated:` line.
+Minimum verification for workflow implementation PRs:
 
-**Breaking-Change Layer:**
-- Pre-1.0: run `oasdiff` as advisory or warning artifact against the base branch.
-- At/after 1.0: make breaking-change detection blocking unless the PR includes approved versioning/changelog evidence.
-- Keep Spectral/OpenAPI linting optional at first; promote once rules are stable.
+- Run `actionlint` against `.github/workflows`.
+- Run `zizmor` against `.github/workflows`.
+- For `.github/workflows/cla.yml`, verify the workflow never checks out or executes untrusted PR code and that the action is SHA-pinned.
+- Run the affected workflow manually or through a controlled PR.
+- For OpenAPI changes, run `openapi-contract.yml` or local equivalent twice and confirm zero second-run diff.
+- For deploy changes, use staging first and retain digest/smoke evidence.
 
-**Acceptance Criteria:**
-- API contract changes fail PRs unless regenerated artifacts are committed in the same PR.
-- Unrelated changes pass without forcing regeneration.
-- Drift failures tell contributors exactly which command or test to run and which files to commit.
-- The guard uses the existing repo path: `Explore.API` build-time OpenAPI generation → `schemas/openapi.json` → NSwag → `EventApiClient.g.cs`.
-- Running the OpenAPI guard twice on the same commit produces zero diff on the second run.
+## 8. Documentation, Configuration, And Operations Impact
 
-**Effort:** M
+Docs that must stay aligned:
 
-### Phase 3 — Workflow Hygiene and Least-Privilege Permissions
+- `docs/CI_CD_GOVERNANCE.md`
+- `docs/OPERATIONS.md`
+- `docs/RELEASE_CHECKLIST.md`
+- `docs/TESTING.md`
+- `docs/TROUBLESHOOTING.md`
+- `docs/CONFIGURATION.md`
+- `docs/CONTRIBUTING.md`
+- `docs/legal/CLA.md` or `docs/legal/DCO.md` once selected
+- `.github/PULL_REQUEST_TEMPLATE.md`
 
-**Goal:** Reduce GitHub Actions attack surface with low-noise, high-value hardening before broad SHA pinning.
+Configuration impact:
 
-**Tasks:**
-- Add explicit top-level/job-level `permissions` to every workflow.
-- Replace `cerbos/cerbos-setup-action@v1` with a deterministic Cerbos version instead of `version: "latest"`.
-- Add `timeout-minutes` and `concurrency` to all workflows/jobs where missing.
-- Audit path filters so security-relevant files are not excluded from security checks.
-- Add `merge_group` to required workflows if the repository uses GitHub merge queue.
+- GitHub Environment secrets remain deployment-only, not runtime app settings.
+- Coolify webhook names may be normalized only in the same PR that updates docs and workflows.
+- Any OIDC migration must document audience, subject claims, token scope, and fallback/rollback.
+- CLA signature storage must document repository/branch, token permissions, retention, bot allowlist, and privacy impact.
 
-**Acceptance Criteria:**
-- Every workflow/job declares least-privilege permissions.
-- Cerbos no longer uses mutable `latest`.
-- Required checks are not accidentally bypassed or left pending due to path-filter behavior.
+## 9. Security, Authorization, Privacy, And Abuse Considerations
 
-**Effort:** M
+- Fork PRs remain untrusted and must not access secrets, OIDC tokens, package write scopes, deployment webhooks, or environment secrets.
+- `pull_request_target` is allowed only for the CLA metadata/status workflow after a documented threat model. It remains banned for build/test/generation/deployment jobs.
+- Inline scripts must treat PR/user-controlled values as untrusted and pass them through environment variables, not direct interpolation.
+- Use short-lived credentials through OIDC where available.
+- Do not log webhook URLs, bearer tokens, registry credentials, image signing material, or smoke-check response bodies containing secrets.
+- Artifact names and summaries may include commit SHA, image digest, component name, environment, and health status, but not secrets.
+- CLA signature artifacts may include contributor identity metadata; treat them as governance records with explicit privacy and retention rules.
 
-### Phase 4 — Action Pinning, Security Scanning, CodeQL, and Dependency Evidence
+## 10. Multi-Tenancy, Federation, Localization, Accessibility, And Product Considerations
 
-**Goal:** Make security gates meaningful and reviewable.
+This workstream does not directly change tenant data paths. It still protects product integrity because CI gates are the enforcement path for:
 
-**Tasks:**
-- Configure Dependabot/Renovate for `github-actions` updates before introducing full action SHA pinning.
-- Keep full-length SHA pinning as a follow-up slice after update automation is observed and branch-protection impacts are known.
-- Update `codeql.yml` so C# analysis moves from `build-mode: none` to manual build or autobuild if generated code, source generators, project-specific build flags, or private feeds affect the C# code graph. For this repo, prefer manual build because the canonical Release build and preview SDK are already pinned by `global.json`.
-- Include PR coverage for `develop` if `develop` remains a protected integration branch.
-- Add dependency review where available for pull requests.
-- Add secret scanning/push protection at repository/org settings level; document this as required platform configuration.
-- Expand `security-tests.yml` paths to include BFF token forwarding, API authentication middleware, forwarded-header trust, setup-secret handling, security headers, Keycloak realm/config changes, and authorization provider implementations.
-- Upload CodeQL/SARIF/security test outputs where GitHub does not already preserve them.
+- tenant isolation tests;
+- authorization parity and Cerbos fail-closed behavior;
+- OpenAPI and HAL contract drift;
+- BFF trust-boundary tests;
+- accessibility convention tests;
+- release evidence for self-hosters.
 
-**Acceptance Criteria:**
-- Update automation exists before any required gate is converted to full-length action SHA references.
-- C# CodeQL analyzes built code when the build graph materially affects analysis accuracy.
-- Security path filters cover actual auth/security trust-boundary files.
-- Security findings are visible and triageable before being made broadly blocking.
+## 11. Observability And Operations
 
-**Effort:** M
+CI/CD must produce operator-grade evidence:
 
-### Phase 5 — Container Build, SBOM, Provenance, and Image Promotion
+- Job summaries for fast tests, OpenAPI drift, container builds, and deploys.
+- Artifacts for TRX, OpenAPI diffs, CLA status, license scans, security scans, SBOM/provenance, Trivy outputs, E2E traces, and deployment smoke logs.
+- Release notes must copy or link long-lived evidence outside expiring GitHub artifacts when required.
+- Deploy summaries must include environment, component, commit SHA, digest, workflow run, smoke result, and rollback note.
 
-**Goal:** Build once, verify once, deploy the same immutable artifact.
+## 12. Migration And Compatibility Plan
 
-**Tasks:**
-- Extract common API/UI image build logic from both Coolify deploy workflows into reusable `_container-build.yml`.
-- Build and push images by commit SHA and immutable digest; keep `latest`/`develop` tags as convenience aliases only.
-- Enable Buildx SBOM/provenance and GitHub artifact attestations for GHCR-published images.
-- Add image vulnerability scanning before the Coolify deploy webhook is triggered.
-- Store image digests as workflow outputs, retained JSON evidence, and job summaries.
-- Upload build records, digest evidence, and vulnerability scan output with retention.
-- Review Dockerfiles for base-image digest strategy and labels without blocking the first workflow refactor.
+Backward compatibility with weak CI/CD behavior is intentionally not preserved.
 
-**Deployment Artifact Decision Gate:**
-- Confirm whether the current Coolify webhook can deploy an explicit image digest during Phase 6.
-- If yes, deploy the digest directly.
-- If no, push an immutable commit-SHA tag, configure Coolify to deploy that exact tag, and record the resolved digest after deploy.
-- Never use mutable `latest` as the production source of truth.
+Delete or replace:
 
-**Acceptance Criteria:**
-- Container build jobs emit immutable digest evidence, Buildx SBOM/provenance, GHCR artifact attestations, and vulnerability scan output for each deployable image.
-- Coolify deployment still uses the existing webhook-configured image source until Phase 6 decides digest vs immutable commit-SHA tag consumption.
-- Job summaries name the image, digest, tags, commit SHA, and source workflow run.
+- legacy `Explore.API/swagger.json` checks or docs references; `schemas/openapi.json` is canonical;
+- duplicated deploy workflow bodies;
+- path-skipped required check designs without no-op wrappers;
+- mutable deployment source-of-truth tags;
+- unmanaged action references;
+- docs that describe obsolete generated-artifact paths.
+- raw CLA sample workflow choices that write signatures to protected source branches or use broad bot allowlists.
 
-**Effort:** L
+Migration sequencing:
 
-### Phase 6 — Protected Deployments and Post-Deploy Smoke Checks
+1. Add settings/CODEOWNERS/intent baseline.
+2. Fix stale checks and required-check semantics.
+3. Add CLA/DCO contribution governance.
+4. Add workflow lint/security gates.
+5. Consolidate deploy and enforce digest promotion.
+6. Tighten advisory gates after reliability evidence exists.
 
-**Goal:** Make staging and production deployments safe, auditable, and reversible.
+## 13. Risk Register
 
-**Tasks:**
-- Add `environment: staging` and `environment: production` jobs while keeping the current workflow files stable.
-- Configure production required reviewers, branch restrictions, environment-scoped secrets, and optional wait timers in GitHub settings.
-- Add deploy concurrency by environment.
-- Replace raw curl deploy calls with timeout, retry, HTTP status validation, redacted logging, transport-failure summaries, and explicit failure handling.
-- Add bounded post-deploy smoke checks against `/alive` and `/health` when environment URL variables are configured; follow `docs/OPERATIONS.md` semantics and keep retry budgets inside the deploy job timeout.
-- Add rollback instructions, environment URLs, health result, and workflow links to job summaries and retained deploy artifacts.
-- Document the digest-preferred deployment path and immutable SHA tag fallback until Coolify capability is confirmed.
-
-**Acceptance Criteria:**
-- Production deploy requires protected environment approval after GitHub repository environment rules are configured.
-- Only one deployment per environment runs at a time.
-- Deployment fails with retained summary/artifact evidence if Coolify webhook or configured smoke checks fail.
-- Job summary contains environment, commit SHA, health result, workflow link, and rollback note.
-
-**Effort:** L
-
-### Phase 7 — Nightly/Manual E2E, Runtime, and Drift Lanes
-
-**Goal:** Cover expensive or environment-heavy checks without slowing the fast PR loop.
-
-**Tasks:**
-- Add nightly/manual `e2e.yml` using Aspire orchestration where appropriate:
-  - the current E2E project starts AppHost internally via `Aspire.Hosting.Testing`
-  - do not start a duplicate external AppHost for this suite
-  - per-project E2E test execution
-  - TRX, Playwright browser artifacts, test logs, and Docker diagnostics on failure
-- Run `Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj` in this lane.
-- Add scheduled full integration/auth/Cerbos/policy contract runs.
-- Add scheduled OpenAPI breaking-change report against default branch if not yet blocking.
-
-**Acceptance Criteria:**
-- E2E lane runs manually and nightly with artifacts.
-- Long-running failures are visible without blocking every PR until reliability is proven.
-- Runtime-lane TRX, browser artifacts, test logs, and Docker diagnostics are retained on failure.
-
-**Effort:** M/L
-
-### Phase 8 — Documentation, Release Checklist, and Branch Protection Alignment
-
-**Goal:** Make the new CI/CD contract maintainable.
-
-**Tasks:**
-- Add `docs/CI_CD_GOVERNANCE.md` as the central source for branch protection, required/advisory gates, GitHub Environment settings, fork PR policy, generated-artifact review, artifact retention, and badge policy.
-- Update `docs/TESTING.md` to include `Explore.Infrastructure.Tests`, advisory runtime lanes, and CI/CD governance links.
-- Update `docs/GOVERNANCE.md` to link the CI/CD governance reference and exact OpenAPI drift behavior.
-- Update `docs/RELEASE_CHECKLIST.md` with SBOM/provenance, deployment approval, smoke-check, branch-protection, and repository-security evidence requirements.
-- Update `docs/OPERATIONS.md` with deployment protection and CI smoke-check expectations.
-- Add contributor instructions for resolving OpenAPI drift in `docs/TROUBLESHOOTING.md`.
-- Remove README badges for coverage/SonarCloud until those workflows are implemented.
-- Configure repository branch protection required checks after workflow names stabilize.
-
-**Acceptance Criteria:**
-- Contributor docs explain how to fix each new CI failure class.
-- Required checks match final workflow/job names.
-- Release checklist includes artifact, approval, digest, and smoke-check evidence.
-- README badges represent implemented gates only.
-
-**Effort:** M
-
-## OpenAPI Contract Guard Details
-
-### Why This Guard Exists
-
-The project already treats OpenAPI as a governed artifact: controller signatures, routes, API versioning, `ProducesResponseType`, operation IDs, endpoint classifications, and DTO shapes are part of the public contract. Because `Explore.Blazor.Client` regenerates its typed client from `schemas/openapi.json`, stale OpenAPI artifacts can cause generated-client drift and hidden integration failures.
-
-### What Counts as an API-Surface Change
-
-Regeneration is expected when a PR changes emitted contract behavior, including:
-
-- route templates, HTTP verbs, API versions, or version readers;
-- request DTOs, response DTOs, validation-visible shape, enum/lookup exposure, pagination models, or problem details;
-- authorization metadata that appears in OpenAPI;
-- operation IDs, endpoint classification, tags, schema transformers, HAL wrappers, or OpenAPI document settings;
-- NSwag settings that affect `EventApiClient.g.cs`;
-- generated action inventory logic.
-
-Regeneration is not expected for unrelated implementation-only changes that do not alter the emitted schema or generated client.
-
-### Local Developer Fix Path
-
-The CI failure should tell contributors to run the repository-approved regeneration path, not hand-edit files:
-
-```bash
-dotnet build Explore.API/Explore.API.csproj \
-  --configuration Release \
-  --verbosity minimal
-
-dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj \
-  --configuration Release \
-  --verbosity quiet
-
-git diff --exit-code -- \
-  schemas/openapi.json \
-  Explore.Blazor.Client/Clients/EventApiClient.g.cs
-```
-
-Then review the generated diff for intentionality and commit generated artifacts with the API change. If the action inventory is part of the PR, run the inventory generator and include `docs/API_CONTRACT_INVENTORY.md` in the review/diff.
-
-### Generated Artifact Review Rules
-
-Reviewers must inspect generated artifact diffs for:
-
-- operation ID changes;
-- route additions, removals, or template changes;
-- authorization/security metadata changes;
-- request/response DTO shape changes;
-- HAL link/action/schema changes;
-- generated client method renames or suffix drift;
-- removed or renamed endpoints.
-
-### CI False-Positive Controls
-
-- Use `Explore.API` build-time OpenAPI generation instead of a local developer HTTPS profile or retired integration-test exporter.
-- Keep generated JSON pretty-printed and deterministic.
-- Normalize or document known volatile fields before enforcing strict diff.
-- Avoid skipped required workflows; prefer always-running required guard with internal no-op detection.
-- Upload generated artifacts on failure so reviewers can inspect drift without rerunning CI.
-- Prove determinism before requiring the guard by running it twice on the same commit and verifying the second run produces zero diff.
-
-## Fork and External PR Security Policy
-
-- External fork PRs run validation with read-only `GITHUB_TOKEN` permissions and without deployment secrets, registry write credentials, environment secrets, or privileged tokens.
-- Use `pull_request` for untrusted code validation. Do not use `pull_request_target` for build/test/generation jobs unless a separate threat-model review proves checked-out code cannot exfiltrate secrets or modify privileged execution.
-- Deploy, package-publish, attestation, and environment-secret jobs must run only from trusted branches/tags or approved environments.
-- Artifacts uploaded from fork PRs are evidence only; do not consume them in privileged deployment workflows without rebuilding from trusted refs.
-
-## Artifact Retention Policy
-
-| Artifact | Retention |
-|---|---:|
-| TRX test results and test logs | 14–30 days |
-| OpenAPI drift artifacts and generated diffs | 30 days |
-| Security scan outputs not already retained by GitHub | 90 days |
-| SBOM/provenance for release images | Release lifetime / long-lived |
-| Deployment logs, summaries, smoke-check evidence | At least 90 days; longer for production |
-
-## Dependencies
-
-- GitHub repository/admin settings for branch protection, required checks, environments, secret scanning, and push protection.
-- Clean Docker image build validation for the locked restore path after unrelated workspace compile/package issues are resolved.
-- Stable OpenAPI generation path through `Explore.API` build-time OpenAPI generation and NSwag.
-- Decision on coverage provider and README badges: Codecov/SonarCloud implementation vs badge removal.
-- Decision on container registry capabilities for attestations and digest-based deployment.
-- Coolify webhook behavior and health endpoint reachability from GitHub-hosted runners.
-
-## Success Metrics
-
-- 100% of required workflows declare explicit least-privilege permissions.
-- 100% of fast test projects run in CI, including `Explore.Infrastructure.Tests`.
-- OpenAPI drift guard blocks stale `schemas/openapi.json` and `EventApiClient.g.cs` diffs.
-- TRX artifacts are available for every test job.
-- Coverage artifacts or documented badge removal resolves README badge mismatch.
-- Production deploys require protected environment approval.
-- Deploy summaries include commit SHA, image digest, environment, approver, and smoke-check status.
-- Container images include SBOM/provenance evidence before production deployment.
-- E2E/nightly lane retains logs/artifacts for failures.
-
-## Risks and Mitigations
-
-| Risk | Impact | Mitigation |
+| Risk | Severity | Mitigation |
 |---|---|---|
-| OpenAPI generation is non-deterministic | False CI failures | Use `Explore.API` build-time OpenAPI generation, normalize output, upload failure artifacts, enforce after stability |
-| Path-filtered required workflow is skipped | PRs blocked with pending checks | Use always-running required workflow with internal no-op job |
-| Too many checks slow PRs | Developer friction | Keep fast PR gate mandatory; schedule or manually trigger expensive lanes first |
-| Integration/E2E flakiness | Loss of trust in gates | Isolate services, use Aspire logs/artifacts, promote to required only after reliability data |
-| Static Coolify secrets remain | Deployment credential exposure risk | Move secrets to GitHub Environments; prefer OIDC where registry/platform supports it |
-| Deploy rebuilds differ from tested artifacts | Production mismatch | Build once, record digest, deploy digest |
-| Action SHA pinning increases maintenance | Stale actions if unmanaged | Add Dependabot/Renovate updates for GitHub Actions |
-| CodeQL build mode increases runtime | Longer security scans | Keep CodeQL separate and scheduled; tune after first stable runs |
-| Correct NuGet audit surfaces existing vulnerabilities | CI becomes red before package remediation is done | Keep the supported JSON audit implementation, remediate vulnerable packages, and decide whether transitive findings are required or advisory before branch-protection enforcement |
+| Coolify cannot deploy by digest | Blocker for final state | Use immutable commit-SHA tag fallback temporarily; record resolved digest; keep task open until digest deploy is solved. |
+| Workflow security scanner false positives | Major | Start advisory/SARIF, baseline findings, then block only high-confidence rules. |
+| Required checks stuck pending due skipped workflows | Critical | Always-running wrapper/no-op jobs before branch protection requires them. |
+| Package vulnerability gate regresses | Critical | Keep remediation-first policy; any temporary advisory exception needs owner/date/advisory URL/affected version/compensating control/removal condition. |
+| Duplicate deploy workflows drift | Major | Consolidate into one reusable deploy path. |
+| Attestation generated but never verified | Critical | Verify attestation before deploy and include result in evidence. |
+| Repository settings cannot be changed by code | Major | Add a settings evidence checklist and require maintainer verification. |
+| CLA action uses privileged `pull_request_target` | Critical | Use only for metadata/status, no PR-code checkout/execution, SHA pin the action, and document the threat model. |
+| CLA Assistant action is archived | Major | Accept risk explicitly, fork/vendor, or select a maintained alternative before enforcement. |
+| License compliance is not checked | Major | Add dependency license policy scanning and AGPL-compatible allow/deny rules. |
 
-## External Research Sources Used
+## 14. Success Metrics And Definition Of Done
 
-- GitHub reusable workflows: https://docs.github.com/en/actions/reference/workflows-and-actions/reusable-workflows
-- GitHub workflow syntax and permissions: https://docs.github.com/actions/reference/workflows-and-actions/workflow-syntax
-- GitHub security hardening for Actions: https://docs.github.com/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions
+The workstream is done when:
+
+- A `ci-cd-change` intent exists and names required docs/rules/tests.
+- CODEOWNERS protects CI/CD and release-critical files.
+- CLA/DCO contribution policy is decided, documented, and enforced by a safe required check.
+- Every required check is always-present or has a no-op pass path.
+- `test.yml` supports merge queue if merge queue is enabled.
+- actionlint and zizmor run on workflow changes.
+- OpenAPI drift guard remains deterministic and blocks stale generated artifacts.
+- Container images have exported SBOM/provenance, vulnerability scan output, and GitHub attestations.
+- Deploy jobs verify image attestation/digest before invoking Coolify.
+- Production deploys are environment-protected and smoke-checked.
+- Dependency license policy and vulnerability policy are explicit and enforced at the selected severity.
+- Repository settings evidence confirms branch protection, environments, action policy, secret scanning, push protection, dependency graph, Dependabot security updates, and CodeQL.
+- Release evidence bundles include CLA status, OpenAPI drift, test results, image digests, SBOM/provenance, attestations, scan output, and smoke checks.
+- Docs explain how contributors fix every CI/CD failure class.
+
+## 15. Implementation Agent Contract - Keep Dev Docs Current
+
+Every implementation PR must update:
+
+- this plan when architecture or sequencing changes;
+- `enterprise-ci-cd-hardening-context.md` after major decisions, verification, blockers, or settings evidence;
+- `enterprise-ci-cd-hardening-tasks.md` as tasks are completed or split.
+
+Do not mark this workstream complete while Coolify digest deployment, attestation verification, repository settings evidence, and workflow security linting remain unresolved.
+
+## 16. Progress Reporting Contract
+
+Implementation agents should report:
+
+- phase being implemented;
+- files changed;
+- gates added/removed/promoted;
+- exact verification commands and results;
+- any repository setting that must be changed manually;
+- any advisory gate intentionally left non-blocking, with owner/date/removal condition.
+
+## 17. External Research Sources
+
+- GitHub Actions secure use: https://docs.github.com/en/actions/reference/security/secure-use
+- GitHub `pull_request_target` warning: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target
 - GitHub OIDC reference: https://docs.github.com/en/actions/reference/security/oidc
-- GitHub deployment environments: https://docs.github.com/en/actions/concepts/use-cases/deploying-with-github-actions
-- GitHub concurrency: https://docs.github.com/en/actions/using-jobs/using-concurrency
-- GitHub required status checks: https://docs.github.com/en/articles/about-required-status-checks
-- GitHub required-check troubleshooting and skipped workflow behavior: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks
-- GitHub deployment environments and environment secrets: https://docs.github.com/en/actions/reference/environments
-- GitHub artifact attestations: https://docs.github.com/actions/concepts/security/artifact-attestations
-- GitHub CodeQL build modes for compiled languages: https://docs.github.com/code-security/reference/code-scanning/codeql/codeql-build-options-and-steps-for-compiled-languages
-- GitHub dependency review action: https://github.com/actions/dependency-review-action
-- GitHub artifact attestations and Docker attestations: https://docs.docker.com/build/ci/github-actions/attestations/
-- Microsoft ASP.NET Core OpenAPI docs: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/aspnetcore-openapi?view=aspnetcore-10.0
-- Microsoft OpenAPI document usage docs: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/using-openapi-documents?view=aspnetcore-10.0
-- Microsoft .NET OpenAPI/versioning blog: https://devblogs.microsoft.com/dotnet/api-versioning-in-dotnet-10-applications/
-- Spectral CLI docs: https://github.com/stoplightio/spectral/blob/9b095b58ea5e313ba025afb26755f61f6852f038/docs/guides/2-cli.md
-- oasdiff docs/action: https://github.com/oasdiff/oasdiff/blob/7e23358418ec870d9dd94bcaaa9e370afce92732/docs/DIFF.md and https://github.com/oasdiff/oasdiff-action/blob/dece4e9d3b17145ba3850f21a611b0cc9c96c2d1/README.md
-- Docker reusable Buildx workflow example: https://github.com/docker/github-builder/blob/c2782c55efa56a01b9c30021db8f5ec3993228a3/.github/workflows/build.yml
-- .NET Docker test workflow example: https://github.com/dotnet/dotnet-docker/blob/77ef40ed3fbce43828ccec2b143671487a0fbf64/.github/workflows/update-dependencies-tests.yml
-
-## Effort Estimate
-
-- Phase 0: S
-- Phase 1A: S/M
-- Phase 1B: S/M
-- Phase 1C: M
-- Phase 2: M
-- Phase 3: M
-- Phase 4: M
-- Phase 5: L
-- Phase 6: L
-- Phase 7: M/L
-- Phase 8: M
-
-Overall rollout: **XL**, best delivered in incremental PRs. First useful milestone is **M/L**: Phase 1 + Phase 2 + minimal least-privilege permissions.
+- GitHub environments/deployments: https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments
+- GitHub artifact attestations: https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations
+- GitHub dependency review action: https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configuring-the-dependency-review-action
+- Docker Buildx GitHub Actions and attestations: https://docs.docker.com/build/ci/github-actions/ and https://docs.docker.com/build/ci/github-actions/attestations/
+- zizmor GitHub Actions security scanner: https://docs.zizmor.sh/
+- OpenSSF Scorecard: https://scorecard.dev/
+- Contributor Agreements: https://contributoragreements.org/
+- Contributor Agreements legal questions: https://contributoragreements.org/legal.html
+- Contributor Agreement chooser: https://contributoragreements.org/agreement-chooser.html
+- CLA Assistant hosted service: https://cla-assistant.io/
+- CLA Assistant GitHub Action: https://github.com/contributor-assistant/github-action
