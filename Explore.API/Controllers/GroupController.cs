@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.Group;
 using Explore.Application.Features.Groups.Requests.Commands;
 using Explore.Application.Features.Groups.Requests.Queries;
@@ -44,16 +45,16 @@ public class GroupController : ExploreControllerBase
     [EndpointSummary("Get all Groups")]
     [EndpointDescription("Get a paginated list of all Groups. Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(HalCollectionResource<GroupListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<GroupListDto>>> GetAll(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] PaginationQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetGroupListRequest
         {
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
@@ -71,10 +72,10 @@ public class GroupController : ExploreControllerBase
     [EndpointSummary("Get my Groups")]
     [EndpointDescription("Get a paginated list of groups where the current user is a member.")]
     [ProducesResponseType(typeof(HalCollectionResource<GroupListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<HalCollectionResource<GroupListDto>>> GetMyGroups(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] PaginationQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
@@ -86,8 +87,8 @@ public class GroupController : ExploreControllerBase
         var result = await _mediator.Send(new GetMyGroupsRequest
         {
             UserId = userId,
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(

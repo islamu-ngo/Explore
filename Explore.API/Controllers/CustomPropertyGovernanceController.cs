@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.CustomPropertyGovernance;
 using Explore.Application.Features.CustomPropertyGovernance.Requests.Queries;
 using Explore.Application.Responses;
@@ -39,24 +40,21 @@ public class CustomPropertyGovernanceController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(PaginatedResult<CustomPropertyGovernanceRowDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PaginatedResult<CustomPropertyGovernanceRowDto>>> GetGovernanceReport(
-        [FromQuery] Guid tenantId,
-        [FromQuery] string? scope = null,
-        [FromQuery] PromotionRecommendation? recommendation = null,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] CustomPropertyGovernanceReportQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
             new GetCustomPropertyGovernanceReportQuery
             {
-                TenantId = tenantId,
+                TenantId = query.TenantId,
                 Filter = new GovernanceReportFilterDto
                 {
-                    EntityScope = scope,
-                    Recommendation = recommendation,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize
+                    EntityScope = query.Scope,
+                    Recommendation = query.Recommendation,
+                    PageNumber = query.PageNumber,
+                    PageSize = query.PageSize
                 }
             },
             cancellationToken);

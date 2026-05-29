@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Models;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.Features.Notifications.Requests.Commands;
 using Explore.Application.Features.Notifications.Requests.Queries;
@@ -32,28 +33,22 @@ public class NotificationController : ControllerBase
     [EndpointSummary("Get User Notifications")]
     [EndpointDescription("Retrieve a paginated list of notifications for the authenticated user. Supports filtering by read status, notification type, scope, reason, archive state, and snooze state.")]
     [ProducesResponseType(typeof(PaginatedResult<NotificationListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<PaginatedResult<NotificationListDto>>> GetAll(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
-        [FromQuery] bool? isRead = null,
-        [FromQuery] int? notificationTypeId = null,
-        [FromQuery] int? notificationScopeId = null,
-        [FromQuery] int? notificationReasonId = null,
-        [FromQuery] bool? isArchived = null,
-        [FromQuery] bool? isSnoozed = null,
+        [FromQuery] NotificationListQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetUserNotificationsRequest
         {
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            IsRead = isRead,
-            NotificationTypeId = notificationTypeId,
-            NotificationScopeId = notificationScopeId,
-            NotificationReasonId = notificationReasonId,
-            IsArchived = isArchived,
-            IsSnoozed = isSnoozed
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize,
+            IsRead = query.IsRead,
+            NotificationTypeId = query.NotificationTypeId,
+            NotificationScopeId = query.NotificationScopeId,
+            NotificationReasonId = query.NotificationReasonId,
+            IsArchived = query.IsArchived,
+            IsSnoozed = query.IsSnoozed
         }, cancellationToken);
 
         return Ok(result);

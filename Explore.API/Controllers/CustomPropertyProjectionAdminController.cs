@@ -6,6 +6,7 @@ using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.CustomPropertyGovernance;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.CustomPropertyProjection;
@@ -143,27 +144,25 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(HalCollectionResource<ProjectionDirtyScopeDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<HalCollectionResource<ProjectionDirtyScopeDto>>> GetDirtyScopes(
-        [FromQuery] Guid tenantId,
-        [FromQuery] string projectionName,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] CustomPropertyProjectionDirtyScopesQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
             new GetCustomPropertyProjectionDirtyScopesQuery
             {
-                TenantId = tenantId,
-                ProjectionName = projectionName,
-                PageNumber = pageNumber,
-                PageSize = pageSize
+                TenantId = query.TenantId,
+                ProjectionName = query.ProjectionName!,
+                PageNumber = query.PageNumber,
+                PageSize = query.PageSize
             },
             cancellationToken);
 
         var halResource = await _dirtyScopeAssembler.ToCollectionResource(
             result,
             RouteNames.GetCustomPropertyProjectionDirtyScopes,
-            new { tenantId, projectionName },
+            new { query.TenantId, query.ProjectionName },
             HttpContext);
 
         return Ok(halResource);

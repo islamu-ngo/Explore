@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Models;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.ContactShareConsent;
@@ -106,12 +107,10 @@ public class ContactShareConsentController : ExploreControllerBase
     [EndpointDescription("Retrieve paginated list of shared contacts for an organization. Requires ViewSharedContacts permission.")]
     [Authorize]
     [ProducesResponseType(typeof(PaginatedResult<SharedContactDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PaginatedResult<SharedContactDto>>> GetOrganizationSharedContacts(
         Guid recipientActorId,
-        [FromQuery] Guid? eventId = null,
-        [FromQuery] string? emailSearch = null,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] ContactShareConsentListQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var organizationId = await ResolveOrganizationId(recipientActorId);
@@ -122,10 +121,10 @@ public class ContactShareConsentController : ExploreControllerBase
         {
             RecipientActorId = recipientActorId,
             OrganizationId = organizationId.Value,
-            EventId = eventId,
-            EmailSearch = emailSearch,
-            PageNumber = pageNumber,
-            PageSize = pageSize,
+            EventId = query.EventId,
+            EmailSearch = query.EmailSearch,
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize,
             TenantId = _tenantContext.TenantId
         }, cancellationToken);
 

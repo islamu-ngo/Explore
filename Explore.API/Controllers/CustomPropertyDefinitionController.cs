@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Queries;
@@ -51,23 +52,23 @@ public class CustomPropertyDefinitionController : ControllerBase
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<CustomPropertyDefinitionListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<CustomPropertyDefinitionListDto>>> GetAll(
-        [FromQuery] EntityTypeName entityTypeName,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+        [FromQuery] CustomPropertyDefinitionListQueryRequest query,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetCustomPropertyDefinitionListRequest
         {
-            EntityTypeName = entityTypeName,
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            EntityTypeName = query.EntityTypeName,
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetCustomPropertyDefinitions,
-            additionalRouteValues: new { entityTypeName },
+            additionalRouteValues: new { query.EntityTypeName },
             HttpContext);
 
         return Ok(halResource);
