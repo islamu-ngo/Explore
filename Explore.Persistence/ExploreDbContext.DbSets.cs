@@ -2,6 +2,7 @@
 // ABOUTME: Organized by domain area: Tenancy, Users, Auth, Actors, Organizations, Groups, Events, etc.
 
 using Explore.Domain;
+using Explore.Domain.Ai;
 using Explore.Domain.Federation;
 using Explore.Domain.Modules;
 using Explore.Domain.Secrets;
@@ -59,6 +60,9 @@ public partial class ExploreDbContext
     public DbSet<ActorType> ActorTypes { get; set; }
     public DbSet<DidCustodyType> DidCustodyTypes { get; set; }
     public DbSet<ActorKeyStore> ActorKeyStores { get; set; }
+    public DbSet<ActorSubscription> ActorSubscriptions { get; set; }
+    public DbSet<ActorSubscriptionStatus> ActorSubscriptionStatuses { get; set; }
+    public DbSet<ActorSubscriptionNotificationLevel> ActorSubscriptionNotificationLevels { get; set; }
 
     // ===== Organizations =====
     public DbSet<Organization> Organizations { get; set; }
@@ -151,6 +155,8 @@ public partial class ExploreDbContext
 
     // ===== Storage =====
     public DbSet<StorageObject> StorageObjects { get; set; }
+    public DbSet<StorageUploadSession> StorageUploadSessions { get; set; }
+    public DbSet<StorageUsageCounter> StorageUsageCounters { get; set; }
     public DbSet<FileType> FileTypes { get; set; }
     public DbSet<OwnerType> OwnerTypes { get; set; }
 
@@ -181,6 +187,7 @@ public partial class ExploreDbContext
     public DbSet<NotificationEntityType> NotificationEntityTypes { get; set; }
     public DbSet<NotificationReason> NotificationReasons { get; set; }
     public DbSet<NotificationScopeType> NotificationScopeTypes { get; set; }
+    public DbSet<NotificationFanoutRun> NotificationFanoutRuns { get; set; }
 
     // ===== Module Governance =====
     public DbSet<ModuleDefinition> ModuleDefinitions { get; set; }
@@ -213,4 +220,12 @@ public partial class ExploreDbContext
 
     // ===== Idempotency =====
     public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
+
+    // ===== AI Assistant =====
+    public DbSet<AiConversation> AiConversations { get; set; }
+    public DbSet<AiMessage> AiMessages { get; set; }
+    public DbSet<AiRun> AiRuns { get; set; }
+    public DbSet<AiConversationReference> AiConversationReferences { get; set; }
+    public DbSet<AiProposedAction> AiProposedActions { get; set; }
+    public DbSet<AiToolExecution> AiToolExecutions { get; set; }
 }

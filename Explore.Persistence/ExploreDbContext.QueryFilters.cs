@@ -2,6 +2,7 @@
 // ABOUTME: Entity filter registrations are grouped by domain area. Filter logic uses TenantContext closure.
 
 using Explore.Domain;
+using Explore.Domain.Ai;
 using Explore.Domain.Modules;
 using Explore.Domain.Settings.Documents;
 using Explore.Domain.Views;
@@ -226,6 +227,10 @@ public partial class ExploreDbContext
         modelBuilder.Entity<ActorKeyStore>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
+        modelBuilder.Entity<ActorSubscription>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
         // ===== User Entity =====
         // Soft Delete only (not tenant-scoped - global entity)
         modelBuilder.Entity<User>()
@@ -245,6 +250,13 @@ public partial class ExploreDbContext
 
         // ===== Storage Entity =====
         modelBuilder.Entity<StorageObject>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<StorageUploadSession>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<StorageUsageCounter>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
         modelBuilder.Entity<OrganizationPii>()
@@ -316,5 +328,27 @@ public partial class ExploreDbContext
         modelBuilder.Entity<Notification>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+        modelBuilder.Entity<NotificationFanoutRun>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        // ===== AI Assistant =====
+        modelBuilder.Entity<AiConversation>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId)
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<AiMessage>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<AiRun>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<AiConversationReference>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<AiProposedAction>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<AiToolExecution>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
     }
 }

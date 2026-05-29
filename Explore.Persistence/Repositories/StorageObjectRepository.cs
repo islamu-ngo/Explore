@@ -1,6 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+// ABOUTME: EF Core repository for storage objects with detail projections for legacy admin surfaces.
+// ABOUTME: Returns domain entities only; DTO mapping remains in application handlers.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;

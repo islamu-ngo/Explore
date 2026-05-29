@@ -170,6 +170,8 @@ public static class PersistenceServicesRegistration
         // Actor Repositories
         services.AddScoped<IActorRepository, ActorRepository>();
         services.AddScoped<IActorKeyStoreRepository, ActorKeyStoreRepository>();
+        services.AddScoped<IActorSubscriptionRepository, ActorSubscriptionRepository>();
+        services.AddScoped<INotificationFanoutRunRepository, NotificationFanoutRunRepository>();
 
         // Organization Repositories
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
@@ -229,6 +231,8 @@ public static class PersistenceServicesRegistration
 
         // Storage Repository
         services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();
+        services.AddScoped<IStorageUploadSessionRepository, StorageUploadSessionRepository>();
+        services.AddScoped<IStorageUsageCounterRepository, StorageUsageCounterRepository>();
 
         // Tag & Category Repositories
         services.AddScoped<ITagRepository, TagRepository>();
@@ -288,6 +292,9 @@ public static class PersistenceServicesRegistration
 
         // Idempotency Repository
         services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
+
+        // AI Assistant Repositories
+        services.AddScoped<IAiConversationRepository, AiConversationRepository>();
 
         return services;
     }
