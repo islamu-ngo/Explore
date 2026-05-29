@@ -52,4 +52,64 @@ public sealed class EmailDispatchRabbitMqSettingsValidatorTests
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureMessage).Contains(nameof(EmailDispatchRabbitMqSettings.ConnectionStringName));
     }
+
+    [Test]
+    public async Task ValidateBlankConsumerIdReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchRabbitMqSettings
+        {
+            ConsumerId = " "
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains(nameof(EmailDispatchRabbitMqSettings.ConsumerId));
+    }
+
+    [Test]
+    public async Task ValidateZeroPrefetchCountReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchRabbitMqSettings
+        {
+            PrefetchCount = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains(nameof(EmailDispatchRabbitMqSettings.PrefetchCount));
+    }
+
+    [Test]
+    public async Task ValidateBlankParkingQueueNameReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchRabbitMqSettings
+        {
+            ParkingQueueName = " "
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains(nameof(EmailDispatchRabbitMqSettings.ParkingQueueName));
+    }
+
+    [Test]
+    public async Task ValidateBlankDeadLetterReplayConsumerIdReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchRabbitMqSettings
+        {
+            DeadLetterReplayConsumerId = string.Empty
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains(nameof(EmailDispatchRabbitMqSettings.DeadLetterReplayConsumerId));
+    }
+
+    [Test]
+    public async Task ValidateZeroDeadLetterReplayPrefetchCountReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchRabbitMqSettings
+        {
+            DeadLetterReplayPrefetchCount = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains(nameof(EmailDispatchRabbitMqSettings.DeadLetterReplayPrefetchCount));
+    }
 }

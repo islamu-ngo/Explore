@@ -67,6 +67,18 @@ public sealed class EmailDispatchProcessorSettingsValidatorTests
     }
 
     [Test]
+    public async Task ValidateInvalidProcessingLeaseTimeoutReturnsFailure()
+    {
+        var result = _validator.Validate(null, new EmailDispatchProcessorSettings
+        {
+            ProcessingLeaseTimeoutSeconds = 0
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("ProcessingLeaseTimeoutSeconds");
+    }
+
+    [Test]
     public async Task ValidateMissingConsumerIdReturnsFailure()
     {
         var result = _validator.Validate(null, new EmailDispatchProcessorSettings
