@@ -1,7 +1,9 @@
+using System.Text.Json;
 using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
+using Explore.Application.Models.InternalEvents;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -45,7 +47,15 @@ public class PublishEventCommandHandlerTests
     {
         var concurrencyStamp = Guid.NewGuid();
         var @event = CreateReadyEvent(concurrencyStamp);
+        var createdMessages = new List<OutboxMessage>();
         _eventRepository.GetById(@event.Id).Returns(@event);
+        _outboxRepository.Create(Arg.Any<OutboxMessage>())
+            .Returns(callInfo =>
+            {
+                var message = callInfo.Arg<OutboxMessage>();
+                createdMessages.Add(message);
+                return message;
+            });
 
         var result = await _handler.Handle(new PublishEventCommand
         {
@@ -62,6 +72,20 @@ public class PublishEventCommandHandlerTests
             && message.EventType == "EventPublished"
             && message.Status == OutboxMessageStatus.Pending
             && message.Payload != null));
+        await _outboxRepository.Received(1).Create(Arg.Is<OutboxMessage>(message =>
+            message.AggregateType == "Event"
+            && message.AggregateId == @event.Id
+            && message.EventType == "EventPublishedNotificationFanoutRequested"
+            && message.Status == OutboxMessageStatus.Pending
+            && message.Payload != null));
+
+        var fanoutMessage = createdMessages.Single(message => message.EventType == "EventPublishedNotificationFanoutRequested");
+        var fanoutPayload = JsonSerializer.Deserialize<EventPublishedNotificationFanoutRequested>(fanoutMessage.Payload!);
+        await Assert.That(fanoutPayload).IsNotNull();
+        await Assert.That(fanoutPayload!.TenantId).IsEqualTo(@event.TenantId);
+        await Assert.That(fanoutPayload.EventId).IsEqualTo(@event.Id);
+        await Assert.That(fanoutPayload.EventTitle).IsEqualTo(@event.Title);
+        await Assert.That(fanoutPayload.SourceActorId).IsEqualTo(@event.ActorId);
         await _cache.Received(1).RemoveByTagAsync(CacheTags.EventListByTenant(@event.TenantId), Arg.Any<CancellationToken>());
     }
 
@@ -108,6 +132,7 @@ public class PublishEventCommandHandlerTests
     {
         Id = Guid.NewGuid(),
         Title = "Draft Event",
+        ActorId = Guid.NewGuid(),
         Actor = new Actor
         {
             ActorType = new ActorType { Id = 1, FullName = "User", MasterCode = "user" },

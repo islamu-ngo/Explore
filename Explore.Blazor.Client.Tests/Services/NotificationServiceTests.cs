@@ -49,9 +49,9 @@ public class NotificationServiceTests
         };
 
         _apiClient.GetNotificationsAsync(
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<int?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -77,9 +77,9 @@ public class NotificationServiceTests
         };
 
         _apiClient.GetNotificationsAsync(
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<int?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -87,8 +87,9 @@ public class NotificationServiceTests
 
         // Assert
         await _apiClient.Received(1).GetNotificationsAsync(
-            1, 20, false, Arg.Any<int?>(), 2, Arg.Any<int?>(),
-            Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            false, Arg.Any<int?>(), 2, Arg.Any<int?>(),
+            Arg.Any<bool?>(), Arg.Any<bool?>(), 1, 20,
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -96,9 +97,9 @@ public class NotificationServiceTests
     {
         // Arrange
         _apiClient.GetNotificationsAsync(
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<int?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -114,9 +115,9 @@ public class NotificationServiceTests
     {
         // Arrange
         _apiClient.GetNotificationsAsync(
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<int?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Network failure"));
 
         // Act
@@ -140,9 +141,9 @@ public class NotificationServiceTests
         };
 
         _apiClient.GetNotificationsAsync(
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<int?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -165,9 +166,9 @@ public class NotificationServiceTests
         };
 
         _apiClient.GetNotificationsAsync(
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<int?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -175,8 +176,9 @@ public class NotificationServiceTests
 
         // Assert
         await _apiClient.Received(1).GetNotificationsAsync(
-            1, 20, Arg.Any<bool?>(), null, Arg.Any<int?>(), 2,
-            Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<bool?>(), null, Arg.Any<int?>(), 2,
+            Arg.Any<bool?>(), Arg.Any<bool?>(), 1, 20,
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -192,9 +194,9 @@ public class NotificationServiceTests
         };
 
         _apiClient.GetNotificationsAsync(
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<int?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -202,8 +204,9 @@ public class NotificationServiceTests
 
         // Assert
         await _apiClient.Received(1).GetNotificationsAsync(
-            1, 20, Arg.Any<bool?>(), null, Arg.Any<int?>(), Arg.Any<int?>(),
-            true, Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<bool?>(), null, Arg.Any<int?>(), Arg.Any<int?>(),
+            true, Arg.Any<bool?>(), 1, 20,
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -219,9 +222,9 @@ public class NotificationServiceTests
         };
 
         _apiClient.GetNotificationsAsync(
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<int?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -229,8 +232,9 @@ public class NotificationServiceTests
 
         // Assert
         await _apiClient.Received(1).GetNotificationsAsync(
-            1, 20, Arg.Any<bool?>(), null, Arg.Any<int?>(), Arg.Any<int?>(),
-            Arg.Any<bool?>(), true, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<bool?>(), null, Arg.Any<int?>(), Arg.Any<int?>(),
+            Arg.Any<bool?>(), true, 1, 20,
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -246,9 +250,9 @@ public class NotificationServiceTests
         };
 
         _apiClient.GetNotificationsAsync(
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
-                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<int?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -258,7 +262,8 @@ public class NotificationServiceTests
 
         // Assert
         await _apiClient.Received(1).GetNotificationsAsync(
-            1, 20, false, null, 2, 3, true, false, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            false, null, 2, 3, true, false, 1, 20,
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion

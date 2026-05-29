@@ -49,6 +49,7 @@ public class GetNotificationByIdRequestHandlerTests
             NotificationTypeId = (int)NotificationTypeEnum.EventCreated,
             NotificationScopeId = (int)ActorTypeEnum.User,
             Title = "New Event Created",
+            DeduplicationKey = "get-notification-by-id-test",
             User = null!,
             Tenant = null!,
             NotificationType = null!,

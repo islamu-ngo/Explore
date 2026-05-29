@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Features.EventRegistrations.Handlers.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -41,6 +42,7 @@ public sealed class CreateEventRegistrationCommandHandlerTests
             _tenantContext,
             CreateBusinessMetrics(),
             _consentService,
+            new EventLifecycleEmailOutboxFactory(),
             Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>());
     }
 

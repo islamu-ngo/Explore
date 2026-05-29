@@ -43,8 +43,8 @@ public class GetUserNotificationsRequestHandlerTests
 
         var notifications = new List<Notification>
         {
-            new() { Id = Guid.NewGuid(), UserId = userId, NotificationTypeId = (int)NotificationTypeEnum.EventCreated, NotificationScopeId = (int)ActorTypeEnum.User, Title = "New Event", User = null!, Tenant = null!, NotificationType = null!, NotificationScope = null! },
-            new() { Id = Guid.NewGuid(), UserId = userId, NotificationTypeId = (int)NotificationTypeEnum.RegistrationConfirmed, NotificationScopeId = (int)ActorTypeEnum.User, Title = "Registration Confirmed", User = null!, Tenant = null!, NotificationType = null!, NotificationScope = null! }
+            new() { Id = Guid.NewGuid(), UserId = userId, NotificationTypeId = (int)NotificationTypeEnum.EventCreated, NotificationScopeId = (int)ActorTypeEnum.User, Title = "New Event", DeduplicationKey = "user-notifications-test-1", User = null!, Tenant = null!, NotificationType = null!, NotificationScope = null! },
+            new() { Id = Guid.NewGuid(), UserId = userId, NotificationTypeId = (int)NotificationTypeEnum.RegistrationConfirmed, NotificationScopeId = (int)ActorTypeEnum.User, Title = "Registration Confirmed", DeduplicationKey = "user-notifications-test-2", User = null!, Tenant = null!, NotificationType = null!, NotificationScope = null! }
         };
         var dtos = notifications.Select(n => new NotificationListDto
         {
