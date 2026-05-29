@@ -120,6 +120,19 @@ Every commit must pass all of these checks:
 5. **Revert-safe** — reverting the commit should not remove unrelated behavior or leave unrelated work half-applied.
 6. **Reviewable size** — prefer small commits; if the file list feels broad, split unless there is a concrete dependency.
 
+### File-Count Guidance
+
+- Treat **10–15 files per commit** as the practical upper warning limit.
+- Prefer commits with fewer files whenever the change can still be understood and reverted cleanly.
+- If a commit would exceed 15 files, stop and ask whether the work can be split into smaller logical steps.
+- Large file counts are acceptable only when the files are all required for one indivisible work unit.
+- Typical exceptions include:
+  - coordinated renames/refactors that must touch many references;
+  - dependency updates or lockfile regeneration;
+  - generated/scaffolded boilerplate or codegen output;
+  - one vertical slice that is genuinely inseparable across layers.
+- If a commit has to rely on an exception, explain that in the commit body so reviewers understand why the file count is large.
+
 ### Split Triggers
 
 Split into separate commits whenever any of these are true:
