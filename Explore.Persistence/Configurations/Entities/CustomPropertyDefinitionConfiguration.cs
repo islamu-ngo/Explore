@@ -2,6 +2,7 @@
 // ABOUTME: Enforces namespaced machine-key uniqueness plus typed validation and exposure metadata.
 
 using Explore.Domain;
+using Explore.Domain.References;
 using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -12,7 +13,10 @@ public class CustomPropertyDefinitionConfiguration : IEntityTypeConfiguration<Cu
 {
     public void Configure(EntityTypeBuilder<CustomPropertyDefinition> builder)
     {
-        builder.ToTable("custom_property_definitions");
+        builder.ToTable("custom_property_definitions", t =>
+            t.HasCheckConstraint(
+                "ck_custom_property_definitions_shared_entity_type",
+                BuildSharedEntityTypeConstraint()));
 
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
@@ -96,4 +100,15 @@ public class CustomPropertyDefinitionConfiguration : IEntityTypeConfiguration<Cu
         builder.HasIndex(e => new { e.TenantId, e.EntityTypeName, e.IsSearchable, e.IsFilterable })
             .HasDatabaseName("ix_cpd_tenant_entity_search_filter");
     }
+
+    private static string BuildSharedEntityTypeConstraint()
+    {
+        var sharedEntityTypes = ReferenceTypeRegistry.AllCustomPropertyTargets
+            .Where(target => target.SupportsSharedDefinitions)
+            .Select(target => SqlLiteral(target.EntityTypeName.ToString()));
+
+        return $"entity_type_name IN ({string.Join(", ", sharedEntityTypes)})";
+    }
+
+    private static string SqlLiteral(string value) => $"'{value.Replace("'", "''", StringComparison.Ordinal)}'";
 }

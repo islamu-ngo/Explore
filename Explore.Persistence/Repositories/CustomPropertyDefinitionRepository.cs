@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.References;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,18 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
     public CustomPropertyDefinitionRepository(ExploreDbContext dbContext) : base(dbContext)
     {
         _dbContext = dbContext;
+    }
+
+    public override async Task<CustomPropertyDefinition> Create(CustomPropertyDefinition entity)
+    {
+        EnsureSharedDefinitionTarget(entity);
+        return await base.Create(entity);
+    }
+
+    public override async Task Update(CustomPropertyDefinition entity)
+    {
+        EnsureSharedDefinitionTarget(entity);
+        await base.Update(entity);
     }
 
     public async Task<CustomPropertyDefinition?> GetDefinitionWithDetails(Guid id)
@@ -79,6 +92,8 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
         Guid? defaultOptionId,
         CancellationToken cancellationToken)
     {
+        EnsureSharedDefinitionTarget(definition);
+
         await _dbContext.CustomPropertyDefinitions.AddAsync(definition, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -104,6 +119,8 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
         Guid? defaultOptionId,
         CancellationToken cancellationToken)
     {
+        EnsureSharedDefinitionTarget(definition);
+
         var existingOptions = await _dbContext.CustomPropertyOptions
             .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.CustomPropertyDefinitionId == definition.Id)
@@ -182,24 +199,21 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
 
         definition.IsActive = false;
         definition.DefaultOptionId = null;
-        if (!definition.IsDeleted)
-        {
-            _dbContext.CustomPropertyDefinitions.Remove(definition);
-        }
+        definition.IsDeleted = true;
+        definition.DeletedAt ??= DateTime.UtcNow;
 
         foreach (var option in options)
         {
             option.IsDefault = false;
             option.IsActive = false;
-            if (!option.IsDeleted)
-            {
-                _dbContext.CustomPropertyOptions.Remove(option);
-            }
+            option.IsDeleted = true;
+            option.DeletedAt ??= definition.DeletedAt;
         }
 
         foreach (var value in values.Where(x => !x.IsDeleted))
         {
-            _dbContext.CustomPropertyValues.Remove(value);
+            value.IsDeleted = true;
+            value.DeletedAt ??= definition.DeletedAt;
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -263,5 +277,14 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
             .ExecuteDeleteAsync(cancellationToken);
 
         return deleted > 0;
+    }
+
+    private static void EnsureSharedDefinitionTarget(CustomPropertyDefinition definition)
+    {
+        var errors = ReferenceTypeRegistry.ValidateSharedCustomPropertyDefinition(definition);
+        if (errors.Count > 0)
+        {
+            throw new InvalidOperationException(string.Join(' ', errors));
+        }
     }
 }

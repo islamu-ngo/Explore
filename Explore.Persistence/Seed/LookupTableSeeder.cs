@@ -30,6 +30,8 @@ public static class LookupTableSeeder
     public static async Task SeedAsync(ExploreDbContext context, CancellationToken cancellationToken = default)
     {
         await SeedActorTypesAsync(context, cancellationToken);
+        await SeedActorSubscriptionStatusesAsync(context, cancellationToken);
+        await SeedActorSubscriptionNotificationLevelsAsync(context, cancellationToken);
         await SeedRoleScopesAsync(context, cancellationToken);
         await SeedSettingScopesAsync(context, cancellationToken);
         await SeedSettingValueTypesAsync(context, cancellationToken);
@@ -144,6 +146,28 @@ public static class LookupTableSeeder
         await context.SaveChangesAsync(ct);
     }
 
+    private static async Task SeedActorSubscriptionStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<ActorSubscriptionStatus>().AnyAsync(ct)) return;
+
+        context.Set<ActorSubscriptionStatus>().AddRange(
+            new ActorSubscriptionStatus { Id = (int)ActorSubscriptionStatusEnum.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Subscriber receives fanout notifications for the target actor" },
+            new ActorSubscriptionStatus { Id = (int)ActorSubscriptionStatusEnum.Unsubscribed, MasterCode = "UNSUBSCRIBED", FullName = "Unsubscribed", Description = "Subscriber explicitly opted out while preserving history" },
+            new ActorSubscriptionStatus { Id = (int)ActorSubscriptionStatusEnum.Blocked, MasterCode = "BLOCKED", FullName = "Blocked", Description = "Subscription is administratively blocked" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedActorSubscriptionNotificationLevelsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<ActorSubscriptionNotificationLevel>().AnyAsync(ct)) return;
+
+        context.Set<ActorSubscriptionNotificationLevel>().AddRange(
+            new ActorSubscriptionNotificationLevel { Id = (int)ActorSubscriptionNotificationLevelEnum.None, MasterCode = "NONE", FullName = "None", Description = "No notifications are generated for this subscription" },
+            new ActorSubscriptionNotificationLevel { Id = (int)ActorSubscriptionNotificationLevelEnum.All, MasterCode = "ALL", FullName = "All", Description = "All V1 fanout notifications are generated for this subscription" },
+            new ActorSubscriptionNotificationLevel { Id = (int)ActorSubscriptionNotificationLevelEnum.Personalized, MasterCode = "PERSONALIZED", FullName = "Personalized", Description = "Future personalized fanout policy placeholder" });
+        await context.SaveChangesAsync(ct);
+    }
+
     private static async Task SeedRoleScopesAsync(ExploreDbContext context, CancellationToken ct)
     {
         if (await context.Set<RoleScope>().AnyAsync(ct)) return;
@@ -173,15 +197,27 @@ public static class LookupTableSeeder
 
     private static async Task SeedSettingValueTypesAsync(ExploreDbContext context, CancellationToken ct)
     {
-        if (await context.Set<SettingValueTypeLookup>().AnyAsync(ct)) return;
-
-        context.Set<SettingValueTypeLookup>().AddRange(
+        var expected = new[]
+        {
             new SettingValueTypeLookup { Id = (int)SettingValueType.String, MasterCode = "STRING", FullName = "String", Description = "String setting value" },
             new SettingValueTypeLookup { Id = (int)SettingValueType.Integer, MasterCode = "INTEGER", FullName = "Integer", Description = "Integer setting value" },
             new SettingValueTypeLookup { Id = (int)SettingValueType.Boolean, MasterCode = "BOOLEAN", FullName = "Boolean", Description = "Boolean setting value" },
             new SettingValueTypeLookup { Id = (int)SettingValueType.Decimal, MasterCode = "DECIMAL", FullName = "Decimal", Description = "Decimal setting value" },
             new SettingValueTypeLookup { Id = (int)SettingValueType.Json, MasterCode = "JSON", FullName = "JSON", Description = "JSON setting value" },
-            new SettingValueTypeLookup { Id = (int)SettingValueType.DateTime, MasterCode = "DATE_TIME", FullName = "Date/Time", Description = "Date/time setting value" });
+            new SettingValueTypeLookup { Id = (int)SettingValueType.DateTime, MasterCode = "DATE_TIME", FullName = "Date/Time", Description = "Date/time setting value" },
+            new SettingValueTypeLookup { Id = (int)SettingValueType.Long, MasterCode = "LONG", FullName = "Long Integer", Description = "64-bit integer setting value" }
+        };
+
+        var existingIds = await context.Set<SettingValueTypeLookup>()
+            .AsNoTracking()
+            .Select(x => x.Id)
+            .ToListAsync(ct);
+        var existingIdSet = existingIds.ToHashSet();
+        var missing = expected.Where(x => !existingIdSet.Contains(x.Id)).ToList();
+
+        if (missing.Count == 0) return;
+
+        context.Set<SettingValueTypeLookup>().AddRange(missing);
         await context.SaveChangesAsync(ct);
     }
 
@@ -498,15 +534,19 @@ public static class LookupTableSeeder
             new SystemSetting { Id = SeedIds.SystemSettingEmailSmtpTimeoutId, SettingKey = GovernanceSettingKeys.Email.SmtpTimeoutSeconds, Value = "30", ValueType = SettingValueType.Integer, IsLocked = false, Description = "SMTP connection timeout in seconds", Category = "Email", DisplayOrder = 8, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingEmailSmtpSkipCertValidationId, SettingKey = GovernanceSettingKeys.Email.SmtpSkipCertValidation, Value = "false", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Skip TLS certificate validation (development/self-signed certs only)", Category = "Email", DisplayOrder = 9, CreatedAt = seedTimestamp },
 
-            // Object Storage / S3
-            new SystemSetting { Id = SeedIds.SystemSettingS3EndpointId, SettingKey = GovernanceSettingKeys.Storage.Endpoint, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "S3-compatible endpoint URL (e.g., https://fsn1.your-objectstorage.com)", Category = "ObjectStorage", DisplayOrder = 1, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingS3PublicEndpointId, SettingKey = GovernanceSettingKeys.Storage.PublicEndpoint, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Public endpoint for presigned URLs (if different from internal endpoint)", Category = "ObjectStorage", DisplayOrder = 2, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingS3BucketNameId, SettingKey = GovernanceSettingKeys.Storage.BucketName, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "S3 bucket name for object storage", Category = "ObjectStorage", DisplayOrder = 3, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingS3AccessKeyIdId, SettingKey = InfrastructureSecretSettingKeys.Storage.AccessKeyId, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "S3 access key ID for authentication", Category = "ObjectStorage", DisplayOrder = 4, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingS3SecretAccessKeyId, SettingKey = InfrastructureSecretSettingKeys.Storage.SecretAccessKey, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "S3 secret access key for authentication (stored encrypted)", Category = "ObjectStorage", DisplayOrder = 5, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingS3RegionId, SettingKey = GovernanceSettingKeys.Storage.Region, Value = "\"fsn1\"", ValueType = SettingValueType.String, IsLocked = false, Description = "S3 region identifier (e.g., fsn1 for Hetzner, us-east-1 for AWS)", Category = "ObjectStorage", DisplayOrder = 6, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingS3ForcePathStyleId, SettingKey = GovernanceSettingKeys.Storage.ForcePathStyle, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Use path-style URLs (required by most non-AWS S3 providers)", Category = "ObjectStorage", DisplayOrder = 7, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingS3UploadUrlExpirationMinutesId, SettingKey = GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes, Value = "60", ValueType = SettingValueType.Integer, IsLocked = false, Description = "Presigned upload URL expiration time in minutes", Category = "ObjectStorage", DisplayOrder = 8, CreatedAt = seedTimestamp },
+            // Object Storage - local-first provider policy and optional S3 settings
+            new SystemSetting { Id = SeedIds.SystemSettingStorageProviderId, SettingKey = GovernanceSettingKeys.Storage.Provider, Value = $"\"{StorageProviders.Local}\"", ValueType = SettingValueType.String, IsLocked = false, AllowedValues = "[\"local\", \"s3_compatible\", \"legacy_external\"]", Description = "Selected storage provider. Local filesystem is the default; S3-compatible storage is optional.", Category = "ObjectStorage", DisplayOrder = 1, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingStorageDefaultMaxUploadBytesId, SettingKey = GovernanceSettingKeys.Storage.DefaultMaxUploadBytes, Value = "10485760", ValueType = SettingValueType.Long, IsLocked = false, Description = "Default maximum upload size in bytes for tenant storage policy.", Category = "ObjectStorage", DisplayOrder = 2, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingStorageDefaultTenantQuotaBytesId, SettingKey = GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes, Value = "1073741824", ValueType = SettingValueType.Long, IsLocked = false, Description = "Default tenant storage quota in bytes.", Category = "ObjectStorage", DisplayOrder = 3, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingStorageInstanceMaxUploadBytesId, SettingKey = GovernanceSettingKeys.Storage.InstanceMaxUploadBytes, Value = "104857600", ValueType = SettingValueType.Long, IsLocked = true, Description = "Instance-wide upload ceiling in bytes; tenant overrides cannot exceed this value.", Category = "ObjectStorage", DisplayOrder = 4, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingS3EndpointId, SettingKey = GovernanceSettingKeys.Storage.Endpoint, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Optional S3-compatible endpoint URL (e.g., https://fsn1.your-objectstorage.com)", Category = "ObjectStorage", DisplayOrder = 5, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingS3PublicEndpointId, SettingKey = GovernanceSettingKeys.Storage.PublicEndpoint, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Optional public S3 endpoint for presigned URLs (if different from internal endpoint)", Category = "ObjectStorage", DisplayOrder = 6, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingS3BucketNameId, SettingKey = GovernanceSettingKeys.Storage.BucketName, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Optional S3 bucket name for object storage", Category = "ObjectStorage", DisplayOrder = 7, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingS3AccessKeyIdId, SettingKey = InfrastructureSecretSettingKeys.Storage.AccessKeyId, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Optional S3 access key ID for authentication", Category = "ObjectStorage", DisplayOrder = 8, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingS3SecretAccessKeyId, SettingKey = InfrastructureSecretSettingKeys.Storage.SecretAccessKey, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Optional S3 secret access key for authentication (stored encrypted)", Category = "ObjectStorage", DisplayOrder = 9, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingS3RegionId, SettingKey = GovernanceSettingKeys.Storage.Region, Value = "\"fsn1\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Optional S3 region identifier (e.g., fsn1 for Hetzner, us-east-1 for AWS)", Category = "ObjectStorage", DisplayOrder = 10, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingS3ForcePathStyleId, SettingKey = GovernanceSettingKeys.Storage.ForcePathStyle, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Use path-style URLs for optional S3-compatible storage", Category = "ObjectStorage", DisplayOrder = 11, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingS3UploadUrlExpirationMinutesId, SettingKey = GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes, Value = "60", ValueType = SettingValueType.Integer, IsLocked = false, Description = "Optional S3 presigned upload URL expiration time in minutes", Category = "ObjectStorage", DisplayOrder = 12, CreatedAt = seedTimestamp },
 
             // Analytics
             new SystemSetting { Id = SeedIds.SystemSettingAnalyticsProviderId, SettingKey = GovernanceSettingKeys.Analytics.Provider, Value = "\"none\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Analytics provider (none, posthog, plausible, rybbit, rudderstack)", AllowedValues = "[\"none\",\"posthog\",\"plausible\",\"rybbit\",\"rudderstack\"]", Category = "Analytics", DisplayOrder = 1, CreatedAt = seedTimestamp },

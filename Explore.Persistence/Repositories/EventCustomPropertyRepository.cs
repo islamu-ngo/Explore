@@ -208,25 +208,27 @@ public class EventCustomPropertyRepository : GenericRepository<EventCustomProper
 
         definition.IsActive = false;
         definition.DefaultOptionId = null;
-        if (!definition.IsDeleted)
-        {
-            _dbContext.EventCustomPropertyDefinitions.Remove(definition);
-        }
+        definition.IsDeleted = true;
+        definition.DeletedAt ??= DateTime.UtcNow;
 
         foreach (var option in options)
         {
             option.IsDefault = false;
             option.IsActive = false;
-            if (!option.IsDeleted)
-            {
-                _dbContext.EventCustomPropertyOptions.Remove(option);
-            }
+            option.IsDeleted = true;
+            option.DeletedAt ??= definition.DeletedAt;
         }
 
         foreach (var value in values.Where(x => !x.IsDeleted))
         {
-            _dbContext.EventCustomPropertyValues.Remove(value);
+            value.IsDeleted = true;
+            value.DeletedAt ??= definition.DeletedAt;
         }
+
+        var projections = await _dbContext.EventCustomPropertyProjections
+            .Where(x => x.EventCustomPropertyDefinitionId == id)
+            .ToListAsync(cancellationToken);
+        _dbContext.EventCustomPropertyProjections.RemoveRange(projections);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         return true;
