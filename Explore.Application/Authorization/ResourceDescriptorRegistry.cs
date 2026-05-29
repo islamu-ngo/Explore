@@ -4,6 +4,7 @@
 namespace Explore.Application.Authorization;
 
 using Explore.Application.DTOs.Actor;
+using Explore.Application.DTOs.ActorSubscription;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
@@ -66,6 +67,10 @@ public static class ResourceDescriptorRegistry
         // Tenant User Role Grant
         [typeof(TenantUserRoleGrantDto)] = global::Explore.Application.Authorization.ResourceKinds.TenantUserRoleGrant,
         [typeof(TenantUserRoleGrantListDto)] = global::Explore.Application.Authorization.ResourceKinds.TenantUserRoleGrant,
+
+        // Actor Subscription
+        [typeof(ActorSubscriptionDto)] = global::Explore.Application.Authorization.ResourceKinds.ActorSubscription,
+        [typeof(ActorSubscriptionListDto)] = global::Explore.Application.Authorization.ResourceKinds.ActorSubscription,
 
         // Tag
         [typeof(TagDto)] = global::Explore.Application.Authorization.ResourceKinds.Tag,

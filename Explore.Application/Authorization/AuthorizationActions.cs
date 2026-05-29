@@ -183,6 +183,15 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
+    /// <summary>Valid actions for the <c>islamuevent_actor_subscription</c> resource kind.</summary>
+    public static class ActorSubscriptions
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Create = AuthorizationActions.Create;
+        public const string Update = AuthorizationActions.Update;
+        public const string Delete = AuthorizationActions.Delete;
+    }
+
     /// <summary>Valid actions for the <c>islamuevent_category</c> resource kind.</summary>
     public static class Categories
     {

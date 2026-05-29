@@ -45,6 +45,7 @@ public static class ResourceKinds
     public const string PlatformNamespace = "islamuevent_platform_namespace";
     public const string Notification = "islamuevent_notification";
     public const string Actor = "islamuevent_actor";
+    public const string ActorSubscription = "islamuevent_actor_subscription";
     public const string Group = "islamuevent_group";
     public const string GroupMember = "islamuevent_group_member";
 }

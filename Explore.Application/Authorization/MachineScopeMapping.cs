@@ -61,6 +61,7 @@ public static class MachineScopeMapping
                     : HasAny(scopeSet, ExternalApiKeyScopes.GroupsRead, ExternalApiKeyScopes.GroupsWrite, ExternalApiKeyScopes.AdminTenant);
 
             case ResourceKinds.User:
+            case ResourceKinds.ActorSubscription:
                 return isWrite
                     ? HasAny(scopeSet, ExternalApiKeyScopes.UsersWrite, ExternalApiKeyScopes.AdminTenant)
                     : HasAny(scopeSet, ExternalApiKeyScopes.UsersRead, ExternalApiKeyScopes.UsersWrite, ExternalApiKeyScopes.AdminTenant);

@@ -1,6 +1,7 @@
 // ABOUTME: Static catalog of concrete resource descriptors for all DTO types participating in authorization.
 // ABOUTME: Each descriptor extracts authorization metadata (ID, attributes, scope) from its DTO instance.
 
+using Explore.Application.DTOs.ActorSubscription;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
@@ -123,6 +124,28 @@ public static class ResourceDescriptors
             ["tenantId"] = dto.TenantId.ToString(),
             ["tenantUserId"] = dto.TenantUserId.ToString(),
             ["userId"] = dto.UserId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<ActorSubscriptionDto> ActorSubscription = new(
+        ResourceKinds.ActorSubscription,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["subscriberTenantUserId"] = dto.SubscriberTenantUserId.ToString(),
+            ["subscriberUserId"] = dto.SubscriberUserId.ToString(),
+            ["targetActorId"] = dto.TargetActorId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<ActorSubscriptionListDto> ActorSubscriptionList = new(
+        ResourceKinds.ActorSubscription,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["targetActorId"] = dto.TargetActorId.ToString()
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
