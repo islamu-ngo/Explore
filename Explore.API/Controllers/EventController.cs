@@ -76,6 +76,7 @@ public class EventController : ExploreControllerBase
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetAll(
         [FromQuery] EventFilterRequest filter,
@@ -150,10 +151,11 @@ public class EventController : ExploreControllerBase
     [EndpointDescription("Get a paginated list of events created by the current user's organizations. " +
         "Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetMyEvents(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+        [FromQuery] PaginationQueryRequest query,
+        CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId?.ToString();
 
@@ -163,8 +165,8 @@ public class EventController : ExploreControllerBase
         var result = await _mediator.Send(new GetMyEventsRequest
         {
             UserId = userId,
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(

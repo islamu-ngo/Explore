@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.Features.EventSessionTemplates.Requests.Commands;
 using Explore.Application.Features.EventSessionTemplates.Requests.Queries;
@@ -50,23 +51,23 @@ public class EventSessionTemplateController : ControllerBase
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionTemplateListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionTemplateListDto>>> GetAll(
-        [FromQuery] Guid eventTemplateId,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+        [FromQuery] EventSessionTemplateListQueryRequest query,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetEventSessionTemplateListRequest
         {
-            EventTemplateId = eventTemplateId,
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            EventTemplateId = query.EventTemplateId,
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetEventSessionTemplates,
-            additionalRouteValues: new { eventTemplateId },
+            additionalRouteValues: new { query.EventTemplateId },
             HttpContext);
 
         return Ok(halResource);

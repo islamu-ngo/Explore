@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.Features.EventTemplates.Requests.Commands;
 using Explore.Application.Features.EventTemplates.Requests.Queries;
@@ -51,23 +52,23 @@ public class EventTemplateController : ControllerBase
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventTemplateListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventTemplateListDto>>> GetAll(
-        [FromQuery] int? eventTypeId = null,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+        [FromQuery] EventTemplateListQueryRequest query,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetEventTemplateListRequest
         {
-            EventTypeId = eventTypeId,
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            EventTypeId = query.EventTypeId,
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetEventTemplates,
-            additionalRouteValues: new { eventTypeId },
+            additionalRouteValues: new { query.EventTypeId },
             HttpContext);
 
         return Ok(halResource);

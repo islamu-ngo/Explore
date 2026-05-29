@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Queries;
@@ -39,13 +40,16 @@ public class EventSessionAgendaItemController : ControllerBase
     [EndpointSummary("Get all Agenda Items")]
     [EndpointDescription("Retrieve a paginated list of all event session agenda items. Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(PaginatedResult<EventSessionAgendaItemListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
-    public async Task<ActionResult<PaginatedResult<EventSessionAgendaItemListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<PaginatedResult<EventSessionAgendaItemListDto>>> GetAll(
+        [FromQuery] PaginationQueryRequest query,
+        CancellationToken cancellationToken = default)
     {
         var agendaItems = await _mediator.Send(new GetEventSessionAgendaItemListRequest
         {
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         }, cancellationToken);
         return Ok(agendaItems);
     }

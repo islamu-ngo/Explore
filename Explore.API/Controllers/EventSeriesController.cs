@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.EventSeries;
 using Explore.Application.Features.EventSeries.Requests.Commands;
 using Explore.Application.Features.EventSeries.Requests.Queries;
@@ -31,14 +32,17 @@ public class EventSeriesController : ControllerBase
     [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetEventSeries)]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<PaginatedResult<EventSeriesListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] Guid? actorId = null)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PaginatedResult<EventSeriesListDto>>> GetAll(
+        [FromQuery] EventSeriesListQueryRequest query,
+        CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new GetEventSeriesListRequest
         {
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            ActorId = actorId
-        });
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize,
+            ActorId = query.ActorId
+        }, cancellationToken);
         return Ok(response);
     }
 

@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
@@ -53,23 +54,23 @@ public class EventSessionCustomPropertyController : ControllerBase
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionCustomPropertyDefinitionListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionCustomPropertyDefinitionListDto>>> GetAll(
-        [FromQuery] Guid eventSessionId,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+        [FromQuery] EventSessionCustomPropertyDefinitionListQueryRequest query,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetEventSessionCustomPropertyDefinitionListRequest
         {
-            EventSessionId = eventSessionId,
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            EventSessionId = query.EventSessionId,
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
             result,
             RouteNames.GetEventSessionCustomPropertyDefinitions,
-            additionalRouteValues: new { eventSessionId },
+            additionalRouteValues: new { query.EventSessionId },
             HttpContext);
 
         return Ok(halResource);

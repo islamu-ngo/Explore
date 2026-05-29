@@ -60,6 +60,7 @@ public class EventSessionController : ControllerBase
         "Response includes HATEOAS navigation links. " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetAll(
         [FromQuery] EventSessionFilterRequest filter,

@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Queries;
@@ -36,13 +37,16 @@ public class EventRegistrationController : ExploreControllerBase
     [EndpointSummary("Get all Event Registrations")]
     [EndpointDescription("Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(PaginatedResult<EventRegistrationListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
-    public async Task<ActionResult<PaginatedResult<EventRegistrationListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<PaginatedResult<EventRegistrationListDto>>> GetAll(
+        [FromQuery] PaginationQueryRequest query,
+        CancellationToken cancellationToken = default)
     {
         var eventRegistrations = await _mediator.Send(new GetEventRegistrationListRequest
         {
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         }, cancellationToken);
         return Ok(eventRegistrations);
     }

@@ -136,12 +136,11 @@ public sealed class EventSessionTemplateSyncController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<PaginatedResult<EventSessionTemplateSyncHistoryItemDto>>> GetHistory(
         Guid sessionId,
-        [FromQuery(Name = "page")] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] TemplateSyncHistoryQueryRequest query,
         CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(
-            new GetEventSessionTemplateSyncHistoryQuery(sessionId, page, pageSize),
+            new GetEventSessionTemplateSyncHistoryQuery(sessionId, query.Page, query.PageSize),
             cancellationToken);
 
         return Ok(response);
