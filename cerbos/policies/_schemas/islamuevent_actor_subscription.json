@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for actor subscription resources. Ownership is enforced by application handlers against the current tenant-local user.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
+    },
+    "subscriberTenantUserId": {
+      "type": "string",
+      "description": "Tenant-local subscriber identifier."
+    },
+    "subscriberUserId": {
+      "type": "string",
+      "description": "Global subscriber user identifier for notification delivery."
+    },
+    "targetActorId": {
+      "type": "string",
+      "description": "Subscribed organization or group actor identifier."
+    }
+  }
+}
