@@ -253,17 +253,14 @@ public static class DatabaseSeeder
             .Select(export => export.Id)
             .ToArrayAsync(ct);
 
-        await context.Set<EventContactShareExportItem>()
-            .Where(item => catalogContactShareExportIds.Contains(item.ExportId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventContactShareExport>()
+        await DeleteRowsAsync(context, context.Set<EventContactShareExportItem>()
+            .Where(item => catalogContactShareExportIds.Contains(item.ExportId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventContactShareExport>()
             .IgnoreQueryFilters()
-            .Where(export => export.EventId.HasValue && catalogEventIds.Contains(export.EventId.Value))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventContactShareConsent>()
+            .Where(export => export.EventId.HasValue && catalogEventIds.Contains(export.EventId.Value)), ct);
+        await DeleteRowsAsync(context, context.Set<EventContactShareConsent>()
             .IgnoreQueryFilters()
-            .Where(consent => consent.SourceEventId.HasValue && catalogEventIds.Contains(consent.SourceEventId.Value))
-            .ExecuteDeleteAsync(ct);
+            .Where(consent => consent.SourceEventId.HasValue && catalogEventIds.Contains(consent.SourceEventId.Value)), ct);
         var catalogEmailDispatchOutboxIds = await context.Set<EmailDispatchOutbox>()
             .IgnoreQueryFilters()
             .Where(outbox => (outbox.EventId.HasValue && catalogEventIds.Contains(outbox.EventId.Value))
@@ -272,120 +269,128 @@ public static class DatabaseSeeder
             .Select(outbox => outbox.Id)
             .ToArrayAsync(ct);
 
-        await context.Set<EmailDispatchReceipt>()
-            .Where(receipt => catalogEmailDispatchOutboxIds.Contains(receipt.EmailDispatchOutboxId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EmailDispatchAttempt>()
-            .Where(attempt => catalogEmailDispatchOutboxIds.Contains(attempt.EmailDispatchOutboxId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EmailDispatchOutbox>()
+        await DeleteRowsAsync(context, context.Set<EmailDispatchReceipt>()
+            .Where(receipt => catalogEmailDispatchOutboxIds.Contains(receipt.EmailDispatchOutboxId)), ct);
+        await DeleteRowsAsync(context, context.Set<EmailDispatchAttempt>()
+            .Where(attempt => catalogEmailDispatchOutboxIds.Contains(attempt.EmailDispatchOutboxId)), ct);
+        await DeleteRowsAsync(context, context.Set<EmailDispatchOutbox>()
             .IgnoreQueryFilters()
-            .Where(outbox => catalogEmailDispatchOutboxIds.Contains(outbox.Id))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventRegistration>()
+            .Where(outbox => catalogEmailDispatchOutboxIds.Contains(outbox.Id)), ct);
+        await DeleteRowsAsync(context, context.Set<EventRegistration>()
             .IgnoreQueryFilters()
             .Where(registration => catalogSessionIds.Contains(registration.EventSessionId)
                 || (registration.EventRegistrationIntentId.HasValue
-                    && catalogRegistrationIntentIds.Contains(registration.EventRegistrationIntentId.Value)))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventRegistrationIntent>()
+                    && catalogRegistrationIntentIds.Contains(registration.EventRegistrationIntentId.Value))), ct);
+        await DeleteRowsAsync(context, context.Set<EventRegistrationIntent>()
             .IgnoreQueryFilters()
-            .Where(intent => catalogEventIds.Contains(intent.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventRoleAssignment>()
+            .Where(intent => catalogEventIds.Contains(intent.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventRoleAssignment>()
             .IgnoreQueryFilters()
-            .Where(assignment => catalogEventIds.Contains(assignment.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionCustomPropertyProjection>()
-            .Where(projection => catalogSessionIds.Contains(projection.EventSessionId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionCustomPropertyValue>()
+            .Where(assignment => catalogEventIds.Contains(assignment.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionCustomPropertyProjection>()
+            .Where(projection => catalogSessionIds.Contains(projection.EventSessionId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionCustomPropertyValue>()
             .IgnoreQueryFilters()
-            .Where(value => catalogSessionIds.Contains(value.EventSessionId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionCustomPropertyDefinition>()
+            .Where(value => catalogSessionIds.Contains(value.EventSessionId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionCustomPropertyDefinition>()
             .IgnoreQueryFilters()
-            .Where(definition => catalogSessionIds.Contains(definition.EventSessionId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionSpeaker>()
+            .Where(definition => catalogSessionIds.Contains(definition.EventSessionId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionSpeaker>()
             .IgnoreQueryFilters()
-            .Where(speaker => catalogSessionIds.Contains(speaker.EventSessionId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionLanguage>()
+            .Where(speaker => catalogSessionIds.Contains(speaker.EventSessionId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionLanguage>()
             .IgnoreQueryFilters()
-            .Where(language => catalogSessionIds.Contains(language.EventSessionId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionTag>()
+            .Where(language => catalogSessionIds.Contains(language.EventSessionId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionTag>()
             .IgnoreQueryFilters()
-            .Where(tag => catalogSessionIds.Contains(tag.EventSessionId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionCategory>()
+            .Where(tag => catalogSessionIds.Contains(tag.EventSessionId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionCategory>()
             .IgnoreQueryFilters()
-            .Where(category => catalogSessionIds.Contains(category.EventSessionId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionAgendaItem>()
+            .Where(category => catalogSessionIds.Contains(category.EventSessionId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionAgendaItem>()
             .IgnoreQueryFilters()
-            .Where(item => catalogSessionIds.Contains(item.EventSessionId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionGroupSession>()
+            .Where(item => catalogSessionIds.Contains(item.EventSessionId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionGroupSession>()
             .IgnoreQueryFilters()
             .Where(session => catalogSessionIds.Contains(session.EventSessionId)
-                || catalogSessionGroupIds.Contains(session.EventSessionGroupId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionIslamicAspect>()
+                || catalogSessionGroupIds.Contains(session.EventSessionGroupId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionIslamicAspect>()
             .IgnoreQueryFilters()
-            .Where(aspect => catalogSessionIds.Contains(aspect.EventSessionId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSession>()
+            .Where(aspect => catalogSessionIds.Contains(aspect.EventSessionId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSession>()
             .IgnoreQueryFilters()
-            .Where(session => catalogEventIds.Contains(session.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventAgendaItem>()
+            .Where(session => catalogEventIds.Contains(session.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventAgendaItem>()
             .IgnoreQueryFilters()
-            .Where(item => catalogEventIds.Contains(item.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventSessionGroup>()
+            .Where(item => catalogEventIds.Contains(item.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventSessionGroup>()
             .IgnoreQueryFilters()
-            .Where(group => catalogEventIds.Contains(group.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventIslamicAspect>()
+            .Where(group => catalogEventIds.Contains(group.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventIslamicAspect>()
             .IgnoreQueryFilters()
-            .Where(aspect => catalogEventIds.Contains(aspect.Id))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventCategories>()
+            .Where(aspect => catalogEventIds.Contains(aspect.Id)), ct);
+        await DeleteRowsAsync(context, context.Set<EventCategories>()
             .IgnoreQueryFilters()
-            .Where(category => catalogEventIds.Contains(category.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventTags>()
+            .Where(category => catalogEventIds.Contains(category.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventTags>()
             .IgnoreQueryFilters()
-            .Where(tag => catalogEventIds.Contains(tag.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventDay>()
+            .Where(tag => catalogEventIds.Contains(tag.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventDay>()
             .IgnoreQueryFilters()
-            .Where(day => catalogEventIds.Contains(day.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventCustomPropertyProjection>()
-            .Where(projection => catalogEventIds.Contains(projection.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventCustomPropertyValue>()
+            .Where(day => catalogEventIds.Contains(day.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventCustomPropertyProjection>()
+            .Where(projection => catalogEventIds.Contains(projection.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventCustomPropertyValue>()
             .IgnoreQueryFilters()
-            .Where(value => catalogEventIds.Contains(value.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<EventCustomPropertyDefinition>()
+            .Where(value => catalogEventIds.Contains(value.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<EventCustomPropertyDefinition>()
             .IgnoreQueryFilters()
-            .Where(definition => catalogEventIds.Contains(definition.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Set<OrganizationReview>()
+            .Where(definition => catalogEventIds.Contains(definition.EventId)), ct);
+        await DeleteRowsAsync(context, context.Set<OrganizationReview>()
             .IgnoreQueryFilters()
-            .Where(review => catalogEventIds.Contains(review.EventId))
-            .ExecuteDeleteAsync(ct);
-        await context.Database.ExecuteSqlInterpolatedAsync($"""
-            DELETE FROM events
-            WHERE id = {SeedIds.SampleEventId}
-                OR slug = {"welcome-to-islamu-events"}
-                OR id = ANY({SeedIds.IslamicEventCatalogIds})
-            """, ct);
+            .Where(review => catalogEventIds.Contains(review.EventId)), ct);
 
+        if (context.Database.IsRelational())
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
+                DELETE FROM events
+                WHERE id = {SeedIds.SampleEventId}
+                    OR slug = {"welcome-to-islamu-events"}
+                    OR id = ANY({SeedIds.IslamicEventCatalogIds})
+                """, ct);
+        }
+        else
+        {
+            await DeleteRowsAsync(context, context.Set<Event>()
+                .IgnoreQueryFilters()
+                .Where(e => e.Id == SeedIds.SampleEventId
+                    || e.Slug == "welcome-to-islamu-events"
+                    || SeedIds.IslamicEventCatalogIds.Contains(e.Id)), ct);
+        }
+
+        context.ChangeTracker.Clear();
+    }
+
+    private static async Task DeleteRowsAsync<T>(
+        ExploreDbContext context,
+        IQueryable<T> query,
+        CancellationToken ct)
+        where T : class
+    {
+        if (context.Database.IsRelational())
+        {
+            await query.ExecuteDeleteAsync(ct);
+            return;
+        }
+
+        var rows = await query.ToListAsync(ct);
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
+        context.Set<T>().RemoveRange(rows);
+        await context.SaveChangesAsync(ct);
         context.ChangeTracker.Clear();
     }
 
