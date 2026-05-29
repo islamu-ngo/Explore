@@ -34,6 +34,11 @@ internal static class SettingCommandHelper
                     return (false, null, $"Value '{plainValue}' is not a valid integer.");
                 return (true, SettingValueSerializer.Serialize(intValue), null);
 
+            case SettingValueType.Long:
+                if (!long.TryParse(plainValue, out var longValue))
+                    return (false, null, $"Value '{plainValue}' is not a valid long integer.");
+                return (true, SettingValueSerializer.Serialize(longValue), null);
+
             case SettingValueType.Boolean:
                 if (!bool.TryParse(plainValue, out var boolValue))
                     return (false, null, $"Value '{plainValue}' is not a valid boolean.");
