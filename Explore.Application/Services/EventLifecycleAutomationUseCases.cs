@@ -1,0 +1,30 @@
+// ABOUTME: Catalog of fixed Event lifecycle automation cases intentionally scoped away from generic workflow rules.
+// ABOUTME: Documents which lifecycle triggers may create durable EmailDispatchOutbox rows in the first automation slice.
+
+namespace Explore.Application.Services;
+
+public static class EventLifecycleAutomationUseCases
+{
+    public const string RegistrationConfirmation = "registration_confirmation";
+    public const string RegistrationApproved = "registration_approved";
+    public const string RegistrationRejected = "registration_rejected";
+    public const string WaitlistPromoted = "waitlist_promoted";
+    public const string EventReminder = "event_reminder";
+    public const string EventCancelled = "event_cancelled";
+    public const string OrganizerNotification = "organizer_notification";
+
+    public static readonly IReadOnlySet<string> ImmediateOutboxUseCases = new HashSet<string>(StringComparer.Ordinal)
+    {
+        RegistrationConfirmation,
+        RegistrationApproved,
+        RegistrationRejected,
+        WaitlistPromoted,
+        EventCancelled,
+        OrganizerNotification
+    };
+
+    public static readonly IReadOnlySet<string> DelayedRuntimeCandidates = new HashSet<string>(StringComparer.Ordinal)
+    {
+        EventReminder
+    };
+}
