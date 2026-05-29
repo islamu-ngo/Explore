@@ -356,14 +356,16 @@ public static class RouteNames
 
     public const string GetStorageObjects = "GetStorageObjects";
     public const string GetStorageObjectById = "GetStorageObjectById";
+    public const string GetStorageObjectContent = "GetStorageObjectContent";
     public const string CreateStorageObject = "CreateStorageObject";
     public const string UpdateStorageObject = "UpdateStorageObject";
     public const string DeleteStorageObject = "DeleteStorageObject";
-    public const string GetStorageObjectFile = "GetStorageObjectFile";
     public const string GetPublicStorageObjectImage = "GetPublicStorageObjectImage";
     public const string GetStorageObjectPresignedDownloadUrl = "GetStorageObjectPresignedDownloadUrl";
-    public const string GetStorageObjectPresignedDownloadUrlByKey = "GetStorageObjectPresignedDownloadUrlByKey";
     public const string GenerateStorageObjectUploadUrl = "GenerateStorageObjectUploadUrl";
+    public const string CreateStorageUploadSession = "CreateStorageUploadSession";
+    public const string UploadStorageUploadSessionContent = "UploadStorageUploadSessionContent";
+    public const string CancelStorageUploadSession = "CancelStorageUploadSession";
 
     #endregion
 

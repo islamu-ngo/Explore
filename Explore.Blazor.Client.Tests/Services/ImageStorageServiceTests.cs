@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for image storage orchestration around upload sessions, records, and previews.
+// ABOUTME: Covers legacy direct uploads plus metadata-backed public image URL helpers.
+
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -265,7 +268,7 @@ public class ImageStorageServiceTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();
-        await Assert.That(result.ErrorMessage).Contains("Failed to get pre-signed URL");
+        await Assert.That(result.ErrorMessage).Contains("Failed to get an upload session");
     }
 
     #endregion
@@ -273,26 +276,26 @@ public class ImageStorageServiceTests
     #region GetImageUrlAsync
 
     [Test]
-    public async Task GetImageUrlAsync_ReturnsUrl_WhenApiSucceeds()
+    public async Task GetImageUrlAsync_ReturnsPublicMetadataUrl_WhenGuidProvided()
     {
         // Arrange
-        var response = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = JsonContent.Create(new PresignedDownloadUrlResponse
-            {
-                PresignedUrl = "https://cdn.example.com/presigned/test.jpg",
-                ObjectKey = "images/test.jpg",
-                ExpiresInMinutes = 60
-            })
-        };
-
-        _httpClientFactory.CreateClient("BffClient").Returns(CreateHttpClient(response));
+        var storageObjectId = Guid.NewGuid();
 
         // Act
-        var result = await _service.GetImageUrlAsync("images/test.jpg");
+        var result = await _service.GetImageUrlAsync(storageObjectId.ToString());
 
         // Assert
-        await Assert.That(result).IsEqualTo("https://cdn.example.com/presigned/test.jpg");
+        await Assert.That(result).IsEqualTo($"/api/StorageObject/{storageObjectId}/public");
+    }
+
+    [Test]
+    public async Task GetImageUrlAsync_ReturnsExistingApiUrl_WhenMetadataUrlProvided()
+    {
+        // Act
+        var result = await _service.GetImageUrlAsync("/api/storageobject/00000000-0000-0000-0000-000000000001/public");
+
+        // Assert
+        await Assert.That(result).IsEqualTo("/api/storageobject/00000000-0000-0000-0000-000000000001/public");
     }
 
     [Test]

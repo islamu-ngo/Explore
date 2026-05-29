@@ -2,6 +2,7 @@
 // ABOUTME: Verifies BFF upload-session fallback and isolated raw upload HTTP behavior.
 
 using System.Net;
+using System.Net.Http.Json;
 using Explore.Blazor.Client.Services.Http;
 
 namespace Explore.Blazor.Client.Tests.Services;
@@ -56,7 +57,7 @@ public sealed class ImageUploadClientTests
             _logger,
             apiClientExecutor: new SuccessfulSessionExecutor());
 
-        var result = await client.GetUploadUrlAsync("direct.jpg", "image/jpeg");
+        var result = await client.GetUploadUrlAsync("direct.jpg", "image/jpeg", expectedSizeBytes: 3);
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.UploadSessionId).IsEmpty();
@@ -87,7 +88,16 @@ public sealed class ImageUploadClientTests
     [Test]
     public async Task UploadViaBffProxyAsync_WithBytes_PostsMultipartToUploadProxy()
     {
-        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        var storageObjectId = Guid.NewGuid();
+        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new BffStorageUploadProxyResponse
+            {
+                StorageObjectId = storageObjectId,
+                ViewUrl = $"/api/storageobject/{storageObjectId}/public",
+                ContentUrl = $"/api/storageobject/{storageObjectId}/content"
+            })
+        });
         _httpClientFactory.CreateClient("BffClient").Returns(new HttpClient(handler)
         {
             BaseAddress = new Uri("https://bff.test")
@@ -102,7 +112,10 @@ public sealed class ImageUploadClientTests
 
         var result = await client.UploadViaBffProxyAsync("session-1", fileData);
 
-        await Assert.That(result).IsTrue();
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Success).IsTrue();
+        await Assert.That(result.StorageObjectId).IsEqualTo(storageObjectId);
+        await Assert.That(result.ViewUrl).IsEqualTo($"/api/storageobject/{storageObjectId}/public");
         await Assert.That(handler.LastRequest?.Method).IsEqualTo(HttpMethod.Post);
         await Assert.That(handler.LastRequest?.RequestUri?.AbsolutePath).IsEqualTo("/bff/storage/upload-proxy");
     }

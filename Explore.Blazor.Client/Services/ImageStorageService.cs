@@ -1,3 +1,6 @@
+// ABOUTME: Image storage orchestration service for upload sessions, legacy presigned uploads, and previews.
+// ABOUTME: Keeps browser flows on server-issued BFF sessions while preserving shared non-browser upload helpers.
+
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services.Http;
 using Microsoft.AspNetCore.Components.Forms;
@@ -19,7 +22,7 @@ public sealed record FileUploadData
 }
 
 /// <summary>
-/// Service for handling image storage operations with S3 pre-signed URLs.
+/// Service for handling image storage operations.
 /// </summary>
 public interface IImageStorageService
 {
@@ -30,9 +33,9 @@ public interface IImageStorageService
     Task<FileUploadData?> ReadFileAsync(IBrowserFile file, long maxFileSize = 10 * 1024 * 1024);
 
     /// <summary>
-    /// Get a pre-signed URL for uploading an image.
+    /// Get a server-issued upload session or pre-signed URL for uploading an image.
     /// </summary>
-    Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType);
+    Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null);
 
     /// <summary>
     /// Upload an image file using a pre-signed URL (legacy - uses IBrowserFile).
@@ -59,12 +62,12 @@ public interface IImageStorageService
     Task<ImageUploadResult?> UploadAndCreateRecordFromBytesAsync(FileUploadData fileData);
 
     /// <summary>
-    /// Get a pre-signed URL for viewing an image by its object key or full URI.
+    /// Get a metadata-backed public image URL.
     /// </summary>
     Task<string?> GetImageUrlAsync(string imageKey);
 
     /// <summary>
-    /// Get a pre-signed URL for viewing an image by its storage object ID.
+    /// Get a metadata-backed public image URL by storage object ID.
     /// </summary>
     Task<string?> GetPresignedUrlByIdAsync(Guid storageObjectId);
 
@@ -101,6 +104,20 @@ public sealed class BffStorageUploadSessionResponse
     public int ExpiresInMinutes { get; set; }
 }
 
+public sealed class BffStorageUploadProxyResponse
+{
+    public Guid StorageObjectId { get; set; }
+    public string ViewUrl { get; set; } = string.Empty;
+    public string ContentUrl { get; set; } = string.Empty;
+}
+
+public sealed class BffStorageUploadSessionRequest
+{
+    public required string FileName { get; set; }
+    public required string ContentType { get; set; }
+    public long ExpectedSizeBytes { get; set; }
+}
+
 public class ImageUploadResult
 {
     public Guid StorageObjectId { get; set; }
@@ -118,7 +135,7 @@ public class PresignedDownloadUrlResponse
 }
 
 /// <summary>
-/// Implementation of image storage service using S3 pre-signed URLs.
+/// Implementation of image storage service.
 /// </summary>
 public class ImageStorageService : IImageStorageService
 {
@@ -172,9 +189,9 @@ public class ImageStorageService : IImageStorageService
     }
 
     /// <inheritdoc />
-    public async Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType)
+    public async Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null)
     {
-        return await _uploadClient.GetUploadUrlAsync(fileName, contentType);
+        return await _uploadClient.GetUploadUrlAsync(fileName, contentType, expectedSizeBytes);
     }
 
     /// <inheritdoc />
@@ -207,24 +224,32 @@ public class ImageStorageService : IImageStorageService
             _logger.LogInformation("Starting byte-based upload process for: {FileName} ({Size} bytes)",
                 fileData.FileName, fileData.Size);
 
-            // Step 1: Get pre-signed upload URL
-            var uploadResponse = await GetUploadUrlAsync(fileData.FileName, fileData.ContentType);
+            // Step 1: Get a server-issued upload session or legacy pre-signed upload URL.
+            var uploadResponse = await GetUploadUrlAsync(fileData.FileName, fileData.ContentType, fileData.Size);
             if (uploadResponse == null)
             {
-                _logger.LogError("Failed to get pre-signed URL for file {FileName}", fileData.FileName);
+                _logger.LogError("Failed to get upload session for file {FileName}", fileData.FileName);
                 return new ImageUploadResult
                 {
                     Success = false,
-                    ErrorMessage = "Failed to get pre-signed URL. Please check your authentication and try again."
+                    ErrorMessage = "Failed to get an upload session. Please check your authentication and try again."
                 };
             }
 
-            _logger.LogDebug("Got pre-signed URL. ObjectKey: {ObjectKey}", uploadResponse.ObjectKey);
+            _logger.LogDebug("Got upload session response. ObjectKey: {ObjectKey}", uploadResponse.ObjectKey);
 
             // Step 2: Upload to S3 using bytes
-            var uploadSuccess = OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId)
-                ? await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, fileData)
-                : await UploadImageFromBytesAsync(uploadResponse.UploadUrl, fileData);
+            if (OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
+            {
+                var bffUploadResult = await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, fileData);
+                return bffUploadResult ?? new ImageUploadResult
+                {
+                    Success = false,
+                    ErrorMessage = "Failed to upload image to storage. Please check your connection and try again."
+                };
+            }
+
+            var uploadSuccess = await UploadImageFromBytesAsync(uploadResponse.UploadUrl, fileData);
             if (!uploadSuccess)
             {
                 _logger.LogError("S3 upload failed for file {FileName}", fileData.FileName);
@@ -267,21 +292,29 @@ public class ImageStorageService : IImageStorageService
         {
             _logger.LogInformation("Starting upload process for: {FileName}", file.Name);
 
-            // Step 1: Get pre-signed upload URL
-            var uploadResponse = await GetUploadUrlAsync(file.Name, file.ContentType);
+            // Step 1: Get a server-issued upload session or legacy pre-signed upload URL.
+            var uploadResponse = await GetUploadUrlAsync(file.Name, file.ContentType, file.Size);
             if (uploadResponse == null)
             {
                 return new ImageUploadResult
                 {
                     Success = false,
-                    ErrorMessage = "Failed to get pre-signed URL"
+                    ErrorMessage = "Failed to get an upload session"
                 };
             }
 
             // Step 2: Upload to S3
-            var uploadSuccess = OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId)
-                ? await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, file)
-                : await UploadImageAsync(uploadResponse.UploadUrl, file);
+            if (OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
+            {
+                var bffUploadResult = await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, file);
+                return bffUploadResult ?? new ImageUploadResult
+                {
+                    Success = false,
+                    ErrorMessage = "Failed to upload image to storage"
+                };
+            }
+
+            var uploadSuccess = await UploadImageAsync(uploadResponse.UploadUrl, file);
             if (!uploadSuccess)
             {
                 return new ImageUploadResult
@@ -324,69 +357,46 @@ public class ImageStorageService : IImageStorageService
 
         try
         {
-            string objectKey;
-
-            if (Uri.TryCreate(imageKey, UriKind.Absolute, out var uri))
+            if (Uri.TryCreate(imageKey, UriKind.Absolute, out var uri) &&
+                string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             {
-                // The object key is the path part of the URI, without the leading slash.
-                objectKey = uri.AbsolutePath.TrimStart('/');
-            }
-            else
-            {
-                // If it's not a full URI, it might already be just the key.
-                objectKey = imageKey;
+                imageKey = uri.AbsolutePath;
             }
 
-            // Get presigned URL from the API via BFF
-            var result = await _apiClientExecutor.ReadJsonAsync<PresignedDownloadUrlResponse>(
-                ct => _httpClientFactory.CreateClient("BffClient").GetAsync($"/api/StorageObject/presigned-url-by-key/{objectKey}?expirationMinutes=60", ct),
-                "BFF presigned URL by key");
-
-            if (result.IsSuccess)
+            if (imageKey.StartsWith("/api/storageobject/", StringComparison.OrdinalIgnoreCase))
             {
-                var presignedResponse = result.Value;
-                if (presignedResponse != null && !string.IsNullOrEmpty(presignedResponse.PresignedUrl))
-                {
-                    return presignedResponse.PresignedUrl;
-                }
+                return imageKey;
             }
 
-            _logger.LogWarning("Failed to get presigned URL for object key: {ObjectKey}, Status: {StatusCode}", objectKey, result.StatusCode);
+            if (Guid.TryParse(imageKey, out var storageObjectId))
+            {
+                return $"/api/StorageObject/{storageObjectId}/public";
+            }
+
+            _logger.LogWarning("Image key is not a metadata-backed storage URL or storage object ID.");
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting presigned URL");
+            _logger.LogError(ex, "Error getting image URL");
             return null;
         }
     }
 
     /// <summary>
-    /// Get a presigned URL for a storage object by its ID.
+    /// Get a metadata-backed public image URL for a storage object by its ID.
     /// </summary>
     public async Task<string?> GetPresignedUrlByIdAsync(Guid storageObjectId)
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<PresignedDownloadUrlResponse>(
-                ct => _httpClientFactory.CreateClient("BffClient").GetAsync($"/api/StorageObject/{storageObjectId}/presigned-url?expirationMinutes=60", ct),
-                "BFF presigned URL by id");
-
-            if (result.IsSuccess)
-            {
-                var presignedResponse = result.Value;
-                if (presignedResponse != null && !string.IsNullOrEmpty(presignedResponse.PresignedUrl))
-                {
-                    return presignedResponse.PresignedUrl;
-                }
-            }
-
-            _logger.LogWarning("Failed to get presigned URL for storage object ID: {Id}, Status: {StatusCode}", storageObjectId, result.StatusCode);
-            return null;
+            return storageObjectId == Guid.Empty
+                ? null
+                : $"/api/StorageObject/{storageObjectId}/public";
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting presigned URL by ID");
+            _logger.LogError(ex, "Error getting image URL by ID");
             return null;
         }
     }

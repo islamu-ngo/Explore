@@ -6,15 +6,22 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.API.Models;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Queries;
+using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Net.Http.Headers;
 
 namespace Explore.API.Controllers;
 
@@ -24,10 +31,12 @@ namespace Explore.API.Controllers;
 public class StorageObjectController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ITenantContext _tenantContext;
 
-    public StorageObjectController(IMediator mediator)
+    public StorageObjectController(IMediator mediator, ITenantContext tenantContext)
     {
         _mediator = mediator;
+        _tenantContext = tenantContext;
     }
 
     // GET: api/storageobject
@@ -37,13 +46,16 @@ public class StorageObjectController : ControllerBase
     [EndpointSummary("Get all Storage Objects")]
     [EndpointDescription("Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(PaginatedResult<StorageObjectListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
-    public async Task<ActionResult<PaginatedResult<StorageObjectListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<PaginatedResult<StorageObjectListDto>>> GetAll(
+        [FromQuery] PaginationQueryRequest query,
+        CancellationToken cancellationToken = default)
     {
         var storageObjects = await _mediator.Send(new GetStorageObjectListRequest
         {
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         }, cancellationToken);
         return Ok(storageObjects);
     }
@@ -64,21 +76,21 @@ public class StorageObjectController : ControllerBase
         return Ok(storageObject);
     }
 
-    // GET: api/storageobject/file/{*fileKey}
+    // GET: api/storageobject/{id}/content
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("file/{*fileKey}", Name = RouteNames.GetStorageObjectFile)]
-    [EndpointSummary("Get File Content")]
-    [EndpointDescription("Retrieve the content of a file from storage by its key")]
-    [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)] // Cache for 1 day
-    [OutputCache(PolicyName = "DetailData")]
-    public async Task<IActionResult> GetFile(string fileKey, CancellationToken cancellationToken = default)
+    [HttpGet("{id:guid}/content", Name = RouteNames.GetStorageObjectContent)]
+    [EndpointSummary("Get Storage Object Content")]
+    [EndpointDescription("Streams stored file content by stable storage object ID. Provider keys and local paths are never accepted from the browser.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetContent(Guid id, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(fileKey))
-            return BadRequest("File key cannot be empty.");
+        var result = await _mediator.Send(
+            new GetStorageObjectContentRequest { StorageObjectId = id },
+            cancellationToken);
 
-        var result = await _mediator.Send(new GetStorageObjectFileRequest { FileKey = fileKey }, cancellationToken);
-        return File(result.FileStream, result.ContentType, enableRangeProcessing: true);
+        return result is null ? NotFound() : ToFileResult(result);
     }
 
     // GET: api/storageobject/{id}/public
@@ -95,11 +107,10 @@ public class StorageObjectController : ControllerBase
     {
         var result = await _mediator.Send(new GetPublicImageRequest { StorageObjectId = id }, cancellationToken);
 
-        if (result is null || !result.HasValue)
+        if (result is null)
             return NotFound();
 
-        var (fileStream, contentType) = result.Value;
-        return File(fileStream, contentType, enableRangeProcessing: true);
+        return ToFileResult(result);
     }
 
     // GET: api/storageobject/{id}/presigned-url
@@ -122,36 +133,6 @@ public class StorageObjectController : ControllerBase
         return Ok(result);
     }
 
-    // GET: api/storageobject/presigned-url-by-key/{*objectKey}
-    [AllowAnonymous]
-    [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("presigned-url-by-key/{*objectKey}", Name = RouteNames.GetStorageObjectPresignedDownloadUrlByKey)]
-    [EndpointSummary("Get Presigned Download URL by Key")]
-    [EndpointDescription("Generate a time-limited presigned URL for viewing/downloading a file using its object key")]
-    [ProducesResponseType(typeof(PresignedDownloadUrlResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [OutputCache(PolicyName = "DetailData")]
-    public async Task<ActionResult<PresignedDownloadUrlResponseDto>> GetPresignedDownloadUrlByKey(string objectKey, [FromQuery] int expirationMinutes = 60, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(objectKey))
-        {
-            return BadRequest(new { error = "Object key cannot be empty" });
-        }
-
-        var result = await _mediator.Send(new GetPresignedDownloadUrlByKeyRequest
-        {
-            ObjectKey = objectKey,
-            ExpirationMinutes = expirationMinutes
-        }, cancellationToken);
-
-        if (result == null)
-        {
-            return StatusCode(500, new { error = "Failed to generate presigned URL" });
-        }
-
-        return Ok(result);
-    }
-
     // POST: api/storageobject/generate-upload-url
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
@@ -170,6 +151,108 @@ public class StorageObjectController : ControllerBase
         };
         var response = await _mediator.Send(command, cancellationToken);
         return Ok(response);
+    }
+
+    // POST: api/storageobject/upload-sessions
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("upload-sessions", Name = RouteNames.CreateStorageUploadSession)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.DefaultPolicy)]
+    [EndpointSummary("Create provider-neutral upload session")]
+    [EndpointDescription("Reserve tenant storage quota and return a server-bound upload session. The browser does not choose provider, object key, local path, or destination URL.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<StorageUploadSessionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<BaseCommandResponse<StorageUploadSessionDto>>> CreateUploadSession(
+        [FromBody] CreateStorageUploadSessionDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return Unauthorized();
+        }
+
+        var command = new CreateStorageUploadSessionCommand
+        {
+            UploadSessionDto = dto,
+            TenantId = _tenantContext.TenantId
+        };
+        var response = await _mediator.Send(command, cancellationToken);
+
+        return response.Success ? Ok(response) : this.ToStorageUploadProblem(response);
+    }
+
+    // PUT: api/storageobject/upload-sessions/{uploadSessionId}/content
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("upload-sessions/{uploadSessionId:guid}/content", Name = RouteNames.UploadStorageUploadSessionContent)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
+    [RequestSizeLimit(536_870_912)]
+    [EndpointSummary("Upload bytes for a reserved storage session")]
+    [EndpointDescription("Streams request bytes into the server-selected storage provider and finalizes the upload session metadata.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<StorageUploadSessionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<BaseCommandResponse<StorageUploadSessionDto>>> UploadSessionContent(
+        Guid uploadSessionId,
+        CancellationToken cancellationToken = default)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return Unauthorized();
+        }
+
+        var command = new FinalizeStorageUploadSessionCommand
+        {
+            UploadSessionId = uploadSessionId,
+            Content = Request.Body,
+            ContentType = Request.ContentType,
+            ContentLength = Request.ContentLength,
+            TenantId = _tenantContext.TenantId
+        };
+        var response = await _mediator.Send(command, cancellationToken);
+
+        return response.Success ? Ok(response) : this.ToStorageUploadProblem(response);
+    }
+
+    // DELETE: api/storageobject/upload-sessions/{uploadSessionId}
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpDelete("upload-sessions/{uploadSessionId:guid}", Name = RouteNames.CancelStorageUploadSession)]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
+    [RequestTimeout(RequestTimeoutExtensions.DefaultPolicy)]
+    [EndpointSummary("Cancel a provider-neutral upload session")]
+    [EndpointDescription("Cancel a pending upload session and release its reserved tenant storage quota.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<StorageUploadSessionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BaseCommandResponse<StorageUploadSessionDto>>> CancelUploadSession(
+        Guid uploadSessionId,
+        CancellationToken cancellationToken = default)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return Unauthorized();
+        }
+
+        var command = new CancelStorageUploadSessionCommand
+        {
+            UploadSessionId = uploadSessionId,
+            TenantId = _tenantContext.TenantId
+        };
+        var response = await _mediator.Send(command, cancellationToken);
+
+        return response.Success ? Ok(response) : this.ToStorageUploadProblem(response);
     }
 
     // POST: api/storageobject
@@ -231,5 +314,18 @@ public class StorageObjectController : ControllerBase
         await _mediator.Send(command, cancellationToken);
 
         return NoContent();
+    }
+
+    private FileStreamResult ToFileResult(StorageObjectContentResult result)
+    {
+        var fileResult = File(result.Content, result.ContentType, enableRangeProcessing: true);
+        fileResult.LastModified = result.LastModified;
+
+        if (!string.IsNullOrWhiteSpace(result.Sha256Checksum))
+        {
+            fileResult.EntityTag = new EntityTagHeaderValue($"\"{result.Sha256Checksum}\"");
+        }
+
+        return fileResult;
     }
 }

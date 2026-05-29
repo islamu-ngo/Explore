@@ -22,21 +22,27 @@ public sealed class StorageUploadSessionStoreTests
     }
 
     [Test]
-    public async Task IssueAsync_WithArbitraryNonPresignedUrl_ReturnsFailure()
+    public async Task IssueAsync_WithMissingApiUploadSessionId_ReturnsFailure()
     {
         var result = await _store.IssueAsync(
             CreateUser("user-1"),
-            new UploadUrlResponseDto
+            new StorageUploadSessionDto
             {
-                UploadUrl = "https://evil.example.com/upload",
-                ObjectKey = "uploads/probe.png",
-                ViewUrl = "uploads/probe.png",
-                ExpiresInMinutes = 15
+                Id = Guid.Empty,
+                Provider = "local",
+                ExpectedSizeBytes = 4,
+                ReservedBytes = 4,
+                ContentType = "image/png",
+                SafeDisplayName = "probe.png",
+                Purpose = "legacy_image",
+                Visibility = "public_image",
+                Status = "reserved",
+                ExpiresAt = DateTime.UtcNow.AddMinutes(15)
             },
             "image/png");
 
         result.Success.Should().BeFalse();
-        result.FailureCode.Should().Be("invalid_upload_url");
+        result.FailureCode.Should().Be("missing_upload_session_id");
     }
 
     [Test]
@@ -62,7 +68,7 @@ public sealed class StorageUploadSessionStoreTests
     }
 
     [Test]
-    public async Task ResolveAsync_WithSameUserAndContentType_ReturnsExactServerIssuedUrl()
+    public async Task ResolveAsync_WithSameUserAndContentType_ReturnsApiUploadSession()
     {
         var issued = await IssueTrustedSessionAsync("user-1", "image/png");
 
@@ -70,22 +76,27 @@ public sealed class StorageUploadSessionStoreTests
 
         resolved.Success.Should().BeTrue();
         resolved.Session.Should().NotBeNull();
-        resolved.Session!.UploadUrl.Should().Be(TrustedUploadUrl);
-        resolved.Session.ObjectKey.Should().Be("uploads/probe.png");
+        resolved.Session!.ApiUploadSessionId.Should().Be(ApiUploadSessionId);
+        resolved.Session.ExpectedSizeBytes.Should().Be(4);
     }
 
-    private const string TrustedUploadUrl =
-        "https://storage.example.com/bucket/uploads/probe.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=trusted";
+    private static readonly Guid ApiUploadSessionId = Guid.CreateVersion7();
 
     private Task<StorageUploadSessionIssueResult> IssueTrustedSessionAsync(string userId, string contentType) =>
         _store.IssueAsync(
             CreateUser(userId),
-            new UploadUrlResponseDto
+            new StorageUploadSessionDto
             {
-                UploadUrl = TrustedUploadUrl,
-                ObjectKey = "uploads/probe.png",
-                ViewUrl = "uploads/probe.png",
-                ExpiresInMinutes = 15
+                Id = ApiUploadSessionId,
+                Provider = "local",
+                ExpectedSizeBytes = 4,
+                ReservedBytes = 4,
+                ContentType = contentType,
+                SafeDisplayName = "probe.png",
+                Purpose = "legacy_image",
+                Visibility = "public_image",
+                Status = "reserved",
+                ExpiresAt = DateTime.UtcNow.AddMinutes(15)
             },
             contentType);
 

@@ -1,5 +1,5 @@
 // ABOUTME: BFF-owned storage upload session store for binding browser upload proxy calls.
-// ABOUTME: Prevents client-supplied upload URLs by resolving exact server-issued destinations from cache.
+// ABOUTME: Prevents client-supplied provider destinations by resolving server-issued API upload sessions from cache.
 
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -12,10 +12,9 @@ namespace Explore.Blazor.Services;
 public sealed record StorageUploadSession(
     string SessionId,
     string OwnerUserId,
-    string UploadUrl,
-    string ObjectKey,
-    string ViewUrl,
+    Guid ApiUploadSessionId,
     string ContentType,
+    long ExpectedSizeBytes,
     DateTimeOffset ExpiresAtUtc);
 
 public sealed record StorageUploadSessionIssueResult(
@@ -32,7 +31,7 @@ public sealed record StorageUploadSessionIssueResult(
     public static StorageUploadSessionIssueResult Issued(
         StorageUploadSession session,
         int expiresInMinutes) =>
-        new(true, session.SessionId, session.ObjectKey, session.ViewUrl, expiresInMinutes, null);
+        new(true, session.SessionId, null, null, expiresInMinutes, null);
 }
 
 public sealed record StorageUploadSessionResolveResult(
@@ -51,7 +50,7 @@ public interface IStorageUploadSessionStore
 {
     Task<StorageUploadSessionIssueResult> IssueAsync(
         ClaimsPrincipal user,
-        UploadUrlResponseDto response,
+        StorageUploadSessionDto response,
         string contentType,
         CancellationToken cancellationToken = default);
 
@@ -71,7 +70,7 @@ public sealed class StorageUploadSessionStore(IDistributedCache cache) : IStorag
 
     public async Task<StorageUploadSessionIssueResult> IssueAsync(
         ClaimsPrincipal user,
-        UploadUrlResponseDto response,
+        StorageUploadSessionDto response,
         string contentType,
         CancellationToken cancellationToken = default)
     {
@@ -81,14 +80,9 @@ public sealed class StorageUploadSessionStore(IDistributedCache cache) : IStorag
             return StorageUploadSessionIssueResult.Failed("missing_user");
         }
 
-        if (!IsTrustedPresignedUploadUrl(response.UploadUrl))
+        if (response.Id == Guid.Empty)
         {
-            return StorageUploadSessionIssueResult.Failed("invalid_upload_url");
-        }
-
-        if (string.IsNullOrWhiteSpace(response.ObjectKey))
-        {
-            return StorageUploadSessionIssueResult.Failed("missing_object_key");
+            return StorageUploadSessionIssueResult.Failed("missing_upload_session_id");
         }
 
         if (string.IsNullOrWhiteSpace(contentType))
@@ -96,17 +90,24 @@ public sealed class StorageUploadSessionStore(IDistributedCache cache) : IStorag
             return StorageUploadSessionIssueResult.Failed("missing_content_type");
         }
 
-        var expiresInMinutes = response.ExpiresInMinutes <= 0
+        if (response.ExpectedSizeBytes <= 0)
+        {
+            return StorageUploadSessionIssueResult.Failed("missing_expected_size");
+        }
+
+        var expiresAtUtc = response.ExpiresAt.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(response.ExpiresAt, DateTimeKind.Utc)
+            : response.ExpiresAt.ToUniversalTime();
+        var expiresInMinutes = expiresAtUtc <= DateTime.UtcNow
             ? 15
-            : Math.Min(response.ExpiresInMinutes, 60);
+            : Math.Min((int)Math.Ceiling((expiresAtUtc - DateTime.UtcNow).TotalMinutes), 60);
         var session = new StorageUploadSession(
             SessionId: RandomNumberGenerator.GetHexString(32).ToLowerInvariant(),
             OwnerUserId: ownerUserId,
-            UploadUrl: response.UploadUrl.Trim(),
-            ObjectKey: response.ObjectKey.Trim(),
-            ViewUrl: response.ViewUrl?.Trim() ?? string.Empty,
+            ApiUploadSessionId: response.Id,
             ContentType: contentType.Trim(),
-            ExpiresAtUtc: DateTimeOffset.UtcNow.AddMinutes(expiresInMinutes));
+            ExpectedSizeBytes: response.ExpectedSizeBytes,
+            ExpiresAtUtc: new DateTimeOffset(expiresAtUtc));
 
         var payload = JsonSerializer.Serialize(session, JsonOptions);
         await cache.SetStringAsync(
@@ -186,19 +187,6 @@ public sealed class StorageUploadSessionStore(IDistributedCache cache) : IStorag
         }
 
         return cache.RemoveAsync(BuildCacheKey(sessionId.Trim()), cancellationToken);
-    }
-
-    private static bool IsTrustedPresignedUploadUrl(string uploadUrl)
-    {
-        if (!Uri.TryCreate(uploadUrl, UriKind.Absolute, out var uploadUri) ||
-            !string.Equals(uploadUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var query = uploadUri.Query;
-        return query.Contains("X-Amz-Algorithm", StringComparison.OrdinalIgnoreCase) &&
-            query.Contains("X-Amz-Signature", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? GetRequiredUserId(ClaimsPrincipal user) =>

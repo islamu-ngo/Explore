@@ -12,15 +12,15 @@ namespace Explore.Blazor.Client.Services;
 
 public interface IImageUploadClient
 {
-    Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType);
+    Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null);
 
     Task<bool> UploadImageAsync(string uploadUrl, IBrowserFile file);
 
     Task<bool> UploadImageFromBytesAsync(string uploadUrl, FileUploadData fileData);
 
-    Task<bool> UploadViaBffProxyAsync(string uploadSessionId, FileUploadData fileData);
+    Task<ImageUploadResult?> UploadViaBffProxyAsync(string uploadSessionId, FileUploadData fileData);
 
-    Task<bool> UploadViaBffProxyAsync(string uploadSessionId, IBrowserFile file);
+    Task<ImageUploadResult?> UploadViaBffProxyAsync(string uploadSessionId, IBrowserFile file);
 }
 
 public sealed class ImageUploadClient(
@@ -37,7 +37,7 @@ public sealed class ImageUploadClient(
 
     private readonly IApiClientExecutor _apiClientExecutor = apiClientExecutor ?? new ApiClientExecutor();
 
-    public async Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType)
+    public async Task<ImageUploadResponse?> GetUploadUrlAsync(string fileName, string contentType, long? expectedSizeBytes = null)
     {
         try
         {
@@ -49,13 +49,16 @@ public sealed class ImageUploadClient(
                 ContentType = contentType
             };
 
-            var bffUploadSession = await GetUploadSessionViaBffAsync(request);
-            if (OperatingSystem.IsBrowser() && bffUploadSession != null)
+            var isBrowser = OperatingSystem.IsBrowser();
+            var bffUploadSession = isBrowser && expectedSizeBytes.HasValue
+                ? await GetUploadSessionViaBffAsync(fileName, contentType, expectedSizeBytes.Value)
+                : null;
+            if (isBrowser && bffUploadSession != null)
             {
                 return bffUploadSession;
             }
 
-            if (OperatingSystem.IsBrowser())
+            if (isBrowser)
             {
                 logger.LogWarning("BFF upload session request returned no usable response in browser runtime.");
                 return null;
@@ -101,7 +104,7 @@ public sealed class ImageUploadClient(
         }
     }
 
-    public async Task<bool> UploadViaBffProxyAsync(string uploadSessionId, FileUploadData fileData)
+    public async Task<ImageUploadResult?> UploadViaBffProxyAsync(string uploadSessionId, FileUploadData fileData)
     {
         try
         {
@@ -120,22 +123,23 @@ public sealed class ImageUploadClient(
             if (response.IsSuccessStatusCode)
             {
                 logger.LogInformation("BFF upload proxy completed successfully for {FileName}", fileData.FileName);
-                return true;
+                var uploadResult = await response.Content.ReadFromJsonAsync<BffStorageUploadProxyResponse>();
+                return MapBffUploadResult(uploadResult);
             }
 
             var errorBody = await response.Content.ReadAsStringAsync();
             logger.LogError("BFF upload proxy failed for {FileName}. Status={StatusCode}, Body={Body}",
                 fileData.FileName, (int)response.StatusCode, errorBody);
-            return false;
+            return null;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "BFF upload proxy request failed for {FileName}", fileData.FileName);
-            return false;
+            return null;
         }
     }
 
-    public async Task<bool> UploadViaBffProxyAsync(string uploadSessionId, IBrowserFile file)
+    public async Task<ImageUploadResult?> UploadViaBffProxyAsync(string uploadSessionId, IBrowserFile file)
     {
         try
         {
@@ -143,7 +147,7 @@ public sealed class ImageUploadClient(
             form.Add(new StringContent(uploadSessionId), "uploadSessionId");
             form.Add(new StringContent(file.ContentType), "contentType");
 
-            await using var stream = file.OpenReadStream(maxAllowedSize: DefaultMaxFileSize);
+            await using var stream = file.OpenReadStream(maxAllowedSize: file.Size);
             using var fileContent = new StreamContent(stream);
             fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
             form.Add(fileContent, "file", file.Name);
@@ -155,18 +159,19 @@ public sealed class ImageUploadClient(
             if (response.IsSuccessStatusCode)
             {
                 logger.LogInformation("BFF upload proxy completed successfully for {FileName}", file.Name);
-                return true;
+                var uploadResult = await response.Content.ReadFromJsonAsync<BffStorageUploadProxyResponse>();
+                return MapBffUploadResult(uploadResult);
             }
 
             var hasBody = response.Content.Headers.ContentLength.GetValueOrDefault() > 0;
             logger.LogError("BFF upload proxy failed for {FileName}. Status={StatusCode}, HasBody={HasBody}",
                 file.Name, (int)response.StatusCode, hasBody);
-            return false;
+            return null;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "BFF upload proxy request failed for {FileName}", file.Name);
-            return false;
+            return null;
         }
     }
 
@@ -310,8 +315,18 @@ public sealed class ImageUploadClient(
         }
     }
 
-    private async Task<ImageUploadResponse?> GetUploadSessionViaBffAsync(UploadRequestDto request)
+    private async Task<ImageUploadResponse?> GetUploadSessionViaBffAsync(
+        string fileName,
+        string contentType,
+        long expectedSizeBytes)
     {
+        var request = new BffStorageUploadSessionRequest
+        {
+            FileName = fileName,
+            ContentType = contentType,
+            ExpectedSizeBytes = expectedSizeBytes
+        };
+
         try
         {
             var result = await _apiClientExecutor.ReadJsonAsync<BffStorageUploadSessionResponse>(
@@ -343,8 +358,8 @@ public sealed class ImageUploadClient(
             return new ImageUploadResponse
             {
                 UploadSessionId = session.UploadSessionId,
-                ObjectKey = session.ObjectKey,
-                ViewUrl = session.ViewUrl,
+                ObjectKey = string.Empty,
+                ViewUrl = string.Empty,
                 ExpiresInMinutes = session.ExpiresInMinutes <= 0 ? 60 : session.ExpiresInMinutes
             };
         }
@@ -353,6 +368,26 @@ public sealed class ImageUploadClient(
             logger.LogWarning(ex, "Error calling upload session endpoint via BFF");
             return null;
         }
+    }
+
+    private static ImageUploadResult? MapBffUploadResult(BffStorageUploadProxyResponse? uploadResult)
+    {
+        if (uploadResult is null || uploadResult.StorageObjectId == Guid.Empty)
+        {
+            return new ImageUploadResult
+            {
+                Success = false,
+                ErrorMessage = "Storage upload completed without metadata."
+            };
+        }
+
+        return new ImageUploadResult
+        {
+            Success = true,
+            StorageObjectId = uploadResult.StorageObjectId,
+            ViewUrl = uploadResult.ViewUrl,
+            ObjectKey = string.Empty
+        };
     }
 
     private async Task<UploadUrlResponseDto?> GetUploadUrlViaBffAsync(UploadRequestDto request)
