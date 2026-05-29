@@ -1,7 +1,8 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+// ABOUTME: FluentValidation rules for storage metadata creation.
+// ABOUTME: Validates provider-neutral storage fields without trusting browser-provided filenames or states.
+
 using Explore.Application.Contracts.Persistence;
+using Explore.Domain;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.StorageObject.Validators;
@@ -25,18 +26,54 @@ public class CreateStorageObjectDtoValidator : AbstractValidator<CreateStorageOb
 
         RuleFor(x => x.Uri)
             .NotEmpty().WithMessage("{PropertyName} is required")
-            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters");
+            .MaximumLength(1000).WithMessage("{PropertyName} must not exceed 1000 characters");
+
+        RuleFor(x => x.ObjectKey)
+            .MaximumLength(1024).WithMessage("{PropertyName} must not exceed 1024 characters");
+
+        RuleFor(x => x.Provider)
+            .NotEmpty().WithMessage("{PropertyName} is required")
+            .Must(value => StorageProviders.All.Contains(value))
+            .WithMessage("{PropertyName} must be a supported storage provider");
 
         RuleFor(x => x.FullName)
             .NotEmpty().WithMessage("{PropertyName} is required")
+            .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters");
+
+        RuleFor(x => x.SafeDisplayName)
             .MaximumLength(500).WithMessage("{PropertyName} must not exceed 500 characters");
 
         RuleFor(x => x.Extension)
             .NotEmpty().WithMessage("{PropertyName} is required")
             .MaximumLength(50).WithMessage("{PropertyName} must not exceed 50 characters");
 
+        RuleFor(x => x.ContentType)
+            .MaximumLength(255).WithMessage("{PropertyName} must not exceed 255 characters");
+
+        RuleFor(x => x.Sha256Checksum)
+            .Length(64).When(x => !string.IsNullOrWhiteSpace(x.Sha256Checksum))
+            .WithMessage("{PropertyName} must be a SHA-256 hex digest");
+
         RuleFor(x => x.Size)
-            .GreaterThan(0).WithMessage("{PropertyName} must be greater than 0");
+            .GreaterThanOrEqualTo(0).WithMessage("{PropertyName} must be zero or greater");
+
+        RuleFor(x => x.Visibility)
+            .NotEmpty().WithMessage("{PropertyName} is required")
+            .Must(value => StorageObjectVisibilities.All.Contains(value))
+            .WithMessage("{PropertyName} must be a supported storage visibility");
+
+        RuleFor(x => x.Purpose)
+            .NotEmpty().WithMessage("{PropertyName} is required")
+            .Must(value => StorageObjectPurposes.All.Contains(value))
+            .WithMessage("{PropertyName} must be a supported storage purpose");
+
+        RuleFor(x => x.LifecycleState)
+            .NotEmpty().WithMessage("{PropertyName} is required")
+            .Must(value => StorageObjectLifecycleStates.All.Contains(value))
+            .WithMessage("{PropertyName} must be a supported lifecycle state");
+
+        RuleFor(x => x.OwningResourceKind)
+            .MaximumLength(100).WithMessage("{PropertyName} must not exceed 100 characters");
 
         RuleFor(x => x.ActorId)
             .MustAsync(ActorExists)
