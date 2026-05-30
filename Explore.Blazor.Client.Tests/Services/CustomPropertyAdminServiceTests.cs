@@ -28,11 +28,10 @@ public sealed class CustomPropertyAdminServiceTests
                             ProjectionVersion = 1,
                             TenantId = tenantId,
                             RowsProcessed = 7,
-                            _links = new Dictionary<string, Anonymous40>
-                            {
-                                ["rebuild"] = new() { Href = "/rebuild" },
-                                ["drain-dirty-scopes"] = new() { Href = "/drain" }
-                            }
+                            _links = CreateLinks(
+                                new HalResourceOfProjectionStatusDto()._links,
+                                ("rebuild", "/rebuild"),
+                                ("drain-dirty-scopes", "/drain"))
                         }
                     ]
                 }
@@ -71,10 +70,9 @@ public sealed class CustomPropertyAdminServiceTests
                             ScopeType = 1,
                             ScopeId = Guid.NewGuid(),
                             Reason = "retry",
-                            _links = new Dictionary<string, Anonymous39>
-                            {
-                                ["drain"] = new() { Href = "/drain" }
-                            }
+                            _links = CreateLinks(
+                                new HalResourceOfProjectionDirtyScopeDto()._links,
+                                ("drain", "/drain"))
                         }
                     ]
                 }
@@ -88,5 +86,27 @@ public sealed class CustomPropertyAdminServiceTests
         var scope = result.Items.Single();
         await Assert.That(scope.Id).IsEqualTo(42);
         await Assert.That(scope.HasLink("drain")).IsTrue();
+    }
+
+    private static IDictionary<string, TLink> CreateLinks<TLink>(
+        IDictionary<string, TLink>? _,
+        params (string Rel, string Href)[] links)
+        where TLink : class, new()
+    {
+        var hrefProperty = typeof(TLink).GetProperty("Href");
+        if (hrefProperty is null)
+        {
+            throw new InvalidOperationException($"Link type '{typeof(TLink).Name}' does not expose an Href property.");
+        }
+
+        var result = new Dictionary<string, TLink>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (rel, href) in links)
+        {
+            var link = new TLink();
+            hrefProperty.SetValue(link, href);
+            result[rel] = link;
+        }
+
+        return result;
     }
 }
