@@ -28,7 +28,8 @@ Key behavior in current code:
 - Blazor BFF browser uploads now use provider-neutral API upload sessions. `/bff/storage/upload-session` no longer returns or stores provider upload URLs/object keys; `/bff/storage/upload-proxy` rejects raw destinations and streams bytes to the API session content endpoint.
 - Instance storage administration is now provider-neutral. `GET/PUT /api/instance/settings/storage` exposes provider policy, max upload ceilings, default tenant quota, storage delegation lock, usage, provider health, and redacted optional S3 configuration. `POST /api/instance/settings/storage/test` tests the selected provider, and `POST /api/instance/settings/storage/usage/recalculate` reconciles usage counters from storage metadata.
 - Actor subscription endpoints added under `/api/actor-subscriptions` for authenticated current-user subscription state, subscribe, notification-level update, and unsubscribe flows. HAL affordances now expose actor and event organizer subscription actions for organization/group actors only; clients must continue gating UI actions from `_links` rather than local role or claim checks.
-- Event-published organization/group actor subscriptions now produce durable in-app notifications through an internal outbox fanout path. This is not an SMTP, push, or SignalR delivery contract.
+- Event-published organization/group actor subscriptions now produce durable in-app notifications through an internal outbox fanout path. This is not an SMTP or push delivery contract.
+- Authenticated notification refresh hints are available through `GET /api/notification/stream` as `text/event-stream`. The SSE payload is minimal unread-count state only; notification rows and existing notification APIs remain the delivery source of truth.
 
 ## Historical Baseline (`v0.1.0`)
 

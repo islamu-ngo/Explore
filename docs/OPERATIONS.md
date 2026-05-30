@@ -261,6 +261,24 @@ Operator signals:
 
 Fanout is at-least-once. Operators should treat `Notification.DeduplicationKey` and `NotificationFanoutRun` state as the duplicate-prevention and progress source of truth rather than inferring success from process logs alone.
 
+### Notification SSE Refresh Operations
+
+`GET /api/notification/stream` is a long-lived authenticated HTTP response that sends one-way SSE refresh hints to the browser notification bell.
+
+Operational expectations:
+
+| Concern | Guidance |
+|---|---|
+| Delivery truth | SSE is only a refresh hint. Durable `Notification` rows and authenticated list/detail/unread APIs remain the source of truth. |
+| Payload safety | Hints include unread count, unread flag, bounded reason, and timestamp only. Do not include notification body, title, entity IDs, user IDs, deduplication keys, or PII. |
+| Authentication | Browser `EventSource` uses same-origin cookies through the BFF/API boundary. Do not rely on custom request headers for the stream. |
+| Proxy behavior | Do not buffer `text/event-stream`. The API sets `X-Accel-Buffering: no`; reverse proxies should preserve streaming responses. |
+| Compression | Do not add `text/event-stream` to response compression MIME types. Compression can delay SSE frames through buffering. |
+| Reconnect | Browser `EventSource` reconnects automatically. The endpoint emits SSE IDs and a reconnect interval; polling remains the fallback. |
+| Shutdown | The endpoint honors request cancellation. Long-lived streams should end when the client disconnects or the host shuts down. |
+
+No additional configuration keys were added for SSE refresh hints in this implementation slice.
+
 ### Basic Email Dispatch Operations
 
 Registration confirmation email is handled as a durable side effect:

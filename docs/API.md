@@ -570,6 +570,13 @@ Authorization decisions are also traced via `ActivitySource` named `Explore.Auth
 - Dead-letters messages after `MaxRetryCount` exhausted.
 - Configuration section: `OutboxProcessor` (Enabled, PollingIntervalSeconds, BatchSize, MaxRetryCount, InitialRetryDelaySeconds, MaxRetryDelaySeconds, VerboseLogging).
 
+### Notification Refresh SSE
+
+- `GET /api/notification/stream` is an authenticated `text/event-stream` endpoint for one-way notification refresh hints.
+- The stream emits `notification-refresh` events with minimal unread-count state only; notification bodies, entity IDs, user IDs, deduplication keys, and PII are not sent through SSE.
+- The endpoint disables request timeout, sends no-store/no-cache headers, and sets `X-Accel-Buffering: no`. Do not add `text/event-stream` to response compression or proxy buffering rules.
+- Existing notification list/detail/unread APIs remain the source of truth. Blazor keeps polling as fallback if the SSE stream disconnects or is unavailable.
+
 ### PdsSyncWorker
 - Polls `PdsSyncOutbox` table for pending AT Protocol sync entries.
 - Processes batches with configurable polling interval and batch size.
@@ -640,10 +647,11 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `/api/atproto/*` — AT Protocol record management
    - `/api/indexeddid/*` — DID indexing
 6. Notifications (all `[Authorize]`):
-     - `GET /api/notification` — paginated list with `?isRead=` and `?notificationTypeId=` filters
-    - `GET /api/notification/{id}` — detail
-    - `GET /api/notification/unread-count` — unread count (partial index optimized)
-    - `PATCH /api/notification/{id}/read` — mark single as read (idempotent)
+      - `GET /api/notification` — paginated list with `?isRead=` and `?notificationTypeId=` filters
+     - `GET /api/notification/{id}` — detail
+     - `GET /api/notification/unread-count` — unread count (partial index optimized)
+     - `GET /api/notification/stream` — SSE unread-count refresh hints (`text/event-stream`)
+     - `PATCH /api/notification/{id}/read` — mark single as read (idempotent)
     - `POST /api/notification/read-all` — bulk mark all as read (YouTube-style, timestamp cutoff)
     - `DELETE /api/notification/{id}` — soft delete
 7. Actor subscriptions (all `[Authorize]`):

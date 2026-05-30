@@ -7,9 +7,9 @@ ABOUTME: Separates in-app notifications from SMTP email delivery and unsupported
 > **Status:** Implemented
 > **Owner:** Product/Admin
 > **Last Verified:** 2026-05-29
-> **Source Anchors:** `Explore.Application/Features/Notifications/`, `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Features/Events/Handlers/Commands/PublishEventCommandHandler.cs`, `Explore.API/Controllers/NotificationController.cs`, `Explore.API/Controllers/ActorSubscriptionController.cs`, `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`, `Explore.Blazor.Client/Helpers/NotificationNavigationHelper.cs`, `Explore.Blazor.Client/Pages/Notifications/Notifications.razor`, `docs/EMAIL_NOTIFICATIONS.md`
+> **Source Anchors:** `Explore.Application/Features/Notifications/`, `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`, `Explore.Application/Services/NotificationRefreshStreamService.cs`, `Explore.Application/Features/Events/Handlers/Commands/PublishEventCommandHandler.cs`, `Explore.API/Controllers/NotificationController.cs`, `Explore.API/Controllers/ActorSubscriptionController.cs`, `Explore.Blazor.Client/Services/NotificationRefreshStreamClient.cs`, `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`, `Explore.Blazor.Client/Helpers/NotificationNavigationHelper.cs`, `Explore.Blazor.Client/Pages/Notifications/Notifications.razor`, `docs/EMAIL_NOTIFICATIONS.md`
 
-Notifications are authenticated, user-owned, tenant-scoped in-app records. They power the notification bell, notification panel, and full inbox page. Event-published actor-subscription fanout is implemented through the transactional outbox and creates durable in-app `Notification` rows; it does not imply SMTP email delivery, push delivery, SignalR refresh, or external delivery receipts.
+Notifications are authenticated, user-owned, tenant-scoped in-app records. They power the notification bell, notification panel, and full inbox page. Event-published actor-subscription fanout is implemented through the transactional outbox and creates durable in-app `Notification` rows. The SSE stream is a one-way refresh hint for unread count/inbox state; it does not replace durable notification rows, list/detail APIs, SMTP email delivery, push delivery, or external delivery receipts.
 
 ## Lifecycle
 
@@ -22,6 +22,7 @@ Notifications are authenticated, user-owned, tenant-scoped in-app records. They 
 | List | User-scoped list retrieval supports paging and filters from the API and full inbox UI. |
 | Detail | Detail retrieval is ownership-checked for the current user. |
 | Unread count | API and bell use unread count for the badge. |
+| Real-time refresh hint | Authenticated SSE at `GET /api/notification/stream` emits minimal unread-count refresh hints; it does not carry notification bodies or replace list/detail APIs. |
 | Mark read | Single notification read and bulk mark-all-read are implemented. |
 | Archive | Archive and unarchive are implemented. |
 | Snooze | Snooze and unsnooze are implemented with a `snoozedUntil` value. |
@@ -38,6 +39,7 @@ All notification endpoints require an authenticated user. Handler and repository
 | List notifications | `GET /api/notification` |
 | Get notification detail | `GET /api/notification/{id}` |
 | Get unread count | `GET /api/notification/unread-count` |
+| Stream refresh hints | `GET /api/notification/stream` (`text/event-stream`) |
 | Mark one read | `PATCH /api/notification/{id}/read` |
 | Mark all read | `POST /api/notification/read-all` |
 | Archive or unarchive | `PATCH /api/notification/{id}/archive?archive=true|false` |
@@ -52,12 +54,18 @@ Actor-subscription state and mutations are separate authenticated endpoints unde
 
 | Surface | Behavior |
 |---|---|
-| Notification bell | Shows unread badge, polls unread count, and opens the panel without marking notifications read just because the panel opened. |
+| Notification bell | Shows unread badge, listens for SSE refresh hints, keeps polling as fallback, and opens the panel without marking notifications read just because the panel opened. |
 | Notification panel | Shows scope tabs, loads more items, supports item actions, and links to the full inbox. |
 | Full inbox page | Supports filters for reason, unread-only, archived-only, and snoozed-only; includes mark-all-read. |
 | Notification item | Displays scope/type/reason presentation and navigates to known entity URLs when mappable. |
 
 Clicking a notification item navigates only when the item can be mapped to a supported route: events use `/events/{id}`, organizations use `/organization/profile/{id}`, and groups use `/group/profile/{id}`. Unsupported entity types, including event sessions without a dedicated route, should not be routed to guessed URLs. The item click itself is not the read-state operation; read state is handled by explicit user actions and read endpoints.
+
+## SSE Refresh Hints
+
+`GET /api/notification/stream` is an authenticated `text/event-stream` endpoint. It emits `notification-refresh` events with a minimal payload: `UnreadCount`, `HasUnread`, bounded `Reason`, and `GeneratedAt`.
+
+The browser client uses same-origin cookies through `EventSource`. The API response disables request timeout, sends `Cache-Control: no-store`, and sets `X-Accel-Buffering: no` so reverse proxies do not buffer the stream. The existing 60-second bell polling remains the fallback. Treat SSE as a refresh hint only; notification content and read/archive/snooze state still come from the authenticated notification APIs.
 
 ## Email Boundary
 
@@ -75,7 +83,7 @@ In-app notifications are separate from SMTP email delivery:
 - Push notification delivery.
 - Email fanout from notification records.
 - Public user-to-user actor subscriptions.
-- SignalR or real-time notification refresh.
+- SSE as delivery truth or as a replacement for notification list/detail APIs.
 - External delivery receipts or delivery tracking.
 - Event-session deep links unless a matching route is implemented.
 

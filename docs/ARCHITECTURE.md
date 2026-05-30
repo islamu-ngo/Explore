@@ -111,6 +111,8 @@ Handlers, controllers, automation executors, and sequence processors create dura
 
 Event publication currently writes two general outbox messages in the same transaction: the external `EventPublished` message for MQContract publishing and the internal `EventPublishedNotificationFanoutRequested` message for subscription fanout. `CompositeOutboxMessageDispatcher` routes `EventPublished` to the MQContract dispatcher and routes `EventPublishedNotificationFanoutRequested` to `EventPublishedNotificationFanoutService`, which creates idempotent durable in-app notifications for eligible active actor subscribers.
 
+Notification refresh uses a one-way authenticated SSE endpoint at `GET /api/notification/stream`. The stream emits minimal unread-count refresh hints only; durable `Notification` rows and the authenticated notification APIs remain the source of truth. The Blazor notification bell consumes the stream through browser `EventSource` and keeps polling as fallback.
+
 Specialized outbox variants exist for specific subsystems:
 - `PdsSyncOutbox` — AT Protocol federation sync (DID, Collection, RecordKey, PdsHost).
 - `PolicyChangeOutbox` — authorization policy change propagation (SettingScope).
