@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -55,5 +56,20 @@ public class StorageUsageCounterRepository : GenericRepository<StorageUsageCount
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return counter;
+    }
+
+    public async Task<IReadOnlyList<StorageUsageCounter>> GetAllForInstanceStorageReportAsync(CancellationToken cancellationToken)
+    {
+        return await _dbContext.StorageUsageCounters
+            .AsNoTracking()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.InstanceStorageAdministration)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<StorageUsageCounter>> GetAllTrackedForInstanceStorageRecalculationAsync(CancellationToken cancellationToken)
+    {
+        return await _dbContext.StorageUsageCounters
+            .IgnoreTenantFilter(TenantFilterBypassReasons.InstanceStorageAdministration)
+            .ToListAsync(cancellationToken);
     }
 }

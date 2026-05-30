@@ -1,24 +1,28 @@
-// ABOUTME: Service contract for managing instance S3 storage configuration.
-// ABOUTME: Handles S3-compatible object storage settings for the application.
+// ABOUTME: Service contract for managing provider-neutral instance storage administration.
+// ABOUTME: Exposes redacted settings, provider health, and usage recalculation operations.
 
 using Explore.Application.DTOs.Onboarding;
 
 namespace Explore.Application.Contracts.Services;
 
 /// <summary>
-/// Service for reading and applying instance S3 storage settings.
+/// Service for reading and applying instance storage settings.
 /// </summary>
 public interface IInstanceStorageSettingService
 {
     /// <summary>
-    /// Reads current S3 storage settings from SystemSetting records.
+    /// Reads current storage settings from SystemSetting records.
     /// </summary>
     /// <returns>Current storage settings DTO.</returns>
-    Task<InstanceStorageSettingsDto> ReadSettingsAsync();
+    Task<InstanceStorageSettingsDto> ReadSettingsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Applies S3 storage settings to SystemSetting records.
+    /// Applies storage settings to SystemSetting records.
     /// </summary>
     /// <param name="settings">The storage settings to apply.</param>
     Task ApplySettingsAsync(InstanceStorageSettingsDto settings);
+
+    Task<InstanceStorageProviderStatusDto> TestProviderAsync(CancellationToken cancellationToken = default);
+
+    Task<InstanceStorageUsageDto> RecalculateUsageAsync(CancellationToken cancellationToken = default);
 }

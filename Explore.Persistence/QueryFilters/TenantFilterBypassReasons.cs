@@ -20,6 +20,9 @@ public static class TenantFilterBypassReasons
     public const string ExternalApiKeyPlatformUsageReport =
         "Platform usage reporting intentionally aggregates API-key quota rows across tenants.";
 
+    public const string InstanceStorageAdministration =
+        "Instance storage administration intentionally reports and reconciles storage usage across all tenants.";
+
     public const string TenantCapabilityResolution =
         "Tenant capability resolution reads module flags by explicit tenant id before ambient context is guaranteed.";
 

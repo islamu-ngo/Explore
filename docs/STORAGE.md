@@ -6,7 +6,7 @@ ABOUTME: Separates implemented object flows from UI/client gaps so operators do 
 > **Audience:** Operators | Admins | Contributors
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-29
+> **Last Verified:** 2026-05-30
 > **Source Anchors:** `Explore.Infrastructure/Storage/`, `Explore.Infrastructure/Services/ObjectStorageService.cs`, `Explore.API/Controllers/StorageObjectController.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Storage uses S3-compatible object storage for uploaded assets and metadata-backed `StorageObject` records for application discovery.
@@ -19,7 +19,7 @@ Storage uses S3-compatible object storage for uploaded assets and metadata-backe
 | Configuration resolution | `S3ConfigResolver` resolves tenant-aware settings from persisted settings first, then `IConfiguration`, with a five-minute cache. |
 | Public reads | `StorageObjectController` streams file content by `StorageObject.Id`; public images use the same metadata reader with public-image visibility checks. Caller-supplied object-key read and presign routes are removed. |
 | Authenticated writes | Upload URL generation requires authentication; `StorageObject` create/update/delete operations require authentication and `storage_object` resource authorization. |
-| Admin settings | Instance admins can read, update, and test storage settings through instance settings endpoints and the admin UI. |
+| Admin settings | Instance admins can read/update provider policy, quotas, max-upload ceilings, delegation lock, usage, and redacted optional S3 settings through instance settings endpoints. Provider test and usage recalculation actions are API-backed. |
 | Local self-hosting | Docker Compose can run MinIO through the optional `storage` profile. |
 
 The API delete endpoint exists, but `Explore.Blazor.Client/Services/ImageStorageService.cs` still returns `false` from `DeleteImageAsync`. Do not document a completed Blazor client delete flow until that helper is implemented.
@@ -60,7 +60,7 @@ Direct object-key read routes are not part of the local-first contract. The remo
 | Get file/public image/presigned download URL | Public file and image reads resolve by `StorageObject.Id`; arbitrary object-key read/presign endpoints are removed. |
 | Generate upload URL | Requires authentication. |
 | Create/update/delete storage object metadata | Requires authentication and `storage_object` resource authorization. |
-| Instance storage settings read/update/test | Instance-admin/setup-secret boundaries are handled by instance settings endpoints. |
+| Instance storage settings read/update/test/recalculate | Instance-admin/setup-secret boundaries are handled by instance settings endpoints. Read responses redact S3 secrets and expose configured flags instead. |
 
 HATEOAS policies mark create/delete affordances as authenticated operations. Treat link presence as an authorization hint, not as a replacement for server-side enforcement.
 
@@ -85,7 +85,7 @@ See [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for the full operatio
 | Local MinIO unavailable | Confirm Docker Compose was started with `--profile storage` and that bucket initialization completed. |
 | Tenant override confusion | Check `governance.lock_tenant_storage` and whether the runtime is single-tenant or multi-tenant. |
 
-The storage connection test uses `ObjectStorageService.TestConnectionAsync`, which attempts an S3 bucket listing through the resolved configuration.
+The storage connection test resolves the currently selected `IFileStorageProvider` and returns a provider-neutral status snapshot. Local mode validates the deployment-managed data root; S3-compatible mode reports unavailable status when selected but incomplete or unreachable. Usage recalculation rebuilds used/quarantined object totals from metadata while preserving active reserved-byte counters.
 
 ## Related Documentation
 

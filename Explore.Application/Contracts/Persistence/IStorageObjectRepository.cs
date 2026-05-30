@@ -10,4 +10,5 @@ public interface IStorageObjectRepository : IGenericRepository<StorageObject, Gu
     Task<StorageObject?> GetFileWithDetails(Guid id);
     Task<List<StorageObject>> GetFilesWithDetails();
     Task<(List<StorageObject> Items, int TotalCount)> GetFilesWithDetailsPaged(int pageNumber, int pageSize);
+    Task<IReadOnlyList<StorageObject>> GetAllForInstanceStorageReportAsync(CancellationToken cancellationToken);
 }

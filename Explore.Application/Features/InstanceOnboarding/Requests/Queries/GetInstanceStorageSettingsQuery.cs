@@ -1,5 +1,5 @@
-// ABOUTME: Query request for reading instance-level S3 storage settings from SystemSetting records.
-// ABOUTME: Returns InstanceStorageSettingsDto with current values for all 8 S3 configuration fields.
+// ABOUTME: Query request for reading provider-neutral instance storage admin settings.
+// ABOUTME: Returns redacted settings plus effective policy, usage, and provider status.
 
 using Explore.Application.DTOs.Onboarding;
 using MediatR;

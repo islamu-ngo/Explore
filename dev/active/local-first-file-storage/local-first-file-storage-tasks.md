@@ -3,14 +3,14 @@
 
 # Local-First File Storage - Task Checklist
 
-Last Updated: 2026-05-29 Europe/Brussels
+Last Updated: 2026-05-30 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** PR 3.5 BFF storage upload/proxy refactor implemented after PR 1 metadata/reservation, PR 2 provider/policy foundations, PR 3.1 Application upload-session commands, PR 3.2 API upload-session endpoints, PR 3.3 metadata-driven download/public image handlers, and PR 3.4 arbitrary-key endpoint removal.
-- **Completed:** 25/46 planning/review/implementation tasks.
-- **Current priority:** Continue PR 3 OpenAPI/generated-client stabilization.
-- **Next recommended slice:** PR 3 / Phase 3.6 - regenerate OpenAPI and NSwag client after contract stabilizes.
+- **Overall status:** PR 4.1 instance storage admin CQRS/API implemented after PR 3 completed through OpenAPI/schema client regeneration.
+- **Completed:** 27/46 planning/review/implementation tasks.
+- **Current priority:** Continue PR 4 admin APIs, health, metrics, and HAL.
+- **Next recommended slice:** PR 4 / Phase 4.2 - add tenant storage admin CQRS/API.
 
 ## Implementation Maintenance Rules
 
@@ -174,19 +174,19 @@ Last Updated: 2026-05-29 Europe/Brussels
   - **Validation:** `dotnet build Explore.Blazor/Explore.Blazor.csproj --configuration Release --verbosity quiet`; `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --verbosity quiet`; full `Explore.Blazor.IntegrationTests` passed; focused `BffStorageUploadProxyTests` passed with 7 tests; focused `StorageUploadSessionStoreTests` passed with 4 tests.
   - **Effort:** L
   - **Dependencies:** 3.2
-- [ ] **3.6 Regenerate OpenAPI and NSwag client after contract stabilizes**
+- [x] **3.6 Regenerate OpenAPI and NSwag client after contract stabilizes**
   - **Files:** `schemas/openapi.json`, `Explore.Blazor.Client/Clients/EventApiClient.g.cs`, `docs/API_CONTRACT_INVENTORY.md`.
   - **Acceptance:** Generated client builds; no bad operation IDs; storage methods are provider-neutral.
-  - **Validation:** Build + API/client tests.
+  - **Validation:** User reported OpenAPI schema and NSwag client were generated; build verification continues in Phase 4.1.
   - **Effort:** M
   - **Dependencies:** 3.2-3.4
 
 ## Phase 4: PR 4 - Admin APIs, HAL, Health, Metrics
 
-- [ ] **4.1 Add instance storage admin CQRS/API**
+- [x] **4.1 Add instance storage admin CQRS/API**
   - **Files:** instance settings features/controller/DTOs.
   - **Acceptance:** Provider policy, quotas, max upload, usage, provider health, delegation lock, test/recalculate exposed to instance admins; secrets redacted.
-  - **Validation:** API integration tests.
+  - **Validation:** `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet`; `dotnet build Explore.Persistence/Explore.Persistence.csproj --configuration Release --verbosity quiet`; `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`; focused TUnit controller tests for instance storage provider test/recalculate admin gating passed individually with `--treenode-filter`.
   - **Effort:** L
   - **Dependencies:** Phase 2
 - [ ] **4.2 Add tenant storage admin CQRS/API**

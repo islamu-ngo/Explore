@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -54,5 +55,13 @@ public class StorageObjectRepository : GenericRepository<StorageObject, Guid>, I
             .ToListAsync();
 
         return (items, totalCount);
+    }
+
+    public async Task<IReadOnlyList<StorageObject>> GetAllForInstanceStorageReportAsync(CancellationToken cancellationToken)
+    {
+        return await _dbContext.StorageObjects
+            .AsNoTracking()
+            .IgnoreTenantFilter(TenantFilterBypassReasons.InstanceStorageAdministration)
+            .ToListAsync(cancellationToken);
     }
 }

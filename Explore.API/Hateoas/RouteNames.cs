@@ -685,6 +685,7 @@ public static class RouteNames
     public const string GetInstanceStorageSettings = "GetInstanceStorageSettings";
     public const string UpdateInstanceStorageSettings = "UpdateInstanceStorageSettings";
     public const string TestInstanceStorageConnection = "TestInstanceStorageConnection";
+    public const string RecalculateInstanceStorageUsage = "RecalculateInstanceStorageUsage";
     public const string GetInstanceSmtpSettings = "GetInstanceSmtpSettings";
     public const string UpdateInstanceSmtpSettings = "UpdateInstanceSmtpSettings";
     public const string TestInstanceSmtpConnection = "TestInstanceSmtpConnection";

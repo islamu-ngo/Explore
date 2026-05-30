@@ -1,5 +1,5 @@
-// ABOUTME: Command for updating instance-level S3 storage settings by an instance administrator.
-// ABOUTME: Persists S3 configuration to SystemSetting records and invalidates the S3 config cache.
+// ABOUTME: Command for updating provider-neutral instance storage settings by an instance administrator.
+// ABOUTME: Persists policy, quota, delegation, and optional S3 provider configuration.
 
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Responses;

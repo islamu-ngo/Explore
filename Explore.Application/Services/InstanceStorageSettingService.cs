@@ -1,10 +1,12 @@
-// ABOUTME: Service implementation for managing instance S3 storage configuration.
-// ABOUTME: Handles S3-compatible object storage settings for the application.
+// ABOUTME: Service implementation for provider-neutral instance storage administration.
+// ABOUTME: Reads redacted settings, tests selected providers, and reconciles instance usage counters.
 
 using System.Text.Json;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.Models.Storage;
 using Explore.Domain;
 using Explore.Domain.Constants;
 
@@ -13,14 +15,32 @@ namespace Explore.Application.Services;
 public class InstanceStorageSettingService : IInstanceStorageSettingService
 {
     private readonly ISystemSettingRepository _systemSettingRepository;
+    private readonly IStoragePolicyResolver _storagePolicyResolver;
+    private readonly IStorageUsageCounterRepository _usageCounterRepository;
+    private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public InstanceStorageSettingService(ISystemSettingRepository systemSettingRepository)
+    public InstanceStorageSettingService(
+        ISystemSettingRepository systemSettingRepository,
+        IStoragePolicyResolver storagePolicyResolver,
+        IStorageUsageCounterRepository usageCounterRepository,
+        IStorageObjectRepository storageObjectRepository,
+        IUnitOfWork unitOfWork)
     {
         _systemSettingRepository = systemSettingRepository;
+        _storagePolicyResolver = storagePolicyResolver;
+        _usageCounterRepository = usageCounterRepository;
+        _storageObjectRepository = storageObjectRepository;
+        _unitOfWork = unitOfWork;
     }
 
-    public async Task<InstanceStorageSettingsDto> ReadSettingsAsync()
+    public async Task<InstanceStorageSettingsDto> ReadSettingsAsync(CancellationToken cancellationToken = default)
     {
+        var provider = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Provider);
+        var defaultMaxUploadBytes = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.DefaultMaxUploadBytes);
+        var defaultTenantQuotaBytes = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes);
+        var instanceMaxUploadBytes = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.InstanceMaxUploadBytes);
+        var lockTenantStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockStorage);
         var endpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Endpoint);
         var publicEndpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.PublicEndpoint);
         var bucketName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.BucketName);
@@ -30,53 +50,156 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
         var forcePathStyle = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.ForcePathStyle);
         var uploadExpiration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes);
 
+        var policy = await _storagePolicyResolver.ResolveAsync(null, cancellationToken);
+        var providerStatus = await TestProviderAsync(cancellationToken);
+        var usage = await ReadUsageAsync(cancellationToken);
+
         return new InstanceStorageSettingsDto
         {
+            Provider = NormalizeProvider(DeserializeString(provider?.Value, StorageProviders.Local)),
+            DefaultMaxUploadBytes = PositiveOrDefault(DeserializeLong(defaultMaxUploadBytes?.Value, StoragePolicyResolver.DefaultMaxUploadBytes), StoragePolicyResolver.DefaultMaxUploadBytes),
+            DefaultTenantQuotaBytes = PositiveOrDefault(DeserializeLong(defaultTenantQuotaBytes?.Value, StoragePolicyResolver.DefaultTenantQuotaBytes), StoragePolicyResolver.DefaultTenantQuotaBytes),
+            InstanceMaxUploadBytes = PositiveOrDefault(DeserializeLong(instanceMaxUploadBytes?.Value, StoragePolicyResolver.DefaultInstanceMaxUploadBytes), StoragePolicyResolver.DefaultInstanceMaxUploadBytes),
+            LockTenantStorage = DeserializeBoolean(lockTenantStorage?.Value, true),
             S3Endpoint = DeserializeString(endpoint?.Value, string.Empty),
             S3PublicEndpoint = DeserializeString(publicEndpoint?.Value, string.Empty),
             S3BucketName = DeserializeString(bucketName?.Value, string.Empty),
-            S3AccessKeyId = DeserializeString(accessKeyId?.Value, string.Empty),
-            S3SecretAccessKey = DeserializeString(secretAccessKey?.Value, string.Empty),
+            S3AccessKeyId = string.Empty,
+            S3SecretAccessKey = string.Empty,
+            S3AccessKeyConfigured = !string.IsNullOrWhiteSpace(DeserializeString(accessKeyId?.Value, string.Empty)),
+            S3SecretAccessKeyConfigured = !string.IsNullOrWhiteSpace(DeserializeString(secretAccessKey?.Value, string.Empty)),
             S3Region = DeserializeString(region?.Value, "fsn1"),
             S3ForcePathStyle = DeserializeBoolean(forcePathStyle?.Value, true),
-            S3UploadUrlExpirationMinutes = DeserializeInt(uploadExpiration?.Value, 60)
+            S3UploadUrlExpirationMinutes = DeserializeInt(uploadExpiration?.Value, 60),
+            EffectivePolicy = MapPolicy(policy),
+            Usage = usage,
+            ProviderStatus = providerStatus
         };
     }
 
     public async Task ApplySettingsAsync(InstanceStorageSettingsDto settings)
     {
+        var provider = NormalizeProvider(settings.Provider);
+
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Provider,
+            JsonSerializer.Serialize(provider), SettingValueType.String, false,
+            "ObjectStorage", 1, "Selected storage provider. Local filesystem is default; S3-compatible storage is optional.");
+
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.DefaultMaxUploadBytes,
+            JsonSerializer.Serialize(settings.DefaultMaxUploadBytes), SettingValueType.Long, false,
+            "ObjectStorage", 2, "Default maximum upload size in bytes for tenant storage policy.");
+
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.DefaultTenantQuotaBytes,
+            JsonSerializer.Serialize(settings.DefaultTenantQuotaBytes), SettingValueType.Long, false,
+            "ObjectStorage", 3, "Default tenant storage quota in bytes.");
+
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.InstanceMaxUploadBytes,
+            JsonSerializer.Serialize(settings.InstanceMaxUploadBytes), SettingValueType.Long, false,
+            "ObjectStorage", 4, "Instance-wide upload ceiling in bytes; tenant overrides cannot exceed this value.");
+
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.TenantDelegation.LockStorage,
+            JsonSerializer.Serialize(settings.LockTenantStorage), SettingValueType.Boolean, false,
+            "Governance", 5, "Lock tenant-level storage overrides when running multi-tenant deployments.");
+
         await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Endpoint,
             JsonSerializer.Serialize(settings.S3Endpoint.Trim()), SettingValueType.String, false,
-            "ObjectStorage", 1, "S3-compatible endpoint URL (e.g., https://fsn1.your-objectstorage.com)");
+            "ObjectStorage", 6, "S3-compatible endpoint URL (e.g., https://fsn1.your-objectstorage.com)");
 
         await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.PublicEndpoint,
             JsonSerializer.Serialize(settings.S3PublicEndpoint.Trim()), SettingValueType.String, false,
-            "ObjectStorage", 2, "Public endpoint for presigned URLs (if different from internal endpoint)");
+            "ObjectStorage", 7, "Public endpoint for S3-compatible public object access when configured.");
 
         await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.BucketName,
             JsonSerializer.Serialize(settings.S3BucketName.Trim()), SettingValueType.String, false,
-            "ObjectStorage", 3, "S3 bucket name for object storage");
+            "ObjectStorage", 8, "S3 bucket name for object storage");
 
-        await UpsertSystemSettingAsync(InfrastructureSecretSettingKeys.Storage.AccessKeyId,
-            JsonSerializer.Serialize(settings.S3AccessKeyId.Trim()), SettingValueType.String, false,
-            "ObjectStorage", 4, "S3 access key ID for authentication");
+        if (!string.IsNullOrWhiteSpace(settings.S3AccessKeyId))
+        {
+            await UpsertSystemSettingAsync(InfrastructureSecretSettingKeys.Storage.AccessKeyId,
+                JsonSerializer.Serialize(settings.S3AccessKeyId.Trim()), SettingValueType.String, false,
+                "ObjectStorage", 9, "S3 access key ID for authentication");
+        }
 
-        await UpsertSystemSettingAsync(InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
-            JsonSerializer.Serialize(settings.S3SecretAccessKey.Trim()), SettingValueType.String, false,
-            "ObjectStorage", 5, "S3 secret access key for authentication");
+        if (!string.IsNullOrWhiteSpace(settings.S3SecretAccessKey))
+        {
+            await UpsertSystemSettingAsync(InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
+                JsonSerializer.Serialize(settings.S3SecretAccessKey.Trim()), SettingValueType.String, false,
+                "ObjectStorage", 10, "S3 secret access key for authentication");
+        }
 
         await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Region,
             JsonSerializer.Serialize(settings.S3Region.Trim()), SettingValueType.String, false,
-            "ObjectStorage", 6, "S3 region identifier (e.g., fsn1 for Hetzner, us-east-1 for AWS)");
+            "ObjectStorage", 11, "S3 region identifier (e.g., fsn1 for Hetzner, us-east-1 for AWS)");
 
         await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.ForcePathStyle,
             JsonSerializer.Serialize(settings.S3ForcePathStyle), SettingValueType.Boolean, false,
-            "ObjectStorage", 7, "Use path-style URLs (required by most non-AWS S3 providers)");
+            "ObjectStorage", 12, "Use path-style URLs (required by most non-AWS S3 providers)");
 
         await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes,
             JsonSerializer.Serialize(settings.S3UploadUrlExpirationMinutes > 0 ? settings.S3UploadUrlExpirationMinutes : 60),
             SettingValueType.Integer, false,
-            "ObjectStorage", 8, "Presigned upload URL expiration time in minutes");
+            "ObjectStorage", 13, "Legacy S3 presigned upload URL expiration time in minutes");
+    }
+
+    public async Task<InstanceStorageProviderStatusDto> TestProviderAsync(CancellationToken cancellationToken = default)
+    {
+        var provider = await _storagePolicyResolver.ResolveProviderAsync(null, cancellationToken);
+        var status = await provider.TestAsync(cancellationToken);
+        return MapProviderStatus(status);
+    }
+
+    public async Task<InstanceStorageUsageDto> RecalculateUsageAsync(CancellationToken cancellationToken = default)
+    {
+        return await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            var objects = await _storageObjectRepository.GetAllForInstanceStorageReportAsync(ct);
+            var counters = await _usageCounterRepository.GetAllTrackedForInstanceStorageRecalculationAsync(ct);
+            var countersByScope = counters
+                .GroupBy(counter => (counter.TenantId, Provider: NormalizeProvider(counter.Provider)))
+                .ToDictionary(group => group.Key, group => group.First());
+            var groupedObjects = objects
+                .GroupBy(storageObject => (storageObject.TenantId, Provider: NormalizeProvider(storageObject.Provider)))
+                .ToDictionary(group => group.Key, group => group.ToList());
+            var utcNow = DateTime.UtcNow;
+
+            foreach (var group in groupedObjects)
+            {
+                if (!countersByScope.TryGetValue(group.Key, out var counter))
+                {
+                    counter = new StorageUsageCounter
+                    {
+                        TenantId = group.Key.TenantId,
+                        Provider = group.Key.Provider
+                    };
+                    countersByScope[group.Key] = counter;
+                    await _usageCounterRepository.Create(counter);
+                }
+
+                var quarantinedBytes = group.Value
+                    .Where(storageObject => storageObject.LifecycleState == StorageObjectLifecycleStates.Quarantined)
+                    .Sum(storageObject => storageObject.Size);
+                var usedBytes = group.Value
+                    .Where(storageObject => storageObject.LifecycleState != StorageObjectLifecycleStates.Quarantined)
+                    .Sum(storageObject => storageObject.Size);
+
+                counter.Recalculate(usedBytes, counter.ReservedBytes, quarantinedBytes, group.Value.Count, utcNow);
+                await _usageCounterRepository.Update(counter);
+            }
+
+            foreach (var counter in counters.Where(counter => !groupedObjects.ContainsKey((counter.TenantId, NormalizeProvider(counter.Provider)))))
+            {
+                counter.Recalculate(0, counter.ReservedBytes, 0, 0, utcNow);
+                await _usageCounterRepository.Update(counter);
+            }
+
+            return await ReadUsageAsync(ct);
+        }, cancellationToken);
+    }
+
+    private async Task<InstanceStorageUsageDto> ReadUsageAsync(CancellationToken cancellationToken)
+    {
+        var counters = await _usageCounterRepository.GetAllForInstanceStorageReportAsync(cancellationToken);
+        return MapUsage(counters);
     }
 
     private static int DeserializeInt(string? rawValue, int defaultValue)
@@ -93,6 +216,23 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
         catch
         {
             return int.TryParse(rawValue, out var parsed) ? parsed : defaultValue;
+        }
+    }
+
+    private static long DeserializeLong(string? rawValue, long defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return defaultValue;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<long>(rawValue);
+        }
+        catch
+        {
+            return long.TryParse(rawValue, out var parsed) ? parsed : defaultValue;
         }
     }
 
@@ -129,6 +269,77 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
         {
             return rawValue.Trim('"');
         }
+    }
+
+    private static string NormalizeProvider(string? provider)
+        => provider?.Trim().ToLowerInvariant() switch
+        {
+            StorageProviders.S3Compatible => StorageProviders.S3Compatible,
+            StorageProviders.Local => StorageProviders.Local,
+            _ => StorageProviders.Local
+        };
+
+    private static long PositiveOrDefault(long value, long defaultValue)
+        => value > 0 ? value : defaultValue;
+
+    private static InstanceStorageEffectivePolicyDto MapPolicy(ResolvedStoragePolicy policy)
+        => new()
+        {
+            Provider = policy.Provider,
+            MaxUploadBytes = policy.MaxUploadBytes,
+            TenantQuotaBytes = policy.TenantQuotaBytes,
+            InstanceMaxUploadBytes = policy.InstanceMaxUploadBytes,
+            TenantOverridesAllowed = policy.TenantOverridesAllowed,
+            TenantStorageLocked = policy.TenantStorageLocked,
+            ProviderSource = policy.ProviderSource.ToString(),
+            MaxUploadSource = policy.MaxUploadSource.ToString(),
+            QuotaSource = policy.QuotaSource.ToString()
+        };
+
+    private static InstanceStorageProviderStatusDto MapProviderStatus(FileStorageProviderStatus status)
+        => new()
+        {
+            Provider = status.Provider,
+            IsAvailable = status.IsAvailable,
+            SupportsServerSideStreaming = status.SupportsServerSideStreaming,
+            SupportsBrowserDirectUpload = status.SupportsBrowserDirectUpload,
+            FailureCode = status.FailureCode,
+            Message = status.Message
+        };
+
+    private static InstanceStorageUsageDto MapUsage(IReadOnlyList<StorageUsageCounter> counters)
+    {
+        var providerUsage = counters
+            .GroupBy(counter => NormalizeProvider(counter.Provider))
+            .Select(group => new InstanceStorageProviderUsageDto
+            {
+                Provider = group.Key,
+                UsedBytes = group.Sum(counter => counter.UsedBytes),
+                ReservedBytes = group.Sum(counter => counter.ReservedBytes),
+                QuarantinedBytes = group.Sum(counter => counter.QuarantinedBytes),
+                ObjectCount = group.Sum(counter => counter.ObjectCount),
+                LastRecalculatedAt = group
+                    .Where(counter => counter.LastRecalculatedAt.HasValue)
+                    .Select(counter => counter.LastRecalculatedAt)
+                    .DefaultIfEmpty()
+                    .Max()
+            })
+            .OrderBy(usage => usage.Provider, StringComparer.Ordinal)
+            .ToList();
+
+        return new InstanceStorageUsageDto
+        {
+            UsedBytes = counters.Sum(counter => counter.UsedBytes),
+            ReservedBytes = counters.Sum(counter => counter.ReservedBytes),
+            QuarantinedBytes = counters.Sum(counter => counter.QuarantinedBytes),
+            ObjectCount = counters.Sum(counter => counter.ObjectCount),
+            LastRecalculatedAt = counters
+                .Where(counter => counter.LastRecalculatedAt.HasValue)
+                .Select(counter => counter.LastRecalculatedAt)
+                .DefaultIfEmpty()
+                .Max(),
+            Providers = providerUsage
+        };
     }
 
     private async Task UpsertSystemSettingAsync(

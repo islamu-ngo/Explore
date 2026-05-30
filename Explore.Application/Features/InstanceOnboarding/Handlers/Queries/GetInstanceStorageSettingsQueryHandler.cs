@@ -1,5 +1,5 @@
-// ABOUTME: Handles queries for instance-level S3 storage settings from SystemSetting records.
-// ABOUTME: Reads storage configuration through service layer for the admin settings UI.
+// ABOUTME: Handles queries for provider-neutral instance storage administration.
+// ABOUTME: Reads redacted storage settings through the service layer for the admin settings UI.
 
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
@@ -19,6 +19,6 @@ public class GetInstanceStorageSettingsQueryHandler : IRequestHandler<GetInstanc
 
     public async Task<InstanceStorageSettingsDto> Handle(GetInstanceStorageSettingsQuery request, CancellationToken cancellationToken)
     {
-        return await _storageSettingService.ReadSettingsAsync();
+        return await _storageSettingService.ReadSettingsAsync(cancellationToken);
     }
 }

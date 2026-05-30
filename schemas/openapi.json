@@ -22049,7 +22049,7 @@
           "InstanceSettings"
         ],
         "summary": "Get Instance Storage Settings",
-        "description": "Returns instance S3 storage settings. Only instance admins can access.",
+        "description": "Returns provider policy, quotas, usage, health, and redacted optional S3 settings. Only instance admins can access.",
         "operationId": "GetInstanceStorageSettings",
         "parameters": [
           {
@@ -22116,7 +22116,7 @@
           "InstanceSettings"
         ],
         "summary": "Update Instance Storage Settings",
-        "description": "Updates instance S3 storage settings. Requires instance administrator.",
+        "description": "Updates instance storage provider policy, quotas, delegation lock, and optional S3 settings. Requires instance administrator.",
         "operationId": "UpdateInstanceStorageSettings",
         "parameters": [
           {
@@ -22220,7 +22220,7 @@
           "InstanceSettings"
         ],
         "summary": "Test Storage Connection",
-        "description": "Tests the S3 storage connection using current settings.",
+        "description": "Tests the currently selected storage provider using current instance settings.",
         "operationId": "TestInstanceStorageConnection",
         "parameters": [
           {
@@ -22243,13 +22243,88 @@
             "description": "OK",
             "content": {
               "text/plain; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageProviderStatusDto"
+                }
               },
               "application/json; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageProviderStatusDto"
+                }
               },
               "text/json; v=0.1": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageProviderStatusDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/instance/settings/storage/usage/recalculate": {
+      "post": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Recalculate Storage Usage",
+        "description": "Reconciles instance-wide storage usage counters from storage metadata. Requires instance administrator.",
+        "operationId": "RecalculateInstanceStorageUsage",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageUsageDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageUsageDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageUsageDto"
+                }
               }
             }
           },
@@ -57920,9 +57995,162 @@
           }
         }
       },
+      "InstanceStorageEffectivePolicyDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "maxUploadBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "tenantQuotaBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "instanceMaxUploadBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "tenantOverridesAllowed": {
+            "type": "boolean"
+          },
+          "tenantStorageLocked": {
+            "type": "boolean"
+          },
+          "providerSource": {
+            "type": "string"
+          },
+          "maxUploadSource": {
+            "type": "string"
+          },
+          "quotaSource": {
+            "type": "string"
+          }
+        }
+      },
+      "InstanceStorageProviderStatusDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "supportsServerSideStreaming": {
+            "type": "boolean"
+          },
+          "supportsBrowserDirectUpload": {
+            "type": "boolean"
+          },
+          "failureCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "InstanceStorageProviderUsageDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "usedBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reservedBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "quarantinedBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "objectCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "lastRecalculatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "InstanceStorageSettingsDto": {
         "type": "object",
         "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "defaultMaxUploadBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "defaultTenantQuotaBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "instanceMaxUploadBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "lockTenantStorage": {
+            "type": "boolean"
+          },
           "s3Endpoint": {
             "type": "string"
           },
@@ -57938,6 +58166,12 @@
           "s3SecretAccessKey": {
             "type": "string"
           },
+          "s3AccessKeyConfigured": {
+            "type": "boolean"
+          },
+          "s3SecretAccessKeyConfigured": {
+            "type": "boolean"
+          },
           "s3Region": {
             "type": "string"
           },
@@ -57951,6 +58185,65 @@
               "string"
             ],
             "format": "int32"
+          },
+          "effectivePolicy": {
+            "$ref": "#/components/schemas/InstanceStorageEffectivePolicyDto"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/InstanceStorageUsageDto"
+          },
+          "providerStatus": {
+            "$ref": "#/components/schemas/InstanceStorageProviderStatusDto"
+          }
+        }
+      },
+      "InstanceStorageUsageDto": {
+        "type": "object",
+        "properties": {
+          "usedBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reservedBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "quarantinedBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "objectCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "lastRecalculatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InstanceStorageProviderUsageDto"
+            }
           }
         }
       },

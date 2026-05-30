@@ -295,7 +295,7 @@ public class InstanceSettingsController : ExploreControllerBase
 
     [HttpGet("storage", Name = RouteNames.GetInstanceStorageSettings)]
     [EndpointSummary("Get Instance Storage Settings")]
-    [EndpointDescription("Returns instance S3 storage settings. Only instance admins can access.")]
+    [EndpointDescription("Returns provider policy, quotas, usage, health, and redacted optional S3 settings. Only instance admins can access.")]
     [ProducesResponseType(typeof(InstanceStorageSettingsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<InstanceStorageSettingsDto>> GetStorageSettings(CancellationToken cancellationToken = default)
@@ -307,7 +307,7 @@ public class InstanceSettingsController : ExploreControllerBase
 
     [HttpPut("storage", Name = RouteNames.UpdateInstanceStorageSettings)]
     [EndpointSummary("Update Instance Storage Settings")]
-    [EndpointDescription("Updates instance S3 storage settings. Requires instance administrator.")]
+    [EndpointDescription("Updates instance storage provider policy, quotas, delegation lock, and optional S3 settings. Requires instance administrator.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -324,16 +324,28 @@ public class InstanceSettingsController : ExploreControllerBase
 
     [HttpPost("storage/test", Name = RouteNames.TestInstanceStorageConnection)]
     [EndpointSummary("Test Storage Connection")]
-    [EndpointDescription("Tests the S3 storage connection using current settings.")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [EndpointDescription("Tests the currently selected storage provider using current instance settings.")]
+    [ProducesResponseType(typeof(InstanceStorageProviderStatusDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult> TestStorageConnection(CancellationToken cancellationToken = default)
+    public async Task<ActionResult<InstanceStorageProviderStatusDto>> TestStorageConnection(CancellationToken cancellationToken = default)
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
 
-        var storageService = HttpContext.RequestServices.GetRequiredService<Explore.Application.Contracts.Infrastructure.IObjectStorageService>();
-        var success = await storageService.TestConnectionAsync(cancellationToken);
-        return Ok(new { success, message = success ? "Connection successful." : "Connection failed. Please verify your S3 settings." });
+        var status = await _mediator.Send(new TestInstanceStorageProviderQuery(), cancellationToken);
+        return Ok(status);
+    }
+
+    [HttpPost("storage/usage/recalculate", Name = RouteNames.RecalculateInstanceStorageUsage)]
+    [EndpointSummary("Recalculate Storage Usage")]
+    [EndpointDescription("Reconciles instance-wide storage usage counters from storage metadata. Requires instance administrator.")]
+    [ProducesResponseType(typeof(InstanceStorageUsageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<InstanceStorageUsageDto>> RecalculateStorageUsage(CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
+
+        var usage = await _mediator.Send(new RecalculateInstanceStorageUsageCommand(), cancellationToken);
+        return Ok(usage);
     }
 
     [HttpGet("smtp", Name = RouteNames.GetInstanceSmtpSettings)]

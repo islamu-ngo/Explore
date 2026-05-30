@@ -1,0 +1,59 @@
+// ABOUTME: FluentValidation rules for provider-neutral instance storage admin settings.
+// ABOUTME: Enforces byte ceilings, provider allow-listing, and optional S3 URL shape before persistence.
+
+using Explore.Domain;
+using FluentValidation;
+
+namespace Explore.Application.DTOs.Onboarding.Validators;
+
+public sealed class InstanceStorageSettingsDtoValidator : AbstractValidator<InstanceStorageSettingsDto>
+{
+    public InstanceStorageSettingsDtoValidator()
+    {
+        RuleFor(settings => settings.Provider)
+            .Must(provider => StorageProviders.All.Contains(NormalizeProvider(provider)))
+            .WithMessage("Storage provider must be local or s3_compatible.");
+
+        RuleFor(settings => settings.DefaultMaxUploadBytes)
+            .GreaterThan(0)
+            .WithMessage("Default max upload bytes must be greater than zero.");
+
+        RuleFor(settings => settings.DefaultTenantQuotaBytes)
+            .GreaterThan(0)
+            .WithMessage("Default tenant quota bytes must be greater than zero.");
+
+        RuleFor(settings => settings.InstanceMaxUploadBytes)
+            .GreaterThan(0)
+            .WithMessage("Instance max upload bytes must be greater than zero.");
+
+        RuleFor(settings => settings.DefaultMaxUploadBytes)
+            .LessThanOrEqualTo(settings => settings.InstanceMaxUploadBytes)
+            .WithMessage("Default max upload bytes cannot exceed the instance max upload ceiling.");
+
+        RuleFor(settings => settings.S3Endpoint)
+            .Must(BeEmptyOrAbsoluteHttpUri)
+            .WithMessage("S3 endpoint must be an absolute HTTP or HTTPS URI.");
+
+        RuleFor(settings => settings.S3PublicEndpoint)
+            .Must(BeEmptyOrAbsoluteHttpUri)
+            .WithMessage("S3 public endpoint must be an absolute HTTP or HTTPS URI.");
+
+        RuleFor(settings => settings.S3UploadUrlExpirationMinutes)
+            .InclusiveBetween(1, 1440)
+            .WithMessage("S3 upload URL expiration must be between 1 and 1440 minutes.");
+    }
+
+    private static string NormalizeProvider(string? provider)
+        => provider?.Trim().ToLowerInvariant() ?? string.Empty;
+
+    private static bool BeEmptyOrAbsoluteHttpUri(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        return Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri) &&
+               (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+    }
+}

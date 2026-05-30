@@ -3,13 +3,13 @@
 
 # Local-First File Storage - Implementation Plan
 
-Last Updated: 2026-05-29 Europe/Brussels
+Last Updated: 2026-05-30 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Request:** Make server-local file storage the default backend while keeping S3-compatible object storage optional. Instance and tenant admins need controls for provider choice, upload limits, quotas, usage, health, and operator actions.
 - **Task directory:** `dev/active/local-first-file-storage/`
-- **Planning status:** PR 1 foundation, PR 2 provider/policy foundations, PR 3.1 Application upload-session commands, PR 3.2 API upload-session endpoints, PR 3.3 metadata-driven download/public image handlers, PR 3.4 arbitrary-key route removal, and PR 3.5 BFF upload-session/proxy refactor are implemented after user approval - do not implement remaining work as one mega-PR.
+- **Planning status:** PR 1 foundation, PR 2 provider/policy foundations, PR 3.1 Application upload-session commands, PR 3.2 API upload-session endpoints, PR 3.3 metadata-driven download/public image handlers, PR 3.4 arbitrary-key route removal, PR 3.5 BFF upload-session/proxy refactor, PR 3.6 OpenAPI/generated-client regeneration, and PR 4.1 instance storage admin CQRS/API are implemented after user approval - do not implement remaining work as one mega-PR.
 - **Senior CTO decision:** Split before approval. The direction is right, but storage provider selection, persistence/quota integrity, API contract changes, BFF upload security, Blazor admin UX, and operations docs must be delivered in separate reviewable slices.
 - **Matched intents:** No exact intent exists for cross-layer storage-provider architecture. Fallback Contract applies. Closest intents: `add-cqrs-handler`, `add-write-endpoint`, `add-get-endpoint`, `add-ef-migration`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`.
 - **Relevant skills loaded:** `senior-cto-feedback`, `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, `design-system`, `accessibility`, `error-tracking`, `aspire`, `outbox-pattern`.
@@ -17,7 +17,7 @@ Last Updated: 2026-05-29 Europe/Brussels
 - **Primary layers touched:** Domain, Application, Persistence, Infrastructure, API, Blazor BFF, Blazor Client, Docs, Docker Compose, Aspire.
 - **Estimated complexity:** XL. The safe path is a sequence of small PRs, not one cross-layer feature branch.
 - **Baseline verification:** `dotnet build --configuration Release --verbosity quiet` passed on 2026-05-29 with existing package/deprecation warnings.
-- **Latest verification:** `Explore.Blazor` build, `Explore.Blazor.Client` build, full `Explore.Blazor.IntegrationTests`, focused BFF upload proxy tests, and focused upload-session store tests passed on 2026-05-29 after PR 3.5. Full Architecture, root Release build, and `Explore.Blazor.Client.Tests` remain blocked by unrelated active-worktree failures documented in context.
+- **Latest verification:** `Explore.Application`, `Explore.Persistence`, and `Explore.API` Release builds passed on 2026-05-30 after PR 4.1. Focused TUnit controller tests for instance storage provider test/recalculate admin gating passed individually with `--treenode-filter`. User reported OpenAPI schema and NSwag client regeneration before PR 4.1; regenerate again after Phase 4 admin API contract stabilization. Full Architecture, root Release build, and `Explore.Blazor.Client.Tests` remain blocked by unrelated active-worktree failures documented in context until rechecked.
 
 ### Contribution Contract Answers
 

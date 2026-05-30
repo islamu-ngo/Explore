@@ -1,10 +1,11 @@
-// ABOUTME: Handles updates to instance-level S3 storage settings by authorized instance administrators.
-// ABOUTME: Persists S3 configuration to SystemSetting records and invalidates the resolver cache.
+// ABOUTME: Handles updates to provider-neutral instance storage settings by instance administrators.
+// ABOUTME: Validates storage policy, persists settings, and invalidates S3 resolver cache when relevant.
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
@@ -39,9 +40,19 @@ public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<Updat
             return response;
         }
 
+        var validator = new InstanceStorageSettingsDtoValidator();
+        var validationResult = await validator.ValidateAsync(request.Settings, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Storage settings validation failed.";
+            response.Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList();
+            return response;
+        }
+
         await _storageSettingService.ApplySettingsAsync(request.Settings);
 
-        // Invalidate S3 config cache so changes take effect immediately
+        // Invalidate S3 config cache so optional S3 provider changes take effect immediately.
         _s3ConfigResolver.InvalidateCache();
 
         response.Success = true;

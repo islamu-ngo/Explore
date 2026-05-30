@@ -3,7 +3,7 @@
 
 # Local-First File Storage - Context
 
-Last Updated: 2026-05-29 Europe/Brussels
+Last Updated: 2026-05-30 Europe/Brussels
 
 ## SESSION PROGRESS (2026-05-29 Europe/Brussels)
 
@@ -89,17 +89,28 @@ Last Updated: 2026-05-29 Europe/Brussels
   - `/bff/storage/upload-proxy` rejects raw upload destinations, validates the caller-owned BFF session, requires exact file size/content type match, and streams bytes to `api/storageobject/upload-sessions/{id}/content`;
   - successful browser proxy uploads now return metadata-backed `/api/storageobject/{id}/public` and `/content` URLs from the finalized API session response;
   - Blazor image upload clients pass expected file size into the BFF session request, use BFF proxy upload results directly in browser flows, and no longer call removed arbitrary-key presigned download routes.
+- Completed PR 3.6 OpenAPI/schema client regeneration:
+  - user reported `schemas/openapi.json` and the NSwag API client were regenerated after the provider-neutral upload/download contract stabilized;
+  - build verification continues as part of the Phase 4.1 slice.
+- Implemented PR 4.1 instance storage admin CQRS/API:
+  - `InstanceStorageSettingsDto` now exposes provider, default max-upload bytes, instance max-upload ceiling, default tenant quota, delegation lock, effective policy sources, provider health, instance usage, and optional S3 settings with secrets redacted to configured flags;
+  - `InstanceStorageSettingsDtoValidator` is manually instantiated in the update command handler and validates provider allow-listing, positive long byte limits, max-upload ceiling consistency, S3 endpoint URL shape, and S3 upload URL expiration bounds;
+  - `InstanceStorageSettingService` now reads/writes provider-neutral policy settings, preserves existing S3 secrets when redacted read models post empty secret fields, resolves selected provider health through `IStoragePolicyResolver`, and recalculates usage counters from storage metadata while preserving active reservations;
+  - `IStorageObjectRepository` and `IStorageUsageCounterRepository` gained entity-returning instance-admin report methods that intentionally bypass tenant filters with the auditable `InstanceStorageAdministration` reason;
+  - `InstanceSettingsController` now exposes provider-neutral `POST /api/instance/settings/storage/test` and new `POST /api/instance/settings/storage/usage/recalculate` endpoints through MediatR, with instance-admin/setup-secret gating kept at the existing controller boundary;
+  - `docs/STORAGE.md` and `docs/API_CHANGELOG.md` were updated for the provider-neutral admin contract.
 
 ### IN PROGRESS
 
-- OpenAPI/client regeneration is still not implemented.
+- PR 4.2 tenant storage admin CQRS/API is next.
 
 ### NEXT
 
-1. Continue with PR 3.6 OpenAPI and NSwag generated-client regeneration after the storage contract is stable.
+1. Continue with PR 4.2 tenant storage admin CQRS/API.
 2. Re-read target source files before editing because this repo has an active dirty worktree.
-3. Resolve or work around unrelated generated-client test compile errors before running the Blazor client test project.
-4. After each slice, update plan/context/tasks before reporting completion.
+3. Regenerate OpenAPI/schema client again after the Phase 4 admin API surface stabilizes; PR 3.6 was completed before these new admin endpoints.
+4. Resolve or work around unrelated generated-client test compile errors before running the Blazor client test project.
+5. After each slice, update plan/context/tasks before reporting completion.
 
 ### BLOCKERS
 
@@ -117,13 +128,14 @@ Last Updated: 2026-05-29 Europe/Brussels
   - `Explore.Blazor.Client.Tests/Services/CustomPropertyAdminServiceTests.cs` has generated-client anonymous type mismatches.
 - `Explore.Blazor.Client.Tests` project build is currently blocked by the same unrelated `CustomPropertyAdminServiceTests` generated-client anonymous type mismatches, so focused client service tests for the BFF upload client could not be executed through that test project in this slice.
 - `git diff --check` currently fails in unrelated generated client whitespace at `Explore.Blazor.Client/Clients/EventApiClient.g.cs` lines 5610, 6944, 7941, 8024, 8111, 8197, 37567, 37653, and 38734. That generated file was not part of the PR 3.5 BFF upload proxy changes.
+- OpenAPI schema/client were reported regenerated for PR 3.6, but Phase 4.1 changed the API contract again by adding provider-neutral admin fields and `storage/usage/recalculate`; regenerate again when Phase 4 API contract stabilizes.
 
 ## Quick Resume
 
 1. Read `dev/active/local-first-file-storage/local-first-file-storage-plan.md`.
 2. Read `dev/active/local-first-file-storage/local-first-file-storage-tasks.md`.
 3. Review the PR 1 files/migration if continuing the same slice.
-4. Start with PR 3.5 BFF storage upload/proxy refactor.
+4. Continue with PR 4.2 tenant storage admin CQRS/API.
 5. Keep all three dev docs current after every meaningful implementation slice.
 
 ## Key Files And Responsibilities
