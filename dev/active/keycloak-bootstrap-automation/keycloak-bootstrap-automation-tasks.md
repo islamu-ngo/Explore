@@ -7,9 +7,9 @@ Last Updated: 2026-05-30 Europe/Brussels
 
 ## Status Summary
 - **Overall status:** Implementation in progress
-- **Completed:** 26/33
-- **Current priority:** Finish Phase 4 UI form wiring or proceed to Phase 5 operator documentation for the setup-gated Keycloak bootstrap path.
-- **Next recommended slice:** Add the onboarding UI mode that collects one-time Keycloak bootstrap credentials, clears them after submit, and calls the new Blazor service method.
+- **Completed:** 27/33
+- **Current priority:** Proceed to Phase 5 operator documentation for the completed setup-gated Keycloak bootstrap path.
+- **Next recommended slice:** Update self-hosting, configuration/secrets, and troubleshooting docs for external Keycloak bootstrap permissions and recovery.
 
 ## Implementation Maintenance Rules
 - [x] Before starting work, read plan/context/tasks.
@@ -120,7 +120,7 @@ Last Updated: 2026-05-30 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** 3.2-3.4.
 
-## Phase 4: API Endpoint And BFF/UI Wiring 🟡 IN PROGRESS
+## Phase 4: API Endpoint And BFF/UI Wiring ✅ COMPLETE
 - [x] **4.1 Add setup-gated API endpoint**
   - **Files:** `Explore.API/Controllers/InstanceOnboardingController.cs`, `Explore.API/Hateoas/RouteNames.cs`
   - **Acceptance:** route has explicit template/name, `[AllowAnonymous]`, `[SetupSecretRequired]`, endpoint classification, response types, and dispatches command.
@@ -141,19 +141,19 @@ Last Updated: 2026-05-30 Europe/Brussels
   - **Dependencies:** 4.1.
 - [x] **4.4 Add Blazor service/API methods and models**
   - **Files:** `Explore.Blazor.Client/Services/IInstanceOnboardingApi.cs`, `Explore.Blazor.Client/Services/InstanceOnboardingService.cs`
-  - **Acceptance:** Blazor client service can call bootstrap endpoint and receives safe command response; UI-specific credential clearing remains in task 4.5.
+  - **Acceptance:** Blazor client service can call bootstrap endpoint and receives safe command response; UI-specific credential clearing is handled by task 4.5.
   - **Validation:** focused `Explore.Blazor.Client.Tests` for `InstanceOnboardingServiceTests` passed.
   - **Effort:** M
   - **Dependencies:** 4.1.
-- [ ] **4.5 Update auth-provider onboarding UI**
+- [x] **4.5 Update auth-provider onboarding UI**
   - **Files:** `Explore.Blazor.Client/Pages/Onboarding/AuthProviderConfiguration.razor`
   - **Acceptance:** offers manual OIDC config vs bootstrap Keycloak config, labels bootstrap credential as one-time/not stored, has accessible labels/helper text/errors.
-  - **Validation:** `Explore.Blazor.Client.Tests`; manual UI smoke.
+  - **Validation:** focused `AuthProviderConfigurationSourceTests` passed; `Explore.Blazor.Client` build passed through full release build. Manual UI smoke remains recommended.
   - **Effort:** M
   - **Dependencies:** 4.4.
 - [x] **4.6 Refresh auth schemes after bootstrap**
   - **Files:** UI/service/BFF existing auth refresh path.
-  - **Acceptance:** successful bootstrap triggers `/bff/auth/refresh-schemes` through `InstanceOnboardingService`; the remaining UI task must call this service method.
+  - **Acceptance:** successful bootstrap triggers `/bff/auth/refresh-schemes` through `InstanceOnboardingService`; the UI now calls this service method.
   - **Validation:** focused Blazor client service tests passed for success and failure refresh behavior.
   - **Effort:** S
   - **Dependencies:** 4.4 for service-level refresh; 4.5 for visible UI invocation.
@@ -194,7 +194,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 - [x] **6.2 Run affected test projects individually**
   - **Files:** n/a
   - **Acceptance:** Application, Infrastructure, API integration, Blazor integration, Blazor client, and Architecture test projects pass or failures are documented with next recovery action.
-  - **Validation:** Application tests, Infrastructure tests, focused Phase 4 API integration tests, focused BFF forwarding tests, focused Blazor client service tests, build, focused Clean Architecture, focused Naming, focused API contract, and focused endpoint-classification tests passed. Focused BlazorClientArchitectureTests still fail on existing unrelated notification service violations; focused CqrsPatternTests still fail on an existing unrelated `AiChatRequest` naming/location issue; full Architecture suite remains blocked by unrelated dirty-worktree failures.
+  - **Validation:** Application tests, Infrastructure tests, focused Phase 4 API integration tests, focused BFF forwarding tests, focused Blazor client service tests, focused UI source tests, build, focused Clean Architecture, focused Naming, focused API contract, and focused endpoint-classification tests passed. Focused BlazorClientArchitectureTests still fail on existing unrelated notification service violations; focused CqrsPatternTests still fail on an existing unrelated `AiChatRequest` naming/location issue; full Architecture suite remains blocked by unrelated dirty-worktree failures.
   - **Effort:** L
   - **Dependencies:** all implementation tasks.
 - [ ] **6.3 Manual Compose smoke**
@@ -206,7 +206,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 - [x] **6.4 Refresh dev docs final state**
   - **Files:** plan/context/tasks.
   - **Acceptance:** docs reflect implemented scope, validation results, remaining work, and handoff.
-  - **Validation:** plan/context/tasks updated after Phase 1, Phase 2, Phase 3, and the Phase 4 transport slice plus focused verification.
+  - **Validation:** plan/context/tasks updated after Phase 1, Phase 2, Phase 3, and the completed Phase 4 API/BFF/UI slice plus focused verification.
   - **Effort:** S
   - **Dependencies:** validation.
 
@@ -217,7 +217,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 - [x] `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` passes when Infrastructure adapter added.
 - [x] `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` passes when API endpoint changed. Focused `InstanceOnboardingControllerTests` passed sequentially.
 - [x] `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` passes when BFF forwarding changed. Focused `SetupSecretForwardingHandlerTests` passed sequentially.
-- [x] `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passes when UI changed. Focused `InstanceOnboardingServiceTests` passed for the service slice; full UI task 4.5 remains.
+- [x] `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passes when UI changed. Focused `InstanceOnboardingServiceTests` passed for the service slice; focused `AuthProviderConfigurationSourceTests` passed for the UI mode.
 - [ ] `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passes for architecture/docs/context checks. Full suite currently fails on unrelated dirty-worktree authorization/raw-HTTP rules, an existing CQRS request-location issue, and existing Blazor notification service architecture violations; focused AgentContext schema/link, CleanArchitecture, Naming, API contract, and endpoint-classification checks passed.
 - [x] `docker compose config` passes when Compose changes.
 - [x] Docs updated where behavior/config/operations/API changed.

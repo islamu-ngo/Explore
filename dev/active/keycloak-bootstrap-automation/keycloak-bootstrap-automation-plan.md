@@ -8,7 +8,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 ## 0. Planning Metadata
 - **Request:** Plan how to automate Keycloak realm import/client secret synchronization so Docker Compose self-hosters and operators with an existing Keycloak instance do not manually edit the ISLAMU realm clients.
 - **Task directory:** `dev/active/keycloak-bootstrap-automation/`
-- **Planning status:** Approved for implementation and in progress. Phase 1 Compose-managed Keycloak init job, Phase 2 Application-layer bootstrap contract, Phase 3 Infrastructure adapter, and the Phase 4 setup-gated API/BFF/Blazor service transport slice are implemented; the Phase 4 onboarding UI mode and Phase 5 operator docs remain.
+- **Planning status:** Approved for implementation and in progress. Phase 1 Compose-managed Keycloak init job, Phase 2 Application-layer bootstrap contract, Phase 3 Infrastructure adapter, and Phase 4 setup-gated API/BFF/UI wiring are implemented; Phase 5 operator docs remain.
 - **Matched intents:** No exact intent in `.claude/contract/intents.yaml`. This is cross-cutting DevOps/API/Blazor/security work that touches Docker Compose, setup onboarding, Keycloak/OIDC, BFF trust boundaries, and docs.
 - **Fallback Contract:** `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, `docs/SECURITY-MODEL.md`, `docs/BLAZOR.md`, `docs/SELF_HOSTING.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`, plus path-scoped rules for touched API/BFF/test/docs files.
 - **Relevant skills:** `auth-patterns`, `blazor-bff-patterns`, `clean-architecture-rules`, `aspire` where orchestration is touched.
@@ -79,7 +79,7 @@ The business outcome is less manual self-hosting friction without making the API
 - `Explore.Blazor.IntegrationTests/Endpoints/BffSetupSecretEndpointsTests.cs`: BFF setup-secret sanitization.
 - `Explore.Blazor.IntegrationTests/Handlers/SetupSecretForwardingHandlerTests.cs`: setup-secret forwarding route gate.
 - Added in Phase 2: Application unit tests for bootstrap request validation, safe bootstrap failure behavior, successful runtime auth-provider persistence, and no admin-secret persistence.
-- Still missing: Compose init script smoke tests, onboarding UI tests/manual UI smoke, Phase 5 operator docs, and external-Keycloak end-to-end import/patch smoke tests.
+- Still missing: Compose init script smoke tests, manual onboarding UI smoke, Phase 5 operator docs, and external-Keycloak end-to-end import/patch smoke tests.
 
 ### 2.4 Existing Documentation And Contracts
 
@@ -232,13 +232,13 @@ BFF refreshes dynamic auth schemes; operator logs in to continue onboarding
 
 ### Phase 2: External Keycloak bootstrap contract
 - **Goal:** Define Application-layer DTOs/contracts for one-time Keycloak bootstrap without committing HTTP details to Application.
-- **Depends on:** User approval to start implementation was given. The setup-time API/BFF/Blazor service transport slice is implemented; UI exposure still needs credential-clearing/accessibility work.
+- **Depends on:** User approval to start implementation was given. The setup-time API/BFF/Blazor service transport and UI exposure slice are implemented.
 - **Relevant files:** `Explore.Application/DTOs/Onboarding/KeycloakBootstrap*.cs`, `Explore.Application/Onboarding/KeycloakBootstrapMode.cs`, `Explore.Application/Contracts/Services/IKeycloakBootstrapService.cs`, new command/handler/validator/tests.
 - **Related skills/rules:** clean-architecture-rules, auth-patterns, application-layer conventions.
 - **Acceptance criteria:** request model separates runtime OIDC values from bootstrap credentials; validators reject unsafe URLs/blank realm/client values/control chars/oversized secrets.
 - **Verification:** `Event.Application.UnitTests` passed; focused Clean Architecture and Naming architecture tests passed. Focused CqrsPatternTests and full architecture suite remain blocked by unrelated existing source/worktree failures.
 - **Rollback:** Remove new command/DTOs before API endpoint is wired.
-- **Implementation status:** Implemented for Application orchestration. Infrastructure Keycloak Admin API calls and setup-gated API/BFF/Blazor service transport are now implemented; the onboarding UI form is not wired yet.
+- **Implementation status:** Implemented for Application orchestration. Infrastructure Keycloak Admin API calls and setup-gated API/BFF/UI wiring are now implemented.
 
 #### Task 2.1: Define DTOs and service contract
 - **Type:** create
@@ -269,7 +269,7 @@ BFF refreshes dynamic auth schemes; operator logs in to continue onboarding
 - **Acceptance criteria:** adapter can authenticate, create/check realm, locate/create clients, update secrets; all logs redact credentials and tokens.
 - **Verification:** `Explore.Infrastructure.Tests`, release build, focused Clean Architecture and Naming architecture tests passed. Optional Testcontainers/manual external-Keycloak smoke remains future work.
 - **Rollback:** Leave Application contract unregistered; endpoint returns service unavailable until implementation exists.
-- **Implementation status:** Complete for Infrastructure. API/BFF/Blazor service transport is now wired; onboarding UI form is not wired yet.
+- **Implementation status:** Complete for Infrastructure. API/BFF/UI wiring is now implemented.
 
 #### Task 3.1: Implement Keycloak Admin client
 - **Type:** create
@@ -300,7 +300,7 @@ BFF refreshes dynamic auth schemes; operator logs in to continue onboarding
 - **Acceptance criteria:** endpoint is setup-secret protected; UI labels admin credential as one-time/not stored; BFF setup-secret forwarding includes the new endpoint path; auth schemes refresh after success.
 - **Verification:** API integration tests, BFF forwarding tests, UI/service tests.
 - **Rollback:** Hide UI mode and remove endpoint route.
-- **Implementation status:** Partially complete. The setup-secret-gated API route, BFF trusted setup-secret forwarding, Blazor service method/model, success-only auth-scheme refresh, and focused tests are implemented. The visible onboarding UI mode remains deferred.
+- **Implementation status:** Complete. The setup-secret-gated API route, BFF trusted setup-secret forwarding, Blazor service method/model, success-only auth-scheme refresh, visible onboarding UI mode, and focused tests are implemented.
 
 #### Task 4.1: Add setup-token-gated API route
 - **Type:** modify/create
@@ -322,7 +322,7 @@ BFF refreshes dynamic auth schemes; operator logs in to continue onboarding
 - **Dependencies:** Task 4.1
 - **Effort:** M
 - **Validation:** `Explore.Blazor.IntegrationTests`.
-- **Implementation status:** Complete for BFF and Blazor service transport. `SetupSecretForwardingHandler` explicitly covers the new route, `IInstanceOnboardingApi` and `InstanceOnboardingService` expose bootstrap calls, and successful service calls refresh auth schemes. The visible UI caller is deferred to Task 4.3.
+- **Implementation status:** Complete for BFF and Blazor service transport. `SetupSecretForwardingHandler` explicitly covers the new route, `IInstanceOnboardingApi` and `InstanceOnboardingService` expose bootstrap calls, and successful service calls refresh auth schemes. The visible UI caller is implemented in Task 4.3.
 
 #### Task 4.3: Add UI mode for external Keycloak bootstrap
 - **Type:** modify
@@ -332,8 +332,8 @@ BFF refreshes dynamic auth schemes; operator logs in to continue onboarding
 - **Acceptance Criteria:** UI warns credential is not stored; model clears secret fields after failure/success; no local role/claim authorization assumptions.
 - **Dependencies:** Task 4.2
 - **Effort:** M
-- **Validation:** `Explore.Blazor.Client.Tests` or manual UI smoke.
-- **Implementation status:** Not started. Service transport exists; the Razor UI mode, credential clearing, and accessibility review remain.
+- **Validation:** focused `AuthProviderConfigurationSourceTests` passed; manual UI smoke remains recommended.
+- **Implementation status:** Complete. Service transport exists, the Razor UI mode is wired, bootstrap credentials are labeled one-time/not stored, and bootstrap secret fields are cleared after submit.
 
 ### Phase 5: Tests, docs, and operational runbooks
 - **Goal:** Make behavior supportable for self-hosters and future agents.

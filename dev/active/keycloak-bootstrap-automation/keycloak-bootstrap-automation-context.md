@@ -56,24 +56,29 @@ Last Updated: 2026-05-30 Europe/Brussels
   - Focused `Explore.Blazor.Client.Tests` for `InstanceOnboardingServiceTests` passed.
   - `dotnet build --configuration Release --verbosity quiet` passed with 25 projects, 0 errors, and existing warnings.
   - Focused Architecture `ApiContractArchitectureTests` and `EndpointClassificationArchitectureTests` passed.
+- Phase 4 onboarding UI mode implemented:
+  - `AuthProviderConfiguration.razor` now offers manual OIDC configuration or Keycloak bootstrap configuration when Keycloak is enabled and not environment-managed.
+  - Bootstrap mode collects Keycloak base URL, realm, Blazor BFF client ID/secret, optional API client ID/secret, and one-time admin username/password.
+  - The UI labels bootstrap admin credentials as one-time/not stored, calls `InstanceOnboardingService.BootstrapKeycloakRealmAsync`, relies on the service-level auth-scheme refresh, and clears bootstrap client/admin secrets after submit whether bootstrap succeeds or fails.
+  - Added focused `AuthProviderConfigurationSourceTests` to guard the visible bootstrap affordance and secret-clearing call path.
 
 ### 🟡 IN PROGRESS
-- Phase 4 API/BFF/Blazor service transport is implemented. The remaining Phase 4 work is the actual onboarding UI form mode for collecting one-time Keycloak bootstrap credentials and clearing them after submit.
+- Phase 5 operator documentation remains. The code path through Compose init, Application contract, Infrastructure adapter, setup-gated API, BFF forwarding, Blazor service, and onboarding UI mode is implemented.
 
 ### ⏭️ NEXT
-1. Add the `AuthProviderConfiguration.razor` UI mode that calls `InstanceOnboardingService.BootstrapKeycloakRealmAsync`, labels the Keycloak admin credential as one-time/not stored, and clears sensitive fields after submit.
+1. Document the expected Keycloak Admin API permission model and external-Keycloak operator flow in Phase 5.
 2. Optionally run manual Compose smoke: `docker compose up -d keycloak-db keycloak keycloak-init` and then BFF login with the synchronized secret.
-3. Document the expected Keycloak Admin API permission model and external-Keycloak operator flow in Phase 5.
+3. Run manual UI smoke for `/onboarding/auth-provider` bootstrap mode against a disposable Keycloak realm.
 
 ### ⚠️ BLOCKERS
 - No blocker for Compose-managed Keycloak bootstrap, the Phase 2 Application contract, or the Phase 3 Infrastructure adapter.
 - Exact Keycloak Admin API permission set remains a documentation question before external-Keycloak operator docs are complete.
-- UI form implementation still needs careful credential clearing and accessibility review.
+- Manual UI smoke is still needed to validate the full browser flow against a disposable Keycloak realm.
 
 ## Quick Resume
 1. Read `keycloak-bootstrap-automation-plan.md`.
 2. Read `keycloak-bootstrap-automation-tasks.md`.
-3. Compose-managed Phase 1, Application-layer Phase 2, Infrastructure Phase 3, and the Phase 4 API/BFF/Blazor service transport slice are complete; do not rework them unless validation exposes a defect.
+3. Compose-managed Phase 1, Application-layer Phase 2, Infrastructure Phase 3, and Phase 4 API/BFF/UI wiring are complete; do not rework them unless validation exposes a defect.
 4. Keep plan/context/tasks updated after each meaningful implementation slice.
 5. Never store Keycloak admin/bootstrap credentials.
 
@@ -103,7 +108,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 | `Explore.Blazor/Services/DynamicAuthSchemeManager.cs` | Existing | BFF | Registers OIDC/OAuth schemes dynamically from env/DB config. | Refresh after successful setup bootstrap. |
 | `Explore.Blazor/Extensions/BffAuthEndpoints.cs` | Existing | BFF | Provides `/auth/providers` and `/bff/auth/refresh-schemes`. | Used after auth-provider save/bootstrap. |
 | `Explore.Blazor/Services/SetupSecretForwardingHandler.cs` | Existing | BFF | Forwards trusted setup secret to setup endpoints only. | Now explicitly covers the Keycloak bootstrap setup path. |
-| `Explore.Blazor.Client/Pages/Onboarding/AuthProviderConfiguration.razor` | Existing | Blazor UI | First-run auth-provider setup page. | Add external Keycloak bootstrap mode if approved. |
+| `Explore.Blazor.Client/Pages/Onboarding/AuthProviderConfiguration.razor` | Existing | Blazor UI | First-run auth-provider setup page. | Now offers manual OIDC vs Keycloak bootstrap mode and clears one-time bootstrap secrets after submit. |
 | `Explore.Blazor.Client/Services/IInstanceOnboardingApi.cs` | Existing | Blazor Client | Refit interface for onboarding/settings endpoints. | Now includes Keycloak bootstrap setup method. |
 | `Explore.Blazor.Client/Services/InstanceOnboardingService.cs` | Existing | Blazor Client | UI-friendly service wrapper around onboarding API. | Now includes bootstrap method, client request model, and success-only auth-scheme refresh. |
 | `docs/SELF_HOSTING.md` | Existing | Docs | Compose/self-hosting runbook. | Document no manual Keycloak UI secret step. |
@@ -268,11 +273,11 @@ Resolved so far:
 ## Handoff Notes
 
 ### Handoff — 2026-05-30 Europe/Brussels
-- **Current state:** Phase 1 Compose-managed Keycloak bootstrap, Phase 2 Application-layer external Keycloak bootstrap contract, Phase 3 Infrastructure Keycloak Admin API adapter, and Phase 4 API/BFF/Blazor service transport are implemented and documented. The UI form mode is not implemented.
-- **Next action:** Add `AuthProviderConfiguration.razor` UI mode or move to Phase 5 docs/operator runbooks if UI is deferred.
-- **Blockers:** No blocker for the transport slice. Remaining risks are UI credential-clearing/accessibility and documenting the minimum Keycloak Admin API permissions.
-- **Modified files:** `docker/keycloak/keycloak-init.sh`, `docker-compose.yml`, Phase 2 Application DTO/contract/validator/command/handler files, Phase 3 Infrastructure Keycloak bootstrap service/DI/test files, Phase 4 API route/BFF forwarding/Blazor service/test files, docs, and all three active dev docs.
-- **Validation:** `bash -n docker/keycloak/keycloak-init.sh`, `docker compose config --quiet`, `dotnet build --configuration Release --verbosity quiet`, `Event.Application.UnitTests`, `Explore.Infrastructure.Tests`, focused Phase 4 API integration/BFF forwarding/Blazor client tests, focused AgentContext schema/link tests, focused CleanArchitecture, focused Naming, focused API contract, and focused endpoint-classification tests passed. Full architecture suite still fails on unrelated dirty-worktree rules; focused CqrsPatternTests and focused BlazorClientArchitectureTests also fail on existing unrelated violations.
-- **Documentation impact:** Phase 1 operator docs and Phase 2/3/4 dev docs updated. Future external-Keycloak UI and operator docs remain.
+- **Current state:** Phase 1 Compose-managed Keycloak bootstrap, Phase 2 Application-layer external Keycloak bootstrap contract, Phase 3 Infrastructure Keycloak Admin API adapter, and Phase 4 API/BFF/UI wiring are implemented and documented.
+- **Next action:** Move to Phase 5 docs/operator runbooks and optional manual UI/Compose smoke against a disposable Keycloak realm.
+- **Blockers:** No code blocker for the completed Phase 4 path. Remaining risk is documenting the minimum Keycloak Admin API permissions and validating the browser flow manually.
+- **Modified files:** `docker/keycloak/keycloak-init.sh`, `docker-compose.yml`, Phase 2 Application DTO/contract/validator/command/handler files, Phase 3 Infrastructure Keycloak bootstrap service/DI/test files, Phase 4 API route/BFF forwarding/Blazor service/UI/test files, docs, and all three active dev docs.
+- **Validation:** `bash -n docker/keycloak/keycloak-init.sh`, `docker compose config --quiet`, `dotnet build --configuration Release --verbosity quiet`, `Event.Application.UnitTests`, `Explore.Infrastructure.Tests`, focused Phase 4 API integration/BFF forwarding/Blazor client service/UI source tests, focused AgentContext schema/link tests, focused CleanArchitecture, focused Naming, focused API contract, and focused endpoint-classification tests passed. Full architecture suite still fails on unrelated dirty-worktree rules; focused CqrsPatternTests and focused BlazorClientArchitectureTests also fail on existing unrelated violations.
+- **Documentation impact:** Phase 1 operator docs and Phase 2/3/4 dev docs updated. Future Phase 5 operator docs remain.
 - **Risks:** Do not allow convenience to become permanent Keycloak admin credential storage.
 - **Notes for next contributor/agent:** Keep implementation slices small and update all three dev docs after each slice.
