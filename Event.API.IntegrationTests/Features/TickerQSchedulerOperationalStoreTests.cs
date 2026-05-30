@@ -51,6 +51,12 @@ public sealed class TickerQSchedulerOperationalStoreTests
         var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApiTickerQDbContext>>();
         await using var db = await dbFactory.CreateDbContextAsync();
 
+        await db.Database.ExecuteSqlRawAsync("""
+            create table public."__EFMigrationsHistory" (
+                migration_id varchar(150) not null primary key,
+                product_version varchar(32) not null
+            );
+            """);
         await db.Database.MigrateAsync();
 
         var connection = db.Database.GetDbConnection();
@@ -66,6 +72,19 @@ public sealed class TickerQSchedulerOperationalStoreTests
         var schemaExists = (bool)(await command.ExecuteScalarAsync() ?? false);
 
         schemaExists.Should().BeTrue("TickerQ operational tables must live in their own scheduler schema");
+
+        command.CommandText = """
+            select exists (
+                select 1
+                from information_schema.tables
+                where table_schema = 'ticker'
+                  and table_name = '__EFMigrationsHistory'
+            );
+            """;
+        var schedulerHistoryExists = (bool)(await command.ExecuteScalarAsync() ?? false);
+
+        schedulerHistoryExists.Should().BeTrue(
+            "TickerQ must not reuse the primary application's snake_case EF migrations history table");
     }
 
     private sealed class TestWebHostEnvironment : IWebHostEnvironment

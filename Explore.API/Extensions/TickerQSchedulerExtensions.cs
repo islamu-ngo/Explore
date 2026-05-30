@@ -21,6 +21,9 @@ namespace Explore.API.Extensions;
 
 public static class TickerQSchedulerExtensions
 {
+    private const string CreateTickerQSchemaSql =
+        "CREATE SCHEMA IF NOT EXISTS \"" + ApiTickerQDbContext.Schema + "\";";
+
     public static IServiceCollection AddApiTickerQScheduler(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -60,7 +63,12 @@ public static class TickerQSchedulerExtensions
                 efOptions.SetSchema(ApiTickerQDbContext.Schema);
                 efOptions.UseTickerQDbContext<ApiTickerQDbContext>(dbOptions =>
                 {
-                    dbOptions.UseNpgsql(connectionString);
+                    dbOptions.UseNpgsql(connectionString, npgsqlOptions =>
+                    {
+                        npgsqlOptions.MigrationsHistoryTable(
+                            ApiTickerQDbContext.MigrationsHistoryTable,
+                            ApiTickerQDbContext.Schema);
+                    });
                 });
             });
 
@@ -144,6 +152,7 @@ public static class TickerQSchedulerExtensions
         await using var db = await dbFactory.CreateDbContextAsync();
         if (db.Database.IsRelational())
         {
+            await db.Database.ExecuteSqlRawAsync(CreateTickerQSchemaSql);
             await db.Database.MigrateAsync();
         }
     }

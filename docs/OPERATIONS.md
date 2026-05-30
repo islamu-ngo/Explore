@@ -287,7 +287,7 @@ Crash-window recovery is intentionally conservative. If a node dies after claimi
 
 TickerQ retries are infrastructure retries. Expected SMTP/provider outcomes should be caught by the drain service and persisted in `EmailDispatchOutbox`; only unexpected infrastructure failures should bubble to TickerQ as failed job executions.
 
-TickerQ operational state is stored by the API-owned `ApiTickerQDbContext` in the PostgreSQL `ticker` schema. The schema is fixed to `ticker` by startup validation because the scheduler migration owns concrete table placement; do not change `Scheduler:TickerQ:Schema` without adding a matching migration path.
+TickerQ operational state is stored by the API-owned `ApiTickerQDbContext` in the PostgreSQL `ticker` schema. The schema is fixed to `ticker` by startup validation because the scheduler migration owns concrete table placement; do not change `Scheduler:TickerQ:Schema` without adding a matching migration path. The scheduler DbContext also keeps its EF migration history table in the `ticker` schema so it never reads the primary application's snake_case migration history rows.
 
 Dashboard protection is enforced twice: TickerQ is configured with host authentication, and the API wraps `UseTickerQ()` with an instance-admin authorization guard for the configured dashboard path. If `Scheduler:TickerQ:DashboardEnabled=false`, the dashboard route is not exposed.
 

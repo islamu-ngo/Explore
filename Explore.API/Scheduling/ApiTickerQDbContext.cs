@@ -11,6 +11,7 @@ public sealed class ApiTickerQDbContext(DbContextOptions<ApiTickerQDbContext> op
     : TickerQDbContext<TimeTickerEntity, CronTickerEntity>(options)
 {
     public const string Schema = "ticker";
+    public const string MigrationsHistoryTable = "__EFMigrationsHistory";
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

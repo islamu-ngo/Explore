@@ -11,7 +11,14 @@ public sealed class ApiTickerQDbContextFactory : IDesignTimeDbContextFactory<Api
     public ApiTickerQDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<ApiTickerQDbContext>()
-            .UseNpgsql("Host=localhost;Database=tickerq_design_time;Username=postgres;Password=postgres")
+            .UseNpgsql(
+                "Host=localhost;Database=tickerq_design_time;Username=postgres;Password=postgres",
+                npgsqlOptions =>
+                {
+                    npgsqlOptions.MigrationsHistoryTable(
+                        ApiTickerQDbContext.MigrationsHistoryTable,
+                        ApiTickerQDbContext.Schema);
+                })
             .Options;
 
         return new ApiTickerQDbContext(options);
