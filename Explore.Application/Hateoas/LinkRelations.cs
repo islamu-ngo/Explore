@@ -249,5 +249,10 @@ public static class LinkRelations
     /// </summary>
     public const string Revoke = "revoke";
 
+    /// <summary>
+    /// Action link for sending a message into an AI assistant conversation.
+    /// </summary>
+    public const string SendMessage = "send-message";
+
     #endregion
 }

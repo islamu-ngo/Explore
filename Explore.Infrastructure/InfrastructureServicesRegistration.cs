@@ -6,6 +6,7 @@ using Amazon.S3;
 using Cerbos.Sdk;
 using Cerbos.Sdk.Builder;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Strategies;
@@ -178,7 +179,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IAnalyticsProvider>(sp => sp.GetRequiredService<RuntimeAnalyticsProvider>());
         services.AddScoped<IAnalyticsFeatureFlagProvider>(sp => sp.GetRequiredService<RuntimeAnalyticsProvider>());
 
-        // AI provider foundation. Runtime provider selection is added later; keep fake concrete-only for now.
+        // AI provider foundation. Concrete adapters stay internal; RuntimeAiChatProvider is the Application-facing selector.
         services.AddOptions<AiProviderSettings>()
             .Bind(configuration.GetSection(AiProviderSettings.SectionName));
         services.AddSingleton<AiProviderSettingsValidator>();
@@ -190,6 +191,9 @@ public static class InfrastructureServicesRegistration
             client.Timeout = Timeout.InfiniteTimeSpan;
         });
         services.AddScoped<OpenAiCompatibleChatProvider>();
+        services.AddScoped<RuntimeAiChatProvider>();
+        services.AddScoped<IAiChatProvider>(sp => sp.GetRequiredService<RuntimeAiChatProvider>());
+        services.AddScoped<IAiModelCatalog>(sp => sp.GetRequiredService<RuntimeAiChatProvider>());
 
         // Translation Management System providers (runtime-switchable via GovernanceSettings "localization.tms_provider")
         // All concrete providers are always registered; RuntimeTranslationProvider delegates at runtime.

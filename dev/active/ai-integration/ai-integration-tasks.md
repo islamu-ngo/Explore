@@ -8,9 +8,9 @@ Last Updated: 2026-05-29 Europe/Brussels
 ## Status Summary
 
 - **Overall status:** User-approved implementation in progress.
-- **Completed:** Phase 0 approval/baseline/provider decision; Phase 1 domain statuses/entities/tests; Phase 1 EF mappings/query filters/repository surface; Phase 2 provider-neutral Application contracts, expanded AI settings definitions/group, provider settings validator, deterministic fake provider, authenticated bootstrap query/API surface, provider health, egress safety, safe telemetry, and OpenAI-compatible HTTP adapter.
-- **Current priority:** Add runtime provider selection/reconciliation while EF migration generation remains deferred by unrelated dirty model changes.
-- **Next recommended slice:** Decide and implement runtime selection between static `AiProvider:*` deployment settings and tenant governance `ai_assistant.*`; generate an AI-scoped EF migration only after deciding how to handle unrelated dirty model changes.
+- **Completed:** Phase 0 approval/baseline/provider decision; Phase 1 domain statuses/entities/tests; Phase 1 EF mappings/query filters/repository surface; Phase 2 provider-neutral Application contracts, expanded AI settings definitions/group, provider settings validator, deterministic fake provider, authenticated bootstrap query/API surface, provider health, egress safety, safe telemetry, OpenAI-compatible HTTP adapter, runtime provider selector, and Phase 3 conversation DTO/query/create/detail/run-status/send-message/prompt-parser/API route/HAL policy/API contract-test foundation.
+- **Current priority:** Continue broader Phase 3 API validation and OpenAPI/client work while EF migration generation remains deferred by unrelated dirty model changes.
+- **Next recommended slice:** Add DB-backed/broader AI API tests for disabled assistant behavior, fake-provider flow, idempotency replay/conflict through HTTP, provider failure, no anonymous history, and cross-tenant absence, or generate an AI-scoped EF migration only after unrelated dirty model changes are handled.
 - **Implementation started:** Yes.
 
 ## Implementation Maintenance Rules
@@ -183,46 +183,67 @@ Last Updated: 2026-05-29 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** 2.1-2.4.
 
-## Phase 3: Conversations, Runs, History, API ⏳ NOT STARTED
+- [x] **2.7 Add runtime provider selector**
+  - **Files:** `Explore.Infrastructure/Ai/RuntimeAiChatProvider.cs`, `Explore.Infrastructure/InfrastructureServicesRegistration.cs`, `Explore.Infrastructure.Tests/Infrastructure/RuntimeAiChatProviderTests.cs`.
+  - **Acceptance:** Application-facing `IAiChatProvider` and `IAiModelCatalog` resolve through one runtime selector; disabled or invalid static provider settings fail closed before HTTP; fake provider routes without network calls; OpenAI-compatible provider routes through the raw HTTP adapter; concrete providers remain internal implementation details; no chat/send API endpoint is enabled by this wiring.
+  - **Validation:** LSP diagnostics were clean for `RuntimeAiChatProvider.cs`, `RuntimeAiChatProviderTests.cs`, and `InfrastructureServicesRegistration.cs`. Initial build caught missing contract imports and an incorrect model-catalog interface call; both were fixed. `dotnet build Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed with existing non-AI warnings only. `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --no-build --verbosity quiet -- --no-progress --maximum-parallel-tests 1` passed: 379 total, 0 failed.
+  - **Effort:** M
+  - **Dependencies:** 2.3, 2.4, 2.6.
 
-- [ ] **3.1 Add AI DTOs**
-  - **Files:** `Explore.Application/DTOs/AiAssistant/*`.
-  - **Acceptance:** Bootstrap/conversation/message/run/reference/action/request DTOs exist; no secrets/internal errors; cursor pagination consistent.
-  - **Validation:** Application/API build.
+## Phase 3: Conversations, Runs, History, API ⏳ IN PROGRESS
+
+- [x] **3.1 Add AI DTOs**
+  - **Files:** `Explore.Application/DTOs/Ai/AiConversationDtos.cs`, `Explore.Application/DTOs/Ai/Validators/CreateAiConversationRequestDtoValidator.cs`, `Explore.Application/Serialization/ExploreJsonContext.cs`.
+  - **Acceptance:** Bootstrap/conversation/message/run/reference/action/request DTOs exist for the current foundation slice; no secrets/internal provider errors are exposed; message sequences use `long`; run/action/status metadata is safe for private history; JSON source-generation metadata is updated.
+  - **Validation:** LSP diagnostics were clean for AI DTO/validator files and `ExploreJsonContext`. `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed. `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false -- --no-progress --maximum-parallel-tests 1` passed: 1141 total, 0 failed.
   - **Effort:** M
   - **Dependencies:** Phase 1.
 
-- [ ] **3.2 Add conversation commands/queries/handlers**
-  - **Files:** `Explore.Application/Features/AiAssistant/Requests/{Commands,Queries}/*`, `Handlers/*`.
-  - **Acceptance:** Create/list/detail/send/run-status implemented; manual validators; disabled/invalid model/provider failure handled; send idempotency prevents duplicate runs; no event side effect during send.
-  - **Validation:** Application unit tests.
+- [x] **3.2 Add conversation commands/queries/handlers foundation**
+  - **Files:** `Explore.Application/Features/AiAssistant/Requests/{Commands,Queries}/*`, `Handlers/*`, `Event.Application.UnitTests/Features/AiAssistant/*`.
+  - **Acceptance:** Create/list/detail/run-status foundation is implemented; create uses a manually instantiated validator; tenant governance and authentication fail closed before persistence mutations; detail/run-status enforce user ownership; no provider call, event side effect, chat send, or automatic tool execution is enabled. Send-message/run orchestration remains pending and must add idempotency, quota/rate-limit bounds, provider failure handling, and no event side effects during send.
+  - **Validation:** LSP diagnostics were clean for the new command/query/handler/test files. An initial Application build failed because `AiConversationDto` derived from a sealed summary DTO; `AiConversationSummaryDto` was made non-sealed. A full Application unit test run then exposed an older public-experience AI availability test that still assumed `enabled + api key`; the test now uses the provider-aware fake configuration. `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed, and the full no-analyzer Application unit suite passed: 1141 total, 0 failed.
   - **Effort:** XL
   - **Dependencies:** 2.2, 2.5, 3.1.
 
-- [ ] **3.3 Add prompt builder and parser**
+- [x] **3.2b Add guarded send-message/run orchestration**
+  - **Files:** `Explore.Application/DTOs/Ai/AiConversationDtos.cs`, `Explore.Application/DTOs/Ai/Validators/SendAiMessageRequestDtoValidator.cs`, `Explore.Application/Features/AiAssistant/Requests/Commands/SendAiMessageCommand.cs`, `Explore.Application/Features/AiAssistant/Handlers/Commands/SendAiMessageCommandHandler.cs`, `Explore.Application/Contracts/Persistence/IAiConversationRepository.cs`, `Explore.Persistence/Repositories/AiConversationRepository.cs`, `Explore.Application/Serialization/ExploreJsonContext.cs`, `Event.Application.UnitTests/Features/AiAssistant/Commands/SendAiMessageCommandHandlerTests.cs`.
+  - **Acceptance:** Send creates a user message and AI run safely; manually validates bounded content and idempotency key; enforces authenticated user, tenant governance, current-user ownership, active conversation state, daily message quota, idempotency replay/conflict behavior, and static runtime provider model readiness before calling `IAiChatProvider`; persists assistant response or safe provider failure; provider tool calls become `AiProposedAction` rows only; no event side effect or automatic tool execution occurs during send; no API/UI chat entry point was added.
+  - **Validation:** LSP diagnostics were clean for the new send DTO/validator/command/handler/test files and repository count method. Initial full Application test build caught a new test expression-tree issue (`is not null` inside `Arg.Is`); the assertion now uses `!= null`. `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed with 0 errors/0 warnings. `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false -- --no-progress --maximum-parallel-tests 1` passed: 1148 total, 0 failed. `dotnet build Explore.Persistence/Explore.Persistence.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed with existing non-AI warnings only.
+  - **Effort:** XL
+  - **Dependencies:** 2.7, 3.1, 3.2.
+
+- [x] **3.3 Add prompt builder and parser**
   - **Files:** `Explore.Application/Features/AiAssistant/Prompting/AiPromptContextBuilder.cs`, `AiSystemPromptFactory.cs`, `AiStructuredActionParser.cs`.
-  - **Acceptance:** Bounded context, content boundary markers, strict action allow-list, invalid JSON/unknown action rejected.
-  - **Validation:** Application prompt/parser tests.
+  - **Acceptance:** Provider request packing is extracted from send orchestration; context is bounded to the most recent provider-safe messages; message content is wrapped with boundary markers; streaming remains disabled for MVP sends; tool schema generation is centralized; proposed actions are allow-listed to `CreateEventDraft`; invalid JSON, non-object JSON, and unknown action kinds are rejected before persistence.
+  - **Validation:** LSP diagnostics were clean for `Explore.Application/Features/AiAssistant/Prompting/*`, `SendAiMessageCommandHandler.cs`, and new prompt/parser tests. A first prompt test build caught that `AiAssistantSettingGroup` has private setters; the tests now populate settings through the real `Populate` path. A full Application test run then caught the existing send-handler assertion expecting unwrapped provider message text; it now asserts bounded wrapped content. `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed with 0 errors/0 warnings. `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false -- --no-progress --maximum-parallel-tests 1` passed: 1156 total, 0 failed.
   - **Effort:** L
   - **Dependencies:** 2.2, 3.1.
 
-- [ ] **3.4 Add AI API controller/routes**
-  - **Files:** `Explore.API/Controllers/AiAssistantController.cs`, `Explore.API/Routes/RouteNames.cs`.
-  - **Acceptance:** Thin MediatR controller; write endpoints `[Authorize]`; private history GET endpoints authenticated; run-status exists; cancel is deferred unless Phase 7 cancellation is fully implemented; response types/ProblemDetails/route names.
-  - **Validation:** API integration tests.
+- [x] **3.4 Add AI API controller/routes**
+  - **Files:** `Explore.API/Controllers/AiAssistantController.cs`, `Explore.API/Controllers/AiAssistantProblemDetails.cs`, `Explore.API/Hateoas/RouteNames.cs`, `Explore.Application/Serialization/ExploreJsonContext.cs`.
+  - **Acceptance:** Thin authenticated MediatR controller exposes bootstrap, conversation list/detail/create, send-message, and run-status routes; private history GET endpoints are authenticated; write endpoints remain `[Authorize]`; `Idempotency-Key` header is propagated into the send request DTO; command failures map to safe ProblemDetails; cancel, confirm/reject, automatic tool execution, and Blazor UI entry points remain deferred; only conservative manual HAL links are emitted until the full AI HAL policy is implemented.
+  - **Validation:** LSP diagnostics were clean for the controller, ProblemDetails helper, route names, and JSON context updates. `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed. `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed with existing non-AI warnings. API integration and Architecture tests were not run in this slice; prior Architecture validation is blocked by unrelated dirty persistence compile errors.
   - **Effort:** L
   - **Dependencies:** 3.1, 3.2.
 
-- [ ] **3.5 Add AI HAL policy**
-  - **Files:** `Explore.API/Hateoas/Policies/AiAssistantLinkPolicy.cs`, registration files.
-  - **Acceptance:** Links for self/history/send/conversation/result reflect auth, tenant, feature flags, and state; cancel link is omitted until Phase 7 cancellation exists.
-  - **Validation:** API HATEOAS tests.
+- [x] **3.5 Add AI HAL policy**
+  - **Files:** `Explore.API/Hateoas/Policies/AiAssistantLinkPolicy.cs`, `Explore.API/Hateoas/Assemblers/AiConversationResourceAssembler.cs`, `Explore.API/Extensions/HateoasAssemblerRegistration.cs`, `Explore.Application/Hateoas/LinkRelations.cs`, `Explore.API/Controllers/AiAssistantController.cs`, `Event.API.IntegrationTests/Features/Hateoas/AiAssistantHateoasTests.cs`.
+  - **Acceptance:** Conversation `self`, `collection`, active-state `send-message`, and collection `create` affordances now flow through the standard HAL policy/assembler/evaluator pipeline instead of controller-local manual links; authenticated affordances use `RequiresAuth` and fail closed for anonymous users; `send-message` is omitted for non-active conversations; cancel, confirm/reject, result, and automatic tool-execution links remain omitted until later phases; full AI authorization catalog permission parity remains Task 3.8.
+  - **Validation:** LSP diagnostics were clean for the AI HAL policy, assembler, controller, registration, link relations, and tests. `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed with existing non-AI warnings. `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed with existing non-AI warnings. `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed with existing non-AI warnings. Targeted AI HATEOAS tests passed: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false -- --treenode-filter "/*/*/*AiAssistantHateoasTests*/*" --minimum-expected-tests 4 --no-progress --maximum-parallel-tests 1` returned 4 total, 0 failed.
   - **Effort:** M
   - **Dependencies:** 3.4.
 
+- [x] **3.5b Add focused AI API contract tests**
+  - **Files:** `Event.API.IntegrationTests/Features/AiAssistantControllerTests.cs`, `Event.API.IntegrationTests/Features/Hateoas/AiAssistantHateoasTests.cs`.
+  - **Acceptance:** Fast API contract tests cover authenticated route metadata, stable route names, thin MediatR dispatch for conversation list, `Idempotency-Key` header propagation into send DTOs, safe provider-unavailable ProblemDetails mapping, run-status HAL self/up links, source-generated HAL serialization for conversation send links, and AI HAL policy fail-closed behavior without requiring DB-backed persistence fixtures.
+  - **Validation:** LSP diagnostics were clean for `AiAssistantControllerTests.cs`, `AiAssistantHateoasTests.cs`, and touched controller/HAL files. `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed with existing non-AI warnings. `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false` passed with existing non-AI warnings after fixing the new test's `EndpointClassificationAttribute.Class`, `BaseCommandResponse<Guid>` object-initializer usage, and `AiRunDto` shape assumptions. Targeted controller tests passed: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/*AiAssistantControllerTests*/*" --minimum-expected-tests 6 --no-progress --maximum-parallel-tests 1` returned 6 total, 0 failed. Targeted AI HAL tests passed: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/*AiAssistantHateoasTests*/*" --minimum-expected-tests 4 --no-progress --maximum-parallel-tests 1` returned 4 total, 0 failed. A combined OR `--treenode-filter` attempt broadened into host-backed tests and timed out, so successful validation uses one focused class filter per command.
+  - **Effort:** M
+  - **Dependencies:** 3.4, 3.5.
+
 - [ ] **3.6 Add conversation/API tests**
   - **Files:** `Event.Application.UnitTests/Features/AiAssistant/*`, `Event.API.IntegrationTests/Features/AiAssistant*Tests.cs`.
-  - **Acceptance:** Fake provider flow, auth, disabled assistant, provider failure, private bootstrap/history authenticated, no anonymous history, idempotency, cross-tenant, HAL links.
+  - **Acceptance:** DB-backed or host-backed API tests cover fake provider flow, auth, disabled assistant, provider failure, private bootstrap/history authenticated, no anonymous history, idempotency replay/conflict over HTTP, cross-tenant absence, and HAL serialization on real responses.
   - **Validation:** Application and API test commands.
   - **Effort:** L
   - **Dependencies:** 3.2-3.5.

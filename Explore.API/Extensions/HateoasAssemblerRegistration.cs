@@ -10,6 +10,7 @@ using Explore.Application.Contracts.Hateoas;  // For ILinkPolicy, ICollectionLin
 using Explore.API.Hateoas.Resources;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorSubscription;
+using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
@@ -87,6 +88,11 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<ActorSubscriptionDto>, ActorSubscriptionDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<ActorSubscriptionListDto>, ActorSubscriptionCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<ActorSubscriptionDto, ActorSubscriptionListDto>, ActorSubscriptionResourceAssembler>();
+
+        // AI assistant conversations (private authenticated history)
+        services.AddScoped<ILinkPolicy<AiConversationDto>, AiConversationDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<AiConversationSummaryDto>, AiConversationCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<AiConversationDto, AiConversationSummaryDto>, AiConversationResourceAssembler>();
 
         // Location
         services.AddScoped<ILinkPolicy<LocationDto>, LocationDetailLinkPolicy>();

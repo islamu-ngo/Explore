@@ -211,6 +211,11 @@ public static class RouteNames
     public const string GetTagTypesWithTags = "GetTagTypesWithTags";
     public const string GetMyFeatureFlags = "GetMyFeatureFlags";
     public const string GetAiAssistantBootstrap = "GetAiAssistantBootstrap";
+    public const string GetAiConversations = "GetAiConversations";
+    public const string CreateAiConversation = "CreateAiConversation";
+    public const string GetAiConversation = "GetAiConversation";
+    public const string SendAiMessage = "SendAiMessage";
+    public const string GetAiRunStatus = "GetAiRunStatus";
     public const string GetPublicExperienceSettings = "GetPublicExperienceSettings";
     public const string GetPublicExperienceShell = "GetPublicExperienceShell";
     public const string GetTranslationByLanguage = "GetTranslationByLanguage";

@@ -1,0 +1,112 @@
+// ABOUTME: Contract tests for AI assistant HAL link policies and fail-closed auth gating.
+// ABOUTME: Verifies create/send affordances use standard HATEOAS policy metadata before UI exposure.
+
+namespace Event.Api.IntegrationTests.Features.Hateoas;
+
+using System.Security.Claims;
+using Explore.API.Hateoas;
+using Explore.API.Hateoas.Policies;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.DTOs.Ai;
+using Explore.Application.Hateoas;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
+
+public sealed class AiAssistantHateoasTests
+{
+    [Test]
+    public async Task DetailPolicy_WhenConversationActive_EmitsAuthenticatedSendLink()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var policy = new AiConversationDetailLinkPolicy();
+
+        var links = policy.GetLinks(CreateDetail(conversationId, "Active"), AuthenticatedUser()).ToList();
+
+        var self = links.Single(link => link.Rel == LinkRelations.Self);
+        var send = links.Single(link => link.Rel == LinkRelations.SendMessage);
+        await Assert.That(self.RouteName).IsEqualTo(RouteNames.GetAiConversation);
+        await Assert.That(self.RequiresAuth).IsTrue();
+        await Assert.That(send.RouteName).IsEqualTo(RouteNames.SendAiMessage);
+        await Assert.That(send.Method).IsEqualTo("POST");
+        await Assert.That(send.RequiresAuth).IsTrue();
+        await Assert.That(RouteValue(send.RouteValues, "conversationId")).IsEqualTo(conversationId);
+    }
+
+    [Test]
+    public async Task DetailPolicy_WhenConversationNotActive_OmitsSendLink()
+    {
+        var policy = new AiConversationDetailLinkPolicy();
+
+        var links = policy.GetLinks(CreateDetail(Guid.CreateVersion7(), "Blocked"), AuthenticatedUser()).ToList();
+
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.SendMessage)).IsFalse();
+    }
+
+    [Test]
+    public async Task CollectionPolicy_EmitsAuthenticatedCreateAndActiveItemSendLinks()
+    {
+        var activeId = Guid.CreateVersion7();
+        var archivedId = Guid.CreateVersion7();
+        var policy = new AiConversationCollectionLinkPolicy();
+
+        var activeLinks = policy.GetItemLinks(CreateSummary(activeId, "Active"), AuthenticatedUser()).ToList();
+        var archivedLinks = policy.GetItemLinks(CreateSummary(archivedId, "Archived"), AuthenticatedUser()).ToList();
+        var collectionLinks = policy.GetCollectionLinks(AuthenticatedUser()).ToList();
+
+        var create = collectionLinks.Single(link => link.Rel == LinkRelations.Create);
+        var send = activeLinks.Single(link => link.Rel == LinkRelations.SendMessage);
+        await Assert.That(create.RouteName).IsEqualTo(RouteNames.CreateAiConversation);
+        await Assert.That(create.Method).IsEqualTo("POST");
+        await Assert.That(create.RequiresAuth).IsTrue();
+        await Assert.That(send.RequiresAuth).IsTrue();
+        await Assert.That(RouteValue(send.RouteValues, "conversationId")).IsEqualTo(activeId);
+        await Assert.That(archivedLinks.Any(link => link.Rel == LinkRelations.SendMessage)).IsFalse();
+    }
+
+    [Test]
+    public async Task AuthorizationEvaluator_WhenAnonymous_FailsClosedForAiAffordances()
+    {
+        var policy = new AiConversationCollectionLinkPolicy();
+        var definitions = policy.GetItemLinks(CreateSummary(Guid.CreateVersion7(), "Active"), null)
+            .Concat(policy.GetCollectionLinks(null))
+            .ToList();
+        var evaluator = new HateoasAuthorizationEvaluator(
+            Substitute.For<IAuthorizationProvider>(),
+            Substitute.For<ILogger<HateoasAuthorizationEvaluator>>());
+
+        var decisions = await evaluator.AreLinksAllowedAsync(definitions, new ClaimsPrincipal(new ClaimsIdentity()), new DefaultHttpContext());
+
+        await Assert.That(decisions.Count).IsEqualTo(definitions.Count);
+        await Assert.That(decisions.All(allowed => allowed == false)).IsTrue();
+    }
+
+    private static AiConversationDto CreateDetail(Guid id, string status) =>
+        new()
+        {
+            Id = id,
+            TenantId = Guid.CreateVersion7(),
+            UserId = Guid.CreateVersion7(),
+            Status = status,
+            CreatedAt = DateTime.UtcNow
+        };
+
+    private static AiConversationSummaryDto CreateSummary(Guid id, string status) =>
+        new()
+        {
+            Id = id,
+            TenantId = Guid.CreateVersion7(),
+            UserId = Guid.CreateVersion7(),
+            Status = status,
+            CreatedAt = DateTime.UtcNow
+        };
+
+    private static ClaimsPrincipal AuthenticatedUser() =>
+        new(new ClaimsIdentity([new Claim("sub", Guid.CreateVersion7().ToString())], "test"));
+
+    private static Guid RouteValue(object? routeValues, string key)
+    {
+        var value = routeValues?.GetType().GetProperty(key)?.GetValue(routeValues);
+        return value is Guid guid ? guid : Guid.Empty;
+    }
+}

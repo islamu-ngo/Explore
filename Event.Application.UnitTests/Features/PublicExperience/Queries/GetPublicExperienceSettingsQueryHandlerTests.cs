@@ -288,7 +288,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         aiSettings.Populate(new Dictionary<string, ResolvedSetting>
         {
             [GovernanceSettingKeys.AiAssistant.Enabled] = new() { Value = "true" },
-            [GovernanceSettingKeys.AiAssistant.ApiKey] = new() { Value = "\"configured-key\"" },
+            [GovernanceSettingKeys.AiAssistant.Provider] = new() { Value = "\"fake\"" },
             [GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess] = new() { Value = "true" }
         });
 

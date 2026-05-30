@@ -49,6 +49,19 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<int> CountUserMessagesSinceAsync(
+        Guid userId,
+        DateTime sinceUtc,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.AiMessages
+            .AsNoTracking()
+            .Where(message => message.Role == AiMessageRole.User)
+            .Where(message => message.CreatedBy == userId)
+            .Where(message => message.CreatedAt >= sinceUtc)
+            .CountAsync(cancellationToken);
+    }
+
     public async Task<AiProposedAction?> GetProposedActionForUpdateAsync(
         Guid proposedActionId,
         CancellationToken cancellationToken)
