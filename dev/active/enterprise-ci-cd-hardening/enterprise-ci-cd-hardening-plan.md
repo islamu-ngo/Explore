@@ -32,8 +32,8 @@ It is not yet "best CI/CD." The current design still has avoidable enterprise ga
 - path-skipped required-check behavior is still not fully safe for workflows other than `Build & Test` until no-op wrappers or path-filter removal are implemented;
 - `test.yml` now includes `merge_group`, but required-check settings still need external repository evidence before it can be treated as merge-queue-ready;
 - `_build-test.yml` no longer owns OpenAPI drift; `openapi-contract.yml` is the canonical guard for `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs`;
-- deploy workflows are duplicated and still deploy through webhook-side mutable configuration rather than a verified digest promotion contract;
-- container builds now verify GHCR artifact attestations before dependent deploy jobs can start, but Coolify still needs digest-consumption or immutable-tag resolved-digest proof;
+- deploy workflows are duplicated and still need Coolify-side digest consumption proof, though the reusable build now records primary-registry immutable tag promotion evidence and verifies `sha-*` / `dev-*` tags resolve to the built digest before deploy jobs can start;
+- container builds now verify GHCR artifact attestations and primary-registry immutable tag promotion before dependent deploy jobs can start, but Coolify still needs exact digest-consumption proof;
 - container builds now retain Trivy scan evidence as both text and SARIF artifacts, export downloadable OCI inspect/index evidence for registry-attached SBOM/provenance metadata, and use tag-plus-digest pinned .NET base images;
 - workflow YAML now has repository-owned C# helper scripts, a SHA-pin policy gate, Dependabot update-policy validation for pinned action maintenance, blocking `actionlint`, blocking medium-or-higher `zizmor`, checkout credential hardening, template-injection remediation, and retained workflow security evidence;
 - contribution legal provenance is not enforced by CI; there is no CLA/DCO workflow, CLA document, signature storage policy, or contributor allowlist governance;
@@ -86,7 +86,7 @@ Out of scope for this plan: changing application runtime behavior, adding new AP
 | Contributor agreements require legal scope decisions. | `https://contributoragreements.org/` | High | Choose CLA/DCO, inbound license model, patent scope, signature formalities, and privacy retention with counsel. |
 | Root `.github/CODEOWNERS` exists. | `.github/CODEOWNERS` | Medium | Verify `@islamu-ngo/platform-ops` exists and has write access, or replace it with the actual maintainer owner. |
 | Deploy workflows are duplicated for staging and production. | `.github/workflows/deploy-coolify.yml`, `.github/workflows/deploy-coolify-develop.yml` | High | Consolidate around one reusable deploy workflow. |
-| Container builds emit digest evidence, downloadable OCI inspect/index evidence for Buildx SBOM/provenance, Trivy text/SARIF output, GHCR attestation verification JSON, checksum manifests, and GitHub artifact attestations. | `.github/workflows/_container-build.yml` | High | Missing exact digest consumption/proof in Coolify deployment. |
+| Container builds emit digest evidence, immutable primary-registry promotion evidence, downloadable OCI inspect/index evidence for Buildx SBOM/provenance, Trivy text/SARIF output, GHCR attestation verification JSON, checksum manifests, and GitHub artifact attestations. | `.github/workflows/_container-build.yml` | High | Missing exact digest consumption/proof in Coolify deployment. |
 | Deployable Dockerfiles pin base images by digest and have automated update coverage. | `Explore.API/Dockerfile`, `Explore.Blazor/Dockerfile`, `.github/dependabot.yml`, `.github/scripts/validate-dockerfile-base-images.cs` | High | Uses tag-plus-digest .NET base references and weekly Dependabot Docker update blocks. |
 | Coolify digest consumption remains unresolved. | `docs/OPERATIONS.md`, old context | High | This is now a blocker for "best CI/CD." |
 | Build baseline passes with warnings. | `dotnet build --configuration Release --verbosity quiet` on 2026-05-29 | High | Latest run passed with package/analyzer warnings. Architecture tests are currently red because unrelated untracked AI integration code defines `AiChatRequest` outside the CQRS query namespace convention. |
@@ -106,6 +106,7 @@ Workflow inventory:
 - `.github/scripts/validate-dependabot-policy.cs` - file-based C# validator for the Dependabot `github-actions` update lane that keeps SHA-pinned actions maintainable.
 - `.github/scripts/validate-nuget-vulnerabilities.cs` - file-based C# parser for NuGet vulnerable-package JSON output.
 - `.github/scripts/write-container-digest-evidence.cs` - file-based C# writer for normalized container digest evidence.
+- `.github/scripts/write-image-promotion-evidence.cs` - file-based C# writer for immutable primary-registry deployment tag promotion evidence.
 - `.github/workflows/security-tests.yml` - path and schedule driven security integration tests.
 - `.github/workflows/cerbos-policy-check.yml` - Cerbos policy validation.
 - `.github/workflows/e2e.yml` - manual/nightly Aspire-backed Playwright E2E lane.
@@ -152,8 +153,8 @@ Existing docs already explain many rules, but some need correction:
 
 ### 2.5 Current Pain Points / Improvement Areas
 
-1. **Blocker - deployment is not yet digest-promoted.** Images are built and attested, but deploy jobs do not prove Coolify consumed the verified digest.
-2. **Major - attestation verification is enforced in the reusable build, but deploy still needs digest promotion proof.** Deploy jobs depend on `build-and-push`, so failed `gh attestation verify` blocks Coolify calls; the remaining gap is proving Coolify consumed the verified digest.
+1. **Blocker - deployment is not yet proven at the Coolify boundary.** Images are built, attested, and immutable primary-registry promotion tags are verified, but deploy jobs do not yet prove Coolify consumed the verified digest or immutable fallback tag.
+2. **Major - build-side promotion verification exists, but deploy still needs consumption proof.** Deploy jobs depend on `build-and-push`, so failed Trivy, `gh attestation verify`, or immutable-tag digest verification blocks Coolify calls; the remaining gap is proving Coolify consumed the verified digest or fallback tag.
 3. **Major - workflow definitions must remain covered by the new security gate.** SHA-pin enforcement, blocking actionlint, blocking medium-or-higher zizmor, and evidence retention exist; repository settings still need to require `Workflow Security` before this protection can be considered merge-enforced.
 4. **Critical - required-check design is still path-filter fragile outside `Build & Test`.** `Build & Test` now has an always-present no-op path; any other globally required workflow must get the same treatment before branch protection requires it.
 5. **Major - deploy workflows are duplicated.** Staging/production drift will continue unless deployment logic is one reusable path.
@@ -498,12 +499,12 @@ Do not copy the upstream sample blindly. The sample uses `@v2.6.1`, broad write 
 - Verify GitHub artifact attestations with `gh attestation verify` or equivalent before deployment. Current implementation verifies the pushed GHCR digest in `_container-build.yml` before deploy jobs depending on `build-and-push` can start.
 - Add SLSA provenance verification or document why GitHub artifact attestation is the chosen SLSA-compatible evidence path.
 - Add release artifact integrity manifests with checksums for evidence bundles. Current implementation generates SHA-256 manifests for retained container evidence artifacts.
-- Record final image digest per component as the release/deploy source of truth.
+- Record final image digest per component as the release/deploy source of truth. Current implementation records primary-registry immutable promotion tags and verifies they resolve to the built digest before deploy jobs can start.
 
 **Exit criteria:**
 
 - Deployment cannot start unless image scan and attestation verification pass through the reusable build dependency.
-- Release evidence contains digests, SBOM/provenance references, vulnerability output, attestation verification output, checksum manifests, and build metadata.
+- Release evidence contains digests, immutable promotion evidence, SBOM/provenance references, vulnerability output, attestation verification output, checksum manifests, and build metadata.
 
 ### Phase 7 - Unified Digest-Based Deploy Promotion
 
@@ -522,7 +523,7 @@ Do not copy the upstream sample blindly. The sample uses `@v2.6.1`, broad write 
 
 - Consolidate staging and production deploy logic into one reusable workflow.
 - Pass environment, component, digest, smoke URLs, and webhook secret names as explicit inputs.
-- Confirm Coolify digest support. If unsupported, configure immutable commit-SHA tag deployment and record resolved digest after deployment.
+- Confirm Coolify digest support. If unsupported, configure Coolify to consume immutable commit-SHA tags and use the build-side promotion evidence that verifies those tags resolve to the built digest; still record Coolify-side consumption evidence after deployment.
 - Make production smoke checks mandatory when production URL variables exist.
 - Keep staging auto-deploy optional; production must require environment approval.
 - Prefer OIDC/short-lived credentials where the registry or deploy target supports it; otherwise document token scope and rotation.

@@ -16,7 +16,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 - [ ] Implement Phase 1 current defect fixes. `Build & Test` no-op wrapper and NuGet vulnerability remediation are complete; broader required-check hardening remains.
 - [ ] Implement Phase 2 CLA/DCO legal contribution gate.
 - [x] Implement workflow lint/security gate. C# helper scripts, SHA-pin policy, Dependabot maintenance policy validation, blocking `actionlint`, blocking `zizmor`, and retained workflow security evidence are implemented locally; repository-side required-check configuration still needs verification.
-- [ ] Implement container supply-chain evidence hardening. Digest JSON, SBOM/provenance registry evidence, Trivy text/SARIF artifacts, checksum manifests, pre-deploy GHCR attestation verification, and Docker base image digest policy are implemented; digest promotion remains.
+- [ ] Implement container supply-chain evidence hardening. Digest JSON, SBOM/provenance registry evidence, immutable primary-registry promotion evidence, Trivy text/SARIF artifacts, checksum manifests, pre-deploy GHCR attestation verification, and Docker base image digest policy are implemented; exact Coolify digest consumption remains.
 - [ ] Implement digest promotion and deploy consolidation.
 - [ ] Verify GitHub repository settings.
 
@@ -178,7 +178,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 - [x] Verify GitHub artifact attestations before deployment through `_container-build.yml` `gh attestation verify` against the pushed GHCR digest, repository, signer workflow, source ref/digest, SLSA provenance predicate, and GitHub-hosted runner trust boundary.
 - [ ] Add SLSA provenance verification or document why GitHub artifact attestation is the chosen SLSA-compatible evidence path.
 - [x] Add release artifact integrity manifests with checksums for retained container evidence.
-- [ ] Record image digest, tags, scan result, SBOM/provenance references, and attestation verification result in job summaries. Digest, tags, SBOM/provenance artifact references, attestation verification artifact path, and checksum references are recorded; scan result still needs promotion/deploy summary integration.
+- [x] Record image digest, immutable promotion tags, scan result artifact paths, SBOM/provenance references, and attestation verification result in job summaries. Digest, tags, immutable promotion proof, SBOM/provenance artifact references, Trivy artifact paths, attestation verification artifact path, and checksum references are recorded in the reusable build summary.
 - [x] Keep container digest evidence JSON generation in `.github/scripts/write-container-digest-evidence.cs` instead of embedded workflow script blocks.
 - [ ] Decide ATCR credential strategy:
   - [ ] OIDC/short-lived credential if supported; or
@@ -187,8 +187,8 @@ Last Updated: 2026-05-30 Europe/Brussels
 ### Phase 6 Acceptance
 
 - [x] Deploy cannot start without scan and attestation verification in the current workflow dependency graph because deploy jobs require `build-and-push`, which now blocks on Trivy and `gh attestation verify`.
-- [ ] Release evidence includes image digest and supply-chain artifacts. Container build artifacts now include digest JSON, OCI inspect/index evidence, Trivy text/SARIF, attestation verification JSON, and checksums; digest promotion evidence remains open.
-- [ ] Mutable tags are convenience aliases only.
+- [x] Release evidence includes image digest and supply-chain artifacts. Container build artifacts now include digest JSON, immutable promotion evidence, OCI inspect/index evidence, Trivy text/SARIF, attestation verification JSON, and checksums.
+- [x] Mutable tags are convenience aliases only. The reusable build records `sha-*` / `dev-*` primary-registry promotion tags and verifies they resolve to the built digest; mutable `latest` / `develop` tags remain non-authoritative aliases.
 
 ## Phase 7 - Unified Digest-Based Deploy Promotion
 
@@ -197,16 +197,16 @@ Last Updated: 2026-05-30 Europe/Brussels
 - [ ] Pass environment, component, digest, smoke URLs, and webhook secret names as explicit inputs.
 - [ ] Confirm whether Coolify can deploy `image@sha256:<digest>`.
 - [ ] If Coolify supports digests, configure deployment by digest.
-- [ ] If Coolify does not support digests, configure immutable commit-SHA tag deployment and record resolved digest after deploy.
+- [x] If Coolify does not support digests, configure immutable commit-SHA tag deployment and record resolved digest before deploy. `_container-build.yml` now records primary-registry `sha-*` / `dev-*` promotion tags and verifies each tag resolves to the built digest before dependent deploy jobs can start; post-deploy Coolify consumption proof remains separate.
 - [ ] Make production smoke checks mandatory when production URL variables exist.
 - [ ] Keep production protected by GitHub Environment approval and branch restrictions.
 - [ ] Add deployment freeze/manual override policy with audit notes for urgent security releases.
-- [ ] Ensure deployment summaries include environment, component, commit SHA, digest, workflow run, smoke result, and rollback note.
+- [ ] Ensure deployment summaries include environment, component, commit SHA, digest, workflow run, smoke result, and rollback note. Container build summaries now include digest and immutable promotion evidence; Coolify deploy summaries still need digest/tag promotion evidence.
 
 ### Phase 7 Acceptance
 
 - [ ] One deploy implementation serves staging and production.
-- [ ] Production deployment evidence proves exactly what digest was deployed.
+- [ ] Production deployment evidence proves exactly what digest was deployed. Build-side immutable tag promotion proof exists; Coolify-side consumption proof remains open.
 - [ ] Deployment failures retain redacted logs and smoke evidence.
 
 ## Phase 8 - Repository And Organization Policy Enforcement
@@ -278,6 +278,7 @@ For workflow implementation PRs:
 - [x] GitHub Actions SHA-pin maintenance remains covered by Dependabot; `dotnet run .github/scripts/validate-dependabot-policy.cs -- .github/dependabot.yml` passed locally.
 - [x] NuGet audit report parsing remains covered by C# script; `dotnet run .github/scripts/validate-nuget-vulnerabilities.cs -- /tmp/nuget-vulnerabilities.json` passed locally.
 - [x] Container digest evidence generation remains covered by C# script; `dotnet run .github/scripts/write-container-digest-evidence.cs` passed locally with representative environment input.
+- [x] Immutable deployment tag promotion evidence generation remains covered by C# script; `dotnet run .github/scripts/write-image-promotion-evidence.cs` passed locally with representative environment input.
 - [x] Edited workflow YAML parses locally with PyYAML.
 - [ ] CLA workflow threat model is documented before enabling `pull_request_target`.
 - [ ] `dotnet build --configuration Release --verbosity quiet` passes.
@@ -285,7 +286,7 @@ For workflow implementation PRs:
 - [x] `dotnet restore --locked-mode` passes after package/lock-file regeneration.
 - [x] `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` reports `vulnerable-packages=0` after `MailKit` remediation.
 - [ ] OpenAPI guard runs twice with zero second-run diff when contract paths are touched.
-- [x] Container build emits digest, SBOM/provenance, scan output, base image digest pins, and attestation verification evidence. Current implementation emits digest JSON, OCI inspect/index evidence, Trivy text/SARIF artifacts, GHCR attestations, and `gh attestation verify` JSON; Dockerfiles use tag-plus-digest .NET base image references.
+- [x] Container build emits digest, SBOM/provenance, immutable promotion, scan output, base image digest pins, and attestation verification evidence. Current implementation emits digest JSON, primary-registry promotion evidence, OCI inspect/index evidence, Trivy text/SARIF artifacts, GHCR attestations, and `gh attestation verify` JSON; Dockerfiles use tag-plus-digest .NET base image references.
 - [ ] Deploy verifies attestation/digest before invoking Coolify. Attestation verification is enforced through the required `build-and-push` dependency; exact digest consumption by Coolify remains open.
 - [ ] Staging deploy smoke checks pass before production changes are considered.
 

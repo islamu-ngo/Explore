@@ -156,6 +156,50 @@ jobs:
             echo "These files preserve the registry manifest/index evidence for the Buildx SBOM and provenance attestations generated during the build."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Record immutable deployment tag promotion evidence
+        shell: bash
+        env:
+          RestorePackagesWithLockFile: "false"
+          IMAGE_NAME: ${{ inputs.image-name }}
+          REGISTRY: ${{ inputs.registry }}
+          REGISTRY_USER: ${{ inputs.registry-user }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/container
+
+          dotnet run .github/scripts/write-image-promotion-evidence.cs
+
+          promotion_tags_file="artifacts/container/${IMAGE_NAME}-promotion-tags.txt"
+          while IFS= read -r tag_ref; do
+            if [[ -z "${tag_ref}" ]]; then
+              continue
+            fi
+
+            safe_tag="$(printf '%s' "${tag_ref}" | sed -E 's/[^A-Za-z0-9._-]+/-/g')"
+            inspect_file="artifacts/container/${IMAGE_NAME}-promotion-${safe_tag}.txt"
+            docker buildx imagetools inspect "${tag_ref}" > "${inspect_file}"
+
+            if ! grep -F "${DIGEST}" "${inspect_file}" >/dev/null; then
+              echo "Immutable deployment tag ${tag_ref} did not resolve to built digest ${DIGEST}."
+              exit 1
+            fi
+          done < "${promotion_tags_file}"
+
+          {
+            echo "## Immutable deployment tag promotion"
+            echo
+            echo "Built digest: \`${DIGEST}\`"
+            echo
+            echo "Primary registry immutable tags:"
+            echo '```text'
+            cat "${promotion_tags_file}"
+            echo '```'
+            echo
+            echo "Each listed tag was inspected in the primary registry and verified to resolve to the built digest."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Generate Trivy SARIF evidence
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

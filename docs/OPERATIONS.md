@@ -134,14 +134,14 @@ Deploy jobs call the existing Coolify webhook contract with timeout, retry, reda
 
 ### Deployment Image Source of Truth
 
-Container builds publish mutable convenience tags (`latest` for production and `develop` for staging), immutable commit-SHA tags, digest evidence, SBOM/provenance attestations, image scan artifacts, and attestation verification evidence for the pushed GHCR digest. Deployable Dockerfiles pin .NET runtime and SDK base images with tag-plus-digest references; Dependabot Docker update PRs are the expected path for refreshing those base digests.
+Container builds publish mutable convenience tags (`latest` for production and `develop` for staging), immutable commit-SHA tags, digest evidence, immutable tag promotion evidence, SBOM/provenance attestations, image scan artifacts, and attestation verification evidence for the pushed GHCR digest. Deployable Dockerfiles pin .NET runtime and SDK base images with tag-plus-digest references; Dependabot Docker update PRs are the expected path for refreshing those base digests.
 
 Production must not rely on `latest` as the source of truth once deployment promotion is complete.
 
 Decision path:
 
 1. Preferred: configure Coolify to deploy explicit image digests when the current Coolify application/webhook model supports `image@sha256:...`.
-2. Fallback: configure Coolify to deploy immutable commit-SHA tags (`sha-*` for production and `dev-*` for staging) and record the resolved digest in deployment evidence.
+2. Fallback: configure Coolify to deploy immutable commit-SHA tags (`sha-*` for production and `dev-*` for staging). The reusable container build records those primary-registry tag references and verifies that each resolves to the built digest before deployment jobs can start.
 3. Temporary risk: mutable tags remain convenience aliases while Coolify capability is being confirmed.
 
 Do not remove digest/SBOM/provenance evidence even if Coolify temporarily consumes immutable tags rather than digests.

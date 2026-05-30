@@ -136,10 +136,12 @@ The current policy is remediation-first. `MailKit` was upgraded from `4.15.1` to
 | Spectral/OpenAPI lint | No | Future | Add only after rules are agreed and low-noise. |
 | Security/Cerbos path workflows | Conditional | Yes | Required for matching paths; nightly schedule covers drift outside path filters. |
 | E2E browser/runtime tests | No | Yes | Manual/nightly until reliability data justifies required status. |
-| Container SBOM/provenance/Trivy/attestation verification | Deploy-only | No | Required before deployment workflows call Coolify; retained evidence includes registry manifest/index output, vulnerability scan artifacts, attestation verification JSON, and checksum manifests. |
+| Container SBOM/provenance/Trivy/attestation/promotion verification | Deploy-only | No | Required before deployment workflows call Coolify; retained evidence includes registry manifest/index output, immutable primary-registry tag promotion evidence, vulnerability scan artifacts, attestation verification JSON, and checksum manifests. |
 | Production smoke checks | Deploy-only | No | Required when environment URL variables are configured. |
 
 The reusable container build must verify each pushed GHCR digest with `gh attestation verify` before any dependent Coolify deploy job can start. Verification must constrain the expected repository, reusable signer workflow, source ref, source digest, SLSA provenance predicate, and GitHub-hosted runner trust boundary; do not rely on workflow-controlled predicate fields as the sole trust source.
+
+The reusable container build must also record immutable primary-registry promotion evidence before deploy jobs can start. When Coolify digest deployment is not yet proven, the temporary fallback is an immutable `sha-*` production tag or `dev-*` staging tag whose primary-registry reference is inspected and verified to resolve to the built digest. Mutable tags such as `latest` and `develop` remain convenience aliases only and must not be treated as release evidence.
 
 ## Fork Pull Request Policy
 
@@ -161,6 +163,7 @@ Generated files are reviewed product artifacts, not disposable output.
 | Container digest JSON | `_container-build.yml` via `.github/scripts/write-container-digest-evidence.cs` | Image name, digest, commit SHA, tags, workflow run, scan evidence. |
 | Docker base image pins | `Workflow Security` via `.github/scripts/validate-dockerfile-base-images.cs` | Deployable Dockerfiles keep explicit tag-plus-digest base references and Dependabot Docker update coverage. |
 | Container OCI inspect/index evidence | `_container-build.yml` via `docker buildx imagetools inspect` | Downloadable registry evidence for the digest that carries Buildx SBOM/provenance attestations. |
+| Container immutable promotion evidence | `_container-build.yml` via `.github/scripts/write-image-promotion-evidence.cs` and `docker buildx imagetools inspect` | Primary-registry `sha-*` / `dev-*` tag references and proof that each resolves to the built digest. |
 | Container Trivy SARIF | `_container-build.yml` via `aquasecurity/trivy-action` | Critical/high vulnerability evidence in a machine-readable retained artifact. |
 | Container attestation verification JSON | `_container-build.yml` via `gh attestation verify` | Verification evidence for the pushed GHCR digest, constrained to the repository, reusable signer workflow, source ref/digest, SLSA provenance predicate, and GitHub-hosted runner trust boundary. |
 | Container evidence checksum manifest | `_container-build.yml` via `.github/scripts/write-artifact-checksums.cs` | SHA-256 integrity manifest for retained digest, OCI, Trivy, and related container evidence artifacts. |
@@ -177,7 +180,7 @@ Never hand-edit OpenAPI or NSwag generated client artifacts. Regenerate them thr
 | Workflow security evidence | `Workflow Security` | 30 days |
 | Security and Cerbos logs | `Security Integration Tests`, `Cerbos Policy Validation` | 30 days |
 | E2E TRX, traces, screenshots, videos, Docker diagnostics | `E2E Runtime Tests` | 30 days |
-| Container digest, OCI inspect/index output, Trivy text/SARIF output, attestation verification JSON, checksum manifest, SBOM/provenance evidence | `Container Build (Reusable)` | 90 days; preserve release evidence externally for release lifetime |
+| Container digest, OCI inspect/index output, immutable promotion evidence, Trivy text/SARIF output, attestation verification JSON, checksum manifest, SBOM/provenance evidence | `Container Build (Reusable)` | 90 days; preserve release evidence externally for release lifetime |
 | Deployment summaries/logs | Coolify deploy workflows | 90 days minimum |
 
 Release notes must copy or link long-lived evidence that GitHub artifact retention will eventually delete.

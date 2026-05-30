@@ -65,10 +65,11 @@ Last Updated: 2026-05-30 Europe/Brussels
 - Added downloadable Buildx SBOM/provenance registry evidence to `_container-build.yml` through `docker buildx imagetools inspect` and `--raw` OCI index output for the pushed GHCR digest.
 - Added `.github/scripts/write-artifact-checksums.cs` and wired `_container-build.yml` to generate SHA-256 checksum manifests for retained container evidence artifacts before upload.
 - Added `_container-build.yml` `gh attestation verify` enforcement for the pushed GHCR digest before checksum/upload/deploy dependency completion. Verification is constrained to the repository, reusable signer workflow, source ref/digest, SLSA provenance predicate, and GitHub-hosted runner trust boundary.
+- Added `.github/scripts/write-image-promotion-evidence.cs` and wired `_container-build.yml` to record primary-registry immutable `sha-*` / `dev-*` deployment tag promotion evidence, then inspect each tag and fail if it does not resolve to the built digest.
 
 ### IN PROGRESS
 
-- Phase 0 and Phase 1 are partially implemented. Phase 3 has repository-owned C# helper scripts, SHA-pin policy enforcement, Dependabot update-policy validation, blocking `actionlint`, blocking `zizmor`, checkout credential hardening, and retained workflow security evidence. Phase 6 has digest JSON evidence, downloadable SBOM/provenance registry evidence, retained Trivy text/SARIF scan artifacts, checksum manifests, pre-deploy GHCR attestation verification, and Docker base image digest policy, but still needs digest promotion/deploy consolidation. Remaining Phase 0 work is external settings evidence and CODEOWNERS owner/team verification. Remaining Phase 1 work is no-op wrappers for any other workflows before they are made globally required. Remaining Phase 3 work is optional Scorecard/secret-scanning lanes and repository-side required-check verification.
+- Phase 0 and Phase 1 are partially implemented. Phase 3 has repository-owned C# helper scripts, SHA-pin policy enforcement, Dependabot update-policy validation, blocking `actionlint`, blocking `zizmor`, checkout credential hardening, and retained workflow security evidence. Phase 6 has digest JSON evidence, downloadable SBOM/provenance registry evidence, immutable primary-registry promotion evidence, retained Trivy text/SARIF scan artifacts, checksum manifests, pre-deploy GHCR attestation verification, and Docker base image digest policy, but still needs deploy consolidation and Coolify-side digest consumption proof. Remaining Phase 0 work is external settings evidence and CODEOWNERS owner/team verification. Remaining Phase 1 work is no-op wrappers for any other workflows before they are made globally required. Remaining Phase 3 work is optional Scorecard/secret-scanning lanes and repository-side required-check verification.
 
 ### NEXT
 
@@ -80,7 +81,7 @@ Last Updated: 2026-05-30 Europe/Brussels
    - signature storage location and privacy retention.
 3. Review CodeQL, Security Integration, Cerbos, and agent-context check requirements before marking any path-filtered workflow globally required; add always-running wrappers first if needed.
 4. Add a hardened CLA workflow only after the `pull_request_target` threat model is documented.
-5. Continue Phase 6 by designing digest promotion evidence and Coolify digest consumption or immutable-tag fallback proof.
+5. Continue Phase 7 by consolidating deploy logic and proving Coolify consumes either explicit digests or the immutable `sha-*` / `dev-*` tags whose registry digests are now verified before deploy jobs start.
 6. Decide whether to add optional Scorecard and local secret-scanning lanes now or defer them until deploy hardening is complete.
 7. Require `Workflow Security` after repository-side check-name verification so unpinned external action references, `actionlint` failures, and medium-or-higher `zizmor` findings cannot merge.
 
@@ -116,7 +117,7 @@ Then implement Phase 0 or Phase 1 from the task checklist.
 | `.github/workflows/_build-test.yml` | Reusable restore/audit/format/build/test workflow. Supports `run-fast-tests` no-op mode; NuGet vulnerability audit remains blocking; OpenAPI drift check removed because canonical drift belongs to `openapi-contract.yml`. |
 | `.github/workflows/openapi-contract.yml` | Canonical `schemas/openapi.json` / API inventory / NSwag client drift and determinism guard. |
 | `.github/workflows/cla.yml` | Planned CLA/DCO contributor legal gate; does not exist yet. |
-| `.github/workflows/_container-build.yml` | Builds/pushes images, emits digest evidence, downloadable OCI inspect/index evidence for Buildx SBOM/provenance attestations, Trivy text/SARIF scan artifacts, GHCR attestation verification JSON, checksum manifests, and GitHub artifact attestations. |
+| `.github/workflows/_container-build.yml` | Builds/pushes images, emits digest evidence, immutable primary-registry promotion evidence, downloadable OCI inspect/index evidence for Buildx SBOM/provenance attestations, Trivy text/SARIF scan artifacts, GHCR attestation verification JSON, checksum manifests, and GitHub artifact attestations. |
 | `.github/workflows/deploy-coolify.yml` | Production deploy workflow; duplicated with staging workflow. |
 | `.github/workflows/deploy-coolify-develop.yml` | Staging deploy workflow; duplicated with production workflow. |
 | `.github/workflows/codeql.yml` | CodeQL for Actions, C#, and JavaScript/TypeScript. |
@@ -127,6 +128,7 @@ Then implement Phase 0 or Phase 1 from the task checklist.
 | `.github/scripts/validate-nuget-vulnerabilities.cs` | File-based C# parser for `dotnet list package --vulnerable` JSON output; fails fast CI when direct or transitive advisory findings exist. |
 | `.github/scripts/validate-dockerfile-base-images.cs` | File-based C# validator requiring deployable Dockerfiles to use tag-plus-digest base image references. |
 | `.github/scripts/write-container-digest-evidence.cs` | File-based C# writer for normalized container image digest evidence generated by `_container-build.yml`. |
+| `.github/scripts/write-image-promotion-evidence.cs` | File-based C# writer for primary-registry immutable deployment tag promotion evidence generated by `_container-build.yml`. |
 | `.github/scripts/write-artifact-checksums.cs` | File-based C# writer for SHA-256 checksum manifests covering retained CI/CD evidence artifacts. |
 | `docs/CI_CD_GOVERNANCE.md` | Current CI/CD governance source of truth. |
 | `docs/OPERATIONS.md` | Deployment protection, health endpoints, digest fallback guidance. |
@@ -233,8 +235,9 @@ Tooling checks:
 - Local container build workflow now exports Buildx SBOM/provenance registry evidence to `artifacts/container/<image>-oci-inspect.txt` and `artifacts/container/<image>-oci-index.json`.
 - Local checksum manifest writer validation passed with representative artifact inputs and created a SHA-256 manifest for retained evidence files.
 - Local container build workflow now writes `artifacts/container/<image>-attestation-verification.json` from `gh attestation verify` before dependent deploy jobs can start.
+- Local container build workflow now writes `artifacts/container/<image>-promotion.json`, `artifacts/container/<image>-promotion-tags.txt`, and `artifacts/container/<image>-promotion-*.txt` by recording primary-registry `sha-*` / `dev-*` tags and verifying each resolves to the built digest before dependent deploy jobs can start.
 - Docker base image digests are pinned in `Explore.API/Dockerfile` and `Explore.Blazor/Dockerfile` using tag-plus-digest .NET base references. `Workflow Security` now runs `.github/scripts/validate-dockerfile-base-images.cs`, and `.github/dependabot.yml` contains weekly Docker update blocks for both deployable Dockerfile directories.
-- `.github/scripts/packages.lock.json` was removed after adding script-local lock-file opt-out directives to every repository-owned C# helper script; `.github/scripts/` now contains only `*.cs` helper scripts.
+- `.github/scripts/packages.lock.json` was removed after adding script-local lock-file opt-out directives to every repository-owned C# helper script; `.github/scripts/` now contains only `*.cs` helper scripts, including `write-image-promotion-evidence.cs`.
 - Local `actionlint` verification passed after downloading `actionlint` `1.7.12` and checking SHA-256 `8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8` for the Linux amd64 release archive.
 - Local `zizmor` verification ran with `zizmor` `1.25.2` in a temporary Python virtual environment; after remediation it reports no medium-or-higher findings across `.github/workflows`.
 - Full-repo `git diff --check` returned exit 2 without actionable output in the larger dirty worktree.
