@@ -20,7 +20,7 @@ Table "actor_types" {
     master_code [unique, name: 'ix_actor_types_master_code']
   }
 
-  Note: 'Lookup: classifies federated actors. Values: User(1), Organization(2), Group(3), Bot(4). Seeded.'
+  Note: 'Lookup: classifies federated actors. Values: User(1), Organization(2), Bot(3), Group(4), System(5). Seeded.'
 }
 
 Table "role_scopes" {
@@ -471,6 +471,32 @@ Table "notification_reasons" {
   }
 
   Note: 'Lookup: why a notification was triggered. Seeded.'
+}
+
+Table "actor_subscription_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ux_actor_subscription_statuses_master_code']
+  }
+
+  Note: 'Lookup: actor subscription lifecycle. Values: Active(1), Unsubscribed(2), Blocked(3). Seeded.'
+}
+
+Table "actor_subscription_notification_levels" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  indexes {
+    master_code [unique, name: 'ux_actor_subscription_notification_levels_master_code']
+  }
+
+  Note: 'Lookup: per-actor subscription delivery level. Values: None(1), All(2), Personalized(3). Seeded.'
 }
 
 Table "event_session_kinds" {
@@ -2119,6 +2145,35 @@ Table "actor_key_stores" {
   "created_at" timestamptz
 }
 
+Table "actor_subscriptions" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "subscriber_tenant_user_id" uuid [not null]
+  "subscriber_user_id" uuid [not null]
+  "target_actor_id" uuid [not null]
+  "target_actor_type_id" int [not null]
+  "status_id" int [not null, default: 1]
+  "notification_level_id" int [not null, default: 2]
+  "subscribed_at" timestamptz [not null, default: `NOW()`]
+  "unsubscribed_at" timestamptz
+  "created_at" timestamptz [not null, default: `NOW()`]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, subscriber_tenant_user_id, target_actor_id) [unique, name: 'ux_actor_subscriptions_active_row', note: 'filter: is_deleted = false']
+    (tenant_id, target_actor_id, status_id, notification_level_id) [name: 'ix_actor_subscriptions_fanout_scan']
+    (tenant_id, subscriber_user_id) [name: 'ix_actor_subscriptions_subscriber_user']
+  }
+
+  Note: 'Tenant-local subscription from active tenant user to organization/group actor. Checks: target_actor_type_id IN (2,4); status_id IN (1,2,3); notification_level_id IN (1,2,3); unsubscribed status requires unsubscribed_at.'
+}
+
 // ============================================================
 // Users
 // ============================================================
@@ -3150,6 +3205,7 @@ Table "notifications" {
   "entity_id" varchar(200)
   "title" varchar(500) [not null]
   "body" varchar(2000)
+  "deduplication_key" varchar(500) [not null]
   "snoozed_until" timestamptz
   "is_read" boolean [not null]
   "read_at" timestamptz
@@ -3175,9 +3231,39 @@ Table "notifications" {
     (tenant_id, notification_type_id) [name: 'ix_notifications_tenant_type']
     (user_id, notification_scope_id, is_read) [name: 'ix_notifications_user_scope']
     (user_id, is_archived, created_at) [name: 'ix_notifications_user_archived', note: 'descending: created_at']
+    (tenant_id, user_id, deduplication_key) [unique, name: 'ux_notifications_tenant_user_deduplication_key']
   }
 
-  Note: 'User notification inbox row. Check: ck_notifications_entity_reference_shape keeps polymorphic entity references null/null or Guid-shaped.'
+  Note: 'User notification inbox row. Check: ck_notifications_entity_reference_shape keeps polymorphic entity references null/null or Guid-shaped. Deduplication key is required for retry-safe fanout-created notifications.'
+}
+
+Table "notification_fanout_runs" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "fanout_kind" varchar(100) [not null]
+  "notification_entity_type_id" int [not null]
+  "entity_id" uuid [not null]
+  "source_actor_id" uuid [not null]
+  "status" varchar(50) [not null, default: 'pending']
+  "cursor_subscriber_tenant_user_id" uuid
+  "processed_count" int [not null]
+  "created_notification_count" int [not null]
+  "started_at" timestamptz
+  "completed_at" timestamptz
+  "failed_at" timestamptz
+  "last_error" varchar(2000)
+  "created_at" timestamptz [not null, default: `NOW()`]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, fanout_kind, notification_entity_type_id, entity_id, source_actor_id) [unique, name: 'ux_notification_fanout_runs_source']
+    (status, created_at) [name: 'ix_notification_fanout_runs_worker_poll']
+  }
+
+  Note: 'Idempotency guard and progress cursor for asynchronous notification fanout. Checks: processed_count >= 0; created_notification_count >= 0; status IN (pending, processing, completed, failed).'
 }
 
 
@@ -3347,6 +3433,13 @@ Ref: "actors"."organization_id" - "organizations"."id" [delete: restrict]
 Ref: "actors"."group_id" - "groups"."id" [delete: restrict]
 Ref: "actor_pii"."actor_id" - "actors"."id" [delete: cascade]
 Ref: "actor_key_stores"."actor_id" > "actors"."id" [delete: cascade]
+Ref: "actor_subscriptions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "actor_subscriptions".("tenant_id", "subscriber_tenant_user_id") > "tenant_users".("tenant_id", "id") [delete: restrict]
+Ref: "actor_subscriptions"."subscriber_user_id" > "users"."id" [delete: restrict]
+Ref: "actor_subscriptions".("tenant_id", "target_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
+Ref: "actor_subscriptions"."target_actor_type_id" > "actor_types"."id" [delete: restrict]
+Ref: "actor_subscriptions"."status_id" > "actor_subscription_statuses"."id" [delete: restrict]
+Ref: "actor_subscriptions"."notification_level_id" > "actor_subscription_notification_levels"."id" [delete: restrict]
 
 // Organizations & Groups
 Ref: "organizations"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
@@ -3517,9 +3610,15 @@ Ref: "event_session_custom_property_projections"."event_session_custom_property_
 // Notifications
 Ref: "notifications"."notification_type_id" > "notification_types"."id" [delete: restrict]
 Ref: "notifications"."notification_reason_id" > "notification_reasons"."id" [delete: restrict]
-Ref: "notifications"."source_entity_type_id" > "notification_entity_types"."id" [delete: restrict]
+Ref: "notifications"."notification_entity_type_id" > "notification_entity_types"."id" [delete: restrict]
 Ref: "notifications"."notification_scope_id" > "notification_scope_types"."id" [delete: restrict]
-Ref: "notifications"."user_id" > "users"."id" [delete: restrict]
+Ref: "notifications"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "notifications"."user_id" > "users"."id" [delete: cascade]
+Ref: "notifications"."source_actor_id" > "actors"."id" [delete: set null]
+Ref: "notifications"."recipient_context_actor_id" > "actors"."id" [delete: set null]
+Ref: "notification_fanout_runs"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "notification_fanout_runs"."notification_entity_type_id" > "notification_entity_types"."id" [delete: restrict]
+Ref: "notification_fanout_runs".("tenant_id", "source_actor_id") > "actors".("tenant_id", "id") [delete: restrict]
 
 // API Keys
 Ref: "external_api_keys"."external_api_key_owner_type_id" > "external_api_key_owner_types"."id" [delete: restrict]

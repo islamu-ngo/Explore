@@ -3,9 +3,10 @@
 
 <div class="notification-item @(IsUnread ? "notification-item--unread" : "") @(IsArchived ? "notification-item--archived" : "") @(IsSnoozed ? "notification-item--snoozed" : "")"
      @onclick="() => OnClick.InvokeAsync(Notification)"
+     @onkeydown="HandleKeyDown"
      role="button"
      tabindex="0"
-     aria-label="@Notification.Title">
+     aria-label="@GetAccessibleLabel()">
 
     <div class="notification-item__icon">
         <MudIcon Icon="@GetTypeIcon()" Size="Size.Small" Color="@GetScopeColor()" />
@@ -31,7 +32,7 @@
                          Variant="Variant.Text"
                          Color="Color.Default"
                          Class="notification-item__reason">
-                    @Notification.NotificationReasonName
+                    @GetReasonLabel()
                 </MudChip>
             }
         </div>
@@ -44,7 +45,12 @@
         <div class="notification-item__meta">
             @if (!string.IsNullOrEmpty(Notification.SourceActorName))
             {
-                <span class="notification-item__source">@Notification.SourceActorName</span>
+                <span class="notification-item__source">From @Notification.SourceActorName</span>
+                <span class="notification-item__dot">·</span>
+            }
+            @if (!string.IsNullOrEmpty(GetContextLabel()))
+            {
+                <span class="notification-item__context">@GetContextLabel()</span>
                 <span class="notification-item__dot">·</span>
             }
             <span class="notification-item__time">@FormatRelativeTime(Notification.CreatedAt)</span>

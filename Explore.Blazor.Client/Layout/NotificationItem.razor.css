@@ -19,6 +19,11 @@
     background-color: var(--mud-palette-action-default-hover);
 }
 
+.notification-item:focus-visible {
+    outline: var(--isl-focus-ring-width, 2px) solid var(--mud-palette-primary);
+    outline-offset: var(--isl-focus-ring-offset, 2px);
+}
+
 .notification-item--unread {
     background-color: color-mix(in srgb, var(--mud-palette-primary) 6%, transparent);
 }
@@ -95,7 +100,8 @@
     color: var(--mud-palette-text-disabled);
 }
 
-.notification-item__source {
+.notification-item__source,
+.notification-item__context {
     font-weight: 500;
 }
 

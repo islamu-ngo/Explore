@@ -109,6 +109,8 @@ The system uses a transactional outbox for reliable asynchronous event delivery:
 
 Handlers, controllers, automation executors, and sequence processors create durable intent only. They must not send SMTP, publish RabbitMQ, or schedule TickerQ jobs directly. Side effects are owned by approved background workers, scheduler functions, or Infrastructure dispatch components.
 
+Event publication currently writes two general outbox messages in the same transaction: the external `EventPublished` message for MQContract publishing and the internal `EventPublishedNotificationFanoutRequested` message for subscription fanout. `CompositeOutboxMessageDispatcher` routes `EventPublished` to the MQContract dispatcher and routes `EventPublishedNotificationFanoutRequested` to `EventPublishedNotificationFanoutService`, which creates idempotent durable in-app notifications for eligible active actor subscribers.
+
 Specialized outbox variants exist for specific subsystems:
 - `PdsSyncOutbox` — AT Protocol federation sync (DID, Collection, RecordKey, PdsHost).
 - `PolicyChangeOutbox` — authorization policy change propagation (SettingScope).
@@ -124,6 +126,7 @@ See [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md) for full entity model, configuration,
 | `PdsSyncWorker` | AT Protocol PDS synchronization from `PdsSyncOutbox` | Configurable with exponential backoff |
 | TickerQ `email-dispatch-drain` | Default Basic Dispatch Mode trigger for draining `EmailDispatchOutbox` through the shared drain service | Cron, default every 10s |
 | `EmailDispatchProcessor` | Hosted-service fallback trigger over the same EmailDispatch drain service | Configurable fallback |
+| `CompositeOutboxMessageDispatcher` | Dispatch component used by `OutboxProcessor` to route external MQContract messages and internal notification fanout messages | Invoked per outbox message |
 
 These background services and scheduler triggers use optimistic locking or durable claim semantics for multi-worker safety and are availability-gated where dependent services are required.
 

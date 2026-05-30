@@ -7,10 +7,10 @@ Last Updated: 2026-05-29 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Phase 4 event-published fanout service, dispatcher routing, and focused internal fanout integration coverage are implemented.
-- **Completed:** Phase 1 model foundation; Phase 2 repository primitives, DTOs, validators, queries, commands, mapping, focused subscribe-command tests, actor-subscription authorization resource/policy wiring, initial Phase 3 actor/event API/HAL surface, focused actor-subscription API/HAL integration coverage, expanded API failure/transition coverage, contract regeneration, Phase 4.1 internal fanout outbox request, Phase 4.2 fanout service, Phase 4.3 composite dispatcher routing, and Phase 4.5 focused publish-to-notification fanout integration coverage.
-- **Current priority:** Decide whether Phase 4 metrics/logging are required before moving to Blazor UX.
-- **Next recommended slice:** Either add low-cardinality fanout metrics/logging or start Phase 5 Blazor subscription UX; defer EF migration until unrelated dirty snapshot/schema work is isolated.
+- **Overall status:** Phase 8 SSE-only notification refresh hints are implemented with polling fallback; EF migration generation remains deferred due unrelated dirty migration/model-snapshot state.
+- **Completed:** Phase 1 model foundation; Phase 2 repository primitives, DTOs, validators, queries, commands, mapping, focused subscribe-command tests, actor-subscription authorization resource/policy wiring, initial Phase 3 actor/event API/HAL surface, focused actor-subscription API/HAL integration coverage, expanded API failure/transition coverage, contract regeneration, Phase 4.1 internal fanout outbox request, Phase 4.2 fanout service, Phase 4.3 composite dispatcher routing, Phase 4.4 fanout metrics/logging, Phase 4.5 focused publish-to-notification fanout integration coverage, Phase 5.1-5.5 Blazor subscription UX wiring, Phase 6.1-6.3 notification inbox UX fixes, Phase 7 notification/domain/API/outbox/operations documentation updates, Phase 8 SSE-only refresh planning, and Phase 8.2 SSE refresh runtime implementation.
+- **Current priority:** Final wrap-up, documentation of the SSE runtime in canonical docs if desired, or explicitly isolate EF migration generation/model-snapshot work; focused Blazor service/component tests from Phase 5 remain blocked by unrelated AI DTO compile failure.
+- **Next recommended slice:** Update canonical notification/API/operations docs for the implemented SSE endpoint/client if required, isolate a clean EF migration/model-snapshot pass, or resolve unrelated AI/test blockers so broader suites can run.
 
 ## Implementation Maintenance Rules
 
@@ -31,7 +31,7 @@ Last Updated: 2026-05-29 Europe/Brussels
 
 - [x] **0.1 Apply Senior CTO re-baseline**
   - **Files:** `subscription-notification-plan.md`, `subscription-notification-context.md`, `subscription-notification-tasks.md`
-  - **Acceptance:** Plan locks v1 to organization/group subscriptions, disables user targets, defers SignalR, requires tenant-local subscriber checks, and separates internal fanout outbox from external MQContract `EventPublished`.
+  - **Acceptance:** Plan locks v1 to organization/group subscriptions, disables user targets, defers real-time refresh to optional SSE, requires tenant-local subscriber checks, and separates internal fanout outbox from external MQContract `EventPublished`.
   - **Validation:** Dev docs updated consistently; baseline build and full architecture test run recorded in context.
   - **Effort:** M
   - **Dependencies:** 0.0
@@ -96,8 +96,8 @@ Last Updated: 2026-05-29 Europe/Brussels
 
 - [ ] **1.5 Generate EF migration and update schema docs**
   - **Files:** new migration under `Explore.Persistence/Migrations/`; `ExploreDbContextModelSnapshot.cs`; `schemas/islamu-event.md`
-  - **Acceptance:** `Up`/`Down` reversible; seed/model snapshot in sync; schema docs updated.
-  - **Validation:** Deferred because `Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs` and `schemas/islamu-event.md` were already dirty with unrelated work before this slice; generating now risks mixing migrations.
+  - **Acceptance:** DBML schema reference is updated for the implemented actor-subscription and notification-fanout model. EF migration generation and model-snapshot sync remain open because this task also requires a clean migration `Up`/`Down` and `ExploreDbContextModelSnapshot.cs` update.
+  - **Validation:** `schemas/islamu-event.md` now documents actor subscription lookup tables, `actor_subscriptions`, notification `deduplication_key`, `notification_fanout_runs`, and the related references/indexes. EF migration/model snapshot generation remains deferred because `Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs` was already dirty with unrelated work before this slice; generating now risks mixing migrations.
   - **Effort:** M
   - **Dependencies:** 1.1, 1.2, 1.3, 1.4
 
@@ -196,7 +196,7 @@ Last Updated: 2026-05-29 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** 3.1-3.4
 
-## Phase 4: Event Published Fanout 🟡 IN PROGRESS
+## Phase 4: Event Published Fanout ✅ COMPLETE
 
 - [x] **4.1 Add internal notification fanout outbox request**
   - **Files:** `PublishEventCommandHandler.cs`; new internal fanout payload model, for example `EventPublishedNotificationFanoutRequested`
@@ -219,10 +219,10 @@ Last Updated: 2026-05-29 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** 4.2
 
-- [ ] **4.4 Add fanout metrics/logging**
-  - **Files:** `BusinessMetrics.cs`; fanout service; tests/docs
-  - **Acceptance:** Low-cardinality metrics; logs contain safe IDs/categories/counts only.
-  - **Validation:** telemetry tests/build.
+- [x] **4.4 Add fanout metrics/logging**
+  - **Files:** `Explore.Application/Telemetry/BusinessMetrics.cs`; `Explore.Application/Services/EventPublishedNotificationFanoutService.cs`; `Event.Application.UnitTests/Telemetry/BusinessMetricsNotificationFanoutTests.cs`; `Event.Application.UnitTests/Services/EventPublishedNotificationFanoutServiceTests.cs`
+  - **Acceptance:** Fanout now emits low-cardinality OpenTelemetry metrics through the `Explore.Business` meter: `explore.notifications.fanout_runs` and `explore.notifications.fanout_subscribers`. Metric tags are bounded to `tenant_id`, normalized `fanout_kind`, and normalized `outcome`; tests assert no event IDs, actor IDs, subscriber IDs, notification IDs, event titles, or deduplication keys are emitted as metric tags. Fanout service logs processing, completed, skipped-completed, and failed runs with structured safe context and aggregate counts only; exceptions are logged and rethrown for outbox retry/dead-letter handling.
+  - **Validation:** LSP diagnostics clean for metrics/service/test files; `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet -p:TreatWarningsAsErrors=false` passed; targeted metrics tests passed with 3 tests; targeted fanout service tests passed with 3 tests using analyzer suppression for test-project compilation isolation.
   - **Effort:** M
   - **Dependencies:** 4.2
 
@@ -233,103 +233,103 @@ Last Updated: 2026-05-29 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** 4.3
 
-## Phase 5: Blazor Subscription UX ⏳ NOT STARTED
+## Phase 5: Blazor Subscription UX 🟡 IN PROGRESS
 
-- [ ] **5.1 Add Blazor actor subscription service**
+- [x] **5.1 Add Blazor actor subscription service**
   - **Files:** new `IActorSubscriptionService.cs`; new `ActorSubscriptionService.cs`; DI registration
-  - **Acceptance:** Wraps generated client; handles API exceptions; no token handling; logs safely.
-  - **Validation:** `Explore.Blazor.Client.Tests` service tests.
+  - **Acceptance:** Wraps the generated actor-subscription client methods behind a Blazor service; handles `ApiException` with safe logging and null/failure defaults; keeps token handling at the BFF/client boundary; registered as scoped DI.
+  - **Validation:** LSP diagnostics clean for service/contract files; `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet -p:TreatWarningsAsErrors=false` passed. Focused service tests were added but cannot execute until unrelated `Explore.Application/DTOs/Ai/AiConversationDtos.cs` compile error is resolved.
   - **Effort:** M
   - **Dependencies:** 3.5
 
-- [ ] **5.2 Add `ActorSubscriptionButton` component**
+- [x] **5.2 Add `ActorSubscriptionButton` component**
   - **Files:** new `.razor`, `.razor.cs`, `.razor.css` under `Explore.Blazor.Client/Shared/`
-  - **Acceptance:** Renders Subscribe/Subscribed/bell states from HAL/state; accessible labels; keyboard usable; BEM/logical CSS; no role checks.
-  - **Validation:** bUnit component/accessibility tests.
+  - **Acceptance:** Renders Subscribe/Subscribed/checking/updating states from HAL affordance booleans and loaded subscription state; uses `AppButton`; provides accessible labels and live announcements; relies on native button keyboard semantics; uses scoped BEM/logical CSS; performs no local role/claim checks.
+  - **Validation:** LSP diagnostics clean for component code-behind and CSS validated through Blazor build; bUnit component tests were added but currently blocked by the unrelated AI DTO compile error noted above.
   - **Effort:** L
   - **Dependencies:** 5.1
 
-- [ ] **5.3 Replace organization profile static Subscribe button**
+- [x] **5.3 Replace organization profile static Subscribe button**
   - **Files:** `OrganizationProfile.razor`, `.razor.cs`, `.razor.css`
-  - **Acceptance:** Uses `ActorSubscriptionButton`; no false static button; graceful load/error.
-  - **Validation:** Blazor client tests.
+  - **Acceptance:** Organization profile now uses `ActorSubscriptionButton` with `TargetActorId`, organization display name, and HAL-gated `subscribe`/`subscription` affordances from `OrganizationDto`; the misleading static button is removed; no role/claim checks were added.
+  - **Validation:** Blazor client build passed; targeted Blazor tests remain blocked by unrelated AI compile error.
   - **Effort:** M
   - **Dependencies:** 5.2
 
-- [ ] **5.4 Replace group profile static Subscribe button**
+- [x] **5.4 Replace group profile static Subscribe button**
   - **Files:** `GroupProfile.razor`, `.razor.cs`, `.razor.css`
-  - **Acceptance:** Uses same reusable component; HAL-gated.
-  - **Validation:** Blazor client tests.
+  - **Acceptance:** Group profile now uses the same reusable `ActorSubscriptionButton`; `GroupService` preserves `_links` relation names from the raw HAL response into `GroupAdminDetailsModel`, allowing `HasHalLink("subscribe")` and `HasHalLink("subscription")` gating without local role inference.
+  - **Validation:** LSP diagnostics clean for `GroupService`; Blazor client build passed; targeted Blazor tests remain blocked by unrelated AI compile error.
   - **Effort:** M
   - **Dependencies:** 5.2
 
-- [ ] **5.5 Add event-detail organizer subscribe action**
+- [x] **5.5 Add event-detail organizer subscribe action**
   - **Files:** `EventDetail.razor`, `.razor.cs`, `.razor.css`
-  - **Acceptance:** Clear “Subscribe to organizer” UX near organizer card; registration CTA remains primary; HAL-gated.
-  - **Validation:** Blazor client tests/manual keyboard smoke.
+  - **Acceptance:** Event detail now renders `ActorSubscriptionButton` near the organizer card using `organizer-subscription` and `subscribe-organizer` HAL links; registration CTA remains unchanged and primary; action remains HAL-gated only.
+  - **Validation:** Blazor client build passed; Razor files are validated through the build because Razor LSP is unavailable in this environment; targeted Blazor tests remain blocked by unrelated AI compile error.
   - **Effort:** M
   - **Dependencies:** 5.2, 3.3
 
-## Phase 6: Notification Inbox UX ⏳ NOT STARTED
+## Phase 6: Notification Inbox UX ✅ COMPLETE
 
-- [ ] **6.1 Fix notification entity deep-link routing**
-  - **Files:** `NotificationBell.razor.cs`; tests
-  - **Acceptance:** Event/org/group routes match `Routes.razor`; tests cover mapping.
-  - **Validation:** `Explore.Blazor.Client.Tests`.
+- [x] **6.1 Fix notification entity deep-link routing**
+  - **Files:** `Explore.Blazor.Client/Helpers/NotificationNavigationHelper.cs`; `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`; `Explore.Blazor.Client/Pages/Notifications/Notifications.razor.cs`; `Explore.Blazor.Client.Tests/Helpers/NotificationNavigationHelperTests.cs`
+  - **Acceptance:** Event, organization, and group notification links now use the same routes declared in `Routes.razor`: `/events/{id}`, `/organization/profile/{id}`, and `/group/profile/{id}`. Unsupported notification entity types, including event sessions without a matching route, now return no deep link instead of silently navigating to an invalid event URL. Bell and full inbox share the same helper.
+  - **Validation:** LSP diagnostics clean; Blazor client build passed; targeted route-helper TUnit run passed with 4 tests.
   - **Effort:** S
   - **Dependencies:** Phase 4
 
-- [ ] **6.2 Improve subscription notification item display**
-  - **Files:** `NotificationItem.razor`, `.razor.cs`, `.razor.css`; DTO mapping if needed
-  - **Acceptance:** Shows reason/source actor clearly; accessible; no color-only meaning.
-  - **Validation:** bUnit/accessibility tests.
+- [x] **6.2 Improve subscription notification item display**
+  - **Files:** `Explore.Blazor.Client/Layout/NotificationItem.razor`; `NotificationItem.razor.cs`; `NotificationItem.razor.css`; `Explore.Blazor.Client.Tests/Components/NotificationItemTests.cs`
+  - **Acceptance:** Subscription notifications now display the reason label, source actor (`From ...`), and recipient context (`via ...`) when present; the button-like item has keyboard activation for Enter/Space, an accessible label containing title/reason/source/context/scope, and a visible focus ring. Meaning is conveyed through text, not only chip color.
+  - **Validation:** LSP diagnostics clean; Blazor client build passed; targeted `NotificationItemTests` TUnit run passed with 3 tests.
   - **Effort:** M
   - **Dependencies:** 6.1
 
-- [ ] **6.3 Reassess mark-all-read-on-open behavior**
-  - **Files:** `NotificationBell.razor.cs`; docs/tests if changed
-  - **Acceptance:** Decision recorded. If changed, behavior is tested and docs updated.
-  - **Validation:** Blazor tests.
+- [x] **6.3 Reassess mark-all-read-on-open behavior**
+  - **Files:** `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`
+  - **Acceptance:** Automatic mark-all-read-on-open was removed from the bell. Opening the panel no longer locally zeroes unread count or fire-and-forgets `MarkAllAsReadAsync`; users retain explicit read-state control through existing mark-read/full-inbox interactions. This avoids losing unread state just because the panel was opened.
+  - **Validation:** Blazor client build passed; notification item and navigation tests passed. No dedicated mark-all-read test was added because the behavior was removed rather than replaced with a new interactive flow.
   - **Effort:** S/M
   - **Dependencies:** 6.1
 
-## Phase 7: Documentation And Operations ⏳ NOT STARTED
+## Phase 7: Documentation And Operations ✅ COMPLETE FOR IMPLEMENTED DOCS
 
-- [ ] **7.1 Update notifications docs**
+- [x] **7.1 Update notifications docs**
   - **Files:** `docs/NOTIFICATIONS.md`; `docs/EMAIL_NOTIFICATIONS.md` if boundary note changes
-  - **Acceptance:** Documents implemented subscription in-app fanout; still avoids unsupported email/push claims.
-  - **Validation:** Docs/context architecture tests.
+  - **Acceptance:** Notification docs now document implemented organization/group actor-subscription in-app fanout through the internal outbox path, durable `Notification` rows, deterministic `DeduplicationKey`, `NotificationFanoutRun` progress, actor-subscription API boundary, corrected bell read-state behavior, and corrected event/organization/group deep-link routes. Email docs clarify that actor-subscription fanout is in-app only and does not call SMTP/email delivery.
+  - **Validation:** Targeted `DocumentationQualityTests` passed 4/4 and targeted `AgentContextLinkTests` passed 8/8. Unsupported email/push/SSE-delivery/user-target claims remain explicitly out of scope.
   - **Effort:** M
   - **Dependencies:** Phases 4-6
 
-- [ ] **7.2 Update domain/architecture/API docs**
-  - **Files:** `docs/DOMAIN.md`; `docs/ARCHITECTURE.md`; `docs/API_CHANGELOG.md`; `schemas/islamu-event.md`
-  - **Acceptance:** New model, outbox fanout, API contract, and schema are documented with source anchors.
-  - **Validation:** Architecture docs tests; build.
+- [x] **7.2 Update domain/architecture/API docs**
+  - **Files:** `docs/DOMAIN.md`; `docs/ARCHITECTURE.md`; `docs/API.md`; `docs/API_CHANGELOG.md`; `docs/OUTBOX_PATTERN.md`; `docs/TROUBLESHOOTING.md`; `schemas/islamu-event.md`
+  - **Acceptance:** Domain and architecture docs now describe `ActorSubscription`, `NotificationFanoutRun`, actor-subscription lookup families, required notification deduplication, event publication's external and internal outbox rows, `CompositeOutboxMessageDispatcher`, and internal notification fanout. API docs now list actor-subscription endpoints and fanout metrics. `docs/API_CHANGELOG.md` records the durable in-app fanout behavior. `schemas/islamu-event.md` now reflects the implemented DBML schema for actor subscription lookup tables, `actor_subscriptions`, notification deduplication key/index, `notification_fanout_runs`, and related references. EF migration generation/model-snapshot sync remains deferred separately.
+  - **Validation:** Targeted `DocumentationQualityTests` passed 4/4 and targeted `AgentContextLinkTests` passed 8/8 for canonical docs; schema DBML was manually checked against EF configurations and grep-verified for the new tables/columns/relationships. EF migration validation remains deferred with the migration slice.
   - **Effort:** M
   - **Dependencies:** Phases 1-6
 
-- [ ] **7.3 Update operations docs if fanout operational knobs exist**
-  - **Files:** `docs/OPERATIONS.md`; `docs/CONFIGURATION.md` if keys added
-  - **Acceptance:** Metrics, health, config, and backlog behavior documented only if implemented.
-  - **Validation:** Docs tests.
+- [x] **7.3 Update operations docs if fanout operational knobs exist**
+  - **Files:** `docs/OPERATIONS.md`; `docs/CONFIGURATION.md` not changed because no new configuration keys were added
+  - **Acceptance:** Operations docs now document notification fanout flow, operator signals, fanout metrics (`explore.notifications.fanout_runs`, `explore.notifications.fanout_subscribers`), dead-letter/backlog signals, and the fact that dedupe/run state is the operational source of truth for at-least-once fanout. No unsupported health/config knobs were documented.
+  - **Validation:** Targeted `DocumentationQualityTests` passed 4/4 and targeted `AgentContextLinkTests` passed 8/8.
   - **Effort:** S/M
   - **Dependencies:** 4.4
 
-## Phase 8: Optional Real-Time Refresh ⏸️ DEFERRED BY DEFAULT
+## Phase 8: Optional SSE Real-Time Refresh ✅ IMPLEMENTED
 
-- [ ] **8.1 Decide whether to add SignalR notification refresh**
-  - **Files:** plan/context/tasks unless approved for code
-  - **Acceptance:** Decision recorded; if approved, create sub-plan/tasks for `NotificationHub` and client connection.
-  - **Validation:** Docs update only unless approved.
+- [x] **8.1 Decide whether to add SSE notification refresh**
+  - **Files:** `subscription-notification-plan.md`; `subscription-notification-tasks.md`; `subscription-notification-context.md`
+  - **Acceptance:** Decision recorded: SSE is the Phase 8 real-time refresh path if product wants lower-latency nav badge/inbox updates than polling. Persisted `Notification` rows and existing notification APIs remain the delivery truth; polling remains fallback.
+  - **Validation:** Targeted no-build `DocumentationQualityTests` passed with 4 tests after the plan/task/context update. A normal rebuild attempt was blocked by unrelated `KeycloakBootstrapService.ClientSecretUpdateResult.Success` duplicate-member compile error.
   - **Effort:** S
   - **Dependencies:** Durable fanout complete
 
-- [ ] **8.2 Implement SignalR refresh hint layer if approved**
-  - **Files:** new API hub, Blazor service, optional config/docs/tests
-  - **Acceptance:** SignalR only hints refresh/unread count; persisted notification remains truth; polling fallback stays.
-  - **Validation:** API/Blazor tests; optional Redis backplane docs if configured.
-  - **Effort:** L/XL
+- [x] **8.2 Implement SSE refresh hint layer if approved**
+  - **Files:** `Explore.API/Controllers/NotificationController.cs`; `Explore.API/Hateoas/RouteNames.cs`; `Explore.Application/DTOs/Notification/NotificationRefreshHintDto.cs`; `Explore.Application/Contracts/Services/INotificationRefreshStreamService.cs`; `Explore.Application/Services/NotificationRefreshStreamService.cs`; `Explore.Application/ApplicationServicesRegistration.cs`; `Explore.Blazor.Client/Contracts/Services/Notifications/INotificationRefreshStreamClient.cs`; `Explore.Blazor.Client/Services/NotificationRefreshStreamClient.cs`; `Explore.Blazor.Client/wwwroot/js/notification-refresh.js`; `Explore.Blazor.Client/Extensions/ServiceCollectionExtensions.cs`; `Explore.Blazor.Client/Layout/NotificationBell.razor*`; `Event.Application.UnitTests/Services/NotificationRefreshStreamServiceTests.cs`; `Explore.Blazor.Client.Tests/Services/NotificationRefreshStreamClientTests.cs`
+  - **Acceptance:** Authenticated `GET /api/notification/stream` streams `notification-refresh` SSE events through ASP.NET Core 10 `TypedResults.ServerSentEvents`; stream payload is a minimal non-PII hint (`UnreadCount`, `HasUnread`, `Reason`, `GeneratedAt`) and does not replace durable `Notification` rows or existing notification APIs. The endpoint disables request timeout, sets no-store/no-cache and `X-Accel-Buffering: no`, honors cancellation, and emits SSE IDs/reconnect interval. Blazor uses browser `EventSource` with same-origin cookies via JS interop, keeps the existing 60-second polling timer as fallback, and updates the bell/panel from refresh hints.
+  - **Validation:** LSP diagnostics clean for touched API/Application/Blazor/test files; `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet -p:TreatWarningsAsErrors=false` passed; `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet -p:TreatWarningsAsErrors=false` passed; `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet -p:TreatWarningsAsErrors=false` passed; targeted `NotificationRefreshStreamServiceTests` passed 2/2; targeted `NotificationRefreshStreamClientTests` passed 2/2.
+  - **Effort:** L
   - **Dependencies:** 8.1 approval
 
 ## Verification Checklist
@@ -348,7 +348,7 @@ Last Updated: 2026-05-29 Europe/Brussels
 
 ## Remaining / Deferred Work
 
-- SignalR real-time notification refresh is deferred unless user approves it for v1.
+- SSE real-time notification refresh hints are implemented for the notification bell; durable notifications and existing APIs remain delivery truth.
 - Public user-to-user subscriptions are deferred; v1 API/UI should fail closed for user targets.
 - Email fanout from actor subscriptions is deferred.
 - Browser/mobile push is deferred.

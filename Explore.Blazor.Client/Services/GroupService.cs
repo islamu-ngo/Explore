@@ -138,7 +138,8 @@ public class GroupService : IGroupService
                 ActorBackgroundEffect = ReadString(root, "actorBackgroundEffect"),
                 ActorBannerColor = ReadString(root, "actorBannerColor"),
                 ActorBannerPictureUri = ReadString(root, "actorBannerPictureUri"),
-                ActorProfilePictureUri = ReadString(root, "actorProfilePictureUri")
+                ActorProfilePictureUri = ReadString(root, "actorProfilePictureUri"),
+                LinkRelations = ReadLinkRelations(root)
             };
         }
         catch (Exception ex)
@@ -283,6 +284,18 @@ public class GroupService : IGroupService
         var raw = ReadString(root, propertyName);
         return Guid.TryParse(raw, out var value) ? value : null;
     }
+
+    private static IReadOnlySet<string> ReadLinkRelations(JsonElement root)
+    {
+        if (!root.TryGetProperty("_links", out var links) || links.ValueKind != JsonValueKind.Object)
+        {
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        return links.EnumerateObject()
+            .Select(link => link.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
 }
 
 public class GroupPublisherListDto
@@ -303,4 +316,7 @@ public class GroupAdminDetailsModel
     public string? ActorBannerColor { get; set; }
     public string? ActorBannerPictureUri { get; set; }
     public string? ActorProfilePictureUri { get; set; }
+    public IReadOnlySet<string> LinkRelations { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    public bool HasHalLink(string relation) => LinkRelations.Contains(relation);
 }

@@ -203,6 +203,22 @@ public static class HalResourceExtensions
         return JsonSerializer.Deserialize<ActorDto>(json, JsonOptions) ?? new ActorDto();
     }
 
+    // ========== Actor Subscription Extensions ==========
+
+    public static ICollection<ActorSubscriptionListDto> GetItems(this HalCollectionResourceOfActorSubscriptionListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<ActorSubscriptionListDto>();
+
+        return DeserializeItems<ActorSubscriptionListDto>(collection._embedded.Items);
+    }
+
+    public static ActorSubscriptionDto ToDto(this HalResourceOfActorSubscriptionDto halResource)
+    {
+        var json = JsonSerializer.Serialize(halResource, JsonOptions);
+        return JsonSerializer.Deserialize<ActorSubscriptionDto>(json, JsonOptions) ?? new ActorSubscriptionDto();
+    }
+
     // ========== LINQ-like Extensions for HAL Collections ==========
 
     /// <summary>
@@ -708,6 +724,15 @@ public static class HalResourceExtensions
 
     public static bool HasManagementLinks(this HalResourceOfGroupDto dto)
         => dto.HasLink("edit") || dto.HasLink("delete");
+
+    public static bool HasHalLink(this ActorSubscriptionDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasHalLink(this ActorSubscriptionListDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasLink(this HalResourceOfActorSubscriptionDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
 
     // ========== Helper Methods ==========
 

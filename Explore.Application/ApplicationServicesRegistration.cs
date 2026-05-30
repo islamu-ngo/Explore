@@ -57,6 +57,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
         services.AddScoped<IEventLifecycleEmailOutboxFactory, EventLifecycleEmailOutboxFactory>();
         services.AddScoped<IEventPublishedNotificationFanoutService, EventPublishedNotificationFanoutService>();
+        services.AddScoped<INotificationRefreshStreamService, NotificationRefreshStreamService>();
         services.AddScoped<IEventLifecycleScheduler, EventLifecycleScheduler>();
         services.AddScoped<IScheduledEmailDispatchTrigger, NoOpScheduledEmailDispatchTrigger>();
         services.AddSingleton<IScheduledJobRegistry, ScheduledJobRegistry>();

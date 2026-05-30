@@ -86,6 +86,8 @@ public static class ServiceCollectionExtensions
 
         // Notification services
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IActorSubscriptionService, ActorSubscriptionService>();
+        services.AddScoped<INotificationRefreshStreamClient, NotificationRefreshStreamClient>();
 
         // BFF / onboarding services (use named HttpClient "BffClient")
         services.AddBffRefitClient<IInstanceOnboardingApi>(configureBffRefitClient)

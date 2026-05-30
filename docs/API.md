@@ -552,6 +552,8 @@ Meter name: `Explore.Business`. Tags vary by counter and include dimensions such
 | `explore.external_api_keys.rotated` | External API-key rotations |
 | `explore.idempotency.cleanup_runs` | Expired idempotency cleanup attempts by bounded `mode` and `outcome` tags |
 | `explore.idempotency.cleanup_rows` | Expired idempotency cleanup eligible/deleted row counts by bounded `mode` and `outcome` tags |
+| `explore.notifications.fanout_runs` | Notification fanout run outcomes by bounded `tenant_id`, `fanout_kind`, and `outcome` tags |
+| `explore.notifications.fanout_subscribers` | Aggregate notification fanout subscriber decisions by bounded `tenant_id`, `fanout_kind`, and `outcome` tags |
 | `event_role_assignment.changed` | Event role assignment changes |
 
 Authorization decisions are also traced via `ActivitySource` named `Explore.Authorization` with `resource.kind`, `resource.action`, and `request.type` tags.
@@ -563,7 +565,7 @@ Authorization decisions are also traced via `ActivitySource` named `Explore.Auth
 ### OutboxProcessor
 - Polls `outbox_messages` table for pending events at configurable interval (default 5s).
 - Processes in batches (default 100) with optimistic locking (`TryMarkAsProcessing`).
-- Dispatches via `IOutboxMessageDispatcher` (currently `LoggingOutboxMessageDispatcher` no-op).
+- Dispatches via `IOutboxMessageDispatcher`; current routing is handled by `CompositeOutboxMessageDispatcher`, which sends `EventPublished` to MQContract publishing and sends `EventPublishedNotificationFanoutRequested` to internal notification fanout.
 - Exponential backoff retry: `InitialRetryDelaySeconds × 2^retryCount`, capped at `MaxRetryDelaySeconds`.
 - Dead-letters messages after `MaxRetryCount` exhausted.
 - Configuration section: `OutboxProcessor` (Enabled, PollingIntervalSeconds, BatchSize, MaxRetryCount, InitialRetryDelaySeconds, MaxRetryDelaySeconds, VerboseLogging).
@@ -638,13 +640,19 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `/api/atproto/*` — AT Protocol record management
    - `/api/indexeddid/*` — DID indexing
 6. Notifications (all `[Authorize]`):
-    - `GET /api/notification` — paginated list with `?isRead=` and `?notificationTypeId=` filters
-   - `GET /api/notification/{id}` — detail
-   - `GET /api/notification/unread-count` — unread count (partial index optimized)
-   - `PATCH /api/notification/{id}/read` — mark single as read (idempotent)
-   - `POST /api/notification/read-all` — bulk mark all as read (YouTube-style, timestamp cutoff)
-   - `DELETE /api/notification/{id}` — soft delete
-7. Footer management:
+     - `GET /api/notification` — paginated list with `?isRead=` and `?notificationTypeId=` filters
+    - `GET /api/notification/{id}` — detail
+    - `GET /api/notification/unread-count` — unread count (partial index optimized)
+    - `PATCH /api/notification/{id}/read` — mark single as read (idempotent)
+    - `POST /api/notification/read-all` — bulk mark all as read (YouTube-style, timestamp cutoff)
+    - `DELETE /api/notification/{id}` — soft delete
+7. Actor subscriptions (all `[Authorize]`):
+   - `GET /api/actor-subscriptions` — current user's paged actor subscriptions
+   - `GET /api/actor-subscriptions/actors/{targetActorId}` — current user's subscription state for a target actor
+   - `POST /api/actor-subscriptions` — subscribe to an organization/group actor
+   - `PATCH /api/actor-subscriptions/actors/{targetActorId}/notification-level` — update subscription notification level with concurrency stamp
+   - `DELETE /api/actor-subscriptions/actors/{targetActorId}` — unsubscribe with concurrency stamp
+8. Footer management:
    - `GET /api/footer/config` — public footer config (AllowAnonymous)
    - `GET /api/footer/link-groups` — list link groups (Authorize)
    - `GET /api/footer/link-groups/{id}` — link group detail (Authorize)
@@ -656,7 +664,7 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `PUT /api/footer/links/{id}` — update link
    - `DELETE /api/footer/links/{id}` — delete link
    - `PUT /api/footer/settings` — update footer settings
-8. Actor appearance:
+9. Actor appearance:
    - Actor entities include appearance fields (BackgroundColor, BackgroundEffect, BannerColor, BannerPictureId, BackgroundImageId) managed via actor update endpoints.
 
 ---

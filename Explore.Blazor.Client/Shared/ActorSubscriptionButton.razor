@@ -1,0 +1,20 @@
+@* ABOUTME: Reusable HAL-gated subscription affordance for organization/group actor profiles. *@
+@* ABOUTME: Loads current subscription state through the Blazor BFF service layer and never inspects roles locally. *@
+
+@using Explore.Blazor.Client.Components.Common
+
+@if (ShouldRenderButton)
+{
+    <div class="actor-subscription-button @CssClass" aria-live="polite">
+        <AppButton Variant="@ButtonVariant"
+                   Color="@ButtonColor"
+                   Size="@Size"
+                   Disabled="@IsDisabled"
+                   StartIcon="@ButtonIcon"
+                   OnClick="ToggleSubscriptionAsync"
+                   class="actor-subscription-button__control"
+                   aria-label="@AccessibleLabel">
+            @ButtonText
+        </AppButton>
+    </div>
+}

@@ -391,6 +391,7 @@ public static class RouteNames
     public const string GetNotifications = "GetNotifications";
     public const string GetNotificationById = "GetNotificationById";
     public const string GetUnreadNotificationCount = "GetUnreadNotificationCount";
+    public const string GetNotificationRefreshStream = "GetNotificationRefreshStream";
     public const string MarkNotificationAsRead = "MarkNotificationAsRead";
     public const string MarkAllNotificationsAsRead = "MarkAllNotificationsAsRead";
     public const string ArchiveNotification = "ArchiveNotification";

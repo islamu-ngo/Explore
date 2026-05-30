@@ -1,5 +1,5 @@
 // ABOUTME: Defines custom OpenTelemetry business metrics for the platform.
-// ABOUTME: Tracks domain activity plus external API-key, email-dispatch, and custom-property governance signals.
+// ABOUTME: Tracks domain activity plus external API-key, email-dispatch, notification fanout, and governance signals.
 
 using System.Diagnostics.Metrics;
 
@@ -29,6 +29,8 @@ public sealed class BusinessMetrics
     private readonly Counter<long> _emailDispatchAttempts;
     private readonly Counter<long> _emailDispatchRabbitMqPublishes;
     private readonly Counter<long> _emailDispatchRabbitMqConsumes;
+    private readonly Counter<long> _notificationFanoutRuns;
+    private readonly Counter<long> _notificationFanoutSubscribers;
     private readonly Counter<long> _customPropertyPurgeDecisions;
     private readonly Counter<long> _idempotencyCleanupRuns;
     private readonly Counter<long> _idempotencyCleanupRows;
@@ -113,6 +115,16 @@ public sealed class BusinessMetrics
             "explore.email_dispatch.rabbitmq.consumes",
             unit: "{delivery}",
             description: "Total RabbitMQ Dispatch Mode pointer deliveries by durable consumer outcome");
+
+        _notificationFanoutRuns = meter.CreateCounter<long>(
+            "explore.notifications.fanout_runs",
+            unit: "{run}",
+            description: "Total notification fanout runs by kind and bounded outcome");
+
+        _notificationFanoutSubscribers = meter.CreateCounter<long>(
+            "explore.notifications.fanout_subscribers",
+            unit: "{subscriber}",
+            description: "Total notification fanout subscriber decisions by kind and bounded outcome");
 
         _customPropertyPurgeDecisions = meter.CreateCounter<long>(
             "explore.custom_properties.purge_decisions",
@@ -247,6 +259,27 @@ public sealed class BusinessMetrics
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("outcome", outcome ?? "unknown"),
             new KeyValuePair<string, object?>("failure_category", failureCategory ?? "none"));
+    }
+
+    public void RecordNotificationFanoutRun(string? tenantId, string? fanoutKind, string? outcome)
+    {
+        _notificationFanoutRuns.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("fanout_kind", NormalizeTag(fanoutKind)),
+            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
+    }
+
+    public void RecordNotificationFanoutSubscribers(long subscriberCount, string? tenantId, string? fanoutKind, string? outcome)
+    {
+        if (subscriberCount <= 0)
+        {
+            return;
+        }
+
+        _notificationFanoutSubscribers.Add(subscriberCount,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("fanout_kind", NormalizeTag(fanoutKind)),
+            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
     }
 
     public void RecordCustomPropertyPurgeDecision(string? tenantId, string scope, string outcome, string blockerCategory)

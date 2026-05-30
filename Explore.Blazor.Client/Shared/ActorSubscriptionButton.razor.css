@@ -1,0 +1,20 @@
+/* ABOUTME: Scoped BEM styles for the reusable actor subscription button. */
+/* ABOUTME: Keeps subscription affordance spacing consistent across profiles and event organizer cards. */
+
+.actor-subscription-button {
+    display: inline-flex;
+    align-items: center;
+}
+
+.actor-subscription-button__control {
+    font-weight: 600;
+    text-transform: none;
+}
+
+@media (max-width: 37.5em) {
+    .actor-subscription-button,
+    .actor-subscription-button ::deep .app-button,
+    .actor-subscription-button ::deep .mud-button-root {
+        inline-size: 100%;
+    }
+}

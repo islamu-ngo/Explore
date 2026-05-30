@@ -14,7 +14,7 @@ Last Updated: 2026-05-29 Europe/Brussels
 - **Matched intents:** Multi-intent feature implementation. No single existing intent covers a cross-layer subscription/fanout feature, so this plan uses a fallback contract plus the stricter union of closest intents: `add-cqrs-handler`, `add-ef-migration`, `update-repository-query`, `add-get-endpoint`, `add-write-endpoint`, `add-hal-link`, `openapi-contract-change`, and `blazor-component-affordance`.
 - **Relevant skills loaded:** `senior-cto-feedback`, `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `auth-patterns`, `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`, `accessibility`, `outbox-pattern`, `cto-consultation`.
 - **Relevant rules loaded:** `.claude/rules/domain.md`, `application-layer.md`, `efcore-persistence.md`, `efcore-migrations.md`, `api-controllers.md`, `api-hateoas.md`, `blazor-client.md`, `tests.md`.
-- **Primary layers touched:** Domain, Application, Persistence, Infrastructure, API, Blazor Client, Tests, Docs. Optional later: Blazor BFF / SignalR / DevOps.
+- **Primary layers touched:** Domain, Application, Persistence, Infrastructure, API, Blazor Client, Tests, Docs. Optional later: Blazor BFF / SSE refresh hints / DevOps.
 - **Estimated complexity:** XL. The feature cuts across a new aggregate, lookup seed data, EF migrations, idempotent background fanout, API/HAL contract, authorization policy, generated client, profile/event-detail UX, notification inbox UX, integration tests, and docs.
 
 ### 0.1 Contribution Contract Mapping
@@ -41,14 +41,14 @@ Because no intent directly covers “new actor-subscription + notification fanou
 Required v1 decisions now locked unless the user explicitly overrides them before coding:
 
 - V1 supports organization and group subscriptions only. User-target subscriptions remain a reserved model/policy path and must fail closed until public-user privacy controls are deliberately designed.
-- SignalR is deferred. The durable PostgreSQL notification row and existing polling UI are the v1 delivery truth.
+- Real-time refresh is deferred for v1. If low-latency browser refresh is approved later, Server-Sent Events (SSE) are the preferred Phase 8 candidate for one-way notification refresh hints; durable PostgreSQL notification rows and polling remain the delivery truth/fallback.
 - Event publication writes a separate internal notification-fanout outbox message in addition to the existing external `EventPublished` integration event. Do not mutate the MQContract `EventPublishedIntegrationEvent` just to support local fanout.
 - `ActorSubscription` uses tenant-local subscriber identity. Store or resolve `TenantUser` explicitly so suspended, banned, removed, or wrong-tenant users cannot subscribe or receive fanout.
 - Use one durable non-deleted subscription row per tenant/subscriber/target actor. Unsubscribe is a status transition; resubscribe reactivates the same row and resets the notification level to the v1 default.
 
 ## 1. Executive Summary
 
-Implement first-class actor subscriptions for ISLAMU Event. A signed-in tenant-local user can subscribe to supported `Actor` targets: organizations and groups in v1, with public user actors explicitly deferred behind future privacy controls. After subscribing, the UI shows a bell control with `Notify me` and `Off`. When an actor publishes an event, a dedicated internal outbox event drives durable in-app `Notification` fanout for eligible subscribers. The existing notification bell/dropdown becomes the delivery surface; optional SignalR can later provide low-latency refresh hints, but persisted notifications remain the source of truth.
+Implement first-class actor subscriptions for ISLAMU Event. A signed-in tenant-local user can subscribe to supported `Actor` targets: organizations and groups in v1, with public user actors explicitly deferred behind future privacy controls. After subscribing, the UI shows a bell control with `Notify me` and `Off`. When an actor publishes an event, a dedicated internal outbox event drives durable in-app `Notification` fanout for eligible subscribers. The existing notification bell/dropdown becomes the delivery surface; optional SSE can later provide low-latency refresh hints, but persisted notifications remain the source of truth.
 
 The implementation must be PostgreSQL-first, free/self-hostable, tenant-isolated, idempotent, auditable, HAL-gated, accessible, and compatible with Clean Architecture/CQRS/MediatR. Do not create separate organization/group/user subscription tables. The canonical target is `Actor`.
 
@@ -78,12 +78,12 @@ Out of scope for the first implementation slice:
 | Tenant-local user state exists and should gate subscriber identity. | Verified: `Explore.Domain/TenantUser.cs`; `Explore.Persistence/Configurations/Entities/TenantUserConfiguration.cs`; `ITenantUserRepository`. | High | Subscription writes and fanout should use active `TenantUser` state, not only the global `User` row. |
 | Notifications already support user-owned, tenant-scoped inbox records with type/reason/scope/source actor/entity link. | Verified: `Explore.Domain/Notification.cs`; `Explore.Persistence/Configurations/Entities/NotificationConfiguration.cs`; `docs/NOTIFICATIONS.md`. | High | This is sufficient as the inbox storage target after adding dedup. |
 | `NotificationReason.Subscription` already exists. | Verified: `Explore.Domain/Enums/NotificationReasonEnum.cs`; `Explore.Persistence/Seed/LookupTableSeeder.cs`. | High | Use for subscription fanout. |
-| Existing notification UI is polling-based, not SignalR-based. | Verified: `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`; `docs/NOTIFICATIONS.md`. | High | Polls every 60 seconds and marks all read on open. |
+| Existing notification UI is polling-based, not real-time transport based. | Verified: `Explore.Blazor.Client/Layout/NotificationBell.razor.cs`; `docs/NOTIFICATIONS.md`. | High | Polls every 60 seconds; opening the bell no longer marks all read. |
 | Existing profile pages contain static Subscribe buttons with no service/API behavior. | Verified: `Explore.Blazor.Client/Pages/Organizations/OrganizationProfile.razor`; `Explore.Blazor.Client/Pages/Groups/GroupProfile.razor`. | High | Replace with reusable HAL-aware subscription component. |
 | Event detail has organizer profile navigation but no subscribe affordance. | Verified: `Explore.Blazor.Client/Pages/Events/EventDetail.razor`; `EventDetail.razor.cs`. | High | Add subscribe UI near organizer card. |
 | Notification deep links likely have route mismatches for org/group. | Verified: `NotificationBell.razor.cs` maps `/organizations/{id}` and `/groups/{id}`; `Routes.razor` uses `/organization/profile/:id` and `/group/profile/:id`. | High | Fix as part of notification UX slice. |
 | No current `ActorSubscription` or fanout run model exists. | Verified by search: `rg "ActorSubscription|NotificationFanout|DeduplicationKey"` found no implementation outside consultation/plans. | High | New model required. |
-| No app-level SignalR notification hub exists. | Verified by search: `rg "NotificationHub|AddSignalR|Hub<"`. | Medium | Blazor itself uses SignalR, but no feature hub found. SignalR remains optional later. |
+| No app-level SSE notification refresh transport exists. | Verified by search: `rg "ServerSentEvents|SseItem"`. External docs verified ASP.NET Core 10 `TypedResults.ServerSentEvents` support for `IAsyncEnumerable<SseItem<T>>`. | Medium | SSE is the Phase 8 direction for one-way notification refresh hints if real-time refresh is approved. |
 | Current docs explicitly warn not to claim notification-to-email/push/fanout support. | Verified: `docs/NOTIFICATIONS.md`; `docs/EMAIL_NOTIFICATIONS.md`. | High | Update only after behavior is implemented. |
 
 ### 2.2 Existing Implementation
@@ -137,7 +137,7 @@ Missing today:
 - no notification dedup tests;
 - no fanout service tests;
 - no component tests for Subscribe buttons because they are static;
-- no SignalR notification tests because no hub exists.
+- no SSE notification refresh tests because no SSE endpoint exists.
 
 ### 2.4 Existing Documentation And Contracts
 
@@ -176,7 +176,7 @@ Relevant docs:
 | Whether public user profile routes beyond `/my/profile` exist. | `Routes.razor` shows `/my/profile`; no public `/user/profile/:id` confirmed. | User-target subscription task must either defer UI or create public profile route intentionally. |
 | Whether Cerbos static policies need a new resource kind immediately. | Existing `ResourceKinds`/Cerbos parity tests likely require mapping for new resource kind. | Authorization slice must update local fallback and Cerbos policies/tests. |
 | Whether fanout should share `EventPublished` or use a dedicated internal event. | Current `EventPublished` is an external MQContract message; CTO re-baseline selected a separate internal fanout event. | Implement `NotificationFanoutRequested` in Phase 4. |
-| Whether SignalR is worth v1 inclusion. | No existing app notification hub; current UI polling works. | Deferred to optional Phase 8 unless user explicitly overrides. |
+| Whether real-time refresh is worth v1 inclusion. | No existing app notification hub or SSE endpoint; current UI polling works. ASP.NET Core 10 has first-class SSE support for future one-way refresh hints. | Deferred to optional Phase 8 unless user explicitly approves SSE refresh. |
 
 ## 3. Proposed Future State
 
@@ -209,7 +209,7 @@ Publish event
   -> Fanout service creates/resumes NotificationFanoutRun
   -> Service pages active ActorSubscription rows with active TenantUser and NotifyMe/All
   -> Service inserts Notification rows with deterministic DeduplicationKey
-  -> Existing NotificationBell polling or optional SignalR refresh shows unread item
+  -> Existing NotificationBell polling or optional SSE refresh hint shows unread item
 ```
 
 ### 3.3 Target design principles
@@ -232,7 +232,7 @@ Publish event
 - Every new source/doc file starts with two `ABOUTME:` lines.
 - Do not bypass tenant query filters casually; no `IgnoreQueryFilters()` without explicit tenant-safety proof.
 - Subscription ownership must resolve an active `TenantUser`; suspended, banned, removed, deleted, or wrong-tenant users cannot subscribe or receive fanout.
-- Do not send SMTP, broker messages, SignalR messages, or any external side effect inside command transaction lambdas.
+- Do not send SMTP, broker messages, real-time refresh messages, or any external side effect inside command transaction lambdas.
 - Because the repo is in development mode, prefer clean breaking changes over compatibility shims, but document API/schema changes.
 
 ## 5. Architecture And Design Decisions
@@ -256,7 +256,7 @@ Publish event
 
 - **Decision:** Event publish writes the existing external `EventPublished` outbox message and a separate internal `NotificationFanoutRequested` outbox message in the same transaction.
 - **Why:** Publish must stay fast and reliable, but local fanout failure should not cause duplicate external MQ publishes or force changes to the versioned MQContract payload.
-- **Alternatives considered:** Direct fanout inside publish handler; SignalR-only push; using the external `EventPublished` dispatcher for both MQ and notification fanout.
+- **Alternatives considered:** Direct fanout inside publish handler; transport-only refresh without durable notifications; using the external `EventPublished` dispatcher for both MQ and notification fanout.
 - **Consequences:** Requires a composite dispatcher route for internal fanout, idempotent consumer behavior, and dedup keys; preserves independent retry/dead-letter behavior.
 
 ### Decision 4: Add deterministic notification deduplication
@@ -280,12 +280,12 @@ Publish event
 - **Alternatives considered:** Store only `SubscriberUserId` and trust handlers to add tenant predicates.
 - **Consequences:** Stronger tenant isolation and moderation behavior; repository queries must join or include tenant-user state for fanout eligibility.
 
-### Decision 7: SignalR deferred
+### Decision 7: SSE real-time refresh deferred
 
-- **Decision:** V1 uses PostgreSQL durable notifications and existing polling; SignalR is optional later.
-- **Why:** Free/self-hostable correctness matters more than low-latency refresh; no existing feature hub found.
-- **Alternatives considered:** SignalR in v1; RabbitMQ-required real-time fanout.
-- **Consequences:** Simpler v1; users may wait up to polling interval for badge updates.
+- **Decision:** V1 uses PostgreSQL durable notifications and existing polling. If product needs lower-latency browser refresh later, Phase 8 uses ASP.NET Core 10 Server-Sent Events via `TypedResults.ServerSentEvents` and `IAsyncEnumerable<SseItem<T>>` for one-way notification refresh hints.
+- **Why:** Free/self-hostable correctness matters more than low-latency refresh, and the current notification need is one-way server-to-browser state invalidation: “new notification/unread count changed; refresh the inbox.” SSE is simpler than a hub protocol, works over regular HTTP, and matches the persisted-notification source-of-truth model. It still uses one long-lived HTTP request; it does not remove the need for authenticated notification APIs or durable rows.
+- **Alternatives considered:** WebSocket-only push; RabbitMQ-required real-time fanout; polling only.
+- **Consequences:** Phase 8 needs an authenticated SSE endpoint, reconnect/`Last-Event-ID` behavior, cancellation-safe streaming, polling fallback, and proxy buffering guidance for `text/event-stream`. SSE must carry minimal non-PII refresh hints only; no client-to-server commands should be modeled over SSE.
 
 ## 6. Implementation Phases
 
@@ -303,7 +303,7 @@ Publish event
 - **Layer:** Docs
 - **Files:** existing `dev/active/subscription-notification/subscription-notification-plan.md`; existing context/tasks files
 - **Description:** Apply Senior CTO review decisions to make the workstream implementation-ready and internally consistent.
-- **Acceptance Criteria:** Plan locks v1 scope, internal fanout outbox, tenant-local subscriber identity, SignalR deferral, and PR split.
+- **Acceptance Criteria:** Plan locks v1 scope, internal fanout outbox, tenant-local subscriber identity, real-time refresh deferral with SSE-only Phase 8 planning, and PR split.
 - **Dependencies:** None
 - **Effort:** M
 - **Required Skills/Rules:** `senior-cto-feedback`
@@ -313,7 +313,7 @@ Publish event
 - **Type:** investigate / docs
 - **Layer:** Docs
 - **Files:** existing `dev/active/subscription-notification/subscription-notification-plan.md`; existing context/tasks files
-- **Description:** User reviews the CTO-baselined v1 scope: organizations/groups only, public user subscriptions deferred, SignalR deferred, separate internal fanout outbox message.
+- **Description:** User reviews the CTO-baselined v1 scope: organizations/groups only, public user subscriptions deferred, real-time refresh deferred unless SSE refresh is later approved, separate internal fanout outbox message.
 - **Acceptance Criteria:** User accepts the baseline or provides explicit overrides; any overrides are recorded in plan/context/tasks before code edits.
 - **Dependencies:** 0.1
 - **Effort:** S
@@ -642,20 +642,30 @@ Publish event
 - **Effort:** M
 - **Validation:** architecture docs quality tests; link checks via `Event.Architecture.Tests`.
 
-### Phase 8: Optional Real-Time Refresh
+### Phase 8: Optional SSE Real-Time Refresh
 
-- **Goal:** Add SignalR only if product requires immediate nav badge updates.
-- **Default status:** Deferred.
+- **Goal:** Add SSE notification refresh hints only if product requires lower-latency nav badge or inbox refresh than polling.
+- **Default status:** Implemented after explicit approval; SSE-only.
 
-#### Task 8.1: Decide SignalR scope
+#### Task 8.1: Decide SSE refresh scope
 - **Type:** investigate
 - **Layer:** API / Blazor / Ops
 - **Files:** docs/context only unless approved
-- **Description:** Decide whether to add `NotificationHub` and Redis/Azure SignalR optional scale-out.
-- **Acceptance Criteria:** Decision recorded; if approved, new plan/tasks added.
+- **Description:** Decide whether to add an authenticated SSE endpoint and Blazor client stream for notification refresh hints. The decision must cover reconnect/`Last-Event-ID`, cancellation, polling fallback, same-origin cookie/BFF authentication, proxy buffering for `text/event-stream`, and horizontal scale-out expectations.
+- **Acceptance Criteria:** Decision recorded. SSE is the planned real-time refresh path for notification refresh hints; polling remains fallback and persisted notifications remain source of truth.
 - **Dependencies:** Durable fanout complete
 - **Effort:** S
 - **Validation:** No code until approved.
+
+#### Task 8.2: Implement SSE refresh hint layer if approved
+- **Type:** add
+- **Layer:** API / Blazor / Ops
+- **Files:** authenticated API SSE endpoint or minimal API; notification refresh stream service; Blazor client stream service/component; docs/tests
+- **Description:** Stream minimal notification refresh hints with ASP.NET Core 10 `TypedResults.ServerSentEvents` and `IAsyncEnumerable<SseItem<NotificationRefreshHintDto>>`. Hints should tell the browser to refresh unread count or inbox state; persisted `Notification` rows and existing APIs remain the delivery truth.
+- **Acceptance Criteria:** SSE only hints refresh/unread-count changes; payload contains no notification body, email, or unnecessary PII; polling fallback stays; endpoint honors cancellation and reconnect semantics; deployment docs cover reverse-proxy buffering and same-origin cookie authentication.
+- **Dependencies:** 8.1 approval
+- **Effort:** L
+- **Validation:** API/Blazor tests plus docs for proxy/auth/reconnect behavior.
 
 ### Recommended PR Split
 
@@ -690,7 +700,7 @@ Docs likely updated after implementation:
 - `docs/NOTIFICATIONS.md` — implemented subscription-to-in-app fanout lifecycle.
 - `docs/EMAIL_NOTIFICATIONS.md` — continue to state email fanout unsupported unless separately implemented.
 - `docs/DOMAIN.md` — new `ActorSubscription`, notification dedup, fanout run.
-- `docs/ARCHITECTURE.md` — outbox-driven notification fanout and optional SignalR boundary.
+- `docs/ARCHITECTURE.md` — outbox-driven notification fanout and optional SSE refresh boundary.
 - `docs/API_CHANGELOG.md` — new endpoints/DTOs/HAL links.
 - `schemas/islamu-event.md` — schema changes.
 - `schemas/openapi.json` and generated client — if API contract changes.
@@ -740,7 +750,7 @@ Operational failure modes:
 - Outbox retries on fanout failure.
 - Fanout run records failure cursor/counts.
 - Duplicate insertion is no-op/handled by dedup key.
-- If SignalR later fails, polling remains fallback.
+- If SSE refresh later fails, polling remains fallback.
 
 ## 12. Migration And Compatibility Plan
 

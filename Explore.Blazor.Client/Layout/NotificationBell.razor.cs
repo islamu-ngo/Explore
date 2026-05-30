@@ -1,19 +1,23 @@
-// ABOUTME: Code-behind for NotificationBell — manages unread count polling, panel toggle, mark-all-read-on-open.
-// ABOUTME: Polls unread count every 60s for authenticated users; disposes timer on teardown.
+// ABOUTME: Code-behind for NotificationBell, managing unread count refresh and notification routing.
+// ABOUTME: Uses SSE hints when available while retaining 60s polling as a fallback.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
+using Explore.Blazor.Client.Helpers;
 using Microsoft.AspNetCore.Components;
 
 namespace Explore.Blazor.Client.Layout;
 
-public partial class NotificationBell : IDisposable
+public partial class NotificationBell : IAsyncDisposable
 {
     private const int PageSize = 20;
     private const int PollIntervalMs = 60_000;
 
     [Inject]
     private INotificationService NotificationService { get; set; } = null!;
+
+    [Inject]
+    private INotificationRefreshStreamClient NotificationRefreshStreamClient { get; set; } = null!;
 
     [Inject]
     private NavigationManager Nav { get; set; } = null!;
@@ -33,6 +37,8 @@ public partial class NotificationBell : IDisposable
     {
         await RefreshUnreadCountAsync();
         _pollTimer = new Timer(async _ => await PollUnreadCountAsync(), null, PollIntervalMs, PollIntervalMs);
+        NotificationRefreshStreamClient.RefreshReceived += HandleNotificationRefreshAsync;
+        await NotificationRefreshStreamClient.StartAsync();
     }
 
     private async Task PollUnreadCountAsync()
@@ -57,6 +63,23 @@ public partial class NotificationBell : IDisposable
         _unreadCount = await NotificationService.GetUnreadCountAsync();
     }
 
+    private async Task HandleNotificationRefreshAsync(NotificationRefreshHintReceivedEventArgs hint)
+    {
+        await InvokeAsync(async () =>
+        {
+            _unreadCount = Math.Max(0, hint.UnreadCount);
+
+            if (_panelOpen)
+            {
+                _currentPage = 1;
+                _notifications.Clear();
+                await LoadNotificationsAsync();
+            }
+
+            StateHasChanged();
+        });
+    }
+
     private async Task TogglePanel()
     {
         if (_panelOpen)
@@ -69,13 +92,6 @@ public partial class NotificationBell : IDisposable
         _isLoading = true;
         _currentPage = 1;
         _notifications.Clear();
-
-        // YouTube-style: mark all as read when opening panel
-        if (_unreadCount > 0)
-        {
-            _unreadCount = 0;
-            _ = NotificationService.MarkAllAsReadAsync();
-        }
 
         await LoadNotificationsAsync();
     }
@@ -125,7 +141,7 @@ public partial class NotificationBell : IDisposable
     {
         ClosePanel();
 
-        var url = GetEntityUrl(notification);
+        var url = NotificationNavigationHelper.GetEntityUrl(notification);
         if (!string.IsNullOrEmpty(url))
         {
             Nav.NavigateTo(url);
@@ -167,23 +183,10 @@ public partial class NotificationBell : IDisposable
         }
     }
 
-    private static string? GetEntityUrl(NotificationListDto notification)
+    public async ValueTask DisposeAsync()
     {
-        if (string.IsNullOrEmpty(notification.EntityId) || notification.NotificationEntityTypeName is null)
-            return null;
-
-        return notification.NotificationEntityTypeName.ToLowerInvariant() switch
-        {
-            "event" => $"/events/{notification.EntityId}",
-            "organization" => $"/organizations/{notification.EntityId}",
-            "group" => $"/groups/{notification.EntityId}",
-            "eventsession" => $"/events/{notification.EntityId}",
-            _ => null
-        };
-    }
-
-    public void Dispose()
-    {
+        NotificationRefreshStreamClient.RefreshReceived -= HandleNotificationRefreshAsync;
+        await NotificationRefreshStreamClient.StopAsync();
         _pollTimer?.Dispose();
         GC.SuppressFinalize(this);
     }

@@ -1,5 +1,5 @@
 @* ABOUTME: Notification bell icon with unread badge, placed in NavMenu navbar__actions.
-    ABOUTME: Click opens NotificationPanel popover; overlay closes it. YouTube-style mark-all-read on open. *@
+    ABOUTME: Uses SSE refresh hints plus polling fallback without changing read state on open. *@
 
 <div class="notification-bell" @onclick:stopPropagation>
     <button class="notification-bell__trigger"

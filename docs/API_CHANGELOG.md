@@ -27,6 +27,7 @@ Key behavior in current code:
 - Breaking storage download contract change: public arbitrary-key storage routes `GET /api/storageobject/file/{fileKey}` and `GET /api/storageobject/presigned-url-by-key/{objectKey}` are removed. Clients must resolve content through metadata-backed IDs such as `GET /api/storageobject/{id}/content`, public images through `GET /api/storageobject/{id}/public`, or S3-compatible presigned reads through the ID-based compatibility endpoint.
 - Blazor BFF browser uploads now use provider-neutral API upload sessions. `/bff/storage/upload-session` no longer returns or stores provider upload URLs/object keys; `/bff/storage/upload-proxy` rejects raw destinations and streams bytes to the API session content endpoint.
 - Actor subscription endpoints added under `/api/actor-subscriptions` for authenticated current-user subscription state, subscribe, notification-level update, and unsubscribe flows. HAL affordances now expose actor and event organizer subscription actions for organization/group actors only; clients must continue gating UI actions from `_links` rather than local role or claim checks.
+- Event-published organization/group actor subscriptions now produce durable in-app notifications through an internal outbox fanout path. This is not an SMTP, push, or SignalR delivery contract.
 
 ## Historical Baseline (`v0.1.0`)
 

@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
+using Explore.Blazor.Client.Helpers;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -122,7 +123,7 @@ public partial class Notifications
 
     private void HandleNotificationClick(NotificationListDto notification)
     {
-        var url = GetEntityUrl(notification);
+        var url = NotificationNavigationHelper.GetEntityUrl(notification);
         if (!string.IsNullOrEmpty(url))
         {
             Nav.NavigateTo(url);
@@ -171,21 +172,6 @@ public partial class Notifications
         _currentPage = 1;
         _notifications.Clear();
         await LoadNotificationsAsync();
-    }
-
-    private static string? GetEntityUrl(NotificationListDto notification)
-    {
-        if (string.IsNullOrEmpty(notification.EntityId) || notification.NotificationEntityTypeName is null)
-            return null;
-
-        return notification.NotificationEntityTypeName.ToLowerInvariant() switch
-        {
-            "event" => $"/events/{notification.EntityId}",
-            "organization" => $"/organizations/{notification.EntityId}",
-            "group" => $"/groups/{notification.EntityId}",
-            "eventsession" => $"/events/{notification.EntityId}",
-            _ => null
-        };
     }
 
     private sealed record ReasonOption(int? Id, string Label);

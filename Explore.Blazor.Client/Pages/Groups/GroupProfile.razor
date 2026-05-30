@@ -2,6 +2,7 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Shared
 @using Blazouter.Services
 @attribute [StreamRendering]
 
@@ -48,10 +49,11 @@ else
                 </div>
 
                 <div class="group-profile__header-right">
-                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.NotificationsActive"
-                               Class="group-profile__subscribe-btn">
-                        Subscribe
-                    </MudButton>
+                    <ActorSubscriptionButton TargetActorId="@_group.ActorId"
+                                             TargetName="@_group.FullName"
+                                             CanSubscribe="@_group.HasHalLink("subscribe")"
+                                             CanViewSubscription="@_group.HasHalLink("subscription")"
+                                             CssClass="group-profile__subscribe-btn" />
                 </div>
             </div>
 

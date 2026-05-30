@@ -235,8 +235,31 @@ Current counters include:
 - `explore.email_dispatch.attempts` (`tenant_id`, `outcome`, `failure_category`) — Basic Dispatch Mode email outcomes; labels intentionally exclude recipient, subject, body, provider message ID, and raw error text.
 - `explore.email_dispatch.rabbitmq.publishes` (`tenant_id`, `outcome`, `failure_category`) — optional RabbitMQ pointer-publish outcomes; labels intentionally exclude recipient, subject, body, provider message ID, raw broker error text, and connection strings.
 - `explore.email_dispatch.rabbitmq.consumes` (`tenant_id`, `outcome`, `failure_category`) — future manual-ack RabbitMQ delivery outcomes; labels intentionally exclude recipient, subject, body, provider message ID, publish event ID, delivery tag, raw broker error text, and connection strings.
+- `explore.notifications.fanout_runs` (`tenant_id`, `fanout_kind`, `outcome`) — notification fanout run outcomes; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
+- `explore.notifications.fanout_subscribers` (`tenant_id`, `fanout_kind`, `outcome`) — aggregate subscriber decisions for notification fanout; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
 - `explore.ai.provider.health_checks` (`provider`, `status`, `reason`) — AI provider readiness outcomes; labels intentionally exclude endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, and raw errors.
 - `explore.ai.provider.requests` (`provider`, `outcome`, `failure_category`) — future AI provider call outcomes; labels intentionally exclude tenant/user prompt content, selected reference content, model IDs, endpoint URLs, provider request IDs, and raw provider errors.
+
+### Notification Fanout Operations
+
+Event-published actor-subscription fanout is handled as an internal outbox side effect:
+
+1. The event publish command writes the external `EventPublished` outbox row and an internal `EventPublishedNotificationFanoutRequested` outbox row in the same transaction.
+2. `OutboxProcessor` claims pending rows and calls `CompositeOutboxMessageDispatcher`.
+3. The composite dispatcher routes `EventPublished` to the MQContract dispatcher and routes `EventPublishedNotificationFanoutRequested` to `EventPublishedNotificationFanoutService`.
+4. The fanout service creates or resumes `NotificationFanoutRun`, scans active organization/group actor subscriptions for active tenant-local users, skips existing `Notification.DeduplicationKey` values, creates durable in-app notification rows, and marks the run completed or failed.
+
+Operator signals:
+
+| Signal | Meaning |
+|---|---|
+| `explore.notifications.fanout_runs` | Run-level processing/completed/skipped-completed/failed outcomes by tenant and fanout kind. |
+| `explore.notifications.fanout_subscribers` | Aggregate processed, notification-created, and duplicate-skipped subscriber decisions. |
+| `NotificationFanoutRun` rows | Durable worker cursor/count/status state for source event/actor/kind tuples. |
+| General outbox dead-letter rows | Internal fanout messages that exceeded retry policy and need inspection/replay decisions. |
+| Structured fanout logs | Include run/event/tenant IDs and aggregate counts; do not include event title, subscriber identity, notification body, or deduplication key. |
+
+Fanout is at-least-once. Operators should treat `Notification.DeduplicationKey` and `NotificationFanoutRun` state as the duplicate-prevention and progress source of truth rather than inferring success from process logs alone.
 
 ### Basic Email Dispatch Operations
 

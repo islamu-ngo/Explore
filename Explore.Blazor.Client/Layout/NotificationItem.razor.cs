@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Layout;
@@ -59,6 +60,58 @@ public partial class NotificationItem
         };
     }
 
+    private string GetReasonLabel()
+    {
+        return IsSubscriptionNotification
+            ? "Subscription"
+            : Notification.NotificationReasonName ?? string.Empty;
+    }
+
+    private string? GetContextLabel()
+    {
+        if (string.IsNullOrWhiteSpace(Notification.RecipientContextActorName))
+        {
+            return null;
+        }
+
+        return string.Equals(Notification.RecipientContextActorName, Notification.SourceActorName, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : $"via {Notification.RecipientContextActorName}";
+    }
+
+    private string GetAccessibleLabel()
+    {
+        var parts = new List<string> { Notification.Title };
+
+        if (!string.IsNullOrWhiteSpace(Notification.NotificationReasonName))
+        {
+            parts.Add($"Reason: {GetReasonLabel()}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(Notification.SourceActorName))
+        {
+            parts.Add($"From: {Notification.SourceActorName}");
+        }
+
+        var context = GetContextLabel();
+        if (!string.IsNullOrWhiteSpace(context))
+        {
+            parts.Add(context);
+        }
+
+        if (!string.IsNullOrWhiteSpace(Notification.NotificationScopeName))
+        {
+            parts.Add($"Scope: {Notification.NotificationScopeName}");
+        }
+
+        return string.Join(". ", parts);
+    }
+
+    private bool IsSubscriptionNotification => string.Equals(
+        Notification.NotificationReasonName,
+        "Subscription",
+        StringComparison.OrdinalIgnoreCase);
+
     private static string TruncateBody(string body, int maxLength = 120)
     {
         if (body.Length <= maxLength) return body;
@@ -100,6 +153,14 @@ public partial class NotificationItem
     private async Task HandleDelete()
     {
         await OnDelete.InvokeAsync(Notification);
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            await OnClick.InvokeAsync(Notification);
+        }
     }
 
     private async Task HandleArchive()

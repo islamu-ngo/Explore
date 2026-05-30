@@ -1,15 +1,20 @@
-// ABOUTME: API controller for notification management (list, detail, read status, delete).
-// ABOUTME: All endpoints require authentication — notifications are personal user data.
+// ABOUTME: API controller for notification management and one-way refresh hints.
+// ABOUTME: All endpoints require authentication because notifications are personal user data.
 
+using System.Globalization;
+using System.Net.ServerSentEvents;
+using System.Runtime.CompilerServices;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Models;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.Features.Notifications.Requests.Commands;
 using Explore.Application.Features.Notifications.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Controllers;
@@ -21,11 +26,17 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class NotificationController : ControllerBase
 {
-    private readonly IMediator _mediator;
+    private const string NotificationRefreshEventType = "notification-refresh";
 
-    public NotificationController(IMediator mediator)
+    private readonly IMediator _mediator;
+    private readonly INotificationRefreshStreamService _notificationRefreshStreamService;
+
+    public NotificationController(
+        IMediator mediator,
+        INotificationRefreshStreamService notificationRefreshStreamService)
     {
         _mediator = mediator;
+        _notificationRefreshStreamService = notificationRefreshStreamService;
     }
 
     // GET: api/notification
@@ -80,6 +91,25 @@ public class NotificationController : ControllerBase
     {
         var result = await _mediator.Send(new GetUnreadCountRequest { NotificationScopeId = notificationScopeId }, cancellationToken);
         return Ok(result);
+    }
+
+    // GET: api/notification/stream
+    [HttpGet("stream", Name = Hateoas.RouteNames.GetNotificationRefreshStream)]
+    [EndpointSummary("Stream Notification Refresh Hints")]
+    [EndpointDescription("Streams minimal server-sent notification refresh hints for the authenticated user. The stream is a hint only; persisted notifications and existing APIs remain the source of truth.")]
+    [Produces("text/event-stream")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [DisableRequestTimeout]
+    public IResult StreamRefreshHints(CancellationToken cancellationToken = default)
+    {
+        Response.Headers.CacheControl = "no-store";
+        Response.Headers.Pragma = "no-cache";
+        Response.Headers["X-Accel-Buffering"] = "no";
+
+        return TypedResults.ServerSentEvents(ToSseItems(
+            _notificationRefreshStreamService.StreamAsync(cancellationToken),
+            cancellationToken));
     }
 
     // PATCH: api/notification/{id}/read
@@ -154,5 +184,19 @@ public class NotificationController : ControllerBase
         await _mediator.Send(new DeleteNotificationCommand { Id = id }, cancellationToken);
 
         return NoContent();
+    }
+
+    private static async IAsyncEnumerable<SseItem<NotificationRefreshHintDto>> ToSseItems(
+        IAsyncEnumerable<NotificationRefreshHintDto> hints,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var hint in hints.WithCancellation(cancellationToken))
+        {
+            yield return new SseItem<NotificationRefreshHintDto>(hint, NotificationRefreshEventType)
+            {
+                EventId = hint.GeneratedAt.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
+                ReconnectionInterval = TimeSpan.FromSeconds(5)
+            };
+        }
     }
 }

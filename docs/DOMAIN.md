@@ -10,9 +10,9 @@ This project stores most entities directly under `Explore.Domain/` (not in an `E
 1. Tenant and access scope:
    `Tenant`, `TenantUser`, `TenantUserRoleGrant`, `TenantSetting`, `TenantSettingsDocument`, `TenantNavigationLink`, `TenantInvitation`, `TenantLifecycleLog`
 2. Identity and actor model:
-   `User`, `Actor`, `Group`, `Organization`, `Role`, `Permission`, `RolePermission`, `PlatformUserRole`
+   `User`, `Actor`, `ActorSubscription`, `Group`, `Organization`, `Role`, `Permission`, `RolePermission`, `PlatformUserRole`
 3. Events:
-   `Event`, `EventSession`, `EventRegistration`, `EventSessionSpeaker`, `EventSessionLanguage`, `EventSessionAgendaItem`, `Notification`
+   `Event`, `EventSession`, `EventRegistration`, `EventSessionSpeaker`, `EventSessionLanguage`, `EventSessionAgendaItem`, `Notification`, `NotificationFanoutRun`
 4. Classification/lookups:
    `EventType`, `EventStatus`, `VisibilityType`, `EventFormat`, `RegistrationMode`, `Category`, `Tag`, `Language`, `Madhab`, `AudienceAge`, `AudienceGender`
 5. Federation:
@@ -39,6 +39,8 @@ Several previously enum-shaped persistence fields are now modeled as lookup/refe
 | `ExternalApiKey.Status` | `ExternalApiKeyStatusId` | `ExternalApiKeyStatus` / `external_api_key_statuses` |
 | `ExternalApiKey.CreditPeriod` | `ExternalApiKeyCreditPeriodId` | `ExternalApiKeyCreditPeriod` / `external_api_key_credit_periods` |
 | `Notification.Scope` | `NotificationScopeId` | `NotificationScopeType` / `notification_scope_types` |
+| `ActorSubscription.Status` | `StatusId` | `ActorSubscriptionStatus` / `actor_subscription_statuses` |
+| `ActorSubscription.NotificationLevel` | `NotificationLevelId` | `ActorSubscriptionNotificationLevel` / `actor_subscription_notification_levels` |
 
 API DTOs expose lookup primitives (`*Id`, `*Code`, `*Name`) rather than domain enum values. Repositories query on the normalized FK IDs. Handlers may convert IDs to internal enums only for business-rule switches while keeping persistence and public contracts normalized.
 
@@ -135,6 +137,16 @@ Tenant role authority is represented by `TenantUserRoleGrant`, not by a direct `
 
 Revocation is explicit (`RevokedAt`, `RevokedBy`, `RevocationReason`) so historical authority evidence remains auditable while active checks ignore revoked grants.
 
+### 8) Actor Subscriptions And Notification Fanout
+
+`ActorSubscription` is the canonical durable relationship for user subscriptions to subscribable actors. V1 supports organization and group target actors only. The subscription stores the active tenant-local subscriber (`SubscriberTenantUserId`), denormalized global `SubscriberUserId` for notification delivery, target actor, target actor type, subscription status, notification level, audit fields, soft-delete fields, and a concurrency stamp.
+
+Unsubscribe is modeled as a status transition to `UNSUBSCRIBED`, not as deletion. Resubscribe reactivates the same durable row and resets the notification level to the v1 default. Command handlers and fanout scans require an active, non-deleted `TenantUser` so suspended, banned, removed, or deleted tenant-local users do not receive subscription fanout.
+
+`Notification.DeduplicationKey` is required for fanout-created notifications. Event-published fanout uses deterministic keys so outbox retries or duplicate internal dispatches do not create duplicate inbox rows for the same tenant/event/subscriber tuple.
+
+`NotificationFanoutRun` records resumable worker state for a fanout source: tenant, fanout kind, entity type, entity ID, source actor, status, subscriber cursor, aggregate processed/created counts, failure text, and timestamps. It intentionally stores no PII.
+
 ## Messaging and Reliability
 
 ### OutboxMessage
@@ -151,7 +163,9 @@ Transactional outbox entity for reliable asynchronous event dispatch (at-least-o
 | `Status` | `Enum` | Pending, Processing, Completed, Failed, DeadLettered |
 | `NextRetryAt` | `DateTime?`| Exponential backoff schedule |
 
-Specialized variants: `PdsSyncOutbox` (federation), `PolicyChangeOutbox` (governance).
+Event publication writes both the external `EventPublished` outbox message for MQContract dispatch and an internal `EventPublishedNotificationFanoutRequested` outbox message for actor-subscription fanout. The internal fanout message is routed by the composite dispatcher to the application fanout service, which writes durable `Notification` rows and advances `NotificationFanoutRun` state idempotently.
+
+Specialized variants: `PdsSyncOutbox` (federation), `PolicyChangeOutbox` (governance), `EmailDispatchOutbox` (basic email dispatch state).
 
 ## Persistence-Enforced Rules (from EF configuration)
 
@@ -162,6 +176,9 @@ Specialized variants: `PdsSyncOutbox` (federation), `PolicyChangeOutbox` (govern
 - `EventSession` / `EventAgendaItem`: UTC end must be after UTC start; local minute projections must match local time projections.
 - `AppSetting`: Blocks high-value secret keys (e.g., `Database:`, `ConnectionStrings:`) via DB constraint.
 - `Actor`: Unique nullable owner FKs (exactly one of UserId, OrganizationId, or GroupId).
+- `ActorSubscription`: Unique non-deleted subscription row per `(TenantId, SubscriberTenantUserId, TargetActorId)`; target actor type is limited to organization/group in v1.
+- `Notification`: Fanout rows require deterministic `DeduplicationKey` for duplicate prevention.
+- `NotificationFanoutRun`: Unique source tuple per `(TenantId, FanoutKind, NotificationEntityTypeId, EntityId, SourceActorId)`.
 
 ## Related
 - [ARCHITECTURE.md](ARCHITECTURE.md)

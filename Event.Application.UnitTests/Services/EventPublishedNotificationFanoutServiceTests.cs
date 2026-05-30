@@ -4,9 +4,11 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.Metrics;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Services;
@@ -24,6 +26,7 @@ public sealed class EventPublishedNotificationFanoutServiceTests
             _actorSubscriptionRepository,
             _notificationRepository,
             _fanoutRunRepository,
+            CreateMetrics(),
             Substitute.For<ILogger<EventPublishedNotificationFanoutService>>());
     }
 
@@ -207,4 +210,11 @@ public sealed class EventPublishedNotificationFanoutServiceTests
         FailedAt = run.FailedAt,
         LastError = run.LastError
     };
+
+    private static BusinessMetrics CreateMetrics()
+    {
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+        return new BusinessMetrics(meterFactory);
+    }
 }
