@@ -1,5 +1,5 @@
 # ABOUTME: Validates GitHub Actions workflow supply-chain policy for action references.
-# ABOUTME: Always reports a check and scans workflow files only when CI/CD governance inputs change.
+# ABOUTME: Always reports a check and scans workflow/Docker governance inputs when they change.
 
 name: Workflow Security
 
@@ -19,9 +19,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  ACTIONLINT_VERSION: "1.7.12"
+  ACTIONLINT_LINUX_AMD64_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+  ZIZMOR_VERSION: "1.25.2"
+
 jobs:
-  validate-action-pins:
-    name: Validate GitHub Action Pins
+  workflow-security:
+    name: Workflow Security
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -30,6 +35,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Detect workflow-security-relevant changes
         id: changes
@@ -60,7 +66,7 @@ jobs:
           relevant_files=""
           while IFS= read -r changed_file; do
             case "$changed_file" in
-              .github/workflows/*|.github/scripts/*|.github/dependabot.yml|docs/CI_CD_GOVERNANCE.md)
+              .github/workflows/*|.github/scripts/*|.github/dependabot.yml|docs/CI_CD_GOVERNANCE.md|Explore.API/Dockerfile|Explore.Blazor/Dockerfile)
                 relevant_files="${relevant_files}${changed_file}"$'\n'
                 ;;
             esac
@@ -79,10 +85,77 @@ jobs:
             echo "No workflow security inputs changed; reporting intentional no-op pass." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Validate external action pins
+      - name: Setup .NET
+        if: ${{ steps.changes.outputs.run-scan == 'true' }}
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Validate action pin maintenance policy
+        if: ${{ steps.changes.outputs.run-scan == 'true' }}
+        env:
+          RestorePackagesWithLockFile: "false"
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run .github/scripts/validate-action-pins.cs -- .github/workflows
+          dotnet run .github/scripts/validate-dependabot-policy.cs -- .github/dependabot.yml
+          dotnet run .github/scripts/validate-dockerfile-base-images.cs -- Explore.API/Dockerfile Explore.Blazor/Dockerfile
+
+      - name: Install actionlint
         if: ${{ steps.changes.outputs.run-scan == 'true' }}
         shell: bash
-        run: python3 .github/scripts/validate-action-pins.py .github/workflows
+        run: |
+          set -euo pipefail
+          mkdir -p .tools/actionlint workflow-security-results
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLo ".tools/${archive}" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}"
+          echo "${ACTIONLINT_LINUX_AMD64_SHA256}  .tools/${archive}" | sha256sum -c -
+          tar -xzf ".tools/${archive}" -C .tools/actionlint actionlint
+          .tools/actionlint/actionlint -version | tee workflow-security-results/actionlint-version.txt
+
+      - name: Run actionlint
+        if: ${{ steps.changes.outputs.run-scan == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          .tools/actionlint/actionlint -format '{{json .}}' .github/workflows/*.yml > workflow-security-results/actionlint.json
+          .tools/actionlint/actionlint .github/workflows/*.yml | tee workflow-security-results/actionlint.txt
+          {
+            echo "## actionlint"
+            echo "Workflow syntax and GitHub Actions expression linting passed."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install zizmor
+        if: ${{ steps.changes.outputs.run-scan == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv .tools/zizmor-venv
+          .tools/zizmor-venv/bin/python -m pip install --upgrade pip
+          .tools/zizmor-venv/bin/python -m pip install "zizmor==${ZIZMOR_VERSION}"
+          .tools/zizmor-venv/bin/zizmor --version | tee workflow-security-results/zizmor-version.txt
+
+      - name: Run zizmor
+        if: ${{ steps.changes.outputs.run-scan == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          .tools/zizmor-venv/bin/zizmor --offline --min-severity medium --format sarif .github/workflows > workflow-security-results/zizmor.sarif
+          sarif_exit=$?
+          .tools/zizmor-venv/bin/zizmor --offline --min-severity medium .github/workflows > workflow-security-results/zizmor.txt
+          text_exit=$?
+          set -e
+          {
+            echo "## zizmor"
+            echo "zizmor completed with SARIF exit code ${sarif_exit} and text exit code ${text_exit}."
+            echo "Medium-or-higher workflow security findings fail this check."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$sarif_exit" -ne 0 || "$text_exit" -ne 0 ]]; then
+            exit 1
+          fi
 
       - name: No-Op for Non-Workflow Changes
         if: ${{ steps.changes.outputs.run-scan != 'true' }}
@@ -92,3 +165,11 @@ jobs:
             echo "## Workflow Security"
             echo "No workflow security inputs changed. The required check is intentionally passing without scanning."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload workflow security evidence
+        if: ${{ always() && steps.changes.outputs.run-scan == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: workflow-security-evidence
+          path: workflow-security-results/
+          retention-days: 30

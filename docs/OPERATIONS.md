@@ -130,11 +130,11 @@ GitHub Actions deploys use the `staging` and `production` environments. Configur
 
 See [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) for the required/advisory gate matrix, branch-protection settings, and artifact retention policy.
 
-Deploy jobs call the existing Coolify webhook contract with timeout, retry, redacted error output, transport-failure summaries, and explicit HTTP status validation. The job writes a deployment summary and uploads deployment evidence for 90 days. If environment URL variables are configured, the workflow smoke-checks `/alive` and `/health` for the deployed API and UI with a bounded retry budget before reporting success.
+Deploy jobs call the existing Coolify webhook contract with timeout, retry, redacted error output, transport-failure summaries, and explicit HTTP status validation. The job writes a deployment summary and uploads deployment evidence for 90 days. If environment URL variables are configured, the workflow smoke-checks `/alive` and `/health` for the deployed API and UI with a bounded retry budget before reporting success. The reusable container build verifies the pushed GHCR digest's artifact attestation before deploy jobs can invoke Coolify.
 
 ### Deployment Image Source of Truth
 
-Container builds publish mutable convenience tags (`latest` for production and `develop` for staging), immutable commit-SHA tags, digest evidence, SBOM/provenance attestations, and image scan artifacts.
+Container builds publish mutable convenience tags (`latest` for production and `develop` for staging), immutable commit-SHA tags, digest evidence, SBOM/provenance attestations, image scan artifacts, and attestation verification evidence for the pushed GHCR digest. Deployable Dockerfiles pin .NET runtime and SDK base images with tag-plus-digest references; Dependabot Docker update PRs are the expected path for refreshing those base digests.
 
 Production must not rely on `latest` as the source of truth once deployment promotion is complete.
 

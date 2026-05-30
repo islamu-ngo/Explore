@@ -16,7 +16,7 @@ Use this checklist before tagging or publishing a release. A release is not read
 - [ ] Version/tag is selected.
 - [ ] Commit SHA is recorded.
 - [ ] Image tags or deployment artifacts are recorded.
-- [ ] Image digests, SBOM/provenance evidence, and image scan artifacts are recorded when container images are published.
+- [ ] Image digests, Docker base image digest pins, SBOM/provenance evidence, image scan artifacts, and attestation verification results are recorded when container images are published.
 - [ ] Deployment environment, approver, webhook result, smoke-check result, and rollback note are recorded for staging/production deployments.
 - [ ] Supported deployment modes are stated: single-tenant, multi-tenant, optional storage, optional Cerbos.
 - [ ] Known incompatible versions are stated.
@@ -69,7 +69,7 @@ Use this checklist before tagging or publishing a release. A release is not read
 ## CI/CD Evidence Contract
 
 - [ ] OpenAPI drift artifacts are clean, or generated `openapi.json` / NSwag client changes are reviewed and committed.
-- [ ] Container image digest, SBOM/provenance, Trivy scan output, and image tag evidence are recorded when images are published.
+- [ ] Container image digest, Docker base image digest pins, SBOM/provenance, Trivy scan output, attestation verification JSON, checksum manifest, and image tag evidence are recorded when images are published.
 - [ ] Deployment evidence includes environment, commit SHA, webhook result, smoke-check result, workflow run link, and rollback note.
 - [ ] Production deployment approval and branch restrictions are configured in GitHub Environment settings.
 - [ ] Long-lived release evidence is copied from expiring GitHub Actions artifacts into release notes or durable storage when required.

@@ -27,6 +27,8 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      DOTNET_CONFIGURATION: ${{ inputs.configuration }}
 
     steps:
       - name: No-Op for Non-Code Changes
@@ -42,6 +44,8 @@ jobs:
       - name: Checkout
         if: ${{ inputs.run-fast-tests }}
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Setup .NET
         if: ${{ inputs.run-fast-tests }}
@@ -57,43 +61,11 @@ jobs:
 
       - name: NuGet Security Audit
         if: ${{ inputs.run-fast-tests }}
+        env:
+          RestorePackagesWithLockFile: "false"
         run: |
           dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore > nuget-vulnerabilities.json
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          report = json.loads(Path("nuget-vulnerabilities.json").read_text(encoding="utf-8"))
-          findings = []
-
-          def visit(node, project="", framework=""):
-              if isinstance(node, dict):
-                  current_project = node.get("path", project)
-                  current_framework = node.get("framework", framework)
-                  vulnerabilities = node.get("vulnerabilities") or []
-                  if vulnerabilities:
-                      findings.append((current_project, current_framework, node.get("id", "<unknown>"), vulnerabilities))
-                  for value in node.values():
-                      visit(value, current_project, current_framework)
-              elif isinstance(node, list):
-                  for item in node:
-                      visit(item, project, framework)
-
-          visit(report)
-
-          if findings:
-              print("NuGet vulnerabilities detected:")
-              for project, framework, package, vulnerabilities in findings:
-                  location = " / ".join(part for part in (project, framework) if part)
-                  print(f"- {package} ({location or 'unknown project'})")
-                  for vulnerability in vulnerabilities:
-                      severity = vulnerability.get("severity", "unknown")
-                      advisory = vulnerability.get("advisoryUrl") or vulnerability.get("advisoryurl") or "no advisory URL"
-                      print(f"  - {severity}: {advisory}")
-              raise SystemExit(1)
-
-          print("No NuGet vulnerabilities detected.")
-          PY
+          dotnet run .github/scripts/validate-nuget-vulnerabilities.cs -- nuget-vulnerabilities.json
 
       - name: Linting Check
         if: ${{ inputs.run-fast-tests }}
@@ -101,42 +73,42 @@ jobs:
 
       - name: Build
         if: ${{ inputs.run-fast-tests }}
-        run: dotnet build --configuration ${{ inputs.configuration }} --no-restore --verbosity minimal
+        run: dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
 
       - name: Unit Tests — Application
         if: ${{ inputs.run-fast-tests }}
         id: test_application
-        run: dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Application.UnitTests.trx
+        run: dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Application.UnitTests.trx
 
       - name: Unit Tests — Domain
         if: ${{ inputs.run-fast-tests }}
         id: test_domain
-        run: dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Domain.UnitTests.trx
+        run: dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Domain.UnitTests.trx
 
       - name: Architecture Tests
         if: ${{ inputs.run-fast-tests }}
         id: test_architecture
-        run: dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Architecture.Tests.trx
+        run: dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Architecture.Tests.trx
 
       - name: Unit Tests — Secrets
         if: ${{ inputs.run-fast-tests }}
         id: test_secrets
-        run: dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Secrets.UnitTests.trx
+        run: dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Secrets.UnitTests.trx
 
       - name: Unit Tests — Infrastructure
         if: ${{ inputs.run-fast-tests }}
         id: test_infrastructure
-        run: dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Infrastructure.Tests.trx
+        run: dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Infrastructure.Tests.trx
 
       - name: Blazor Client Tests
         if: ${{ inputs.run-fast-tests }}
         id: test_blazor_client
-        run: dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Blazor.Client.Tests.trx
+        run: dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Blazor.Client.Tests.trx
 
       - name: Blazor Integration Tests
         if: ${{ inputs.run-fast-tests }}
         id: test_blazor_integration
-        run: dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Blazor.IntegrationTests.trx
+        run: dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Blazor.IntegrationTests.trx
 
       - name: Upload Test Results
         if: ${{ always() && inputs.run-fast-tests }}
@@ -182,6 +154,8 @@ jobs:
     needs: build-and-test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      DOTNET_CONFIGURATION: ${{ inputs.configuration }}
 
     services:
       postgres:
@@ -200,6 +174,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Setup .NET
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
@@ -212,17 +188,17 @@ jobs:
         run: dotnet restore --locked-mode
 
       - name: Build
-        run: dotnet build --configuration ${{ inputs.configuration }} --no-restore --verbosity minimal
+        run: dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
 
       - name: Persistence Integration Tests
         id: test_persistence_integration
-        run: dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Persistence.IntegrationTests.trx
+        run: dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Persistence.IntegrationTests.trx
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=event_test;Username=postgres;Password=password"
 
       - name: API Integration Tests
         id: test_api_integration
-        run: dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.API.IntegrationTests.trx
+        run: dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.API.IntegrationTests.trx
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=event_test;Username=postgres;Password=password"
 

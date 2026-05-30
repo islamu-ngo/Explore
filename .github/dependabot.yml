@@ -34,3 +34,35 @@ updates:
       dotnet-dependencies:
         patterns:
           - "*"
+
+  - package-ecosystem: docker
+    directory: "/Explore.API"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:45"
+      timezone: Europe/Brussels
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: scope
+    groups:
+      docker-base-images:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: "/Explore.Blazor"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Brussels
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: scope
+    groups:
+      docker-base-images:
+        patterns:
+          - "*"

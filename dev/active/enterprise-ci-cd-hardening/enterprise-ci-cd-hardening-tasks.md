@@ -3,7 +3,7 @@ ABOUTME: Tracks required phases, acceptance criteria, verification, and unresolv
 
 # Enterprise CI/CD Hardening - Task Checklist
 
-Last Updated: 2026-05-29 Europe/Brussels
+Last Updated: 2026-05-30 Europe/Brussels
 
 ## Status Summary
 
@@ -15,7 +15,8 @@ Last Updated: 2026-05-29 Europe/Brussels
 - [ ] Implement Phase 0 contract and ownership baseline. First slice complete; legal decision and external settings evidence remain.
 - [ ] Implement Phase 1 current defect fixes. `Build & Test` no-op wrapper and NuGet vulnerability remediation are complete; broader required-check hardening remains.
 - [ ] Implement Phase 2 CLA/DCO legal contribution gate.
-- [ ] Implement workflow lint/security gate. SHA-pin policy gate is implemented; `actionlint` and `zizmor` remain pending.
+- [x] Implement workflow lint/security gate. C# helper scripts, SHA-pin policy, Dependabot maintenance policy validation, blocking `actionlint`, blocking `zizmor`, and retained workflow security evidence are implemented locally; repository-side required-check configuration still needs verification.
+- [ ] Implement container supply-chain evidence hardening. Digest JSON, SBOM/provenance registry evidence, Trivy text/SARIF artifacts, checksum manifests, pre-deploy GHCR attestation verification, and Docker base image digest policy are implemented; digest promotion remains.
 - [ ] Implement digest promotion and deploy consolidation.
 - [ ] Verify GitHub repository settings.
 
@@ -26,7 +27,7 @@ Last Updated: 2026-05-29 Europe/Brussels
 - [x] Update `enterprise-ci-cd-hardening-plan.md` when architecture or sequencing changes.
 - [ ] Keep workflow changes small enough to review.
 - [ ] Do not touch unrelated dirty worktree files.
-- [ ] Do not mark the workstream complete until CLA/DCO policy, digest deployment, attestation verification, workflow security linting, and repository settings evidence are done.
+- [ ] Do not mark the workstream complete until CLA/DCO policy, digest deployment, workflow security linting, and repository settings evidence are done.
 
 ## Phase 0 - Contract And Repository Settings Baseline
 
@@ -38,6 +39,7 @@ Last Updated: 2026-05-29 Europe/Brussels
 - [x] Protect `.github/**`, Dockerfiles, dependency manifests, release docs, legal contribution docs, and CI/CD governance docs with owner review.
 - [x] Add repository settings evidence checklist to `docs/CI_CD_GOVERNANCE.md` or a dedicated tracked note.
 - [ ] Confirm required check names before renaming workflows.
+- [x] Rename the new `Workflow Security` job before repository-side branch protection makes its check name stable.
 - [x] Add legal contribution governance decision record placeholder: CLA vs DCO vs both, inbound scope, patent language, signature storage, and privacy retention.
 
 ### Phase 0 Acceptance
@@ -113,21 +115,22 @@ Last Updated: 2026-05-29 Europe/Brussels
 ## Phase 3 - Workflow Quality And Supply-Chain Guard
 
 - [x] Add `.github/workflows/workflow-security.yml` or equivalent.
-- [ ] Run `actionlint` against `.github/workflows`.
-- [ ] Run `zizmor` against `.github/workflows`.
-- [ ] Upload SARIF or retained artifacts for workflow security findings.
+- [x] Run `actionlint` against `.github/workflows`.
+- [x] Run `zizmor` against `.github/workflows` as retained blocking evidence for medium-or-higher findings.
+- [x] Upload SARIF or retained artifacts for workflow security findings.
 - [x] Add a check that rejects external `uses:` references not pinned to full-length SHAs.
 - [x] Preserve path-based local reusable workflow calls.
-- [ ] Add/update Dependabot rules so action SHA updates remain maintainable.
+- [x] Add/update Dependabot rules so action SHA updates remain maintainable.
+- [x] Keep repository-owned CI helper scripts as file-based C# scripts run with `dotnet run <script>.cs -- <args>` and script-local `#:property RestorePackagesWithLockFile=false` directives.
 - [ ] Add OpenSSF Scorecard scheduled/SARIF evidence if repository permissions support it.
 - [ ] Add `gitleaks` or equivalent local secret-scanning feedback lane if low-noise.
 - [ ] Add `pinact` or a custom policy check if it improves SHA-pin enforcement.
 
 ### Phase 3 Acceptance
 
-- [ ] Workflow YAML changes are linted.
-- [ ] High-confidence workflow security issues block or are explicitly baselined.
-- [ ] Unpinned external actions cannot merge. The local `Workflow Security` gate exists and passes; repository-side required-check configuration still needs verification before this acceptance item is complete.
+- [x] Workflow YAML changes are linted by blocking `actionlint`.
+- [x] High-confidence workflow security issues block or are explicitly baselined. Local `zizmor` `1.25.2` verification now reports no medium-or-higher findings, and `Workflow Security` fails when the SARIF or text scan exits nonzero.
+- [ ] Unpinned external actions cannot merge. The local `Workflow Security` gate exists, has a stable workflow/job display name, and passes; repository-side required-check configuration still needs verification before this acceptance item is complete.
 
 ## Phase 4 - Build/Test Evidence, Coverage, License, And Dependency Integrity
 
@@ -136,6 +139,7 @@ Last Updated: 2026-05-29 Europe/Brussels
 - [ ] Decide coverage publication: artifact-only, Codecov, SonarCloud, or another provider.
 - [ ] Add analyzer/warnings report artifact or warnings budget.
 - [ ] Split dependency gates by severity/direct/transitive package type.
+- [x] Keep NuGet vulnerability report parsing in `.github/scripts/validate-nuget-vulnerabilities.cs` instead of embedded workflow script blocks.
 - [ ] Add dependency license policy scanning and document AGPL-compatible allow/deny rules.
 - [ ] Add cache-poisoning controls for fork PRs and trusted deploy/publish workflows.
 - [ ] Run integration tests for deploy callers and reliable scheduled lanes.
@@ -168,21 +172,22 @@ Last Updated: 2026-05-29 Europe/Brussels
 ## Phase 6 - Container Build, SBOM, Provenance, And Attestation Verification
 
 - [ ] Update Docker actions through Dependabot or a controlled PR, then pin SHAs.
-- [ ] Export SBOM/provenance evidence as downloadable artifacts.
-- [ ] Add Trivy SARIF/code-scanning output where supported.
-- [ ] Pin Docker base images by digest or document digest update cadence.
-- [ ] Verify GitHub artifact attestations before deployment.
+- [x] Export SBOM/provenance registry evidence as downloadable artifacts via OCI inspect/index output.
+- [x] Add Trivy SARIF output as retained container evidence; code-scanning upload remains repository-permissions dependent.
+- [x] Pin Docker base images by digest and enforce the weekly Dependabot Docker update cadence through `Workflow Security`.
+- [x] Verify GitHub artifact attestations before deployment through `_container-build.yml` `gh attestation verify` against the pushed GHCR digest, repository, signer workflow, source ref/digest, SLSA provenance predicate, and GitHub-hosted runner trust boundary.
 - [ ] Add SLSA provenance verification or document why GitHub artifact attestation is the chosen SLSA-compatible evidence path.
-- [ ] Add release artifact integrity manifests with checksums.
-- [ ] Record image digest, tags, scan result, SBOM/provenance references, and attestation verification result in job summaries.
+- [x] Add release artifact integrity manifests with checksums for retained container evidence.
+- [ ] Record image digest, tags, scan result, SBOM/provenance references, and attestation verification result in job summaries. Digest, tags, SBOM/provenance artifact references, attestation verification artifact path, and checksum references are recorded; scan result still needs promotion/deploy summary integration.
+- [x] Keep container digest evidence JSON generation in `.github/scripts/write-container-digest-evidence.cs` instead of embedded workflow script blocks.
 - [ ] Decide ATCR credential strategy:
   - [ ] OIDC/short-lived credential if supported; or
   - [ ] scoped environment secret with documented rotation if OIDC is unavailable.
 
 ### Phase 6 Acceptance
 
-- [ ] Deploy cannot start without scan and attestation verification.
-- [ ] Release evidence includes image digest and supply-chain artifacts.
+- [x] Deploy cannot start without scan and attestation verification in the current workflow dependency graph because deploy jobs require `build-and-push`, which now blocks on Trivy and `gh attestation verify`.
+- [ ] Release evidence includes image digest and supply-chain artifacts. Container build artifacts now include digest JSON, OCI inspect/index evidence, Trivy text/SARIF, attestation verification JSON, and checksums; digest promotion evidence remains open.
 - [ ] Mutable tags are convenience aliases only.
 
 ## Phase 7 - Unified Digest-Based Deploy Promotion
@@ -267,9 +272,12 @@ For docs-only plan updates:
 
 For workflow implementation PRs:
 
-- [ ] `actionlint` passes. Local command is not installed in this environment.
-- [ ] `zizmor` passes or findings are explicitly baselined. Local command is not installed in this environment.
-- [x] External actions remain full-SHA pinned; `.github/scripts/validate-action-pins.py` passed locally.
+- [x] `actionlint` passes. Local verification used downloaded `actionlint` `1.7.12` with the checked release archive SHA-256.
+- [x] `zizmor` passes or findings are explicitly baselined. Local verification used `zizmor` `1.25.2` in a temporary virtual environment; after checkout credential hardening and template-injection remediation it reports no medium-or-higher findings.
+- [x] External actions remain full-SHA pinned; `dotnet run .github/scripts/validate-action-pins.cs -- .github/workflows` passed locally.
+- [x] GitHub Actions SHA-pin maintenance remains covered by Dependabot; `dotnet run .github/scripts/validate-dependabot-policy.cs -- .github/dependabot.yml` passed locally.
+- [x] NuGet audit report parsing remains covered by C# script; `dotnet run .github/scripts/validate-nuget-vulnerabilities.cs -- /tmp/nuget-vulnerabilities.json` passed locally.
+- [x] Container digest evidence generation remains covered by C# script; `dotnet run .github/scripts/write-container-digest-evidence.cs` passed locally with representative environment input.
 - [x] Edited workflow YAML parses locally with PyYAML.
 - [ ] CLA workflow threat model is documented before enabling `pull_request_target`.
 - [ ] `dotnet build --configuration Release --verbosity quiet` passes.
@@ -277,8 +285,8 @@ For workflow implementation PRs:
 - [x] `dotnet restore --locked-mode` passes after package/lock-file regeneration.
 - [x] `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` reports `vulnerable-packages=0` after `MailKit` remediation.
 - [ ] OpenAPI guard runs twice with zero second-run diff when contract paths are touched.
-- [ ] Container build emits digest, SBOM/provenance, scan output, and attestation.
-- [ ] Deploy verifies attestation/digest before invoking Coolify.
+- [x] Container build emits digest, SBOM/provenance, scan output, base image digest pins, and attestation verification evidence. Current implementation emits digest JSON, OCI inspect/index evidence, Trivy text/SARIF artifacts, GHCR attestations, and `gh attestation verify` JSON; Dockerfiles use tag-plus-digest .NET base image references.
+- [ ] Deploy verifies attestation/digest before invoking Coolify. Attestation verification is enforced through the required `build-and-push` dependency; exact digest consumption by Coolify remains open.
 - [ ] Staging deploy smoke checks pass before production changes are considered.
 
 ## Remaining / Deferred Work

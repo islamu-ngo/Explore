@@ -53,6 +53,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -99,6 +106,7 @@ jobs:
       - name: Record image digest evidence
         shell: bash
         env:
+          RestorePackagesWithLockFile: "false"
           IMAGE_NAME: ${{ inputs.image-name }}
           DOCKERFILE: ${{ inputs.dockerfile }}
           CONTEXT: ${{ inputs.context }}
@@ -108,37 +116,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/container
-
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          metadata_raw = os.environ.get("METADATA") or "{}"
-          try:
-              metadata = json.loads(metadata_raw)
-          except json.JSONDecodeError:
-              metadata = {"raw": metadata_raw}
-
-          evidence = {
-              "imageName": os.environ["IMAGE_NAME"],
-              "dockerfile": os.environ["DOCKERFILE"],
-              "context": os.environ["CONTEXT"],
-              "digest": os.environ["DIGEST"],
-              "tags": [line for line in os.environ["TAGS"].splitlines() if line.strip()],
-              "metadata": metadata,
-              "github": {
-                  "repository": os.environ["GITHUB_REPOSITORY"],
-                  "sha": os.environ["GITHUB_SHA"],
-                  "ref": os.environ["GITHUB_REF"],
-                  "runId": os.environ["GITHUB_RUN_ID"],
-                  "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              },
-          }
-
-          path = Path("artifacts/container") / f"{os.environ['IMAGE_NAME']}-digest.json"
-          path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-          PY
+          dotnet run .github/scripts/write-container-digest-evidence.cs
 
           {
             echo "## Container image digest"
@@ -152,6 +130,42 @@ jobs:
             printf '%s\n' "$TAGS"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Export SBOM and provenance registry evidence
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ inputs.image-name }}
+          IMAGE_REF: ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/container
+
+          docker buildx imagetools inspect "$IMAGE_REF" > "artifacts/container/${IMAGE_NAME}-oci-inspect.txt"
+          docker buildx imagetools inspect --raw "$IMAGE_REF" > "artifacts/container/${IMAGE_NAME}-oci-index.json"
+
+          {
+            echo "## SBOM/provenance registry evidence"
+            echo
+            echo "Image reference: \`${IMAGE_REF}\`"
+            echo
+            echo "Retained artifacts:"
+            echo
+            echo "- \`artifacts/container/${IMAGE_NAME}-oci-inspect.txt\`"
+            echo "- \`artifacts/container/${IMAGE_NAME}-oci-index.json\`"
+            echo
+            echo "These files preserve the registry manifest/index evidence for the Buildx SBOM and provenance attestations generated during the build."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Generate Trivy SARIF evidence
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ steps.build.outputs.digest }}
+          format: sarif
+          output: artifacts/container/${{ inputs.image-name }}-trivy.sarif
+          exit-code: "0"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
 
       - name: Scan image vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -170,6 +184,52 @@ jobs:
           subject-name: ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
+
+      - name: Verify GHCR artifact attestation
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_NAME: ${{ inputs.image-name }}
+          IMAGE_REF: ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}@${{ steps.build.outputs.digest }}
+          SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/_container-build.yml
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/container
+
+          verification_file="artifacts/container/${IMAGE_NAME}-attestation-verification.json"
+          gh attestation verify "oci://${IMAGE_REF}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --signer-workflow "${SIGNER_WORKFLOW}" \
+            --source-ref "${GITHUB_REF}" \
+            --source-digest "${GITHUB_SHA}" \
+            --predicate-type "https://slsa.dev/provenance/v1" \
+            --deny-self-hosted-runners \
+            --format json > "${verification_file}"
+
+          {
+            echo "## Container attestation verification"
+            echo
+            echo "Image reference: \`${IMAGE_REF}\`"
+            echo
+            echo "Signer workflow: \`${SIGNER_WORKFLOW}\`"
+            echo
+            echo "Verification evidence: \`${verification_file}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Generate evidence checksum manifest
+        shell: bash
+        env:
+          RestorePackagesWithLockFile: "false"
+          IMAGE_NAME: ${{ inputs.image-name }}
+        run: |
+          set -euo pipefail
+          dotnet run .github/scripts/write-artifact-checksums.cs -- artifacts/container "artifacts/container/${IMAGE_NAME}-checksums.sha256"
+
+          {
+            echo "## Container evidence checksums"
+            echo
+            echo "Checksum manifest: \`artifacts/container/${IMAGE_NAME}-checksums.sha256\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload container build evidence
         if: always()

@@ -3,7 +3,7 @@ ABOUTME: Defines evidence, gaps, target architecture, rollout phases, and verifi
 
 # Enterprise CI/CD Hardening - Implementation Plan
 
-Last Updated: 2026-05-29 Europe/Brussels
+Last Updated: 2026-05-30 Europe/Brussels
 
 ## 0. Planning Metadata
 
@@ -33,8 +33,9 @@ It is not yet "best CI/CD." The current design still has avoidable enterprise ga
 - `test.yml` now includes `merge_group`, but required-check settings still need external repository evidence before it can be treated as merge-queue-ready;
 - `_build-test.yml` no longer owns OpenAPI drift; `openapi-contract.yml` is the canonical guard for `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs`;
 - deploy workflows are duplicated and still deploy through webhook-side mutable configuration rather than a verified digest promotion contract;
-- attestations are generated but not verified before deployment;
-- workflow YAML now has a lightweight SHA-pin policy gate, but no dedicated `actionlint`/`zizmor` static-analysis gate yet;
+- container builds now verify GHCR artifact attestations before dependent deploy jobs can start, but Coolify still needs digest-consumption or immutable-tag resolved-digest proof;
+- container builds now retain Trivy scan evidence as both text and SARIF artifacts, export downloadable OCI inspect/index evidence for registry-attached SBOM/provenance metadata, and use tag-plus-digest pinned .NET base images;
+- workflow YAML now has repository-owned C# helper scripts, a SHA-pin policy gate, Dependabot update-policy validation for pinned action maintenance, blocking `actionlint`, blocking medium-or-higher `zizmor`, checkout credential hardening, template-injection remediation, and retained workflow security evidence;
 - contribution legal provenance is not enforced by CI; there is no CLA/DCO workflow, CLA document, signature storage policy, or contributor allowlist governance;
 - `.github/CODEOWNERS` now protects `.github/**`, Dockerfiles, dependency manifests, release docs, operations docs, and legal contribution docs, but the referenced GitHub owner/team still needs repository-side validation;
 - branch protection, environment reviewers, secret scanning, push protection, and organization action policies remain out-of-repo settings that must be verified;
@@ -75,15 +76,18 @@ Out of scope for this plan: changing application runtime behavior, adding new AP
 | `_build-test.yml` no longer checks `Explore.API/swagger.json`. | `.github/workflows/_build-test.yml` and `.github/workflows/openapi-contract.yml` | High | OpenAPI guard owns contract drift. |
 | OpenAPI guard exists and includes inventory/client drift plus determinism checks. | `.github/workflows/openapi-contract.yml` | High | Keep, then enhance with `oasdiff` and Spectral after rules stabilize. |
 | Canonical OpenAPI artifact is in the root `schemas` folder. | `schemas/openapi.json` | High | Plans and docs must use this path, not `Explore.API/swagger.json`. |
-| External actions are SHA pinned with version comments. | `rg uses: .github/workflows` and `.github/scripts/validate-action-pins.py` | High | Workflow Security now enforces full-SHA pins and same-line version comments. |
-| No workflow static analysis gate exists for actionlint or zizmor. | `rg actionlint|zizmor .github/workflows` | High | Add these to the dedicated workflow security lane after tool selection/pinning. |
+| External actions are SHA pinned with version comments. | `rg uses: .github/workflows` and `.github/scripts/validate-action-pins.cs` | High | Workflow Security now enforces full-SHA pins and same-line version comments. |
+| GitHub Actions SHA pins remain updateable. | `.github/dependabot.yml` and `.github/scripts/validate-dependabot-policy.cs` | High | Dependabot must keep a weekly grouped `github-actions` update lane with conventional `ci` commit messages. |
+| Workflow static analysis is enforced. | `.github/workflows/workflow-security.yml` | High | Required-check display name is `Workflow Security`; `actionlint` is blocking; `zizmor` runs offline, uploads SARIF/text evidence, and blocks on medium-or-higher findings. |
+| Repository-owned CI helper logic is C#. | `.github/scripts/*.cs` | High | Workflow policy, NuGet vulnerability report parsing, and container digest evidence writing use file-based C# scripts instead of embedded Python. |
 | No CLA workflow exists today. | `find .github/workflows -name '*cla*'` / workflow inventory | High | Add legal contribution gate after legal/security decisions. |
 | CLA Assistant GitHub Action repository is archived. | `https://github.com/contributor-assistant/github-action` | High | Use only after risk acceptance, fork/vendor decision, or replacement evaluation. |
 | CLA Assistant action uses `pull_request_target`. | `contributor-assistant/github-action` README and GitHub docs | High | Must not checkout or run untrusted PR code in the CLA workflow. |
 | Contributor agreements require legal scope decisions. | `https://contributoragreements.org/` | High | Choose CLA/DCO, inbound license model, patent scope, signature formalities, and privacy retention with counsel. |
 | Root `.github/CODEOWNERS` exists. | `.github/CODEOWNERS` | Medium | Verify `@islamu-ngo/platform-ops` exists and has write access, or replace it with the actual maintainer owner. |
 | Deploy workflows are duplicated for staging and production. | `.github/workflows/deploy-coolify.yml`, `.github/workflows/deploy-coolify-develop.yml` | High | Consolidate around one reusable deploy workflow. |
-| Container builds emit digest evidence, Buildx SBOM/provenance, Trivy output, and GitHub artifact attestations. | `.github/workflows/_container-build.yml` | High | Missing deployment-time attestation verification and long-lived evidence export. |
+| Container builds emit digest evidence, downloadable OCI inspect/index evidence for Buildx SBOM/provenance, Trivy text/SARIF output, GHCR attestation verification JSON, checksum manifests, and GitHub artifact attestations. | `.github/workflows/_container-build.yml` | High | Missing exact digest consumption/proof in Coolify deployment. |
+| Deployable Dockerfiles pin base images by digest and have automated update coverage. | `Explore.API/Dockerfile`, `Explore.Blazor/Dockerfile`, `.github/dependabot.yml`, `.github/scripts/validate-dockerfile-base-images.cs` | High | Uses tag-plus-digest .NET base references and weekly Dependabot Docker update blocks. |
 | Coolify digest consumption remains unresolved. | `docs/OPERATIONS.md`, old context | High | This is now a blocker for "best CI/CD." |
 | Build baseline passes with warnings. | `dotnet build --configuration Release --verbosity quiet` on 2026-05-29 | High | Latest run passed with package/analyzer warnings. Architecture tests are currently red because unrelated untracked AI integration code defines `AiChatRequest` outside the CQRS query namespace convention. |
 | NuGet vulnerability audit is remediation-first and currently clean. | `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` on 2026-05-29 | High | `MailKit` was upgraded from `4.15.1` to `4.16.0` for `GHSA-9j88-vvj5-vhgr` / `CVE-2026-41319`; no vulnerable package entries remained after locked restore regeneration. |
@@ -97,8 +101,11 @@ Workflow inventory:
 - `.github/workflows/openapi-contract.yml` - OpenAPI, contract inventory, NSwag client, and deterministic regeneration guard.
 - `.github/workflows/codeql.yml` - CodeQL for Actions, C#, and JavaScript/TypeScript with manual C# build.
 - `.github/workflows/dependency-review.yml` - PR dependency review and OpenSSF scorecard display.
-- `.github/workflows/workflow-security.yml` - always-present workflow-governance security check for immutable action pins.
-- `.github/scripts/validate-action-pins.py` - local validator for external action SHA pins and same-line version comments.
+- `.github/workflows/workflow-security.yml` - always-present workflow-governance security check for immutable action pins, pinned-action update policy, actionlint, and zizmor.
+- `.github/scripts/validate-action-pins.cs` - file-based C# validator for external action SHA pins and same-line version comments.
+- `.github/scripts/validate-dependabot-policy.cs` - file-based C# validator for the Dependabot `github-actions` update lane that keeps SHA-pinned actions maintainable.
+- `.github/scripts/validate-nuget-vulnerabilities.cs` - file-based C# parser for NuGet vulnerable-package JSON output.
+- `.github/scripts/write-container-digest-evidence.cs` - file-based C# writer for normalized container digest evidence.
 - `.github/workflows/security-tests.yml` - path and schedule driven security integration tests.
 - `.github/workflows/cerbos-policy-check.yml` - Cerbos policy validation.
 - `.github/workflows/e2e.yml` - manual/nightly Aspire-backed Playwright E2E lane.
@@ -128,7 +135,7 @@ Current verified baseline:
 
 Coverage gaps:
 
-- No checked-in `actionlint`/`zizmor` gate for YAML semantics or injection-prone patterns. A checked-in SHA-pin policy gate now exists.
+- Checked-in workflow security now covers repository-owned C# helper scripts, SHA-pin policy, Dependabot action-update policy, blocking `actionlint`, blocking medium-or-higher `zizmor`, and retained evidence. Remaining gap: repository-side required-check verification and optional Scorecard/secret-scanning lanes.
 - No local test proving deploy jobs consume and verify the same digest produced by `_container-build.yml`.
 - No CI assertion that docs and workflow artifact names stay aligned.
 - No repo-visible proof that branch protection and GitHub Environment settings are actually configured.
@@ -146,8 +153,8 @@ Existing docs already explain many rules, but some need correction:
 ### 2.5 Current Pain Points / Improvement Areas
 
 1. **Blocker - deployment is not yet digest-promoted.** Images are built and attested, but deploy jobs do not prove Coolify consumed the verified digest.
-2. **Critical - attestations are generated but not verified before deploy.** Provenance is evidence, not enforcement, until deploy verifies it.
-3. **Critical - workflow definitions lack full lint/security analysis.** SHA-pin enforcement now exists; CI still needs actionlint and zizmor.
+2. **Major - attestation verification is enforced in the reusable build, but deploy still needs digest promotion proof.** Deploy jobs depend on `build-and-push`, so failed `gh attestation verify` blocks Coolify calls; the remaining gap is proving Coolify consumed the verified digest.
+3. **Major - workflow definitions must remain covered by the new security gate.** SHA-pin enforcement, blocking actionlint, blocking medium-or-higher zizmor, and evidence retention exist; repository settings still need to require `Workflow Security` before this protection can be considered merge-enforced.
 4. **Critical - required-check design is still path-filter fragile outside `Build & Test`.** `Build & Test` now has an always-present no-op path; any other globally required workflow must get the same treatment before branch protection requires it.
 5. **Major - deploy workflows are duplicated.** Staging/production drift will continue unless deployment logic is one reusable path.
 6. **Resolved in first slice - stale OpenAPI checks were removed from the build workflow.** Keep one canonical OpenAPI guard in `openapi-contract.yml`; do not reintroduce dead `swagger.json` checks.
@@ -199,6 +206,7 @@ trusted main/develop/tag
 - `pull_request_target` is banned for build/test/generation/deployment unless a threat-model document approves the exact pattern.
 - Workflows must use least-privilege `permissions`; jobs elevate only where needed.
 - External actions must remain pinned to full-length SHAs with update automation.
+- Repository-owned CI/CD helper scripts must be file-based C# scripts run with `dotnet run <script>.cs -- <args>` and `#:property RestorePackagesWithLockFile=false` unless a documented exception is approved. Inline workflow shell remains orchestration-only; third-party tools may use their required runtime.
 - Generated OpenAPI and NSwag artifacts are never hand-edited; `schemas/openapi.json` is the canonical checked-in OpenAPI artifact.
 - CLA automation may use `pull_request_target` only for metadata/comment/status work. It must not checkout, build, test, cache, or execute untrusted PR code.
 - CLA signatures must not be written to protected source branches. Prefer a dedicated private signatures repository or a dedicated unprotected signatures branch with narrow write credentials.
@@ -403,8 +411,8 @@ Do not copy the upstream sample blindly. The sample uses `@v2.6.1`, broad write 
 
 **Tasks:**
 
-- Add `actionlint` with a pinned installer or pinned container/action.
-- Add `zizmor` in auditor mode initially as SARIF/advisory, then promote high-confidence findings to blocking.
+- Add `actionlint` with a pinned installer or pinned container/action. Current implementation downloads `actionlint` `1.7.12` and verifies the Linux amd64 release archive SHA-256 before running it as blocking.
+- Add `zizmor` with retained SARIF/text evidence and block on medium-or-higher findings. Current implementation installs `zizmor` `1.25.2` in a virtual environment, runs offline scans, and fails the workflow on nonzero SARIF or text exits.
 - Add a pin-policy check that fails external non-SHA `uses:` references.
 - Keep local reusable workflows path-based.
 - Configure Dependabot grouping/review rules so SHA pin updates remain maintainable.
@@ -484,18 +492,18 @@ Do not copy the upstream sample blindly. The sample uses `@v2.6.1`, broad write 
 **Tasks:**
 
 - Update Docker actions through Dependabot or a controlled PR, then pin resulting SHAs.
-- Export SBOM/provenance evidence as downloadable artifacts, not only registry-attached metadata.
-- Add Trivy SARIF/code-scanning output in addition to text artifacts where supported.
-- Pin base images by digest or document a digest update policy.
-- Verify GitHub artifact attestations with `gh attestation verify` or equivalent before deployment.
+- Export SBOM/provenance evidence as downloadable artifacts, not only registry-attached metadata. Current implementation retains `docker buildx imagetools inspect` text output and raw OCI index JSON for the pushed GHCR digest.
+- Add Trivy SARIF/code-scanning output in addition to text artifacts where supported. Current implementation retains SARIF as a build artifact before the blocking text scan; code-scanning upload remains repository-permissions dependent.
+- Pin base images by digest or document a digest update policy. Current implementation pins deployable .NET base images with tag-plus-digest references and enforces weekly Dependabot Docker update coverage through `Workflow Security`.
+- Verify GitHub artifact attestations with `gh attestation verify` or equivalent before deployment. Current implementation verifies the pushed GHCR digest in `_container-build.yml` before deploy jobs depending on `build-and-push` can start.
 - Add SLSA provenance verification or document why GitHub artifact attestation is the chosen SLSA-compatible evidence path.
-- Add release artifact integrity manifests with checksums for evidence bundles.
+- Add release artifact integrity manifests with checksums for evidence bundles. Current implementation generates SHA-256 manifests for retained container evidence artifacts.
 - Record final image digest per component as the release/deploy source of truth.
 
 **Exit criteria:**
 
-- Deployment cannot start unless image scan and attestation verification pass.
-- Release evidence contains digests, SBOM/provenance references, vulnerability output, and build metadata.
+- Deployment cannot start unless image scan and attestation verification pass through the reusable build dependency.
+- Release evidence contains digests, SBOM/provenance references, vulnerability output, attestation verification output, checksum manifests, and build metadata.
 
 ### Phase 7 - Unified Digest-Based Deploy Promotion
 
@@ -699,7 +707,7 @@ Migration sequencing:
 | Risk | Severity | Mitigation |
 |---|---|---|
 | Coolify cannot deploy by digest | Blocker for final state | Use immutable commit-SHA tag fallback temporarily; record resolved digest; keep task open until digest deploy is solved. |
-| Workflow security scanner false positives | Major | Start advisory/SARIF, baseline findings, then block only high-confidence rules. |
+| Workflow security scanner false positives | Major | Keep `zizmor` scoped to medium-or-higher findings, require owner/date/removal-condition evidence before any temporary exception, and retain SARIF/text artifacts for review. |
 | Required checks stuck pending due skipped workflows | Critical | Always-running wrapper/no-op jobs before branch protection requires them. |
 | Package vulnerability gate regresses | Critical | Keep remediation-first policy; any temporary advisory exception needs owner/date/advisory URL/affected version/compensating control/removal condition. |
 | Duplicate deploy workflows drift | Major | Consolidate into one reusable deploy path. |
@@ -736,7 +744,7 @@ Every implementation PR must update:
 - `enterprise-ci-cd-hardening-context.md` after major decisions, verification, blockers, or settings evidence;
 - `enterprise-ci-cd-hardening-tasks.md` as tasks are completed or split.
 
-Do not mark this workstream complete while Coolify digest deployment, attestation verification, repository settings evidence, and workflow security linting remain unresolved.
+Do not mark this workstream complete while Coolify digest deployment, repository settings evidence, and workflow security linting remain unresolved.
 
 ## 16. Progress Reporting Contract
 

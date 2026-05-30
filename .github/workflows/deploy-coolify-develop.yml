@@ -86,6 +86,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Check for file changes
         uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
@@ -118,11 +120,11 @@ jobs:
 
       - name: Check if both changed
         id: check-both
+        env:
+          API_CHANGED: ${{ steps.filter.outputs.api }}
+          UI_CHANGED: ${{ steps.filter.outputs.ui }}
         run: |
-          API="${{ steps.filter.outputs.api }}"
-          UI="${{ steps.filter.outputs.ui }}"
-
-          if [ "$API" == "true" ] && [ "$UI" == "true" ]; then
+          if [ "$API_CHANGED" == "true" ] && [ "$UI_CHANGED" == "true" ]; then
             echo "both_changed=true" >> $GITHUB_OUTPUT
           else
             echo "both_changed=false" >> $GITHUB_OUTPUT
@@ -130,14 +132,17 @@ jobs:
 
       - name: Generate Dynamic Build Matrix
         id: set-matrix
+        env:
+          API_CHANGED: ${{ steps.filter.outputs.api }}
+          UI_CHANGED: ${{ steps.filter.outputs.ui }}
         run: |
           MATRIX_JSON="[]"
 
-          if [ "${{ steps.filter.outputs.api }}" == "true" ]; then
+          if [ "$API_CHANGED" == "true" ]; then
             MATRIX_JSON=$(echo $MATRIX_JSON | jq '. + [{"image-name": "islamu-event-api", "dockerfile": "Explore.API/Dockerfile", "context": "."}]')
           fi
 
-          if [ "${{ steps.filter.outputs.ui }}" == "true" ]; then
+          if [ "$UI_CHANGED" == "true" ]; then
             MATRIX_JSON=$(echo $MATRIX_JSON | jq '. + [{"image-name": "islamu-event-ui", "dockerfile": "Explore.Blazor/Dockerfile", "context": "."}]')
           fi
 
