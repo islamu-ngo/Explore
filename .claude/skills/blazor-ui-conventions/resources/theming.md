@@ -122,4 +122,4 @@ Priority order for customization:
 
 ## Related
 - [bem-methodology.md](bem-methodology.md)
-- [mudblazor-styling.md](../../../.claude/skills/blazor-css-isolation/resources/mudblazor-styling.md)
+- [mudblazor-styling.md](../../blazor-css-isolation/resources/mudblazor-styling.md)

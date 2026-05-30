@@ -90,6 +90,6 @@ public class GetEventsQueryHandler(
 
 ## Related
 
-- [handler-conventions.md](handler-conventions.md)
-- [validation-rules.md](validation-rules.md)
-- [specification-patterns.md](specification-patterns.md)
+- [handler-patterns.md](handler-patterns.md)
+- [validation-integration.md](validation-integration.md)
+- [query-patterns.md](query-patterns.md)

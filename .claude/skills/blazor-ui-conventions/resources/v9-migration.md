@@ -56,4 +56,4 @@ These changes are mandatory when writing or modifying MudBlazor code. The old AP
 ## Related
 - [mudblazor-usage.md](mudblazor-usage.md) — component usage rules
 - [common-patterns.md](common-patterns.md) — UI pattern examples
-- [mudblazor-styling.md](../../../.claude/skills/blazor-css-isolation/resources/mudblazor-styling.md) — styling patterns
+- [mudblazor-styling.md](../../blazor-css-isolation/resources/mudblazor-styling.md) — styling patterns

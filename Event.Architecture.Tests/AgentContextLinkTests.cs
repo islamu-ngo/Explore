@@ -7,6 +7,14 @@ using static ContextSystemHelpers;
 
 public class AgentContextLinkTests
 {
+    private static readonly HashSet<string> SkipSkillLinkChecks = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "accessibility", "agentic-research", "aspire",
+        "blazor-bff-patterns", "blazor-css-isolation", "conventional-commit",
+        "design-system", "error-tracking", "footer-management", "gitkraken-cli",
+        "outbox-pattern", "prd",
+    };
+
     [Test]
     public async Task RootAgentFilesHaveNoDeadLinks()
     {
@@ -98,20 +106,13 @@ public class AgentContextLinkTests
     [Test]
     public async Task MigratedSkillFilesHaveNoDeadLinks()
     {
-        // Only check migrated skills; grandfathered skills predate this schema.
-        string[] migratedSkills =
-        [
-            "clean-architecture-rules",
-            "cqrs-mediatr-guidelines",
-            "dotnet-efcore-guidelines",
-            "blazor-ui-conventions",
-            "auth-patterns",
-        ];
-
-        var files = migratedSkills
-            .Select(s => RepoPath(".claude", "skills", s, "SKILL.md"))
-            .Where(File.Exists)
-            .Concat(new[] { RepoPath(".claude", "skills", "_SKILL_SCHEMA.md") }.Where(File.Exists));
+        var skillsDir = RepoPath(".claude", "skills");
+        var files = Directory.Exists(skillsDir)
+            ? Directory.EnumerateDirectories(skillsDir)
+                .Where(d => !SkipSkillLinkChecks.Contains(Path.GetFileName(d)))
+                .SelectMany(d => Directory.EnumerateFiles(d, "*.md", SearchOption.AllDirectories))
+                .Concat(new[] { RepoPath(".claude", "skills", "_SKILL_SCHEMA.md") }.Where(File.Exists))
+            : Array.Empty<string>();
 
         var errors = CheckLinks(files);
 

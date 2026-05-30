@@ -93,15 +93,11 @@ Skills listed in the test's `SkipSchemaMigration` set are grandfathered but flag
 
 ## 7. Migration Debt (v1)
 
-The following skills are migrated to schema:
+All skills are schema-enforced unless their folder name appears in `AgentContextSchemaTests.SkipSchemaMigration`.
 
-- `clean-architecture-rules`
-- `cqrs-mediatr-guidelines`
-- `dotnet-efcore-guidelines`
-- `blazor-ui-conventions`
-- `auth-patterns`
+New skills MUST NOT be added to the skip list. If a new skill needs more depth than the line cap allows, keep `SKILL.md` compact and move the detail into `resources/*.md`.
 
-All other skills remain on the legacy format until backfilled. See `docs/DOCUMENTATION_IMPROVEMENT_RESEARCH.md` for promotion cadence.
+`AgentContextLinkTests` also checks links for all schema-enforced skills and their resource files, so every resource link must resolve before the architecture tests pass.
 
 ## Related
 

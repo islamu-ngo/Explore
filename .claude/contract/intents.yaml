@@ -339,3 +339,48 @@ intents:
     related_agents:
       - architect-agent
       - quality-verifier-agent
+
+  - id: create-agent-context-skill
+    title: "Create or update an agent-context skill"
+    category: cross-cutting
+    triggers:
+      - "create a skill"
+      - "write a skill"
+      - "add a .claude skill"
+      - "update skill resources"
+      - "agentic engineering"
+      - "context engineering"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/DOCUMENTATION_STYLE_GUIDE.md
+      - docs/OPERATIONS.md
+      - docs/TESTING.md
+      - .claude/skills/_SKILL_SCHEMA.md
+    load_skills:
+      - skill-authoring
+      - agentic-research
+      - senior-cto-feedback
+    load_rules: []
+    paths_in_scope:
+      - ".claude/skills/"
+      - ".claude/contract/"
+      - "Event.Architecture.Tests/"
+      - "dev/active/"
+    minimum_tests:
+      - Event.Architecture.Tests
+    docs_to_update:
+      - .claude/contract/intents.yaml
+      - .claude/skills/_SKILL_SCHEMA.md
+    unique_acceptance:
+      - "New SKILL.md satisfies the skill schema without adding a schema-test skip exception"
+      - "Every resource linked from SKILL.md or resources/index.md exists and has two ABOUTME lines"
+      - "The skill states activation boundaries, anti-patterns, verification hooks, and output contract clearly enough for another agent to use without rereading the originating chat"
+    forbidden_without_approval:
+      - "Adding a new skill to AgentContextSchemaTests.SkipSchemaMigration"
+      - "Creating a skill that claims authority beyond its evidence or domain scope"
+      - "Inlining long framework material in SKILL.md instead of resource files"
+    related_agents:
+      - architect-agent
+      - librarian-agent
+      - quality-verifier-agent
