@@ -49,6 +49,19 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
             .ToListAsync(cancellationToken);
     }
 
+    public override async Task Update(AiConversation entity)
+    {
+        var entry = _dbContext.Entry(entity);
+
+        if (entry.State != EntityState.Detached)
+        {
+            await _dbContext.SaveChangesAsync();
+            return;
+        }
+
+        await base.Update(entity);
+    }
+
     public async Task<int> CountUserMessagesSinceAsync(
         Guid userId,
         DateTime sinceUtc,

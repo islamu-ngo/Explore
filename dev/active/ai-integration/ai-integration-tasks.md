@@ -8,9 +8,9 @@ Last Updated: 2026-05-29 Europe/Brussels
 ## Status Summary
 
 - **Overall status:** User-approved implementation in progress.
-- **Completed:** Phase 0 approval/baseline/provider decision; Phase 1 domain statuses/entities/tests; Phase 1 EF mappings/query filters/repository surface; Phase 2 provider-neutral Application contracts, expanded AI settings definitions/group, provider settings validator, deterministic fake provider, authenticated bootstrap query/API surface, provider health, egress safety, safe telemetry, OpenAI-compatible HTTP adapter, runtime provider selector, and Phase 3 conversation DTO/query/create/detail/run-status/send-message/prompt-parser/API route/HAL policy/API contract-test foundation.
-- **Current priority:** Continue broader Phase 3 API validation and OpenAPI/client work while EF migration generation remains deferred by unrelated dirty model changes.
-- **Next recommended slice:** Add DB-backed/broader AI API tests for disabled assistant behavior, fake-provider flow, idempotency replay/conflict through HTTP, provider failure, no anonymous history, and cross-tenant absence, or generate an AI-scoped EF migration only after unrelated dirty model changes are handled.
+- **Completed:** Phase 0 approval/baseline/provider decision; Phase 1 domain statuses/entities/tests; Phase 1 EF mappings/query filters/repository surface; Phase 2 provider-neutral Application contracts, expanded AI settings definitions/group, provider settings validator, deterministic fake provider, authenticated bootstrap query/API surface, provider health, egress safety, safe telemetry, OpenAI-compatible HTTP adapter, runtime provider selector, and Phase 3 conversation DTO/query/create/detail/run-status/send-message/prompt-parser/API route/HAL policy/API contract-test/host-backed flow-test foundation.
+- **Current priority:** Continue remaining Phase 3 API validation gaps and OpenAPI/client work while EF migration generation remains deferred by unrelated dirty model changes.
+- **Next recommended slice:** Add the remaining provider-failure, true cross-tenant, and DB-backed EF AI persistence API tests, or generate an AI-scoped EF migration only after unrelated dirty model changes are handled.
 - **Implementation started:** Yes.
 
 ## Implementation Maintenance Rules
@@ -241,12 +241,19 @@ Last Updated: 2026-05-29 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** 3.4, 3.5.
 
-- [ ] **3.6 Add conversation/API tests**
-  - **Files:** `Event.Application.UnitTests/Features/AiAssistant/*`, `Event.API.IntegrationTests/Features/AiAssistant*Tests.cs`.
-  - **Acceptance:** DB-backed or host-backed API tests cover fake provider flow, auth, disabled assistant, provider failure, private bootstrap/history authenticated, no anonymous history, idempotency replay/conflict over HTTP, cross-tenant absence, and HAL serialization on real responses.
-  - **Validation:** Application and API test commands.
+- [x] **3.6 Add conversation/API tests**
+  - **Files:** `Event.API.IntegrationTests/Features/AiAssistantApiFlowTests.cs`, `Explore.Persistence/Repositories/AiConversationRepository.cs`.
+  - **Acceptance:** Host-backed API tests cover no anonymous conversation history/list access, disabled assistant 403 ProblemDetails, fake-provider create/send/detail flow, idempotency replay over HTTP, idempotency conflict through the existing API middleware (`idempotency_key_reuse`), cross-user absence for private conversation detail, and HAL `send-message` links on real API responses. Tests use real ASP.NET Core host/routing/auth/controller/MediatR flow with fake provider, fixed AI settings, and focused in-memory AI/idempotency repositories to avoid the currently deferred EF AI migration and unrelated dirty EF model blockers. Provider-failure, true cross-tenant, and DB-backed EF AI persistence API flow tests remain as follow-up coverage.
+  - **Validation:** LSP diagnostics were clean for `AiAssistantApiFlowTests.cs` and the AI repository update. `dotnet build Explore.Persistence/Explore.Persistence.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false --no-dependencies` passed. `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -p:RunAnalyzers=false -p:BuildProjectReferences=false` passed with existing non-AI warnings after the test-double and expectation updates. Targeted host-backed API flow tests passed: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/*AiAssistantApiFlowTests*/*" --minimum-expected-tests 6 --no-progress --maximum-parallel-tests 1` returned 6 total, 0 failed. Normal project-reference API integration build is still blocked by unrelated dirty Application storage-service compile errors.
   - **Effort:** L
   - **Dependencies:** 3.2-3.5.
+
+- [ ] **3.6b Add remaining DB-backed/provider-failure API flow tests**
+  - **Files:** `Event.API.IntegrationTests/Features/AiAssistant*Tests.cs`, optional persistence test fixtures after AI migration.
+  - **Acceptance:** Provider failure over HTTP returns safe ProblemDetails; true cross-tenant absence is covered with real tenant context; DB-backed EF AI persistence API flow passes after an AI-scoped migration is generated; no anonymous private history remains covered in host-backed fixtures.
+  - **Validation:** API integration tests with project references once unrelated dirty Application/Persistence blockers are resolved or isolated.
+  - **Effort:** M
+  - **Dependencies:** 3.6, 1.6 for DB-backed EF path.
 
 - [ ] **3.7 Update OpenAPI/generated client/changelog**
   - **Files:** `schemas/openapi.json`, `Explore.Blazor.Client/Clients/EventApiClient.g.cs`, `docs/API_CHANGELOG.md`, maybe `docs/API.md`.
