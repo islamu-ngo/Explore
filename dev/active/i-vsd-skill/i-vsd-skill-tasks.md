@@ -11,11 +11,11 @@ Planning status: complete.
 
 Planning verification status: complete by read-back and heading checks after expansion.
 
-Implementation status: not started.
+Implementation status: skill and resource library created; focused verification passed.
 
 Handoff refresh status: complete for context-limit compaction.
 
-Current phase: ready for Phase 1 implementation. No `.claude/skills/i-vsd` files exist yet.
+Current phase: implementation complete for the I-VSD skill. `.claude/skills/i-vsd/SKILL.md` and 26 resource files now exist.
 
 ## Implementation Maintenance Rules
 
@@ -128,109 +128,119 @@ Handoff exit criteria:
 
 ## Phase 1 - Skill Scaffold And Schema Compliance
 
-- [ ] Create `.claude/skills/i-vsd/`.
-- [ ] Create `.claude/skills/i-vsd/resources/`.
-- [ ] Create `.claude/skills/i-vsd/SKILL.md` with required YAML frontmatter.
-- [ ] Add two `ABOUTME` comments after frontmatter in `SKILL.md`.
-- [ ] Add required schema sections in order: `Purpose`, `When to Load`, `When NOT to Load`, `Must-Read Docs`, `Top 5 Invariants`, `Top 5 Anti-Patterns`, `Minimal Examples`, `Verification Hooks`, `Related Skills`.
-- [ ] Keep `SKILL.md` under 250 lines.
-- [ ] Link from `SKILL.md` to resource files or a resource index.
+- [x] Create `.claude/skills/i-vsd/`.
+- [x] Create `.claude/skills/i-vsd/resources/`.
+- [x] Create `.claude/skills/i-vsd/SKILL.md` with required YAML frontmatter.
+- [x] Add two `ABOUTME` comments after frontmatter in `SKILL.md`.
+- [x] Add required schema sections in order: `Purpose`, `When to Load`, `When NOT to Load`, `Must-Read Docs`, `Top 5 Invariants`, `Top 5 Anti-Patterns`, `Minimal Examples`, `Verification Hooks`, `Related Skills`.
+- [x] Keep `SKILL.md` under 250 lines.
+- [x] Link from `SKILL.md` to resource files or a resource index.
 
 Acceptance criteria:
 
-- [ ] Folder name and frontmatter `name` both equal `i-vsd`.
-- [ ] `SKILL.md` is a workflow router, not a full thesis dump.
-- [ ] Claim-boundary language is present in `Purpose`, `Top 5 Invariants`, and examples.
+- [x] Folder name and frontmatter `name` both equal `i-vsd`.
+- [x] `SKILL.md` is a workflow router, not a full thesis dump.
+- [x] Claim-boundary language is present in `Purpose`, `Top 5 Invariants`, and examples.
 
 ## Phase 2 - Core Framework Resources
 
-- [ ] Create `resources/framework-overview.md`.
-- [ ] Create `resources/glossary.md`.
-- [ ] Create `resources/principles-and-domains.md`.
-- [ ] Create `resources/derivation-protocol.md`.
-- [ ] Create `resources/evidence-and-validation-levels.md`.
-- [ ] Create `resources/scholarly-consultation-boundaries.md`.
+- [x] Create `resources/framework-overview.md`.
+- [x] Create `resources/glossary.md`.
+- [x] Create `resources/principles-and-domains.md`.
+- [x] Create `resources/derivation-protocol.md`.
+- [x] Create `resources/evidence-and-validation-levels.md`.
+- [x] Create `resources/scholarly-consultation-boundaries.md`.
 
 Acceptance criteria:
 
-- [ ] All core selected principles are represented.
-- [ ] Six domains are represented: Strategic, Design, Technical, Operational, Governance, Evaluation.
-- [ ] Derivation chain is explicit and auditable.
-- [ ] Evidence-level distinctions are explicit.
-- [ ] Escalation triggers for qualified scholarly review are explicit.
+- [x] All core selected principles are represented.
+- [x] Six domains are represented: Strategic, Design, Technical, Operational, Governance, Evaluation.
+- [x] Derivation chain is explicit and auditable.
+- [x] Evidence-level distinctions are explicit.
+- [x] Escalation triggers for qualified scholarly review are explicit.
 
 ## Phase 3 - Domain Heuristic Resources
 
-- [ ] Create `resources/data-governance-heuristics.md`.
-- [ ] Create `resources/content-moderation-heuristics.md`.
-- [ ] Create `resources/ai-and-algorithmic-heuristics.md`.
-- [ ] Create `resources/marketing-and-communication-heuristics.md`.
-- [ ] Create `resources/business-model-heuristics.md`.
-- [ ] Create `resources/architecture-heuristics.md`.
-- [ ] Create `resources/ux-and-defaults-heuristics.md`.
-- [ ] Create `resources/strategic-decision-framework.md`.
-- [ ] Create `resources/technical-decision-framework.md`.
-- [ ] Create `resources/design-decision-framework.md`.
-- [ ] Create `resources/operational-framework.md`.
-- [ ] Create `resources/governance-and-accountability-framework.md`.
-- [ ] Create `resources/legal-and-compliance-framework.md`.
-- [ ] Create `resources/evaluation-metrics.md`.
+- [x] Create `resources/data-governance-heuristics.md`.
+- [x] Create `resources/content-moderation-heuristics.md`.
+- [x] Create `resources/ai-and-algorithmic-heuristics.md`.
+- [x] Create `resources/marketing-and-communication-heuristics.md`.
+- [x] Create `resources/business-model-heuristics.md`.
+- [x] Create `resources/architecture-heuristics.md`.
+- [x] Create `resources/ux-and-defaults-heuristics.md`.
+- [x] Create `resources/strategic-decision-framework.md`.
+- [x] Create `resources/technical-decision-framework.md`.
+- [x] Create `resources/design-decision-framework.md`.
+- [x] Create `resources/operational-framework.md`.
+- [x] Create `resources/governance-and-accountability-framework.md`.
+- [x] Create `resources/legal-and-compliance-framework.md`.
+- [x] Create `resources/evaluation-metrics.md`.
 
 Acceptance criteria:
 
-- [ ] Each resource includes actionable review questions.
-- [ ] Each resource includes evidence expectations.
-- [ ] Each resource includes anti-pattern signals where relevant.
-- [ ] Domain resources preserve the thesis boundary between design reasoning and outcome proof.
+- [x] Each resource includes actionable review questions.
+- [x] Each resource includes evidence expectations.
+- [x] Each resource includes anti-pattern signals where relevant.
+- [x] Domain resources preserve the thesis boundary between design reasoning and outcome proof.
 
 ## Phase 4 - Consultancy, Reports, And Compliance Workflows
 
-- [ ] Create `resources/consultancy-workflow.md`.
-- [ ] Create `resources/report-templates.md`.
-- [ ] Create `resources/compliance-checks.md`.
-- [ ] Create `resources/industry-anti-patterns.md`.
+- [x] Create `resources/consultancy-workflow.md`.
+- [x] Create `resources/report-templates.md`.
+- [x] Create `resources/compliance-checks.md`.
+- [x] Create `resources/industry-anti-patterns.md`.
 
 Acceptance criteria:
 
-- [ ] Consultancy workflow supports intake, scoping, stakeholder mapping, principle selection, domain review, evidence assessment, recommendations, and escalation.
-- [ ] Report templates support executive summaries, detailed audits, design feedback, implementation review, compliance-style checks, and risk registers.
-- [ ] Compliance checks can produce pass/concern/fail style findings without claiming certification.
-- [ ] Anti-pattern resource covers deception, surveillance, dark patterns, lock-in, AI washing, fake trust signals, predatory monetization, unfair competition, and enshittification.
+- [x] Consultancy workflow supports intake, scoping, stakeholder mapping, principle selection, domain review, evidence assessment, recommendations, and escalation.
+- [x] Report templates support executive summaries, detailed audits, design feedback, implementation review, compliance-style checks, and risk registers.
+- [x] Compliance checks can produce pass/concern/fail style findings without claiming certification.
+- [x] Anti-pattern resource covers deception, surveillance, dark patterns, lock-in, AI washing, fake trust signals, predatory monetization, unfair competition, and enshittification.
 
 ## Phase 5 - ISLAMU Event Case Patterns
 
-- [ ] Create `resources/islamu-event-case-patterns.md`.
-- [ ] Include strategic patterns from `4.2.3`.
-- [ ] Include technical patterns from `4.2.4`.
-- [ ] Include UX patterns from `4.2.5`.
-- [ ] Include business-model patterns from `4.2.6`.
-- [ ] State clearly that the case is illustrative traceability, not operational proof.
+- [x] Create `resources/islamu-event-case-patterns.md`.
+- [x] Include strategic patterns from `4.2.3`.
+- [x] Include technical patterns from `4.2.4`.
+- [x] Include UX patterns from `4.2.5`.
+- [x] Include business-model patterns from `4.2.6`.
+- [x] State clearly that the case is illustrative traceability, not operational proof.
 
 Acceptance criteria:
 
-- [ ] Case resource covers curation, anti-scam safeguards, ticketing/payments, privacy, federation/portability, self-hosting, tenant isolation, authorization affordances, rate limiting, and open-source stewardship.
-- [ ] Case resource distinguishes design claims from validated outcomes.
+- [x] Case resource covers curation, anti-scam safeguards, ticketing/payments, privacy, federation/portability, self-hosting, tenant isolation, authorization affordances, rate limiting, and open-source stewardship.
+- [x] Case resource distinguishes design claims from validated outcomes.
 
 ## Phase 6 - Verification And Cleanup
 
-- [ ] Confirm all new files start with two `ABOUTME` comments, except where YAML frontmatter must come first.
-- [ ] Confirm all resource files are linked from `SKILL.md` or a resource index.
-- [ ] Confirm no resource uses forbidden ASCII diagrams.
-- [ ] Confirm no resource claims fatwa, Sharia certification, product certification, or empirical proof.
-- [ ] Confirm `SKILL.md` is under 250 lines.
-- [ ] Run schema-focused architecture tests.
-- [ ] Run broader architecture tests.
-- [ ] Run repository build if any shared schema/test/docs behavior changed.
-- [ ] Update `i-vsd-skill-context.md` with verification results.
-- [ ] Update this file with final status.
+- [x] Confirm all new files start with two `ABOUTME` comments, except where YAML frontmatter must come first.
+- [x] Confirm all resource files are linked from `SKILL.md` or a resource index.
+- [x] Confirm no resource uses forbidden ASCII diagrams.
+- [x] Confirm no resource claims fatwa, Sharia certification, product certification, or empirical proof.
+- [x] Confirm `SKILL.md` is under 250 lines.
+- [x] Run schema-focused architecture tests.
+- [x] Run broader architecture tests; full suite failed on unrelated application architecture rules outside this workstream.
+- [x] Skip repository build because no shared schema/test/docs behavior or application code changed.
+- [x] Update `i-vsd-skill-context.md` with verification results.
+- [x] Update this file with final status.
 
 Validation commands:
 
 ```bash
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.AgentContextSchemaTests
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
-dotnet build --configuration Release --verbosity quiet
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextSchemaTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextIntentManifestTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextLinkTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+git diff --check -- .claude/contract/intents.yaml .claude/skills Event.Architecture.Tests/AgentContextLinkTests.cs dev/active/i-vsd-skill
 ```
+
+Validation results:
+
+- Focused `AgentContextSchemaTests` passed.
+- Focused `AgentContextIntentManifestTests` passed.
+- Focused `AgentContextLinkTests` passed with total 8, failed 0, succeeded 8, skipped 0.
+- Final `git diff --check` passed with no output.
+- Full `Event.Architecture.Tests` was attempted and failed due unrelated application architecture rules: raw HTTP JSON helper usage in `Explore.Blazor.Client/Services/ImageUploadClient.cs`, plus HATEOAS link policy `RequirePermission` calls that do not use `AuthorizationActions` metadata.
+- Repository build was not run because this workstream changed only agent-context skill/dev-doc files, not application code or shared test infrastructure.
 
 ## Verification Checklist
 
@@ -245,7 +255,7 @@ dotnet build --configuration Release --verbosity quiet
 
 ## Remaining Or Deferred Work
 
-- [ ] Implement the actual `.claude/skills/i-vsd` skill and resources.
+- [x] Implement the actual `.claude/skills/i-vsd` skill and resources.
 - [ ] Consider adding an `agent_context_skill_change` intent to `.claude/contract/intents.yaml` if skill authoring becomes recurring work.
 - [ ] Consider expanding link tests to cover all migrated skill resource links.
 - [ ] Re-sync resources if the thesis source changes materially.
