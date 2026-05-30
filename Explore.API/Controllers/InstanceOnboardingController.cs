@@ -193,6 +193,34 @@ public class InstanceOnboardingController : ExploreControllerBase
         return Ok(response);
     }
 
+    /// <summary>
+    /// Bootstraps an external Keycloak realm and persists runtime auth-provider configuration during setup.
+    /// </summary>
+    [AllowAnonymous]
+    [SetupSecretRequired]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpPost("auth-provider-configuration/keycloak-bootstrap", Name = RouteNames.BootstrapInstanceOnboardingKeycloakRealm)]
+    [EndpointSummary("Bootstrap Keycloak Realm (Setup)")]
+    [EndpointDescription("Bootstraps an external Keycloak realm/client configuration during instance setup. Protected by setup secret; one-time admin credentials are not stored.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status410Gone)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> BootstrapKeycloakRealm([FromBody] KeycloakBootstrapRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(
+            new BootstrapKeycloakRealmCommand { BootstrapRequest = request },
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
     [AllowAnonymous]
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]

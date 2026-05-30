@@ -47,6 +47,7 @@ public interface IInstanceOnboardingService
 
     Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsync();
     Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config);
+    Task<InstanceCommandResponseModel> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestModel request);
     Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config);
     Task<bool> IsAuthProviderConfiguredAsync();
     Task RefreshAuthSchemesAsync();
@@ -310,6 +311,17 @@ public class InstanceOnboardingService : IInstanceOnboardingService
 
     public Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config) =>
         SendCommandAsync(ct => _api.SaveAuthProviderConfigurationAsync(config, ct));
+
+    public async Task<InstanceCommandResponseModel> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestModel request)
+    {
+        var result = await SendCommandAsync(ct => _api.BootstrapKeycloakRealmAsync(request, ct));
+        if (result.Success)
+        {
+            await RefreshAuthSchemesAsync();
+        }
+
+        return result;
+    }
 
     public Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config) =>
         SendCommandAsync(ct => _api.UpdateAuthProviderConfigurationAsAdminAsync(config, ct));
@@ -903,6 +915,19 @@ public class AuthProviderConfigurationModel
     public bool LockKeycloakEnabled { get; set; }
     public bool LockAtprotoLoginEnabled { get; set; }
     public bool LockGoogleSsoEnabled { get; set; }
+}
+
+public class KeycloakBootstrapRequestModel
+{
+    public string KeycloakBaseUrl { get; set; } = string.Empty;
+    public string Realm { get; set; } = string.Empty;
+    public string BlazorClientId { get; set; } = "islamu-event-blazor";
+    public string BlazorClientSecret { get; set; } = string.Empty;
+    public string? ApiClientId { get; set; } = "islamu-event-api";
+    public string? ApiClientSecret { get; set; }
+    public int Mode { get; set; }
+    public string BootstrapAdminUsername { get; set; } = string.Empty;
+    public string BootstrapAdminPassword { get; set; } = string.Empty;
 }
 
 public class AuthProviderConfiguredResult

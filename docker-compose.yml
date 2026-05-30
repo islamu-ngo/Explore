@@ -108,6 +108,26 @@ services:
       keycloak-db:
         condition: service_healthy
 
+  keycloak-init:
+    image: quay.io/keycloak/keycloak:26.1.2
+    restart: "no"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-ISLAMU}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KEYCLOAK_BLAZOR_CLIENT_ID: islamu-event-blazor
+      KEYCLOAK_BLAZOR_CLIENT_SECRET: ${KEYCLOAK_BLAZOR_CLIENT_SECRET:-}
+      KEYCLOAK_API_CLIENT_ID: islamu-event-api
+      KEYCLOAK_API_CLIENT_SECRET: ${KEYCLOAK_API_CLIENT_SECRET:-}
+      KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET: ${KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET:-false}
+    volumes:
+      - ./docker/keycloak/keycloak-init.sh:/opt/keycloak/bin/keycloak-init.sh:ro
+    entrypoint: ["/bin/bash", "/opt/keycloak/bin/keycloak-init.sh"]
+
   islamu-event-api:
     build:
       context: .
@@ -138,6 +158,8 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+      keycloak-init:
+        condition: service_completed_successfully
       minio:
         condition: service_healthy
         required: false # API starts even if MinIO is not in the active profile
@@ -167,6 +189,8 @@ services:
         condition: service_started
       keycloak:
         condition: service_healthy
+      keycloak-init:
+        condition: service_completed_successfully
       minio:
         condition: service_healthy
         required: false

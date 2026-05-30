@@ -128,6 +128,38 @@ public class SetupSecretForwardingHandlerTests
     }
 
     [Test]
+    public async Task SendAsync_KeycloakBootstrapPath_WithInboundHeaderAndSessionSecret_ForwardsTrustedSessionSecret()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var httpContext = new DefaultHttpContext();
+        httpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim("sub", userId),
+                new Claim(ClaimTypes.NameIdentifier, userId)
+            ],
+            authenticationType: "Test"));
+
+        var sessionService = new SetupSecretSessionService();
+        sessionService.SetForUser(userId, "trusted-keycloak-bootstrap-secret");
+
+        var innerHandler = new CapturingHandler();
+        using var handler = CreateHandler(httpContext, sessionService, innerHandler);
+
+        using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.com/api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap");
+        request.Headers.Add("X-Setup-Secret", "client-controlled-secret");
+
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        sessionService.ClearForUser(userId);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
+        await Assert.That(innerHandler.CapturedRequest.Headers.GetValues("X-Setup-Secret").Single()).IsEqualTo("trusted-keycloak-bootstrap-secret");
+    }
+
+    [Test]
     public async Task SendAsync_OnboardingPath_WithSessionSecret_AddsXSetupSecretHeader()
     {
         var userId = Guid.NewGuid().ToString();

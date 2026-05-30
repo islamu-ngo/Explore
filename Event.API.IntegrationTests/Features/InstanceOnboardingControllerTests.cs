@@ -7,8 +7,10 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.Onboarding;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -456,6 +458,62 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
+    public async Task BootstrapKeycloakRealm_WithoutSetupSecret_ShouldReturnForbiddenWithoutCallingBootstrapService()
+    {
+        var bootstrapService = new FakeKeycloakBootstrapService();
+        using var factory = CreateFactoryWithKeycloakBootstrapService(bootstrapService);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"{BaseUrl}/auth-provider-configuration/keycloak-bootstrap",
+            CreateKeycloakBootstrapRequest());
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        await Assert.That(bootstrapService.Calls).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task BootstrapKeycloakRealm_WithSetupSecret_ShouldDispatchCommandAndPersistRuntimeConfig()
+    {
+        var bootstrapService = new FakeKeycloakBootstrapService();
+        using var factory = CreateFactoryWithKeycloakBootstrapService(bootstrapService);
+        using var client = factory.CreateClient();
+
+        var payload = CreateKeycloakBootstrapRequest();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"{BaseUrl}/auth-provider-configuration/keycloak-bootstrap")
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Add("X-Setup-Secret", SetupSecret);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(bootstrapService.Calls).IsEqualTo(1);
+        await Assert.That(bootstrapService.LastRequest?.BootstrapAdminPassword).IsEqualTo("one-time-admin-password");
+
+        var responseBody = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(responseBody).IsNotNull();
+        await Assert.That(responseBody!.Success).IsTrue();
+        await Assert.That(responseBody.Message).DoesNotContain("one-time-admin-password");
+
+        using var internalWithSecretRequest = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/auth-provider-configuration/internal");
+        internalWithSecretRequest.Headers.Add("X-Setup-Secret", SetupSecret);
+        var internalWithSecretResponse = await client.SendAsync(internalWithSecretRequest);
+
+        await Assert.That(internalWithSecretResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var internalConfig = await internalWithSecretResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
+        await Assert.That(internalConfig).IsNotNull();
+        await Assert.That(internalConfig!.KeycloakEnabled).IsTrue();
+        await Assert.That(internalConfig.KeycloakAuthority).IsEqualTo("https://keycloak.example.com/realms/ISLAMU");
+        await Assert.That(internalConfig.KeycloakClientId).IsEqualTo("islamu-event-blazor");
+        await Assert.That(internalConfig.KeycloakClientSecret).IsEqualTo("runtime-blazor-secret");
+        await Assert.That(internalConfig.KeycloakClientSecret).DoesNotContain("one-time-admin-password");
+    }
+
+    [Test]
     public async Task UpdateAuthorizationProviderConfiguration_AdminEndpoint_WithoutAuthentication_ShouldReturnUnauthorized()
     {
         using var factory = CreateFactoryWithSetupSecret();
@@ -817,6 +875,20 @@ public class InstanceOnboardingControllerTests
         };
     }
 
+    private static KeycloakBootstrapRequestDto CreateKeycloakBootstrapRequest() =>
+        new()
+        {
+            KeycloakBaseUrl = "https://keycloak.example.com",
+            Realm = "ISLAMU",
+            BlazorClientId = "islamu-event-blazor",
+            BlazorClientSecret = "runtime-blazor-secret",
+            ApiClientId = "islamu-event-api",
+            ApiClientSecret = "runtime-api-secret",
+            Mode = KeycloakBootstrapMode.PatchExistingRealm,
+            BootstrapAdminUsername = "keycloak-admin",
+            BootstrapAdminPassword = "one-time-admin-password"
+        };
+
     private static AuthorizationProviderConfigurationDto CreateLocalAuthorizationProviderConfiguration()
     {
         return new AuthorizationProviderConfigurationDto
@@ -831,6 +903,56 @@ public class InstanceOnboardingControllerTests
     private sealed class AuthProviderConfiguredResponse
     {
         public bool Configured { get; set; }
+    }
+
+    private static AuthenticatedWebApplicationFactory CreateFactoryWithKeycloakBootstrapService(FakeKeycloakBootstrapService bootstrapService)
+    {
+        Environment.SetEnvironmentVariable("SETUP_SECRET", SetupSecret);
+        return new KeycloakBootstrapFactory(bootstrapService);
+    }
+
+    private sealed class KeycloakBootstrapFactory : AuthenticatedWebApplicationFactory
+    {
+        private readonly FakeKeycloakBootstrapService _bootstrapService;
+
+        public KeycloakBootstrapFactory(FakeKeycloakBootstrapService bootstrapService)
+        {
+            _bootstrapService = bootstrapService;
+        }
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IKeycloakBootstrapService>();
+                services.AddSingleton<IKeycloakBootstrapService>(_bootstrapService);
+            });
+        }
+    }
+
+    private sealed class FakeKeycloakBootstrapService : IKeycloakBootstrapService
+    {
+        public int Calls { get; private set; }
+        public KeycloakBootstrapRequestDto? LastRequest { get; private set; }
+
+        public Task<KeycloakBootstrapResultDto> BootstrapAsync(KeycloakBootstrapRequestDto request, CancellationToken cancellationToken)
+        {
+            Calls++;
+            LastRequest = request;
+
+            return Task.FromResult(new KeycloakBootstrapResultDto
+            {
+                Success = true,
+                Message = "Keycloak bootstrap completed successfully.",
+                Realm = request.Realm,
+                BlazorClientId = request.BlazorClientId,
+                ApiClientId = request.ApiClientId,
+                Mode = request.Mode,
+                BlazorClientUpdated = true,
+                ApiClientUpdated = !string.IsNullOrWhiteSpace(request.ApiClientSecret)
+            });
+        }
     }
 
     private sealed class PassthroughClaimsTransformationFactory : AuthenticatedWebApplicationFactory

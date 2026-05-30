@@ -107,6 +107,9 @@ public interface IInstanceOnboardingApi
     [Put("/api/InstanceOnboarding/auth-provider-configuration")]
     Task<IApiResponse<InstanceCommandResponseModel>> SaveAuthProviderConfigurationAsync([Body] AuthProviderConfigurationModel config, CancellationToken cancellationToken);
 
+    [Post("/api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap")]
+    Task<IApiResponse<InstanceCommandResponseModel>> BootstrapKeycloakRealmAsync([Body] KeycloakBootstrapRequestModel request, CancellationToken cancellationToken);
+
     [Put("/api/instance/settings/auth-provider")]
     Task<IApiResponse<InstanceCommandResponseModel>> UpdateAuthProviderConfigurationAsAdminAsync([Body] AuthProviderConfigurationModel config, CancellationToken cancellationToken);
 

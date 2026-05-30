@@ -43,6 +43,7 @@ public class SetupSecretForwardingHandler : DelegatingHandler
     {
         return pathAndQuery.Contains("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configuration", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/InstanceOnboarding/authz-provider-configuration", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/instance/settings", StringComparison.OrdinalIgnoreCase);

@@ -77,6 +77,8 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | Infisical Path + Key | .NET Configuration Key |
 |---|---|
 | `/keycloak/REALM_NAME` | `Keycloak:RealmName` |
+| `/keycloak/KEYCLOAK_BLAZOR_CLIENT_SECRET` | Blazor BFF `Keycloak:ClientSecret` and Compose `keycloak-init` client-secret sync input |
+| `/keycloak/KEYCLOAK_API_CLIENT_SECRET` | Optional Compose `keycloak-init` sync input for the API resource-server client |
 | `/postgresql/POSTGRESQL_HOST` | PostgreSQL bootstrap host |
 | `/postgresql/POSTGRESQL_PORT` | PostgreSQL bootstrap port |
 | `/postgresql/POSTGRESQL_DATABASE` | PostgreSQL bootstrap database |
@@ -85,6 +87,8 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | storage path + `STORAGE_S3_*` | `S3Settings:*` |
 
 Environment variable format uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string.
+
+Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be entered into onboarding UI, stored in governance settings, or copied into support artifacts. The init logs redact client secret values.
 
 
 ## Ownership Model

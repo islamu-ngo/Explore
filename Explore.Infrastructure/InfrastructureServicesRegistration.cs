@@ -22,6 +22,7 @@ using Explore.Infrastructure.Mail.Unsubscribe;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
+using Explore.Infrastructure.Services.Keycloak;
 using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
 using Microsoft.AspNetCore.Authentication;
@@ -93,6 +94,11 @@ public static class InfrastructureServicesRegistration
         // Configuration audit logging
         services.AddScoped<IConfigurationChangeLogService, ConfigurationChangeLogService>();
         services.AddScoped<IAuthorizationProviderConfigurationService, AuthorizationProviderConfigurationService>();
+        services.AddHttpClient(KeycloakBootstrapService.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddScoped<IKeycloakBootstrapService, KeycloakBootstrapService>();
 
         // Authorization providers (runtime-switchable via SystemSetting "authorization.provider")
         // Both concrete providers are always registered; RuntimeAuthorizationProvider delegates at runtime.

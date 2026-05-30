@@ -95,6 +95,18 @@ Check:
 - forwarded headers middleware is active in Blazor server pipeline.
 - API forwarded-header trust is configured for the reverse proxy; see [CONFIGURATION.md](CONFIGURATION.md) and [SELF_HOSTING.md](SELF_HOSTING.md).
 
+### Keycloak `unauthorized_client` during login
+
+Cause:
+- the Blazor BFF confidential client secret does not match the `islamu-event-blazor` client secret stored in Keycloak.
+
+Checks:
+1. Confirm `KEYCLOAK_BLAZOR_CLIENT_SECRET` is set for the Compose environment. Production/self-hosted deployments should not rely on the realm export's static default.
+2. Check `docker compose logs keycloak-init` for a successful redacted sync message. The log must not include raw secret values.
+3. Rerun `docker compose run --rm keycloak-init` after changing or rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET`.
+4. If this is a disposable local stack and no secret is configured, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true` intentionally, then rerun `keycloak-init`. Do not use that flag in production.
+5. If the client is missing, verify `docker/keycloak/realm-export.json` imported successfully and that `KEYCLOAK_REALM` matches the imported realm name.
+
 ## Setup Secret Failures
 
 Symptoms:
@@ -196,7 +208,7 @@ Checks:
 2. Check logs for `OutboxProcessor` — look for polling activity and dispatch errors.
 3. Query `outbox_messages` table: `SELECT status, COUNT(*) FROM outbox_messages GROUP BY status`.
 4. If messages are `DeadLettered`, check `last_error` column for root cause. Dead-lettered messages stay in DB indefinitely for manual review.
-5. Verify `IOutboxMessageDispatcher` registration — default `LoggingOutboxMessageDispatcher` is a no-op that logs warnings.
+5. Verify `IOutboxMessageDispatcher` registration — the general outbox path should resolve `CompositeOutboxMessageDispatcher`, which routes external MQContract messages and internal notification fanout messages.
 6. Check `MaxRetryCount` setting — messages retry with exponential backoff before dead-lettering.
 
 ## Footer Settings Issues

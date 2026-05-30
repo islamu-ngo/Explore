@@ -19,6 +19,7 @@ This guide covers running ISLAMU Event outside the Aspire developer loop. The re
 | Redis | Yes | `redis` | Distributed cache when configured | internal |
 | Keycloak DB | Yes | `keycloak-db` | Keycloak PostgreSQL database | internal |
 | Keycloak | Yes | `keycloak` | OIDC identity provider and realm import | `8080:8080` |
+| Keycloak Init | Yes | `keycloak-init` | One-shot client-secret synchronization after realm import | internal |
 | API | Yes | `islamu-event-api` | REST API, migrations, health, metrics | `7039:8080` |
 | Blazor BFF | Yes | `islamu-event-ui` | Server host and YARP proxy to API | `7002:8080` |
 | MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile | `9005:9000`, `9006:9001` |
@@ -40,7 +41,7 @@ Email dispatch modes:
 2. Start the required stack:
 
    ```bash
-docker compose up -d postgres redis keycloak-db keycloak islamu-event-api islamu-event-ui
+docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
    ```
 
 3. Add optional storage when local S3/MinIO is needed:
@@ -82,7 +83,9 @@ Use the key names consumed by the Compose file and source code. Do not invent ge
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | Initial Keycloak admin account. |
 | `KEYCLOAK_ENDPOINT` | Base Keycloak endpoint used to derive API/Blazor authority values. |
 | `KEYCLOAK_REALM` | Realm name. |
-| `KEYCLOAK_BLAZOR_CLIENT_SECRET` | Blazor confidential client secret. |
+| `KEYCLOAK_BLAZOR_CLIENT_SECRET` | Required Blazor confidential client secret. `keycloak-init` writes this into the `islamu-event-blazor` Keycloak client after realm import. |
+| `KEYCLOAK_API_CLIENT_SECRET` | Optional API resource-server client secret. Current bearer-token validation does not require it; if set, `keycloak-init` writes it into the `islamu-event-api` Keycloak client. |
+| `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET` | Optional local-development escape hatch. Set to `true` only for throwaway local stacks that intentionally use the static realm-export default secret. |
 
 ### Storage
 
@@ -128,12 +131,16 @@ Managed hosting operators that provision through the authorized managed-provider
 
 ## Keycloak Realm
 
-The Compose file imports `./docker/keycloak/realm-export.json` into Keycloak. For production, verify:
+The Compose file imports `./docker/keycloak/realm-export.json` into Keycloak, then runs the one-shot `keycloak-init` service. The init job authenticates with the Compose Keycloak admin account, locates clients by `clientId`, and synchronizes the confidential Blazor BFF client secret from `KEYCLOAK_BLAZOR_CLIENT_SECRET`. Operators should set the secret once in environment variables or the configured secret provider; they should not manually edit the Keycloak UI to match the BFF secret.
+
+For production, verify:
 
 - realm name matches `KEYCLOAK_REALM`;
 - Blazor client ID matches the configured client (`islamu-event-blazor` in Compose);
 - redirect URIs and web origins match the public reverse-proxy host;
 - API audience and metadata address match the Keycloak endpoint exposed to the API.
+
+`KEYCLOAK_BLAZOR_CLIENT_SECRET` is fail-closed for Compose startup: `keycloak-init` exits non-zero when it is missing. To use the repository's static local default in disposable development, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true`. Do not enable that flag in production or shared environments. Rerun `docker compose run --rm keycloak-init` after rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET` or optional `KEYCLOAK_API_CLIENT_SECRET`.
 
 ## Migrations
 

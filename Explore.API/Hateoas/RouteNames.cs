@@ -718,6 +718,7 @@ public static class RouteNames
     public const string GetInstanceOnboardingAuthProviderConfiguration = "GetInstanceOnboardingAuthProviderConfiguration";
     public const string GetInstanceOnboardingAuthProviderConfigurationInternal = "GetInstanceOnboardingAuthProviderConfigurationInternal";
     public const string SaveInstanceOnboardingAuthProviderConfiguration = "SaveInstanceOnboardingAuthProviderConfiguration";
+    public const string BootstrapInstanceOnboardingKeycloakRealm = "BootstrapInstanceOnboardingKeycloakRealm";
     public const string GetInstanceOnboardingAuthorizationProviderConfigurationInternal = "GetInstanceOnboardingAuthorizationProviderConfigurationInternal";
     public const string SaveInstanceOnboardingAuthorizationProviderConfiguration = "SaveInstanceOnboardingAuthorizationProviderConfiguration";
     public const string VerifyInstanceOnboardingAuthorizationProviderEndpoint = "VerifyInstanceOnboardingAuthorizationProviderEndpoint";
