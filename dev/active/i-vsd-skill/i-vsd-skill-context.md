@@ -32,6 +32,26 @@ Last Updated: 2026-05-30 Europe/Brussels
 
 - Full architecture suite currently fails outside this workstream: `Explore.Blazor.Client/Services/ImageUploadClient.cs` violates the raw HTTP JSON helper boundary, and HATEOAS link policy files have `RequirePermission` calls that do not use `AuthorizationActions` metadata.
 
+## SESSION PROGRESS (2026-05-31 Europe/Brussels)
+
+### ✅ COMPLETED
+
+- Extended `.claude/skills/i-vsd/SKILL.md` so no-context invocations route to an action menu instead of guessing.
+- Added `.claude/skills/i-vsd/resources/action-routing.md` as the internal router for action detection, synonym matching, report filenames, required inputs, multi-report index behavior, and missing-evidence handling.
+- Updated `resources/index.md` so `action-routing.md` is the first broad-review resource.
+- Updated `resources/report-templates.md` so generated reports follow the routing contract.
+- Reworked the default report-output rule after user clarification: generated I-VSD reports belong in repository-root `islamic-value-sensitive-design/` and every generated report filename must use the `i-vsd-*.md` pattern.
+- Verified the routing update with focused schema and link tests plus diff checks.
+
+### 🟡 IN PROGRESS
+
+- None for the I-VSD routing update.
+
+### ⏭️ NEXT
+
+1. Commit the routing update as a follow-up to the existing I-VSD skill commits if desired.
+2. Leave unrelated generated/untracked files out of the I-VSD change unless explicitly requested.
+
 ## Quick Resume
 
 Next step is optional follow-up, not I-VSD authoring: `.claude/skills/i-vsd/SKILL.md` and all planned resources exist, and the focused agent-context validation lane passed. The only remaining verification gap is the broader architecture suite, which is blocked by unrelated application architecture failures.
@@ -46,10 +66,10 @@ Read first:
 
 ## Current Implementation State
 
-- `.claude/skills/i-vsd/SKILL.md`: created; 86 lines; `name: i-vsd`; compact workflow router.
-- `.claude/skills/i-vsd/resources/`: created with 26 markdown files including `index.md`.
+- `.claude/skills/i-vsd/SKILL.md`: created; compact workflow router with no-context menu behavior and explicit report-generation routing.
+- `.claude/skills/i-vsd/resources/`: created with 27 markdown files including `index.md` and `action-routing.md`.
 - Implementation phase: complete for the I-VSD skill workstream.
-- Verification for the actual skill: manual line count/resource count/ABOUTME checks completed; focused agent-context schema, intent manifest, and link tests passed.
+- Verification for the actual skill: manual line count/resource count/ABOUTME checks completed; focused agent-context schema, intent manifest, and link tests passed. The 2026-05-31 routing update kept `SKILL.md` at 100 lines and focused schema/link tests still pass.
 - Active-doc synchronization: context/tasks updated with final implementation and verification state.
 
 ## Key Files
@@ -161,7 +181,7 @@ Most important thesis files already read/extracted:
 - `dev/active/i-vsd-skill/i-vsd-skill-context.md` — refreshed current state, quick resume, validation state, and final handoff.
 - `dev/active/i-vsd-skill/i-vsd-skill-tasks.md` — tracked implementation phases, validation outcomes, and final status.
 - `.claude/skills/i-vsd/SKILL.md` — workflow router with activation boundaries, invariants, anti-patterns, examples, verification hooks, and related skills.
-- `.claude/skills/i-vsd/resources/*.md` — framework overview, glossary, principles/domains, derivation protocol, evidence levels, scholarly boundaries, consultancy workflow, templates, checks, domain heuristics, anti-patterns, and ISLAMU Event case patterns.
+- `.claude/skills/i-vsd/resources/*.md` — action routing, framework overview, glossary, principles/domains, derivation protocol, evidence levels, scholarly boundaries, consultancy workflow, templates, checks, domain heuristics, anti-patterns, and ISLAMU Event case patterns.
 
 ## Validation State
 
@@ -182,6 +202,13 @@ Most important thesis files already read/extracted:
   - `git diff --check -- .claude/contract/intents.yaml .claude/skills Event.Architecture.Tests/AgentContextLinkTests.cs dev/active/i-vsd-skill` — passed with no output.
 - Broader validation attempted:
   - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` — failed with 5 unrelated application architecture violations outside this workstream.
+- Commands run after action-routing update:
+  - `wc -l .claude/skills/i-vsd/SKILL.md` — 100 lines.
+  - `find .claude/skills/i-vsd/resources -maxdepth 1 -type f -name '*.md' | wc -l` — 27 resource files.
+  - `grep -L 'ABOUTME:' .claude/skills/i-vsd/SKILL.md .claude/skills/i-vsd/resources/*.md` — passed with no output.
+  - `git diff --check -- .claude/skills/i-vsd dev/active/i-vsd-skill` — passed with no output.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextSchemaTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1` — passed: total 9, failed 0, succeeded 9, skipped 0.
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextLinkTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1` — passed.
 
 ## Risks / Unknowns
 

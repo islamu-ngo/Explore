@@ -3,7 +3,27 @@
 
 # Report Templates
 
-Every formal template must include scope, claim boundary, evidence reviewed, stakeholders, principles/domains, findings by severity, recommendations, and scholarly/stakeholder/operational validation gaps.
+Every formal template must include scope, claim boundary, evidence reviewed, missing evidence, context inventory, stakeholders, principles/domains, findings by severity, recommendations, and scholarly/stakeholder/operational validation gaps. Use [action-routing.md](action-routing.md) to decide which Markdown report file(s) to create for the requested action(s). For repository-based reviews, use [context-discovery.md](context-discovery.md) before writing findings so project documentation, text artifacts, policies, plans, configs, tests, code, visible MCP/tool integrations, relevant CLIs, available skills, and user-provided paths all inform the moral analysis. Generated files go under repository-root `islamic-value-sensitive-design/` and must use `i-vsd-*.md` filenames.
+
+## Required Headings For Generated Reports
+
+```text
+# <Report Title>
+
+## Scope
+## Claim Boundary
+## Evidence Reviewed
+## Missing Evidence
+## Context Inventory
+## Stakeholders
+## I-VSD Principles And Domains
+## Findings
+## Recommendations
+## Validation Gaps
+## Escalation Needed
+```
+
+Every generated report must state that it is I-VSD design reasoning and traceability, not a fatwa, Sharia certification, product certification, or empirical proof of ethical outcomes.
 
 ## Executive I-VSD Review
 

@@ -17,6 +17,8 @@ Handoff refresh status: complete for context-limit compaction.
 
 Current phase: implementation complete for the I-VSD skill. `.claude/skills/i-vsd/SKILL.md` and 26 resource files now exist.
 
+Follow-up status: routing update in progress. The skill is being extended so no-context invocations show an action menu and explicit actions generate mapped Markdown reports under repository-root `islamic-value-sensitive-design/` using `i-vsd-*.md` filenames.
+
 ## Implementation Maintenance Rules
 
 - Update `dev/active/i-vsd-skill/i-vsd-skill-context.md` after every meaningful implementation step.
@@ -223,6 +225,25 @@ Acceptance criteria:
 - [x] Skip repository build because no shared schema/test/docs behavior or application code changed.
 - [x] Update `i-vsd-skill-context.md` with verification results.
 - [x] Update this file with final status.
+
+## Phase 7 - Action Routing Follow-Up
+
+- [x] Add no-context invocation behavior that returns an action menu instead of guessing.
+- [x] Add an action map for short advisory, compliance check, consultancy report, executive review, detailed audit, business model review, architecture review, technical review, design/UX review, AI/data review, marketing review, moderation review, governance review, operations review, legal/compliance review, anti-pattern scan, implementation/code review, incident postmortem, strategy review, and ISLAMU Event case review.
+- [x] Map every action to a clear `i-vsd-*.md` report filename.
+- [x] Require generated reports to live in repository-root `islamic-value-sensitive-design/` by default.
+- [x] Require a multi-report `i-vsd-review-index.md` when multiple actions are requested.
+- [x] Update `SKILL.md`, `resources/index.md`, and `resources/report-templates.md` to reference the routing contract.
+- [x] Run focused schema/link validation and diff checks for the routing update.
+
+Routing update validation results:
+
+- `SKILL.md` is 100 lines.
+- `.claude/skills/i-vsd/resources/` contains 27 markdown files.
+- `grep -L 'ABOUTME:' .claude/skills/i-vsd/SKILL.md .claude/skills/i-vsd/resources/*.md` passed with no output.
+- `git diff --check -- .claude/skills/i-vsd dev/active/i-vsd-skill` passed with no output.
+- Focused `AgentContextSchemaTests` passed: total 9, failed 0, succeeded 9, skipped 0.
+- Focused `AgentContextLinkTests` passed.
 
 Validation commands:
 

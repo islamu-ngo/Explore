@@ -40,7 +40,7 @@ Claim type:
 
 Location collection:
 
-- Stakeholders: attendees, organizers, community members, admins, abusers, nearby non-users.
+- Stakeholders: end users, account owners, community members, admins, abusers, nearby non-users.
 - Principles: Trust, Non-Harm, Rights of People, Avoiding Spying, Justice.
 - Design question: can the feature work with approximate or user-controlled location?
 - Heuristic: collect the least precise location by default, retain it briefly, and restrict admin access.

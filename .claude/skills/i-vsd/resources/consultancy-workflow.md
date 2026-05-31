@@ -25,7 +25,7 @@ Select relevant principles from [principles-and-domains.md](principles-and-domai
 
 ## Evidence Gathering
 
-Request docs, UI flows, code, policies, logs, audits, interviews, metrics, terms, marketing copy, pricing pages, incident records, appeal records, support logs, data inventories, retention schedules, and architecture diagrams.
+Use [context-discovery.md](context-discovery.md) for repository-based or project-context-based work before drawing moral conclusions. First inventory local repository context, available skills, connected MCP/tool integrations, relevant CLIs, and user-provided filesystem paths, then tell the user what context was found or is missing and ask for agreement before deep review. After confirmation, search documentation, README files, text artifacts, policies, planning docs, architecture decisions, configuration, tests, UI flows, code, logs, audits, interviews, metrics, terms, marketing copy, pricing pages, incident records, appeal records, support logs, data inventories, retention schedules, architecture diagrams, and relevant external project systems.
 
 ## Findings
 

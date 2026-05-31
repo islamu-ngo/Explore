@@ -5,12 +5,14 @@
 
 Use these resources in this order for broad reviews:
 
-1. [framework-overview.md](framework-overview.md) - identity, scope, value hierarchy, domains, and quick workflow.
-2. [glossary.md](glossary.md) - terms used by the framework and output templates.
-3. [principles-and-domains.md](principles-and-domains.md) - core principles and six review domains.
-4. [derivation-protocol.md](derivation-protocol.md) - auditable method for deriving heuristics.
-5. [evidence-and-validation-levels.md](evidence-and-validation-levels.md) - what each claim type can and cannot prove.
-6. [scholarly-consultation-boundaries.md](scholarly-consultation-boundaries.md) - when to escalate beyond design reasoning.
+1. [action-routing.md](action-routing.md) - menu behavior, action detection, and report filename mapping.
+2. [context-discovery.md](context-discovery.md) - context inventory and search across docs, text artifacts, policies, configs, tests, code, MCP/tool integrations, CLIs, skills, and user-provided paths.
+3. [framework-overview.md](framework-overview.md) - identity, scope, value hierarchy, domains, and quick workflow.
+4. [glossary.md](glossary.md) - terms used by the framework and output templates.
+5. [principles-and-domains.md](principles-and-domains.md) - core principles and six review domains.
+6. [derivation-protocol.md](derivation-protocol.md) - auditable method for deriving heuristics.
+7. [evidence-and-validation-levels.md](evidence-and-validation-levels.md) - what each claim type can and cannot prove.
+8. [scholarly-consultation-boundaries.md](scholarly-consultation-boundaries.md) - when to escalate beyond design reasoning.
 
 Use workflow resources for deliverables:
 
@@ -35,6 +37,6 @@ Use domain resources as needed:
 - [governance-and-accountability-framework.md](governance-and-accountability-framework.md)
 - [evaluation-metrics.md](evaluation-metrics.md)
 - [legal-and-compliance-framework.md](legal-and-compliance-framework.md)
-- [islamu-event-case-patterns.md](islamu-event-case-patterns.md)
+- [project-case-patterns.md](project-case-patterns.md)
 
 Every output must preserve the core boundary: I-VSD gives design reasoning and traceability, not fatwa, certification, or empirical proof.
