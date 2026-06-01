@@ -1,0 +1,61 @@
+# ABOUTME: Defines the low-noise OpenAPI lint rules used by OpenAPI Contract Guard.
+# ABOUTME: Keeps advisory Spectral checks focused on invariants that are already clean.
+
+extends: []
+
+rules:
+  islamu-info-title:
+    description: API info must keep a title for generated docs and release evidence.
+    severity: error
+    given: $.info
+    then:
+      field: title
+      function: truthy
+
+  islamu-info-version:
+    description: API info must keep a version for release evidence.
+    severity: error
+    given: $.info
+    then:
+      field: version
+      function: truthy
+
+  islamu-operation-id:
+    description: Every operation must keep operationId for NSwag client determinism.
+    severity: error
+    given:
+      - $.paths[*].get
+      - $.paths[*].put
+      - $.paths[*].post
+      - $.paths[*].delete
+      - $.paths[*].patch
+      - $.paths[*].options
+      - $.paths[*].head
+      - $.paths[*].trace
+    then:
+      field: operationId
+      function: truthy
+
+  islamu-operation-tags:
+    description: Every operation must keep tags for API inventory triage.
+    severity: warn
+    given:
+      - $.paths[*].get
+      - $.paths[*].put
+      - $.paths[*].post
+      - $.paths[*].delete
+      - $.paths[*].patch
+      - $.paths[*].options
+      - $.paths[*].head
+      - $.paths[*].trace
+    then:
+      field: tags
+      function: truthy
+
+  islamu-response-description:
+    description: Every response must keep a description for generated API docs.
+    severity: warn
+    given: $.paths[*][*].responses[*]
+    then:
+      field: description
+      function: truthy

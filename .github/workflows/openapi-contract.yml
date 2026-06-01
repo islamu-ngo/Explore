@@ -13,6 +13,8 @@ on:
     branches: [main, develop]
   merge_group:
     types: [checks_requested]
+  schedule:
+    - cron: "37 4 * * 3"
   workflow_dispatch:
 
 concurrency:
@@ -38,9 +40,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "schedule" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
-            echo "Manual dispatch: running OpenAPI guard." >> "$GITHUB_STEP_SUMMARY"
+            echo "${{ github.event_name }}: running full OpenAPI guard." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -58,7 +60,7 @@ jobs:
           fi
 
           changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA" || true)"
-          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(Explore\.API/.*\.(cs|csproj|json)$|Explore\.Application/.*\.cs$|Explore\.Domain/.*\.cs$|Event\.API\.IntegrationTests/.*\.(cs|csproj)$|Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|schemas/openapi\.json$|docs/API_CONTRACT_INVENTORY\.md$|Directory\.Packages\.props$|global\.json$|\.github/workflows/openapi-contract\.yml$)' || true)"
+          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(Explore\.API/.*\.(cs|csproj|json)$|Explore\.Application/.*\.cs$|Explore\.Domain/.*\.cs$|Event\.API\.IntegrationTests/.*\.(cs|csproj)$|Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|schemas/openapi\.json$|docs/API_CONTRACT_INVENTORY\.md$|docs/API_CONTRACT_TEST_DEBT\.md$|docs/API_CHANGELOG\.md$|Directory\.Packages\.props$|global\.json$|\.spectral\.yaml$|\.github/scripts/validate-api-contract-skip-inventory\.cs$|\.github/workflows/openapi-contract\.yml$)' || true)"
 
           if [ -n "$relevant_files" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
@@ -91,6 +93,12 @@ jobs:
       - name: Restore
         if: steps.changes.outputs.relevant == 'true'
         run: dotnet restore --locked-mode
+
+      - name: Validate API Contract Skip Inventory
+        if: steps.changes.outputs.relevant == 'true'
+        env:
+          RestorePackagesWithLockFile: "false"
+        run: dotnet run .github/scripts/validate-api-contract-skip-inventory.cs -- .
 
       - name: Generate OpenAPI Document
         if: steps.changes.outputs.relevant == 'true'
@@ -147,6 +155,144 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+
+      - name: Generate OpenAPI Breaking-Change Report
+        if: steps.changes.outputs.relevant == 'true'
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          OASDIFF_VERSION: "1.18.1"
+          OASDIFF_LINUX_AMD64_SHA256: "5174ba660d559684e67e8ab44ca6d45919114f8c57de5a1e32b91d4e5347705d"
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/openapi-contract .tools/oasdiff
+
+          curl -fsSL \
+            -o .tools/oasdiff/oasdiff.tar.gz \
+            "https://github.com/oasdiff/oasdiff/releases/download/v${OASDIFF_VERSION}/oasdiff_${OASDIFF_VERSION}_linux_amd64.tar.gz"
+          echo "${OASDIFF_LINUX_AMD64_SHA256}  .tools/oasdiff/oasdiff.tar.gz" | sha256sum -c -
+          tar -xzf .tools/oasdiff/oasdiff.tar.gz -C .tools/oasdiff
+
+          base_sha=""
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            base_sha="$PR_BASE_SHA"
+          elif [ "$EVENT_NAME" = "merge_group" ]; then
+            base_sha="$MERGE_GROUP_BASE_SHA"
+          elif [ "$EVENT_NAME" = "push" ] && [ "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            base_sha="$PUSH_BEFORE_SHA"
+          fi
+
+          if [ -z "$base_sha" ]; then
+            base_sha="HEAD~1"
+          fi
+
+          if ! git show "${base_sha}:schemas/openapi.json" > artifacts/openapi-contract/base-openapi.json 2>/dev/null; then
+            {
+              echo "## Advisory OpenAPI Breaking-Change Report"
+              echo
+              echo "Base OpenAPI artifact was not available at \`${base_sha}\`; advisory oasdiff report was skipped."
+            } >> "$GITHUB_STEP_SUMMARY"
+            printf 'Base OpenAPI artifact was not available at %s.\n' "$base_sha" > artifacts/openapi-contract/oasdiff-breaking.md
+            exit 0
+          fi
+
+          changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA" || true)"
+          changelog_changed=false
+          if printf '%s\n' "$changed_files" | grep -qx 'docs/API_CHANGELOG.md'; then
+            changelog_changed=true
+          fi
+
+          enforce_changelog=true
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "schedule" ]; then
+            enforce_changelog=false
+          fi
+
+          set +e
+          .tools/oasdiff/oasdiff breaking \
+            --allow-external-refs=false \
+            --fail-on ERR \
+            --format markdown \
+            artifacts/openapi-contract/base-openapi.json \
+            schemas/openapi.json \
+            > artifacts/openapi-contract/oasdiff-breaking.md
+          markdown_exit=$?
+
+          .tools/oasdiff/oasdiff breaking \
+            --allow-external-refs=false \
+            --fail-on ERR \
+            --format json \
+            artifacts/openapi-contract/base-openapi.json \
+            schemas/openapi.json \
+            > artifacts/openapi-contract/oasdiff-breaking.json
+          json_exit=$?
+          set -e
+
+          breaking_detected=false
+          if [ "$markdown_exit" -ne 0 ] || [ "$json_exit" -ne 0 ]; then
+            breaking_detected=true
+          fi
+
+          {
+            echo "## OpenAPI Breaking-Change Report"
+            echo
+            echo "Generated oasdiff reports against base \`${base_sha}\`."
+            echo
+            echo "- Markdown: \`artifacts/openapi-contract/oasdiff-breaking.md\`"
+            echo "- JSON: \`artifacts/openapi-contract/oasdiff-breaking.json\`"
+            echo "- Breaking changes detected: \`${breaking_detected}\`"
+            echo "- API changelog changed: \`${changelog_changed}\`"
+            echo
+            echo "Breaking changes fail PR/push/merge-queue runs unless \`docs/API_CHANGELOG.md\` changes in the same diff. Scheduled and manual runs remain evidence-only."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$breaking_detected" = "true" ] && [ "$enforce_changelog" = "true" ] && [ "$changelog_changed" != "true" ]; then
+            echo "OpenAPI breaking changes were detected without a docs/API_CHANGELOG.md update." >&2
+            exit 1
+          fi
+
+      - name: Generate Advisory OpenAPI Spectral Lint Report
+        if: steps.changes.outputs.relevant == 'true'
+        shell: bash
+        env:
+          SPECTRAL_VERSION: "6.16.0"
+          npm_config_audit: "false"
+          npm_config_fund: "false"
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/openapi-contract
+
+          set +e
+          npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint \
+            schemas/openapi.json \
+            --quiet \
+            --ruleset .spectral.yaml \
+            --format json \
+            --output artifacts/openapi-contract/spectral-openapi.json
+          json_exit=$?
+
+          npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint \
+            schemas/openapi.json \
+            --quiet \
+            --ruleset .spectral.yaml \
+            --format markdown \
+            --output artifacts/openapi-contract/spectral-openapi.md
+          markdown_exit=$?
+          set -e
+
+          {
+            echo "## Advisory OpenAPI Spectral Lint"
+            echo
+            echo "Generated advisory Spectral reports using \`@stoplight/spectral-cli@${SPECTRAL_VERSION}\`."
+            echo
+            echo "- Ruleset: \`.spectral.yaml\`"
+            echo "- JSON: \`artifacts/openapi-contract/spectral-openapi.json\` (exit ${json_exit})"
+            echo "- Markdown: \`artifacts/openapi-contract/spectral-openapi.md\` (exit ${markdown_exit})"
+            echo
+            echo "Findings are retained for review but are not blocking until the lint policy is promoted."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify OpenAPI Determinism
         if: steps.changes.outputs.relevant == 'true'
