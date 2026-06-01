@@ -8,6 +8,7 @@ using NSubstitute;
 
 namespace ApplicationUnitTests.Telemetry;
 
+[NotInParallel("BusinessMetricsMeter")]
 public sealed class BusinessMetricsNotificationFanoutTests
 {
     [Test]

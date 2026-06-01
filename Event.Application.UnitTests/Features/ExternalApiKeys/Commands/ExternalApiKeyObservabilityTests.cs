@@ -13,6 +13,7 @@ using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.ExternalApiKeys.Commands;
 
+[NotInParallel("BusinessMetricsMeter")]
 public class ExternalApiKeyObservabilityTests
 {
     [Test]
