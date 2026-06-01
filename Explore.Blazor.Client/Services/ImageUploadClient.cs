@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Services.Http;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -123,7 +124,7 @@ public sealed class ImageUploadClient(
             if (response.IsSuccessStatusCode)
             {
                 logger.LogInformation("BFF upload proxy completed successfully for {FileName}", fileData.FileName);
-                var uploadResult = await response.Content.ReadFromJsonAsync<BffStorageUploadProxyResponse>();
+                var uploadResult = await response.ReadJsonOrDefaultAsync<BffStorageUploadProxyResponse>();
                 return MapBffUploadResult(uploadResult);
             }
 
@@ -159,7 +160,7 @@ public sealed class ImageUploadClient(
             if (response.IsSuccessStatusCode)
             {
                 logger.LogInformation("BFF upload proxy completed successfully for {FileName}", file.Name);
-                var uploadResult = await response.Content.ReadFromJsonAsync<BffStorageUploadProxyResponse>();
+                var uploadResult = await response.ReadJsonOrDefaultAsync<BffStorageUploadProxyResponse>();
                 return MapBffUploadResult(uploadResult);
             }
 
@@ -332,7 +333,7 @@ public sealed class ImageUploadClient(
             var result = await _apiClientExecutor.ReadJsonAsync<BffStorageUploadSessionResponse>(
                 ct => bffClient is not null
                     ? bffClient.PostAsync(GenerateUploadSessionPath, request, ct)
-                    : httpClientFactory.CreateClient("BffClient").PostAsJsonAsync(GenerateUploadSessionPath, request, ct),
+                    : httpClientFactory.CreateClient("BffClient").PostAsync(GenerateUploadSessionPath, JsonContent.Create(request), ct),
                 "BFF upload session");
 
             if (!result.IsSuccess)
@@ -395,7 +396,7 @@ public sealed class ImageUploadClient(
         try
         {
             var result = await _apiClientExecutor.ReadJsonAsync<UploadUrlResponseDto>(
-                ct => httpClientFactory.CreateClient("BffClient").PostAsJsonAsync(GenerateUploadUrlPath, request, ct),
+                ct => httpClientFactory.CreateClient("BffClient").PostAsync(GenerateUploadUrlPath, JsonContent.Create(request), ct),
                 "BFF upload URL");
 
             if (!result.IsSuccess)
