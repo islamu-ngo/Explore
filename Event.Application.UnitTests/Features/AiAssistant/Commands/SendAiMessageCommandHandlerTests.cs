@@ -45,6 +45,10 @@ public sealed class SendAiMessageCommandHandlerTests
             .Returns(CreateConversation());
         _conversationRepository.CountUserMessagesSinceAsync(_userId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(0);
+        _conversationRepository.CountTenantMessagesSinceAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(0);
+        _conversationRepository.CountRunningConversationsForUserAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(0);
         _modelCatalog.ListAvailableModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new AiModelDescriptor(AiProviderDefaults.FakeModelId, AiProviderDefaults.FakeModelDisplayName, SupportsToolProposals: true)]);
         _chatProvider.SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>())
@@ -113,6 +117,42 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
         await Assert.That(result.QuotaExceeded).IsNotNull();
+        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>());
+        await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
+    }
+
+    [Test]
+    public async Task Handle_WhenTenantDailyQuotaExceeded_ReturnsQuotaFailureBeforeProviderCall()
+    {
+        _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(CreateSettings(enabled: true, provider: AiProviderDefaults.ProviderFake, dailyTenantLimit: 10));
+        _conversationRepository.CountTenantMessagesSinceAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(10);
+
+        var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
+        await Assert.That(result.QuotaExceeded).IsNotNull();
+        await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit);
+        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>());
+        await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
+    }
+
+    [Test]
+    public async Task Handle_WhenConcurrentRunLimitExceeded_ReturnsQuotaFailureBeforeProviderCall()
+    {
+        _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(CreateSettings(enabled: true, provider: AiProviderDefaults.ProviderFake, concurrentRunLimit: 1));
+        _conversationRepository.CountRunningConversationsForUserAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
+        await Assert.That(result.QuotaExceeded).IsNotNull();
+        await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit);
         await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
@@ -253,6 +293,9 @@ public sealed class SendAiMessageCommandHandlerTests
         string apiKey = "",
         string modelId = "",
         int dailyLimit = 50,
+        int dailyTenantLimit = 1000,
+        int concurrentRunLimit = 1,
+        int selectedReferenceLimit = 8,
         bool toolProposalsEnabled = false)
     {
         var settings = new Dictionary<string, ResolvedSetting>
@@ -263,6 +306,9 @@ public sealed class SendAiMessageCommandHandlerTests
             [GovernanceSettingKeys.AiAssistant.ApiKey] = Setting(GovernanceSettingKeys.AiAssistant.ApiKey, apiKey),
             [GovernanceSettingKeys.AiAssistant.ModelId] = Setting(GovernanceSettingKeys.AiAssistant.ModelId, modelId),
             [GovernanceSettingKeys.AiAssistant.DailyMessageLimit] = Setting(GovernanceSettingKeys.AiAssistant.DailyMessageLimit, dailyLimit),
+            [GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit] = Setting(GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit, dailyTenantLimit),
+            [GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit] = Setting(GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit, concurrentRunLimit),
+            [GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit] = Setting(GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit, selectedReferenceLimit),
             [GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled] = Setting(GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled, toolProposalsEnabled)
         };
 

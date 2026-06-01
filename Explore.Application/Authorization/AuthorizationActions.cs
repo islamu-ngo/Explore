@@ -49,6 +49,9 @@ public static class AuthorizationActions
     /// <summary>Export shared contact information from consented registrants.</summary>
     public const string ExportSharedContacts = "exportsharedcontacts";
 
+    /// <summary>Send a message into an AI assistant conversation.</summary>
+    public const string SendMessage = "send_message";
+
     // ── Resource-scoped action catalogs ─────────────────────────────────
     //
     // Each nested class documents the valid actions for its Cerbos resource kind.
@@ -190,6 +193,14 @@ public static class AuthorizationActions
         public const string Create = AuthorizationActions.Create;
         public const string Update = AuthorizationActions.Update;
         public const string Delete = AuthorizationActions.Delete;
+    }
+
+    /// <summary>Valid actions for the <c>islamuevent_ai_conversation</c> resource kind.</summary>
+    public static class AiConversations
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Create = AuthorizationActions.Create;
+        public const string SendMessage = AuthorizationActions.SendMessage;
     }
 
     /// <summary>Valid actions for the <c>islamuevent_category</c> resource kind.</summary>

@@ -73,6 +73,9 @@ public class AiAssistantSettingGroupTests
             (GovernanceSettingKeys.AiAssistant.TimeoutSeconds, "45"),
             (GovernanceSettingKeys.AiAssistant.RetentionDays, "14"),
             (GovernanceSettingKeys.AiAssistant.DailyMessageLimit, "25"),
+            (GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit, "500"),
+            (GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit, "2"),
+            (GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit, "6"),
             (GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled, "true"),
             (GovernanceSettingKeys.AiAssistant.StreamingEnabled, "true")));
 
@@ -82,6 +85,9 @@ public class AiAssistantSettingGroupTests
         await Assert.That(group.TimeoutSeconds).IsEqualTo(45);
         await Assert.That(group.RetentionDays).IsEqualTo(14);
         await Assert.That(group.DailyMessageLimit).IsEqualTo(25);
+        await Assert.That(group.DailyTenantMessageLimit).IsEqualTo(500);
+        await Assert.That(group.ConcurrentRunLimit).IsEqualTo(2);
+        await Assert.That(group.SelectedReferenceLimit).IsEqualTo(6);
         await Assert.That(group.ToolProposalsEnabled).IsTrue();
         await Assert.That(group.StreamingEnabled).IsTrue();
     }
@@ -91,9 +97,12 @@ public class AiAssistantSettingGroupTests
     {
         var keys = AiAssistantSettingGroup.SettingKeys.ToList();
 
-        await Assert.That(keys.Count).IsEqualTo(14);
+        await Assert.That(keys.Count).IsEqualTo(17);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.Provider);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.ModelId);
+        await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit);
+        await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit);
+        await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled);
     }
 }

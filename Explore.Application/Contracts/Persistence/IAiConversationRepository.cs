@@ -11,5 +11,7 @@ public interface IAiConversationRepository : IGenericRepository<AiConversation, 
     Task<AiConversation?> GetByIdForUpdateAsync(Guid conversationId, CancellationToken cancellationToken);
     Task<IReadOnlyList<AiConversation>> ListRecentForUserAsync(Guid userId, int limit, CancellationToken cancellationToken);
     Task<int> CountUserMessagesSinceAsync(Guid userId, DateTime sinceUtc, CancellationToken cancellationToken);
+    Task<int> CountTenantMessagesSinceAsync(DateTime sinceUtc, CancellationToken cancellationToken);
+    Task<int> CountRunningConversationsForUserAsync(Guid userId, CancellationToken cancellationToken);
     Task<AiProposedAction?> GetProposedActionForUpdateAsync(Guid proposedActionId, CancellationToken cancellationToken);
 }

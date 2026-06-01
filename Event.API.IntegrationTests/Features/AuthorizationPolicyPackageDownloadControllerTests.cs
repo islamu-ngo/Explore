@@ -2,9 +2,11 @@
 // ABOUTME: Verifies setup/admin controllers return archive file responses through the provider-neutral query.
 
 using Explore.API.Controllers;
+using Explore.API.Hateoas;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 using Explore.Domain.Enums;
 using MediatR;
@@ -51,7 +53,8 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
             mediator,
             adminContext,
             Substitute.For<ISetupSecretProvider>(),
-            Substitute.For<IDeploymentModeProvider>());
+            Substitute.For<IDeploymentModeProvider>(),
+            Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>());
 
         IActionResult result = await controller.DownloadAuthorizationPolicyPackage(CancellationToken.None);
 
@@ -75,7 +78,8 @@ public sealed class AuthorizationPolicyPackageDownloadControllerTests
             mediator,
             adminContext,
             setupSecretProvider,
-            Substitute.For<IDeploymentModeProvider>());
+            Substitute.For<IDeploymentModeProvider>(),
+            Substitute.For<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>>());
 
         IActionResult result = await controller.DownloadAuthorizationPolicyPackage(CancellationToken.None);
 

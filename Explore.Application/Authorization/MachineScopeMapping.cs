@@ -62,6 +62,7 @@ public static class MachineScopeMapping
 
             case ResourceKinds.User:
             case ResourceKinds.ActorSubscription:
+            case ResourceKinds.AiConversation:
                 return isWrite
                     ? HasAny(scopeSet, ExternalApiKeyScopes.UsersWrite, ExternalApiKeyScopes.AdminTenant)
                     : HasAny(scopeSet, ExternalApiKeyScopes.UsersRead, ExternalApiKeyScopes.UsersWrite, ExternalApiKeyScopes.AdminTenant);
@@ -117,6 +118,7 @@ public static class MachineScopeMapping
         AuthorizationActions.Unlock => true,
         AuthorizationActions.SyncApply => true,
         AuthorizationActions.ExportSharedContacts => true,
+        AuthorizationActions.SendMessage => true,
         _ => false
     };
 

@@ -282,7 +282,17 @@ public sealed class KeycloakOnlyFixture : IAsyncInitializer, IAsyncDisposable
 
     public string Authority => _keycloak.Authority;
     public string MetadataAddress => _keycloak.MetadataAddress;
+    public string KeycloakBaseUrl => _keycloak.BaseUrl;
     public KeycloakTokenClient TokenClient => _keycloak.TokenClient;
+
+    public KeycloakTokenClient CreateTokenClient(string clientSecret)
+    {
+        return new KeycloakTokenClient(
+            KeycloakBaseUrl,
+            KeycloakContainerFixture.RealmName,
+            KeycloakContainerFixture.TestClientId,
+            clientSecret);
+    }
 
     public async Task InitializeAsync()
     {

@@ -2,6 +2,7 @@
 // ABOUTME: Each descriptor extracts authorization metadata (ID, attributes, scope) from its DTO instance.
 
 using Explore.Application.DTOs.ActorSubscription;
+using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
@@ -146,6 +147,28 @@ public static class ResourceDescriptors
         {
             ["tenantId"] = dto.TenantId.ToString(),
             ["targetActorId"] = dto.TargetActorId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<AiConversationDto> AiConversation = new(
+        ResourceKinds.AiConversation,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["userId"] = dto.UserId.ToString(),
+            ["status"] = dto.Status
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<AiConversationSummaryDto> AiConversationSummary = new(
+        ResourceKinds.AiConversation,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["tenantId"] = dto.TenantId.ToString(),
+            ["userId"] = dto.UserId.ToString(),
+            ["status"] = dto.Status
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 

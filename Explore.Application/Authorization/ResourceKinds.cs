@@ -46,6 +46,7 @@ public static class ResourceKinds
     public const string Notification = "islamuevent_notification";
     public const string Actor = "islamuevent_actor";
     public const string ActorSubscription = "islamuevent_actor_subscription";
+    public const string AiConversation = "islamuevent_ai_conversation";
     public const string Group = "islamuevent_group";
     public const string GroupMember = "islamuevent_group_member";
 }

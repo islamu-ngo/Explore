@@ -5,6 +5,8 @@ namespace Explore.API.Hateoas.Policies;
 
 using System.Collections.Generic;
 using System.Security.Claims;
+using Explore.API.Hateoas;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.Hateoas;
@@ -19,7 +21,8 @@ public sealed class AiConversationDetailLinkPolicy : ILinkPolicy<AiConversationD
             new { conversationId = dto.Id },
             "GET",
             "AI conversation",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.AiConversations.View, ResourceDescriptors.AiConversation, dto);
 
         yield return new LinkDefinition(
             LinkRelations.Collection,
@@ -27,7 +30,8 @@ public sealed class AiConversationDetailLinkPolicy : ILinkPolicy<AiConversationD
             null,
             "GET",
             "AI conversations",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.AiConversations.View, ResourceDescriptors.AiConversation, dto);
 
         if (IsActive(dto.Status))
         {
@@ -37,7 +41,8 @@ public sealed class AiConversationDetailLinkPolicy : ILinkPolicy<AiConversationD
                 new { conversationId = dto.Id },
                 "POST",
                 "Send message",
-                RequiresAuth: true);
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.AiConversations.SendMessage, ResourceDescriptors.AiConversation, dto);
         }
     }
 
@@ -55,7 +60,8 @@ public sealed class AiConversationCollectionLinkPolicy : ICollectionLinkPolicy<A
             new { conversationId = dto.Id },
             "GET",
             "AI conversation",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.AiConversations.View, ResourceDescriptors.AiConversationSummary, dto);
 
         yield return new LinkDefinition(
             LinkRelations.Collection,
@@ -63,7 +69,8 @@ public sealed class AiConversationCollectionLinkPolicy : ICollectionLinkPolicy<A
             null,
             "GET",
             "AI conversations",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.AiConversations.View, ResourceDescriptors.AiConversationSummary, dto);
 
         if (IsActive(dto.Status))
         {
@@ -73,7 +80,8 @@ public sealed class AiConversationCollectionLinkPolicy : ICollectionLinkPolicy<A
                 new { conversationId = dto.Id },
                 "POST",
                 "Send message",
-                RequiresAuth: true);
+                RequiresAuth: true)
+                .RequirePermission(AuthorizationActions.AiConversations.SendMessage, ResourceDescriptors.AiConversationSummary, dto);
         }
     }
 
@@ -85,7 +93,8 @@ public sealed class AiConversationCollectionLinkPolicy : ICollectionLinkPolicy<A
             null,
             "POST",
             "Create AI conversation",
-            RequiresAuth: true);
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.AiConversations.Create, ResourceKinds.AiConversation);
     }
 
     private static bool IsActive(string status) =>

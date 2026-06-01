@@ -6,6 +6,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 using System.Security.Claims;
 using Explore.API.Hateoas;
 using Explore.API.Hateoas.Policies;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.Hateoas;
@@ -27,9 +28,15 @@ public sealed class AiAssistantHateoasTests
         var send = links.Single(link => link.Rel == LinkRelations.SendMessage);
         await Assert.That(self.RouteName).IsEqualTo(RouteNames.GetAiConversation);
         await Assert.That(self.RequiresAuth).IsTrue();
+        await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.AiConversation);
+        await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.AiConversations.View);
         await Assert.That(send.RouteName).IsEqualTo(RouteNames.SendAiMessage);
         await Assert.That(send.Method).IsEqualTo("POST");
         await Assert.That(send.RequiresAuth).IsTrue();
+        await Assert.That(send.PermissionResourceKind).IsEqualTo(ResourceKinds.AiConversation);
+        await Assert.That(send.PermissionAction).IsEqualTo(AuthorizationActions.AiConversations.SendMessage);
+        await Assert.That(send.PermissionResourceAttributes).IsNotNull();
+        await Assert.That(send.PermissionResourceAttributes!["tenantId"]).IsEqualTo(links[0].PermissionResourceAttributes!["tenantId"]);
         await Assert.That(RouteValue(send.RouteValues, "conversationId")).IsEqualTo(conversationId);
     }
 
@@ -59,7 +66,10 @@ public sealed class AiAssistantHateoasTests
         await Assert.That(create.RouteName).IsEqualTo(RouteNames.CreateAiConversation);
         await Assert.That(create.Method).IsEqualTo("POST");
         await Assert.That(create.RequiresAuth).IsTrue();
+        await Assert.That(create.PermissionResourceKind).IsEqualTo(ResourceKinds.AiConversation);
+        await Assert.That(create.PermissionAction).IsEqualTo(AuthorizationActions.AiConversations.Create);
         await Assert.That(send.RequiresAuth).IsTrue();
+        await Assert.That(send.PermissionAction).IsEqualTo(AuthorizationActions.AiConversations.SendMessage);
         await Assert.That(RouteValue(send.RouteValues, "conversationId")).IsEqualTo(activeId);
         await Assert.That(archivedLinks.Any(link => link.Rel == LinkRelations.SendMessage)).IsFalse();
     }

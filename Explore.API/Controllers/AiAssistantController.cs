@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Ai;
@@ -13,6 +14,7 @@ using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Explore.API.Controllers;
 
@@ -138,6 +140,7 @@ public sealed class AiAssistantController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    [EnableRateLimiting(RateLimitingExtensions.AiAssistantPolicy)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SendMessage(
         Guid conversationId,
         [FromBody] SendAiMessageRequestDto dto,

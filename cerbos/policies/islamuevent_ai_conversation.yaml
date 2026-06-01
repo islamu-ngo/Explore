@@ -1,0 +1,32 @@
+# ABOUTME: Cerbos resource policy for private AI assistant conversation resources.
+# ABOUTME: Authenticated users reach handlers; handlers enforce current-user ownership and tenant isolation.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "islamuevent_ai_conversation"
+  version: "default"
+  importDerivedRoles:
+    - islamuevent_explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///islamuevent_principal.json
+    resourceSchema:
+      ref: cerbos:///islamuevent_ai_conversation.json
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_instance_admin
+
+    # Tenant admins can inspect/manage assistant conversations within their tenant.
+    - actions: ["view", "create", "send_message"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_tenant_admin
+
+    # Authenticated users can reach self-service handlers; handlers enforce ownership.
+    - actions: ["view", "create", "send_message"]
+      effect: EFFECT_ALLOW
+      roles:
+        - islamuevent_authenticated_user

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for private AI assistant conversations. Ownership is enforced by application handlers against the current authenticated user.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by tenant admin derived role checks."
+    },
+    "userId": {
+      "type": "string",
+      "description": "Conversation owner user identifier. Handler-level checks enforce owner access."
+    },
+    "status": {
+      "type": "string",
+      "description": "Conversation lifecycle status used for action affordance decisions."
+    }
+  }
+}

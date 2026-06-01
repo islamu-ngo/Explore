@@ -26,6 +26,8 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
     private const string JsonContentType = "application/json";
     private const string TextContentType = "text/plain";
     private const string UserDailyQuotaScope = "user_daily";
+    private const string TenantDailyQuotaScope = "tenant_daily";
+    private const string UserConcurrentQuotaScope = "user_concurrent";
     private readonly IAiConversationRepository _conversationRepository;
     private readonly IIdempotencyRepository _idempotencyRepository;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
@@ -152,6 +154,42 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
                     UserDailyQuotaScope,
                     tenantId),
                 "Daily AI message quota exceeded.");
+            return response;
+        }
+
+        var tenantMessageCount = await _conversationRepository.CountTenantMessagesSinceAsync(todayUtc, cancellationToken);
+
+        if (tenantMessageCount >= settings.DailyTenantMessageLimit)
+        {
+            var response = new BaseCommandResponse<Guid>();
+            response.SetQuotaExceeded(
+                "AI tenant daily message limit exceeded.",
+                new QuotaExceededDetails(
+                    GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit,
+                    settings.DailyTenantMessageLimit,
+                    tenantMessageCount,
+                    tenantMessageCount + 1,
+                    TenantDailyQuotaScope,
+                    tenantId),
+                "Daily tenant AI message quota exceeded.");
+            return response;
+        }
+
+        var runningConversationCount = await _conversationRepository.CountRunningConversationsForUserAsync(userId, cancellationToken);
+
+        if (runningConversationCount >= settings.ConcurrentRunLimit)
+        {
+            var response = new BaseCommandResponse<Guid>();
+            response.SetQuotaExceeded(
+                "AI concurrent run limit exceeded.",
+                new QuotaExceededDetails(
+                    GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit,
+                    settings.ConcurrentRunLimit,
+                    runningConversationCount,
+                    runningConversationCount + 1,
+                    UserConcurrentQuotaScope,
+                    tenantId),
+                "Concurrent AI run quota exceeded.");
             return response;
         }
 

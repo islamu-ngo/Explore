@@ -241,7 +241,8 @@ public partial class FallbackAuthorizationService
     private static bool IsUserOrLookupResource(string resourceKind) =>
         resourceKind == ResourceKinds.User
         || resourceKind == ResourceKinds.Notification
-        || resourceKind == ResourceKinds.ActorSubscription;
+        || resourceKind == ResourceKinds.ActorSubscription
+        || resourceKind == ResourceKinds.AiConversation;
 
     private static Guid? ResolveGroupId(IDictionary<string, object>? resourceAttributes, string resourceId)
     {

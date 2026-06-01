@@ -125,6 +125,18 @@ public class MachineScopeMappingTests
     }
 
     [Test]
+    public async Task ScopesPermit_WithUsersScopes_AllowsAiConversationSelfServiceActions()
+    {
+        var readScopes = new[] { ExternalApiKeyScopes.UsersRead };
+        var writeScopes = new[] { ExternalApiKeyScopes.UsersWrite };
+
+        await Assert.That(MachineScopeMapping.ScopesPermit(readScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.View)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(readScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.SendMessage)).IsFalse();
+        await Assert.That(MachineScopeMapping.ScopesPermit(writeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.Create)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(writeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.SendMessage)).IsTrue();
+    }
+
+    [Test]
     public async Task ScopesPermit_WithLookupsRead_AllowsLookupReadsButDeniesWrites()
     {
         var scopes = new[] { ExternalApiKeyScopes.LookupsRead };

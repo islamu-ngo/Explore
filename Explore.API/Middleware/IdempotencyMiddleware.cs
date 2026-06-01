@@ -55,6 +55,15 @@ public sealed class IdempotencyMiddleware
             return;
         }
 
+        // AI message sends persist run-level idempotency inside the Application handler.
+        // Let that domain-specific record own replay/conflict semantics instead of
+        // caching the HTTP response with a different request fingerprint.
+        if (IsApplicationManagedAiMessageSend(context.Request))
+        {
+            await _next(context);
+            return;
+        }
+
         // Opt-in: skip if no Idempotency-Key header
         if (!context.Request.Headers.TryGetValue(IdempotencyKeyHeader, out var keyValues)
             || string.IsNullOrEmpty(keyValues.FirstOrDefault()))
@@ -201,6 +210,13 @@ public sealed class IdempotencyMiddleware
                && string.Equals(record.RequestContentType, requestIdentity.ContentType, StringComparison.Ordinal)
                && string.Equals(record.RequestBodyHash, requestIdentity.BodyHash, StringComparison.Ordinal)
                && string.Equals(record.PrincipalFingerprint, requestIdentity.PrincipalFingerprint, StringComparison.Ordinal);
+    }
+
+    private static bool IsApplicationManagedAiMessageSend(HttpRequest request)
+    {
+        return HttpMethods.IsPost(request.Method)
+            && request.Path.StartsWithSegments("/api/ai/assistant/conversations", StringComparison.OrdinalIgnoreCase)
+            && request.Path.Value?.EndsWith("/messages", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private static async Task WriteKeyReuseConflictAsync(HttpContext context)

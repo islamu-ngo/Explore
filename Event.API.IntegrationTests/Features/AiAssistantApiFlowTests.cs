@@ -18,6 +18,7 @@ using Explore.Domain.Ai;
 using Explore.Domain.Constants;
 using Explore.Domain.Settings;
 using Explore.Infrastructure.Ai;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -28,6 +29,10 @@ namespace Event.Api.IntegrationTests.Features;
 
 public sealed class AiAssistantApiFlowTests
 {
+    private static readonly Guid DefaultTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
+    private static readonly Guid AlternateTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000002");
+    private const string TenantHeaderName = "X-Test-Tenant";
+
     [Test]
     public async Task Conversations_WithoutAuthentication_ReturnsUnauthorized()
     {
@@ -134,9 +139,61 @@ public sealed class AiAssistantApiFlowTests
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
     }
 
-    private static async Task<Guid> CreateConversationAsync(HttpClient client, Guid userId, string title)
+    [Test]
+    public async Task Detail_WhenRequestedFromDifferentTenant_ReturnsNotFound()
     {
-        using var request = CreateAuthenticatedRequest(HttpMethod.Post, "/api/ai/assistant/conversations", userId);
+        await using var factory = new AiAssistantApiFlowFactory(CreateFakeSettings());
+        using var client = factory.CreateClient();
+        var userId = Guid.NewGuid();
+        var conversationId = await CreateConversationAsync(client, userId, "Planning", DefaultTenantId);
+
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/api/ai/assistant/conversations/{conversationId}",
+            userId,
+            AlternateTenantId);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+    }
+
+    [Test]
+    public async Task SendMessage_WhenProviderFails_ReturnsSafeServiceUnavailableProblemDetails()
+    {
+        await using var factory = new AiAssistantApiFlowFactory(CreateFakeSettings(), providerFails: true);
+        using var client = factory.CreateClient();
+        var userId = Guid.NewGuid();
+        var conversationId = await CreateConversationAsync(client, userId, "Planning");
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/api/ai/assistant/conversations/{conversationId}/messages",
+            userId);
+        request.Headers.Add("Idempotency-Key", "provider-failure");
+        request.Content = JsonContent.Create(new SendAiMessageRequestDto { Content = "Plan the event." });
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.ServiceUnavailable);
+        var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var root = json.RootElement;
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("provider_unreachable");
+        await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("AI provider unavailable");
+        await Assert.That(root.GetProperty("detail").GetString()).DoesNotContain("Plan the event");
+        await Assert.That(root.GetProperty("detail").GetString()).DoesNotContain("api_key");
+    }
+
+    private static async Task<Guid> CreateConversationAsync(
+        HttpClient client,
+        Guid userId,
+        string title,
+        Guid? tenantId = null)
+    {
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            "/api/ai/assistant/conversations",
+            userId,
+            tenantId);
         request.Content = JsonContent.Create(new CreateAiConversationRequestDto { Title = title });
 
         var response = await client.SendAsync(request);
@@ -153,12 +210,14 @@ public sealed class AiAssistantApiFlowTests
         Guid userId,
         Guid conversationId,
         string idempotencyKey,
-        string content)
+        string content,
+        Guid? tenantId = null)
     {
         using var request = CreateAuthenticatedRequest(
             HttpMethod.Post,
             $"/api/ai/assistant/conversations/{conversationId}/messages",
-            userId);
+            userId,
+            tenantId);
         request.Headers.Add("Idempotency-Key", idempotencyKey);
         request.Content = JsonContent.Create(new SendAiMessageRequestDto { Content = content });
 
@@ -171,12 +230,17 @@ public sealed class AiAssistantApiFlowTests
         return body.Id;
     }
 
-    private static HttpRequestMessage CreateAuthenticatedRequest(HttpMethod method, string url, Guid? userId = null)
+    private static HttpRequestMessage CreateAuthenticatedRequest(
+        HttpMethod method,
+        string url,
+        Guid? userId = null,
+        Guid? tenantId = null)
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.Add(
             TestAuthHandler.AuthHeaderName,
             TestAuthHandler.CreateAuthHeaderValue(userId ?? Guid.NewGuid()));
+        request.Headers.Add(TenantHeaderName, (tenantId ?? DefaultTenantId).ToString());
         return request;
     }
 
@@ -214,7 +278,7 @@ public sealed class AiAssistantApiFlowTests
         return group;
     }
 
-    private sealed class AiAssistantApiFlowFactory(AiAssistantSettingGroup settings)
+    private sealed class AiAssistantApiFlowFactory(AiAssistantSettingGroup settings, bool providerFails = false)
         : AuthenticatedWebApplicationFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -225,64 +289,96 @@ public sealed class AiAssistantApiFlowTests
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IHierarchicalSettingsResolver>();
+                services.RemoveAll<ITenantContext>();
                 services.AddSingleton<IHierarchicalSettingsResolver>(new FixedAiSettingsResolver(settings));
+                services.AddScoped<ITenantContext, HeaderTenantContext>();
 
                 services.RemoveAll<IAiChatProvider>();
                 services.RemoveAll<IAiModelCatalog>();
                 services.RemoveAll<IAiConversationRepository>();
                 services.RemoveAll<IIdempotencyRepository>();
 
-                services.AddSingleton<InMemoryAiConversationRepository>();
-                services.AddSingleton<IAiConversationRepository>(sp => sp.GetRequiredService<InMemoryAiConversationRepository>());
+                services.AddSingleton<InMemoryAiConversationStore>();
+                services.AddScoped<IAiConversationRepository, InMemoryAiConversationRepository>();
                 services.AddSingleton<IIdempotencyRepository, InMemoryIdempotencyRepository>();
 
-                services.AddSingleton<FakeAiChatProvider>();
-                services.AddSingleton<IAiChatProvider>(sp => sp.GetRequiredService<FakeAiChatProvider>());
-                services.AddSingleton<IAiModelCatalog>(sp => sp.GetRequiredService<FakeAiChatProvider>());
+                if (providerFails)
+                {
+                    services.AddSingleton<FailingAiChatProvider>();
+                    services.AddSingleton<IAiChatProvider>(sp => sp.GetRequiredService<FailingAiChatProvider>());
+                    services.AddSingleton<IAiModelCatalog>(sp => sp.GetRequiredService<FailingAiChatProvider>());
+                }
+                else
+                {
+                    services.AddSingleton<FakeAiChatProvider>();
+                    services.AddSingleton<IAiChatProvider>(sp => sp.GetRequiredService<FakeAiChatProvider>());
+                    services.AddSingleton<IAiModelCatalog>(sp => sp.GetRequiredService<FakeAiChatProvider>());
+                }
             });
         }
     }
 
-    private sealed class InMemoryAiConversationRepository : IAiConversationRepository
+    private sealed class HeaderTenantContext(IHttpContextAccessor httpContextAccessor) : ITenantContext
     {
-        private readonly Dictionary<Guid, AiConversation> _conversations = [];
+        public Guid TenantId
+        {
+            get
+            {
+                var header = httpContextAccessor.HttpContext?.Request.Headers[TenantHeaderName].FirstOrDefault();
+                return Guid.TryParse(header, out var tenantId) ? tenantId : DefaultTenantId;
+            }
+        }
+    }
+
+    private sealed class InMemoryAiConversationStore
+    {
+        public Dictionary<Guid, AiConversation> Conversations { get; } = [];
+    }
+
+    private sealed class InMemoryAiConversationRepository(
+        InMemoryAiConversationStore store,
+        ITenantContext tenantContext) : IAiConversationRepository
+    {
+        private IEnumerable<AiConversation> TenantConversations
+            => store.Conversations.Values.Where(conversation => conversation.TenantId == tenantContext.TenantId);
 
         public Task<AiConversation?> GetById(Guid id)
-            => Task.FromResult(_conversations.GetValueOrDefault(id));
+            => Task.FromResult(TenantConversations.FirstOrDefault(conversation => conversation.Id == id));
 
         public Task<IReadOnlyList<AiConversation>> GetAll()
-            => Task.FromResult<IReadOnlyList<AiConversation>>(_conversations.Values.ToList());
+            => Task.FromResult<IReadOnlyList<AiConversation>>(TenantConversations.ToList());
 
         public Task<(IReadOnlyList<AiConversation> Items, int TotalCount)> GetAllPaged(int pageNumber, int pageSize)
         {
-            var items = _conversations.Values
+            var conversations = TenantConversations.ToList();
+            var items = conversations
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
 
             return Task.FromResult<(
                 IReadOnlyList<AiConversation> Items,
-                int TotalCount)>((items, _conversations.Count));
+                int TotalCount)>((items, conversations.Count));
         }
 
         public Task<bool> Exists(Guid id)
-            => Task.FromResult(_conversations.ContainsKey(id));
+            => Task.FromResult(TenantConversations.Any(conversation => conversation.Id == id));
 
         public Task<AiConversation> Create(AiConversation entity)
         {
-            _conversations[entity.Id] = entity;
+            store.Conversations[entity.Id] = entity;
             return Task.FromResult(entity);
         }
 
         public Task Update(AiConversation entity)
         {
-            _conversations[entity.Id] = entity;
+            store.Conversations[entity.Id] = entity;
             return Task.CompletedTask;
         }
 
         public Task Delete(AiConversation entity)
         {
-            _conversations.Remove(entity.Id);
+            store.Conversations.Remove(entity.Id);
             return Task.CompletedTask;
         }
 
@@ -300,7 +396,7 @@ public sealed class AiAssistantApiFlowTests
             int limit,
             CancellationToken cancellationToken)
         {
-            var conversations = _conversations.Values
+            var conversations = TenantConversations
                 .Where(conversation => conversation.UserId == userId)
                 .OrderByDescending(conversation => conversation.UpdatedAt ?? conversation.CreatedAt)
                 .ThenByDescending(conversation => conversation.Id)
@@ -312,7 +408,7 @@ public sealed class AiAssistantApiFlowTests
 
         public Task<int> CountUserMessagesSinceAsync(Guid userId, DateTime sinceUtc, CancellationToken cancellationToken)
         {
-            var count = _conversations.Values
+            var count = TenantConversations
                 .SelectMany(conversation => conversation.Messages)
                 .Count(message => message.Role == AiMessageRole.User
                     && message.CreatedBy == userId
@@ -321,14 +417,51 @@ public sealed class AiAssistantApiFlowTests
             return Task.FromResult(count);
         }
 
+        public Task<int> CountTenantMessagesSinceAsync(DateTime sinceUtc, CancellationToken cancellationToken)
+        {
+            var count = TenantConversations
+                .SelectMany(conversation => conversation.Messages)
+                .Count(message => message.Role == AiMessageRole.User && message.CreatedAt >= sinceUtc);
+
+            return Task.FromResult(count);
+        }
+
+        public Task<int> CountRunningConversationsForUserAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            var count = TenantConversations
+                .Count(conversation => conversation.UserId == userId && conversation.Status == AiConversationStatus.Running);
+
+            return Task.FromResult(count);
+        }
+
         public Task<AiProposedAction?> GetProposedActionForUpdateAsync(Guid proposedActionId, CancellationToken cancellationToken)
         {
-            var action = _conversations.Values
+            var action = TenantConversations
                 .SelectMany(conversation => conversation.ProposedActions)
                 .FirstOrDefault(candidate => candidate.Id == proposedActionId);
 
             return Task.FromResult(action);
         }
+    }
+
+    private sealed class FailingAiChatProvider : IAiChatProvider, IAiModelCatalog
+    {
+        public Task<AiChatProviderResult> SendAsync(AiChatRequest request, CancellationToken cancellationToken = default)
+            => Task.FromResult(AiChatProviderResult.Failure(
+                "provider_unreachable",
+                "AI provider is unavailable.",
+                isTransient: true));
+
+        public Task<IReadOnlyList<AiModelDescriptor>> ListAvailableModelsAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<AiModelDescriptor>>(
+            [
+                new AiModelDescriptor(
+                    AiProviderDefaults.FakeModelId,
+                    AiProviderDefaults.FakeModelDisplayName,
+                    AiProviderDefaults.DefaultMaxInputTokens,
+                    AiProviderDefaults.DefaultMaxOutputTokens,
+                    SupportsToolProposals: true)
+            ]);
     }
 
     private sealed class InMemoryIdempotencyRepository : IIdempotencyRepository

@@ -156,6 +156,9 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             // Actor subscriptions: authenticated users reach handlers; handlers enforce current-user ownership.
             "islamuevent_actor_subscription" => true,
 
+            // AI conversations: authenticated users reach handlers; handlers enforce owner and tenant isolation.
+            "islamuevent_ai_conversation" => true,
+
             // Actor: read-only for all authenticated; writes require tenant admin
             "islamuevent_actor" => await EvaluateActorAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
 

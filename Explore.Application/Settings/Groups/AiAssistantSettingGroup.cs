@@ -19,6 +19,9 @@ public class AiAssistantSettingGroup : ISettingGroup
     public int TimeoutSeconds { get; private set; } = 30;
     public int RetentionDays { get; private set; } = 30;
     public int DailyMessageLimit { get; private set; } = 50;
+    public int DailyTenantMessageLimit { get; private set; } = 1000;
+    public int ConcurrentRunLimit { get; private set; } = 1;
+    public int SelectedReferenceLimit { get; private set; } = 8;
     public bool ToolProposalsEnabled { get; private set; }
     public bool StreamingEnabled { get; private set; }
     public bool AllowAnonymousAccess { get; private set; }
@@ -42,6 +45,9 @@ public class AiAssistantSettingGroup : ISettingGroup
         GovernanceSettingKeys.AiAssistant.TimeoutSeconds,
         GovernanceSettingKeys.AiAssistant.RetentionDays,
         GovernanceSettingKeys.AiAssistant.DailyMessageLimit,
+        GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit,
+        GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit,
+        GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit,
         GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
         GovernanceSettingKeys.AiAssistant.StreamingEnabled,
         GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess
@@ -71,6 +77,12 @@ public class AiAssistantSettingGroup : ISettingGroup
             RetentionDays = SettingValueSerializer.DeserializeInt(retentionDays.Value, 30);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.DailyMessageLimit, out var dailyMessageLimit))
             DailyMessageLimit = SettingValueSerializer.DeserializeInt(dailyMessageLimit.Value, 50);
+        if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit, out var dailyTenantMessageLimit))
+            DailyTenantMessageLimit = SettingValueSerializer.DeserializeInt(dailyTenantMessageLimit.Value, 1000);
+        if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit, out var concurrentRunLimit))
+            ConcurrentRunLimit = SettingValueSerializer.DeserializeInt(concurrentRunLimit.Value, 1);
+        if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit, out var selectedReferenceLimit))
+            SelectedReferenceLimit = SettingValueSerializer.DeserializeInt(selectedReferenceLimit.Value, 8);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled, out var toolProposalsEnabled))
             ToolProposalsEnabled = SettingValueSerializer.Deserialize(toolProposalsEnabled.Value, false);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.StreamingEnabled, out var streamingEnabled))

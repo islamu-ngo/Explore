@@ -9,6 +9,7 @@ using System.Text.Json;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Controllers;
+using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
@@ -21,6 +22,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
 using NSubstitute;
 
@@ -113,6 +115,16 @@ public sealed class AiAssistantControllerTests
                 command.Message == dto &&
                 command.Message.IdempotencyKey == "header-key"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SendMessage_UsesAiAssistantRateLimitPolicy()
+    {
+        var method = typeof(AiAssistantController).GetMethod(nameof(AiAssistantController.SendMessage))!;
+        var attribute = method.GetCustomAttribute<EnableRateLimitingAttribute>();
+
+        await Assert.That(attribute).IsNotNull();
+        await Assert.That(attribute!.PolicyName).IsEqualTo(RateLimitingExtensions.AiAssistantPolicy);
     }
 
     [Test]

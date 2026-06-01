@@ -5,6 +5,7 @@ namespace Explore.Application.Authorization;
 
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorSubscription;
+using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
@@ -71,6 +72,10 @@ public static class ResourceDescriptorRegistry
         // Actor Subscription
         [typeof(ActorSubscriptionDto)] = global::Explore.Application.Authorization.ResourceKinds.ActorSubscription,
         [typeof(ActorSubscriptionListDto)] = global::Explore.Application.Authorization.ResourceKinds.ActorSubscription,
+
+        // AI Conversation
+        [typeof(AiConversationDto)] = global::Explore.Application.Authorization.ResourceKinds.AiConversation,
+        [typeof(AiConversationSummaryDto)] = global::Explore.Application.Authorization.ResourceKinds.AiConversation,
 
         // Tag
         [typeof(TagDto)] = global::Explore.Application.Authorization.ResourceKinds.Tag,

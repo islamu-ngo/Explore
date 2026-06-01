@@ -99,6 +99,30 @@ public static class AiAssistantSettingDefinitions
         Description: "Per-user daily assistant message limit before provider calls are rejected",
         MaxScope: SettingScope.Tenant);
 
+    public static readonly SettingDefinition DailyTenantMessageLimit = new(
+        Key: GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit,
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "1000",
+        Category: "AiAssistant",
+        Description: "Per-tenant daily assistant user-message limit before provider calls are rejected",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition ConcurrentRunLimit = new(
+        Key: GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit,
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "1",
+        Category: "AiAssistant",
+        Description: "Maximum concurrent AI assistant runs allowed per user",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition SelectedReferenceLimit = new(
+        Key: GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit,
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "8",
+        Category: "AiAssistant",
+        Description: "Maximum selected references that can be packed into an assistant request",
+        MaxScope: SettingScope.Tenant);
+
     public static readonly SettingDefinition ToolProposalsEnabled = new(
         Key: GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
         ValueType: SettingValueType.Boolean,
@@ -126,7 +150,8 @@ public static class AiAssistantSettingDefinitions
     public static IReadOnlyList<SettingDefinition> All =>
     [
         Enabled, Provider, EndpointUrl, ApiKey, ModelId, MaxInputTokens, MaxOutputTokens,
-        Temperature, TimeoutSeconds, RetentionDays, DailyMessageLimit,
+        Temperature, TimeoutSeconds, RetentionDays, DailyMessageLimit, DailyTenantMessageLimit,
+        ConcurrentRunLimit, SelectedReferenceLimit,
         ToolProposalsEnabled, StreamingEnabled, AllowAnonymousAccess
     ];
 }
