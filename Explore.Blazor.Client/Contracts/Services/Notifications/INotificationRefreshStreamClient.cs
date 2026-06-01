@@ -11,9 +11,3 @@ public interface INotificationRefreshStreamClient : IAsyncDisposable
 
     Task StopAsync(CancellationToken cancellationToken = default);
 }
-
-public sealed record NotificationRefreshHintReceivedEventArgs(
-    int UnreadCount,
-    bool HasUnread,
-    string Reason,
-    DateTimeOffset GeneratedAt);
