@@ -132,25 +132,59 @@ jobs:
 
       - name: Security Integration Tests
         if: ${{ steps.changes.outputs.run-tests == 'true' }}
+        id: security_integration_tests
         shell: bash
         run: |
           set -o pipefail
           mkdir -p artifacts/security-tests
-          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*[Category=Security]" 2>&1 | tee artifacts/security-tests/security-integration-tests.log
+          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*[Category=Security]" --report-trx --report-trx-filename security-integration-tests.trx 2>&1 | tee artifacts/security-tests/security-integration-tests.log
 
       - name: Cerbos Policy Contract Tests
         if: ${{ steps.changes.outputs.run-tests == 'true' }}
+        id: cerbos_policy_contract_tests
         shell: bash
         run: |
           set -o pipefail
           mkdir -p artifacts/security-tests
-          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*[Category=PolicyContract]" 2>&1 | tee artifacts/security-tests/cerbos-policy-contract-tests.log
+          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*[Category=PolicyContract]" --report-trx --report-trx-filename cerbos-policy-contract-tests.trx 2>&1 | tee artifacts/security-tests/cerbos-policy-contract-tests.log
 
       - name: Upload Security Test Evidence
         if: ${{ always() && steps.changes.outputs.run-tests == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: security-test-evidence
-          path: artifacts/security-tests/**
+          path: |
+            artifacts/security-tests/**
+            Event.API.IntegrationTests/**/TestResults/**/*.trx
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Write Security Test Evidence Summary
+        if: ${{ always() && steps.changes.outputs.run-tests == 'true' }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          SECURITY_OUTCOME: ${{ steps.security_integration_tests.outcome }}
+          CERBOS_OUTCOME: ${{ steps.cerbos_policy_contract_tests.outcome }}
+        shell: bash
+        run: |
+          {
+            echo "## Security Test Evidence"
+            echo
+            echo "Artifact: \`security-test-evidence\`"
+            echo
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Trigger | ${EVENT_NAME} |"
+            echo "| Ref | ${REF_NAME} |"
+            echo "| Commit | ${COMMIT_SHA} |"
+            echo "| Reliability inventory | docs/TEST_RELIABILITY.md |"
+            echo
+            echo "| Test lane | Step outcome | Evidence |"
+            echo "|---|---|---|"
+            echo "| Security integration tests | ${SECURITY_OUTCOME:-not-run} | Log plus \`security-integration-tests.trx\` |"
+            echo "| Cerbos policy contract tests | ${CERBOS_OUTCOME:-not-run} | Log plus \`cerbos-policy-contract-tests.trx\` |"
+            echo
+            echo "Repeated scheduled failures require an owner/date entry in docs/TEST_RELIABILITY.md before they are treated as accepted baseline noise."
+          } >> "$GITHUB_STEP_SUMMARY"

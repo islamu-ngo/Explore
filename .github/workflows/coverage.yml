@@ -1,0 +1,106 @@
+# ABOUTME: Advisory artifact-only coverage lane for stable unit test coverage evidence.
+# ABOUTME: Retains Cobertura, TRX, and logs without adding hosted coverage badges or PR-required gates.
+
+name: Coverage Evidence
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 5"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage-evidence:
+    name: Coverage Evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore dependencies
+        run: dotnet restore --locked-mode
+
+      - name: Build coverage target
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/coverage
+          dotnet build Event.Domain.UnitTests/Event.Domain.UnitTests.csproj \
+            --configuration Release \
+            --no-restore \
+            --verbosity minimal \
+            2>&1 | tee artifacts/coverage/Event.Domain.UnitTests-build.log
+
+      - name: Collect Domain unit coverage
+        id: domain_coverage
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/coverage
+          dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj \
+            --configuration Release \
+            --no-build \
+            --verbosity minimal \
+            -- \
+            --coverage \
+            --coverage-output "$GITHUB_WORKSPACE/artifacts/coverage/Event.Domain.UnitTests.cobertura.xml" \
+            --coverage-output-format cobertura \
+            --report-trx \
+            --report-trx-filename Event.Domain.UnitTests.coverage.trx \
+            2>&1 | tee artifacts/coverage/Event.Domain.UnitTests-test.log
+
+      - name: Write Coverage Evidence Summary
+        if: always()
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          DOMAIN_COVERAGE_OUTCOME: ${{ steps.domain_coverage.outcome }}
+        run: |
+          {
+            echo "## Coverage Evidence"
+            echo
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Trigger | ${EVENT_NAME} |"
+            echo "| Ref | ${REF_NAME} |"
+            echo "| Commit | ${COMMIT_SHA} |"
+            echo "| Coverage scope | Event.Domain.UnitTests |"
+            echo "| Coverage outcome | ${DOMAIN_COVERAGE_OUTCOME} |"
+            echo "| Artifact | coverage-evidence |"
+            echo "| Cobertura report | artifacts/coverage/Event.Domain.UnitTests.cobertura.xml |"
+            echo "| Build log | artifacts/coverage/Event.Domain.UnitTests-build.log |"
+            echo "| Test log | artifacts/coverage/Event.Domain.UnitTests-test.log |"
+            echo
+            echo "Coverage is artifact-only. Do not add hosted coverage badges or thresholds until coverage scope and provider policy are explicitly promoted."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Coverage Evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-evidence
+          path: |
+            artifacts/coverage/**
+            Event.Domain.UnitTests/**/TestResults/**/*.trx
+            Event.Domain.UnitTests/**/TestResults/**/*.html
+          if-no-files-found: warn
+          retention-days: 30

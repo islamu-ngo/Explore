@@ -50,6 +50,7 @@ jobs:
           pwsh Explore.Blazor.Client.E2ETests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Run Aspire-backed Playwright E2E tests
+        id: e2e_tests
         shell: bash
         run: |
           set -euo pipefail
@@ -79,6 +80,36 @@ jobs:
             safe_name="${container_name//[^A-Za-z0-9_.-]/-}"
             docker logs "$container_id" > "artifacts/e2e/docker/${safe_name}.log" 2>&1 || true
           done < <(docker ps -a --format '{{.ID}} {{.Names}}' || true)
+
+      - name: Write E2E Runtime Evidence Summary
+        if: always()
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          E2E_OUTCOME: ${{ steps.e2e_tests.outcome }}
+        run: |
+          set -euo pipefail
+
+          {
+            echo "## E2E Runtime Evidence"
+            echo
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Trigger | ${EVENT_NAME} |"
+            echo "| Ref | ${REF_NAME} |"
+            echo "| Commit | ${COMMIT_SHA} |"
+            echo "| E2E test outcome | ${E2E_OUTCOME} |"
+            echo "| Artifact | e2e-runtime-evidence |"
+            echo "| Test log | artifacts/e2e/e2e-test.log |"
+            echo "| TRX | Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/**/*.trx |"
+            echo "| Playwright artifacts | Explore.Blazor.Client.E2ETests/bin/Release/net10.0/TestResults/playwright-artifacts/** |"
+            echo "| Docker diagnostics | artifacts/e2e/docker/** |"
+            echo "| Reliability inventory | docs/TEST_RELIABILITY.md |"
+            echo
+            echo "This lane remains manual/nightly until tracked reliability debt is resolved or explicitly baselined."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload E2E Evidence
         if: always()

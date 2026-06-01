@@ -1,0 +1,102 @@
+# ABOUTME: Advisory scheduled BenchmarkDotNet smoke lane for representative API endpoint performance.
+# ABOUTME: Retains benchmark logs/results without slowing required PR checks.
+
+name: Performance Smoke
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "50 4 * * 4"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  performance-smoke:
+    name: Performance Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore dependencies
+        run: dotnet restore --locked-mode
+
+      - name: Build benchmarks
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/performance
+          dotnet build Event.Benchmarks/Event.Benchmarks.csproj \
+            --configuration Release \
+            --no-restore \
+            --verbosity minimal \
+            2>&1 | tee artifacts/performance/performance-build.log
+
+      - name: Run API endpoint performance smoke
+        id: performance_smoke
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/performance/benchmarkdotnet
+          dotnet run --project Event.Benchmarks/Event.Benchmarks.csproj \
+            --configuration Release \
+            --no-build \
+            -- \
+            --filter "*ApiEndpointBenchmarks*" \
+            --job ShortRun \
+            --warmupCount 1 \
+            --iterationCount 3 \
+            --artifacts artifacts/performance/benchmarkdotnet \
+            2>&1 | tee artifacts/performance/performance-smoke.log
+
+      - name: Write Performance Smoke Summary
+        if: always()
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          PERFORMANCE_OUTCOME: ${{ steps.performance_smoke.outcome }}
+        run: |
+          {
+            echo "## Performance Smoke Evidence"
+            echo
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Trigger | ${EVENT_NAME} |"
+            echo "| Ref | ${REF_NAME} |"
+            echo "| Commit | ${COMMIT_SHA} |"
+            echo "| Benchmark suite | Event.Benchmarks ApiEndpointBenchmarks ShortRun |"
+            echo "| Benchmark outcome | ${PERFORMANCE_OUTCOME} |"
+            echo "| Artifact | performance-smoke-evidence |"
+            echo "| Build log | artifacts/performance/performance-build.log |"
+            echo "| Benchmark log | artifacts/performance/performance-smoke.log |"
+            echo "| BenchmarkDotNet results | artifacts/performance/benchmarkdotnet/** |"
+            echo
+            echo "This lane remains scheduled/manual and advisory until enough retained runs prove stable signal."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Performance Smoke Evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: performance-smoke-evidence
+          path: artifacts/performance/**
+          if-no-files-found: warn
+          retention-days: 30
