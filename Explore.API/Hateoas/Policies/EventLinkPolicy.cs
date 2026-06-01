@@ -181,8 +181,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 "GET",
                 "My subscription to this organizer",
                 RequiresAuth: true)
-                .RequirePermission(
-                    AuthorizationActions.ActorSubscriptions.View,
+                .RequirePermission(AuthorizationActions.ActorSubscriptions.View,
                     ResourceKinds.ActorSubscription,
                     dto.ActorId.ToString(),
                     SubscriptionAttributes(dto.ActorId));
@@ -194,8 +193,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                 "POST",
                 "Subscribe to this organizer",
                 RequiresAuth: true)
-                .RequirePermission(
-                    AuthorizationActions.ActorSubscriptions.Create,
+                .RequirePermission(AuthorizationActions.ActorSubscriptions.Create,
                     ResourceKinds.ActorSubscription,
                     dto.ActorId.ToString(),
                     SubscriptionAttributes(dto.ActorId));

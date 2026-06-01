@@ -27,15 +27,13 @@ public sealed class InstanceStorageSettingsLinkPolicy : ILinkPolicy<InstanceStor
             "GET",
             "Instance storage settings",
             RequiresAuth: true)
-            .RequirePermission(
-                AuthorizationActions.InstanceSettings.View,
+            .RequirePermission(AuthorizationActions.InstanceSettings.View,
                 ResourceKinds.InstanceSetting,
                 ResourceId,
                 InstanceStorageAttributes());
 
         yield return LinkDefinition.Edit(RouteNames.UpdateInstanceStorageSettings)
-            .RequirePermission(
-                AuthorizationActions.InstanceSettings.Update,
+            .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 ResourceId,
                 InstanceStorageAttributes());
@@ -47,8 +45,7 @@ public sealed class InstanceStorageSettingsLinkPolicy : ILinkPolicy<InstanceStor
             "POST",
             "Test storage provider",
             RequiresAuth: true)
-            .RequirePermission(
-                AuthorizationActions.InstanceSettings.Update,
+            .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 ResourceId,
                 InstanceStorageAttributes());
@@ -60,8 +57,7 @@ public sealed class InstanceStorageSettingsLinkPolicy : ILinkPolicy<InstanceStor
             "POST",
             "Recalculate storage usage",
             RequiresAuth: true)
-            .RequirePermission(
-                AuthorizationActions.InstanceSettings.Update,
+            .RequirePermission(AuthorizationActions.InstanceSettings.Update,
                 ResourceKinds.InstanceSetting,
                 ResourceId,
                 InstanceStorageAttributes());
@@ -94,8 +90,7 @@ public sealed class TenantStorageSettingsLinkPolicy : ILinkPolicy<TenantStorageS
             "GET",
             "Tenant storage settings",
             RequiresAuth: true)
-            .RequirePermission(
-                AuthorizationActions.TenantSettings.View,
+            .RequirePermission(AuthorizationActions.TenantSettings.View,
                 ResourceKinds.TenantSetting,
                 TenantStorageResourceId(dto),
                 TenantStorageAttributes(dto),
@@ -107,8 +102,7 @@ public sealed class TenantStorageSettingsLinkPolicy : ILinkPolicy<TenantStorageS
         }
 
         yield return LinkDefinition.Edit(RouteNames.UpdateTenantStorageSettings)
-            .RequirePermission(
-                AuthorizationActions.TenantSettings.Update,
+            .RequirePermission(AuthorizationActions.TenantSettings.Update,
                 ResourceKinds.TenantSetting,
                 TenantStorageResourceId(dto),
                 TenantStorageAttributes(dto),

@@ -63,8 +63,7 @@ public sealed class ActorDetailLinkPolicy : ILinkPolicy<ActorDto>
                 "GET",
                 "My subscription to this actor",
                 RequiresAuth: true)
-                .RequirePermission(
-                    AuthorizationActions.ActorSubscriptions.View,
+                .RequirePermission(AuthorizationActions.ActorSubscriptions.View,
                     ResourceKinds.ActorSubscription,
                     dto.Id.ToString(),
                     SubscriptionAttributes(dto.Id));
@@ -76,8 +75,7 @@ public sealed class ActorDetailLinkPolicy : ILinkPolicy<ActorDto>
                 "POST",
                 "Subscribe to this actor",
                 RequiresAuth: true)
-                .RequirePermission(
-                    AuthorizationActions.ActorSubscriptions.Create,
+                .RequirePermission(AuthorizationActions.ActorSubscriptions.Create,
                     ResourceKinds.ActorSubscription,
                     dto.Id.ToString(),
                     SubscriptionAttributes(dto.Id));
@@ -125,8 +123,7 @@ public sealed class ActorCollectionLinkPolicy : ICollectionLinkPolicy<ActorListD
                 "GET",
                 "My subscription to this actor",
                 RequiresAuth: true)
-                .RequirePermission(
-                    AuthorizationActions.ActorSubscriptions.View,
+                .RequirePermission(AuthorizationActions.ActorSubscriptions.View,
                     ResourceKinds.ActorSubscription,
                     dto.Id.ToString(),
                     SubscriptionAttributes(dto.Id));
@@ -138,8 +135,7 @@ public sealed class ActorCollectionLinkPolicy : ICollectionLinkPolicy<ActorListD
                 "POST",
                 "Subscribe to this actor",
                 RequiresAuth: true)
-                .RequirePermission(
-                    AuthorizationActions.ActorSubscriptions.Create,
+                .RequirePermission(AuthorizationActions.ActorSubscriptions.Create,
                     ResourceKinds.ActorSubscription,
                     dto.Id.ToString(),
                     SubscriptionAttributes(dto.Id));

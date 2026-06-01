@@ -133,8 +133,7 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
             yield return LinkDefinition.Edit(
                 RouteNames.UpdateStorageObject,
                 new { id = dto.Id })
-                .RequirePermission(
-                    AuthorizationActions.Update,
+                .RequirePermission(AuthorizationActions.Update,
                     ResourceKinds.StorageObject,
                     dto.Id.ToString(),
                     StorageObjectAttributes(dto),
@@ -143,8 +142,7 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
             yield return LinkDefinition.Delete(
                 RouteNames.DeleteStorageObject,
                 new { id = dto.Id })
-                .RequirePermission(
-                    AuthorizationActions.Delete,
+                .RequirePermission(AuthorizationActions.Delete,
                     ResourceKinds.StorageObject,
                     dto.Id.ToString(),
                     StorageObjectAttributes(dto),
