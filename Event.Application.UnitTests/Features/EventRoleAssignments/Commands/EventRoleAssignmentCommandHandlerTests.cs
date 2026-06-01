@@ -15,7 +15,7 @@ using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.EventRoleAssignments.Commands;
 
-public class EventRoleAssignmentCommandHandlerTests
+public class EventRoleAssignmentCommandHandlerTests : IDisposable
 {
     private static readonly Guid TenantId = Guid.Parse("018f0000-0000-7000-8000-000000001001");
     private static readonly Guid EventId = Guid.Parse("018f0000-0000-7000-8000-000000001002");
@@ -53,6 +53,11 @@ public class EventRoleAssignmentCommandHandlerTests
                 var operation = callInfo.Arg<Func<CancellationToken, Task<Guid>>>();
                 return operation(CancellationToken.None);
             });
+    }
+
+    public void Dispose()
+    {
+        _metrics.Dispose();
     }
 
     [Test]

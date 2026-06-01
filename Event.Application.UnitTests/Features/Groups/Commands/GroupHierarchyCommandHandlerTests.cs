@@ -19,7 +19,7 @@ using TUnit.Core;
 
 namespace Event.Application.UnitTests.Features.Groups.Commands;
 
-public class GroupHierarchyCommandHandlerTests
+public class GroupHierarchyCommandHandlerTests : IDisposable
 {
     private readonly IGroupRepository _groupRepository;
     private readonly IGroupMemberRepository _groupMemberRepository;
@@ -55,6 +55,11 @@ public class GroupHierarchyCommandHandlerTests
                 var operation = callInfo.ArgAt<Func<CancellationToken, Task<BaseCommandResponse<Guid>>>>(1);
                 return operation(CancellationToken.None);
             });
+    }
+
+    public void Dispose()
+    {
+        _metrics.Dispose();
     }
 
     [Test]
