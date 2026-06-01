@@ -2,24 +2,24 @@
 # ABOUTME: Keeps CI/CD, legal contribution, and operator-governance changes routed to platform maintainers.
 
 # GitHub Actions, issue templates, PR templates, CODEOWNERS, and Dependabot configuration.
-.github/** @islamu-ngo/platform-ops
+.github/** @amirakrari
 
 # Deployable images and deterministic dependency inputs.
-**/Dockerfile @islamu-ngo/platform-ops
-docker/** @islamu-ngo/platform-ops
-docker-compose.yml @islamu-ngo/platform-ops
-Directory.Packages.props @islamu-ngo/platform-ops
-Directory.Build.props @islamu-ngo/platform-ops
-global.json @islamu-ngo/platform-ops
-**/*.csproj @islamu-ngo/platform-ops
-**/packages.lock.json @islamu-ngo/platform-ops
+**/Dockerfile @amirakrari
+docker/** @amirakrari
+docker-compose.yml @amirakrari
+Directory.Packages.props @amirakrari
+Directory.Build.props @amirakrari
+global.json @amirakrari
+**/*.csproj @amirakrari
+**/packages.lock.json @amirakrari
 
 # CI/CD, release, operations, self-hosting, and legal contribution governance.
-docs/CI_CD_GOVERNANCE.md @islamu-ngo/platform-ops
-docs/OPERATIONS.md @islamu-ngo/platform-ops
-docs/RELEASE_CHECKLIST.md @islamu-ngo/platform-ops
-docs/SELF_HOSTING.md @islamu-ngo/platform-ops
-docs/BACKUP_RESTORE_UPGRADE.md @islamu-ngo/platform-ops
-docs/CONFIGURATION.md @islamu-ngo/platform-ops
-docs/CONTRIBUTING.md @islamu-ngo/platform-ops
-docs/legal/** @islamu-ngo/platform-ops
+docs/CI_CD_GOVERNANCE.md @amirakrari
+docs/OPERATIONS.md @amirakrari
+docs/RELEASE_CHECKLIST.md @amirakrari
+docs/SELF_HOSTING.md @amirakrari
+docs/BACKUP_RESTORE_UPGRADE.md @amirakrari
+docs/CONFIGURATION.md @amirakrari
+docs/CONTRIBUTING.md @amirakrari
+docs/legal/** @amirakrari

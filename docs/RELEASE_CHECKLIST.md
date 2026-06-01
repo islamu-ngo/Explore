@@ -11,12 +11,42 @@ ABOUTME: Provides the release documentation contract for self-hostable operators
 
 Use this checklist before tagging or publishing a release. A release is not ready until operators can understand what changed, how to upgrade, how to verify, and how to roll back.
 
+## Release Model
+
+The current release model is manual semantic-version tags plus manually authored GitHub Releases. Version scope and release history are tracked in [semantic_versioning/CHANGELOG.md](semantic_versioning/CHANGELOG.md); release readiness evidence is assembled from this checklist and the retained CI/CD artifacts referenced below.
+
+Do not add or require `.github/workflows/release.yml`, Release Drafter, or automatic semantic-release behavior until the release evidence bundle format is stable and the automation can attach or link durable evidence without relying only on expiring GitHub Actions artifacts. Conventional Commits remain the preferred commit-message style, but they do not automatically publish or version releases today.
+
+## Release Evidence Bundle
+
+Before publishing a GitHub Release, download the retained CI/CD artifacts listed in this checklist into a local evidence directory and generate the durable bundle:
+
+```bash
+dotnet run .github/scripts/generate-release-evidence-bundle.cs -- artifacts release-evidence
+```
+
+Set `RELEASE_VERSION`, `GITHUB_SHA`, `GITHUB_REF`, `GITHUB_REPOSITORY`, `GITHUB_RUN_ID`, `GITHUB_RUN_ATTEMPT`, and `CLA_STATUS` when generating the bundle outside GitHub Actions so the manifest records the release metadata. The script writes:
+
+- `release-evidence/release-evidence.json` — machine-readable evidence manifest;
+- `release-evidence/release-evidence.md` — full human-readable evidence summary;
+- `release-evidence/release-evidence-release-notes.md` — copy/paste GitHub Release evidence section;
+- `release-evidence/release-evidence-checksums.sha256` — SHA-256 hashes for every retained evidence file.
+
+Attach the generated bundle files to the GitHub Release or copy them to durable release storage before the source GitHub Actions artifacts expire. Paste the contents of `release-evidence-release-notes.md` into the GitHub Release body so release readers can find the durable evidence even after workflow artifacts expire.
+
+## Pull Request Release Impact Gate
+
+Pull requests that touch security/auth, migration/data/rollback, configuration/secrets/deployment, OpenAPI/client contract, or operator/self-hosting/release-note paths must satisfy the `Release Impact Check` before merge. The check validates the `## Release Impact` section in `.github/PULL_REQUEST_TEMPLATE.md` and requires the matching category checkbox plus non-empty `Details:`.
+
+Use `Not applicable` only when the change has no release-impact category. If the check flags a category, update the PR body and link the relevant documentation or release-note evidence before requesting release approval.
+
 ## Release Metadata
 
 - [ ] Version/tag is selected.
 - [ ] Commit SHA is recorded.
 - [ ] Image tags or deployment artifacts are recorded, including full-commit immutable `sha-*` / `dev-*` promotion tags when container images are published.
 - [ ] Image digests, immutable promotion tag evidence, Docker base image digest pins, SBOM/provenance evidence, image scan artifacts, and attestation verification results are recorded when container images are published.
+- [ ] Coolify-side consumption evidence is retained for container deployments: application configuration, API output, deployment logs, smoke summary, or deploy summary proves the running resource consumed either `image@sha256:<digest>` or the verified full-commit immutable tag.
 - [ ] Deployment environment, approver, expected immutable image tag, expected image digest, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason if any, and rollback note are recorded for staging/production deployments.
 - [ ] Supported deployment modes are stated: single-tenant, multi-tenant, optional storage, optional Cerbos.
 - [ ] Known incompatible versions are stated.
@@ -69,10 +99,12 @@ Use this checklist before tagging or publishing a release. A release is not read
 ## CI/CD Evidence Contract
 
 - [ ] OpenAPI drift artifacts are clean, or generated `openapi.json` / NSwag client changes are reviewed and committed.
+- [ ] Intentional breaking API contract changes include a matching `docs/API_CHANGELOG.md` entry with affected route/schema/client method, old/new behavior, affected clients, migration guidance, release target, and retained OpenAPI / advisory `oasdiff` evidence links when available.
 - [ ] Container image digest, immutable promotion tag evidence, Docker base image digest pins, SBOM/provenance, Trivy scan output, attestation verification JSON, checksum manifest, and image tag evidence are recorded when images are published.
 - [ ] Deployment evidence includes environment, component, commit SHA, expected immutable image tag, expected image digest, promotion evidence path, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason if any, workflow run link, and rollback note.
 - [ ] Production deployment approval and branch restrictions are configured in GitHub Environment settings.
 - [ ] Long-lived release evidence is copied from expiring GitHub Actions artifacts into release notes or durable storage when required.
+- [ ] Any failed gate rerun or emergency override follows [CI_CD_RUNBOOKS.md](CI_CD_RUNBOOKS.md) and records owner, reason, evidence, compensating control, and removal condition.
 
 Expected artifact names:
 
@@ -118,6 +150,14 @@ Use this structure for release notes:
 
 ### Operator Verification
 - ...
+
+### CI/CD Release Evidence
+- Commit SHA:
+- Attached evidence bundle files:
+  - `release-evidence.json`
+  - `release-evidence.md`
+  - `release-evidence-checksums.sha256`
+  - `release-evidence-release-notes.md`
 
 ### Documentation Impact
 - Updated | Not needed | Deferred: ...

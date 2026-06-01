@@ -31,6 +31,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [DOMAIN.md](DOMAIN.md) - domain entities and important relationships.
 - [API.md](API.md) - API conventions, HAL behavior, filters, caching, error shape.
 - [API_CONTRACT_INVENTORY.md](API_CONTRACT_INVENTORY.md) - generated inventory of every OpenAPI operation.
+- [API_CONTRACT_TEST_DEBT.md](API_CONTRACT_TEST_DEBT.md) - governed inventory of intentionally skipped API contract tests and removal criteria.
 - [API_COOKBOOK.md](API_COOKBOOK.md) - task-first API integration guidance.
 - [BLAZOR.md](BLAZOR.md) - client architecture, render policy, service patterns.
 - [DOCK_LAYOUT.md](DOCK_LAYOUT.md) - dock engine, responsive behavior, shell/workspace stacking, inspector overlays, and persistence.
@@ -42,6 +43,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 ## Governance And Rules
 - [GOVERNANCE.md](GOVERNANCE.md) - design and code governance.
 - [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) - GitHub Actions gates, branch protection, deployment environments, and CI/CD evidence policy.
+- [CI_CD_RUNBOOKS.md](CI_CD_RUNBOOKS.md) - maintainer runbooks for rerunning CI/CD gates without bypassing controls.
 - [legal/CLA.md](legal/CLA.md) - active ISLAMU Event contributor license agreement.
 - [legal/CONTRIBUTION_GOVERNANCE.md](legal/CONTRIBUTION_GOVERNANCE.md) - CLA legal contribution decision record and automation threat model.
 - [NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md) - naming rules for entities, CQRS, services, tests.
@@ -74,6 +76,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [SECURITY.md](SECURITY.md) - auth/authz model and trust boundaries.
 - [OPERATIONS.md](OPERATIONS.md) - deployment, health, observability.
 - [TESTING.md](TESTING.md) - TUnit framework, test projects, TDD workflow.
+- [TEST_RELIABILITY.md](TEST_RELIABILITY.md) - flaky/deferred runtime, stress, E2E, and visual-test tracking.
 - [BENCHMARKS.md](BENCHMARKS.md) - BenchmarkDotNet runtime benchmarks, API pipeline benchmarks, PostgreSQL/Testcontainers benchmark runs, and cold-start agent benchmark boundaries.
 - [SELF_HOSTING.md](SELF_HOSTING.md) - Docker Compose, Keycloak, MinIO, reverse proxy.
 - [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) - backup, restore, upgrade, and rollback runbook.

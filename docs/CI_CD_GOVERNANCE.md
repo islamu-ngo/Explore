@@ -24,10 +24,12 @@ Recommended checks after the PR1-PR8 governance baseline stabilizes:
 | Check | Workflow | Job name | Branch-protection status | Notes |
 |---|---|---|---:|---|
 | Fast build/test | `Build & Test` (`.github/workflows/test.yml`) | `run-tests` / reusable `build-and-test` | Ready after repository-side check-name verification | Always-present wrapper detects build/test-relevant paths and intentionally no-ops for dedicated docs/schema/ops-only changes. Keep name stable unless branch protection is migrated. |
-| Workflow security | `Workflow Security` (`.github/workflows/workflow-security.yml`) | `Workflow Security` | Ready after repository-side check-name verification | Always-present wrapper validates action SHA pins, Dependabot action-update policy, actionlint, and medium-or-higher zizmor findings for workflow-governance changes. |
+| Workflow security | `Workflow Security` (`.github/workflows/workflow-security.yml`) | `Workflow Security` | Ready after repository-side check-name verification | Always-present wrapper validates action SHA pins, Dependabot action-update policy, workflow cache policy, actionlint, and medium-or-higher zizmor findings for workflow-governance changes. |
 | OpenAPI drift | `OpenAPI Contract Guard` | `OpenAPI Contract Guard` | Required | Always-present workflow with internal no-op detection for unrelated changes. |
 | Code scanning | `CodeQL Advanced` | `Analyze (csharp)`, `Analyze (javascript-typescript)`, `Analyze (actions)` | Ready after repository-side check-name verification | Always-present detector keeps matrix checks present, runs analysis for CodeQL-relevant changes and schedule/manual dispatch, and intentionally no-ops for ignored docs/ops-only paths. C# uses manual Release build. Keep schedule enabled. |
 | Dependency review | `Dependency Review` | `Dependency Review` | Yes for PRs | Reviews dependency changes; read-only token permissions. |
+| CLA legal status | `Contributor License Agreement` (`.github/workflows/cla.yml`) | `Contributor License Agreement` | Ready after repository-side check-name verification | Metadata-only `pull_request_target` check that validates PR body CLA signatures from trusted base code only. |
+| Release impact metadata | `Release Impact Check` (`.github/workflows/release-impact.yml`) | `Release Impact Check` | Ready after repository-side check-name verification | Metadata-only `pull_request_target` check that requires security, migration, configuration, OpenAPI, and operator-impact PR evidence for matching path changes. |
 | Security integration | `Security Integration Tests` | `Security Integration Tests` | Ready after repository-side check-name verification | Always-present wrapper detects security-relevant paths, runs on schedule/manual dispatch, supports merge queue, and intentionally no-ops for unrelated changes. |
 | Cerbos policy | `Cerbos Policy Validation` | `Cerbos Policy Validation` | Ready after repository-side check-name verification | Always-present wrapper detects authorization-policy/code paths, runs on schedule/manual dispatch, supports merge queue, and intentionally no-ops for unrelated changes. |
 | Agent context | `agent-context` | `Validate AI-Context Contract` | Ready after repository-side check-name verification | Always-present wrapper detects AI context/docs/rule paths, supports merge queue/manual dispatch, and intentionally no-ops for unrelated changes. |
@@ -42,13 +44,20 @@ Record evidence for these settings before treating the repository as enterprise-
 
 | Control | Expected setting | Evidence required | Current evidence |
 |---|---|---|---|
-| Default branch protection / ruleset | `main` requires pull requests, current required checks, linear history or reviewed merge policy, and stale review dismissal when available. | Ruleset export, branch protection API output, or maintainer screenshot. | Not yet verified. |
-| Development branch protection / ruleset | `develop` requires pull requests and current required checks before merge. | Ruleset export, branch protection API output, or maintainer screenshot. | Not yet verified. |
-| Required check names | Check names match the table above and are stable before branch protection is updated. | Branch protection required-check export. | Not yet verified. |
-| Merge queue | Enabled only after all required workflows have `merge_group` or always-present wrappers. | Ruleset export showing queue status and required checks. | Not yet verified. |
-| Environments | `staging` and `production` exist with environment-scoped secrets. Production requires reviewers and branch/tag restrictions. | Environment settings screenshot/API output with secret names redacted. | Not yet verified. |
-| Security features | Secret scanning, push protection, Dependabot security updates, dependency graph, and CodeQL alerts are enabled. | Security settings screenshot/API output. | Not yet verified. |
-| CODEOWNERS owner resolution | Every team/user referenced by `.github/CODEOWNERS` exists and has write access. | GitHub CODEOWNERS validation or maintainer confirmation. | Not yet verified. |
+| Default branch protection / ruleset | `main` requires pull requests, current required checks, linear history or reviewed merge policy, and stale review dismissal when available. | Ruleset export, branch protection API output, or maintainer screenshot. | 2026-06-01 API evidence: branch protection endpoint returns 404; active `main` branch ruleset only includes deletion, non-fast-forward, and Copilot code-review rules. Missing PR/review/required-check controls. |
+| Development branch protection / ruleset | `develop` requires pull requests and current required checks before merge. | Ruleset export, branch protection API output, or maintainer screenshot. | 2026-06-01 API evidence: branch protection endpoint returns 404 and no `develop` ruleset was returned. Missing expected controls. |
+| Required check names | Check names match the table above and are stable before branch protection is updated. | Branch protection required-check export. | 2026-06-01 API evidence: no branch-protection status-check configuration returned. Required checks are not configured yet. |
+| Merge queue | Enabled only after all required workflows have `merge_group` or always-present wrappers. | Ruleset export showing queue status and required checks. | 2026-06-01 API evidence: repository ruleset export showed no merge-queue rule. |
+| Environments | `staging` and `production` exist with environment-scoped secrets. Production requires reviewers and branch/tag restrictions. | Environment settings screenshot/API output with secret names redacted. | 2026-06-01 remediation: `staging` and `production` environments created. `production` requires reviewer `@amirakrari`; custom deployment branch policies allow `main` and `v*`. `staging` custom deployment branch policy allows `develop`. Environment secrets still need maintainer verification with values redacted. |
+| Actions policy | Repository allows only GitHub-owned, verified, or SHA-pinned actions according to the organization policy. | Actions policy API output or maintainer screenshot. | 2026-06-01 API evidence: Actions are enabled and `allowed_actions` is `all`; policy is not restricted at the repository level. |
+| Security features | Secret scanning, push protection, Dependabot security updates, dependency graph, and CodeQL alerts are enabled. | Security settings screenshot/API output. | 2026-06-01 API evidence: secret scanning and push protection enabled; dependency graph/vulnerability alerts enabled; code-scanning API accessible with an open CodeQL alert; Dependabot security updates / automated security fixes enabled (`enabled: true`, `paused: false`). |
+| CODEOWNERS owner resolution | Every team/user referenced by `.github/CODEOWNERS` exists and has write access. | GitHub CODEOWNERS validation or maintainer confirmation. | 2026-06-01 API evidence: `@islamu-ngo/platform-ops` team lookup returned 404, so `.github/CODEOWNERS` now uses `@amirakrari`; collaborator permission API reports `admin`. Replace with an org team after it exists. |
+
+### Repository Settings Drift Check
+
+`.github/workflows/repository-settings.yml` runs scheduled/manual repository-settings drift checks through `.github/scripts/validate-repository-settings.cs`. The workflow reads GitHub repository metadata, branch protection, rulesets, environments, Actions policy, security features, code scanning access, and CODEOWNERS owner resolution, then retains redacted JSON/Markdown evidence in `repository-settings-evidence`.
+
+The lane is expected to fail until the release-blocking settings above are configured. Do not suppress it or remove findings without either fixing the GitHub setting or recording an owner, date, compensating control, and removal condition in the release evidence package.
 
 ### Deployment Environments
 
@@ -79,6 +88,12 @@ The decision record in [CONTRIBUTION_GOVERNANCE.md](legal/CONTRIBUTION_GOVERNANC
 
 `.github/workflows/cla.yml` is metadata-only. It uses `pull_request_target`, checks out the trusted base commit only, runs repository-owned `.github/scripts/validate-cla-pr.cs`, and never checks out or executes pull-request head code. It uses read-only `GITHUB_TOKEN` scopes and stores signature evidence in the pull request body plus GitHub PR audit trail.
 
+### Release Impact PR Metadata Gate
+
+Release-impacting pull requests must document operator-visible risk before merge. `.github/workflows/release-impact.yml` runs as a metadata-only `pull_request_target` check, checks out the trusted base commit only, and runs repository-owned `.github/scripts/validate-release-impact-pr.cs` against the pull request body and changed-file metadata. It uses read-only `contents` and `pull-requests` permissions and must not checkout, build, test, cache, or execute pull-request head code.
+
+The check requires the `## Release Impact` section in `.github/PULL_REQUEST_TEMPLATE.md` to match the changed files. Security/auth, migration/data/rollback, configuration/secrets/deployment, OpenAPI/client contract, and operator/self-hosting/release-note path changes must select the corresponding checkbox and provide non-empty `Details:`. `Not applicable` is only valid when the changed files do not imply one of those release-impact categories.
+
 ### GitHub Actions Supply-Chain Pins
 
 External `uses:` references in `.github/workflows/*.yml` are pinned to full-length commit SHAs with a same-line version comment, for example `owner/action@<sha> # vX.Y.Z`. This makes the executable action reference immutable while preserving human-readable upgrade intent.
@@ -96,11 +111,26 @@ Repository-owned helper scripts under `.github/scripts/` must be file-based C# s
 `Workflow Security` treats workflow definitions as security-sensitive code. For workflow-governance changes it:
 
 - sets up the pinned .NET SDK from `global.json`, then runs the local C# validators for action pins and Dependabot `github-actions` update coverage;
+- runs `.github/scripts/validate-workflow-cache-policy.cs` so privileged deploy, container, and release workflows cannot consume unreviewed GitHub Actions caches;
+- runs `.github/scripts/validate-deploy-workflow-contract.cs` so production and staging deploy callers continue to pass expected digest, promotion evidence, deployment-freeze, smoke-check, and immutable-tag inputs into `.github/actions/deploy-coolify`;
 - installs `actionlint` `1.7.12` from the upstream release archive after checking the expected SHA-256 digest, then blocks on workflow syntax, expression, and shell-in-workflow lint findings;
 - installs `zizmor` `1.25.2` in an isolated Python virtual environment, runs it offline, exports SARIF/text evidence, and blocks on medium-or-higher severity findings;
 - uploads `workflow-security-evidence` for 30 days.
 
 If future `zizmor` findings must be temporarily accepted, document each exception with owner, date, rule ID, affected workflow, compensating control, and removal condition before weakening the workflow.
+
+### Workflow Cache Poisoning Policy
+
+Fork pull requests and untrusted contribution events must not write caches that are later consumed by trusted deployment, release, or publish workflows. `Workflow Security` enforces this with `.github/scripts/validate-workflow-cache-policy.cs`.
+
+Current policy:
+
+- direct `actions/cache` usage is not approved in workflow YAML; use tool-specific caches only after a documented threat-model review;
+- `actions/setup-dotnet` package caching is allowed in CI validation workflows, but not in deploy, container, or release workflows;
+- Docker Buildx GitHub Actions cache writes (`cache-to: type=gha`) are approved only in the trusted reusable container build workflow (`.github/workflows/_container-build.yml`), where registry pushes, SBOM/provenance, scan, promotion, and attestation evidence are produced together;
+- deployment workflows and CLA/legal metadata workflows must not restore or write caches from untrusted pull-request code.
+
+Any future cache added to a privileged workflow needs an explicit owner, event model, cache-key strategy, and proof that fork PRs cannot poison release or deployment inputs.
 
 ### Local Secret-Scanning Feedback
 
@@ -118,32 +148,89 @@ Dockerfiles must copy the root restore inputs (`global.json`, `Directory.Build.p
 
 ### NuGet Vulnerability Audit Policy
 
-Fast CI runs `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` after locked restore, then parses the report with `.github/scripts/validate-nuget-vulnerabilities.cs`. Any vulnerable direct or transitive package reported by NuGet fails the `Build & Test` lane; temporary advisory exceptions require an owner, date, advisory URL, affected package/version, compensating control, and removal condition recorded in this document before the workflow may be weakened.
+Fast CI runs `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` after locked restore, then parses the report with `.github/scripts/validate-nuget-vulnerabilities.cs`. The parser writes retained JSON and markdown summary evidence under `artifacts/dependencies/`, splitting findings by direct/transitive package relationship and advisory severity. Any vulnerable direct or transitive package reported by NuGet fails the `Build & Test` lane; temporary advisory exceptions require an owner, date, advisory URL, affected package/version, package relationship, severity, compensating control, and removal condition recorded in this document before the workflow may be weakened.
 
 The current policy is remediation-first. `MailKit` was upgraded from `4.15.1` to `4.16.0` to clear GitHub Advisory `GHSA-9j88-vvj5-vhgr` / `CVE-2026-41319` rather than making the audit advisory.
+
+### Dependency License Policy
+
+ISLAMU Event is licensed under AGPL-3.0, and the ISLAMU CLA grants ISLAMU broad inbound rights for contributor work. That inbound CLA does not override third-party dependency licenses, so CI must keep runtime, build, and test dependency license risk explicit before alternative-license, commercial, nonprofit, public-sector, or special social-impact distribution is offered.
+
+`Build & Test` runs `.github/scripts/validate-dependency-license-policy.cs` after locked restore and the NuGet vulnerability audit. The validator scans product `packages.lock.json` files, reads restored NuGet package metadata from the local package cache, rejects denied or unknown license metadata unless a package-specific exception is encoded in the policy script, and guards future product npm or container OS package dependency surfaces until dedicated license scanning exists for those ecosystems.
+
+Reviewed license identifiers currently allowed by policy are `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `CC0-1.0`, `ISC`, `MIT`, `MPL-2.0`, `PostgreSQL`, `Unicode-DFS-2016`, `Unlicense`, and `Zlib`. Strong reciprocal, copyleft, source-available, and business-source families such as AGPL, GPL, LGPL, BUSL, Commons Clause, RPL, and SSPL are denied unless an explicit temporary exception is recorded in `.github/scripts/validate-dependency-license-policy.cs`.
+
+Current visible exceptions are intentional debt, not blanket approvals:
+
+| Package | Risk | Removal condition |
+|---|---|---|
+| `AutoMapper` | Runtime dependency with RPL-1.5 metadata. | Replace, remove, or obtain legal approval before alternative-license distribution. |
+| `MediatR` | Runtime dependency with RPL-1.5 metadata. | Replace, remove, or obtain legal approval before alternative-license distribution. |
+| `SonarAnalyzer.CSharp` | Source-available analyzer license. | Keep analyzer/build-only or replace before treating as shipped runtime dependency. |
+| `Microsoft.VisualStudio.Azure.Containers.Tools.Targets` | Microsoft EULA build tooling. | Keep build-only or replace before treating as shipped runtime dependency. |
+| `NetArchTest.Rules` | Missing NuGet license metadata. | Replace or document package metadata before removing the exception. |
+
+Product `package-lock.json` files outside excluded tooling directories fail until an npm license scanner is added. Deployable Dockerfiles fail if they introduce OS package-manager installs such as `apt-get install` or `apk add` before a container OS package license scanning path is documented.
+
+### Coverage Publication Policy
+
+Coverage collection is artifact-only. `Coverage Evidence` runs on schedule/manual dispatch and currently collects Cobertura coverage for the stable `Event.Domain.UnitTests` lane, retaining the coverage file, TRX, HTML report, build log, and test log as `coverage-evidence`.
+
+Do not add Codecov, SonarCloud, or coverage-percentage badges until the corresponding workflow publishes verified coverage data for the intended scope and has a documented owner for triage. Badge changes must land in the same PR as the verified workflow that backs the badge.
+
+### Runtime Test Reliability Policy
+
+Runtime, stress, E2E, and manual visual lanes remain advisory until their known flaky or deferred tests are tracked with owner, first-seen date, evidence source, and promotion/removal criteria in [TEST_RELIABILITY.md](TEST_RELIABILITY.md). This keeps nightly/manual failures actionable instead of silently normalizing noisy failures.
+
+Do not promote E2E, stress, security, or runtime lanes to required status while a blocking reliability item lacks an owner or removal condition. When a tracked item is fixed, remove the skip in code and update `TEST_RELIABILITY.md` in the same PR. API-contract-specific skips remain governed by [API_CONTRACT_TEST_DEBT.md](API_CONTRACT_TEST_DEBT.md).
+
+### OpenAPI Breaking-Change Evidence
+
+`OpenAPI Contract Guard` blocks stale generated contract artifacts and verifies deterministic second-run regeneration for `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
+
+The guard also runs `.github/scripts/validate-api-contract-skip-inventory.cs` against [API_CONTRACT_TEST_DEBT.md](API_CONTRACT_TEST_DEBT.md). Any skipped integration test whose code skip reason includes `Category: API contract` must be listed in that inventory with a source file, owner, and removal condition. This keeps deferred route-name/HATEOAS contract enforcement visible while the owning `api-contract-stabilization` work finishes.
+
+Intentional breaking API changes must also update [API_CHANGELOG.md](API_CHANGELOG.md#breaking-change-evidence) in the same pull request. The changelog entry must identify the affected route, operation, schema, or generated client method; explain old and new behavior; identify affected clients or operator workflows; provide migration guidance or a compatibility window; name the release or target milestone; and link retained `openapi-contract-guard` evidence when available.
+
+`OpenAPI Contract Guard` also emits `oasdiff` markdown and JSON breaking-change reports against the base branch when OpenAPI-relevant paths change. For PR, push, and merge-queue runs, detected breaking changes fail the workflow unless `docs/API_CHANGELOG.md` changed in the same diff. Weekly scheduled and manual runs still execute the full guard as evidence-only runs so maintainers get recurring contract drift and breaking-change evidence even when no PR touched OpenAPI paths.
+
+OpenAPI linting uses the project-owned `.spectral.yaml` ruleset, not the full built-in Spectral OpenAPI ruleset. The current low-noise advisory rules cover invariants already expected by generated-client and inventory tooling: API title, API version, operation IDs, operation tags, and response descriptions. `OpenAPI Contract Guard` runs checksum-independent version-pinned `@stoplight/spectral-cli@6.16.0` through `npx`, retains JSON and Markdown reports in `openapi-contract-guard`, and keeps findings advisory until the ruleset has stable signal over multiple PRs.
+
+This is now a missing-evidence gate for breaking OpenAPI changes, not full automated release approval. `oasdiff` findings with a same-diff changelog update remain reviewer evidence that must be checked against the changelog and release notes. Blocking Spectral remains future work until its rules are documented, low-noise, and ready for promotion.
 
 ## Required vs Advisory Gates
 
 | Gate | Required | Advisory / scheduled | Promotion rule |
 |---|---:|---:|---|
 | Release build + fast tests | Yes | No | Required for all code PRs. |
+| Coverage evidence | No | Yes | Artifact-only scheduled/manual Cobertura evidence for stable unit coverage. Keep non-blocking until scope, thresholds, and publication owner are documented. |
 | Infrastructure unit tests | Yes | No | Included in fast CI. |
 | PostgreSQL-backed integration tests | Conditional | Deploy callers | Required for integration/deploy callers; add a schedule only after reliability and runtime cost are acceptable. |
 | OpenAPI generated-artifact drift | Yes | No | Required after PR2 baseline. |
-| `oasdiff` breaking-change report | No | Future | Keep advisory until versioning and contract tests stabilize. |
-| Spectral/OpenAPI lint | No | Future | Add only after rules are agreed and low-noise. |
+| Skipped API contract test inventory | Yes | No | `OpenAPI Contract Guard` fails when a `Category: API contract` skip is missing from `docs/API_CONTRACT_TEST_DEBT.md` or lacks owner/removal evidence. |
+| OpenAPI breaking-change changelog evidence | Yes | Scheduled/manual evidence | `OpenAPI Contract Guard` fails PR/push/merge-queue runs when `oasdiff` detects breaking changes without a same-diff `docs/API_CHANGELOG.md` update. Breaking changes with changelog evidence remain reviewer/release evidence. |
+| Release-impact PR metadata | Yes | No | `Release Impact Check` blocks PRs whose security, migration, configuration, OpenAPI, or operator-impact paths lack matching PR-template evidence. |
+| `oasdiff` breaking-change report | Changelog gate | Yes | PR/push/merge-queue runs fail on detected breaking changes unless `docs/API_CHANGELOG.md` changes in the same diff. Scheduled/manual reports remain evidence-only. |
+| Spectral/OpenAPI lint | No | Yes | `OpenAPI Contract Guard` retains advisory JSON/Markdown reports from the low-noise `.spectral.yaml` ruleset; keep non-blocking until rules have stable signal. |
 | Security/Cerbos path workflows | Conditional | Yes | Always-present wrappers intentionally no-op for unrelated changes; nightly schedule covers drift outside path-relevant PRs. |
 | OpenSSF Scorecard | No | Yes | Scheduled/manual supply-chain posture evidence. Uploads SARIF to code scanning and retains `scorecard-evidence`; keep advisory until repository permissions and signal quality are proven. |
 | Local secret scanning | New findings only | Yes | `gitleaks` blocks on PR/push/merge-queue ranges for newly introduced leaks and keeps scheduled/manual history scans advisory until legacy findings are triaged or baselined. |
-| E2E browser/runtime tests | No | Yes | Manual/nightly until reliability data justifies required status. |
+| Dependency license policy | Yes | No | `Build & Test` blocks denied or unknown product dependency licenses unless a package-specific exception with removal condition is encoded in the repository-owned C# validator. |
+| E2E browser/runtime tests | No | Yes | Manual/nightly until `docs/TEST_RELIABILITY.md` tracked flakes are resolved or explicitly baselined and reliability data justifies required status. |
 | Container SBOM/provenance/Trivy/attestation/promotion verification | Deploy-only | No | Required before deployment workflows call Coolify; retained evidence includes registry manifest/index output, immutable primary-registry tag promotion evidence, vulnerability scan artifacts, attestation verification JSON, and checksum manifests. |
 | Production smoke checks | Deploy-only | No | Required for production deploys; `PRODUCTION_API_URL` and `PRODUCTION_UI_URL` must be configured and both `/alive` and `/health` must pass for deployed components. Staging smoke checks run when staging URL variables are configured. |
 
 The reusable container build must verify each pushed GHCR digest with `gh attestation verify` before any dependent Coolify deploy job can start. Verification must constrain the expected repository, reusable signer workflow, source ref, source digest, SLSA provenance predicate, and GitHub-hosted runner trust boundary; do not rely on workflow-controlled predicate fields as the sole trust source.
 
-The reusable container build must also record immutable primary-registry promotion evidence before deploy jobs can start. When Coolify digest deployment is not yet proven, the temporary fallback is an immutable `sha-*` production tag or `dev-*` staging tag whose primary-registry reference is inspected and verified to resolve to the built digest. Mutable tags such as `latest` and `develop` remain convenience aliases only and must not be treated as release evidence.
+GitHub artifact attestations are the chosen SLSA-compatible provenance evidence path for this repository. The container build already produces Buildx SBOM/provenance attestations and then verifies the pushed GHCR digest with `gh attestation verify` against the SLSA provenance predicate, repository, signer workflow, source ref, source digest, and GitHub-hosted runner trust boundary. Do not add a second provenance verifier unless it verifies the same digest without weakening the current trust constraints and produces retained evidence with an owner/date/removal condition.
+
+The reusable container build must also record immutable primary-registry promotion evidence before deploy jobs can start. Public Coolify v4.x source evidence shows Docker Image applications support SHA-256 hash input: `DockerImageParser` parses `image@sha256:<digest>`, the Docker Image UI labels the field as `Docker Image Tag or Hash`, and `ApplicationDeploymentJob` normalizes `sha256-*` values into `image@sha256:<digest>` for deployment. ISLAMU's live Coolify resources have not yet been proven to consume those digests, so the next required evidence is Coolify application configuration, API output, deployment logs, or retained deploy summaries proving the running resource consumed either `image@sha256:<digest>` or the verified full-commit immutable tag. Until that live proof exists, the temporary fallback is an immutable `sha-*` production tag or `dev-*` staging tag whose primary-registry reference is inspected and verified to resolve to the built digest. Mutable tags such as `latest` and `develop` remain convenience aliases only and must not be treated as release evidence.
+
+ATCR currently uses a scoped environment secret (`ATCR_PASSWORD`) with the fixed registry user configured in the deploy workflows. Public ATCR docs describe ATProto OAuth with DPoP, a Docker credential helper/device authorization flow, short-lived registry JWTs behind that helper, and fallback `docker login` with an ATProto app password; they do not document a GitHub Actions OIDC federation flow for non-interactive image pushes. Treat `ATCR_PASSWORD` as a deployment credential: scope it only to `staging` and `production`, rotate it at least every 90 days and after every suspected exposure or maintainer access change, and verify it only grants the package push/pull permissions required for `atcr.io/amirakrari.bsky.social/islamu-event-*`. If ATCR later documents GitHub OIDC or another non-interactive short-lived token exchange for CI pushes, replace the static secret with the short-lived path in the same PR that updates this section and the workflows.
 
 Coolify deploy workflows use the local composite action `.github/actions/deploy-coolify` for webhook triggering, smoke checks, redacted failure summaries, and retained deployment evidence. Before invoking Coolify, deploy jobs download the retained `container-build-*` evidence, resolve the component's full-commit immutable tag and digest with `.github/scripts/resolve-deploy-image-evidence.cs`, and pass that digest into the deploy action. The production workflow publishes and records full-commit `sha-${{ github.sha }}` immutable tags; staging publishes and records full-commit `dev-${{ github.sha }}` immutable tags. Production calls set `require-smoke-check: "true"`, so missing production smoke URLs block the webhook call and both `/alive` and `/health` must return `200` for the deployed component. Staging keeps smoke URLs optional but uses the same `/alive` and `/health` checks when configured. This centralizes deploy behavior while keeping environment-scoped secrets and approvals on the caller jobs. Coolify-side proof that the platform consumed that exact digest or full-commit tag remains required before final release readiness.
+
+`Workflow Security` validates this deploy-caller contract with `.github/scripts/validate-deploy-workflow-contract.cs`. If a deploy workflow stops downloading retained container build evidence, resolving component digest evidence, passing freeze/override inputs, requiring production smoke checks, or calling the shared local action for both API and UI, workflow security fails before the deploy workflow can merge.
 
 Deployment freeze control is an operator-owned GitHub Environment/Repository variable named `DEPLOYMENT_FREEZE`. When it is set to `true`, `.github/actions/deploy-coolify` refuses to call the Coolify webhook unless a manual `workflow_dispatch` run supplies `override_reason`. The override reason is written to the retained deployment summary so urgent security releases are auditable without weakening environment approvals.
 
@@ -179,17 +266,50 @@ Never hand-edit OpenAPI or NSwag generated client artifacts. Regenerate them thr
 
 | Evidence | Workflow(s) | Retention |
 |---|---|---:|
-| Fast/integration TRX | `Build & Test (Reusable)` | 14 days |
-| OpenAPI drift artifacts | `OpenAPI Contract Guard` | 30 days |
+| Fast/integration TRX, build/analyzer warning logs, and NuGet vulnerability summaries | `Build & Test (Reusable)` | 14 days |
+| OpenAPI drift, `oasdiff`, and advisory Spectral artifacts | `OpenAPI Contract Guard` | 30 days |
 | Workflow security evidence | `Workflow Security` | 30 days |
 | OpenSSF Scorecard SARIF | `OpenSSF Scorecard` | 30 days |
 | Secret-scanning SARIF/text evidence | `Secret Scanning` | 30 days |
-| Security and Cerbos logs | `Security Integration Tests`, `Cerbos Policy Validation` | 30 days |
+| Repository settings drift evidence | `Repository Settings Drift` | 30 days |
+| Security and Cerbos logs/TRX | `Security Integration Tests`, `Cerbos Policy Validation` | 30 days |
+| Coverage Cobertura/TRX/log evidence | `Coverage Evidence` | 30 days |
 | E2E TRX, traces, screenshots, videos, Docker diagnostics | `E2E Runtime Tests` | 30 days |
+| Performance smoke logs/results | `Performance Smoke` | 30 days |
 | Container digest, OCI inspect/index output, immutable promotion evidence, Trivy text/SARIF output, attestation verification JSON, checksum manifest, SBOM/provenance evidence | `Container Build (Reusable)` | 90 days; preserve release evidence externally for release lifetime |
 | Deployment summaries/logs | Coolify deploy workflows | 90 days minimum |
 
 Release notes must copy or link long-lived evidence that GitHub artifact retention will eventually delete.
+
+For manual releases, generate the durable release evidence manifest after downloading retained CI/CD artifacts:
+
+```bash
+dotnet run .github/scripts/generate-release-evidence-bundle.cs -- artifacts release-evidence
+```
+
+The generated JSON, markdown summary, release-notes evidence section, and SHA-256 checksum manifest are the bridge between expiring GitHub Actions artifacts and the manually authored GitHub Release. Attach them to the release or copy them to durable release storage. Paste `release-evidence-release-notes.md` into the GitHub Release body so the release keeps durable evidence pointers even after workflow artifacts expire.
+
+## Artifact Triage Guide
+
+Maintainers should be able to triage CI/CD failures from GitHub Actions evidence before reproducing locally. Use this guide when a workflow fails or when preparing release evidence.
+
+Use [CI_CD_RUNBOOKS.md](CI_CD_RUNBOOKS.md) for the approved rerun and emergency override paths. Do not bypass required gates just because evidence is hard to interpret; missing or unclear evidence is a CI/CD defect.
+
+| Evidence | First triage question | Expected maintainer action |
+|---|---|---|
+| Fast/integration TRX, build/analyzer warning logs, and NuGet vulnerability summaries | Which project/test failed, and did the failure occur before or after build? Are new analyzer/compiler warnings visible in the retained build log? Did the NuGet audit classify any direct/transitive advisory by severity? | Open the TRX/build/dependency artifact first, then the job summary. Assign test failures to the owning project area, warning regressions to the project that introduced the new warning output, and dependency advisories by direct/transitive relationship plus severity. |
+| OpenAPI drift, skipped contract inventory, `oasdiff`, and advisory Spectral artifacts | Did `schemas/openapi.json`, API inventory, or generated NSwag client change intentionally? Are skipped API contract tests still listed in `docs/API_CONTRACT_TEST_DEBT.md` with owner/removal criteria? Did `oasdiff` detect breaking changes, and did the same diff update `docs/API_CHANGELOG.md`? Did low-noise Spectral report API metadata or operation-shape drift? | If intentional, require API changelog/release evidence; if accidental, regenerate through the documented OpenAPI workflow commands. Treat `oasdiff` findings with changelog evidence and all Spectral findings as reviewer evidence until stricter rules are promoted. |
+| Workflow security evidence | Did action pins, Dependabot policy, cache policy, actionlint, or zizmor fail? | Treat as a CI/CD security defect. Fix workflow YAML or document a time-bounded exception with owner/date/removal condition. |
+| OpenSSF Scorecard SARIF | Is the finding actionable for this repository, or informational posture drift? | Keep advisory unless a repeated high-signal finding is accepted into the required baseline. Record false positives before promotion. |
+| Secret-scanning SARIF/text | Is this a newly introduced secret or a legacy history finding? | Newly introduced findings block and require secret rotation/removal. Legacy scheduled/manual findings need triage or baseline before history-wide blocking. |
+| Security and Cerbos logs/TRX | Did the security test fail in code, fixture setup, Keycloak/Cerbos startup, or policy contract expectations? | Use TRX for failing test identity and retained logs for container/service context. Assign to API/security or policy owner. |
+| Coverage evidence | Did the stable unit coverage lane generate Cobertura, TRX, HTML, build, and test evidence? | Keep coverage advisory and artifact-only. Expand scope or add thresholds only after the target lane is stable and the publication owner is documented. |
+| E2E runtime evidence | Is failure in app startup, browser interaction, infrastructure container, or assertion logic? | Review the E2E step summary first, then TRX, Playwright artifacts, screenshots/videos, traces, and Docker diagnostics before rerunning locally. Repeated scheduled failures must be tracked in `docs/TEST_RELIABILITY.md`. |
+| Performance smoke evidence | Did a representative API endpoint benchmark fail to build/run, or did runtime behavior change enough to invalidate the benchmark? | Review `performance-smoke-evidence` logs and BenchmarkDotNet results. Keep the lane advisory until enough scheduled runs prove stable signal and explicit thresholds are documented. |
+| Container evidence | Do digest, scan, SBOM/provenance, attestation, promotion, and checksum artifacts agree for the same image digest? | Treat mismatches as release blockers. Preserve evidence externally for release lifetime before GitHub artifact expiry. |
+| Deployment summaries/logs | Did the webhook, expected digest/tag resolution, smoke checks, freeze override, or rollback evidence fail? | Do not promote production until the failed component has a retained summary with redacted failure context and a rollback/override note. |
+
+If an artifact is missing, fix the workflow evidence path before weakening the gate. Missing evidence is a CI/CD bug, not a reason to bypass review.
 
 ## Badge Policy
 

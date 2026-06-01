@@ -3,7 +3,7 @@ ABOUTME: Defines evidence, gaps, target architecture, rollout phases, and verifi
 
 # Enterprise CI/CD Hardening - Implementation Plan
 
-Last Updated: 2026-05-30 Europe/Brussels
+Last Updated: 2026-06-01 Europe/Brussels
 
 ## 0. Planning Metadata
 
@@ -18,9 +18,16 @@ Last Updated: 2026-05-30 Europe/Brussels
 
 ### Research And Tooling Provenance
 
-- **Tavily MCP:** Requested by the user and attempted in the implementation session; Tavily returned plan-limit error `432` for GitHub Actions security and artifact-attestation searches. Refresh external research when quota is available.
-- **Context7 MCP:** Attempted for GitHub Actions and Docker Buildx documentation; Context7 returned monthly quota exhausted. Official primary-source docs were used through web research instead.
+- **Tavily MCP:** Requested by the user and initially blocked by plan-limit error `432`. Refreshed on 2026-06-01; GitHub environment/attestation searches returned useful current documentation snippets, while Coolify/ATCR searches were noisy and source/code evidence remained stronger.
+- **Context7 MCP:** Initially quota-exhausted for GitHub Actions and Docker Buildx. Refreshed on 2026-06-01 for GitHub Actions; confirmed `merge_group` required-check triggers, environment required reviewers, and `gh attestation verify` container-image verification guidance.
 - **Primary sources used:** GitHub Actions secure-use, OIDC, environments, artifact attestations, dependency review, and `pull_request_target` warnings; Docker Buildx SBOM/provenance docs; zizmor docs; OpenSSF Scorecard docs; `contributor-assistant/github-action`; `cla-assistant.io`; `contributoragreements.org`.
+
+## Re-baseline — 2026-06-01 Europe/Brussels
+
+- **Reason:** Session handoff after additional Phase 4 implementation slices and extensive workflow/docs changes.
+- **What changed:** Phase 4 now includes repository-owned C# cache-policy and dependency-license validators, direct/transitive/severity NuGet vulnerability evidence, deploy-caller contract validation, `Workflow Security` cache-policy enforcement, `_build-test.yml` dependency license policy auditing, retained fast/integration build warning logs, artifact-only coverage evidence for stable Domain unit tests, Security/Cerbos TRX evidence, Security Integration job summaries, and a maintainer artifact triage guide in `docs/CI_CD_GOVERNANCE.md`. Phase 5 now has an explicit `docs/API_CHANGELOG.md` breaking-change evidence contract, `oasdiff` missing-changelog blocking for PR/push/merge-queue runs, low-noise advisory Spectral reports, governed skipped API contract test debt, and weekly scheduled OpenAPI evidence runs. Phase 6 now documents GitHub artifact attestations as the selected SLSA-compatible provenance evidence path and records the current ATCR credential strategy. Phase 9 now has `docs/TEST_RELIABILITY.md` for flaky/deferred runtime, stress, E2E, and manual visual test debt; E2E, Security/Cerbos, and Performance Smoke scheduled/manual workflows write retained runtime evidence summaries for trend review. Phase 10 now has a maintainer rerun/override runbook in `docs/CI_CD_RUNBOOKS.md`, a selected manual release model, `.github/scripts/generate-release-evidence-bundle.cs` for durable release evidence bundle generation and copy/paste GitHub Release evidence notes, and a metadata-only `Release Impact Check` for PR release-note evidence.
+- **Plan impact:** Phase 4 cache-poisoning controls, dependency vulnerability evidence splitting, deploy-caller contract validation, dependency license policy scanning, retained warning/build evidence, artifact-only coverage collection, TRX evidence, and artifact triage guidance are now implemented locally. Phase 5 has deterministic OpenAPI/client drift checks, breaking-change changelog evidence policy, `oasdiff` missing-changelog blocking for PR/push/merge-queue runs, advisory Spectral evidence from a low-noise project ruleset, and scheduled/manual OpenAPI evidence reporting; changeloged breaking findings remain reviewer/release evidence. Phase 6 uses scoped `ATCR_PASSWORD` environment secrets with documented rotation until OIDC/short-lived ATCR credentials are available. Phase 9 now tracks reliability debt with owner, first-seen date, evidence source, and removal/promotion criteria before advisory runtime lanes can become required; E2E, Security/Cerbos, and Performance Smoke scheduled/manual lanes summarize retained evidence for trend review. Phase 10 has documented rerun/emergency override paths, a manual release model, a local release evidence bundle generator that emits release-note evidence text, and PR metadata validation for security/migration/configuration/OpenAPI/operator-impact changes.
+- **Remaining work:** Continue with live Coolify-side digest/tag consumption proof, repository-side Phase 8 remediation, or promotion of another advisory lane after reliability evidence. Public Coolify v4.x source/UI evidence indicates Docker Image apps support SHA-256 hash input and `image@sha256:<digest>` normalization, but do not claim final enterprise readiness until ISLAMU's live Coolify resources prove they consumed the expected digest or verified full-commit immutable tag and repository-side required-check/environment settings controls are configured. CODEOWNERS now uses `@amirakrari` as a resolvable owner after the planned `@islamu-ngo/platform-ops` team returned 404; replace it with an org team after one exists.
 
 ## 1. Executive Summary
 
@@ -32,13 +39,13 @@ It is not yet "best CI/CD." The current design still has avoidable enterprise ga
 - path-skipped required-check behavior is locally closed for the candidate required workflows that previously had trigger-level filters; repository-side required-check configuration still needs review;
 - `test.yml`, security/Cerbos/context workflows, OpenAPI Contract Guard, and CodeQL now include `merge_group`, but required-check settings still need external repository evidence before they can be treated as merge-queue-ready;
 - `_build-test.yml` no longer owns OpenAPI drift; `openapi-contract.yml` is the canonical guard for `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs`;
-- deploy workflows now share one local Coolify deploy composite action for webhook/smoke/evidence behavior, deployment-freeze override evidence, required production smoke checks, and deploy-time expected digest resolution from retained promotion artifacts, and still need Coolify-side digest consumption proof, though the reusable build records primary-registry immutable tag promotion evidence and verifies full-commit `sha-*` / `dev-*` tags resolve to the built digest before deploy jobs can start;
+- deploy workflows now share one local Coolify deploy composite action for webhook/smoke/evidence behavior, deployment-freeze override evidence, required production smoke checks, and deploy-time expected digest resolution from retained promotion artifacts, and still need live Coolify-side consumption proof. Public Coolify v4.x source/UI evidence shows Docker Image apps support SHA-256 hash input and `image@sha256:<digest>` normalization, while the reusable build records primary-registry immutable tag promotion evidence and verifies full-commit `sha-*` / `dev-*` tags resolve to the built digest before deploy jobs can start;
 - container builds now verify GHCR artifact attestations and primary-registry immutable tag promotion before dependent deploy jobs can start, but Coolify still needs exact digest-consumption proof;
 - container builds now retain Trivy scan evidence as both text and SARIF artifacts, export downloadable OCI inspect/index evidence for registry-attached SBOM/provenance metadata, and use tag-plus-digest pinned .NET base images;
 - workflow YAML now has repository-owned C# helper scripts, a SHA-pin policy gate, Dependabot update-policy validation for pinned action maintenance, blocking `actionlint`, blocking medium-or-higher `zizmor`, checkout credential hardening, template-injection remediation, and retained workflow security evidence;
 - contribution legal provenance is enforced locally through a CLA-only metadata gate; `docs/legal/CLA.md`, `.github/workflows/cla.yml`, and `.github/scripts/validate-cla-pr.cs` exist, while repository-side required-check configuration remains to be verified;
-- `.github/CODEOWNERS` now protects `.github/**`, Dockerfiles, dependency manifests, release docs, operations docs, and legal contribution docs, but the referenced GitHub owner/team still needs repository-side validation;
-- branch protection, environment reviewers, secret scanning, push protection, and organization action policies remain out-of-repo settings that must be verified;
+- `.github/CODEOWNERS` now protects `.github/**`, Dockerfiles, dependency manifests, release docs, operations docs, and legal contribution docs through `@amirakrari`, whose repository permission resolves as `admin`; replace this temporary user owner with the ISLAMU platform/ops team after the org team exists;
+- branch protection, required checks, and organization action policies remain out-of-repo settings that must be configured; 2026-06-01 API evidence shows secret scanning, push protection, dependency alerts, Dependabot security updates / automated security fixes, code-scanning API access, and `staging`/`production` environments are enabled, but branch/ruleset protection and required-check controls are still missing;
 - the active `MailKit` package vulnerability has been remediated and the NuGet audit gate remains blocking; future temporary exceptions require explicit owner/date/advisory/removal-condition evidence.
 
 The target state is a small, strict, auditable CI/CD control plane:
@@ -81,6 +88,7 @@ Out of scope for this plan: changing application runtime behavior, adding new AP
 | GitHub Actions SHA pins remain updateable. | `.github/dependabot.yml` and `.github/scripts/validate-dependabot-policy.cs` | High | Dependabot must keep a weekly grouped `github-actions` update lane with conventional `ci` commit messages. |
 | Workflow static analysis is enforced. | `.github/workflows/workflow-security.yml` | High | Required-check display name is `Workflow Security`; `actionlint` is blocking; `zizmor` runs offline, uploads SARIF/text evidence, and blocks on medium-or-higher findings. |
 | Repository-owned CI helper logic is C#. | `.github/scripts/*.cs` | High | Workflow policy, NuGet vulnerability report parsing, and container digest evidence writing use file-based C# scripts instead of embedded Python. |
+| Dependency license policy is explicit. | `.github/scripts/validate-dependency-license-policy.cs`, `.github/workflows/_build-test.yml`, `docs/CI_CD_GOVERNANCE.md` | High | `Build & Test` scans product NuGet lock files and guards future product npm/container OS dependency surfaces. `AutoMapper` and `MediatR` RPL-1.5 runtime exceptions remain visible debt before alternative-license distribution. |
 | CLA workflow exists and avoids the archived CLA Assistant action. | `.github/workflows/cla.yml`, `.github/scripts/validate-cla-pr.cs` | High | Metadata-only `pull_request_target` workflow checks trusted base code and PR metadata, not PR-head code. |
 | CLA Assistant GitHub Action repository is archived. | `https://github.com/contributor-assistant/github-action` | High | Use only after risk acceptance, fork/vendor decision, or replacement evaluation. |
 | CLA Assistant action uses `pull_request_target`. | `contributor-assistant/github-action` README and GitHub docs | High | Must not checkout or run untrusted PR code in the CLA workflow. |
@@ -106,6 +114,7 @@ Workflow inventory:
 - `.github/scripts/validate-action-pins.cs` - file-based C# validator for external action SHA pins and same-line version comments.
 - `.github/scripts/validate-dependabot-policy.cs` - file-based C# validator for the Dependabot `github-actions` update lane that keeps SHA-pinned actions maintainable.
 - `.github/scripts/validate-nuget-vulnerabilities.cs` - file-based C# parser for NuGet vulnerable-package JSON output.
+- `.github/scripts/validate-dependency-license-policy.cs` - file-based C# validator for product dependency license allow/deny rules and explicit temporary exceptions.
 - `.github/scripts/write-container-digest-evidence.cs` - file-based C# writer for normalized container digest evidence.
 - `.github/scripts/write-image-promotion-evidence.cs` - file-based C# writer for immutable primary-registry deployment tag promotion evidence.
 - `.github/workflows/security-tests.yml` - always-present security integration tests with internal security-path detection, nightly/manual execution, merge queue support, and no-op pass for unrelated changes.
@@ -140,7 +149,7 @@ Coverage gaps:
 - Checked-in workflow security now covers repository-owned C# helper scripts, SHA-pin policy, Dependabot action-update policy, blocking `actionlint`, blocking medium-or-higher `zizmor`, retained evidence, advisory scheduled OpenSSF Scorecard SARIF evidence, and bounded `gitleaks` feedback for newly introduced secrets. Remaining gap: repository-side required-check verification and triage/baseline of legacy history-wide secret-scanning findings before scheduled/manual history scans can become blocking.
 - No local test proving deploy jobs consume and verify the same digest produced by `_container-build.yml`.
 - No CI assertion that docs and workflow artifact names stay aligned.
-- No repo-visible proof that branch protection and GitHub Environment settings are actually configured.
+- 2026-06-01 GitHub API evidence shows branch protection, required checks, and GitHub Environments are not configured to the expected release posture.
 
 ### 2.4 Existing Documentation And Contracts
 
@@ -169,9 +178,9 @@ Existing docs already explain many rules, but some need correction:
 ### 2.6 Unknowns After Investigation
 
 - Whether Coolify can deploy `image@sha256:<digest>` through the current webhook/app model.
-- Whether ATCR supports OIDC or equivalent short-lived credentials; current workflow still uses `ATCR_PASSWORD`.
+- Whether ATCR publishes a GitHub Actions OIDC or equivalent non-interactive short-lived credential flow for CI pushes; current public docs only show ATProto OAuth/DPoP helper flows and `docker login`, so workflows still use scoped `ATCR_PASSWORD` with rotation.
 - Whether GitHub repository/org settings enforce SHA-pinned actions, allowed actions, secret scanning, push protection, dependency graph, CodeQL, branch rulesets, and protected environments.
-- Whether `docker/build-push-action@v7` and related Docker actions should be adopted immediately or through Dependabot after a controlled workflow-lint PR.
+- Whether future Docker action major versions should be adopted immediately or through Dependabot after a controlled workflow-lint PR; current major-version pins are verified and SHA-pinned.
 - Whether OpenAPI `oasdiff` should fail immediately for pre-v1 breaking changes or remain advisory until API versioning and skipped contract tests are stabilized.
 - Final legal review of the CLA wording before broad external contributor volume.
 - Repository-side branch protection must require the `Contributor License Agreement` check after it is verified on real pull requests.
@@ -407,13 +416,14 @@ Do not copy the archived CLA Assistant sample. The sample uses tag refs, broad w
 
 **Tasks:**
 
-- Keep TRX artifacts and job summaries.
-- Add coverage collection only after stable test lanes are confirmed; choose one provider or keep coverage as artifact-only.
-- Add a warnings budget or analyzer report artifact before making warnings-as-errors broad.
-- Keep the current all-findings NuGet audit blocking; only split by severity/dependency type later if documented false-positive or ecosystem-noise evidence justifies it.
-- Ensure integration tests run for deploy callers and on a reliable schedule.
-- Add license policy scanning for NuGet/npm/container dependencies and document AGPL-compatible allowed/denied licenses.
-- Add cache-poisoning controls: fork PRs should not write privileged caches consumed by trusted deploy/publish workflows.
+- Keep TRX artifacts and job summaries. Current implementation: fast, integration, OpenAPI, E2E, and security integration lanes retain TRX where applicable; `Security Integration Tests` writes a summary that links the log/TRX evidence for Security and Cerbos policy-contract test lanes.
+- Add coverage collection only after stable test lanes are confirmed; choose one provider or keep coverage as artifact-only. Current implementation uses `.github/workflows/coverage.yml` as an advisory scheduled/manual artifact-only lane for stable `Event.Domain.UnitTests` coverage, retaining Cobertura, TRX, HTML, build, and test evidence while forbidding Codecov/SonarCloud/coverage badges until verified backing workflows and owners exist.
+- Add a warnings budget or analyzer report artifact before making warnings-as-errors broad. Current implementation retains fast and integration `dotnet build` output logs alongside TRX artifacts so compiler/analyzer warning output is triageable; a numeric warnings budget remains future work.
+- Keep the current all-findings NuGet audit blocking. Current implementation: `_build-test.yml` writes raw NuGet vulnerability JSON plus `nuget-vulnerability-summary.md` under `artifacts/dependencies/**`; `.github/scripts/validate-nuget-vulnerabilities.cs` still fails on any vulnerable direct or transitive package but now splits retained evidence by package relationship and advisory severity for triage.
+- Ensure integration tests run for deploy callers and on a reliable schedule. Current implementation: `Workflow Security` runs `.github/scripts/validate-deploy-workflow-contract.cs`, which checks production/staging deploy workflows keep downloading retained build evidence, resolving expected digest evidence, passing promotion evidence and freeze/override inputs, requiring production smoke checks, and calling `.github/actions/deploy-coolify` for API and UI. Live Coolify consumption proof remains Phase 7/8 work.
+- Add license policy scanning for NuGet/npm/container dependencies and document AGPL-compatible allowed/denied licenses. Current implementation: `_build-test.yml` runs `.github/scripts/validate-dependency-license-policy.cs` after the NuGet vulnerability audit. The validator scans product NuGet lock files, blocks denied or unknown licenses without explicit policy exceptions, fails future product npm locks and container OS package installs until scanner support exists, and keeps `AutoMapper`/`MediatR` RPL-1.5 runtime exceptions visible for replacement or legal approval before alternative-license distribution.
+- Add cache-poisoning controls: fork PRs should not write privileged caches consumed by trusted deploy/publish workflows. Current implementation: `Workflow Security` runs `.github/scripts/validate-workflow-cache-policy.cs`, rejects direct `actions/cache`, rejects Docker GHA cache writes outside `_container-build.yml`, and rejects `setup-dotnet cache: true` in privileged deploy/container/release workflows while allowing CI validation restore caches.
+- Document artifact triage expectations. Current implementation: `docs/CI_CD_GOVERNANCE.md#artifact-triage-guide` tells maintainers how to first triage TRX, OpenAPI drift, workflow security, Scorecard, secret scanning, security/Cerbos, E2E, container, and deployment evidence.
 
 **Exit criteria:**
 
@@ -434,16 +444,17 @@ Do not copy the archived CLA Assistant sample. The sample uses tag refs, broad w
 
 **Tasks:**
 
-- Keep deterministic regeneration for the canonical contract set: `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
-- Add `oasdiff` against the base branch as advisory evidence first.
-- Add Spectral only after the local OpenAPI rules are documented and low-noise.
-- Promote breaking-change detection to blocking once skipped/stale API contract tests are resolved.
-- Require API changelog evidence for intentional breaking changes.
+- Keep deterministic regeneration for the canonical contract set: `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, and `Explore.Blazor.Client/Clients/EventApiClient.g.cs`. Current implementation: `OpenAPI Contract Guard` regenerates all three artifacts, fails on drift, and fails when the second regeneration run produces any diff.
+- Add `oasdiff` against the base branch as advisory evidence first. Current implementation: `OpenAPI Contract Guard` installs checksum-verified `oasdiff` v1.18.1, compares the base OpenAPI artifact to regenerated `schemas/openapi.json`, retains markdown/JSON reports in `openapi-contract-guard`, and fails PR/push/merge-queue runs when breaking changes are detected without a same-diff `docs/API_CHANGELOG.md` update. Scheduled/manual runs remain evidence-only.
+- Add Spectral only after the local OpenAPI rules are documented and low-noise. Current implementation: `.spectral.yaml` defines advisory rules for API title/version, operation IDs, operation tags, and response descriptions; `OpenAPI Contract Guard` runs `@stoplight/spectral-cli@6.16.0` and retains JSON/Markdown reports without failing on findings.
+- Resolve skipped/stale API contract tests that block stronger enforcement. Current implementation: `docs/API_CONTRACT_TEST_DEBT.md` inventories the two intentionally skipped RouteName coverage tests with owner/removal conditions, and `OpenAPI Contract Guard` runs `.github/scripts/validate-api-contract-skip-inventory.cs` so any `Category: API contract` skip must stay governed until the owning `api-contract-stabilization` work enables or removes it.
+- Promote breaking-change detection to blocking once governed skipped API contract debt is either enabled or accepted as non-blocking for the promoted rule set. Current implementation: missing changelog evidence is blocking for detected `oasdiff` breaking changes on PR/push/merge-queue runs; breaking findings with changelog evidence remain reviewer/release evidence.
+- Require API changelog evidence for intentional breaking changes. Current implementation: `docs/API_CHANGELOG.md#breaking-change-evidence` defines the required evidence fields, `docs/CI_CD_GOVERNANCE.md#openapi-breaking-change-evidence` makes it a review policy, and `docs/RELEASE_CHECKLIST.md` includes it in release evidence.
 
 **Exit criteria:**
 
-- Stale generated artifacts block.
-- Breaking-change reports are visible and can become blocking without redesign.
+- Stale generated artifacts block through the existing OpenAPI drift check.
+- Breaking-change evidence is visible through required changelog entries plus retained `oasdiff` and Spectral reports. Skipped API contract test debt is inventoried and validated so deferred RouteName coverage cannot silently rot. Missing changelog evidence blocks detected `oasdiff` breaking changes on PR/push/merge-queue runs; Spectral remains advisory until its rules have stable signal.
 
 ### Phase 6 - Container Build, SBOM, Provenance, And Attestation Verification
 
@@ -460,12 +471,12 @@ Do not copy the archived CLA Assistant sample. The sample uses tag refs, broad w
 
 **Tasks:**
 
-- Update Docker actions through Dependabot or a controlled PR, then pin resulting SHAs.
+- Update Docker actions through Dependabot or a controlled PR, then pin resulting SHAs. Current implementation: `_container-build.yml` pins were verified against current major-version refs for `docker/setup-buildx-action@v3`, `docker/login-action@v3`, `docker/metadata-action@v5`, and `docker/build-push-action@v6`; future updates remain covered by Dependabot plus `Workflow Security` SHA-pin validation.
 - Export SBOM/provenance evidence as downloadable artifacts, not only registry-attached metadata. Current implementation retains `docker buildx imagetools inspect` text output and raw OCI index JSON for the pushed GHCR digest.
 - Add Trivy SARIF/code-scanning output in addition to text artifacts where supported. Current implementation retains SARIF as a build artifact before the blocking text scan; code-scanning upload remains repository-permissions dependent.
 - Pin base images by digest or document a digest update policy. Current implementation pins deployable .NET base images with tag-plus-digest references and enforces weekly Dependabot Docker update coverage through `Workflow Security`.
 - Verify GitHub artifact attestations with `gh attestation verify` or equivalent before deployment. Current implementation verifies the pushed GHCR digest in `_container-build.yml` before deploy jobs depending on `build-and-push` can start.
-- Add SLSA provenance verification or document why GitHub artifact attestation is the chosen SLSA-compatible evidence path.
+- Add SLSA provenance verification or document why GitHub artifact attestation is the chosen SLSA-compatible evidence path. Current implementation chooses GitHub artifact attestations as the SLSA-compatible evidence path because `_container-build.yml` generates Buildx SBOM/provenance attestations and verifies the pushed GHCR digest with `gh attestation verify` against repository, signer workflow, source ref/digest, SLSA provenance predicate, and GitHub-hosted runner trust constraints before deploy jobs can start.
 - Add release artifact integrity manifests with checksums for evidence bundles. Current implementation generates SHA-256 manifests for retained container evidence artifacts.
 - Record final image digest per component as the release/deploy source of truth. Current implementation records primary-registry immutable promotion tags and verifies they resolve to the built digest before deploy jobs can start.
 
@@ -491,10 +502,10 @@ Do not copy the archived CLA Assistant sample. The sample uses tag refs, broad w
 
 - Consolidate staging and production deploy logic into one reusable execution path. Current implementation uses `.github/actions/deploy-coolify` as a local composite action while preserving caller workflow GitHub Environment approvals and secrets.
 - Pass environment, component, digest, smoke URLs, and webhook secret names as explicit inputs. Current implementation resolves the expected digest from retained promotion artifacts before deploy, then passes environment, component, expected digest, smoke URL, webhook/token, registry, image, and immutable tag prefix into the local deploy action.
-- Confirm Coolify digest support. If unsupported, configure Coolify to consume immutable commit-SHA tags and use the build-side promotion evidence that verifies those tags resolve to the built digest; still record Coolify-side consumption evidence after deployment.
+- Confirm Coolify digest support. Current public Coolify v4.x source/UI evidence shows Docker Image apps support SHA-256 hash input and normalize digest references to `image@sha256:<digest>`. Next work is to configure ISLAMU's live Coolify resources for digest consumption and capture application configuration/deployment evidence; until then, use the verified full-commit immutable tag fallback and still record Coolify-side consumption evidence after deployment.
 - Make production smoke checks mandatory. Current implementation requires configured production smoke URLs for deployed components, and both `/alive` and `/health` must pass before production deployment evidence reports success.
 - Keep staging auto-deploy optional; production must require environment approval.
-- Prefer OIDC/short-lived credentials where the registry or deploy target supports it; otherwise document token scope and rotation.
+- Prefer OIDC/short-lived credentials where the registry or deploy target supports it. Current implementation documents scoped `ATCR_PASSWORD` environment secrets with 90-day/event-driven rotation; public ATCR docs describe ATProto OAuth/DPoP helper flows and short-lived registry JWTs behind the credential helper, but no GitHub Actions OIDC federation path for CI pushes, so static environment secret rotation remains the active CI strategy until ATCR publishes a non-interactive short-lived exchange.
 - Add deployment freeze/manual override policy with audit notes for urgent security releases. Current implementation blocks webhook calls when `DEPLOYMENT_FREEZE=true` unless a manual `workflow_dispatch` run supplies `override_reason`, and records the freeze state and override reason in deployment evidence.
 
 **Exit criteria:**
@@ -514,13 +525,13 @@ Do not copy the archived CLA Assistant sample. The sample uses tag refs, broad w
 
 **Tasks:**
 
-- Verify branch/ruleset protection for `main` and `develop`.
-- Verify required checks match current workflow/job names.
-- Verify GitHub Environments: `staging`, `production`, reviewers, branch restrictions, wait timers if used, and environment secrets.
-- Verify GitHub Actions policy allows only GitHub-owned, verified, or SHA-pinned actions as appropriate.
-- Verify secret scanning, push protection, dependency graph, Dependabot security updates, and CodeQL alerts.
-- Store a redacted settings evidence note in this workstream or release checklist.
-- Add a scheduled repository-settings drift check if GitHub API permissions allow it; otherwise require manual evidence before releases.
+- Verify branch/ruleset protection for `main` and `develop`. Current evidence: `main` has only deletion/non-fast-forward/Copilot rules; `develop` has no returned protection/ruleset.
+- Verify required checks match current workflow/job names. Current evidence: no required status checks are configured.
+- Verify GitHub Environments: `staging`, `production`, reviewers, branch restrictions, wait timers if used, and environment secrets. Current evidence: `staging` and `production` environments exist; `production` requires reviewer `@amirakrari`; custom deployment branch policies allow `develop` for staging and `main`/`v*` for production; secret values remain redacted and require maintainer UI verification before release.
+- Verify GitHub Actions policy allows only GitHub-owned, verified, or SHA-pinned actions as appropriate. Current evidence: repository Actions policy allows all actions.
+- Verify secret scanning, push protection, dependency graph, Dependabot security updates, and CodeQL alerts. Current evidence: secret scanning, push protection, dependency alerts, Dependabot security updates / automated security fixes, and code-scanning API access are enabled.
+- Store a redacted settings evidence note in this workstream or release checklist. Current implementation: `docs/CI_CD_GOVERNANCE.md` and active tasks/context record the 2026-06-01 API snapshot.
+- Add a scheduled repository-settings drift check if GitHub API permissions allow it; otherwise require manual evidence before releases. Current implementation: `.github/workflows/repository-settings.yml` runs scheduled/manual drift checks with `.github/scripts/validate-repository-settings.cs` and retains redacted `repository-settings-evidence`; it is expected to fail until repository-side controls are configured.
 
 **Exit criteria:**
 
@@ -537,15 +548,16 @@ Do not copy the archived CLA Assistant sample. The sample uses tag refs, broad w
 - `.github/workflows/security-tests.yml`
 - `.github/workflows/cerbos-policy-check.yml`
 - `docs/TESTING.md`
+- `docs/TEST_RELIABILITY.md`
 - `docs/RELEASE_CHECKLIST.md`
 
 **Tasks:**
 
-- Keep E2E manual/nightly until reliability data supports promotion.
-- Add trend summaries for E2E/security/runtime failures.
-- Add scheduled OpenAPI breaking-change reports.
-- Add scheduled performance/benchmark smoke lanes for endpoints and pages that represent real operator risk; keep benchmarks advisory until stable.
-- Add flaky-test tracking with owner, first-seen date, and promotion/removal criteria.
+- Keep E2E manual/nightly until reliability data supports promotion. Current implementation: `.github/workflows/e2e.yml` is still manual/nightly-only and writes a runtime evidence summary pointing to retained logs, TRX, Playwright artifacts, Docker diagnostics, and `docs/TEST_RELIABILITY.md`.
+- Add trend summaries for E2E/security/runtime failures. Current implementation: E2E and Security/Cerbos scheduled/manual lanes write summaries with trigger/ref/commit/outcomes, retained artifact pointers, and `docs/TEST_RELIABILITY.md` trend-action guidance.
+- Add scheduled OpenAPI breaking-change reports. Current implementation: `OpenAPI Contract Guard` runs weekly and retains advisory `oasdiff` markdown/JSON reports without making findings blocking.
+- Add scheduled performance/benchmark smoke lanes for endpoints and pages that represent real operator risk; keep benchmarks advisory until stable. Current implementation: `.github/workflows/performance-smoke.yml` runs `Event.Benchmarks` `ApiEndpointBenchmarks` with BenchmarkDotNet ShortRun on schedule/manual dispatch and retains logs/results as `performance-smoke-evidence`.
+- Add flaky-test tracking with owner, first-seen date, and promotion/removal criteria. Current implementation: `docs/TEST_RELIABILITY.md` inventories OpenFeature shutdown skips, Stress setup-secret limiter coverage, and manual visual E2E baseline skips; promotion to required status remains blocked until tracked items are resolved or explicitly baselined.
 - Ensure release notes link or copy long-lived evidence because GitHub artifacts expire.
 
 **Exit criteria:**
@@ -567,10 +579,10 @@ Do not copy the archived CLA Assistant sample. The sample uses tag refs, broad w
 
 **Tasks:**
 
-- Decide release model: manual tags, GitHub Releases, Release Drafter, semantic versioning, or conventional commits.
-- Generate a release evidence bundle containing commit SHA, image digests, SBOM/provenance references, attestations, scans, OpenAPI diff, test summary, CLA gate status, and deployment smoke results.
-- Attach long-lived evidence or links to GitHub Releases because workflow artifacts expire.
-- Add changelog/release-note checks for security, migrations, config, OpenAPI, and operator-impact changes.
+- Decide release model: manual tags, GitHub Releases, Release Drafter, semantic versioning, or conventional commits. Current implementation selects manual semantic-version tags plus manually authored GitHub Releases; `docs/semantic_versioning/CHANGELOG.md` remains version-history source of truth, and `.github/workflows/release.yml` / Release Drafter / semantic-release are deferred until evidence bundle automation is stable.
+- Generate a release evidence bundle containing commit SHA, image digests, SBOM/provenance references, attestations, scans, OpenAPI diff, test summary, CLA gate status, and deployment smoke results. Current implementation: `.github/scripts/generate-release-evidence-bundle.cs` turns downloaded CI/CD artifacts into `release-evidence.json`, `release-evidence.md`, `release-evidence-release-notes.md`, and `release-evidence-checksums.sha256` for manual GitHub Releases.
+- Attach long-lived evidence or links to GitHub Releases because workflow artifacts expire. Current implementation: `docs/RELEASE_CHECKLIST.md` requires attaching the generated bundle files and pasting `release-evidence-release-notes.md` into the GitHub Release body.
+- Add changelog/release-note checks for security, migrations, config, OpenAPI, and operator-impact changes. Current implementation adds `.github/workflows/release-impact.yml` and `.github/scripts/validate-release-impact-pr.cs`, which validate the PR template `## Release Impact` section from trusted base code and require matching details for release-impacting path categories.
 - Add maintainer runbooks for re-running failed gates without bypassing controls.
 
 **Exit criteria:**
@@ -684,7 +696,7 @@ Migration sequencing:
 | Repository settings cannot be changed by code | Major | Add a settings evidence checklist and require maintainer verification. |
 | CLA workflow uses privileged `pull_request_target` | Critical | Use only for metadata/status, no PR-code checkout/execution, least-privilege permissions, explicit bot allowlist, and documented threat model. |
 | CLA Assistant action is archived | Major | Avoid the action; current implementation uses a repository-owned C# validator instead. |
-| License compliance is not checked | Major | Add dependency license policy scanning and AGPL-compatible allow/deny rules. |
+| Runtime license exceptions need resolution before alternative-license distribution | Major | `validate-dependency-license-policy.cs` blocks unknown/denied licenses and keeps `AutoMapper`/`MediatR` RPL-1.5 runtime exceptions visible until replaced or legally approved. |
 
 ## 14. Success Metrics And Definition Of Done
 
@@ -700,7 +712,7 @@ The workstream is done when:
 - Container images have exported SBOM/provenance, vulnerability scan output, and GitHub attestations.
 - Deploy jobs verify image attestation/digest before invoking Coolify.
 - Production deploys are environment-protected and smoke-checked.
-- Dependency license policy and vulnerability policy are explicit and enforced at the selected severity.
+- Dependency license policy and vulnerability policy are explicit and enforced at the selected severity; temporary license exceptions have owner-visible removal conditions.
 - Repository settings evidence confirms branch protection, environments, action policy, secret scanning, push protection, dependency graph, Dependabot security updates, and CodeQL.
 - Release evidence bundles include CLA status, OpenAPI drift, test results, image digests, SBOM/provenance, attestations, scan output, and smoke checks.
 - Docs explain how contributors fix every CI/CD failure class.

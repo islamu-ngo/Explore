@@ -1,0 +1,51 @@
+# ABOUTME: Audits GitHub repository settings against the enterprise CI/CD hardening contract.
+# ABOUTME: Runs scheduled/manual drift checks and retains redacted repository-settings evidence.
+
+name: Repository Settings Drift
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+  security-events: read
+
+on:
+  schedule:
+    - cron: "13 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-settings:
+    name: Repository Settings Drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout trusted repository scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Validate repository settings
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RestorePackagesWithLockFile: "false"
+        run: dotnet run .github/scripts/validate-repository-settings.cs -- "${GITHUB_REPOSITORY}" artifacts/repository-settings
+
+      - name: Upload repository settings evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: repository-settings-evidence
+          path: artifacts/repository-settings/**
+          if-no-files-found: warn
+          retention-days: 30
