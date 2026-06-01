@@ -1883,6 +1883,447 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         }
     }
 
+    private async Task AddSyncApplyOperationsAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        AuthProviderConfigurationDto configuration,
+        KeycloakRealmSyncPreviewRequestDto request,
+        string accessToken,
+        List<KeycloakRealmSyncOperationDto> operations,
+        List<KeycloakRealmDoctorCheckDto> diagnostics,
+        CancellationToken cancellationToken)
+    {
+        using var realmRequest = CreateAdminRequest(HttpMethod.Get, BuildUri(baseUri, "admin", "realms", realm), accessToken);
+        using var realmResponse = await client.SendAsync(realmRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        diagnostics.Add(realmResponse.IsSuccessStatusCode
+            ? DoctorCheck("keycloak_realm_exists", "Realm", "healthy", "Keycloak realm exists and is readable.")
+            : DoctorCheck("keycloak_realm_not_found", "Realm", "blocked", "Keycloak realm could not be read through the Admin API.", "Verify the realm exists and the temporary admin has read access."));
+
+        if (!realmResponse.IsSuccessStatusCode)
+        {
+            operations.Add(SyncOperation(
+                "keycloak-realm-unreadable",
+                "realm",
+                "realm",
+                realm,
+                "none",
+                "blocked",
+                "Realm cannot be repaired.",
+                "The apply flow does not create, delete, or reimport realms in post-onboarding repair mode."));
+            return;
+        }
+
+        await ApplyBlazorClientAsync(client, baseUri, realm, configuration, request, accessToken, operations, cancellationToken);
+        await ApplyOfflineAccessAsync(client, baseUri, realm, configuration.KeycloakClientId, accessToken, operations, cancellationToken);
+        await ApplyApiClientAsync(client, baseUri, realm, request.ApiClientId, accessToken, operations, cancellationToken);
+    }
+
+    private async Task ApplyBlazorClientAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        AuthProviderConfigurationDto configuration,
+        KeycloakRealmSyncPreviewRequestDto request,
+        string accessToken,
+        List<KeycloakRealmSyncOperationDto> operations,
+        CancellationToken cancellationToken)
+    {
+        var blazorClientId = configuration.KeycloakClientId;
+        var lookup = await FindClientAsync(client, baseUri, realm, blazorClientId, accessToken, cancellationToken);
+        if (!lookup.Success)
+        {
+            operations.Add(SyncOperation(
+                "keycloak-blazor-client-lookup-failed",
+                "client",
+                "client",
+                blazorClientId,
+                "none",
+                "blocked",
+                "Blazor client lookup failed.",
+                "Keycloak did not allow the temporary admin to list clients."));
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(lookup.ClientUuid))
+        {
+            if (string.IsNullOrWhiteSpace(configuration.KeycloakClientSecret))
+            {
+                operations.Add(SyncOperation(
+                    "keycloak-blazor-client-secret-missing",
+                    "client",
+                    "client",
+                    blazorClientId,
+                    "none",
+                    "blocked",
+                    "Blazor client cannot be created without an application-managed secret.",
+                    "Save a Keycloak client secret in instance settings before creating a missing confidential client."));
+                return;
+            }
+
+            var createResult = await CreateClientAsync(client, baseUri, realm, blazorClientId, accessToken, bearerOnly: false, cancellationToken);
+            if (!createResult.Success)
+            {
+                operations.Add(SyncOperation(
+                    "keycloak-blazor-client-add",
+                    "client",
+                    "client",
+                    blazorClientId,
+                    "add",
+                    "blocked",
+                    "Blazor client could not be created.",
+                    createResult.Message));
+                return;
+            }
+
+            operations.Add(SyncOperation(
+                "keycloak-blazor-client-add",
+                "client",
+                "client",
+                blazorClientId,
+                "add",
+                "applied",
+                "Created the confidential Blazor OIDC client.",
+                "The configured Blazor client was missing from the realm.",
+                ["Created confidential OIDC client"]));
+
+            lookup = await FindClientAsync(client, baseUri, realm, blazorClientId, accessToken, cancellationToken);
+            if (!lookup.Success || string.IsNullOrWhiteSpace(lookup.ClientUuid))
+            {
+                operations.Add(SyncOperation(
+                    "keycloak-blazor-client-created-unreadable",
+                    "client",
+                    "client",
+                    blazorClientId,
+                    "none",
+                    "blocked",
+                    "Created Blazor client could not be reloaded.",
+                    "Retry the sync apply after Keycloak indexes the created client."));
+                return;
+            }
+        }
+
+        var clientUri = BuildUri(baseUri, "admin", "realms", realm, "clients", lookup.ClientUuid);
+        var representation = await GetClientRepresentationAsync(client, clientUri, accessToken, cancellationToken);
+        if (representation is null)
+        {
+            operations.Add(SyncOperation(
+                "keycloak-blazor-client-unreadable",
+                "client",
+                "client",
+                blazorClientId,
+                "none",
+                "blocked",
+                "Blazor client representation cannot be read.",
+                "The temporary admin needs permission to view client details."));
+            return;
+        }
+
+        var changes = new List<string>();
+        if (representation["standardFlowEnabled"]?.GetValue<bool>() != true)
+        {
+            representation["standardFlowEnabled"] = true;
+            changes.Add("Set standardFlowEnabled=true");
+        }
+
+        if (!HasRefreshTokenSettings(representation))
+        {
+            PreserveRefreshTokenSettings(representation);
+            changes.Add("Preserved refresh-token/offline_access settings");
+        }
+
+        changes.AddRange(AddMissingStringValues(representation, "redirectUris", request.BlazorRedirectUris));
+        changes.AddRange(AddMissingStringValues(representation, "webOrigins", request.BlazorWebOrigins));
+
+        if (operations.Any(operation => string.Equals(operation.OperationId, "keycloak-blazor-client-add", StringComparison.Ordinal)))
+        {
+            representation["secret"] = configuration.KeycloakClientSecret;
+            changes.Add("Seeded configured confidential client secret");
+        }
+
+        if (changes.Count == 0)
+        {
+            operations.Add(SyncOperation(
+                "keycloak-blazor-client-up-to-date",
+                "client",
+                "client",
+                blazorClientId,
+                "none",
+                "up-to-date",
+                "Blazor client settings are already additive-sync compatible.",
+                "No Keycloak mutation was required."));
+            return;
+        }
+
+        var updated = await UpdateClientRepresentationAsync(client, clientUri, accessToken, representation, cancellationToken);
+        operations.Add(SyncOperation(
+            "keycloak-blazor-client-update",
+            "client",
+            "client",
+            blazorClientId,
+            "update",
+            updated ? "applied" : "blocked",
+            updated ? "Updated additive Blazor client settings." : "Blazor client settings could not be updated.",
+            updated
+                ? "The apply flow only added required values and did not remove operator-managed values."
+                : "Keycloak rejected the additive client representation update.",
+            changes));
+    }
+
+    private static async Task ApplyOfflineAccessAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string blazorClientId,
+        string accessToken,
+        List<KeycloakRealmSyncOperationDto> operations,
+        CancellationToken cancellationToken)
+    {
+        var offlineRole = await GetRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        if (offlineRole is null)
+        {
+            var created = await CreateRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+            operations.Add(SyncOperation(
+                "keycloak-offline-access-role-add",
+                "role",
+                "realm-role",
+                "offline_access",
+                "add",
+                created ? "applied" : "blocked",
+                created ? "Created the offline_access realm role." : "offline_access realm role could not be created.",
+                created ? "The role was missing and was added without deleting any existing role." : "Keycloak rejected the additive realm-role create."));
+            offlineRole = created
+                ? await GetRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken)
+                : null;
+        }
+
+        var defaultRoleName = $"default-roles-{realm.ToLowerInvariant()}";
+        var defaultRole = await GetRealmRoleAsync(client, baseUri, realm, defaultRoleName, accessToken, cancellationToken);
+        var defaultRoleId = defaultRole?["id"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(defaultRoleId))
+        {
+            operations.Add(SyncOperation(
+                "keycloak-default-role-missing",
+                "role",
+                "realm-role",
+                defaultRoleName,
+                "none",
+                "blocked",
+                "Default realm role is missing.",
+                "The apply flow does not recreate Keycloak-managed default roles."));
+        }
+        else if (offlineRole is not null)
+        {
+            var composites = await GetRealmRoleCompositesAsync(client, baseUri, realm, defaultRoleId, accessToken, cancellationToken);
+            if (!composites.Any(role => string.Equals(role.Name, "offline_access", StringComparison.Ordinal)))
+            {
+                using var request = CreateAdminRequest(
+                    HttpMethod.Post,
+                    BuildUri(baseUri, "admin", "realms", realm, "roles-by-id", defaultRoleId, "composites"),
+                    accessToken,
+                    new JsonArray(offlineRole.DeepClone()));
+                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                operations.Add(SyncOperation(
+                    "keycloak-default-role-offline-access-add",
+                    "role-composite",
+                    "realm-role",
+                    defaultRoleName,
+                    "update",
+                    response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict ? "applied" : "blocked",
+                    response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict
+                        ? "Added offline_access to the default realm role composites."
+                        : "offline_access could not be added to default realm role composites.",
+                    "Only the missing composite was added."));
+            }
+        }
+
+        var scopeId = await FindClientScopeIdAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        if (string.IsNullOrWhiteSpace(scopeId))
+        {
+            var created = await CreateClientScopeAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+            operations.Add(SyncOperation(
+                "keycloak-offline-access-scope-add",
+                "client-scope",
+                "client-scope",
+                "offline_access",
+                "add",
+                created ? "applied" : "blocked",
+                created ? "Created the offline_access client scope." : "offline_access client scope could not be created.",
+                created ? "The client scope was missing and was added." : "Keycloak rejected the additive client-scope create."));
+            scopeId = created
+                ? await FindClientScopeIdAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken)
+                : null;
+        }
+
+        var blazorLookup = await FindClientAsync(client, baseUri, realm, blazorClientId, accessToken, cancellationToken);
+        if (blazorLookup.Success && !string.IsNullOrWhiteSpace(blazorLookup.ClientUuid) && !string.IsNullOrWhiteSpace(scopeId))
+        {
+            var optionalScopes = await GetClientScopesAsync(client, baseUri, realm, blazorLookup.ClientUuid, "optional-client-scopes", accessToken, cancellationToken);
+            var defaultScopes = await GetClientScopesAsync(client, baseUri, realm, blazorLookup.ClientUuid, "default-client-scopes", accessToken, cancellationToken);
+            var hasOfflineScope = optionalScopes.Concat(defaultScopes).Any(scope => string.Equals(scope.Name, "offline_access", StringComparison.Ordinal));
+            if (!hasOfflineScope)
+            {
+                var result = await EnsureOfflineAccessScopeAsync(client, baseUri, realm, blazorLookup.ClientUuid, accessToken, cancellationToken);
+                operations.Add(SyncOperation(
+                    "keycloak-blazor-offline-access-scope-add",
+                    "client-scope",
+                    "client",
+                    blazorClientId,
+                    "update",
+                    result.Success ? "applied" : "blocked",
+                    result.Success ? "Assigned offline_access to the Blazor client." : "offline_access could not be assigned to the Blazor client.",
+                    result.Success ? "Added offline_access as an optional client scope." : result.Message));
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(scopeId) && offlineRole is not null)
+        {
+            var mappings = await GetClientScopeRealmMappingsAsync(client, baseUri, realm, scopeId, accessToken, cancellationToken);
+            if (!mappings.Any(role => string.Equals(role.Name, "offline_access", StringComparison.Ordinal)))
+            {
+                var result = await EnsureOfflineAccessScopeMappingAsync(client, baseUri, realm, scopeId, accessToken, cancellationToken);
+                operations.Add(SyncOperation(
+                    "keycloak-offline-access-scope-mapping-add",
+                    "scope-mapping",
+                    "client-scope",
+                    "offline_access",
+                    "update",
+                    result.Success ? "applied" : "blocked",
+                    result.Success ? "Mapped the offline_access realm role to the offline_access client scope." : "offline_access scope mapping could not be updated.",
+                    result.Success ? "Added offline_access realm-role mapping." : result.Message));
+            }
+        }
+    }
+
+    private async Task ApplyApiClientAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string? apiClientId,
+        string accessToken,
+        List<KeycloakRealmSyncOperationDto> operations,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(apiClientId))
+            return;
+
+        var lookup = await FindClientAsync(client, baseUri, realm, apiClientId, accessToken, cancellationToken);
+        if (!lookup.Success)
+        {
+            operations.Add(SyncOperation(
+                "keycloak-api-client-lookup-failed",
+                "client",
+                "client",
+                apiClientId,
+                "none",
+                "blocked",
+                "API client lookup failed.",
+                "Keycloak did not allow the temporary admin to list clients."));
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(lookup.ClientUuid))
+        {
+            var createResult = await CreateClientAsync(client, baseUri, realm, apiClientId, accessToken, bearerOnly: true, cancellationToken);
+            operations.Add(SyncOperation(
+                "keycloak-api-client-add",
+                "client",
+                "client",
+                apiClientId,
+                "add",
+                createResult.Success ? "applied" : "blocked",
+                createResult.Success ? "Created the API audience client." : "API audience client could not be created.",
+                createResult.Success ? "Created bearer-only API client." : createResult.Message,
+                ["Create bearer-only API client"]));
+            return;
+        }
+
+        operations.Add(SyncOperation(
+            "keycloak-api-client-up-to-date",
+            "client",
+            "client",
+            apiClientId,
+            "none",
+            "up-to-date",
+            "API audience client already exists.",
+            "No Keycloak mutation was required."));
+    }
+
+    private static async Task<bool> UpdateClientRepresentationAsync(
+        HttpClient client,
+        Uri clientUri,
+        string accessToken,
+        JsonObject representation,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAdminRequest(HttpMethod.Put, clientUri, accessToken, representation);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    private static async Task<bool> CreateRealmRoleAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string roleName,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAdminRequest(
+            HttpMethod.Post,
+            BuildUri(baseUri, "admin", "realms", realm, "roles"),
+            accessToken,
+            new JsonObject { ["name"] = roleName });
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict;
+    }
+
+    private static async Task<bool> CreateClientScopeAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string scopeName,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAdminRequest(
+            HttpMethod.Post,
+            BuildUri(baseUri, "admin", "realms", realm, "client-scopes"),
+            accessToken,
+            new JsonObject
+            {
+                ["name"] = scopeName,
+                ["protocol"] = "openid-connect"
+            });
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict;
+    }
+
+    private static IReadOnlyList<string> AddMissingStringValues(
+        JsonObject representation,
+        string propertyName,
+        IReadOnlyList<string> desiredValues)
+    {
+        var values = representation[propertyName] as JsonArray;
+        if (values is null)
+        {
+            values = [];
+            representation[propertyName] = values;
+        }
+
+        var currentValues = GetStringArray(values);
+        var added = desiredValues
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Except(currentValues, StringComparer.Ordinal)
+            .ToArray();
+        foreach (var value in added)
+        {
+            values.Add(value);
+        }
+
+        return added.Select(value => $"Add {propertyName} value {value}").ToArray();
+    }
+
     private static void AddMissingStringSetOperation(
         List<KeycloakRealmSyncOperationDto> operations,
         string operationId,
@@ -1954,10 +2395,13 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             ? "blocked"
             : operations.Any(operation => string.Equals(operation.Status, "planned", StringComparison.OrdinalIgnoreCase))
                 ? "changes-planned"
-                : "up-to-date";
+                : operations.Any(operation => string.Equals(operation.Status, "applied", StringComparison.OrdinalIgnoreCase))
+                    ? "applied"
+                    : "up-to-date";
         plan.Message = plan.Status switch
         {
-            "up-to-date" => "Keycloak realm sync preview did not find additive drift.",
+            "applied" => "Keycloak additive realm repairs were applied.",
+            "up-to-date" => "Keycloak realm is already up to date.",
             "changes-planned" => "Keycloak realm sync preview found additive repair operations. Review and back up Keycloak before applying in a future step.",
             _ => "Keycloak realm sync preview is blocked. Resolve the blocking checks and retry."
         };

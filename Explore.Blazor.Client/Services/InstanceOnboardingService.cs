@@ -50,6 +50,7 @@ public interface IInstanceOnboardingService
     Task<InstanceCommandResponseModel> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestModel request);
     Task<KeycloakRealmDoctorResultModel> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestModel request);
     Task<KeycloakRealmSyncPlanModel> PreviewKeycloakRealmSyncAsync(KeycloakRealmSyncPreviewRequestModel request);
+    Task<KeycloakRealmSyncPlanModel> ApplyKeycloakRealmSyncAsync(KeycloakRealmSyncApplyRequestModel request);
     Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config);
     Task<bool> IsAuthProviderConfiguredAsync();
     Task RefreshAuthSchemesAsync();
@@ -354,6 +355,22 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         {
             _logger.LogError(ex, "Failed to preview Keycloak realm sync plan.");
             return KeycloakRealmSyncPlanModel.Blocked("Keycloak sync preview failed. Check admin access and retry.");
+        }
+    }
+
+    public async Task<KeycloakRealmSyncPlanModel> ApplyKeycloakRealmSyncAsync(KeycloakRealmSyncApplyRequestModel request)
+    {
+        try
+        {
+            var response = await _api.ApplyKeycloakRealmSyncAsync(request, CancellationToken.None);
+            return response.IsSuccessStatusCode && response.Content is not null
+                ? response.Content
+                : KeycloakRealmSyncPlanModel.Blocked("Keycloak sync apply failed. Check admin access and retry.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to apply Keycloak realm sync plan.");
+            return KeycloakRealmSyncPlanModel.Blocked("Keycloak sync apply failed. Check admin access and retry.");
         }
     }
 
@@ -1011,6 +1028,16 @@ public class KeycloakRealmDoctorCheckModel
 public class KeycloakRealmSyncPreviewRequestModel
 {
     public bool UseTemporaryAdminCredentials { get; set; }
+    public string? BootstrapAdminUsername { get; set; }
+    public string? BootstrapAdminPassword { get; set; }
+    public string? ApiClientId { get; set; } = "islamu-event-api";
+    public IReadOnlyList<string> BlazorRedirectUris { get; set; } = [];
+    public IReadOnlyList<string> BlazorWebOrigins { get; set; } = [];
+}
+
+public class KeycloakRealmSyncApplyRequestModel
+{
+    public bool BackupConfirmed { get; set; }
     public string? BootstrapAdminUsername { get; set; }
     public string? BootstrapAdminPassword { get; set; }
     public string? ApiClientId { get; set; } = "islamu-event-api";

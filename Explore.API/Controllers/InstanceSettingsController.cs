@@ -551,6 +551,22 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(result);
     }
 
+    [HttpPost("auth-provider/keycloak/sync-apply", Name = RouteNames.ApplyInstanceKeycloakRealmSync)]
+    [EndpointSummary("Apply Keycloak Realm Sync")]
+    [EndpointDescription("Applies backup-confirmed additive Keycloak realm repairs. Temporary admin credentials are used only for this request and are not stored.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(KeycloakRealmSyncPlanDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<KeycloakRealmSyncPlanDto>> ApplyKeycloakRealmSync(
+        [FromBody] KeycloakRealmSyncApplyRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
+
+        var result = await _mediator.Send(new ApplyKeycloakRealmSyncCommand { Request = request }, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpGet("auth-provider/status", Name = RouteNames.GetInstanceAuthProviderConfigurationStatus)]
     [AllowAnonymous]
     [EndpointSummary("Check Auth Provider Configuration Status")]

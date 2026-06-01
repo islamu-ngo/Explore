@@ -116,6 +116,9 @@ public interface IInstanceOnboardingApi
     [Post("/api/instance/settings/auth-provider/keycloak/sync-preview")]
     Task<IApiResponse<KeycloakRealmSyncPlanModel>> PreviewKeycloakRealmSyncAsync([Body] KeycloakRealmSyncPreviewRequestModel request, CancellationToken cancellationToken);
 
+    [Post("/api/instance/settings/auth-provider/keycloak/sync-apply")]
+    Task<IApiResponse<KeycloakRealmSyncPlanModel>> ApplyKeycloakRealmSyncAsync([Body] KeycloakRealmSyncApplyRequestModel request, CancellationToken cancellationToken);
+
     [Put("/api/instance/settings/auth-provider")]
     Task<IApiResponse<InstanceCommandResponseModel>> UpdateAuthProviderConfigurationAsAdminAsync([Body] AuthProviderConfigurationModel config, CancellationToken cancellationToken);
 
