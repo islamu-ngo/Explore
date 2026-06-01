@@ -26,15 +26,15 @@ Recommended checks after the PR1-PR8 governance baseline stabilizes:
 | Fast build/test | `Build & Test` (`.github/workflows/test.yml`) | `run-tests` / reusable `build-and-test` | Ready after repository-side check-name verification | Always-present wrapper detects build/test-relevant paths and intentionally no-ops for dedicated docs/schema/ops-only changes. Keep name stable unless branch protection is migrated. |
 | Workflow security | `Workflow Security` (`.github/workflows/workflow-security.yml`) | `Workflow Security` | Ready after repository-side check-name verification | Always-present wrapper validates action SHA pins, Dependabot action-update policy, actionlint, and medium-or-higher zizmor findings for workflow-governance changes. |
 | OpenAPI drift | `OpenAPI Contract Guard` | `OpenAPI Contract Guard` | Required | Always-present workflow with internal no-op detection for unrelated changes. |
-| Code scanning | `CodeQL Advanced` | `Analyze (csharp)`, `Analyze (javascript-typescript)`, `Analyze (actions)` | Require only after path filters are removed or an always-running no-op wrapper exists | C# uses manual Release build. Keep schedule enabled. |
+| Code scanning | `CodeQL Advanced` | `Analyze (csharp)`, `Analyze (javascript-typescript)`, `Analyze (actions)` | Ready after repository-side check-name verification | Always-present detector keeps matrix checks present, runs analysis for CodeQL-relevant changes and schedule/manual dispatch, and intentionally no-ops for ignored docs/ops-only paths. C# uses manual Release build. Keep schedule enabled. |
 | Dependency review | `Dependency Review` | `Dependency Review` | Yes for PRs | Reviews dependency changes; read-only token permissions. |
-| Security integration | `Security Integration Tests` | `Security Integration Tests` | Required only for relevant paths initially | Also scheduled nightly; do not make path-skipped workflow required unless a lightweight always-run wrapper is added. |
-| Cerbos policy | `Cerbos Policy Validation` | `Cerbos Policy Validation` | Required only for policy/authz paths initially | Also scheduled nightly; do not make globally required while path-filtered. |
-| Agent context | `agent-context` | `Validate AI-Context Contract` | Required only for agent/docs-context changes | Validates AI governance docs; do not make globally required while path-filtered. |
+| Security integration | `Security Integration Tests` | `Security Integration Tests` | Ready after repository-side check-name verification | Always-present wrapper detects security-relevant paths, runs on schedule/manual dispatch, supports merge queue, and intentionally no-ops for unrelated changes. |
+| Cerbos policy | `Cerbos Policy Validation` | `Cerbos Policy Validation` | Ready after repository-side check-name verification | Always-present wrapper detects authorization-policy/code paths, runs on schedule/manual dispatch, supports merge queue, and intentionally no-ops for unrelated changes. |
+| Agent context | `agent-context` | `Validate AI-Context Contract` | Ready after repository-side check-name verification | Always-present wrapper detects AI context/docs/rule paths, supports merge queue/manual dispatch, and intentionally no-ops for unrelated changes. |
 
-Do **not** require workflows that are skipped by `paths` filters unless the workflow contains an always-running no-op job. GitHub can leave skipped required checks pending, which blocks merges without useful feedback. `Build & Test` now uses workflow-internal change detection instead of trigger-level path skips, so its required check remains present while avoiding unnecessary restore/build/test work for paths owned by dedicated workflows.
+Do **not** require workflows that are skipped by `paths` filters unless the workflow contains an always-running no-op job. GitHub can leave skipped required checks pending, which blocks merges without useful feedback. `Build & Test`, `CodeQL Advanced`, `Security Integration Tests`, `Cerbos Policy Validation`, and `agent-context` now use workflow-internal change detection instead of trigger-level path skips, so their checks remain present while avoiding unnecessary work for unrelated paths.
 
-If merge queue is enabled, ensure required workflows that gate merges include `merge_group`. `Build & Test`, `OpenAPI Contract Guard`, and `CodeQL Advanced` include merge-queue triggers; add the same event to any newly required workflow before marking it merge-queue-required.
+If merge queue is enabled, ensure required workflows that gate merges include `merge_group`. `Build & Test`, `OpenAPI Contract Guard`, `CodeQL Advanced`, `Security Integration Tests`, `Cerbos Policy Validation`, and `agent-context` include merge-queue triggers; add the same event to any newly required workflow before marking it merge-queue-required.
 
 ### Repository Settings Evidence Checklist
 
@@ -73,19 +73,11 @@ Confirm these GitHub security features at repository or organization level:
 
 ### Contributor Legal Governance
 
-The repository has not yet chosen a contributor legal gate. Do not add an enforcing CLA/DCO workflow until the project owner or legal reviewer records the decision.
+The repository uses a CLA-only contribution posture. Every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement](legal/CLA.md), which grants ISLAMU nonprofit broad rights to provide, sell, sublicense, and relicense ISLAMU Event under alternative terms when social-impact or operational needs require it.
 
-The decision record must include:
+The decision record in [CONTRIBUTION_GOVERNANCE.md](legal/CONTRIBUTION_GOVERNANCE.md) captures the legal posture, inbound copyright/patent scope, signature storage model, bot allowlist, archived CLA Assistant risk decision, and `pull_request_target` threat model.
 
-- whether the project uses CLA only, DCO only, CLA plus DCO, or inbound=outbound without a separate agreement;
-- inbound license and patent scope;
-- the approved legal document path, such as `docs/legal/CLA.md` or `docs/legal/DCO.md`;
-- signature storage location, access model, and privacy retention period;
-- bot allowlist policy;
-- token model for any automation;
-- threat model for any `pull_request_target` workflow.
-
-Until that record exists, legal checks may be planned but must not block contributors.
+`.github/workflows/cla.yml` is metadata-only. It uses `pull_request_target`, checks out the trusted base commit only, runs repository-owned `.github/scripts/validate-cla-pr.cs`, and never checks out or executes pull-request head code. It uses read-only `GITHUB_TOKEN` scopes and stores signature evidence in the pull request body plus GitHub PR audit trail.
 
 ### GitHub Actions Supply-Chain Pins
 
@@ -93,7 +85,7 @@ External `uses:` references in `.github/workflows/*.yml` are pinned to full-leng
 
 Local reusable workflows remain path-based (`./.github/workflows/...`) because they are controlled by this repository's review history. Dependabot's `github-actions` ecosystem in `.github/dependabot.yml` keeps external SHA pins maintainable through a weekly grouped update lane with conventional `ci` commit messages.
 
-`Workflow Security` enforces this policy with `.github/scripts/validate-action-pins.cs` and `.github/scripts/validate-dependabot-policy.cs`, both run as file-based C# scripts with `dotnet run <script>.cs -- <args>`. The check always reports a status, scans workflow-security inputs when `.github/workflows/**`, `.github/scripts/**`, `.github/dependabot.yml`, deployable Dockerfiles, or this governance document changes, and intentionally no-ops for unrelated changes. Do not add external actions without a full SHA and a same-line version comment, and do not remove the `github-actions` Dependabot update lane without replacing it with an equivalent pinned-action maintenance process.
+`Workflow Security` enforces this policy with `.github/scripts/validate-action-pins.cs` and `.github/scripts/validate-dependabot-policy.cs`, both run as file-based C# scripts with `dotnet run <script>.cs -- <args>`. The check always reports a status, scans workflow-security inputs when `.github/workflows/**`, `.github/actions/**`, `.github/scripts/**`, `.github/dependabot.yml`, deployable Dockerfiles, or this governance document changes, and intentionally no-ops for unrelated changes. Do not add external actions without a full SHA and a same-line version comment, and do not remove the `github-actions` Dependabot update lane without replacing it with an equivalent pinned-action maintenance process.
 
 Deployable Dockerfiles must use tag-plus-digest base image references, for example `mcr.microsoft.com/dotnet/aspnet:10.0@sha256:<digest>`. The human-readable tag preserves maintainer intent while the digest fixes the resolved image. `Workflow Security` enforces this with `.github/scripts/validate-dockerfile-base-images.cs` for `Explore.API/Dockerfile` and `Explore.Blazor/Dockerfile`. Dependabot's `docker` ecosystem entries update those digests weekly through grouped `docker-base-images` PRs.
 
@@ -109,6 +101,12 @@ Repository-owned helper scripts under `.github/scripts/` must be file-based C# s
 - uploads `workflow-security-evidence` for 30 days.
 
 If future `zizmor` findings must be temporarily accepted, document each exception with owner, date, rule ID, affected workflow, compensating control, and removal condition before weakening the workflow.
+
+### Local Secret-Scanning Feedback
+
+`Secret Scanning` runs `gitleaks` `8.30.1` from the upstream release archive after verifying the Linux x64 archive SHA-256. Pull request, push, and merge-queue runs scan only the relevant commit range and fail when newly introduced secrets are detected. Scheduled and manual runs scan repository history as advisory evidence because the existing history currently contains legacy findings that need triage before this lane can become globally blocking.
+
+The workflow redacts findings, retains SARIF/text output in `secret-scanning-evidence`, and does not replace GitHub secret scanning or push protection. Repository or organization secret scanning and push protection remain required settings in the evidence checklist above.
 
 ### NuGet Locked Restore Policy
 
@@ -134,14 +132,20 @@ The current policy is remediation-first. `MailKit` was upgraded from `4.15.1` to
 | OpenAPI generated-artifact drift | Yes | No | Required after PR2 baseline. |
 | `oasdiff` breaking-change report | No | Future | Keep advisory until versioning and contract tests stabilize. |
 | Spectral/OpenAPI lint | No | Future | Add only after rules are agreed and low-noise. |
-| Security/Cerbos path workflows | Conditional | Yes | Required for matching paths; nightly schedule covers drift outside path filters. |
+| Security/Cerbos path workflows | Conditional | Yes | Always-present wrappers intentionally no-op for unrelated changes; nightly schedule covers drift outside path-relevant PRs. |
+| OpenSSF Scorecard | No | Yes | Scheduled/manual supply-chain posture evidence. Uploads SARIF to code scanning and retains `scorecard-evidence`; keep advisory until repository permissions and signal quality are proven. |
+| Local secret scanning | New findings only | Yes | `gitleaks` blocks on PR/push/merge-queue ranges for newly introduced leaks and keeps scheduled/manual history scans advisory until legacy findings are triaged or baselined. |
 | E2E browser/runtime tests | No | Yes | Manual/nightly until reliability data justifies required status. |
 | Container SBOM/provenance/Trivy/attestation/promotion verification | Deploy-only | No | Required before deployment workflows call Coolify; retained evidence includes registry manifest/index output, immutable primary-registry tag promotion evidence, vulnerability scan artifacts, attestation verification JSON, and checksum manifests. |
-| Production smoke checks | Deploy-only | No | Required when environment URL variables are configured. |
+| Production smoke checks | Deploy-only | No | Required for production deploys; `PRODUCTION_API_URL` and `PRODUCTION_UI_URL` must be configured and both `/alive` and `/health` must pass for deployed components. Staging smoke checks run when staging URL variables are configured. |
 
 The reusable container build must verify each pushed GHCR digest with `gh attestation verify` before any dependent Coolify deploy job can start. Verification must constrain the expected repository, reusable signer workflow, source ref, source digest, SLSA provenance predicate, and GitHub-hosted runner trust boundary; do not rely on workflow-controlled predicate fields as the sole trust source.
 
 The reusable container build must also record immutable primary-registry promotion evidence before deploy jobs can start. When Coolify digest deployment is not yet proven, the temporary fallback is an immutable `sha-*` production tag or `dev-*` staging tag whose primary-registry reference is inspected and verified to resolve to the built digest. Mutable tags such as `latest` and `develop` remain convenience aliases only and must not be treated as release evidence.
+
+Coolify deploy workflows use the local composite action `.github/actions/deploy-coolify` for webhook triggering, smoke checks, redacted failure summaries, and retained deployment evidence. Before invoking Coolify, deploy jobs download the retained `container-build-*` evidence, resolve the component's full-commit immutable tag and digest with `.github/scripts/resolve-deploy-image-evidence.cs`, and pass that digest into the deploy action. The production workflow publishes and records full-commit `sha-${{ github.sha }}` immutable tags; staging publishes and records full-commit `dev-${{ github.sha }}` immutable tags. Production calls set `require-smoke-check: "true"`, so missing production smoke URLs block the webhook call and both `/alive` and `/health` must return `200` for the deployed component. Staging keeps smoke URLs optional but uses the same `/alive` and `/health` checks when configured. This centralizes deploy behavior while keeping environment-scoped secrets and approvals on the caller jobs. Coolify-side proof that the platform consumed that exact digest or full-commit tag remains required before final release readiness.
+
+Deployment freeze control is an operator-owned GitHub Environment/Repository variable named `DEPLOYMENT_FREEZE`. When it is set to `true`, `.github/actions/deploy-coolify` refuses to call the Coolify webhook unless a manual `workflow_dispatch` run supplies `override_reason`. The override reason is written to the retained deployment summary so urgent security releases are auditable without weakening environment approvals.
 
 ## Fork Pull Request Policy
 
@@ -167,7 +171,7 @@ Generated files are reviewed product artifacts, not disposable output.
 | Container Trivy SARIF | `_container-build.yml` via `aquasecurity/trivy-action` | Critical/high vulnerability evidence in a machine-readable retained artifact. |
 | Container attestation verification JSON | `_container-build.yml` via `gh attestation verify` | Verification evidence for the pushed GHCR digest, constrained to the repository, reusable signer workflow, source ref/digest, SLSA provenance predicate, and GitHub-hosted runner trust boundary. |
 | Container evidence checksum manifest | `_container-build.yml` via `.github/scripts/write-artifact-checksums.cs` | SHA-256 integrity manifest for retained digest, OCI, Trivy, and related container evidence artifacts. |
-| Deployment summaries | Coolify deploy jobs | Environment, commit SHA, webhook result, smoke-check result, rollback note. |
+| Deployment summaries | `.github/actions/deploy-coolify` via Coolify deploy jobs | Environment, component, commit SHA, expected immutable image tag, expected image digest, promotion evidence path, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason, workflow run, rollback note. |
 
 Never hand-edit OpenAPI or NSwag generated client artifacts. Regenerate them through the workflow-compatible commands in [TROUBLESHOOTING.md](TROUBLESHOOTING.md#openapi--nswag-drift).
 
@@ -178,6 +182,8 @@ Never hand-edit OpenAPI or NSwag generated client artifacts. Regenerate them thr
 | Fast/integration TRX | `Build & Test (Reusable)` | 14 days |
 | OpenAPI drift artifacts | `OpenAPI Contract Guard` | 30 days |
 | Workflow security evidence | `Workflow Security` | 30 days |
+| OpenSSF Scorecard SARIF | `OpenSSF Scorecard` | 30 days |
+| Secret-scanning SARIF/text evidence | `Secret Scanning` | 30 days |
 | Security and Cerbos logs | `Security Integration Tests`, `Cerbos Policy Validation` | 30 days |
 | E2E TRX, traces, screenshots, videos, Docker diagnostics | `E2E Runtime Tests` | 30 days |
 | Container digest, OCI inspect/index output, immutable promotion evidence, Trivy text/SARIF output, attestation verification JSON, checksum manifest, SBOM/provenance evidence | `Container Build (Reusable)` | 90 days; preserve release evidence externally for release lifetime |

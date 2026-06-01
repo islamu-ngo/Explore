@@ -13,11 +13,11 @@ Last Updated: 2026-05-30 Europe/Brussels
 - [x] Run repository build baseline; latest rerun is green with warnings. Architecture tests are red because unrelated untracked AI integration code defines `AiChatRequest` outside the CQRS query namespace convention.
 - [x] Add deep CTO feedback for CLA/DCO, `schemas/openapi.json`, workflow security, digest promotion, release evidence, and repository settings.
 - [ ] Implement Phase 0 contract and ownership baseline. First slice complete; legal decision and external settings evidence remain.
-- [ ] Implement Phase 1 current defect fixes. `Build & Test` no-op wrapper and NuGet vulnerability remediation are complete; broader required-check hardening remains.
-- [ ] Implement Phase 2 CLA/DCO legal contribution gate.
-- [x] Implement workflow lint/security gate. C# helper scripts, SHA-pin policy, Dependabot maintenance policy validation, blocking `actionlint`, blocking `zizmor`, and retained workflow security evidence are implemented locally; repository-side required-check configuration still needs verification.
+- [x] Implement Phase 1 current defect fixes. `Build & Test`, CodeQL, Security Integration, Cerbos Policy, and agent-context no-op wrappers plus NuGet vulnerability remediation are complete locally; repository-side required-check verification remains in Phase 8.
+- [x] Implement Phase 2 CLA legal contribution gate. CLA-only posture, broad ISLAMU nonprofit inbound rights, contributor signing docs, metadata-only workflow enforcement, and C# validation are implemented locally; branch-protection requirement remains Phase 8.
+- [x] Implement workflow lint/security gate. C# helper scripts, SHA-pin policy, Dependabot maintenance policy validation, blocking `actionlint`, blocking `zizmor`, retained workflow security evidence, advisory OpenSSF Scorecard SARIF evidence, and bounded `gitleaks` feedback are implemented locally; repository-side required-check configuration still needs verification.
 - [ ] Implement container supply-chain evidence hardening. Digest JSON, SBOM/provenance registry evidence, immutable primary-registry promotion evidence, Trivy text/SARIF artifacts, checksum manifests, pre-deploy GHCR attestation verification, and Docker base image digest policy are implemented; exact Coolify digest consumption remains.
-- [ ] Implement digest promotion and deploy consolidation.
+- [ ] Implement digest promotion and deploy consolidation. Local Coolify deploy shell is now centralized through a composite action with deployment-freeze override evidence, required production smoke checks, and deploy-time expected digest resolution from retained promotion artifacts; Coolify-side consumption proof remains.
 - [ ] Verify GitHub repository settings.
 
 ## Implementation Maintenance Rules
@@ -27,7 +27,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 - [x] Update `enterprise-ci-cd-hardening-plan.md` when architecture or sequencing changes.
 - [ ] Keep workflow changes small enough to review.
 - [ ] Do not touch unrelated dirty worktree files.
-- [ ] Do not mark the workstream complete until CLA/DCO policy, digest deployment, workflow security linting, and repository settings evidence are done.
+- [ ] Do not mark the workstream complete until Coolify consumption proof, repository settings evidence, and release evidence maturity are done.
 
 ## Phase 0 - Contract And Repository Settings Baseline
 
@@ -57,7 +57,8 @@ Last Updated: 2026-05-30 Europe/Brussels
   - [x] `Explore.Blazor.Client/Clients/EventApiClient.g.cs`
 - [x] Add `merge_group` to `test.yml` if merge queue is enabled or planned.
 - [x] Replace the `Build & Test` path-skipped required workflow design with an always-running detector/no-op wrapper before marking it required.
-- [ ] Replace any other path-skipped workflow designs before marking those workflows globally required.
+- [x] Replace Security Integration, Cerbos Policy, and agent-context path-skipped workflow designs with always-present detector/no-op wrappers before marking those workflows required.
+- [x] Replace CodeQL trigger-level `paths-ignore` with an always-present detector/no-op wrapper before marking CodeQL globally required.
 - [x] Correct stale `swagger.json` wording in `docs/CONTRIBUTING.md`.
 - [x] Reconcile docs and workflow artifact names for the `_build-test.yml` / `openapi-contract.yml` split.
 - [x] Decide NuGet vulnerability policy:
@@ -68,49 +69,43 @@ Last Updated: 2026-05-30 Europe/Brussels
 
 - [x] No dead/stale OpenAPI guard remains.
 - [x] Docs consistently use `schemas/openapi.json` as the canonical root schema artifact for this workflow cleanup slice.
-- [ ] Required checks cannot be skipped into permanent pending state. `Build & Test` is fixed; other candidate required workflows still need review before being marked globally required.
+- [x] Required checks cannot be skipped into permanent pending state locally. `Build & Test`, CodeQL, Security Integration, Cerbos Policy, and agent-context now use always-present detector/no-op designs; repository-side required-check names still need verification before branch protection is updated.
 - [x] NuGet audit behavior is intentional and documented.
 
-## Phase 2 - Contributor Legal Gate (CLA/DCO)
+## Phase 2 - Contributor Legal Gate (CLA)
 
-- [ ] Read and summarize `https://contributoragreements.org/`.
-- [ ] Read and summarize `https://contributoragreements.org/legal.html`.
-- [ ] Read and summarize `https://contributoragreements.org/agreement-chooser.html`.
-- [ ] Read and summarize `https://cla-assistant.io/`.
-- [ ] Read and summarize `https://github.com/contributor-assistant/github-action`.
-- [ ] Read GitHub `pull_request_target` security documentation before writing `.github/workflows/cla.yml`.
-- [ ] Decide contribution legal posture with owner/legal reviewer:
-  - [ ] CLA only;
+- [x] Read and summarize `https://contributoragreements.org/` in `docs/legal/CONTRIBUTION_GOVERNANCE.md`.
+- [x] Read and summarize `https://contributoragreements.org/legal.html` in `docs/legal/CONTRIBUTION_GOVERNANCE.md`.
+- [x] Read and summarize `https://contributoragreements.org/agreement-chooser.html` in `docs/legal/CONTRIBUTION_GOVERNANCE.md`.
+- [x] Read and summarize `https://cla-assistant.io/` in `docs/legal/CONTRIBUTION_GOVERNANCE.md`.
+- [x] Read and summarize `https://github.com/contributor-assistant/github-action` in `docs/legal/CONTRIBUTION_GOVERNANCE.md`.
+- [x] Read GitHub `pull_request_target` security documentation before writing `.github/workflows/cla.yml`; documented the metadata-only threat-model requirements in `docs/legal/CONTRIBUTION_GOVERNANCE.md`.
+- [x] Decide contribution legal posture with owner/legal reviewer:
+  - [x] CLA only;
   - [ ] DCO only;
   - [ ] CLA plus DCO;
   - [ ] inbound=outbound with no separate agreement.
-- [ ] Draft or approve actual `docs/legal/CLA.md` or `docs/legal/DCO.md`.
-- [ ] Do not use SAP's sample CLA as the production agreement.
-- [ ] Decide signature storage:
-  - [ ] remote private signatures repository; or
-  - [ ] dedicated unprotected signatures branch; or
-  - [ ] same repository only with explicit risk acceptance.
-- [ ] If using `contributor-assistant/github-action`, document that the upstream repository is archived and decide:
-  - [ ] accept archived action risk;
-  - [ ] fork/vendor it;
-  - [ ] choose a maintained alternative.
-- [ ] Add `.github/workflows/cla.yml` only after threat model approval.
-- [ ] Pin `contributor-assistant/github-action` to a full commit SHA, not `@v2.6.1`.
-- [ ] Scope permissions to the smallest viable set.
-- [ ] Ensure the CLA workflow does not checkout, build, test, cache, or execute untrusted PR head code.
-- [ ] Avoid broad `bot*` allowlists; explicitly allow only known trusted bots.
-- [ ] Document token choice: `GITHUB_TOKEN`, fine-grained PAT, GitHub App token, or remote repo credential.
-- [ ] Update `.github/PULL_REQUEST_TEMPLATE.md` with CLA/DCO language.
-- [ ] Update `docs/CONTRIBUTING.md` with signing instructions.
+- [x] Draft or approve actual `docs/legal/CLA.md`.
+- [x] Do not use SAP's sample CLA as the production agreement.
+- [x] Decide signature storage: pull request body plus GitHub PR audit trail; no signature writes to protected source branches.
+- [x] Avoid `contributor-assistant/github-action`; the upstream repository is archived, so the implementation uses repository-owned `.github/scripts/validate-cla-pr.cs` instead.
+- [x] Add `.github/workflows/cla.yml` after threat model approval.
+- [x] Avoid `contributor-assistant/github-action`, so no archived third-party CLA action pin is needed.
+- [x] Scope permissions to the smallest viable set: `contents: read` and `pull-requests: read`.
+- [x] Ensure the CLA workflow does not checkout, build, test, cache, or execute untrusted PR head code. It checks out the trusted base commit only and validates PR metadata.
+- [x] Avoid broad `bot*` allowlists; explicitly allow only `dependabot[bot]` and `github-actions[bot]`.
+- [x] Document token choice: read-only `GITHUB_TOKEN`, no signature writes.
+- [x] Add enforcing `.github/PULL_REQUEST_TEMPLATE.md` CLA language with checked agreement and `CLA Signature: @github-username` evidence.
+- [x] Update `docs/CONTRIBUTING.md` with the active CLA signing requirement and metadata-only validation workflow.
 - [ ] Add branch protection requirement for the CLA status check after stability is proven.
-- [ ] Add privacy/retention note for signature metadata.
+- [x] Add privacy/retention note for signature metadata.
 
 ### Phase 2 Acceptance
 
-- [ ] Contributor legal status is visible as a PR check.
-- [ ] CLA/DCO docs and PR template agree.
-- [ ] The workflow cannot run untrusted PR code with write credentials.
-- [ ] Signature storage is auditable and not mixed into protected source branch changes.
+- [x] Contributor legal status is visible as a PR check through `Contributor License Agreement`.
+- [x] CLA docs and PR template agree.
+- [x] The workflow cannot run untrusted PR code with write credentials.
+- [x] Signature storage is auditable and not mixed into protected source branch changes.
 
 ## Phase 3 - Workflow Quality And Supply-Chain Guard
 
@@ -122,8 +117,8 @@ Last Updated: 2026-05-30 Europe/Brussels
 - [x] Preserve path-based local reusable workflow calls.
 - [x] Add/update Dependabot rules so action SHA updates remain maintainable.
 - [x] Keep repository-owned CI helper scripts as file-based C# scripts run with `dotnet run <script>.cs -- <args>` and script-local `#:property RestorePackagesWithLockFile=false` directives.
-- [ ] Add OpenSSF Scorecard scheduled/SARIF evidence if repository permissions support it.
-- [ ] Add `gitleaks` or equivalent local secret-scanning feedback lane if low-noise.
+- [x] Add OpenSSF Scorecard scheduled/SARIF evidence as an advisory lane with retained artifact output; promotion to required remains deferred until repository permissions and signal quality are proven.
+- [x] Add `gitleaks` local secret-scanning feedback lane. PR/push/merge-queue ranges block on newly introduced leaks; scheduled/manual history scans are advisory until legacy findings are triaged or baselined.
 - [ ] Add `pinact` or a custom policy check if it improves SHA-pin enforcement.
 
 ### Phase 3 Acceptance
@@ -192,22 +187,22 @@ Last Updated: 2026-05-30 Europe/Brussels
 
 ## Phase 7 - Unified Digest-Based Deploy Promotion
 
-- [ ] Create one reusable deploy workflow/path for staging and production.
-- [ ] Remove duplicated deploy shell logic from `deploy-coolify.yml` and `deploy-coolify-develop.yml`.
-- [ ] Pass environment, component, digest, smoke URLs, and webhook secret names as explicit inputs.
+- [x] Create one reusable deploy execution path for staging and production through `.github/actions/deploy-coolify` while preserving caller workflow environment approvals and secrets.
+- [x] Remove duplicated deploy shell logic from `deploy-coolify.yml` and `deploy-coolify-develop.yml` by moving Coolify webhook, smoke-check, redacted failure, and summary behavior into the local composite action.
+- [x] Pass environment, component, digest, smoke URLs, and webhook secret names as explicit inputs. Current deploy jobs resolve the expected digest from retained container promotion artifacts and pass it to `.github/actions/deploy-coolify` with environment, component, smoke URL, webhook/token, registry, image, and immutable tag prefix.
 - [ ] Confirm whether Coolify can deploy `image@sha256:<digest>`.
 - [ ] If Coolify supports digests, configure deployment by digest.
 - [x] If Coolify does not support digests, configure immutable commit-SHA tag deployment and record resolved digest before deploy. `_container-build.yml` now records primary-registry `sha-*` / `dev-*` promotion tags and verifies each tag resolves to the built digest before dependent deploy jobs can start; post-deploy Coolify consumption proof remains separate.
-- [ ] Make production smoke checks mandatory when production URL variables exist.
+- [x] Make production smoke checks mandatory. Production deploy action calls now require configured smoke URLs for deployed components, and both `/alive` and `/health` must pass before deployment evidence reports success.
 - [ ] Keep production protected by GitHub Environment approval and branch restrictions.
-- [ ] Add deployment freeze/manual override policy with audit notes for urgent security releases.
-- [ ] Ensure deployment summaries include environment, component, commit SHA, digest, workflow run, smoke result, and rollback note. Container build summaries now include digest and immutable promotion evidence; Coolify deploy summaries still need digest/tag promotion evidence.
+- [x] Add deployment freeze/manual override policy with audit notes for urgent security releases. `DEPLOYMENT_FREEZE=true` blocks webhook calls unless a manual `workflow_dispatch` run supplies `override_reason`; the local deploy action writes freeze state and override reason to retained evidence.
+- [x] Ensure deployment summaries include environment, component, commit SHA, digest, workflow run, smoke result, and rollback note. Coolify deploy summaries now include environment, component, commit SHA, expected full-commit immutable image tag, expected image digest, promotion evidence path, webhook result, smoke result, whether smoke was required, deployment-freeze state, override reason, workflow run, and rollback note. Exact Coolify-consumed digest remains pending Coolify consumption proof.
 
 ### Phase 7 Acceptance
 
-- [ ] One deploy implementation serves staging and production.
-- [ ] Production deployment evidence proves exactly what digest was deployed. Build-side immutable tag promotion proof exists; Coolify-side consumption proof remains open.
-- [ ] Deployment failures retain redacted logs and smoke evidence.
+- [x] One deploy execution implementation serves staging and production through `.github/actions/deploy-coolify`; the two caller workflows remain for their distinct triggers, environments, and approvals.
+- [ ] Production deployment evidence proves exactly what digest was deployed. Deploy jobs now resolve and record the expected digest from retained build-side immutable tag promotion proof; Coolify-side consumption proof remains open.
+- [x] Deployment failures retain redacted webhook/smoke output summaries and upload `artifacts/deploy/**` through both Coolify deploy workflows.
 
 ## Phase 8 - Repository And Organization Policy Enforcement
 
@@ -280,25 +275,25 @@ For workflow implementation PRs:
 - [x] Container digest evidence generation remains covered by C# script; `dotnet run .github/scripts/write-container-digest-evidence.cs` passed locally with representative environment input.
 - [x] Immutable deployment tag promotion evidence generation remains covered by C# script; `dotnet run .github/scripts/write-image-promotion-evidence.cs` passed locally with representative environment input.
 - [x] Edited workflow YAML parses locally with PyYAML.
-- [ ] CLA workflow threat model is documented before enabling `pull_request_target`.
+- [x] CLA workflow threat model is documented before enabling `pull_request_target`.
 - [ ] `dotnet build --configuration Release --verbosity quiet` passes.
 - [ ] Affected per-project tests pass.
 - [x] `dotnet restore --locked-mode` passes after package/lock-file regeneration.
 - [x] `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` reports `vulnerable-packages=0` after `MailKit` remediation.
 - [ ] OpenAPI guard runs twice with zero second-run diff when contract paths are touched.
 - [x] Container build emits digest, SBOM/provenance, immutable promotion, scan output, base image digest pins, and attestation verification evidence. Current implementation emits digest JSON, primary-registry promotion evidence, OCI inspect/index evidence, Trivy text/SARIF artifacts, GHCR attestations, and `gh attestation verify` JSON; Dockerfiles use tag-plus-digest .NET base image references.
-- [ ] Deploy verifies attestation/digest before invoking Coolify. Attestation verification is enforced through the required `build-and-push` dependency; exact digest consumption by Coolify remains open.
+- [ ] Deploy verifies attestation/digest before invoking Coolify. Attestation and immutable tag digest verification are enforced through the required `build-and-push` dependency; deploy jobs now resolve expected image digests from retained promotion evidence before calling Coolify. Exact digest consumption by Coolify remains open.
 - [ ] Staging deploy smoke checks pass before production changes are considered.
 
 ## Remaining / Deferred Work
 
 - [ ] Tavily MCP research refresh when Tavily is available.
 - [ ] Context7 documentation refresh when quota is available.
-- [ ] Legal review of CLA/DCO posture.
-- [ ] Maintainer decision on archived CLA Assistant action risk.
+- [x] Legal contribution posture selected: CLA only with broad inbound rights for ISLAMU nonprofit alternative licensing.
+- [x] Maintainer decision on archived CLA Assistant action risk: avoided in favor of repository-owned C# validator.
 - [ ] Coolify digest support verification.
 - [ ] ATCR OIDC support verification.
 - [ ] Repository settings verification through GitHub UI/API.
 - [x] NuGet vulnerability remediation and explicit blocking audit policy.
 - [ ] Coverage provider decision.
-- [ ] Promotion of `oasdiff`, Spectral, E2E, Scorecard, and release automation gates from advisory to blocking after reliability is proven.
+- [ ] Promotion of `oasdiff`, Spectral, E2E, Scorecard, history-wide secret scanning, and release automation gates from advisory to blocking after reliability is proven.

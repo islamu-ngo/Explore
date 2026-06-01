@@ -6,8 +6,8 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-06
-> **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
+> **Last Verified:** 2026-05-31
+> **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
 
 This page is the operational reference for implemented runtime behavior. Task procedures should live in dedicated runbooks and be linked from here.
 
@@ -103,6 +103,7 @@ Readiness interpretation:
 | `email-dispatch` | API | Selected Basic Dispatch trigger is enabled (`TickerQ` scheduler or hosted-service fallback) | Dispatch is intentionally disabled | TickerQ mode selected while scheduler is disabled; invalid dispatch/scheduler options fail startup; RabbitMQ is not checked in Basic mode |
 | `email-dispatch-rabbitmq` | API | RabbitMQ Dispatch Mode is disabled, or enabled and topology can be declared | Not used | RabbitMQ mode is enabled but the broker/topology is unreachable or invalid |
 | `idempotency-cleanup` | API | Expired idempotency cleanup is enabled in delete or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
+| `storage` | API | Selected storage provider is available. Local mode verifies the API-owned data root is writable; S3-compatible mode verifies bucket reachability only when selected. | Not used | Selected provider cannot be resolved, selected local root is not writable, or selected S3-compatible storage is missing/unreachable |
 | `ai-provider` | API | AI provider integration is disabled, deterministic fake provider is enabled, or OpenAI-compatible settings are valid | Not used | AI provider is enabled but no runnable provider is configured, or provider endpoint/settings fail egress validation |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
 | `islamu-event-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
@@ -118,6 +119,7 @@ Operational rules:
 - Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only. The default trigger is TickerQ `email-dispatch-drain`; the hosted service mode is a fallback over the same drain service.
 - RabbitMQ Dispatch Mode is optional transport infrastructure. When `EmailDispatchRabbitMq:Enabled=false`, the `email-dispatch-rabbitmq` check is healthy without opening a broker connection. When enabled, missing broker connectivity or failed topology declaration is unhealthy because the operator explicitly selected RabbitMQ transport.
 - Idempotency cleanup is an optional operational worker over the PostgreSQL replay cache. `Degraded` means cleanup is intentionally disabled; stale rows remain ignored for replay but are not physically deleted until cleanup is re-enabled.
+- Storage readiness follows the selected instance storage policy. Local-first deployments do not need S3 for `/health`; S3 configuration is probed only when `s3_compatible` is the selected provider. The readiness payload exposes bounded provider/status/failure-code fields and does not include filesystem paths, endpoints, bucket names, access keys, object keys, or secrets.
 - AI provider readiness is intentionally configuration-first. `AiProvider:Enabled=false` is healthy-disabled. If enabled, unsupported providers, missing required OpenAI-compatible endpoint/key/model values, local/private endpoints without explicit opt-in, embedded endpoint credentials, query strings, or fragments make readiness unhealthy before chat/send is broadly enabled. The readiness payload exposes only bounded booleans and provider/status labels, not endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, or raw provider errors.
 
 ## Deployment Protection and Evidence
@@ -130,18 +132,20 @@ GitHub Actions deploys use the `staging` and `production` environments. Configur
 
 See [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) for the required/advisory gate matrix, branch-protection settings, and artifact retention policy.
 
-Deploy jobs call the existing Coolify webhook contract with timeout, retry, redacted error output, transport-failure summaries, and explicit HTTP status validation. The job writes a deployment summary and uploads deployment evidence for 90 days. If environment URL variables are configured, the workflow smoke-checks `/alive` and `/health` for the deployed API and UI with a bounded retry budget before reporting success. The reusable container build verifies the pushed GHCR digest's artifact attestation before deploy jobs can invoke Coolify.
+Deploy jobs call the existing Coolify webhook contract through the local `.github/actions/deploy-coolify` composite action with timeout, retry, redacted error output, transport-failure summaries, and explicit HTTP status validation. Before calling the action, the deploy workflow downloads retained `container-build-*` evidence and resolves the component's expected immutable image tag and digest with `.github/scripts/resolve-deploy-image-evidence.cs`. The action writes deployment summaries and uploads deployment evidence for 90 days through the caller workflow. Production deploys require configured `PRODUCTION_API_URL` and `PRODUCTION_UI_URL` values for components being deployed; missing production smoke URLs block the Coolify webhook call. When a smoke URL is configured, the action requires both `/alive` and `/health` to return `200` with a bounded retry budget before reporting success. Staging smoke URLs remain optional, but configured staging URLs use the same checks. The reusable container build verifies the pushed GHCR digest's artifact attestation before deploy jobs can invoke Coolify.
+
+Set the GitHub Environment or Repository variable `DEPLOYMENT_FREEZE=true` to block Coolify webhook calls during a deployment freeze. Manual `workflow_dispatch` runs can provide `override_reason` for urgent security releases; the local deploy action records the override reason in deployment evidence before it calls Coolify. Push-triggered deploys do not have an override reason and are blocked while the freeze variable is active.
 
 ### Deployment Image Source of Truth
 
-Container builds publish mutable convenience tags (`latest` for production and `develop` for staging), immutable commit-SHA tags, digest evidence, immutable tag promotion evidence, SBOM/provenance attestations, image scan artifacts, and attestation verification evidence for the pushed GHCR digest. Deployable Dockerfiles pin .NET runtime and SDK base images with tag-plus-digest references; Dependabot Docker update PRs are the expected path for refreshing those base digests.
+Container builds publish mutable convenience tags (`latest` for production and `develop` for staging), full-commit immutable tags (`sha-${GITHUB_SHA}` for production and `dev-${GITHUB_SHA}` for staging), digest evidence, immutable tag promotion evidence, SBOM/provenance attestations, image scan artifacts, and attestation verification evidence for the pushed GHCR digest. Deployable Dockerfiles pin .NET runtime and SDK base images with tag-plus-digest references; Dependabot Docker update PRs are the expected path for refreshing those base digests.
 
 Production must not rely on `latest` as the source of truth once deployment promotion is complete.
 
 Decision path:
 
 1. Preferred: configure Coolify to deploy explicit image digests when the current Coolify application/webhook model supports `image@sha256:...`.
-2. Fallback: configure Coolify to deploy immutable commit-SHA tags (`sha-*` for production and `dev-*` for staging). The reusable container build records those primary-registry tag references and verifies that each resolves to the built digest before deployment jobs can start.
+2. Fallback: configure Coolify to deploy immutable full-commit tags (`sha-${GITHUB_SHA}` for production and `dev-${GITHUB_SHA}` for staging). The reusable container build records those primary-registry tag references and verifies that each resolves to the built digest before deployment jobs can start; the deploy workflow resolves the retained promotion artifact again and records the expected immutable image tag plus expected image digest in deployment evidence.
 3. Temporary risk: mutable tags remain convenience aliases while Coolify capability is being confirmed.
 
 Do not remove digest/SBOM/provenance evidence even if Coolify temporarily consumes immutable tags rather than digests.
@@ -168,6 +172,7 @@ API runtime protections include:
 | `write` | Fixed window | API key ID when present, otherwise `User.Identity.Name` | 30 requests/60s |
 | `setup_secret` | Fixed window | IP | 5 requests/60s |
 | `AnalyticsRelay` | Fixed window | IP | 120 requests/60s |
+| `AiAssistant` | Fixed window | API key ID when present, otherwise authenticated user ID | 12 sends/60s |
 
 **Rejection**: `429 Too Many Requests` with RFC 6585 ProblemDetails, `Retry-After` when available, plus `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers.
 
@@ -178,6 +183,13 @@ API runtime protections include:
 - `Authenticated:PermitLimit`, `Authenticated:WindowSeconds`, `Authenticated:SegmentsPerWindow`
 - `Write:PermitLimit`, `Write:WindowSeconds`
 - `SetupSecret:PermitLimit`, `SetupSecret:WindowSeconds`
+- `AiAssistant:PermitLimit`, `AiAssistant:WindowSeconds`
+
+AI assistant send requests have layered abuse controls:
+- API rate limiting uses the `AiAssistant` policy before the request reaches MediatR.
+- Application handlers enforce `ai_assistant.daily_message_limit`, `ai_assistant.daily_tenant_message_limit`, and `ai_assistant.concurrent_run_limit` before provider calls.
+- Idempotency replay is evaluated before quota checks so successful retries do not consume additional provider calls.
+- 429 and quota ProblemDetails must not include prompts, model responses, selected reference content, provider request IDs, endpoint URLs, API keys, or raw provider errors.
 
 ### Request Timeouts (`RequestTimeouts` config section)
 
@@ -239,6 +251,14 @@ Current counters include:
 - `explore.notifications.fanout_subscribers` (`tenant_id`, `fanout_kind`, `outcome`) — aggregate subscriber decisions for notification fanout; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
 - `explore.ai.provider.health_checks` (`provider`, `status`, `reason`) — AI provider readiness outcomes; labels intentionally exclude endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, and raw errors.
 - `explore.ai.provider.requests` (`provider`, `outcome`, `failure_category`) — future AI provider call outcomes; labels intentionally exclude tenant/user prompt content, selected reference content, model IDs, endpoint URLs, provider request IDs, and raw provider errors.
+- `explore.storage.upload_sessions` (`provider`, `operation`, `outcome`, `failure_category`) — provider-neutral upload session create/finalize/cancel outcomes; labels intentionally exclude tenant IDs, user IDs, upload-session IDs, filenames, object keys, paths, endpoints, bucket names, access keys, secrets, and raw exception text.
+- `explore.storage.upload_bytes` (`provider`, `outcome`, `failure_category`) — upload byte histogram for accepted/attempted provider writes; labels are bounded to provider and outcome categories.
+- `explore.storage.reads` (`provider`, `outcome`, `failure_category`, `visibility`) — metadata-backed storage read outcomes after lifecycle and visibility checks; labels intentionally exclude storage-object IDs, object keys, paths, filenames, tenant IDs, user IDs, and raw provider errors.
+- `explore.storage.read_bytes` (`provider`, `outcome`, `visibility`) — read byte histogram for successful metadata-backed provider reads.
+- `explore.storage.deletes` (`provider`, `outcome`, `failure_category`) — provider-neutral blob delete plus metadata delete outcomes; labels intentionally exclude storage-object IDs, object keys, paths, filenames, endpoints, bucket names, and raw provider errors.
+- `explore.storage.quota_reservations` (`provider`, `operation`, `outcome`, `failure_category`) — quota reserve/release/commit outcomes around upload sessions.
+- `explore.storage.quota_bytes` (`provider`, `operation`, `outcome`) — byte histogram for quota reserve/release/commit operations.
+- `explore.storage.provider_tests` (`provider`, `outcome`, `failure_category`) — admin storage provider test outcomes; labels intentionally exclude local filesystem roots, S3 endpoints, bucket names, access keys, secrets, and raw exception text.
 
 ### Notification Fanout Operations
 

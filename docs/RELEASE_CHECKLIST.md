@@ -15,9 +15,9 @@ Use this checklist before tagging or publishing a release. A release is not read
 
 - [ ] Version/tag is selected.
 - [ ] Commit SHA is recorded.
-- [ ] Image tags or deployment artifacts are recorded, including immutable `sha-*` / `dev-*` promotion tags when container images are published.
+- [ ] Image tags or deployment artifacts are recorded, including full-commit immutable `sha-*` / `dev-*` promotion tags when container images are published.
 - [ ] Image digests, immutable promotion tag evidence, Docker base image digest pins, SBOM/provenance evidence, image scan artifacts, and attestation verification results are recorded when container images are published.
-- [ ] Deployment environment, approver, webhook result, smoke-check result, and rollback note are recorded for staging/production deployments.
+- [ ] Deployment environment, approver, expected immutable image tag, expected image digest, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason if any, and rollback note are recorded for staging/production deployments.
 - [ ] Supported deployment modes are stated: single-tenant, multi-tenant, optional storage, optional Cerbos.
 - [ ] Known incompatible versions are stated.
 
@@ -70,7 +70,7 @@ Use this checklist before tagging or publishing a release. A release is not read
 
 - [ ] OpenAPI drift artifacts are clean, or generated `openapi.json` / NSwag client changes are reviewed and committed.
 - [ ] Container image digest, immutable promotion tag evidence, Docker base image digest pins, SBOM/provenance, Trivy scan output, attestation verification JSON, checksum manifest, and image tag evidence are recorded when images are published.
-- [ ] Deployment evidence includes environment, commit SHA, webhook result, smoke-check result, workflow run link, and rollback note.
+- [ ] Deployment evidence includes environment, component, commit SHA, expected immutable image tag, expected image digest, promotion evidence path, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason if any, workflow run link, and rollback note.
 - [ ] Production deployment approval and branch restrictions are configured in GitHub Environment settings.
 - [ ] Long-lived release evidence is copied from expiring GitHub Actions artifacts into release notes or durable storage when required.
 
