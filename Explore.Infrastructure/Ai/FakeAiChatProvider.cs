@@ -26,7 +26,7 @@ public sealed class FakeAiChatProvider : IAiChatProvider, IAiModelCatalog
         return Task.FromResult(Models);
     }
 
-    public Task<AiChatProviderResult> SendAsync(AiChatRequest request, CancellationToken cancellationToken = default)
+    public Task<AiChatProviderResult> SendAsync(AiChatPayload request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -51,7 +51,7 @@ public sealed class FakeAiChatProvider : IAiChatProvider, IAiModelCatalog
         return Task.FromResult(AiChatProviderResult.Success(response));
     }
 
-    private static IReadOnlyList<AiProposedActionCandidate> BuildProposedActions(AiChatRequest request)
+    private static IReadOnlyList<AiProposedActionCandidate> BuildProposedActions(AiChatPayload request)
     {
         if (!request.Options.ToolProposalsEnabled
             || request.ActionSchema is null

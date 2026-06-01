@@ -446,7 +446,7 @@ public sealed class AiAssistantApiFlowTests
 
     private sealed class FailingAiChatProvider : IAiChatProvider, IAiModelCatalog
     {
-        public Task<AiChatProviderResult> SendAsync(AiChatRequest request, CancellationToken cancellationToken = default)
+        public Task<AiChatProviderResult> SendAsync(AiChatPayload request, CancellationToken cancellationToken = default)
             => Task.FromResult(AiChatProviderResult.Failure(
                 "provider_unreachable",
                 "AI provider is unavailable.",

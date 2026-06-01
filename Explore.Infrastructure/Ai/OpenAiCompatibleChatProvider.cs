@@ -61,7 +61,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         return Task.FromResult(models);
     }
 
-    public async Task<AiChatProviderResult> SendAsync(AiChatRequest request, CancellationToken cancellationToken = default)
+    public async Task<AiChatProviderResult> SendAsync(AiChatPayload request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var settings = _options.Value;
@@ -188,7 +188,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
 
     private bool TryCreatePayload(
         AiProviderSettings settings,
-        AiChatRequest request,
+        AiChatPayload request,
         out OpenAiChatCompletionRequest? payload,
         out AiChatProviderResult? failure)
     {

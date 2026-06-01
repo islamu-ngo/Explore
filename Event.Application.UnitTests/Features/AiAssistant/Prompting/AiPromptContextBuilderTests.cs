@@ -42,6 +42,10 @@ public sealed class AiPromptContextBuilderTests
         await Assert.That(request.ActionSchema).IsNotNull();
         await Assert.That(request.ActionSchema!.AllowedKinds).IsEquivalentTo([AiProposedActionKind.CreateEventDraft]);
         await Assert.That(request.ActionSchema.JsonSchema).Contains("\"type\": \"object\"");
+        await Assert.That(request.ActionSchema.JsonSchema).Contains("\"additionalProperties\": false");
+        await Assert.That(request.ActionSchema.JsonSchema).Contains("\"organizationId\"");
+        await Assert.That(request.ActionSchema.JsonSchema).DoesNotContain("\"eventStatusId\"");
+        await Assert.That(request.ActionSchema.JsonSchema).DoesNotContain("\"sessions\"");
     }
 
     [Test]

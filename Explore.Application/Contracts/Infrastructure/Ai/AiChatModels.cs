@@ -5,7 +5,7 @@ namespace Explore.Application.Contracts.Infrastructure.Ai;
 
 using Explore.Domain.Ai;
 
-public sealed record AiChatRequest(
+public sealed record AiChatPayload(
     string ModelId,
     IReadOnlyList<AiChatMessage> Messages,
     string? SystemPrompt,

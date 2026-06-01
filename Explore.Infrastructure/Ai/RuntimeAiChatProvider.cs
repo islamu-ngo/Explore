@@ -38,7 +38,7 @@ public sealed class RuntimeAiChatProvider : IAiChatProvider, IAiModelCatalog
         return modelCatalog.ListAvailableModelsAsync(cancellationToken);
     }
 
-    public Task<AiChatProviderResult> SendAsync(AiChatRequest request, CancellationToken cancellationToken = default)
+    public Task<AiChatProviderResult> SendAsync(AiChatPayload request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

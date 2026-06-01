@@ -51,7 +51,7 @@ public sealed class SendAiMessageCommandHandlerTests
             .Returns(0);
         _modelCatalog.ListAvailableModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new AiModelDescriptor(AiProviderDefaults.FakeModelId, AiProviderDefaults.FakeModelDisplayName, SupportsToolProposals: true)]);
-        _chatProvider.SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>())
+        _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
             .Returns(AiChatProviderResult.Success(new AiChatResponse(
                 "Assistant response",
                 [],
@@ -70,7 +70,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("unauthenticated");
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>());
+        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
@@ -84,7 +84,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("disabled");
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>());
+        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
@@ -100,7 +100,7 @@ public sealed class SendAiMessageCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(priorRunId);
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>());
+        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -117,7 +117,7 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
         await Assert.That(result.QuotaExceeded).IsNotNull();
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>());
+        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
@@ -135,7 +135,7 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit);
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>());
+        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
@@ -153,7 +153,7 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit);
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>());
+        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
@@ -163,7 +163,7 @@ public sealed class SendAiMessageCommandHandlerTests
         var conversation = CreateConversation();
         _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
-        _chatProvider.SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>())
+        _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
             .Returns(AiChatProviderResult.Failure("provider_timeout", "Provider timed out.", isTransient: true));
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
@@ -196,7 +196,7 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Succeeded);
         await Assert.That(savedIdempotency).IsNotNull();
         await Assert.That(savedIdempotency!.ResponseBody).IsEqualTo(result.Id.ToString("D", CultureInfo.InvariantCulture));
-        await _chatProvider.Received(1).SendAsync(Arg.Is<AiChatRequest>(request =>
+        await _chatProvider.Received(1).SendAsync(Arg.Is<AiChatPayload>(request =>
             request.Messages.Any(message => message.Role == AiMessageRole.User && message.Content.Contains("Plan the event")) &&
             request.Options.StreamingEnabled == false), Arg.Any<CancellationToken>());
         await _conversationRepository.Received(2).Update(conversation);
@@ -208,7 +208,7 @@ public sealed class SendAiMessageCommandHandlerTests
         var conversation = CreateConversation();
         _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
-        _chatProvider.SendAsync(Arg.Any<AiChatRequest>(), Arg.Any<CancellationToken>())
+        _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
             .Returns(AiChatProviderResult.Success(new AiChatResponse(
                 string.Empty,
                 [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Draft\"}")],
@@ -222,7 +222,7 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(action.Kind).IsEqualTo(AiProposedActionKind.CreateEventDraft);
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Proposed);
         await Assert.That(action.ResultResourceId).IsNull();
-        await _chatProvider.Received(1).SendAsync(Arg.Is<AiChatRequest>(request =>
+        await _chatProvider.Received(1).SendAsync(Arg.Is<AiChatPayload>(request =>
             request.ActionSchema != null &&
             request.ActionSchema.AllowedKinds.Contains(AiProposedActionKind.CreateEventDraft)), Arg.Any<CancellationToken>());
     }

@@ -35,7 +35,7 @@ public sealed class FakeAiChatProviderTests
     [Test]
     public async Task SendAsync_WithNoMessagesReturnsFailure()
     {
-        var result = await _provider.SendAsync(new AiChatRequest(
+        var result = await _provider.SendAsync(new AiChatPayload(
             FakeAiChatProvider.ModelId,
             [],
             null,
@@ -59,7 +59,7 @@ public sealed class FakeAiChatProviderTests
         await Assert.That(result.Response.ProposedActions[0].PayloadJson).Contains("Fake AI event draft");
     }
 
-    private static AiChatRequest CreateRequest(
+    private static AiChatPayload CreateRequest(
         string userMessage,
         bool toolProposalsEnabled = false,
         IReadOnlyList<AiProposedActionKind>? allowedKinds = null) =>

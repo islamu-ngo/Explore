@@ -5,5 +5,5 @@ namespace Explore.Application.Contracts.Infrastructure.Ai;
 
 public interface IAiChatProvider
 {
-    Task<AiChatProviderResult> SendAsync(AiChatRequest request, CancellationToken cancellationToken = default);
+    Task<AiChatProviderResult> SendAsync(AiChatPayload request, CancellationToken cancellationToken = default);
 }

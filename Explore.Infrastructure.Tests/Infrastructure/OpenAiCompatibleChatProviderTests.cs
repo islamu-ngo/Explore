@@ -183,7 +183,7 @@ public sealed class OpenAiCompatibleChatProviderTests
         TimeoutSeconds = 30
     };
 
-    private static AiChatRequest CreateRequest(
+    private static AiChatPayload CreateRequest(
         string userMessage,
         bool toolProposalsEnabled = false,
         string? actionSchema = null) => new(

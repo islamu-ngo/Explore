@@ -151,7 +151,7 @@ public sealed class RuntimeAiChatProviderTests
         TimeoutSeconds = 30
     };
 
-    private static AiChatRequest CreateRequest(string userMessage) => new(
+    private static AiChatPayload CreateRequest(string userMessage) => new(
         "gpt-test",
         [new AiChatMessage(AiMessageRole.User, userMessage)],
         "You are a safe assistant.",

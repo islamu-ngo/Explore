@@ -20,10 +20,31 @@ public sealed class AiSystemPromptFactory
     private const string CreateEventDraftSchema = """
         {
           "type": "object",
-          "additionalProperties": true,
+          "additionalProperties": false,
+          "required": ["title"],
           "properties": {
             "title": { "type": "string" },
-            "description": { "type": "string" }
+            "subtitle": { "type": "string" },
+            "description": { "type": "string" },
+            "content": { "type": "string" },
+            "slug": { "type": "string" },
+            "eventTypeId": { "type": "integer" },
+            "audienceGenderId": { "type": "integer" },
+            "audienceAgeId": { "type": "integer" },
+            "organizationId": { "type": "string", "format": "uuid" },
+            "groupId": { "type": "string", "format": "uuid" },
+            "price": { "type": "number", "minimum": 0 },
+            "currencyCode": { "type": "string", "maxLength": 3 },
+            "isRegistrationRequired": { "type": "boolean" },
+            "externalRegistrationUrl": { "type": "string" },
+            "visibilityTypeId": { "type": "integer" },
+            "eventFormatId": { "type": "integer" },
+            "madhabId": { "type": "integer" },
+            "timezone": { "type": "string" },
+            "eventTimeZoneId": { "type": "string" },
+            "eventUrl": { "type": "string" },
+            "categoryIds": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+            "tagIds": { "type": "array", "items": { "type": "string", "format": "uuid" } }
           }
         }
         """;

@@ -23,7 +23,7 @@ public sealed class AiPromptContextBuilder
         _systemPromptFactory = systemPromptFactory;
     }
 
-    public AiChatRequest Build(
+    public AiChatPayload Build(
         AiConversation conversation,
         AiAssistantSettingGroup settings,
         string modelId)
@@ -36,7 +36,7 @@ public sealed class AiPromptContextBuilder
             .Select(message => new AiChatMessage(message.Role, WrapMessageContent(message.Role, message.Content)))
             .ToList();
 
-        return new AiChatRequest(
+        return new AiChatPayload(
             modelId,
             messages,
             _systemPromptFactory.CreateSystemPrompt(),
