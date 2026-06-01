@@ -42,6 +42,8 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 ## Governance And Rules
 - [GOVERNANCE.md](GOVERNANCE.md) - design and code governance.
 - [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md) - GitHub Actions gates, branch protection, deployment environments, and CI/CD evidence policy.
+- [legal/CLA.md](legal/CLA.md) - active ISLAMU Event contributor license agreement.
+- [legal/CONTRIBUTION_GOVERNANCE.md](legal/CONTRIBUTION_GOVERNANCE.md) - CLA legal contribution decision record and automation threat model.
 - [NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md) - naming rules for entities, CQRS, services, tests.
 - [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md) - placeholder syntax used in generic templates.
 - [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md) - shortest safe path for docs-only and small-bug PRs.

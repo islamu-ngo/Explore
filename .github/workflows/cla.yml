@@ -1,0 +1,39 @@
+# ABOUTME: Enforces ISLAMU Contributor License Agreement signatures from pull request metadata.
+# ABOUTME: Uses pull_request_target without checking out or executing pull-request head code.
+
+name: Contributor License Agreement
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  cla:
+    name: Contributor License Agreement
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout trusted base branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Validate CLA signatures
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: dotnet run .github/scripts/validate-cla-pr.cs -- "$GITHUB_EVENT_PATH"

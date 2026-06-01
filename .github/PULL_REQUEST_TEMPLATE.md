@@ -38,6 +38,16 @@ Paste exact commands and results. Run projects individually; do not use solution
 
 Details:
 
+## Contributor Legal Status
+
+- [ ] I have read and agree to the ISLAMU Contributor License Agreement in docs/legal/CLA.md.
+
+CLA Signature: @github-username
+
+If this PR has multiple contributors, add one `CLA Signature: @github-username` line for every non-bot contributor.
+
+Details:
+
 ## AI Agent / Dev Docs Handoff
 
 - [ ] Not applicable

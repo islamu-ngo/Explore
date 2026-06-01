@@ -47,6 +47,12 @@ Before opening a PR:
 - update docs when behavior, configuration, or operations change
 
 
+## Contributor Legal Status
+
+Every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement](legal/CLA.md) from the pull request body. The CLA gives ISLAMU nonprofit broad inbound rights to provide, sell, sublicense, and relicense ISLAMU Event under alternative terms when social-impact or operational needs require it.
+
+The pull request template includes the required checkbox and `CLA Signature: @github-username` line. The `Contributor License Agreement` workflow validates PR metadata only and does not checkout or execute pull-request head code.
+
 ## Branch And Commit
 
 ### Branch Prefixes
