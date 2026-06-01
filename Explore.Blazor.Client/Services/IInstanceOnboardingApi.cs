@@ -110,6 +110,12 @@ public interface IInstanceOnboardingApi
     [Post("/api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap")]
     Task<IApiResponse<InstanceCommandResponseModel>> BootstrapKeycloakRealmAsync([Body] KeycloakBootstrapRequestModel request, CancellationToken cancellationToken);
 
+    [Post("/api/instance/settings/auth-provider/keycloak/doctor")]
+    Task<IApiResponse<KeycloakRealmDoctorResultModel>> RunKeycloakRealmDoctorAsync([Body] KeycloakRealmDoctorRequestModel request, CancellationToken cancellationToken);
+
+    [Post("/api/instance/settings/auth-provider/keycloak/sync-preview")]
+    Task<IApiResponse<KeycloakRealmSyncPlanModel>> PreviewKeycloakRealmSyncAsync([Body] KeycloakRealmSyncPreviewRequestModel request, CancellationToken cancellationToken);
+
     [Put("/api/instance/settings/auth-provider")]
     Task<IApiResponse<InstanceCommandResponseModel>> UpdateAuthProviderConfigurationAsAdminAsync([Body] AuthProviderConfigurationModel config, CancellationToken cancellationToken);
 

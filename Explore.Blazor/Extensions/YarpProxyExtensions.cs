@@ -204,11 +204,25 @@ public static class YarpProxyExtensions
 
         _ = context.ProxyRequest.Headers.Remove("X-Setup-Secret");
 
+        if (!RequiresSetupSecret(httpContext.Request.Path))
+        {
+            return;
+        }
+
         var resolver = httpContext.RequestServices.GetRequiredService<ISetupSecretResolver>();
         var setupSecret = resolver.Resolve(httpContext);
         if (setupSecret.Found && !string.IsNullOrWhiteSpace(setupSecret.Secret))
         {
             context.ProxyRequest.Headers.Add("X-Setup-Secret", setupSecret.Secret);
         }
+    }
+
+    private static bool RequiresSetupSecret(PathString path)
+    {
+        return path.StartsWithSegments("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/InstanceOnboarding/auth-provider-configuration", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/InstanceOnboarding/authz-provider-configuration", StringComparison.OrdinalIgnoreCase);
     }
 }

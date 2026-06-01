@@ -519,6 +519,38 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
+    [HttpPost("auth-provider/keycloak/doctor", Name = RouteNames.RunInstanceKeycloakRealmDoctor)]
+    [EndpointSummary("Run Keycloak Realm Doctor")]
+    [EndpointDescription("Runs read-only Keycloak realm diagnostics. Temporary admin credentials are used only for this request and are not stored.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(KeycloakRealmDoctorResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<KeycloakRealmDoctorResultDto>> RunKeycloakRealmDoctor(
+        [FromBody] KeycloakRealmDoctorRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
+
+        var result = await _mediator.Send(new RunKeycloakRealmDoctorQuery { Request = request }, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost("auth-provider/keycloak/sync-preview", Name = RouteNames.PreviewInstanceKeycloakRealmSync)]
+    [EndpointSummary("Preview Keycloak Realm Sync")]
+    [EndpointDescription("Generates a read-only additive Keycloak realm sync plan. Temporary admin credentials are used only for this request and are not stored.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(KeycloakRealmSyncPlanDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<KeycloakRealmSyncPlanDto>> PreviewKeycloakRealmSync(
+        [FromBody] KeycloakRealmSyncPreviewRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
+
+        var result = await _mediator.Send(new PreviewKeycloakRealmSyncQuery { Request = request }, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpGet("auth-provider/status", Name = RouteNames.GetInstanceAuthProviderConfigurationStatus)]
     [AllowAnonymous]
     [EndpointSummary("Check Auth Provider Configuration Status")]

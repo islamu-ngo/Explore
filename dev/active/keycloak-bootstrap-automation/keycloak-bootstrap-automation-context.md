@@ -85,6 +85,9 @@ Last Updated: 2026-06-01 Europe/Brussels
   - Added a new future phase for post-onboarding Keycloak doctor, resync, and rotation.
   - The planned workflow is instance-admin gated, additive by default, backup-confirmed before mutation, and uses only temporary Keycloak admin/service-account credentials for the active operation.
   - The plan explicitly rejects destructive realm delete/reimport, permanent Keycloak admin credential storage, and silent override of deployment-managed client secrets.
+- Session handoff refresh completed:
+  - Re-read plan/context/tasks, confirmed Phase 7 and `33/39` status are already synchronized, and refreshed the handoff below for context compaction / agent switch.
+  - Current dirty worktree changes are unrelated to this Keycloak workstream and are called out in the handoff so a follow-up agent does not touch them accidentally.
 
 ### 🟡 IN PROGRESS
 - No Keycloak bootstrap implementation slice is currently blocked. Phase 7 is planned future work and has not started. Full Architecture remains blocked by unrelated dirty-worktree/source issues documented below.
@@ -317,12 +320,46 @@ Resolved so far:
 
 ## Handoff Notes
 
-### Handoff — 2026-05-30 Europe/Brussels
-- **Current state:** Phase 1 Compose-managed Keycloak bootstrap, Phase 2 Application-layer external Keycloak bootstrap contract, Phase 3 Infrastructure Keycloak Admin API adapter, Phase 4 API/BFF/UI wiring, Phase 5 operator docs, Phase 6 backend disposable-Keycloak smoke, and focused Playwright browser UI bootstrap coverage are implemented and documented. Phase 7 post-onboarding Keycloak doctor/resync/rotation is planned but not started.
-- **Next action:** Start Phase 7 with the read-only Keycloak realm doctor, separately clean unrelated architecture-suite failures, or open a separate investigation for post-bootstrap Keycloak auth-code login with `offline_access` if that flow must be covered end to end.
-- **Blockers:** No code or docs blocker for the completed bootstrap path. Extending the Playwright test through login currently hits Keycloak `not_allowed` / `Offline tokens not allowed for the user or client` during `/signin-oidc`; the setup UI/bootstrap path itself passes.
-- **Modified files:** `docker/keycloak/keycloak-init.sh`, `docker-compose.yml`, Phase 2 Application DTO/contract/validator/command/handler files, Phase 3 Infrastructure Keycloak bootstrap service/DI/test files, Phase 4 API route/BFF forwarding/Blazor service/UI/test files, docs, and all three active dev docs.
-- **Validation:** `bash -n docker/keycloak/keycloak-init.sh`, `docker compose config --quiet`, `dotnet build --configuration Release --verbosity quiet`, `Event.Application.UnitTests`, `Explore.Infrastructure.Tests`, focused Phase 4 API integration/BFF forwarding/Blazor client service/UI source tests, focused backend disposable-Keycloak `KeycloakBootstrapRealRuntimeTests`, focused Playwright `KeycloakBootstrapBrowserFlowTests`, focused AgentContext schema/link tests, focused CleanArchitecture, focused Naming, focused API contract, and focused endpoint-classification tests passed. Full architecture suite still fails on unrelated dirty-worktree rules; focused CqrsPatternTests and focused BlazorClientArchitectureTests also fail on existing unrelated violations.
-- **Documentation impact:** Phase 1 and Phase 5 operator docs plus Phase 2/3/4/5 dev docs updated.
-- **Risks:** Do not allow convenience to become permanent Keycloak admin credential storage. Phase 7 must stay additive by default and must not become a destructive `realm-export.json` reapply path.
-- **Notes for next contributor/agent:** Keep implementation slices small and update all three dev docs after each slice.
+### Handoff — 2026-06-01 Europe/Brussels
+
+#### Current State
+- What is completed: Phase 1 Compose-managed Keycloak bootstrap, Phase 2 Application-layer external Keycloak bootstrap contract, Phase 3 Infrastructure Keycloak Admin API adapter, Phase 4 API/BFF/UI wiring, Phase 5 operator docs, Phase 6 backend disposable-Keycloak smoke, and focused Playwright browser UI bootstrap coverage are implemented and documented.
+- What is in progress: no Keycloak bootstrap implementation slice is in progress. Phase 7 post-onboarding Keycloak doctor/resync/rotation is planned future work and has not started.
+- What changed since the last handoff: Phase 7 was added to plan/context/tasks, the tasks count is now `33/39`, and this handoff was refreshed for context compaction / agent switch.
+
+#### Next Action
+1. Start Phase 7 with the read-only Keycloak realm doctor diagnostic.
+2. If a fully green architecture suite is needed, triage unrelated Architecture failures in a separate workstream before mixing them with Keycloak work.
+3. Investigate the separate post-bootstrap Keycloak auth-code login `offline_access` failure only if end-to-end login coverage is required.
+
+#### Blockers
+- No code or docs blocker for the completed bootstrap path.
+- Extending the Playwright test through login currently hits Keycloak `not_allowed` / `Offline tokens not allowed for the user or client` during `/signin-oidc`; the setup UI/bootstrap path itself passes.
+
+#### Modified Files
+- Historical Keycloak implementation files: `docker/keycloak/keycloak-init.sh`, `docker-compose.yml`, Phase 2 Application DTO/contract/validator/command/handler files, Phase 3 Infrastructure Keycloak bootstrap service/DI/test files, Phase 4 API route/BFF forwarding/Blazor service/UI/test files, operator docs, and all three active dev docs.
+- Current handoff refresh touched only `dev/active/keycloak-bootstrap-automation/keycloak-bootstrap-automation-context.md`.
+
+#### Validation
+- Commands run:
+  - `git status --short` — repository is dirty with unrelated AI/CI workstream changes, not Keycloak implementation changes.
+  - `git diff --name-only` — no Keycloak workstream implementation files were listed before this handoff refresh.
+  - `git diff -- dev/active/keycloak-bootstrap-automation/keycloak-bootstrap-automation-plan.md dev/active/keycloak-bootstrap-automation/keycloak-bootstrap-automation-context.md dev/active/keycloak-bootstrap-automation/keycloak-bootstrap-automation-tasks.md` — before the handoff edit, no pending Keycloak dev-doc diff existed.
+  - `grep` checks confirmed Phase 7, `33/39`, `Last Updated: 2026-06-01 Europe/Brussels`, and the no-destructive/no-permanent-admin-credential guardrails across the Keycloak plan/context/tasks.
+  - `rtk git diff --check -- dev/active/keycloak-bootstrap-automation/keycloak-bootstrap-automation-context.md` — passed for this handoff-only markdown edit.
+- Previously passed for the completed implementation: `bash -n docker/keycloak/keycloak-init.sh`, `docker compose config --quiet`, `dotnet build --configuration Release --verbosity quiet`, `Event.Application.UnitTests`, `Explore.Infrastructure.Tests`, focused Phase 4 API integration/BFF forwarding/Blazor client service/UI source tests, focused backend disposable-Keycloak `KeycloakBootstrapRealRuntimeTests`, focused Playwright `KeycloakBootstrapBrowserFlowTests`, focused AgentContext schema/link tests, focused CleanArchitecture, focused Naming, focused API contract, and focused endpoint-classification tests.
+- Commands still needed: none for this handoff-only markdown edit. Full architecture suite still fails on unrelated dirty-worktree/source issues noted in the tasks file.
+
+#### Documentation Impact
+- Updated: this context handoff now records Phase 7 as planned/not started, validation evidence for the doc synchronization pass, and unrelated dirty files to avoid.
+- Not changed: plan and tasks were re-read and already matched the current Phase 7 state, so they did not need churn.
+
+#### Risks
+- Source-grounding risks: low for Keycloak docs; plan/context/tasks were re-read and grep-checked for Phase 7 and status alignment.
+- Test or build risks: full architecture suite remains blocked by unrelated issues; do not treat that as a Keycloak Phase 7 blocker unless a future slice touches those failures.
+- Operator/release risks: Phase 7 must preserve the same credential boundary: no permanent Keycloak admin/service-account credential storage, no raw provider bodies, no browser token storage, and no destructive `realm-export.json` reapply path.
+
+#### Notes For Next Contributor Or Agent
+- Required docs/rules to read: `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, `docs/OPERATIONS.md`, `dev/active/README.md`, `.claude/commands/dev-docs.md`, and all three files in `dev/active/keycloak-bootstrap-automation/`.
+- Assumptions made: the next Keycloak slice is Phase 7.1 unless the user explicitly asks to triage unrelated architecture failures or the post-bootstrap login issue first.
+- Do not touch / unrelated dirty files: `.github/workflows/security-tests.yml`, `.github/workflows/workflow-security.yml`, `.github/scripts/validate-workflow-cache-policy.cs`, `docs/CI_CD_GOVERNANCE.md`, `dev/active/enterprise-ci-cd-hardening/*`, `Explore.Application/Features/AiAssistant/*`, `Event.Application.UnitTests/Features/AiAssistant/*`, and `dev/active/ai-integration/*` are dirty from other workstreams and should remain outside this Keycloak handoff unless the user redirects.

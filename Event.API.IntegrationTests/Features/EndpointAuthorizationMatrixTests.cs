@@ -502,6 +502,58 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task Matrix_InstanceAdmin_KeycloakRealmDoctor_RegularUserDenied()
+    {
+        var token = await _keycloak.TokenClient.GetUserTokenAsync();
+        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/doctor", token);
+        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        var response = await _regularUserClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+            "Keycloak realm diagnostics should only be accessible to instance admins");
+    }
+
+    [Test]
+    public async Task Matrix_InstanceAdmin_KeycloakRealmDoctor_InstanceAdminOK()
+    {
+        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
+        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/doctor", token);
+        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        var response = await _instanceAdminClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            "instance admin should be able to run read-only Keycloak realm diagnostics");
+    }
+
+    [Test]
+    public async Task Matrix_InstanceAdmin_KeycloakRealmSyncPreview_RegularUserDenied()
+    {
+        var token = await _keycloak.TokenClient.GetUserTokenAsync();
+        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/sync-preview", token);
+        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        var response = await _regularUserClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+            "Keycloak realm sync preview should only be accessible to instance admins");
+    }
+
+    [Test]
+    public async Task Matrix_InstanceAdmin_KeycloakRealmSyncPreview_InstanceAdminOK()
+    {
+        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
+        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/sync-preview", token);
+        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        var response = await _instanceAdminClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            "instance admin should be able to preview read-only Keycloak realm sync plans");
+    }
+
+    [Test]
     public async Task Matrix_InstanceAdmin_InstanceSettingsAuthzProvider_InstanceAdminOK()
     {
         var token = await _keycloak.TokenClient.GetAdminTokenAsync();

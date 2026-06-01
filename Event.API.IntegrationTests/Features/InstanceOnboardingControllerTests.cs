@@ -953,6 +953,38 @@ public class InstanceOnboardingControllerTests
                 ApiClientUpdated = !string.IsNullOrWhiteSpace(request.ApiClientSecret)
             });
         }
+
+        public Task<KeycloakRealmDoctorResultDto> DiagnoseRealmAsync(
+            AuthProviderConfigurationDto configuration,
+            KeycloakRealmDoctorRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new KeycloakRealmDoctorResultDto
+            {
+                OverallStatus = "blocked",
+                Message = "Keycloak diagnostics are not configured in this test fake.",
+                Authority = configuration.KeycloakAuthority,
+                ClientId = configuration.KeycloakClientId,
+                ApiClientId = request.ApiClientId,
+                Checks = []
+            });
+        }
+
+        public Task<KeycloakRealmSyncPlanDto> PreviewRealmSyncAsync(
+            AuthProviderConfigurationDto configuration,
+            KeycloakRealmSyncPreviewRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new KeycloakRealmSyncPlanDto
+            {
+                Status = "blocked",
+                Message = "Keycloak sync preview is not configured in this test fake.",
+                Authority = configuration.KeycloakAuthority,
+                ClientId = configuration.KeycloakClientId,
+                ApiClientId = request.ApiClientId,
+                Operations = []
+            });
+        }
     }
 
     private sealed class PassthroughClaimsTransformationFactory : AuthenticatedWebApplicationFactory

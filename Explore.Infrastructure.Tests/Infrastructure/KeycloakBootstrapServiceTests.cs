@@ -259,6 +259,154 @@ public sealed class KeycloakBootstrapServiceTests
         await Assert.That(handler.Requests).IsEmpty();
     }
 
+    [Test]
+    public async Task DiagnoseRealmAsync_BasicMode_UsesOnlyOidcDiscoveryAndReturnsSafeWarning()
+    {
+        var configuration = CreateConfiguration();
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Get, "/auth/realms/ISLAMU/.well-known/openid-configuration", _ => JsonResponse("{}")));
+        var service = CreateService(handler);
+
+        var result = await service.DiagnoseRealmAsync(configuration, new KeycloakRealmDoctorRequestDto(), CancellationToken.None);
+
+        await Assert.That(result.OverallStatus).IsEqualTo("needs-repair");
+        await Assert.That(result.Realm).IsEqualTo("ISLAMU");
+        await Assert.That(result.Checks.Any(check => check.Code == "keycloak_discovery_reachable")).IsTrue();
+        await Assert.That(result.Checks.Any(check => check.Code == "keycloak_admin_credentials_required")).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(1);
+        await Assert.That(handler.Requests[0].Authorization).IsNull();
+        await Assert.That(handler.Requests[0].Method).IsEqualTo(HttpMethod.Get);
+    }
+
+    [Test]
+    public async Task DiagnoseRealmAsync_WithTemporaryAdminCredentials_UsesReadOnlyAdminApiAndRedactsSecrets()
+    {
+        var configuration = CreateConfiguration();
+        var request = new KeycloakRealmDoctorRequestDto
+        {
+            UseTemporaryAdminCredentials = true,
+            BootstrapAdminUsername = "bootstrap-admin",
+            BootstrapAdminPassword = "temporary-admin-secret",
+            ApiClientId = "islamu-event-api"
+        };
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Get, "/auth/realms/ISLAMU/.well-known/openid-configuration", _ => JsonResponse("{}")),
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
+                { "access_token": "admin-token" }
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU", _ => JsonResponse("{}")),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
+                [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => JsonResponse(ClientRepresentationJson(
+                "blazor-uuid",
+                "islamu-event-blazor",
+                includeRefreshTokenSettings: true))),
+            ExpectOfflineAccessRole(),
+            ExpectDefaultRole(),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/roles-by-id/default-role-uuid/composites/realm", _ => JsonResponse("""
+                [{ "id": "offline-role-uuid", "name": "offline_access" }]
+                """)),
+            ExpectOfflineAccessScopeLookup(),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/optional-client-scopes", _ => JsonResponse("""
+                [{ "id": "offline-scope-uuid", "name": "offline_access" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/default-client-scopes", _ => JsonResponse("[]")),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/client-scopes/offline-scope-uuid/scope-mappings/realm/composite", _ => JsonResponse("""
+                [{ "id": "offline-role-uuid", "name": "offline_access" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
+                [{ "id": "api-uuid", "clientId": "islamu-event-api" }]
+                """)));
+        var service = CreateService(handler);
+
+        var result = await service.DiagnoseRealmAsync(configuration, request, CancellationToken.None);
+
+        await Assert.That(result.OverallStatus).IsEqualTo("healthy");
+        await Assert.That(result.Checks.All(check => check.Status == "healthy")).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(13);
+        await Assert.That(handler.Requests.Skip(2).All(x => x.Method == HttpMethod.Get)).IsTrue();
+        await Assert.That(handler.Requests.Skip(2).All(x => x.Authorization?.Scheme == "Bearer")).IsTrue();
+        await Assert.That(handler.Requests.Skip(2).All(x => x.Authorization?.Parameter == "admin-token")).IsTrue();
+        await Assert.That(handler.Requests.Any(x => x.Method == HttpMethod.Put || x.Method == HttpMethod.Delete)).IsFalse();
+
+        var serializedResult = JsonSerializer.Serialize(result);
+        await Assert.That(serializedResult).DoesNotContain(request.BootstrapAdminPassword);
+        await Assert.That(serializedResult).DoesNotContain("admin-token");
+    }
+
+    [Test]
+    public async Task PreviewRealmSyncAsync_BasicMode_ReturnsDesiredStateWithoutAdminCalls()
+    {
+        var configuration = CreateConfiguration();
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Get, "/auth/realms/ISLAMU/.well-known/openid-configuration", _ => JsonResponse("{}")));
+        var service = CreateService(handler);
+
+        var result = await service.PreviewRealmSyncAsync(configuration, new KeycloakRealmSyncPreviewRequestDto(), CancellationToken.None);
+
+        await Assert.That(result.Status).IsEqualTo("blocked");
+        await Assert.That(result.DesiredState.DestructiveOperationsSupported).IsFalse();
+        await Assert.That(result.DesiredState.Clients.Any(client => client.ClientId == "islamu-event-blazor")).IsTrue();
+        await Assert.That(result.Operations.Any(operation => operation.OperationId == "keycloak-admin-credentials-required")).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(1);
+        await Assert.That(handler.Requests[0].Method).IsEqualTo(HttpMethod.Get);
+        await Assert.That(handler.Requests[0].Authorization).IsNull();
+    }
+
+    [Test]
+    public async Task PreviewRealmSyncAsync_WithTemporaryAdminCredentials_UsesReadOnlyAdminApiAndRedactsSecrets()
+    {
+        var configuration = CreateConfiguration();
+        var request = new KeycloakRealmSyncPreviewRequestDto
+        {
+            UseTemporaryAdminCredentials = true,
+            BootstrapAdminUsername = "bootstrap-admin",
+            BootstrapAdminPassword = "temporary-admin-secret",
+            ApiClientId = "islamu-event-api"
+        };
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Get, "/auth/realms/ISLAMU/.well-known/openid-configuration", _ => JsonResponse("{}")),
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
+                { "access_token": "admin-token" }
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU", _ => JsonResponse("{}")),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
+                [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => JsonResponse(ClientRepresentationJson(
+                "blazor-uuid",
+                "islamu-event-blazor",
+                includeRefreshTokenSettings: false))),
+            ExpectOfflineAccessRole(),
+            ExpectDefaultRole(),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/roles-by-id/default-role-uuid/composites/realm", _ => JsonResponse("[]")),
+            ExpectOfflineAccessScopeLookup(),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
+                [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/optional-client-scopes", _ => JsonResponse("[]")),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/default-client-scopes", _ => JsonResponse("[]")),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/client-scopes/offline-scope-uuid/scope-mappings/realm/composite", _ => JsonResponse("[]")),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("[]")));
+        var service = CreateService(handler);
+
+        var result = await service.PreviewRealmSyncAsync(configuration, request, CancellationToken.None);
+
+        await Assert.That(result.Status).IsEqualTo("changes-planned");
+        await Assert.That(result.RequiresBackupBeforeApply).IsTrue();
+        await Assert.That(result.Operations.Any(operation => operation.OperationId == "keycloak-blazor-refresh-token-settings")).IsTrue();
+        await Assert.That(result.Operations.Any(operation => operation.OperationId == "keycloak-default-role-offline-access-add")).IsTrue();
+        await Assert.That(result.Operations.Any(operation => operation.OperationId == "keycloak-api-client-add")).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(14);
+        await Assert.That(handler.Requests.Skip(2).All(x => x.Method == HttpMethod.Get)).IsTrue();
+        await Assert.That(handler.Requests.Any(x => x.Method == HttpMethod.Put || x.Method == HttpMethod.Delete)).IsFalse();
+
+        var serializedResult = JsonSerializer.Serialize(result);
+        await Assert.That(serializedResult).DoesNotContain(request.BootstrapAdminPassword);
+        await Assert.That(serializedResult).DoesNotContain("admin-token");
+    }
+
     private static KeycloakBootstrapService CreateService(OrderedMessageHandler handler)
     {
         return new KeycloakBootstrapService(
@@ -281,6 +429,17 @@ public sealed class KeycloakBootstrapServiceTests
             Mode = mode,
             BootstrapAdminUsername = "bootstrap-admin",
             BootstrapAdminPassword = "one-time-admin-secret"
+        };
+    }
+
+    private static AuthProviderConfigurationDto CreateConfiguration()
+    {
+        return new AuthProviderConfigurationDto
+        {
+            KeycloakEnabled = true,
+            KeycloakAuthority = "https://keycloak.example.com/auth/realms/ISLAMU",
+            KeycloakClientId = "islamu-event-blazor",
+            KeycloakClientSecret = "runtime-blazor-secret"
         };
     }
 

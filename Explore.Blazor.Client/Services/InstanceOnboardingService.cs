@@ -48,6 +48,8 @@ public interface IInstanceOnboardingService
     Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsync();
     Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config);
     Task<InstanceCommandResponseModel> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestModel request);
+    Task<KeycloakRealmDoctorResultModel> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestModel request);
+    Task<KeycloakRealmSyncPlanModel> PreviewKeycloakRealmSyncAsync(KeycloakRealmSyncPreviewRequestModel request);
     Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config);
     Task<bool> IsAuthProviderConfiguredAsync();
     Task RefreshAuthSchemesAsync();
@@ -321,6 +323,38 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         }
 
         return result;
+    }
+
+    public async Task<KeycloakRealmDoctorResultModel> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestModel request)
+    {
+        try
+        {
+            var response = await _api.RunKeycloakRealmDoctorAsync(request, CancellationToken.None);
+            return response.IsSuccessStatusCode && response.Content is not null
+                ? response.Content
+                : KeycloakRealmDoctorResultModel.Blocked("Keycloak diagnostics failed. Check admin access and retry.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to run Keycloak realm diagnostics.");
+            return KeycloakRealmDoctorResultModel.Blocked("Keycloak diagnostics failed. Check admin access and retry.");
+        }
+    }
+
+    public async Task<KeycloakRealmSyncPlanModel> PreviewKeycloakRealmSyncAsync(KeycloakRealmSyncPreviewRequestModel request)
+    {
+        try
+        {
+            var response = await _api.PreviewKeycloakRealmSyncAsync(request, CancellationToken.None);
+            return response.IsSuccessStatusCode && response.Content is not null
+                ? response.Content
+                : KeycloakRealmSyncPlanModel.Blocked("Keycloak sync preview failed. Check admin access and retry.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to preview Keycloak realm sync plan.");
+            return KeycloakRealmSyncPlanModel.Blocked("Keycloak sync preview failed. Check admin access and retry.");
+        }
     }
 
     public Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config) =>
@@ -928,6 +962,128 @@ public class KeycloakBootstrapRequestModel
     public int Mode { get; set; }
     public string BootstrapAdminUsername { get; set; } = string.Empty;
     public string BootstrapAdminPassword { get; set; } = string.Empty;
+}
+
+public class KeycloakRealmDoctorRequestModel
+{
+    public bool UseTemporaryAdminCredentials { get; set; }
+    public string? BootstrapAdminUsername { get; set; }
+    public string? BootstrapAdminPassword { get; set; }
+    public string? ApiClientId { get; set; } = "islamu-event-api";
+}
+
+public class KeycloakRealmDoctorResultModel
+{
+    public string OverallStatus { get; set; } = "blocked";
+    public string Message { get; set; } = string.Empty;
+    public string Realm { get; set; } = string.Empty;
+    public string Authority { get; set; } = string.Empty;
+    public string ClientId { get; set; } = string.Empty;
+    public string? ApiClientId { get; set; }
+    public IReadOnlyList<KeycloakRealmDoctorCheckModel> Checks { get; set; } = [];
+
+    public static KeycloakRealmDoctorResultModel Blocked(string message) => new()
+    {
+        OverallStatus = "blocked",
+        Message = message,
+        Checks =
+        [
+            new KeycloakRealmDoctorCheckModel
+            {
+                Code = "keycloak_doctor_failed",
+                Name = "Keycloak diagnostics",
+                Status = "blocked",
+                Message = message
+            }
+        ]
+    };
+}
+
+public class KeycloakRealmDoctorCheckModel
+{
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string? Remediation { get; set; }
+}
+
+public class KeycloakRealmSyncPreviewRequestModel
+{
+    public bool UseTemporaryAdminCredentials { get; set; }
+    public string? BootstrapAdminUsername { get; set; }
+    public string? BootstrapAdminPassword { get; set; }
+    public string? ApiClientId { get; set; } = "islamu-event-api";
+    public IReadOnlyList<string> BlazorRedirectUris { get; set; } = [];
+    public IReadOnlyList<string> BlazorWebOrigins { get; set; } = [];
+}
+
+public class KeycloakRealmSyncPlanModel
+{
+    public string Status { get; set; } = "blocked";
+    public string Message { get; set; } = string.Empty;
+    public string Realm { get; set; } = string.Empty;
+    public string Authority { get; set; } = string.Empty;
+    public string ClientId { get; set; } = string.Empty;
+    public string? ApiClientId { get; set; }
+    public bool DestructiveOperationsSupported { get; set; }
+    public bool RequiresBackupBeforeApply { get; set; }
+    public KeycloakRealmDesiredStateModel DesiredState { get; set; } = new();
+    public IReadOnlyList<KeycloakRealmSyncOperationModel> Operations { get; set; } = [];
+    public IReadOnlyList<KeycloakRealmDoctorCheckModel> Diagnostics { get; set; } = [];
+
+    public static KeycloakRealmSyncPlanModel Blocked(string message) => new()
+    {
+        Status = "blocked",
+        Message = message,
+        Operations =
+        [
+            new KeycloakRealmSyncOperationModel
+            {
+                OperationId = "keycloak_sync_preview_failed",
+                Category = "inspection",
+                TargetType = "realm",
+                Target = "Keycloak",
+                Action = "none",
+                Status = "blocked",
+                Summary = message,
+                Reason = "The sync preview could not be generated safely."
+            }
+        ]
+    };
+}
+
+public class KeycloakRealmDesiredStateModel
+{
+    public string Realm { get; set; } = string.Empty;
+    public string BlazorClientId { get; set; } = string.Empty;
+    public string? ApiClientId { get; set; }
+    public bool DestructiveOperationsSupported { get; set; }
+    public IReadOnlyList<string> RequiredRealmRoles { get; set; } = [];
+    public IReadOnlyList<KeycloakClientDesiredStateModel> Clients { get; set; } = [];
+}
+
+public class KeycloakClientDesiredStateModel
+{
+    public string ClientId { get; set; } = string.Empty;
+    public string ClientKind { get; set; } = string.Empty;
+    public IReadOnlyList<string> RedirectUris { get; set; } = [];
+    public IReadOnlyList<string> WebOrigins { get; set; } = [];
+    public IReadOnlyList<string> OptionalClientScopes { get; set; } = [];
+}
+
+public class KeycloakRealmSyncOperationModel
+{
+    public string OperationId { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string TargetType { get; set; } = string.Empty;
+    public string Target { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Summary { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public IReadOnlyList<string> Changes { get; set; } = [];
+    public bool RequiresBackupBeforeApply { get; set; }
 }
 
 public class AuthProviderConfiguredResult

@@ -697,6 +697,8 @@ public static class RouteNames
     public const string UpdateInstanceAnalyticsGovernanceSettings = "UpdateInstanceAnalyticsGovernanceSettings";
     public const string GetInstanceAuthProviderConfiguration = "GetInstanceAuthProviderConfiguration";
     public const string UpdateInstanceAuthProviderConfiguration = "UpdateInstanceAuthProviderConfiguration";
+    public const string RunInstanceKeycloakRealmDoctor = "RunInstanceKeycloakRealmDoctor";
+    public const string PreviewInstanceKeycloakRealmSync = "PreviewInstanceKeycloakRealmSync";
     public const string GetInstanceAuthProviderConfigurationStatus = "GetInstanceAuthProviderConfigurationStatus";
     public const string GetInstanceAuthorizationProviderConfiguration = "GetInstanceAuthorizationProviderConfiguration";
     public const string UpdateInstanceAuthorizationProviderConfiguration = "UpdateInstanceAuthorizationProviderConfiguration";

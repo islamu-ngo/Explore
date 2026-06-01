@@ -6,10 +6,10 @@
 Last Updated: 2026-06-01 Europe/Brussels
 
 ## Status Summary
-- **Overall status:** Implementation complete through automated disposable-Keycloak backend integration smoke and focused Playwright browser UI bootstrap e2e; Phase 7 post-onboarding Keycloak doctor/resync/rotation is now planned future work; unrelated architecture cleanup remains.
-- **Completed:** 33/39
-- **Current priority:** Phase 7 is documented but not started. Separately address unrelated Architecture test failures if this branch needs a fully green suite.
-- **Next recommended slice:** Start Phase 7 with the read-only Keycloak realm doctor, or triage unrelated Architecture failures in a separate workstream.
+- **Overall status:** Implementation complete through automated disposable-Keycloak backend integration smoke, focused Playwright browser UI bootstrap e2e, Phase 7.1 read-only post-onboarding Keycloak realm doctor, and Phase 7.2/7.3 typed desired-state plus read-only additive sync preview; unrelated architecture/source-generation cleanup remains.
+- **Completed:** 36/39
+- **Current priority:** Phase 7.4 backup-confirmed additive resync apply. Keep mutation disabled until the preview contract, backup confirmation, and credential non-persistence rules are preserved end to end.
+- **Next recommended slice:** Implement the backup-confirmed apply command/service/UI flow for additive-only Keycloak repairs.
 
 ## Implementation Maintenance Rules
 - [x] Before starting work, read plan/context/tasks.
@@ -210,23 +210,23 @@ Last Updated: 2026-06-01 Europe/Brussels
   - **Effort:** S
   - **Dependencies:** validation.
 
-## Phase 7: Post-onboarding Keycloak Doctor, Resync, And Rotation ⏳ FUTURE / NOT STARTED
-- [ ] **7.1 Add read-only Keycloak realm doctor**
-  - **Files:** future Application doctor DTOs/contracts/queries, Infrastructure inspection service, instance-admin API endpoint, Blazor admin UI.
-  - **Acceptance:** reports realm/client/scope/mapper/redirect/secret-alignment health without mutation; supports basic non-admin checks and optional temporary-admin read-only checks; returns safe structured findings with no secrets/tokens/raw provider bodies.
-  - **Validation:** Application unit tests, Infrastructure fake-HTTP tests, API authorization tests, Blazor admin UI tests.
+## Phase 7: Post-onboarding Keycloak Doctor, Resync, And Rotation ⏳ IN PROGRESS
+- [x] **7.1 Add read-only Keycloak realm doctor**
+  - **Files:** Application doctor DTOs/query/handler/contract, Infrastructure inspection service, instance-admin API endpoint, Blazor admin UI/service models, Infrastructure fake-HTTP tests, API authorization matrix coverage, Blazor source guard tests.
+  - **Acceptance:** implemented read-only realm diagnostics for configuration, OIDC discovery, realm/client availability, authorization-code flow, offline_access role/default-role/client-scope/scope-mapping requirements, refresh-token settings, and optional API client presence. Basic mode performs no admin call; temporary-admin mode uses credentials only for the active request and returns structured safe findings without secrets, tokens, or raw provider bodies.
+  - **Validation:** `dotnet build` passed for Application, Infrastructure, and API projects; `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` passed 390/390; focused API authorization matrix coverage passed 82/82; focused Blazor verification is blocked by unrelated source-generation errors recorded below.
   - **Effort:** L
   - **Dependencies:** completed Phase 6 bootstrap/runtime proof.
-- [ ] **7.2 Define typed Keycloak desired-state and sync-plan model**
-  - **Files:** future `KeycloakRealmDesiredState`, `KeycloakRealmSyncPlan`, operation DTOs, validators.
-  - **Acceptance:** represents ISLAMU-owned clients, redirect URIs, web origins, optional scopes, scope mappings, protocol/audience mappers, default-role composites, and future project client contracts as additive operations; destructive operations are explicitly unsupported.
-  - **Validation:** deterministic diff unit tests and architecture tests.
+- [x] **7.2 Define typed Keycloak desired-state and sync-plan model**
+  - **Files:** `KeycloakRealmDesiredStateDto`, `KeycloakClientDesiredStateDto`, `KeycloakClientScopeDesiredStateDto`, `KeycloakRoleCompositeDesiredStateDto`, `KeycloakProtocolMapperDesiredStateDto`, `KeycloakRealmSyncPlanDto`, `KeycloakRealmSyncOperationDto`, `KeycloakRealmSyncPreviewRequestDto`, `PreviewKeycloakRealmSyncQuery`, `PreviewKeycloakRealmSyncQueryHandler`, `IKeycloakBootstrapService`.
+  - **Acceptance:** represents ISLAMU-owned Blazor/API clients, redirect URIs, web origins, optional/default scopes, scope mappings, audience mapper contract, default-role composites, and future project client contracts as additive desired state and sync operations. `DestructiveOperationsSupported` is explicitly `false`; preview operations never remove operator-managed redirect URIs/web origins or unrelated clients/roles.
+  - **Validation:** targeted Application/Infrastructure/API builds passed; Application unit tests passed 1197/1197; Infrastructure fake-HTTP tests passed 392/392 with deterministic read-only sync-preview coverage.
   - **Effort:** L
   - **Dependencies:** 7.1.
-- [ ] **7.3 Add instance-admin resync preview workflow**
-  - **Files:** future instance-admin infrastructure controller/route names, Blazor admin UI page/component, service models.
-  - **Acceptance:** authenticated instance admin can preview the additive `RealmSyncPlan`; preview is read-only; UI uses server-confirmed affordances; raw Keycloak errors are categorized safely.
-  - **Validation:** API integration tests, Blazor UI/source tests, authorization tests.
+- [x] **7.3 Add instance-admin resync preview workflow**
+  - **Files:** `InstanceSettingsController`, `RouteNames`, `KeycloakBootstrapService`, `IInstanceOnboardingApi`, `InstanceOnboardingService`, `InstanceAuthProviderSection.razor`, `EndpointAuthorizationMatrixTests`, `KeycloakRealmDoctorSourceTests`.
+  - **Acceptance:** authenticated instance admins can preview a read-only additive `RealmSyncPlan` from the admin auth-provider panel. Basic preview exposes desired state and blocks drift-aware comparison until temporary admin credentials are supplied; temporary credentials are used only for the active request and cleared by the UI. Preview responses categorize Keycloak reachability/auth/drift safely and expose no secrets, tokens, raw provider bodies, or destructive operations.
+  - **Validation:** focused API authorization matrix passed 84/84; `Explore.Blazor.Client` build passed; focused Blazor source guards passed 4/4; Infrastructure fake-HTTP sync-preview tests verify only OIDC discovery plus Admin API GETs after token acquisition, no PUT/DELETE, and no password/token leakage in serialized plans.
   - **Effort:** L
   - **Dependencies:** 7.1-7.2.
 - [ ] **7.4 Add additive resync apply with backup confirmation**
@@ -250,13 +250,13 @@ Last Updated: 2026-06-01 Europe/Brussels
 
 ## Verification Checklist
 - [x] LSP diagnostics clean for modified files where available.
-- [x] `dotnet build --configuration Release --verbosity quiet` passes.
-- [x] `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` passes when Application code changed.
-- [x] `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` passes when Infrastructure adapter added.
-- [x] `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` passes when API endpoint changed. Focused `InstanceOnboardingControllerTests` passed sequentially.
+- [x] `dotnet build --configuration Release --verbosity quiet` passes. Full solution build passed after Phase 7.2/7.3; targeted Application, Infrastructure, API, and Blazor Client project builds also passed.
+- [x] `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` passes when Application code changed. Passed 1197/1197 after Phase 7.2/7.3 contracts and query handler changes.
+- [x] `dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` passes when Infrastructure adapter added. Passed 392/392 after doctor and sync-preview fake-HTTP coverage.
+- [x] `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` passes when API endpoint changed. Focused `InstanceOnboardingControllerTests` passed sequentially; focused `EndpointAuthorizationMatrixTests` passed 84/84 with `--treenode-filter "/*/*/EndpointAuthorizationMatrixTests/*"` after doctor and sync-preview authorization coverage.
 - [x] `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` passes when BFF forwarding changed. Focused `SetupSecretForwardingHandlerTests` passed sequentially.
-- [x] `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passes when UI changed. Focused `InstanceOnboardingServiceTests` passed for the service slice; focused `AuthProviderConfigurationSourceTests` passed for the UI mode.
-- [ ] `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passes for architecture/docs/context checks. Full suite currently fails on unrelated dirty-worktree authorization/raw-HTTP rules, an existing CQRS request-location issue, and existing Blazor notification service architecture violations; focused AgentContext schema/link, CleanArchitecture, Naming, API contract, and endpoint-classification checks passed.
+- [ ] `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passes when UI changed. `Explore.Blazor.Client` build passed, and focused Keycloak doctor/sync-preview source guards passed 4/4 with `--treenode-filter "/*/*/KeycloakRealmDoctorSourceTests/*"`; the full Blazor Client test project currently has 25 unrelated notification-layout failures because test setup does not register `INotificationRefreshStreamClient`.
+- [ ] `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passes for architecture/docs/context checks. Focused `CleanArchitectureTests` passed 13/13, `ApiContractArchitectureTests` passed 6/7 with 1 skipped, `EndpointClassificationArchitectureTests` passed 3/3, and `NamingConventionTests` passed 10/10 after Phase 7.2/7.3; full suite remains deferred because existing unrelated dirty-worktree architecture issues are tracked separately.
 - [x] `docker compose config` passes when Compose changes.
 - [x] Docs updated where behavior/config/operations/API changed.
 - [x] Dev docs refreshed with final state and remaining work.
@@ -265,6 +265,6 @@ Last Updated: 2026-06-01 Europe/Brussels
 
 ## Remaining / Deferred Work
 - [ ] Consider adding a new intent to `.claude/contract/intents.yaml` for external infrastructure bootstrap/onboarding automation if this pattern recurs.
-- [ ] Implement Phase 7 post-onboarding Keycloak doctor/resync/rotation when ready; it is planned above but not started.
+- [ ] Implement Phase 7.4-7.6 post-onboarding Keycloak backup-confirmed apply, client-secret rotation, and multi-project identity contract registry after the read-only doctor/sync-preview baseline.
 - [ ] Consider deprecating/removing `KEYCLOAK_API_CLIENT_SECRET` if API client remains bearer-only and runtime never consumes it.
 - [ ] Investigate post-bootstrap browser auth-code login with `offline_access`; the Playwright bootstrap UI flow passes, but extending that test through login currently exposes Keycloak `not_allowed` / `Offline tokens not allowed for the user or client` during `/signin-oidc` token redemption.

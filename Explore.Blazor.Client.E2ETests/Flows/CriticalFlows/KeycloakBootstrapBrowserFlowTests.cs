@@ -64,15 +64,18 @@ public sealed class KeycloakBootstrapBrowserFlowTests(
             })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
-        var keycloakHeader = page.GetByTestId("keycloak-provider-header");
-        await keycloakHeader.WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
-
-        await keycloakHeader.ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
-
         var enableKeycloak = page.GetByRole(AriaRole.Switch, new PageGetByRoleOptions
         {
             Name = "Enable Keycloak"
         });
+
+        if (!await enableKeycloak.IsVisibleAsync())
+        {
+            var keycloakHeader = page.GetByTestId("keycloak-provider-header");
+            await keycloakHeader.WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
+            await keycloakHeader.ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
+        }
+
         await enableKeycloak
             .WaitForAsync(new LocatorWaitForOptions
             {
@@ -85,17 +88,23 @@ public sealed class KeycloakBootstrapBrowserFlowTests(
         await page.GetByTestId("keycloak-bootstrap-mode-radio")
             .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
 
-        await page.GetByLabel("Keycloak base URL (Required)")
-            .FillAsync(appHost.KeycloakBaseUrl, new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
-        await page.GetByLabel("Realm (Required)")
+        var keycloakBaseUrl = page.GetByLabel("Keycloak base URL (Required)").Last;
+        await keycloakBaseUrl.WaitForAsync(new LocatorWaitForOptions
+        {
+            State = WaitForSelectorState.Visible,
+            Timeout = BrowserTimeoutMilliseconds
+        });
+
+        await keycloakBaseUrl.FillAsync(appHost.KeycloakBaseUrl, new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
+        await page.GetByLabel("Realm (Required)").Last
             .FillAsync(BffKeycloakFixture.RealmName, new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
-        await page.GetByLabel("Blazor BFF client ID (Required)")
+        await page.GetByLabel("Blazor BFF client ID (Required)").Last
             .FillAsync(BffKeycloakFixture.TestClientId, new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
-        await page.GetByLabel("Blazor BFF client secret (Required)")
+        await page.GetByLabel("Blazor BFF client secret (Required)").Last
             .FillAsync(BffKeycloakFixture.TestClientSecret, new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
-        await page.GetByLabel("One-time Keycloak admin username (Required)")
+        await page.GetByLabel("One-time Keycloak admin username (Required)").Last
             .FillAsync("admin", new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
-        await page.GetByLabel("One-time Keycloak admin password (Required)")
+        await page.GetByLabel("One-time Keycloak admin password (Required)").Last
             .FillAsync("admin", new LocatorFillOptions { Timeout = BrowserTimeoutMilliseconds });
         await page.Keyboard.PressAsync("Tab");
 

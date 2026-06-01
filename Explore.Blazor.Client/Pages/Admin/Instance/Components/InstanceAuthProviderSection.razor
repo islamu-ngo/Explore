@@ -55,6 +55,115 @@
                             <MudTextField Variant="Variant.Outlined" T="string" Label="Authority URL" @bind-Value="Model.KeycloakAuthority" />
                             <MudTextField Variant="Variant.Outlined" T="string" Label="Client ID" @bind-Value="Model.KeycloakClientId" />
                             <MudTextField Variant="Variant.Outlined" T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.KeycloakClientSecret" />
+
+                            <MudPaper Outlined="true" Class="pa-4 mt-2">
+                                <MudStack Spacing="2">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2">Keycloak realm doctor</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                Runs read-only diagnostics against the configured realm. Temporary admin credentials are used only for this request and are cleared after the run.
+                                            </MudText>
+                                        </div>
+                                        <MudButton Elevation="0"
+                                                   Variant="Variant.Outlined"
+                                                   Color="Color.Primary"
+                                                   StartIcon="@(_isRunningKeycloakDoctor ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.HealthAndSafety)"
+                                                   Disabled="@(!CanRunKeycloakDoctor)"
+                                                   OnClick="RunKeycloakDoctorAsync">
+                                            @(_isRunningKeycloakDoctor ? "Running..." : "Run Doctor")
+                                        </MudButton>
+                                    </MudStack>
+
+                                    <MudSwitch T="bool" @bind-Value="_useTemporaryKeycloakAdmin" Color="Color.Primary">
+                                        Include temporary admin read-only inspection
+                                    </MudSwitch>
+
+                                    @if (_useTemporaryKeycloakAdmin)
+                                    {
+                                        <MudTextField Variant="Variant.Outlined" T="string" Label="Temporary admin username" @bind-Value="_temporaryKeycloakAdminUsername" />
+                                        <MudTextField Variant="Variant.Outlined" T="string" Label="Temporary admin password" InputType="InputType.Password" @bind-Value="_temporaryKeycloakAdminPassword" />
+                                    }
+
+                                    @if (_keycloakDoctorResult is not null)
+                                    {
+                                        <MudAlert Severity="@DoctorSeverity(_keycloakDoctorResult.OverallStatus)" Dense="true">
+                                            @_keycloakDoctorResult.Message
+                                        </MudAlert>
+
+                                        <MudStack Spacing="1">
+                                            @foreach (var check in _keycloakDoctorResult.Checks)
+                                            {
+                                                <MudAlert Severity="@DoctorSeverity(check.Status)" Dense="true" NoIcon="true">
+                                                    <MudStack Spacing="1">
+                                                        <MudText Typo="Typo.subtitle2">@check.Name</MudText>
+                                                        <MudText Typo="Typo.body2">@check.Message</MudText>
+                                                        @if (!string.IsNullOrWhiteSpace(check.Remediation))
+                                                        {
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@check.Remediation</MudText>
+                                                        }
+                                                    </MudStack>
+                                                </MudAlert>
+                                            }
+                                        </MudStack>
+                                    }
+                                </MudStack>
+                            </MudPaper>
+
+                            <MudPaper Outlined="true" Class="pa-4 mt-2">
+                                <MudStack Spacing="2">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2">Keycloak sync preview</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                Builds a read-only additive sync plan from the configured realm. Apply is intentionally unavailable until backup-confirmed repair is implemented.
+                                            </MudText>
+                                        </div>
+                                        <MudButton Elevation="0"
+                                                   Variant="Variant.Outlined"
+                                                   Color="Color.Primary"
+                                                   StartIcon="@(_isPreviewingKeycloakSync ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Preview)"
+                                                   Disabled="@(!CanPreviewKeycloakSync)"
+                                                   OnClick="PreviewKeycloakSyncAsync">
+                                            @(_isPreviewingKeycloakSync ? "Previewing..." : "Preview Sync")
+                                        </MudButton>
+                                    </MudStack>
+
+                                    <MudAlert Severity="Severity.Info" Dense="true">
+                                        Preview is read-only. It may use the same temporary admin fields above, clears the password after the request, and never stores Keycloak credentials.
+                                    </MudAlert>
+
+                                    @if (_keycloakSyncPlan is not null)
+                                    {
+                                        <MudAlert Severity="@PlanSeverity(_keycloakSyncPlan.Status)" Dense="true">
+                                            @_keycloakSyncPlan.Message
+                                        </MudAlert>
+
+                                        <MudStack Spacing="1">
+                                            @foreach (var operation in _keycloakSyncPlan.Operations)
+                                            {
+                                                <MudAlert Severity="@PlanSeverity(operation.Status)" Dense="true" NoIcon="true">
+                                                    <MudStack Spacing="1">
+                                                        <MudText Typo="Typo.subtitle2">@operation.Summary</MudText>
+                                                        <MudText Typo="Typo.body2">@operation.Reason</MudText>
+                                                        @if (operation.Changes.Count > 0)
+                                                        {
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@string.Join("; ", operation.Changes)</MudText>
+                                                        }
+                                                    </MudStack>
+                                                </MudAlert>
+                                            }
+                                        </MudStack>
+
+                                        @if (_keycloakSyncPlan.DesiredState.Clients.Count > 0)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                Desired clients: @string.Join(", ", _keycloakSyncPlan.DesiredState.Clients.Select(client => client.ClientId))
+                                            </MudText>
+                                        }
+                                    }
+                                </MudStack>
+                            </MudPaper>
                         }
 
                         @if (!IsSingleTenant)
@@ -293,6 +402,13 @@
 
     private bool _isSyncing;
     private bool _isDownloadingPackage;
+    private bool _isRunningKeycloakDoctor;
+    private bool _isPreviewingKeycloakSync;
+    private bool _useTemporaryKeycloakAdmin;
+    private string _temporaryKeycloakAdminUsername = string.Empty;
+    private string _temporaryKeycloakAdminPassword = string.Empty;
+    private KeycloakRealmDoctorResultModel? _keycloakDoctorResult;
+    private KeycloakRealmSyncPlanModel? _keycloakSyncPlan;
     private InstanceCommandResponseModel? _syncResult;
     private InstanceCommandResponseModel? _downloadResult;
 
@@ -393,6 +509,46 @@
         && OnboardingService is not null
         && IsAuthorizationProviderSelected(CerbosProvider);
 
+    private bool CanRunKeycloakDoctor =>
+        !_isRunningKeycloakDoctor
+        && !_isPreviewingKeycloakSync
+        && OnboardingService is not null
+        && Model.KeycloakEnabled
+        && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
+        && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
+        && (!_useTemporaryKeycloakAdmin
+            || (!string.IsNullOrWhiteSpace(_temporaryKeycloakAdminUsername)
+                && !string.IsNullOrWhiteSpace(_temporaryKeycloakAdminPassword)));
+
+    private bool CanPreviewKeycloakSync =>
+        !_isPreviewingKeycloakSync
+        && !_isRunningKeycloakDoctor
+        && OnboardingService is not null
+        && Model.KeycloakEnabled
+        && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
+        && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
+        && (!_useTemporaryKeycloakAdmin
+            || (!string.IsNullOrWhiteSpace(_temporaryKeycloakAdminUsername)
+                && !string.IsNullOrWhiteSpace(_temporaryKeycloakAdminPassword)));
+
+    private static Severity DoctorSeverity(string status) => status.ToLowerInvariant() switch
+    {
+        "healthy" => Severity.Success,
+        "warning" => Severity.Warning,
+        "needs-repair" => Severity.Warning,
+        _ => Severity.Error
+    };
+
+    private static Severity PlanSeverity(string status) => status.ToLowerInvariant() switch
+    {
+        "healthy" => Severity.Success,
+        "up-to-date" => Severity.Success,
+        "changes-planned" => Severity.Warning,
+        "planned" => Severity.Warning,
+        "warning" => Severity.Warning,
+        _ => Severity.Error
+    };
+
     private async Task SelectAuthorizationProviderAsync(string provider)
     {
         if (IsAuthorizationProviderSelected(provider))
@@ -480,6 +636,62 @@
         finally
         {
             _isDownloadingPackage = false;
+        }
+    }
+
+    private async Task RunKeycloakDoctorAsync()
+    {
+        if (!CanRunKeycloakDoctor || OnboardingService is null)
+        {
+            return;
+        }
+
+        _isRunningKeycloakDoctor = true;
+        _keycloakDoctorResult = null;
+        StateHasChanged();
+
+        try
+        {
+            _keycloakDoctorResult = await OnboardingService.RunKeycloakRealmDoctorAsync(new KeycloakRealmDoctorRequestModel
+            {
+                UseTemporaryAdminCredentials = _useTemporaryKeycloakAdmin,
+                BootstrapAdminUsername = _useTemporaryKeycloakAdmin ? _temporaryKeycloakAdminUsername : null,
+                BootstrapAdminPassword = _useTemporaryKeycloakAdmin ? _temporaryKeycloakAdminPassword : null,
+                ApiClientId = "islamu-event-api"
+            });
+        }
+        finally
+        {
+            _temporaryKeycloakAdminPassword = string.Empty;
+            _isRunningKeycloakDoctor = false;
+        }
+    }
+
+    private async Task PreviewKeycloakSyncAsync()
+    {
+        if (!CanPreviewKeycloakSync || OnboardingService is null)
+        {
+            return;
+        }
+
+        _isPreviewingKeycloakSync = true;
+        _keycloakSyncPlan = null;
+        StateHasChanged();
+
+        try
+        {
+            _keycloakSyncPlan = await OnboardingService.PreviewKeycloakRealmSyncAsync(new KeycloakRealmSyncPreviewRequestModel
+            {
+                UseTemporaryAdminCredentials = _useTemporaryKeycloakAdmin,
+                BootstrapAdminUsername = _useTemporaryKeycloakAdmin ? _temporaryKeycloakAdminUsername : null,
+                BootstrapAdminPassword = _useTemporaryKeycloakAdmin ? _temporaryKeycloakAdminPassword : null,
+                ApiClientId = "islamu-event-api"
+            });
+        }
+        finally
+        {
+            _temporaryKeycloakAdminPassword = string.Empty;
+            _isPreviewingKeycloakSync = false;
         }
     }
 

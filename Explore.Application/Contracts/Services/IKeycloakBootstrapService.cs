@@ -10,4 +10,19 @@ public interface IKeycloakBootstrapService
     Task<KeycloakBootstrapResultDto> BootstrapAsync(
         KeycloakBootstrapRequestDto request,
         CancellationToken cancellationToken);
+
+    Task<KeycloakRealmDoctorResultDto> DiagnoseRealmAsync(
+        AuthProviderConfigurationDto configuration,
+        KeycloakRealmDoctorRequestDto request,
+        CancellationToken cancellationToken);
+
+    Task<KeycloakRealmSyncPlanDto> PreviewRealmSyncAsync(
+        AuthProviderConfigurationDto configuration,
+        KeycloakRealmSyncPreviewRequestDto request,
+        CancellationToken cancellationToken);
+
+    Task<KeycloakRealmSyncPlanDto> ApplyRealmSyncAsync(
+        AuthProviderConfigurationDto configuration,
+        KeycloakRealmSyncApplyRequestDto request,
+        CancellationToken cancellationToken);
 }
