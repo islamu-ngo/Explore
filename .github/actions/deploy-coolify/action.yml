@@ -1,0 +1,206 @@
+# ABOUTME: Local composite action for Coolify webhook deployment and smoke-check evidence.
+# ABOUTME: Centralizes deploy shell behavior for staging and production workflows.
+
+name: Deploy to Coolify
+description: Trigger a Coolify deployment, run optional smoke checks, and retain deployment evidence.
+
+inputs:
+  environment-name:
+    description: Deployment environment name used in summaries and artifact paths.
+    required: true
+  component:
+    description: Component display name, such as API or UI.
+    required: true
+  coolify-webhook:
+    description: Coolify deployment webhook URL.
+    required: true
+  coolify-token:
+    description: Bearer token for the Coolify deployment webhook.
+    required: true
+  smoke-base-url:
+    description: Optional base URL for /alive and /health smoke checks.
+    required: false
+    default: ""
+  registry:
+    description: Primary container registry host.
+    required: true
+  registry-user:
+    description: Primary container registry namespace or user.
+    required: true
+  image-name:
+    description: Container image name for this component.
+    required: true
+  immutable-tag-prefix:
+    description: Immutable deployment tag prefix, such as sha- or dev-.
+    required: true
+  expected-image-digest:
+    description: Expected image digest resolved from container promotion evidence.
+    required: true
+  promotion-evidence-path:
+    description: Path to the retained promotion evidence artifact used to resolve the expected digest.
+    required: true
+  deployment-freeze:
+    description: Whether deployment freeze is active for this environment.
+    required: false
+    default: "false"
+  override-reason:
+    description: Manual override reason when deploying during a freeze.
+    required: false
+    default: ""
+  require-smoke-check:
+    description: Whether a configured smoke-base-url is required and both /alive and /health must pass.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Trigger Coolify deployment
+      shell: bash
+      env:
+        ENVIRONMENT_NAME: ${{ inputs.environment-name }}
+        COMPONENT: ${{ inputs.component }}
+        COOLIFY_WEBHOOK: ${{ inputs.coolify-webhook }}
+        COOLIFY_TOKEN: ${{ inputs.coolify-token }}
+        SMOKE_BASE_URL: ${{ inputs.smoke-base-url }}
+        REGISTRY: ${{ inputs.registry }}
+        REGISTRY_USER: ${{ inputs.registry-user }}
+        IMAGE_NAME: ${{ inputs.image-name }}
+        IMMUTABLE_TAG_PREFIX: ${{ inputs.immutable-tag-prefix }}
+        EXPECTED_IMAGE_DIGEST: ${{ inputs.expected-image-digest }}
+        PROMOTION_EVIDENCE_PATH: ${{ inputs.promotion-evidence-path }}
+        DEPLOYMENT_FREEZE: ${{ inputs.deployment-freeze }}
+        OVERRIDE_REASON: ${{ inputs.override-reason }}
+        REQUIRE_SMOKE_CHECK: ${{ inputs.require-smoke-check }}
+      run: |
+        set -euo pipefail
+
+        mkdir -p artifacts/deploy
+        summary_file="artifacts/deploy/${ENVIRONMENT_NAME}-${COMPONENT}.md"
+        response_file="/tmp/coolify-${ENVIRONMENT_NAME}-${COMPONENT}.txt"
+        expected_image="${REGISTRY}/${REGISTRY_USER}/${IMAGE_NAME}:${IMMUTABLE_TAG_PREFIX}${GITHUB_SHA}"
+
+        echo "::add-mask::${COOLIFY_WEBHOOK}"
+        echo "::add-mask::${COOLIFY_TOKEN}"
+
+        write_summary() {
+          local title="$1"
+          local webhook_result="$2"
+          local smoke_result="$3"
+
+          {
+            echo "## ${title}"
+            echo
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Environment | ${ENVIRONMENT_NAME} |"
+            echo "| Component | ${COMPONENT} |"
+            echo "| Ref | \`${GITHUB_REF}\` |"
+            echo "| Commit | \`${GITHUB_SHA}\` |"
+            echo "| Expected immutable image tag | \`${expected_image}\` |"
+            echo "| Expected image digest | \`${EXPECTED_IMAGE_DIGEST}\` |"
+            echo "| Promotion evidence | \`${PROMOTION_EVIDENCE_PATH}\` |"
+            echo "| Coolify webhook | ${webhook_result} |"
+            echo "| Smoke check | ${smoke_result} |"
+            echo "| Smoke check required | ${REQUIRE_SMOKE_CHECK} |"
+            echo "| Deployment freeze | ${DEPLOYMENT_FREEZE} |"
+            echo "| Override reason | ${OVERRIDE_REASON:-not provided} |"
+            echo "| Workflow run | ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} |"
+            echo
+            echo "Rollback: redeploy the previous known-good Coolify deployment or retarget Coolify to the previous immutable image tag/digest per the release runbook."
+          } | tee "${summary_file}" >> "${GITHUB_STEP_SUMMARY}"
+        }
+
+        if [[ "${DEPLOYMENT_FREEZE,,}" == "true" && -z "${OVERRIDE_REASON//[[:space:]]/}" ]]; then
+          echo "Deployment freeze is active for ${ENVIRONMENT_NAME}; provide a manual override reason to continue."
+          write_summary "Deployment blocked by freeze" "not run" "not run"
+          exit 1
+        fi
+
+        if [[ -z "${EXPECTED_IMAGE_DIGEST//[[:space:]]/}" || -z "${PROMOTION_EVIDENCE_PATH//[[:space:]]/}" ]]; then
+          echo "Deployment evidence is missing the expected image digest or promotion evidence path."
+          write_summary "Deployment blocked by missing image evidence" "not run" "not run"
+          exit 1
+        fi
+
+        if [[ "${REQUIRE_SMOKE_CHECK,,}" == "true" && -z "${SMOKE_BASE_URL//[[:space:]]/}" ]]; then
+          echo "Smoke checks are required for ${ENVIRONMENT_NAME}, but no smoke-base-url was configured."
+          write_summary "Deployment blocked by missing smoke URL" "not run" "not run"
+          exit 1
+        fi
+
+        echo "Triggering ${COMPONENT} deployment for ${ENVIRONMENT_NAME}..."
+        curl_status=0
+        http_code="$(
+          curl \
+            --silent \
+            --show-error \
+            --location \
+            --retry 3 \
+            --retry-delay 5 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 60 \
+            --output "${response_file}" \
+            --write-out '%{http_code}' \
+            --request GET "${COOLIFY_WEBHOOK}" \
+            --header "Authorization: Bearer ${COOLIFY_TOKEN}"
+        )" || curl_status=$?
+
+        if [[ "${curl_status}" -ne 0 ]]; then
+          echo "Coolify webhook transport failed for ${COMPONENT}; curl exit ${curl_status}."
+          write_summary "Deployment failed" "transport failure, curl exit ${curl_status}" "not run"
+          exit 1
+        fi
+
+        if [[ "${http_code}" -lt 200 || "${http_code}" -ge 300 ]]; then
+          echo "Coolify webhook failed for ${COMPONENT}; HTTP ${http_code}."
+          sed -E 's/(token|authorization|bearer|password|secret)[^[:space:]]*/[REDACTED]/Ig' "${response_file}" || true
+          write_summary "Deployment failed" "failed, HTTP ${http_code}" "not run"
+          exit 1
+        fi
+
+        smoke_status="skipped: URL not configured"
+        if [[ -n "${SMOKE_BASE_URL:-}" ]]; then
+          smoke_status="pending"
+          for path in /alive /health; do
+            path_status="failed"
+            for attempt in {1..10}; do
+              smoke_code="$(
+                curl \
+                  --silent \
+                  --show-error \
+                  --connect-timeout 10 \
+                  --max-time 10 \
+                  --output "/tmp/smoke-${ENVIRONMENT_NAME}-${COMPONENT}.txt" \
+                  --write-out '%{http_code}' \
+                  "${SMOKE_BASE_URL%/}${path}" || true
+              )"
+
+              if [[ "${smoke_code}" == "200" ]]; then
+                path_status="passed"
+                break
+              fi
+
+              if [[ "${attempt}" == "10" ]]; then
+                echo "Smoke check failed for ${COMPONENT}: ${SMOKE_BASE_URL%/}${path} returned HTTP ${smoke_code}."
+                sed -E 's/(token|authorization|bearer|password|secret)[^[:space:]]*/[REDACTED]/Ig' "/tmp/smoke-${ENVIRONMENT_NAME}-${COMPONENT}.txt" | head -c 4096 || true
+                write_summary "Deployment failed" "accepted, HTTP ${http_code}" "failed at ${path}, HTTP ${smoke_code}"
+                exit 1
+              fi
+
+              sleep 10
+            done
+
+            if [[ "${path_status}" != "passed" ]]; then
+              smoke_status="failed at ${path}"
+              break
+            fi
+          done
+
+          if [[ "${smoke_status}" == "pending" ]]; then
+            smoke_status="passed: /alive and /health"
+          fi
+        fi
+
+        write_summary "Deployment" "accepted, HTTP ${http_code}" "${smoke_status}"
