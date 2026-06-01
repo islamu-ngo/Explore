@@ -30,10 +30,14 @@ Paste exact commands and results. Run projects individually; do not use solution
 - [ ] Not a UI change
 - [ ] Screenshots or recordings attached for UI changes
 
-## Migration, Configuration, Operator, or Release Notes
+## Release Impact
 
-- [ ] Not applicable
-- [ ] Migrations, configuration keys, secrets, deployment behavior, backup/restore, or rollback notes included
+- [ ] Not applicable - no security, migration, configuration, OpenAPI, operator, or release-note impact.
+- [ ] Security/auth impact documented
+- [ ] Migration/data/rollback impact documented
+- [ ] Configuration/secrets/deployment impact documented
+- [ ] OpenAPI/client contract impact documented
+- [ ] Operator/self-hosting/release-note impact documented
 - [ ] Release-impacting change checked against `docs/RELEASE_CHECKLIST.md`
 
 Details:
