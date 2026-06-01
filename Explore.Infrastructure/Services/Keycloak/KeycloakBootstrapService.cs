@@ -5,11 +5,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Onboarding;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Services.Keycloak;
 
@@ -26,13 +28,23 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<KeycloakBootstrapService> _logger;
+    private readonly KeycloakBootstrapOptions _options;
 
     public KeycloakBootstrapService(
         IHttpClientFactory httpClientFactory,
         ILogger<KeycloakBootstrapService> logger)
+        : this(httpClientFactory, logger, Options.Create(new KeycloakBootstrapOptions()))
+    {
+    }
+
+    public KeycloakBootstrapService(
+        IHttpClientFactory httpClientFactory,
+        ILogger<KeycloakBootstrapService> logger,
+        IOptions<KeycloakBootstrapOptions> options)
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _options = options.Value;
     }
 
     public async Task<KeycloakBootstrapResultDto> BootstrapAsync(
@@ -41,7 +53,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!TryNormalizeBaseUri(request.KeycloakBaseUrl, out var baseUri, out var failureCode))
+        if (!TryNormalizeBaseUri(request.KeycloakBaseUrl, _options.AllowLocalUrls, out var baseUri, out var failureCode))
         {
             return Failure(request, failureCode, "Keycloak base URL is not safe for bootstrap.");
         }
@@ -131,7 +143,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         }
     }
 
-    private static bool TryNormalizeBaseUri(string keycloakBaseUrl, out Uri? baseUri, out string failureCode)
+    private static bool TryNormalizeBaseUri(string keycloakBaseUrl, bool allowLocalUrls, out Uri? baseUri, out string failureCode)
     {
         baseUri = null;
         failureCode = "keycloak_invalid_url";
@@ -146,7 +158,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             return false;
         }
 
-        if (IsBlockedHost(uri.Host))
+        if (!allowLocalUrls && IsBlockedHost(uri.Host))
         {
             failureCode = "keycloak_unsafe_host";
             return false;
@@ -319,11 +331,67 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 return ClientSecretUpdateResult.Failure("keycloak_client_not_found", "Keycloak client could not be located after creation.");
         }
 
+        var clientUri = BuildUri(baseUri, "admin", "realms", realm, "clients", clientUuid);
+        var clientRepresentation = await GetClientRepresentationAsync(client, clientUri, accessToken, cancellationToken);
+        if (clientRepresentation is null)
+            return ClientSecretUpdateResult.Failure("keycloak_client_lookup_failed", "Keycloak client representation could not be loaded.");
+
+        var representationSecretMatches = string.Equals(
+            clientRepresentation["secret"]?.GetValue<string>(),
+            secret,
+            StringComparison.Ordinal);
+
+        if (!bearerOnly)
+        {
+            var roleResult = await EnsureOfflineAccessRealmRoleAsync(client, baseUri, realm, accessToken, cancellationToken);
+            if (!roleResult.Success)
+                return roleResult;
+
+            var scopeMappingResult = await EnsureOfflineAccessClientScopeMappingAsync(
+                client,
+                baseUri,
+                realm,
+                accessToken,
+                cancellationToken);
+            if (!scopeMappingResult.Success)
+                return scopeMappingResult;
+        }
+
+        if (representationSecretMatches && (bearerOnly || HasRefreshTokenSettings(clientRepresentation)))
+            return ClientSecretUpdateResult.Succeeded();
+
+        var currentSecret = representationSecretMatches
+            ? secret
+            : await GetCurrentClientSecretAsync(client, baseUri, realm, clientUuid, accessToken, cancellationToken);
+        var secretMatches = string.Equals(currentSecret, secret, StringComparison.Ordinal);
+
+        if (secretMatches && (bearerOnly || HasRefreshTokenSettings(clientRepresentation)))
+            return ClientSecretUpdateResult.Succeeded();
+
+        if (!bearerOnly)
+        {
+            var scopeResult = await EnsureOfflineAccessScopeAsync(
+                client,
+                baseUri,
+                realm,
+                clientUuid,
+                accessToken,
+                cancellationToken);
+            if (!scopeResult.Success)
+                return scopeResult;
+        }
+
+        if (!secretMatches)
+            clientRepresentation["secret"] = secret;
+
+        if (!bearerOnly)
+            PreserveRefreshTokenSettings(clientRepresentation);
+
         using var secretRequest = CreateAdminRequest(
             HttpMethod.Put,
-            BuildUri(baseUri, "admin", "realms", realm, "clients", clientUuid, "client-secret"),
+            clientUri,
             accessToken,
-            new KeycloakClientSecretRepresentation("secret", secret));
+            clientRepresentation);
         using var secretResponse = await client.SendAsync(secretRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
         if (secretResponse.IsSuccessStatusCode)
@@ -361,6 +429,253 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         var clients = await JsonSerializer.DeserializeAsync<List<KeycloakClientLookupResult>>(stream, JsonOptions, cancellationToken);
         var clientUuid = clients?.FirstOrDefault(x => string.Equals(x.ClientId, clientId, StringComparison.Ordinal))?.Id;
         return ClientLookupResult.Succeeded(clientUuid);
+    }
+
+    private static async Task<JsonObject?> GetClientRepresentationAsync(
+        HttpClient client,
+        Uri clientUri,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAdminRequest(HttpMethod.Get, clientUri, accessToken);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        return await JsonSerializer.DeserializeAsync<JsonObject>(stream, JsonOptions, cancellationToken);
+    }
+
+    private static async Task<string?> GetCurrentClientSecretAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string clientUuid,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAdminRequest(
+            HttpMethod.Get,
+            BuildUri(baseUri, "admin", "realms", realm, "clients", clientUuid, "client-secret"),
+            accessToken);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        var representation = await JsonSerializer.DeserializeAsync<JsonObject>(stream, JsonOptions, cancellationToken);
+        return representation?["value"]?.GetValue<string>();
+    }
+
+    private static bool HasRefreshTokenSettings(JsonObject clientRepresentation)
+    {
+        var hasOfflineAccess = ContainsScope(clientRepresentation["optionalClientScopes"], "offline_access")
+            || ContainsScope(clientRepresentation["defaultClientScopes"], "offline_access");
+
+        var attributes = clientRepresentation["attributes"] as JsonObject;
+        var usesRefreshTokens = string.Equals(
+            attributes?["use.refresh.tokens"]?.GetValue<string>(),
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+
+        return hasOfflineAccess && usesRefreshTokens;
+    }
+
+    private static bool ContainsScope(JsonNode? scopesNode, string expectedScope)
+    {
+        return scopesNode is JsonArray scopes
+            && scopes.Any(scope => string.Equals(scope?.GetValue<string>(), expectedScope, StringComparison.Ordinal));
+    }
+
+    private static async Task<ClientSecretUpdateResult> EnsureOfflineAccessRealmRoleAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        var offlineRole = await GetRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        if (offlineRole is null)
+        {
+            return ClientSecretUpdateResult.Failure(
+                "keycloak_offline_access_role_not_found",
+                "Keycloak offline access realm role could not be located.");
+        }
+
+        var defaultRoleName = $"default-roles-{realm.ToLowerInvariant()}";
+        var defaultRole = await GetRealmRoleAsync(client, baseUri, realm, defaultRoleName, accessToken, cancellationToken);
+        var defaultRoleId = defaultRole?["id"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(defaultRoleId))
+        {
+            return ClientSecretUpdateResult.Failure(
+                "keycloak_default_role_not_found",
+                "Keycloak default realm role could not be located.");
+        }
+
+        using var request = CreateAdminRequest(
+            HttpMethod.Post,
+            BuildUri(baseUri, "admin", "realms", realm, "roles-by-id", defaultRoleId, "composites"),
+            accessToken,
+            new JsonArray(offlineRole.DeepClone()));
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict
+            ? ClientSecretUpdateResult.Succeeded()
+            : ClientSecretUpdateResult.Failure(
+                "keycloak_offline_access_role_update_failed",
+                "Keycloak offline access realm role could not be assigned to the default role.");
+    }
+
+    private static async Task<JsonObject?> GetRealmRoleAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string roleName,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = CreateAdminRequest(
+            HttpMethod.Get,
+            BuildUri(baseUri, "admin", "realms", realm, "roles", roleName),
+            accessToken);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        return await JsonSerializer.DeserializeAsync<JsonObject>(stream, JsonOptions, cancellationToken);
+    }
+
+    private static async Task<ClientSecretUpdateResult> EnsureOfflineAccessScopeAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string clientUuid,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        var scopeId = await FindClientScopeIdAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        if (string.IsNullOrWhiteSpace(scopeId))
+        {
+            return ClientSecretUpdateResult.Failure(
+                "keycloak_client_scope_not_found",
+                "Keycloak offline access client scope could not be located.");
+        }
+
+        using var request = CreateAdminRequest(
+            HttpMethod.Put,
+            BuildUri(baseUri, "admin", "realms", realm, "clients", clientUuid, "optional-client-scopes", scopeId),
+            accessToken);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict
+            ? ClientSecretUpdateResult.Succeeded()
+            : ClientSecretUpdateResult.Failure(
+                "keycloak_client_scope_update_failed",
+                "Keycloak offline access client scope could not be assigned.");
+    }
+
+    private static async Task<ClientSecretUpdateResult> EnsureOfflineAccessClientScopeMappingAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        var scopeId = await FindClientScopeIdAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        if (string.IsNullOrWhiteSpace(scopeId))
+        {
+            return ClientSecretUpdateResult.Failure(
+                "keycloak_client_scope_not_found",
+                "Keycloak offline access client scope could not be located.");
+        }
+
+        return await EnsureOfflineAccessScopeMappingAsync(
+            client,
+            baseUri,
+            realm,
+            scopeId,
+            accessToken,
+            cancellationToken);
+    }
+
+    private static async Task<ClientSecretUpdateResult> EnsureOfflineAccessScopeMappingAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string scopeId,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        var offlineRole = await GetRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        if (offlineRole is null)
+        {
+            return ClientSecretUpdateResult.Failure(
+                "keycloak_offline_access_role_not_found",
+                "Keycloak offline access realm role could not be located.");
+        }
+
+        using var request = CreateAdminRequest(
+            HttpMethod.Post,
+            BuildUri(baseUri, "admin", "realms", realm, "client-scopes", scopeId, "scope-mappings", "realm"),
+            accessToken,
+            new JsonArray(offlineRole.DeepClone()));
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict
+            ? ClientSecretUpdateResult.Succeeded()
+            : ClientSecretUpdateResult.Failure(
+                "keycloak_offline_access_scope_mapping_failed",
+                "Keycloak offline access role could not be assigned to the offline access client scope.");
+    }
+
+    private static async Task<string?> FindClientScopeIdAsync(
+        HttpClient client,
+        Uri baseUri,
+        string realm,
+        string scopeName,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        var builder = new UriBuilder(BuildUri(baseUri, "admin", "realms", realm, "client-scopes"))
+        {
+            Query = $"search={Uri.EscapeDataString(scopeName)}"
+        };
+        using var request = CreateAdminRequest(HttpMethod.Get, builder.Uri, accessToken);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        var scopes = await JsonSerializer.DeserializeAsync<List<KeycloakClientScopeLookupResult>>(stream, JsonOptions, cancellationToken);
+        return scopes?.FirstOrDefault(scope => string.Equals(scope.Name, scopeName, StringComparison.Ordinal))?.Id;
+    }
+
+
+    private static void PreserveRefreshTokenSettings(JsonObject clientRepresentation)
+    {
+        var optionalScopes = clientRepresentation["optionalClientScopes"] as JsonArray;
+        if (optionalScopes is null)
+        {
+            optionalScopes = [];
+            clientRepresentation["optionalClientScopes"] = optionalScopes;
+        }
+
+        if (!optionalScopes.Any(scope => string.Equals(scope?.GetValue<string>(), "offline_access", StringComparison.Ordinal)))
+            optionalScopes.Add("offline_access");
+
+        var attributes = clientRepresentation["attributes"] as JsonObject;
+        if (attributes is null)
+        {
+            attributes = [];
+            clientRepresentation["attributes"] = attributes;
+        }
+
+        attributes["use.refresh.tokens"] = "true";
     }
 
     private async Task<ClientSecretUpdateResult> CreateClientAsync(
@@ -463,7 +778,11 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         public string ClientId { get; set; } = string.Empty;
     }
 
-    private sealed record KeycloakClientSecretRepresentation(string Type, string Value);
+    private sealed class KeycloakClientScopeLookupResult
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+    }
 
     private sealed class KeycloakClientRepresentation
     {

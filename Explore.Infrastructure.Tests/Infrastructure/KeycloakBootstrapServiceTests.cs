@@ -30,13 +30,31 @@ public sealed class KeycloakBootstrapServiceTests
             Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
                 [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
                 """)),
-            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/client-secret", _ => new HttpResponseMessage(HttpStatusCode.NoContent)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => JsonResponse(ClientRepresentationJson("blazor-uuid", "islamu-event-blazor"))),
+            ExpectOfflineAccessRole(),
+            ExpectDefaultRole(),
+            ExpectDefaultRoleCompositeUpdate(),
+            ExpectOfflineAccessScopeLookup(),
+            ExpectOfflineAccessRole(),
+            ExpectOfflineAccessScopeMappingUpdate(),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/client-secret", _ => JsonResponse("""
+                { "value": "old-blazor-secret" }
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/client-scopes", _ => JsonResponse("""
+                [{ "id": "offline-scope-uuid", "name": "offline_access" }]
+                """)),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/optional-client-scopes/offline-scope-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)),
             Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("[]")),
             Expect(HttpMethod.Post, "/auth/admin/realms/ISLAMU/clients", _ => new HttpResponseMessage(HttpStatusCode.Created)),
             Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
                 [{ "id": "api-uuid", "clientId": "islamu-event-api" }]
                 """)),
-            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/api-uuid/client-secret", _ => new HttpResponseMessage(HttpStatusCode.NoContent)));
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/api-uuid", _ => JsonResponse(ClientRepresentationJson("api-uuid", "islamu-event-api"))),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/api-uuid/client-secret", _ => JsonResponse("""
+                { "value": "old-api-secret" }
+                """)),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/api-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)));
         var service = CreateService(handler);
 
         var result = await service.BootstrapAsync(request, CancellationToken.None);
@@ -45,12 +63,14 @@ public sealed class KeycloakBootstrapServiceTests
         await Assert.That(result.RealmCreated).IsTrue();
         await Assert.That(result.BlazorClientUpdated).IsTrue();
         await Assert.That(result.ApiClientUpdated).IsTrue();
-        await Assert.That(handler.Requests.Count).IsEqualTo(11);
+        await Assert.That(handler.Requests.Count).IsEqualTo(23);
         await Assert.That(handler.Requests[0].Authorization).IsNull();
         await Assert.That(handler.Requests.Skip(1).All(x => x.Authorization?.Scheme == "Bearer")).IsTrue();
         await Assert.That(handler.Requests.Skip(1).All(x => x.Authorization?.Parameter == "admin-token")).IsTrue();
-        await Assert.That(handler.Requests[6].Body).Contains("runtime-blazor-secret");
-        await Assert.That(handler.Requests[10].Body).Contains("optional-api-secret");
+        await Assert.That(handler.Requests[16].Body).Contains("runtime-blazor-secret");
+        await Assert.That(handler.Requests[16].Body).Contains("offline_access");
+        await Assert.That(handler.Requests[16].Body).Contains("use.refresh.tokens");
+        await Assert.That(handler.Requests[22].Body).Contains("optional-api-secret");
 
         var serializedResult = JsonSerializer.Serialize(result);
         await Assert.That(serializedResult).DoesNotContain(request.BootstrapAdminPassword);
@@ -70,18 +90,115 @@ public sealed class KeycloakBootstrapServiceTests
             Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
                 [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
                 """)),
-            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/client-secret", _ => new HttpResponseMessage(HttpStatusCode.NoContent)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => JsonResponse(ClientRepresentationJson("blazor-uuid", "islamu-event-blazor"))),
+            ExpectOfflineAccessRole(),
+            ExpectDefaultRole(),
+            ExpectDefaultRoleCompositeUpdate(),
+            ExpectOfflineAccessScopeLookup(),
+            ExpectOfflineAccessRole(),
+            ExpectOfflineAccessScopeMappingUpdate(),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/client-secret", _ => JsonResponse("""
+                { "value": "old-blazor-secret" }
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/client-scopes", _ => JsonResponse("""
+                [{ "id": "offline-scope-uuid", "name": "offline_access" }]
+                """)),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/optional-client-scopes/offline-scope-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)),
             Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
                 [{ "id": "api-uuid", "clientId": "islamu-event-api" }]
                 """)),
-            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/api-uuid/client-secret", _ => new HttpResponseMessage(HttpStatusCode.NoContent)));
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/api-uuid", _ => JsonResponse(ClientRepresentationJson("api-uuid", "islamu-event-api"))),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/api-uuid/client-secret", _ => JsonResponse("""
+                { "value": "old-api-secret" }
+                """)),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/api-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)));
         var service = CreateService(handler);
 
         var result = await service.BootstrapAsync(request, CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.RealmCreated).IsFalse();
-        await Assert.That(handler.Requests.Skip(1).Any(x => x.Method == HttpMethod.Post)).IsFalse();
+        await Assert.That(handler.Requests.Any(x => x.Method == HttpMethod.Post
+            && x.RequestUri?.AbsolutePath == "/auth/admin/realms/ISLAMU/clients")).IsFalse();
+    }
+
+    [Test]
+    public async Task BootstrapAsync_PatchExistingRealmWhenSecretAlreadyMatchesAndRefreshSettingsMissing_RepairsClient()
+    {
+        var request = CreateRequest(mode: KeycloakBootstrapMode.PatchExistingRealm);
+        request.ApiClientId = null;
+        request.ApiClientSecret = null;
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
+                { "access_token": "admin-token" }
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU", _ => new HttpResponseMessage(HttpStatusCode.OK)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
+                [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => JsonResponse(ClientRepresentationJson(
+                "blazor-uuid",
+                "islamu-event-blazor",
+                "runtime-blazor-secret",
+                includeRefreshTokenSettings: false))),
+            ExpectOfflineAccessRole(),
+            ExpectDefaultRole(),
+            ExpectDefaultRoleCompositeUpdate(),
+            ExpectOfflineAccessScopeLookup(),
+            ExpectOfflineAccessRole(),
+            ExpectOfflineAccessScopeMappingUpdate(),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/client-scopes", _ => JsonResponse("""
+                [{ "id": "offline-scope-uuid", "name": "offline_access" }]
+                """)),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/optional-client-scopes/offline-scope-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)));
+        var service = CreateService(handler);
+
+        var result = await service.BootstrapAsync(request, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.BlazorClientUpdated).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(13);
+        await Assert.That(handler.Requests[12].Body).Contains("offline_access");
+        await Assert.That(handler.Requests[12].Body).Contains("use.refresh.tokens");
+        await Assert.That(handler.Requests[12].Body).DoesNotContain(request.BootstrapAdminPassword);
+    }
+
+    [Test]
+    public async Task BootstrapAsync_PatchExistingRealmWhenSecretAlreadyMatchesAndRefreshSettingsPresent_DoesNotMutateClient()
+    {
+        var request = CreateRequest(mode: KeycloakBootstrapMode.PatchExistingRealm);
+        request.ApiClientId = null;
+        request.ApiClientSecret = null;
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
+                { "access_token": "admin-token" }
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU", _ => new HttpResponseMessage(HttpStatusCode.OK)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
+                [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => JsonResponse(ClientRepresentationJson(
+                "blazor-uuid",
+                "islamu-event-blazor",
+                "runtime-blazor-secret",
+                includeRefreshTokenSettings: true))),
+            ExpectOfflineAccessRole(),
+            ExpectDefaultRole(),
+            ExpectDefaultRoleCompositeUpdate(),
+            ExpectOfflineAccessScopeLookup(),
+            ExpectOfflineAccessRole(),
+            ExpectOfflineAccessScopeMappingUpdate());
+        var service = CreateService(handler);
+
+        var result = await service.BootstrapAsync(request, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.BlazorClientUpdated).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(10);
+        await Assert.That(handler.Requests.Any(x => x.Method == HttpMethod.Put)).IsFalse();
+        await Assert.That(handler.Requests.Any(x => x.RequestUri?.AbsolutePath.Contains("optional-client-scopes", StringComparison.Ordinal) == true)).IsFalse();
     }
 
     [Test]
@@ -190,6 +307,79 @@ public sealed class KeycloakBootstrapServiceTests
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
+    }
+
+    private static Func<HttpRequestMessage, HttpResponseMessage> ExpectOfflineAccessRole()
+    {
+        return Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/roles/offline_access", _ => JsonResponse("""
+            { "id": "offline-role-uuid", "name": "offline_access" }
+            """));
+    }
+
+    private static Func<HttpRequestMessage, HttpResponseMessage> ExpectDefaultRole()
+    {
+        return Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/roles/default-roles-islamu", _ => JsonResponse("""
+            { "id": "default-role-uuid", "name": "default-roles-islamu" }
+            """));
+    }
+
+    private static Func<HttpRequestMessage, HttpResponseMessage> ExpectDefaultRoleCompositeUpdate()
+    {
+        return Expect(
+            HttpMethod.Post,
+            "/auth/admin/realms/ISLAMU/roles-by-id/default-role-uuid/composites",
+            _ => new HttpResponseMessage(HttpStatusCode.NoContent));
+    }
+
+    private static Func<HttpRequestMessage, HttpResponseMessage> ExpectOfflineAccessScopeLookup()
+    {
+        return Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/client-scopes", _ => JsonResponse("""
+            [{ "id": "offline-scope-uuid", "name": "offline_access" }]
+            """));
+    }
+
+    private static Func<HttpRequestMessage, HttpResponseMessage> ExpectOfflineAccessScopeMappingUpdate()
+    {
+        return Expect(
+            HttpMethod.Post,
+            "/auth/admin/realms/ISLAMU/client-scopes/offline-scope-uuid/scope-mappings/realm",
+            _ => new HttpResponseMessage(HttpStatusCode.NoContent));
+    }
+
+    private static string ClientRepresentationJson(
+        string id,
+        string clientId,
+        string? secret = null,
+        bool includeRefreshTokenSettings = false)
+    {
+        var secretJson = secret is null
+            ? string.Empty
+            : $"  \"secret\": \"{secret}\",\n";
+
+        var refreshTokenSettingsJson = includeRefreshTokenSettings
+            ? """
+                ,
+                  "optionalClientScopes": ["offline_access"],
+                  "attributes": {
+                    "use.refresh.tokens": "true"
+                  }
+                """
+            : string.Empty;
+
+        return """
+            {
+              "id": "{0}",
+              "clientId": "{1}",
+            {2}  "enabled": true,
+              "protocol": "openid-connect",
+              "publicClient": false,
+              "standardFlowEnabled": true,
+              "defaultClientScopes": ["openid", "profile", "email", "web-origins", "acr"]{3}
+            }
+            """.Replace("{0}", id, StringComparison.Ordinal)
+            .Replace("{1}", clientId, StringComparison.Ordinal)
+            .Replace("{2}", secretJson, StringComparison.Ordinal)
+            .Replace("{3}", refreshTokenSettingsJson, StringComparison.Ordinal);
     }
 
     private sealed class StaticHttpClientFactory : IHttpClientFactory

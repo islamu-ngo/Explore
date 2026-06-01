@@ -46,6 +46,12 @@
       }
     ]
   },
+  "scopeMappings": [
+    {
+      "clientScope": "offline_access",
+      "roles": ["offline_access"]
+    }
+  ],
   "clientScopes": [
     {
       "name": "openid",
@@ -178,6 +184,18 @@
         "consent.screen.text": "Access your applications when you are not present",
         "display.on.consent.screen": "true"
       }
+    },
+    {
+      "name": "address",
+      "description": "OpenID Connect built-in scope: address",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    },
+    {
+      "name": "phone",
+      "description": "OpenID Connect built-in scope: phone",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
     }
   ],
   "clients": [
@@ -205,7 +223,7 @@
         "web-origins",
         "acr"
       ],
-      "optionalClientScopes": ["offline_access"],
+      "optionalClientScopes": ["offline_access", "address", "phone"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "+",

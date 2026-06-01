@@ -15,6 +15,8 @@ namespace Explore.Blazor.Client.E2ETests.Fixtures;
 
 public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 {
+    public const string SetupSecret = "integration-setup-secret";
+
     private readonly PostgreSqlContainerFixture _database = new();
     private readonly BffKeycloakFixture _keycloak = new();
     private readonly MailpitContainerFixture _mailpit = new();
@@ -25,6 +27,8 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 
     public string ApiBaseUrl => _app?.GetEndpoint("explore-api", "https")?.ToString().TrimEnd('/')
         ?? throw new InvalidOperationException("API app not started");
+
+    public string KeycloakBaseUrl => _keycloak.BaseUrl;
 
     public Task ResetDatabaseAsync() => _database.ResetAsync();
 
@@ -58,6 +62,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
 
         ConfigureDatabase(builder, _database.ConnectionString);
         ConfigureKeycloak(builder, _keycloak);
+        ConfigureSetupSecret(builder);
         ConfigureEmailDispatch(builder);
         ConfigureApiEndpoint(builder);
 
@@ -120,6 +125,7 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         resource.WithEnvironment("Keycloak__MetadataAddress", keycloak.MetadataAddress);
         resource.WithEnvironment("Keycloak__Realm", BffKeycloakFixture.RealmName);
         resource.WithEnvironment("Keycloak__RequireHttpsMetadata", "false");
+        resource.WithEnvironment("SETUP_SECRET", SetupSecret);
 
         if (includeClientCredentials)
         {
@@ -135,9 +141,22 @@ public sealed class AppHostFixture : IAsyncInitializer, IAsyncDisposable
         }
         else
         {
+            resource.WithEnvironment("Infisical__ProjectId", string.Empty);
+            resource.WithEnvironment("Infisical__ClientId", string.Empty);
+            resource.WithEnvironment("Infisical__ClientSecret", string.Empty);
             resource.WithEnvironment("Keycloak__ValidAudiences__0", "islamu-event-api");
             resource.WithEnvironment("Keycloak__ValidAudiences__1", "islamu-event-blazor");
+            resource.WithEnvironment("KeycloakBootstrap__AllowLocalUrls", "true");
         }
+    }
+
+    private static void ConfigureSetupSecret(IDistributedApplicationTestingBuilder builder)
+    {
+        var api = builder.CreateResourceBuilder<ProjectResource>("explore-api");
+        var blazor = builder.CreateResourceBuilder<ProjectResource>("explore-blazor");
+
+        api.WithEnvironment("SETUP_SECRET", SetupSecret);
+        blazor.WithEnvironment("SETUP_SECRET", SetupSecret);
     }
 
     private static void ConfigureDatabase(

@@ -35,6 +35,8 @@ public sealed class KeycloakContainerFixture : IAsyncInitializer, IAsyncDisposab
     /// </summary>
     public string Authority { get; private set; } = string.Empty;
 
+    public string BaseUrl { get; private set; } = string.Empty;
+
     /// <summary>
     /// Full OIDC metadata endpoint URL.
     /// </summary>
@@ -83,11 +85,12 @@ public sealed class KeycloakContainerFixture : IAsyncInitializer, IAsyncDisposab
         var host = _container.Hostname;
         var port = _container.GetMappedPublicPort(8080);
 
-        Authority = $"http://{host}:{port}/realms/{RealmName}";
+        BaseUrl = $"http://{host}:{port}";
+        Authority = $"{BaseUrl}/realms/{RealmName}";
         MetadataAddress = $"{Authority}/.well-known/openid-configuration";
 
         TokenClient = new KeycloakTokenClient(
-            $"http://{host}:{port}",
+            BaseUrl,
             RealmName,
             TestClientId,
             TestClientSecret);

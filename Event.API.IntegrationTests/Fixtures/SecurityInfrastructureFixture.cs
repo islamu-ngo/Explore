@@ -25,10 +25,15 @@ public sealed class SecurityInfrastructureFixture : IAsyncInitializer, IAsyncDis
     /// </summary>
     public string KeycloakAuthority => Keycloak.Authority;
 
+    public string KeycloakBaseUrl => Keycloak.BaseUrl;
+
     /// <summary>
     /// The OIDC metadata address from the Keycloak container.
     /// </summary>
     public string KeycloakMetadataAddress => Keycloak.MetadataAddress;
+
+    public KeycloakTokenClient CreateTokenClient(string clientSecret)
+        => new(KeycloakBaseUrl, KeycloakContainerFixture.RealmName, KeycloakContainerFixture.TestClientId, clientSecret);
 
     /// <summary>
     /// The Cerbos gRPC endpoint for SDK clients.

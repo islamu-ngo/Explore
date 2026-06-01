@@ -37,6 +37,7 @@ public sealed class KeycloakTokenClient : IDisposable
     public async Task<string> GetAccessTokenAsync(
         string username,
         string password,
+        string scope = "openid profile email",
         CancellationToken cancellationToken = default)
     {
         var requestBody = new Dictionary<string, string>
@@ -46,7 +47,7 @@ public sealed class KeycloakTokenClient : IDisposable
             ["client_secret"] = _clientSecret,
             ["username"] = username,
             ["password"] = password,
-            ["scope"] = "openid profile email"
+            ["scope"] = scope
         };
 
         using var response = await _httpClient.PostAsync(
@@ -77,19 +78,22 @@ public sealed class KeycloakTokenClient : IDisposable
     /// Acquires the default test admin token.
     /// </summary>
     public Task<string> GetAdminTokenAsync(CancellationToken cancellationToken = default)
-        => GetAccessTokenAsync("test-admin", "test-admin-password", cancellationToken);
+        => GetAccessTokenAsync("test-admin", "test-admin-password", cancellationToken: cancellationToken);
 
     /// <summary>
     /// Acquires the default test regular user token.
     /// </summary>
     public Task<string> GetUserTokenAsync(CancellationToken cancellationToken = default)
-        => GetAccessTokenAsync("test-user", "test-user-password", cancellationToken);
+        => GetAccessTokenAsync("test-user", "test-user-password", cancellationToken: cancellationToken);
+
+    public Task<string> GetUserTokenWithOfflineAccessAsync(CancellationToken cancellationToken = default)
+        => GetAccessTokenAsync("test-user", "test-user-password", "openid profile email offline_access", cancellationToken);
 
     /// <summary>
     /// Acquires the default test tenant admin token.
     /// </summary>
     public Task<string> GetTenantAdminTokenAsync(CancellationToken cancellationToken = default)
-        => GetAccessTokenAsync("test-tenant-admin", "test-tenant-admin-password", cancellationToken);
+        => GetAccessTokenAsync("test-tenant-admin", "test-tenant-admin-password", cancellationToken: cancellationToken);
 
     public void Dispose()
     {

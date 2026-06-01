@@ -42,11 +42,16 @@ public abstract class PostgreSqlApiFixtureBase : IAsyncInitializer, IAsyncDispos
     /// </summary>
     protected abstract Dictionary<string, string?> GetAdditionalConfiguration();
 
+    protected virtual void ConfigureAdditionalTestServices(IServiceCollection services)
+    {
+    }
+
     private void RecreateHost()
     {
         Factory = new PostgreSqlApiWebApplicationFactory(
             _container.GetConnectionString(),
-            GetAdditionalConfiguration());
+            GetAdditionalConfiguration(),
+            ConfigureAdditionalTestServices);
 
         Client = Factory.CreateClient();
     }

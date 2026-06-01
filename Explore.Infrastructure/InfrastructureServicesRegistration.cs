@@ -94,6 +94,7 @@ public static class InfrastructureServicesRegistration
         // Configuration audit logging
         services.AddScoped<IConfigurationChangeLogService, ConfigurationChangeLogService>();
         services.AddScoped<IAuthorizationProviderConfigurationService, AuthorizationProviderConfigurationService>();
+        services.Configure<KeycloakBootstrapOptions>(configuration.GetSection(KeycloakBootstrapOptions.SectionName));
         services.AddHttpClient(KeycloakBootstrapService.HttpClientName, client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);

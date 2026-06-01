@@ -54,6 +54,12 @@
       }
     ]
   },
+  "scopeMappings": [
+    {
+      "clientScope": "offline_access",
+      "roles": ["offline_access"]
+    }
+  ],
   "clientScopes": [
     {
       "name": "openid",

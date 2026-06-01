@@ -70,9 +70,9 @@
             {
                 <MudExpansionPanels MultiExpansion="true" Class="mb-4">
                     @* ── Keycloak ── *@
-                    <MudExpansionPanel Text="Keycloak (OIDC)" IsExpanded="true">
+                    <MudExpansionPanel Text="Keycloak (OIDC)" @bind-Expanded="_isKeycloakPanelExpanded">
                         <TitleContent>
-                            <div class="d-flex align-center">
+                            <div class="d-flex align-center" data-testid="keycloak-provider-header">
                                 <MudText Typo="Typo.h6" Class="mr-2">Keycloak (OIDC)</MudText>
                                 @if (_model.KeycloakDetectedFromEnvironment)
                                 {
@@ -87,13 +87,15 @@
                         </TitleContent>
                         <ChildContent>
                             <MudStack Spacing="2">
-                                <MudSwitch T="bool"
-                                           Value="_model.KeycloakEnabled"
-                                           ValueChanged="OnKeycloakToggled"
-                                           Color="Color.Primary"
-                                           Disabled="_model.KeycloakDetectedFromEnvironment">
-                                    Enable Keycloak
-                                </MudSwitch>
+                                <div data-testid="keycloak-enable-switch">
+                                    <MudSwitch T="bool"
+                                               Value="_model.KeycloakEnabled"
+                                               ValueChanged="OnKeycloakToggled"
+                                               Color="Color.Primary"
+                                               Disabled="_model.KeycloakDetectedFromEnvironment">
+                                        Enable Keycloak
+                                    </MudSwitch>
+                                </div>
 
                                 @if (_model.KeycloakEnabled)
                                 {
@@ -111,9 +113,11 @@
                                             <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Manual" Color="Color.Primary" Dense="true">
                                                 Use an already configured Keycloak realm
                                             </MudRadio>
-                                            <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Bootstrap" Color="Color.Primary" Dense="true">
-                                                Let ISLAMU configure Keycloak clients now
-                                            </MudRadio>
+                                            <div data-testid="keycloak-bootstrap-mode-radio">
+                                                <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Bootstrap" Color="Color.Primary" Dense="true">
+                                                    Let ISLAMU configure Keycloak clients now
+                                                </MudRadio>
+                                            </div>
                                         </MudRadioGroup>
 
                                         @if (_keycloakConfigurationMode == KeycloakConfigurationMode.Manual)
@@ -145,42 +149,50 @@
                                                 <MudSelectItem T="int" Value="@PatchExistingRealmMode">Patch existing realm</MudSelectItem>
                                                 <MudSelectItem T="int" Value="@CreateRealmMode">Create realm if missing</MudSelectItem>
                                             </MudSelect>
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="Keycloak base URL (Required)"
-                                                          @bind-Value="_keycloakBootstrap.KeycloakBaseUrl"
-                                                          Placeholder="https://keycloak.example.com"
-                                                          HelperText="The root Keycloak URL, without /realms/{realm}." />
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="Realm (Required)"
-                                                          @bind-Value="_keycloakBootstrap.Realm"
-                                                          Placeholder="ISLAMU" />
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="Blazor BFF client ID (Required)"
-                                                          @bind-Value="_keycloakBootstrap.BlazorClientId"
-                                                          Placeholder="islamu-event-blazor" />
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="Blazor BFF client secret (Required)"
-                                                          InputType="InputType.Password"
-                                                          @bind-Value="_keycloakBootstrap.BlazorClientSecret"
-                                                          HelperText="Stored as the runtime BFF client secret after bootstrap succeeds." />
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="API client ID (Optional)"
-                                                          @bind-Value="_keycloakBootstrap.ApiClientId"
-                                                          Placeholder="islamu-event-api" />
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="API client secret (Optional)"
-                                                          InputType="InputType.Password"
-                                                          @bind-Value="_keycloakBootstrap.ApiClientSecret"
-                                                          HelperText="Only sent when you want ISLAMU to synchronize the API resource-server client secret." />
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="One-time Keycloak admin username (Required)"
-                                                          @bind-Value="_keycloakBootstrap.BootstrapAdminUsername"
-                                                          HelperText="Used only for this bootstrap request and never stored by ISLAMU." />
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="One-time Keycloak admin password (Required)"
-                                                          InputType="InputType.Password"
-                                                          @bind-Value="_keycloakBootstrap.BootstrapAdminPassword"
-                                                          HelperText="Cleared from this form after submit, whether bootstrap succeeds or fails." />
+                                             <MudTextField Variant="Variant.Outlined" T="string"
+                                                           Label="Keycloak base URL (Required)"
+                                                           @bind-Value="_keycloakBootstrap.KeycloakBaseUrl"
+                                                           Immediate="true"
+                                                           Placeholder="https://keycloak.example.com"
+                                                           HelperText="The root Keycloak URL, without /realms/{realm}." />
+                                             <MudTextField Variant="Variant.Outlined" T="string"
+                                                           Label="Realm (Required)"
+                                                           @bind-Value="_keycloakBootstrap.Realm"
+                                                           Immediate="true"
+                                                           Placeholder="ISLAMU" />
+                                             <MudTextField Variant="Variant.Outlined" T="string"
+                                                           Label="Blazor BFF client ID (Required)"
+                                                           @bind-Value="_keycloakBootstrap.BlazorClientId"
+                                                           Immediate="true"
+                                                           Placeholder="islamu-event-blazor" />
+                                             <MudTextField Variant="Variant.Outlined" T="string"
+                                                           Label="Blazor BFF client secret (Required)"
+                                                           InputType="InputType.Password"
+                                                           @bind-Value="_keycloakBootstrap.BlazorClientSecret"
+                                                           Immediate="true"
+                                                           HelperText="Stored as the runtime BFF client secret after bootstrap succeeds." />
+                                             <MudTextField Variant="Variant.Outlined" T="string"
+                                                           Label="API client ID (Optional)"
+                                                           @bind-Value="_keycloakBootstrap.ApiClientId"
+                                                           Immediate="true"
+                                                           Placeholder="islamu-event-api" />
+                                             <MudTextField Variant="Variant.Outlined" T="string"
+                                                           Label="API client secret (Optional)"
+                                                           InputType="InputType.Password"
+                                                           @bind-Value="_keycloakBootstrap.ApiClientSecret"
+                                                           Immediate="true"
+                                                           HelperText="Only sent when you want ISLAMU to synchronize the API resource-server client secret." />
+                                             <MudTextField Variant="Variant.Outlined" T="string"
+                                                           Label="One-time Keycloak admin username (Required)"
+                                                           @bind-Value="_keycloakBootstrap.BootstrapAdminUsername"
+                                                           Immediate="true"
+                                                           HelperText="Used only for this bootstrap request and never stored by ISLAMU." />
+                                             <MudTextField Variant="Variant.Outlined" T="string"
+                                                           Label="One-time Keycloak admin password (Required)"
+                                                           InputType="InputType.Password"
+                                                           @bind-Value="_keycloakBootstrap.BootstrapAdminPassword"
+                                                           Immediate="true"
+                                                           HelperText="Cleared from this form after submit, whether bootstrap succeeds or fails." />
                                         }
                                     }
                                 }
@@ -297,6 +309,7 @@
     private string? _errorMessage;
     private string? _successMessage;
     private bool _showAdvancedConfig = false;
+    private bool _isKeycloakPanelExpanded = true;
 
     private bool HasAnyProviderEnabled =>
         _model.KeycloakEnabled || _model.AtprotoLoginEnabled || _model.GoogleSsoEnabled;

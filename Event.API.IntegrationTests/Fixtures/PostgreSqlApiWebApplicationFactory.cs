@@ -25,13 +25,16 @@ public class PostgreSqlApiWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _connectionString;
     private readonly Dictionary<string, string?> _additionalConfig;
+    private readonly Action<IServiceCollection>? _configureTestServices;
 
     public PostgreSqlApiWebApplicationFactory(
         string connectionString,
-        Dictionary<string, string?>? additionalConfig = null)
+        Dictionary<string, string?>? additionalConfig = null,
+        Action<IServiceCollection>? configureTestServices = null)
     {
         _connectionString = connectionString;
         _additionalConfig = additionalConfig ?? [];
+        _configureTestServices = configureTestServices;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -100,6 +103,8 @@ public class PostgreSqlApiWebApplicationFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<IAuthorizationProvider>();
             services.AddSingleton<IAuthorizationProvider>(new StubAuthorizationProvider());
+
+            _configureTestServices?.Invoke(services);
         });
     }
 }

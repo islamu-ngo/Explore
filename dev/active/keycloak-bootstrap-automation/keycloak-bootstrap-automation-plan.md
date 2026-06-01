@@ -3,12 +3,12 @@
 
 # Keycloak Bootstrap Automation — Implementation Plan
 
-Last Updated: 2026-05-30 Europe/Brussels
+Last Updated: 2026-06-01 Europe/Brussels
 
 ## 0. Planning Metadata
 - **Request:** Plan how to automate Keycloak realm import/client secret synchronization so Docker Compose self-hosters and operators with an existing Keycloak instance do not manually edit the ISLAMU realm clients.
 - **Task directory:** `dev/active/keycloak-bootstrap-automation/`
-- **Planning status:** Approved for implementation and in progress. Phase 1 Compose-managed Keycloak init job, Phase 2 Application-layer bootstrap contract, Phase 3 Infrastructure adapter, and Phase 4 setup-gated API/BFF/UI wiring are implemented; Phase 5 operator docs remain.
+- **Planning status:** Approved for implementation and implemented through Phase 6 backend and browser integration smoke. Phase 1 Compose-managed Keycloak init job, Phase 2 Application-layer bootstrap contract, Phase 3 Infrastructure adapter, Phase 4 setup-gated API/BFF/UI wiring, Phase 5 operator docs, automated disposable-Keycloak backend integration smoke, and focused Playwright UI bootstrap smoke are complete; unrelated architecture-suite cleanup remains. Phase 7 is newly planned future work for post-onboarding Keycloak doctor/resync/rotation and is not part of the completed Phase 1-6 acceptance.
 - **Matched intents:** No exact intent in `.claude/contract/intents.yaml`. This is cross-cutting DevOps/API/Blazor/security work that touches Docker Compose, setup onboarding, Keycloak/OIDC, BFF trust boundaries, and docs.
 - **Fallback Contract:** `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, `docs/SECURITY-MODEL.md`, `docs/BLAZOR.md`, `docs/SELF_HOSTING.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`, plus path-scoped rules for touched API/BFF/test/docs files.
 - **Relevant skills:** `auth-patterns`, `blazor-bff-patterns`, `clean-architecture-rules`, `aspire` where orchestration is touched.
@@ -22,10 +22,11 @@ Build a two-lane Keycloak automation model:
 
 1. **Compose-managed Keycloak lane:** keep `docker/keycloak/realm-export.json` as the base realm definition, then run a one-shot `keycloak-init` service after Keycloak is healthy. The job uses Keycloak Admin API/`kcadm.sh` to idempotently set client secrets from environment/Infisical-backed values such as `KEYCLOAK_BLAZOR_CLIENT_SECRET` and optional `KEYCLOAK_API_CLIENT_SECRET`.
 2. **External existing Keycloak lane:** during setup onboarding, let the operator provide a Keycloak base URL plus a one-time bootstrap credential. The server uses that credential only for the current request to create/import/partial-import realm resources and set client secrets, then discards it. Runtime stores only the normal ISLAMU auth configuration needed for operation, not Keycloak admin credentials.
+3. **Future post-onboarding maintenance lane:** after launch, expose an instance-admin-only Keycloak doctor/resync/rotation workflow. This lane diagnoses realm drift, previews additive repair plans, requires backup confirmation before mutation, uses temporary Keycloak admin/service-account credentials only for the active operation, and never deletes/reimports an existing realm.
 
 The business outcome is less manual self-hosting friction without making the API permanently privileged inside Keycloak. The security boundary is explicit: long-lived Keycloak admin secrets must not be stored in API/Blazor config or database. Bootstrap credentials are setup-time only and are redacted in logs, diagnostics, and response bodies.
 
-**Out of scope for first implementation:** full Keycloak user provisioning, Keycloak admin UI replacement, automatic production redirect URI discovery behind every reverse proxy, broad IAM provider support beyond Keycloak, and secret rotation orchestration after onboarding unless explicitly requested.
+**Out of scope for completed first implementation:** full Keycloak user provisioning, Keycloak admin UI replacement, automatic production redirect URI discovery behind every reverse proxy, and broad IAM provider support beyond Keycloak. Post-onboarding realm doctor/resync/rotation is now captured as planned Phase 7 future work, not part of the completed Phase 1-6 acceptance.
 
 ## 2. Source-Grounded Current State Report
 
@@ -43,7 +44,7 @@ The business outcome is less manual self-hosting friction without making the API
 | BFF refreshes dynamic auth schemes after setup config save. | Verified: `Explore.Blazor/Services/DynamicAuthSchemeManager.cs`, `Explore.Blazor/Extensions/BffAuthEndpoints.cs`. | High | Bootstrap should trigger refresh only after persisted runtime config is valid. |
 | No Keycloak Admin API bootstrap implementation exists. | Verified by search for `partialImport`, `/admin/realms`, `kcadm`, `KeycloakAdmin`. | High | New infrastructure/service code required. |
 | Docs currently tell operators to verify Keycloak realm manually, not sync it. | Verified: `docs/SELF_HOSTING.md` Keycloak Realm section. | High | Docs must change with automation. |
-| Existing tests cover onboarding, setup secret, Keycloak discovery, and BFF setup-secret forwarding. | Verified: `Event.API.IntegrationTests/Features/InstanceOnboardingControllerTests.cs`, `KeycloakDiscoveryTests.cs`, `Explore.Blazor.IntegrationTests/Endpoints/BffSetupSecretEndpointsTests.cs`, `SetupSecretForwardingHandlerTests.cs`. | High | Add focused tests instead of only manual Compose verification. |
+| Existing tests cover onboarding, setup secret, Keycloak discovery, and BFF setup-secret forwarding. | Verified: `Event.API.IntegrationTests/Features/InstanceOnboardingControllerTests.cs`, `KeycloakDiscoveryTests.cs`, `Explore.Blazor.IntegrationTests/Endpoints/BffSetupSecretEndpointsTests.cs`, `SetupSecretForwardingHandlerTests.cs`. | High | Add focused tests plus automated disposable-Keycloak smoke instead of manual Compose verification. |
 
 ### 2.2 Existing Implementation
 
@@ -79,7 +80,8 @@ The business outcome is less manual self-hosting friction without making the API
 - `Explore.Blazor.IntegrationTests/Endpoints/BffSetupSecretEndpointsTests.cs`: BFF setup-secret sanitization.
 - `Explore.Blazor.IntegrationTests/Handlers/SetupSecretForwardingHandlerTests.cs`: setup-secret forwarding route gate.
 - Added in Phase 2: Application unit tests for bootstrap request validation, safe bootstrap failure behavior, successful runtime auth-provider persistence, and no admin-secret persistence.
-- Still missing: Compose init script smoke tests, manual onboarding UI smoke, Phase 5 operator docs, and external-Keycloak end-to-end import/patch smoke tests.
+- Added in Phases 3-4: Infrastructure fake-HTTP tests, setup-gated API integration tests, BFF setup-secret forwarding tests, Blazor service tests, and focused UI source tests.
+- Still missing: automated Compose init script smoke tests, automated onboarding UI/e2e smoke, and external-Keycloak end-to-end import/patch smoke tests.
 
 ### 2.4 Existing Documentation And Contracts
 
@@ -197,6 +199,12 @@ BFF refreshes dynamic auth schemes; operator logs in to continue onboarding
 - **Alternatives:** Full realm import only; manual export/download instructions only.
 - **Consequences:** Need careful partial import/create/update logic and diagnostics. Safer for existing Keycloak.
 - **Files/layers affected:** Keycloak bootstrap service and tests.
+
+### Decision 6: Existing realms need typed additive maintenance, not destructive reimport
+- **Why:** Long-lived self-hosted realms will accumulate users, roles, client customizations, and additional ISLAMU project clients. Requiring delete/reimport for every new realm requirement is operationally unsafe.
+- **Alternatives:** Manual Keycloak UI instructions; reapply `realm-export.json`; store permanent Keycloak admin credentials for automatic background sync.
+- **Consequences:** Future post-onboarding maintenance must compute a typed desired-state diff, preview additive operations, require explicit instance-admin authorization and backup confirmation, and use only request/job-scoped Keycloak admin credentials.
+- **Files/layers affected:** Future Application doctor/sync contracts, Infrastructure Keycloak desired-state adapter, API instance-admin endpoints, Blazor admin UI, docs, tests.
 
 ## 6. Implementation Phases
 
@@ -332,7 +340,7 @@ BFF refreshes dynamic auth schemes; operator logs in to continue onboarding
 - **Acceptance Criteria:** UI warns credential is not stored; model clears secret fields after failure/success; no local role/claim authorization assumptions.
 - **Dependencies:** Task 4.2
 - **Effort:** M
-- **Validation:** focused `AuthProviderConfigurationSourceTests` passed; manual UI smoke remains recommended.
+- **Validation:** focused `AuthProviderConfigurationSourceTests` passed; automated UI/e2e smoke remains as the next test slice.
 - **Implementation status:** Complete. Service transport exists, the Razor UI mode is wired, bootstrap credentials are labeled one-time/not stored, and bootstrap secret fields are cleared after submit.
 
 ### Phase 5: Tests, docs, and operational runbooks
@@ -341,6 +349,82 @@ BFF refreshes dynamic auth schemes; operator logs in to continue onboarding
 - **Relevant files:** `docs/SELF_HOSTING.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`, `docs/TROUBLESHOOTING.md`, `docs/RELEASE_CHECKLIST.md`, test files.
 - **Acceptance criteria:** docs state exactly which secrets are required, what is automated, what external-Keycloak permissions are needed, and how to recover when bootstrap fails.
 - **Verification:** docs architecture tests; build; affected test projects.
+
+### Phase 6: Automated disposable-Keycloak integration/e2e smoke
+- **Goal:** Replace manual smoke with repeatable automated coverage that proves the real Keycloak bootstrap path works against disposable infrastructure.
+- **Depends on:** Phases 1-5.
+- **Relevant files:** new or expanded tests under `Explore.Infrastructure.Tests`, `Event.API.IntegrationTests`, `Explore.Blazor.IntegrationTests`, `Explore.Blazor.Client.Tests`, and `Explore.Blazor.Client.E2ETests`.
+- **Acceptance criteria:** tests start disposable Keycloak (Testcontainers or bounded Compose harness), verify Compose-style `keycloak-init` secret sync or equivalent real Keycloak Admin API calls, exercise external bootstrap create/patch behavior, and prove the Blazor setup path can call bootstrap without leaking setup/admin/client secrets. Browser coverage should prove the onboarding UI can submit bootstrap through the BFF setup-secret boundary without storing tokens in browser storage. No human-only manual smoke is part of acceptance.
+- **Verification:** automated integration/e2e test command documented in this workstream and runnable project-by-project under the repository test policy.
+- **Implementation status:** Complete for backend integration smoke and focused browser UI bootstrap smoke. `KeycloakBootstrapRealRuntimeTests` starts disposable Keycloak, calls the setup-gated bootstrap API route, exercises the real Application handler and Infrastructure Keycloak Admin API adapter, rotates the Blazor client secret in Keycloak, verifies the rotated secret through the Keycloak token endpoint, and confirms persisted runtime config excludes the one-time admin credential. `KeycloakBootstrapBrowserFlowTests` starts Aspire AppHost/Testcontainers infrastructure, persists setup secret through the BFF, drives the visible Keycloak bootstrap onboarding UI, reaches the next onboarding step, and verifies browser storage contains no tokens. Extending that browser test through post-bootstrap login currently exposes a separate Keycloak `offline_access` auth-code failure and is deferred as a distinct investigation.
+
+### Phase 7: Post-onboarding Keycloak doctor, resync, and rotation (future)
+- **Goal:** Let launched self-hosted instances safely diagnose and additively repair Keycloak realm drift without deleting/reimporting the realm or permanently storing Keycloak admin credentials.
+- **Depends on:** Phases 1-6, especially the existing bounded Keycloak Admin API adapter, runtime auth-provider configuration, secret ownership model, and setup-time bootstrap lessons.
+- **Relevant files:** Future Application DTOs/contracts/commands for doctor/sync plans, future Infrastructure Keycloak desired-state/diff services, `InstanceOnboardingController` or a new instance-admin infrastructure controller, Blazor admin infrastructure UI, `docs/SELF_HOSTING.md`, `docs/SECRETS.md`, `docs/TROUBLESHOOTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`.
+- **Acceptance criteria:** doctor can report missing/mismatched Keycloak realm requirements without mutation; resync preview shows additive operations before apply; apply is instance-admin gated; operator confirms Keycloak backup before mutation; temporary Keycloak admin/service-account credentials are never stored; destructive operations are forbidden by default; client-secret rotation respects application-managed vs deployment-managed ownership.
+- **Verification:** Application unit tests for plan generation and credential non-persistence, Infrastructure fake-HTTP tests for Keycloak Admin API diffs/mutations/redaction, API integration tests for instance-admin authorization and safe responses, Blazor UI tests for preview/confirmation/secret clearing, disposable-Keycloak runtime tests for additive resync and rotation.
+- **Implementation status:** Planned / not started. This phase is intentionally separated from first-run bootstrap acceptance.
+
+#### Task 7.1: Add read-only Keycloak realm doctor
+- **Type:** create
+- **Layer:** Application/API/Infrastructure/Blazor admin UI
+- **Files:** Future doctor DTOs/contracts/queries, Keycloak Infrastructure inspection service, instance-admin API endpoint, admin UI surface.
+- **Description:** Diagnose realm compatibility without mutation. Check reachability, realm existence, OIDC discovery, Blazor/API clients, redirect URIs, web origins, `standardFlowEnabled`, offline-access role/composite/client-scope/scope-mapping requirements, refresh-token settings, audience mappings, and future ISLAMU project clients.
+- **Acceptance Criteria:** returns structured statuses such as healthy/needs-repair/blocked; exposes no secrets, tokens, raw provider bodies, or secret-derived details; supports a basic non-admin mode and an optional temporary-admin read-only mode.
+- **Dependencies:** Phase 6 Keycloak runtime proof and existing secret safety docs.
+- **Effort:** L
+- **Validation:** Application unit tests, Infrastructure fake-HTTP tests, API authorization tests, Blazor admin UI tests.
+
+#### Task 7.2: Define typed Keycloak desired-state and sync-plan model
+- **Type:** create
+- **Layer:** Application
+- **Files:** Future `KeycloakRealmDesiredState`, `KeycloakRealmSyncPlan`, operation DTOs, validators.
+- **Description:** Represent ISLAMU-owned realm requirements as typed additive contracts instead of treating `realm-export.json` as a recurring update mechanism.
+- **Acceptance Criteria:** plan can express add/update operations for ISLAMU-owned clients, redirect URIs, web origins, optional scopes, scope mappings, protocol/audience mappers, default-role composites, and future project client contracts; plan explicitly marks destructive operations unsupported.
+- **Dependencies:** 7.1.
+- **Effort:** L
+- **Validation:** deterministic diff unit tests and architecture tests.
+
+#### Task 7.3: Add instance-admin resync preview workflow
+- **Type:** create
+- **Layer:** API/Blazor admin UI
+- **Files:** Future instance-admin infrastructure controller/route names, admin UI page/component, service models.
+- **Description:** Let an authenticated instance admin run doctor and preview the computed additive `RealmSyncPlan` before providing mutation credentials.
+- **Acceptance Criteria:** endpoint is `[Authorize]` with instance-admin authorization; UI uses server-confirmed affordances; preview is read-only; raw Keycloak errors are categorized safely; no Keycloak admin credential is required for the basic preview unless deeper Admin API reads are selected.
+- **Dependencies:** 7.1-7.2.
+- **Effort:** L
+- **Validation:** API integration tests, Blazor UI/source tests, authorization tests.
+
+#### Task 7.4: Add additive resync apply with backup confirmation
+- **Type:** create
+- **Layer:** Application/API/Infrastructure/Blazor admin UI
+- **Files:** Future command/handler/validator, Infrastructure apply service, admin UI confirmation flow, docs.
+- **Description:** Apply only approved additive repairs after the operator confirms Keycloak backup and submits a temporary Keycloak admin/service-account credential for the active operation.
+- **Acceptance Criteria:** may create/update ISLAMU-owned clients and add missing scopes/mappers/redirects/origins/composites; must not delete realm/users/groups/unrelated clients/unowned roles; must not remove operator-added redirect URIs without a future explicit destructive-operation design; clears temporary credential after submit and never stores it.
+- **Dependencies:** 7.2-7.3.
+- **Effort:** XL
+- **Validation:** Infrastructure fake-HTTP tests, disposable-Keycloak integration tests, secret scanning/redaction checks, docs tests.
+
+#### Task 7.5: Add explicit client-secret rotation workflow
+- **Type:** create
+- **Layer:** Application/API/Infrastructure/Blazor admin UI/Secrets
+- **Files:** Future rotation command/service/UI plus docs.
+- **Description:** Allow instance admins to rotate ISLAMU-owned Keycloak client secrets deliberately, coordinating Keycloak Admin API update with runtime secret ownership.
+- **Acceptance Criteria:** application-managed secrets can be updated by ISLAMU; deployment-managed secrets produce operator instructions to update env/Infisical instead of silently overriding; audit logs record actor/time/client ID/result but never secret values; auth schemes refresh or restart guidance is shown.
+- **Dependencies:** 7.4 and secret ownership model.
+- **Effort:** L
+- **Validation:** Application unit tests, API integration tests, Infrastructure fake-HTTP tests, Blazor UI tests, disposable-Keycloak rotation proof.
+
+#### Task 7.6: Add multi-project identity contract registry and drift detection
+- **Type:** create
+- **Layer:** Application/Infrastructure/Ops
+- **Files:** Future identity contract registry, module/project contributors, doctor extensions, docs.
+- **Description:** Let future ISLAMU projects or optional services contribute their own Keycloak client/scope/mapper requirements to the desired-state model.
+- **Acceptance Criteria:** Event, future identity service, admin portal, mobile client, and other project contracts can be composed without one project owning the entire realm; optional scheduled drift detection is read-only and never auto-mutates; findings are safe for support bundles.
+- **Dependencies:** 7.2.
+- **Effort:** XL
+- **Validation:** registry composition tests, doctor tests, documentation checks.
 
 ## 7. Testing Strategy
 
@@ -352,8 +436,27 @@ BFF refreshes dynamic auth schemes; operator logs in to continue onboarding
 | Keycloak Admin API adapter redacts failures and handles success/conflict | `Explore.Infrastructure.Tests` with fake `HttpMessageHandler`; optional Testcontainers. |
 | BFF forwards setup secret to new endpoint only from trusted sources | `Explore.Blazor.IntegrationTests/Handlers/SetupSecretForwardingHandlerTests.cs`. |
 | Blazor UI/service calls new route and clears one-time secret | `Explore.Blazor.Client.Tests` or focused bUnit/service tests. |
+| Operator docs cover external Keycloak bootstrap and recovery | Focused AgentContext schema/link tests plus release build. |
+| Real Keycloak bootstrap works end to end | New automated disposable-Keycloak integration/e2e tests; no manual smoke acceptance. |
+| Browser UI submits setup-gated bootstrap | `Explore.Blazor.Client.E2ETests` focused `KeycloakBootstrapBrowserFlowTests`; no browser token storage. |
 | Architecture invariants | `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`. |
 | Baseline build | `dotnet build --configuration Release --verbosity quiet`. |
+
+Phase 6 observed verification:
+
+```bash
+dotnet test --project Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/KeycloakBootstrapServiceTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+# Passed.
+
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/KeycloakBootstrapRealRuntimeTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+# Passed. Starts disposable Keycloak and verifies setup-gated bootstrap plus rotated client-secret token flow.
+
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/KeycloakBootstrapBrowserFlowTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+# Passed. Starts Aspire AppHost/Testcontainers infrastructure and verifies BFF setup-secret persistence plus Keycloak bootstrap UI submission without browser token storage.
+
+dotnet build --configuration Release --verbosity quiet
+# Passed with 25 projects, 0 errors, and existing warnings.
+```
 
 Minimum expected test commands before completion:
 
@@ -390,10 +493,10 @@ Known verification limitations after Phase 2:
 
 ## 8. Documentation, Configuration, And Operations Impact
 
-- `docs/SELF_HOSTING.md`: document `keycloak-init`, required/optional secrets, external-Keycloak path, no manual UI step for Compose.
-- `docs/CONFIGURATION.md`: clarify BFF secret vs optional API client secret and one-time bootstrap credential non-persistence.
-- `docs/SECRETS.md`: list `/keycloak` keys and ownership model.
-- `docs/TROUBLESHOOTING.md`: add Keycloak bootstrap failure symptoms and fixes (`unauthorized_client`, missing clients, partial import conflict, bad redirect URI).
+- `docs/SELF_HOSTING.md`: documents `keycloak-init`, required/optional secrets, external-Keycloak bootstrap flow, temporary credential handling, and no manual UI secret step for Compose.
+- `docs/CONFIGURATION.md`: clarifies BFF secret vs optional API client secret, persisted runtime auth config, request-scoped bootstrap credential non-persistence, and external bootstrap URL safety.
+- `docs/SECRETS.md`: lists `/keycloak` keys and the ownership model, including one-time external bootstrap credential non-persistence.
+- `docs/TROUBLESHOOTING.md`: covers Keycloak bootstrap failure symptoms and fixes (`unauthorized_client`, unsafe/bad URL, missing permissions, missing realms, client conflicts, and bad redirect URI/post-bootstrap login recovery).
 - `docs/OPERATIONS.md`: mention automation in operational runbooks if behavior changes startup readiness.
 - `docker-compose.yml`: new one-shot init service and env mapping.
 - `docker/keycloak/realm-export.json`: may remain static, but docs should warn static secrets are local defaults and `keycloak-init` is the source of truth for Compose secret alignment.

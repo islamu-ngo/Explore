@@ -19,6 +19,8 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
 
     private IContainer? _container;
 
+    public string BaseUrl { get; private set; } = string.Empty;
+
     public string Authority { get; private set; } = string.Empty;
     public string MetadataAddress { get; private set; } = string.Empty;
 
@@ -65,7 +67,8 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
         var host = _container.Hostname;
         var port = _container.GetMappedPublicPort(8080);
 
-        Authority = $"http://{host}:{port}/realms/{RealmName}";
+        BaseUrl = $"http://{host}:{port}";
+        Authority = $"{BaseUrl}/realms/{RealmName}";
         MetadataAddress = $"{Authority}/.well-known/openid-configuration";
     }
 

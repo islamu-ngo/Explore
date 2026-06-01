@@ -3,9 +3,9 @@
 
 # Keycloak Bootstrap Automation — Context
 
-Last Updated: 2026-05-30 Europe/Brussels
+Last Updated: 2026-06-01 Europe/Brussels
 
-## SESSION PROGRESS (2026-05-30 Europe/Brussels)
+## SESSION PROGRESS (2026-06-01 Europe/Brussels)
 
 ### ✅ COMPLETED
 - Planning docs created after verifying they were missing.
@@ -62,25 +62,51 @@ Last Updated: 2026-05-30 Europe/Brussels
   - The UI labels bootstrap admin credentials as one-time/not stored, calls `InstanceOnboardingService.BootstrapKeycloakRealmAsync`, relies on the service-level auth-scheme refresh, and clears bootstrap client/admin secrets after submit whether bootstrap succeeds or fails.
   - Added focused `AuthProviderConfigurationSourceTests` to guard the visible bootstrap affordance and secret-clearing call path.
 
+### ✅ PHASE 5 DOCUMENTATION
+- Phase 5 operator documentation updated:
+  - `docs/SELF_HOSTING.md` now describes Compose-managed Keycloak secret sync and the external-Keycloak setup bootstrap flow, including temporary credential use, setup-secret protection, runtime OIDC persistence, idempotent client lookup/update, and post-success credential retirement.
+  - `docs/CONFIGURATION.md` now distinguishes persisted runtime Keycloak config from request-scoped external bootstrap credentials and documents URL safety behavior.
+  - `docs/SECRETS.md` now states the external bootstrap admin/service-account credential is one-time operator input and must not be saved to appsettings, environment variables, Infisical, governance settings, logs, traces, screenshots, or support bundles.
+  - `docs/TROUBLESHOOTING.md` now covers external bootstrap URL failures, authentication/permission failures, missing realms, client conflicts, rerunning bootstrap, `keycloak-init` recovery, and post-bootstrap login failures.
+  - Reviewed `docs/OPERATIONS.md` and `docs/RELEASE_CHECKLIST.md`; no extra startup, health, backup, or release checklist update was needed beyond the existing Keycloak DB backup and Compose sequencing docs.
+  - Verification after Phase 5 docs: focused AgentContext link tests passed, focused AgentContext schema tests passed, and `dotnet build --configuration Release --verbosity quiet` passed with 25 projects, 0 errors, and existing warnings.
+- Phase 6 automated disposable-Keycloak backend integration smoke implemented:
+  - Added `KeycloakBootstrap:AllowLocalUrls` Infrastructure option so production keeps blocking loopback/localhost bootstrap targets by default while Docker/Testcontainers-backed tests can explicitly allow disposable local Keycloak URLs.
+  - Updated `KeycloakBootstrapService` to use the option and to update client secrets via the Keycloak client representation endpoint, matching Keycloak 26/kcadm behavior observed in the disposable container.
+  - Added `KeycloakBootstrapRealRuntimeTests` in `Event.API.IntegrationTests`, which starts disposable Keycloak, posts to the setup-gated bootstrap endpoint, exercises the real Application handler and Infrastructure Keycloak Admin API adapter, rotates the Blazor client secret, proves the rotated secret works against Keycloak's token endpoint, and verifies persisted runtime auth config does not contain the one-time admin credential.
+  - Extended Keycloak test fixtures with base URL and rotated-secret token-client helpers.
+  - Verification: focused `KeycloakBootstrapServiceTests`, focused `KeycloakBootstrapRealRuntimeTests`, and release build passed.
+- Optional Playwright browser UI bootstrap e2e implemented:
+  - Added `KeycloakBootstrapBrowserFlowTests` in `Explore.Blazor.Client.E2ETests`, driven through Aspire AppHost, Testcontainers Keycloak/Postgres, and Playwright.
+  - The test persists the setup secret through `/bff/setup-secret`, opens `/onboarding/auth-provider`, enables Keycloak bootstrap mode, submits one-time Keycloak admin credentials through the setup-gated BFF/API path, reaches `/onboarding/authz-provider`, and verifies browser storage contains no tokens.
+  - `AuthProviderConfiguration.razor` now uses the correct MudBlazor v9 `@bind-Expanded` API for the Keycloak panel, stable test-id wrappers for browser automation, and immediate bootstrap field binding so the save button tracks typed values.
+  - Verification: focused `KeycloakBootstrapBrowserFlowTests` passed.
+- Phase 7 future maintenance scope planned after CTO discussion:
+  - Added a new future phase for post-onboarding Keycloak doctor, resync, and rotation.
+  - The planned workflow is instance-admin gated, additive by default, backup-confirmed before mutation, and uses only temporary Keycloak admin/service-account credentials for the active operation.
+  - The plan explicitly rejects destructive realm delete/reimport, permanent Keycloak admin credential storage, and silent override of deployment-managed client secrets.
+
 ### 🟡 IN PROGRESS
-- Phase 5 operator documentation remains. The code path through Compose init, Application contract, Infrastructure adapter, setup-gated API, BFF forwarding, Blazor service, and onboarding UI mode is implemented.
+- No Keycloak bootstrap implementation slice is currently blocked. Phase 7 is planned future work and has not started. Full Architecture remains blocked by unrelated dirty-worktree/source issues documented below.
+- A separate post-bootstrap browser login extension is not part of the passing browser UI bootstrap e2e: when the Playwright test was extended through Keycloak auth-code login, Keycloak returned `not_allowed` / `Offline tokens not allowed for the user or client` during `/signin-oidc` token redemption. The setup UI/bootstrap path passes; this login/offline-token behavior should be investigated separately if required.
 
 ### ⏭️ NEXT
-1. Document the expected Keycloak Admin API permission model and external-Keycloak operator flow in Phase 5.
-2. Optionally run manual Compose smoke: `docker compose up -d keycloak-db keycloak keycloak-init` and then BFF login with the synchronized secret.
-3. Run manual UI smoke for `/onboarding/auth-provider` bootstrap mode against a disposable Keycloak realm.
+1. If continuing this workstream, start Phase 7 with the read-only Keycloak realm doctor diagnostic.
+2. Triage unrelated full-Architecture failures in separate workstreams if this branch needs a fully green architecture suite.
+3. Investigate the separate Keycloak auth-code `offline_access` login failure if post-bootstrap browser login coverage is required.
 
 ### ⚠️ BLOCKERS
 - No blocker for Compose-managed Keycloak bootstrap, the Phase 2 Application contract, or the Phase 3 Infrastructure adapter.
-- Exact Keycloak Admin API permission set remains a documentation question before external-Keycloak operator docs are complete.
-- Manual UI smoke is still needed to validate the full browser flow against a disposable Keycloak realm.
+- Exact least-privilege Keycloak Admin API role composition is documented as required operation capabilities; the disposable-Keycloak smoke currently uses the container admin credential for deterministic test setup.
+- Browser-level Playwright UI bootstrap coverage now exists and passes. Extending that same test through post-bootstrap login is blocked by the separate Keycloak `offline_access` auth-code failure described above.
 
 ## Quick Resume
 1. Read `keycloak-bootstrap-automation-plan.md`.
 2. Read `keycloak-bootstrap-automation-tasks.md`.
-3. Compose-managed Phase 1, Application-layer Phase 2, Infrastructure Phase 3, and Phase 4 API/BFF/UI wiring are complete; do not rework them unless validation exposes a defect.
-4. Keep plan/context/tasks updated after each meaningful implementation slice.
-5. Never store Keycloak admin/bootstrap credentials.
+3. Compose-managed Phase 1, Application-layer Phase 2, Infrastructure Phase 3, Phase 4 API/BFF/UI wiring, Phase 5 operator docs, Phase 6 disposable-Keycloak backend integration smoke, and focused Playwright UI bootstrap e2e are complete; do not rework them unless validation exposes a defect.
+4. Phase 7 post-onboarding Keycloak doctor/resync/rotation is planned but not started. Begin with the read-only doctor before any mutation workflow.
+5. Keep plan/context/tasks updated after each meaningful implementation slice.
+6. Never store Keycloak admin/bootstrap credentials.
 
 ## Key Files And Responsibilities
 
@@ -114,6 +140,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 | `docs/SELF_HOSTING.md` | Existing | Docs | Compose/self-hosting runbook. | Document no manual Keycloak UI secret step. |
 | `docs/CONFIGURATION.md` | Existing | Docs | Config/secret mapping. | Clarify BFF secret mandatory/API secret optional/bootstrap credential not stored. |
 | `docs/TROUBLESHOOTING.md` | Existing | Docs | Operator troubleshooting. | Add Keycloak bootstrap/unauthorized_client diagnostics. |
+| `docs/SECRETS.md` | Existing | Docs | Secret provider and ownership model. | Documents one-time external bootstrap credential non-persistence. |
 
 ## Key Decisions
 
@@ -122,6 +149,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 3. **Infrastructure owns Keycloak Admin API details.** Application defines contracts/commands; Infrastructure implements HTTP protocol; API/Blazor expose transport/UI.
 4. **`KEYCLOAK_BLAZOR_CLIENT_SECRET` is mandatory for confidential BFF Keycloak login.** `KEYCLOAK_API_CLIENT_SECRET` is optional unless a future runtime API client-credentials flow uses it.
 5. **Patch existing realms rather than overwrite.** Existing customer Keycloak realms should not be destroyed or blindly replaced.
+6. **Future post-onboarding maintenance uses typed additive diffs.** Phase 7 should compute and preview a `RealmSyncPlan`, require instance-admin authorization and backup confirmation before mutation, and use temporary Keycloak credentials only for the active operation.
 
 ## Constraints And Rules To Remember
 
@@ -234,6 +262,19 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 # Result: passed, 8 tests.
 ```
 
+Phase 5 docs validation observed:
+
+```bash
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextSchemaTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+# Result: passed, 9 tests.
+
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextLinkTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+# Result: passed, 8 tests.
+
+dotnet build --configuration Release --verbosity quiet
+# Result: passed, 25 projects, 0 errors, existing warnings.
+```
+
 Invalid verification attempts to ignore:
 
 ```bash
@@ -257,10 +298,11 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 
 ## Current Known Risks / Unknowns
 
-- Exact minimum Keycloak Admin API permission set for external bootstrap needs confirmation and docs before Phase 5 operator docs are complete.
+- Exact least-privilege Keycloak Admin API role composition should be confirmed in automated disposable-Keycloak coverage for the target Keycloak version; docs now state the required capabilities: realm read/create when selected, client list/create, and client-secret update.
 - Need decide whether API client secret remains optional sync or is removed/de-emphasized in docs.
 - External Keycloak URL validation currently blocks dangerous URL/IP-literal patterns while allowing self-host/internal DNS hostnames; Phase 4 should decide whether an explicit local/private-network opt-in is needed for browser-facing setup.
 - Infrastructure adapter converts Keycloak Admin API failures into safe, categorized diagnostics without logging raw response bodies.
+- Phase 7 must preserve the same credential boundary after onboarding: no permanent Keycloak admin/service-account credential storage, no raw provider bodies, no tokens in browser storage, and no destructive realm reimport path.
 
 Resolved so far:
 
@@ -269,15 +311,18 @@ Resolved so far:
 - Application Phase 2 now guarantees the command handler stores only normal runtime Keycloak auth configuration and not the one-time bootstrap admin credential.
 - Infrastructure Phase 3 now keeps Keycloak admin credentials/tokens method-scoped and never stores them in DI, app configuration, response DTOs, or logs.
 - Phase 4 transport now keeps setup-secret handling server-side: the BFF strips browser-provided setup headers and forwards only the trusted resolver value to the new bootstrap API path.
+- Phase 5 docs now make the external-Keycloak operator flow supportable without requiring manual Keycloak UI secret edits or persistent admin credential storage.
+- Phase 6 now includes focused Playwright browser coverage for the setup-secret-protected Keycloak bootstrap UI flow; it reaches the next onboarding step and confirms browser storage still has no tokens.
+- Phase 7 is now documented as planned future work: read-only doctor, typed desired-state sync plan, instance-admin preview, additive resync with backup confirmation, explicit client-secret rotation, and multi-project identity contract registry.
 
 ## Handoff Notes
 
 ### Handoff — 2026-05-30 Europe/Brussels
-- **Current state:** Phase 1 Compose-managed Keycloak bootstrap, Phase 2 Application-layer external Keycloak bootstrap contract, Phase 3 Infrastructure Keycloak Admin API adapter, and Phase 4 API/BFF/UI wiring are implemented and documented.
-- **Next action:** Move to Phase 5 docs/operator runbooks and optional manual UI/Compose smoke against a disposable Keycloak realm.
-- **Blockers:** No code blocker for the completed Phase 4 path. Remaining risk is documenting the minimum Keycloak Admin API permissions and validating the browser flow manually.
+- **Current state:** Phase 1 Compose-managed Keycloak bootstrap, Phase 2 Application-layer external Keycloak bootstrap contract, Phase 3 Infrastructure Keycloak Admin API adapter, Phase 4 API/BFF/UI wiring, Phase 5 operator docs, Phase 6 backend disposable-Keycloak smoke, and focused Playwright browser UI bootstrap coverage are implemented and documented. Phase 7 post-onboarding Keycloak doctor/resync/rotation is planned but not started.
+- **Next action:** Start Phase 7 with the read-only Keycloak realm doctor, separately clean unrelated architecture-suite failures, or open a separate investigation for post-bootstrap Keycloak auth-code login with `offline_access` if that flow must be covered end to end.
+- **Blockers:** No code or docs blocker for the completed bootstrap path. Extending the Playwright test through login currently hits Keycloak `not_allowed` / `Offline tokens not allowed for the user or client` during `/signin-oidc`; the setup UI/bootstrap path itself passes.
 - **Modified files:** `docker/keycloak/keycloak-init.sh`, `docker-compose.yml`, Phase 2 Application DTO/contract/validator/command/handler files, Phase 3 Infrastructure Keycloak bootstrap service/DI/test files, Phase 4 API route/BFF forwarding/Blazor service/UI/test files, docs, and all three active dev docs.
-- **Validation:** `bash -n docker/keycloak/keycloak-init.sh`, `docker compose config --quiet`, `dotnet build --configuration Release --verbosity quiet`, `Event.Application.UnitTests`, `Explore.Infrastructure.Tests`, focused Phase 4 API integration/BFF forwarding/Blazor client service/UI source tests, focused AgentContext schema/link tests, focused CleanArchitecture, focused Naming, focused API contract, and focused endpoint-classification tests passed. Full architecture suite still fails on unrelated dirty-worktree rules; focused CqrsPatternTests and focused BlazorClientArchitectureTests also fail on existing unrelated violations.
-- **Documentation impact:** Phase 1 operator docs and Phase 2/3/4 dev docs updated. Future Phase 5 operator docs remain.
-- **Risks:** Do not allow convenience to become permanent Keycloak admin credential storage.
+- **Validation:** `bash -n docker/keycloak/keycloak-init.sh`, `docker compose config --quiet`, `dotnet build --configuration Release --verbosity quiet`, `Event.Application.UnitTests`, `Explore.Infrastructure.Tests`, focused Phase 4 API integration/BFF forwarding/Blazor client service/UI source tests, focused backend disposable-Keycloak `KeycloakBootstrapRealRuntimeTests`, focused Playwright `KeycloakBootstrapBrowserFlowTests`, focused AgentContext schema/link tests, focused CleanArchitecture, focused Naming, focused API contract, and focused endpoint-classification tests passed. Full architecture suite still fails on unrelated dirty-worktree rules; focused CqrsPatternTests and focused BlazorClientArchitectureTests also fail on existing unrelated violations.
+- **Documentation impact:** Phase 1 and Phase 5 operator docs plus Phase 2/3/4/5 dev docs updated.
+- **Risks:** Do not allow convenience to become permanent Keycloak admin credential storage. Phase 7 must stay additive by default and must not become a destructive `realm-export.json` reapply path.
 - **Notes for next contributor/agent:** Keep implementation slices small and update all three dev docs after each slice.
