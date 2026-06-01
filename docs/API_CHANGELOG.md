@@ -3,6 +3,21 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## Breaking Change Evidence
+
+Intentional breaking API changes must add an entry to this file in the same PR that changes `schemas/openapi.json`, `docs/API_CONTRACT_INVENTORY.md`, or `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
+
+Each breaking-change entry must include:
+
+- affected route, operation, schema, or generated client method;
+- old behavior and new behavior;
+- affected clients or operator workflows;
+- migration guidance or compatibility window;
+- release version or target milestone;
+- link to retained OpenAPI contract evidence from `openapi-contract-guard` when available.
+
+Non-breaking additive changes may be summarized in the current-mainline section, but removals, renamed operations, authentication/authorization contract changes, response shape changes, problem type changes, pagination/cursor changes, and generated-client breaking changes need explicit evidence here.
+
 ## Current Mainline (API version `0.1`)
 
 Key behavior in current code:

@@ -23269,6 +23269,174 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/instance/settings/auth-provider/keycloak/doctor": {
+      "post": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Run Keycloak Realm Doctor",
+        "description": "Runs read-only Keycloak realm diagnostics. Temporary admin credentials are used only for this request and are not stored.",
+        "operationId": "RunInstanceKeycloakRealmDoctor",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/KeycloakRealmDoctorRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/KeycloakRealmDoctorRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeycloakRealmDoctorResultDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeycloakRealmDoctorResultDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeycloakRealmDoctorResultDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/instance/settings/auth-provider/keycloak/sync-preview": {
+      "post": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Preview Keycloak Realm Sync",
+        "description": "Generates a read-only additive Keycloak realm sync plan. Temporary admin credentials are used only for this request and are not stored.",
+        "operationId": "PreviewInstanceKeycloakRealmSync",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/KeycloakRealmSyncPreviewRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/KeycloakRealmSyncPreviewRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeycloakRealmSyncPlanDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeycloakRealmSyncPlanDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeycloakRealmSyncPlanDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/instance/settings/auth-provider/status": {
       "get": {
         "tags": [
@@ -58433,6 +58601,379 @@
           },
           "bootstrapAdminPassword": {
             "type": "string"
+          }
+        }
+      },
+      "KeycloakClientDesiredStateDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "clientKind": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "publicClient": {
+            "type": "boolean"
+          },
+          "bearerOnly": {
+            "type": "boolean"
+          },
+          "standardFlowEnabled": {
+            "type": "boolean"
+          },
+          "directAccessGrantsEnabled": {
+            "type": "boolean"
+          },
+          "serviceAccountsEnabled": {
+            "type": "boolean"
+          },
+          "redirectUris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "webOrigins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "optionalClientScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "defaultClientScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "realmRoleMappings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "protocolMappers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeycloakProtocolMapperDesiredStateDto"
+            }
+          }
+        }
+      },
+      "KeycloakClientScopeDesiredStateDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "realmRoleMappings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "KeycloakProtocolMapperDesiredStateDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "mapperType": {
+            "type": "string"
+          },
+          "includedClientAudience": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "addToAccessToken": {
+            "type": "boolean"
+          },
+          "addToIdToken": {
+            "type": "boolean"
+          }
+        }
+      },
+      "KeycloakRealmDesiredStateDto": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string"
+          },
+          "blazorClientId": {
+            "type": "string"
+          },
+          "apiClientId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "destructiveOperationsSupported": {
+            "type": "boolean"
+          },
+          "requiredRealmRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "roleComposites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeycloakRoleCompositeDesiredStateDto"
+            }
+          },
+          "clientScopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeycloakClientScopeDesiredStateDto"
+            }
+          },
+          "clients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeycloakClientDesiredStateDto"
+            }
+          }
+        }
+      },
+      "KeycloakRealmDoctorCheckDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "remediation": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "KeycloakRealmDoctorRequestDto": {
+        "type": "object",
+        "properties": {
+          "useTemporaryAdminCredentials": {
+            "type": "boolean"
+          },
+          "bootstrapAdminUsername": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bootstrapAdminPassword": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "apiClientId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "KeycloakRealmDoctorResultDto": {
+        "type": "object",
+        "properties": {
+          "overallStatus": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "realm": {
+            "type": "string"
+          },
+          "authority": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "apiClientId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeycloakRealmDoctorCheckDto"
+            }
+          }
+        }
+      },
+      "KeycloakRealmSyncOperationDto": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requiresBackupBeforeApply": {
+            "type": "boolean"
+          }
+        }
+      },
+      "KeycloakRealmSyncPlanDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "realm": {
+            "type": "string"
+          },
+          "authority": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "apiClientId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "destructiveOperationsSupported": {
+            "type": "boolean"
+          },
+          "requiresBackupBeforeApply": {
+            "type": "boolean"
+          },
+          "desiredState": {
+            "$ref": "#/components/schemas/KeycloakRealmDesiredStateDto"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeycloakRealmSyncOperationDto"
+            }
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeycloakRealmDoctorCheckDto"
+            }
+          }
+        }
+      },
+      "KeycloakRealmSyncPreviewRequestDto": {
+        "type": "object",
+        "properties": {
+          "useTemporaryAdminCredentials": {
+            "type": "boolean"
+          },
+          "bootstrapAdminUsername": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bootstrapAdminPassword": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "apiClientId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "blazorRedirectUris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blazorWebOrigins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "KeycloakRoleCompositeDesiredStateDto": {
+        "type": "object",
+        "properties": {
+          "roleName": {
+            "type": "string"
+          },
+          "compositeRoleNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
