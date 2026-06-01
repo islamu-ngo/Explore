@@ -35,8 +35,8 @@ GitHub Actions deployment secrets are **workflow environment secrets**, not runt
 | `production` secret | `COOLIFY_DEPLOY_UI_WEBHOOK` | Coolify UI application deployment webhook. |
 | `production` secret | `COOLIFY_DEPLOY_TOKEN` | Bearer token used when invoking production Coolify webhooks. |
 | `production` variable | `PRODUCTION_URL` | Public environment URL shown on the GitHub deployment environment. |
-| `production` variable | `PRODUCTION_API_URL` | Optional API base URL for `/alive` and `/health` smoke checks. |
-| `production` variable | `PRODUCTION_UI_URL` | Optional UI base URL for `/alive` and `/health` smoke checks. |
+| `production` variable | `PRODUCTION_API_URL` | Required API base URL for production `/alive` and `/health` smoke checks. |
+| `production` variable | `PRODUCTION_UI_URL` | Required UI base URL for production `/alive` and `/health` smoke checks. |
 | `staging` secret | `COOLIFY_DEPLOY_API_STAGING_WEBHOOK` | Coolify staging API application deployment webhook. |
 | `staging` secret | `COOLIFY_DEPLOY_UI_STAGING_WEBHOOK` | Coolify staging UI application deployment webhook. |
 | `staging` secret | `COOLIFY_DEPLOY_TOKEN` | Bearer token used when invoking staging Coolify webhooks. |
@@ -262,6 +262,10 @@ Important behavior:
 Compose-managed Keycloak adds one bootstrap-specific rule: `docker/keycloak/keycloak-init.sh` writes `KEYCLOAK_BLAZOR_CLIENT_SECRET` into the imported `islamu-event-blazor` client before API/Blazor startup is allowed to complete. `KEYCLOAK_API_CLIENT_SECRET` is optional and only updates the `islamu-event-api` resource-server client when provided; the current API bearer-token validation path does not consume an API client secret. The Keycloak admin username/password are used only by the one-shot Compose init job and must not be stored as runtime application settings.
 - `Keycloak:RequireHttpsMetadata` is set to `true` when Keycloak input is mapped.
 
+External-Keycloak onboarding uses a different secret boundary. The setup UI can send a one-time Keycloak bootstrap username/password to `POST /api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap` through the BFF. That credential is request-scoped input for the Infrastructure Keycloak Admin API adapter; it is not a configuration key, not a governance setting, not a secret-provider key, and not persisted by ISLAMU. Successful bootstrap persists only the normal runtime Keycloak auth-provider configuration: authority, Blazor client ID, and Blazor client secret.
+
+External bootstrap URL safety is enforced before network calls. Keycloak base URLs must be absolute HTTP/HTTPS URLs without embedded user info, query string, or fragment. Literal localhost, loopback, link-local, unspecified, and multicast IP hosts are rejected by the Infrastructure adapter; self-hosted/internal DNS hostnames remain allowed so operators can use private Keycloak service names intentionally.
+
 ## Governance Settings (Database)
 
 Governance keys are centralized in `Explore.Domain.Constants.GovernanceSettingKeys`.
@@ -318,7 +322,10 @@ Canonical keys:
 | `ai_assistant.temperature` | decimal | `0.2` | Provider sampling temperature. Keep low for structured assistant workflows. |
 | `ai_assistant.timeout_seconds` | int | `30` | Provider call timeout budget. Cancellation tokens must still flow through all calls. |
 | `ai_assistant.retention_days` | int | `30` | Default persisted conversation retention window. Retention/redaction enforcement is required before broad history enablement. |
-| `ai_assistant.daily_message_limit` | int | `50` | Per-user/per-tenant daily message limit seed. Abuse/cost controls must be enforced before broad enablement. |
+| `ai_assistant.daily_message_limit` | int | `50` | Per-user daily assistant message limit enforced before provider calls. |
+| `ai_assistant.daily_tenant_message_limit` | int | `1000` | Per-tenant daily assistant user-message limit enforced before provider calls. |
+| `ai_assistant.concurrent_run_limit` | int | `1` | Per-user concurrent assistant run limit. Existing idempotency replays are allowed before this quota check. |
+| `ai_assistant.selected_reference_limit` | int | `8` | Maximum selected references that future reference-aware prompts may pack into one request. |
 | `ai_assistant.tool_proposals_enabled` | bool | `false` | Allows provider output to become persisted proposed actions only. Mutating tools still require server validation, HAL affordance checks, user confirmation, idempotency, and audit before execution. |
 | `ai_assistant.streaming_enabled` | bool | `false` | Enables streaming only after transport, cancellation, timeout, and logging safety are implemented. |
 | `ai_assistant.allow_anonymous_access` | bool | `false` | Legacy/public-availability flag for safe bootstrap surfaces only. Private conversation/history/send/action endpoints must remain authenticated. |
@@ -329,6 +336,7 @@ Important notes:
 - Provider output is untrusted data. It may produce structured action candidates, but those candidates must be persisted as proposals and require explicit confirmation before any write command runs.
 - Do not log raw prompts, model responses, selected reference content, provider request IDs tied to content, endpoint credentials, or provider exception bodies.
 - Provider endpoint URLs are deployment/admin-controlled. Browser payloads and per-request DTOs must never choose outbound provider hosts.
+- Assistant send requests are also protected by API rate limiting under `RateLimiting:AiAssistant` and by Application-level per-user daily, per-tenant daily, and per-user concurrent-run quotas. Quota failures return safe ProblemDetails and do not call the provider.
 - Tenant delegation/admin editing for the expanded provider/model/limit settings is intentionally separate from defining the keys. Do not assume a key is tenant-admin editable until the tenant policy service and UI explicitly expose it.
 
 ## Analytics Settings (Governance)

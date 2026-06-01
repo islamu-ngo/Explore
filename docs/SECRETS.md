@@ -88,7 +88,9 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 
 Environment variable format uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. PostgreSQL bootstrap intentionally uses discrete `POSTGRESQL_*` values rather than a single URL-form connection string.
 
-Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be entered into onboarding UI, stored in governance settings, or copied into support artifacts. The init logs redact client secret values.
+Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be stored in governance settings or copied into support artifacts. The init logs redact client secret values.
+
+External-Keycloak setup bootstrap accepts a one-time Keycloak admin or service-account username/password through the setup UI. Treat that credential as operator input for a single setup request, not as an ISLAMU-managed secret. ISLAMU must not save it to appsettings, environment variables, Infisical paths, database governance settings, logs, traces, screenshots, or support bundles. After a successful bootstrap, only the runtime Keycloak OIDC values and the Blazor BFF client secret are stored according to the normal authentication secret ownership model.
 
 
 ## Ownership Model

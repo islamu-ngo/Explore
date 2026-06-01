@@ -2656,6 +2656,158 @@ Table "event_series" {
   }
 }
 
+// ============================================================
+// AI Assistant
+// ============================================================
+
+Table "ai_conversations" {
+  "id" uuid [pk, not null, default: `uuidv7()`]
+  "tenant_id" uuid [not null]
+  "user_id" uuid [not null]
+  "actor_id" uuid
+  "status" int [not null]
+  "title" varchar(200)
+  "provider" varchar(100)
+  "model_id" varchar(200)
+  "blocked_reason" varchar(200)
+  "last_message_sequence" bigint [not null]
+  "created_at" timestamp [not null]
+  "created_by" uuid
+  "updated_at" timestamp
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamp
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    actor_id [name: 'ix_ai_conversations_actor_id']
+    (tenant_id, actor_id, updated_at) [name: 'ix_ai_conversations_tenant_actor_updated_at']
+    (tenant_id, user_id, status, updated_at) [name: 'ix_ai_conversations_tenant_user_status_updated_at']
+    user_id [name: 'ix_ai_conversations_user_id']
+  }
+
+  Note: 'Tenant-scoped private AI assistant conversation aggregate. Status values: Active(1), Running(2), Blocked(3), Archived(4). last_message_sequence is the long cursor for ordered messages.'
+}
+
+Table "ai_messages" {
+  "id" uuid [pk, not null, default: `uuidv7()`]
+  "tenant_id" uuid [not null]
+  "conversation_id" uuid [not null]
+  "sequence" bigint [not null]
+  "role" int [not null]
+  "content" varchar(16000) [not null]
+  "created_at" timestamp [not null]
+  "created_by" uuid
+
+  indexes {
+    conversation_id [name: 'ix_ai_messages_conversation_id']
+    (tenant_id, conversation_id, created_at) [name: 'ix_ai_messages_tenant_conversation_created_at']
+    (tenant_id, conversation_id, sequence) [unique, name: 'ux_ai_messages_tenant_conversation_sequence']
+  }
+
+  Note: 'Ordered private conversation messages. Role values: System(1), User(2), Assistant(3), Tool(4). sequence must be positive and is unique per tenant/conversation.'
+}
+
+Table "ai_runs" {
+  "id" uuid [pk, not null, default: `uuidv7()`]
+  "tenant_id" uuid [not null]
+  "conversation_id" uuid [not null]
+  "status" int [not null]
+  "provider" varchar(100) [not null]
+  "model_id" varchar(200) [not null]
+  "queued_at" timestamp [not null]
+  "started_at" timestamp
+  "completed_at" timestamp
+  "failure_code" varchar(100)
+  "failure_message" varchar(1000)
+
+  indexes {
+    conversation_id [name: 'ix_ai_runs_conversation_id']
+    (tenant_id, conversation_id, queued_at) [name: 'ix_ai_runs_tenant_conversation_queued_at']
+    (tenant_id, status, queued_at) [name: 'ix_ai_runs_tenant_status_queued_at']
+  }
+
+  Note: 'AI provider run audit row. Status values: Queued(1), InProgress(2), Succeeded(3), Failed(4), Cancelled(5). Failure metadata is bounded and safe for private history.'
+}
+
+Table "ai_conversation_references" {
+  "id" uuid [pk, not null, default: `uuidv7()`]
+  "tenant_id" uuid [not null]
+  "conversation_id" uuid [not null]
+  "kind" int [not null]
+  "reference_id" uuid [not null]
+  "display_name" varchar(500) [not null]
+  "summary" varchar(2000)
+  "created_at" timestamp [not null]
+  "created_by" uuid
+
+  indexes {
+    conversation_id [name: 'ix_ai_conversation_references_conversation_id']
+    (tenant_id, conversation_id, kind, reference_id) [unique, name: 'ux_ai_conversation_references_identity']
+  }
+
+  Note: 'Server-selected references attached to an AI conversation. Kind values: Event(1), EventSession(2), Actor(3), Organization(4).'
+}
+
+Table "ai_proposed_actions" {
+  "id" uuid [pk, not null, default: `uuidv7()`]
+  "tenant_id" uuid [not null]
+  "conversation_id" uuid [not null]
+  "message_id" uuid
+  "kind" int [not null]
+  "status" int [not null]
+  "payload_json" jsonb [not null]
+  "confirmed_by" uuid
+  "confirmed_at" timestamp
+  "rejected_by" uuid
+  "rejected_at" timestamp
+  "result_resource_id" uuid
+  "failure_code" varchar(100)
+  "failure_message" varchar(1000)
+  "created_at" timestamp [not null]
+  "created_by" uuid
+
+  indexes {
+    conversation_id [name: 'ix_ai_proposed_actions_conversation_id']
+    message_id [name: 'ix_ai_proposed_actions_message_id']
+    (tenant_id, conversation_id, status, created_at) [name: 'ix_ai_proposed_actions_tenant_conversation_status_created_at']
+    (tenant_id, status, kind, created_at) [name: 'ix_ai_proposed_actions_tenant_status_kind_created_at']
+  }
+
+  Note: 'Typed provider proposal requiring explicit user confirmation before side effects. Kind values currently allow CreateEventDraft(1). Status values: Proposed(1), Confirmed(2), Rejected(3), Executed(4), Failed(5). payload_json must be a JSON object.'
+}
+
+Table "ai_tool_executions" {
+  "id" uuid [pk, not null, default: `uuidv7()`]
+  "tenant_id" uuid [not null]
+  "proposed_action_id" uuid [not null]
+  "tool_name" varchar(200) [not null]
+  "started_at" timestamp [not null]
+  "completed_at" timestamp
+  "succeeded" boolean [not null]
+  "failure_code" varchar(100)
+  "failure_message" varchar(1000)
+
+  indexes {
+    proposed_action_id [name: 'ix_ai_tool_executions_proposed_action_id']
+    (tenant_id, proposed_action_id, started_at) [name: 'ix_ai_tool_executions_tenant_action_started_at']
+    (tenant_id, tool_name, started_at) [name: 'ix_ai_tool_executions_tenant_tool_started_at']
+  }
+
+  Note: 'Audit rows for future confirmed AI tool execution attempts. No automatic tool execution is enabled by the MVP send flow.'
+}
+
+Ref: "ai_conversations"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "ai_conversations"."user_id" > "users"."id" [delete: restrict]
+Ref: "ai_conversations"."actor_id" > "actors"."id" [delete: set null]
+Ref: "ai_messages"."conversation_id" > "ai_conversations"."id" [delete: cascade]
+Ref: "ai_runs"."conversation_id" > "ai_conversations"."id" [delete: cascade]
+Ref: "ai_conversation_references"."conversation_id" > "ai_conversations"."id" [delete: cascade]
+Ref: "ai_proposed_actions"."conversation_id" > "ai_conversations"."id" [delete: cascade]
+Ref: "ai_proposed_actions"."message_id" > "ai_messages"."id" [delete: set null]
+Ref: "ai_tool_executions"."proposed_action_id" > "ai_proposed_actions"."id" [delete: cascade]
+
 Table "events" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "event_type_id" int

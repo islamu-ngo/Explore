@@ -142,6 +142,24 @@ For production, verify:
 
 `KEYCLOAK_BLAZOR_CLIENT_SECRET` is fail-closed for Compose startup: `keycloak-init` exits non-zero when it is missing. To use the repository's static local default in disposable development, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true`. Do not enable that flag in production or shared environments. Rerun `docker compose run --rm keycloak-init` after rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET` or optional `KEYCLOAK_API_CLIENT_SECRET`.
 
+### External Keycloak Bootstrap
+
+When using an existing Keycloak deployment instead of the Compose-managed realm, first-run onboarding can configure the ISLAMU clients through the auth-provider setup page. Choose **Let ISLAMU configure Keycloak clients now** only when the operator has a temporary Keycloak admin or service account credential with enough permission to read the target realm, create the realm when using create mode, create or locate OIDC clients, and set client secrets.
+
+The setup bootstrap path is protected by the setup secret before launch. The browser sends the one-time Keycloak bootstrap credential only to the Blazor BFF; the BFF strips any browser-controlled setup-secret header and forwards the trusted setup secret to the API. The API passes the credential to the Infrastructure Keycloak Admin API adapter for that request only. ISLAMU stores the resulting runtime OIDC configuration and Blazor client secret, but it does **not** store the Keycloak admin username/password, Keycloak access token, or raw Keycloak Admin API response body.
+
+Recommended external-Keycloak operator flow:
+
+1. Create a temporary Keycloak admin or service account scoped to the target realm-management operations.
+2. In `/onboarding/auth-provider`, enable Keycloak and select **Let ISLAMU configure Keycloak clients now**.
+3. Enter the Keycloak base URL, target realm, Blazor BFF client ID/secret, optional API client ID/secret, and the temporary bootstrap credential.
+4. Submit once. On success, the UI clears the one-time bootstrap credential fields and continues setup.
+5. Disable or rotate the temporary Keycloak bootstrap credential after setup succeeds.
+
+Use **Use an already configured Keycloak realm** when the operator has already created clients, redirect URIs, web origins, protocol mappers, and client secrets in Keycloak. In that mode ISLAMU only stores the runtime OIDC authority/client settings and does not call the Keycloak Admin API.
+
+External bootstrap is idempotent for client lookup/update: rerunning setup against the same realm locates existing clients by `clientId` and updates their secrets. It does not delete existing realms, users, roles, or unrelated clients. Keep a Keycloak database backup before using create mode in shared environments.
+
 ## Migrations
 
 There are two migration paths:
