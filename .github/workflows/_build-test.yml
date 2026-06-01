@@ -64,8 +64,15 @@ jobs:
         env:
           RestorePackagesWithLockFile: "false"
         run: |
-          dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore > nuget-vulnerabilities.json
-          dotnet run .github/scripts/validate-nuget-vulnerabilities.cs -- nuget-vulnerabilities.json
+          mkdir -p artifacts/dependencies
+          dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore > artifacts/dependencies/nuget-vulnerabilities.json
+          NUGET_VULNERABILITY_SUMMARY_PATH="artifacts/dependencies/nuget-vulnerability-summary.md" dotnet run .github/scripts/validate-nuget-vulnerabilities.cs -- artifacts/dependencies/nuget-vulnerabilities.json
+
+      - name: Dependency License Policy Audit
+        if: ${{ inputs.run-fast-tests }}
+        env:
+          RestorePackagesWithLockFile: "false"
+        run: dotnet run .github/scripts/validate-dependency-license-policy.cs -- .
 
       - name: Linting Check
         if: ${{ inputs.run-fast-tests }}
@@ -73,7 +80,10 @@ jobs:
 
       - name: Build
         if: ${{ inputs.run-fast-tests }}
-        run: dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/build
+          dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal 2>&1 | tee artifacts/build/fast-build.log
 
       - name: Unit Tests — Application
         if: ${{ inputs.run-fast-tests }}
@@ -115,7 +125,10 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-results-fast
-          path: '**/TestResults/**/*.trx'
+          path: |
+            '**/TestResults/**/*.trx'
+            artifacts/build/fast-build.log
+            artifacts/dependencies/**
           if-no-files-found: warn
           retention-days: 14
 
@@ -133,7 +146,8 @@ jobs:
           {
             echo "## Fast Test Evidence"
             echo
-            echo "TRX artifact: \`test-results-fast\`"
+            echo "TRX/build artifact: \`test-results-fast\`"
+            echo "Build log: \`artifacts/build/fast-build.log\`"
             echo
             echo "| Project | Step outcome |"
             echo "|---|---|"
@@ -145,7 +159,7 @@ jobs:
             echo "| Explore.Blazor.Client.Tests | ${BLAZOR_CLIENT_OUTCOME:-not-run} |"
             echo "| Explore.Blazor.IntegrationTests | ${BLAZOR_INTEGRATION_OUTCOME:-not-run} |"
             echo
-            echo "Inspect the uploaded \`test-results-fast\` artifact for project-specific TRX files."
+            echo "Inspect the uploaded \`test-results-fast\` artifact for project-specific TRX files and build/analyzer warning output."
           } >> "$GITHUB_STEP_SUMMARY"
 
   integration-tests:
@@ -188,7 +202,10 @@ jobs:
         run: dotnet restore --locked-mode
 
       - name: Build
-        run: dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/build
+          dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal 2>&1 | tee artifacts/build/integration-build.log
 
       - name: Persistence Integration Tests
         id: test_persistence_integration
@@ -207,7 +224,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-results-integration
-          path: '**/TestResults/**/*.trx'
+          path: |
+            '**/TestResults/**/*.trx'
+            artifacts/build/integration-build.log
           if-no-files-found: warn
           retention-days: 14
 
@@ -220,12 +239,13 @@ jobs:
           {
             echo "## Integration Test Evidence"
             echo
-            echo "TRX artifact: \`test-results-integration\`"
+            echo "TRX/build artifact: \`test-results-integration\`"
+            echo "Build log: \`artifacts/build/integration-build.log\`"
             echo
             echo "| Project | Step outcome |"
             echo "|---|---|"
             echo "| Event.Persistence.IntegrationTests | ${PERSISTENCE_OUTCOME:-not-run} |"
             echo "| Event.API.IntegrationTests | ${API_OUTCOME:-not-run} |"
             echo
-            echo "Inspect the uploaded \`test-results-integration\` artifact for project-specific TRX files."
+            echo "Inspect the uploaded \`test-results-integration\` artifact for project-specific TRX files and build/analyzer warning output."
           } >> "$GITHUB_STEP_SUMMARY"
