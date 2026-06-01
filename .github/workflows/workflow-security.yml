@@ -66,7 +66,7 @@ jobs:
           relevant_files=""
           while IFS= read -r changed_file; do
             case "$changed_file" in
-              .github/workflows/*|.github/scripts/*|.github/dependabot.yml|docs/CI_CD_GOVERNANCE.md|Explore.API/Dockerfile|Explore.Blazor/Dockerfile)
+              .github/workflows/*|.github/actions/*|.github/scripts/*|.github/dependabot.yml|docs/CI_CD_GOVERNANCE.md|Explore.API/Dockerfile|Explore.Blazor/Dockerfile)
                 relevant_files="${relevant_files}${changed_file}"$'\n'
                 ;;
             esac

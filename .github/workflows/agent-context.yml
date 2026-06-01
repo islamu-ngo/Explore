@@ -1,5 +1,5 @@
 # ABOUTME: Validates the AI-context contract on PRs that touch agent, skill, rule, contract, or doc files.
-# ABOUTME: Runs AgentContext*Tests from Event.Architecture.Tests to block drift, dead links, schema violations, and duplication.
+# ABOUTME: Always reports a status check, running architecture context tests only when context-owned files change.
 
 name: agent-context
 
@@ -12,30 +12,14 @@ concurrency:
 
 on:
   pull_request:
-    paths:
-      - "AGENTS.md"
-      - "AGENTS.md"
-      - ".github/copilot-instructions.md"
-      - ".claude/**"
-      - "docs/**"
-      - "dev/_journal/README.md"
-      - "dev/_journal/FINDING_TEMPLATE.md"
-      - "dev/_journal/PROMOTION_RULES.md"
-      - "Event.Architecture.Tests/AgentContext*.cs"
-      - "Event.Architecture.Tests/ContextSystemHelpers.cs"
+    branches: [main, develop]
   push:
     branches:
       - main
       - develop
-    paths:
-      - "AGENTS.md"
-      - "AGENTS.md"
-      - ".github/copilot-instructions.md"
-      - ".claude/**"
-      - "docs/**"
-      - "dev/_journal/README.md"
-      - "dev/_journal/FINDING_TEMPLATE.md"
-      - "dev/_journal/PROMOTION_RULES.md"
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
 
 jobs:
   agent-context:
@@ -47,8 +31,90 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+          fetch-depth: 0
+
+      - name: Detect Agent-Context Changes
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "run-tests=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## AI-Context Contract"
+              echo
+              echo "Manual run: executing architecture context tests."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          base_sha=""
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_sha="$PR_BASE_SHA"
+          elif [[ "$EVENT_NAME" == "merge_group" ]]; then
+            base_sha="$MERGE_GROUP_BASE_SHA"
+          elif [[ -n "$PUSH_BEFORE_SHA" && "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            base_sha="$PUSH_BEFORE_SHA"
+          fi
+
+          if [[ -z "$base_sha" ]]; then
+            base_sha="HEAD~1"
+          fi
+
+          changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA" || true)"
+          if [[ -z "$changed_files" ]]; then
+            echo "run-tests=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## AI-Context Contract"
+              echo
+              echo "Could not determine changed files; running architecture context tests fail-safe."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          relevant_files=""
+          while IFS= read -r changed_file; do
+            [[ -z "$changed_file" ]] && continue
+            case "$changed_file" in
+              AGENTS.md|.github/copilot-instructions.md|.claude/*|docs/*|dev/_journal/README.md|dev/_journal/FINDING_TEMPLATE.md|dev/_journal/PROMOTION_RULES.md|Event.Architecture.Tests/AgentContext*.cs|Event.Architecture.Tests/ContextSystemHelpers.cs|.github/workflows/agent-context.yml)
+                relevant_files="${relevant_files}${changed_file}"$'\n'
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          if [[ -n "$relevant_files" ]]; then
+            echo "run-tests=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## AI-Context Contract"
+              echo
+              echo "Agent/context files changed; running architecture context tests."
+              echo
+              echo '```text'
+              printf '%s' "$relevant_files"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run-tests=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## AI-Context Contract"
+              echo
+              echo "No agent/context-owned files changed; required check is intentionally passing without running architecture context tests."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: No-Op for Non-Agent-Context Changes
+        if: ${{ steps.changes.outputs.run-tests != 'true' }}
+        run: |
+          echo "AI-context contract no-op: no agent/context-owned changes detected."
 
       - name: Setup .NET
+        if: ${{ steps.changes.outputs.run-tests == 'true' }}
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
@@ -56,13 +122,16 @@ jobs:
           cache-dependency-path: "**/packages.lock.json"
 
       - name: Restore
+        if: ${{ steps.changes.outputs.run-tests == 'true' }}
         run: dotnet restore Event.Architecture.Tests/Event.Architecture.Tests.csproj --locked-mode
 
       - name: Build
+        if: ${{ steps.changes.outputs.run-tests == 'true' }}
         run: dotnet build Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-restore --verbosity quiet
 
       # TUnit runs as an executable; we run only this project.
       # Non-context tests in this project are expected to pass as well; if any unrelated failure blocks the PR,
       # fix those in a dedicated change rather than relaxing this gate.
       - name: Run Event.Architecture.Tests
+        if: ${{ steps.changes.outputs.run-tests == 'true' }}
         run: dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity quiet

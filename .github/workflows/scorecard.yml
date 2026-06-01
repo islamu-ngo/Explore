@@ -1,0 +1,67 @@
+# ABOUTME: Runs scheduled OpenSSF Scorecard analysis for repository supply-chain posture evidence.
+# ABOUTME: Retains SARIF and artifact output without publishing public Scorecard results.
+
+name: OpenSSF Scorecard
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  checks: read
+  issues: read
+  pull-requests: read
+
+on:
+  schedule:
+    - cron: "41 3 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scorecard:
+    name: OpenSSF Scorecard
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Run OpenSSF Scorecard
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        with:
+          results_file: scorecard-results.sarif
+          results_format: sarif
+          publish_results: false
+          file_mode: archive
+
+      - name: Upload Scorecard SARIF
+        uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
+        with:
+          sarif_file: scorecard-results.sarif
+
+      - name: Stage Scorecard evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p scorecard-evidence
+          cp scorecard-results.sarif scorecard-evidence/scorecard-results.sarif
+          {
+            echo "## OpenSSF Scorecard"
+            echo
+            echo "Scorecard SARIF was generated and uploaded to code scanning."
+            echo "Retained artifact: \`scorecard-evidence\`."
+            echo "Public Scorecard result publishing is disabled for this repository-owned evidence lane."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Scorecard evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scorecard-evidence
+          path: scorecard-evidence/
+          retention-days: 30

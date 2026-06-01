@@ -1,5 +1,5 @@
 # ABOUTME: CI workflow running security integration tests with containerized Keycloak and Cerbos.
-# ABOUTME: Uses Docker (via Testcontainers) to validate real OIDC token validation and Cerbos policy decisions.
+# ABOUTME: Always reports a status check, running tests only when security-relevant files change.
 
 name: Security Integration Tests
 
@@ -11,59 +11,10 @@ on:
     - cron: "45 2 * * *"
   push:
     branches: [main, develop]
-    paths:
-      - "cerbos/**"
-      - "docker/keycloak/**"
-      - "Explore.Application/Authorization/**"
-      - "Explore.API/Program.cs"
-      - "Explore.API/Extensions/**"
-      - "Explore.API/Middleware/**"
-      - "Explore.Blazor/Program.cs"
-      - "Explore.Blazor/Services/**"
-      - "Explore.Blazor/Yarp/**"
-      - "Explore.Infrastructure/Services/CerbosAuthorizationService.cs"
-      - "Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs"
-      - "Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs"
-      - "Explore.Infrastructure/Services/LocalAuthorizationProvider.cs"
-      - "docs/SECURITY-MODEL.md"
-      - "docs/AUTHORIZATION.md"
-      - "Event.API.IntegrationTests/Fixtures/Keycloak*"
-      - "Event.API.IntegrationTests/Fixtures/Cerbos*"
-      - "Event.API.IntegrationTests/Fixtures/Security*"
-      - "Event.API.IntegrationTests/Fixtures/TestCategories.cs"
-      - "Event.API.IntegrationTests/Fixtures/KeycloakTokenClient.cs"
-      - "Event.API.IntegrationTests/Features/SecurityIntegrationTests.cs"
-      - "Event.API.IntegrationTests/Features/CerbosPolicyContractTests.cs"
-      - "Event.API.IntegrationTests/Features/CerbosPolicyCompilationTests.cs"
-      - "Event.API.IntegrationTests/Features/TokenClaimsVerificationTests.cs"
-      - "Event.API.IntegrationTests/Features/AuthorizationPipelineIntegrationTests.cs"
-      - "Event.API.IntegrationTests/Features/CloudIsolationGuardrailTests.cs"
-      - ".github/workflows/security-tests.yml"
   pull_request:
     branches: [main, develop]
-    paths:
-      - "cerbos/**"
-      - "docker/keycloak/**"
-      - "Explore.Application/Authorization/**"
-      - "Explore.API/Program.cs"
-      - "Explore.API/Extensions/**"
-      - "Explore.API/Middleware/**"
-      - "Explore.Blazor/Program.cs"
-      - "Explore.Blazor/Services/**"
-      - "Explore.Blazor/Yarp/**"
-      - "Explore.Infrastructure/Services/CerbosAuthorizationService.cs"
-      - "Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs"
-      - "Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs"
-      - "Explore.Infrastructure/Services/LocalAuthorizationProvider.cs"
-      - "docs/SECURITY-MODEL.md"
-      - "docs/AUTHORIZATION.md"
-      - "Event.API.IntegrationTests/Fixtures/**"
-      - "Event.API.IntegrationTests/Features/Security*"
-      - "Event.API.IntegrationTests/Features/Cerbos*"
-      - "Event.API.IntegrationTests/Features/Token*"
-      - "Event.API.IntegrationTests/Features/Authorization*"
-      - "Event.API.IntegrationTests/Features/Cloud*"
-      - ".github/workflows/security-tests.yml"
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 concurrency:
@@ -81,8 +32,90 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+          fetch-depth: 0
+
+      - name: Detect Security-Relevant Changes
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "run-tests=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Security Integration Tests"
+              echo
+              echo "Scheduled/manual run: executing security integration tests."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          base_sha=""
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_sha="$PR_BASE_SHA"
+          elif [[ "$EVENT_NAME" == "merge_group" ]]; then
+            base_sha="$MERGE_GROUP_BASE_SHA"
+          elif [[ -n "$PUSH_BEFORE_SHA" && "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            base_sha="$PUSH_BEFORE_SHA"
+          fi
+
+          if [[ -z "$base_sha" ]]; then
+            base_sha="HEAD~1"
+          fi
+
+          changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA" || true)"
+          if [[ -z "$changed_files" ]]; then
+            echo "run-tests=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Security Integration Tests"
+              echo
+              echo "Could not determine changed files; running security integration tests fail-safe."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          relevant_files=""
+          while IFS= read -r changed_file; do
+            [[ -z "$changed_file" ]] && continue
+            case "$changed_file" in
+              cerbos/*|docker/keycloak/*|Explore.Application/Authorization/*|Explore.API/Program.cs|Explore.API/Extensions/*|Explore.API/Middleware/*|Explore.Blazor/Program.cs|Explore.Blazor/Services/*|Explore.Blazor/Yarp/*|Explore.Infrastructure/Services/CerbosAuthorizationService.cs|Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs|Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs|Explore.Infrastructure/Services/LocalAuthorizationProvider.cs|docs/SECURITY-MODEL.md|docs/AUTHORIZATION.md|Event.API.IntegrationTests/Fixtures/*|Event.API.IntegrationTests/Features/Security*|Event.API.IntegrationTests/Features/Cerbos*|Event.API.IntegrationTests/Features/Token*|Event.API.IntegrationTests/Features/Authorization*|Event.API.IntegrationTests/Features/Cloud*|.github/workflows/security-tests.yml)
+                relevant_files="${relevant_files}${changed_file}"$'\n'
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          if [[ -n "$relevant_files" ]]; then
+            echo "run-tests=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Security Integration Tests"
+              echo
+              echo "Security-relevant files changed; running security integration tests."
+              echo
+              echo '```text'
+              printf '%s' "$relevant_files"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run-tests=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Security Integration Tests"
+              echo
+              echo "No security integration relevant files changed; required check is intentionally passing without running container-backed tests."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: No-Op for Non-Security Changes
+        if: ${{ steps.changes.outputs.run-tests != 'true' }}
+        run: |
+          echo "Security Integration Tests no-op: no security-relevant changes detected."
 
       - name: Setup .NET
+        if: ${{ steps.changes.outputs.run-tests == 'true' }}
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
@@ -90,12 +123,15 @@ jobs:
           cache-dependency-path: "**/packages.lock.json"
 
       - name: Restore
+        if: ${{ steps.changes.outputs.run-tests == 'true' }}
         run: dotnet restore --locked-mode
 
       - name: Build
+        if: ${{ steps.changes.outputs.run-tests == 'true' }}
         run: dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
 
       - name: Security Integration Tests
+        if: ${{ steps.changes.outputs.run-tests == 'true' }}
         shell: bash
         run: |
           set -o pipefail
@@ -103,6 +139,7 @@ jobs:
           dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*[Category=Security]" 2>&1 | tee artifacts/security-tests/security-integration-tests.log
 
       - name: Cerbos Policy Contract Tests
+        if: ${{ steps.changes.outputs.run-tests == 'true' }}
         shell: bash
         run: |
           set -o pipefail
@@ -110,7 +147,7 @@ jobs:
           dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*[Category=PolicyContract]" 2>&1 | tee artifacts/security-tests/cerbos-policy-contract-tests.log
 
       - name: Upload Security Test Evidence
-        if: always()
+        if: ${{ always() && steps.changes.outputs.run-tests == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: security-test-evidence

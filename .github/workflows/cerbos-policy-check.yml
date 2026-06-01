@@ -1,5 +1,5 @@
 # ABOUTME: Validates Cerbos authorization policies on changes to policy files or authorization code.
-# ABOUTME: Compiles policies and runs policy tests to catch misconfigurations before merge.
+# ABOUTME: Always reports a status check, compiling policies only when authorization-relevant files change.
 
 name: Cerbos Policy Validation
 
@@ -11,24 +11,11 @@ on:
     - cron: "0 3 * * *"
   push:
     branches: [main, develop]
-    paths:
-      - "cerbos/**"
-      - "Explore.Application/Authorization/**"
-      - "Explore.Infrastructure/Services/CerbosAuthorizationService.cs"
-      - "Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs"
-      - "Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs"
-      - "Explore.Infrastructure/Services/LocalAuthorizationProvider.cs"
-      - ".github/workflows/cerbos-policy-check.yml"
   pull_request:
     branches: [main, develop]
-    paths:
-      - "cerbos/**"
-      - "Explore.Application/Authorization/**"
-      - "Explore.Infrastructure/Services/CerbosAuthorizationService.cs"
-      - "Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs"
-      - "Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs"
-      - "Explore.Infrastructure/Services/LocalAuthorizationProvider.cs"
-      - ".github/workflows/cerbos-policy-check.yml"
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,13 +31,96 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+          fetch-depth: 0
+
+      - name: Detect Cerbos-Relevant Changes
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "run-policies=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Cerbos Policy Validation"
+              echo
+              echo "Scheduled/manual run: compiling Cerbos policies."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          base_sha=""
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_sha="$PR_BASE_SHA"
+          elif [[ "$EVENT_NAME" == "merge_group" ]]; then
+            base_sha="$MERGE_GROUP_BASE_SHA"
+          elif [[ -n "$PUSH_BEFORE_SHA" && "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            base_sha="$PUSH_BEFORE_SHA"
+          fi
+
+          if [[ -z "$base_sha" ]]; then
+            base_sha="HEAD~1"
+          fi
+
+          changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA" || true)"
+          if [[ -z "$changed_files" ]]; then
+            echo "run-policies=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Cerbos Policy Validation"
+              echo
+              echo "Could not determine changed files; compiling policies fail-safe."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          relevant_files=""
+          while IFS= read -r changed_file; do
+            [[ -z "$changed_file" ]] && continue
+            case "$changed_file" in
+              cerbos/*|Explore.Application/Authorization/*|Explore.Infrastructure/Services/CerbosAuthorizationService.cs|Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs|Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs|Explore.Infrastructure/Services/LocalAuthorizationProvider.cs|.github/workflows/cerbos-policy-check.yml)
+                relevant_files="${relevant_files}${changed_file}"$'\n'
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          if [[ -n "$relevant_files" ]]; then
+            echo "run-policies=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Cerbos Policy Validation"
+              echo
+              echo "Cerbos-relevant files changed; compiling policies."
+              echo
+              echo '```text'
+              printf '%s' "$relevant_files"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run-policies=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Cerbos Policy Validation"
+              echo
+              echo "No Cerbos-relevant files changed; required check is intentionally passing without compiling policies."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: No-Op for Non-Cerbos Changes
+        if: ${{ steps.changes.outputs.run-policies != 'true' }}
+        run: |
+          echo "Cerbos Policy Validation no-op: no Cerbos-relevant changes detected."
 
       - name: Setup Cerbos
+        if: ${{ steps.changes.outputs.run-policies == 'true' }}
         uses: cerbos/cerbos-setup-action@6d88cfd96db5af84489633c6a2db42bf2522933b # v1
         with:
           version: "0.53.0"
 
       - name: Compile Cerbos Policies
+        if: ${{ steps.changes.outputs.run-policies == 'true' }}
         shell: bash
         run: |
           set -o pipefail
@@ -58,7 +128,7 @@ jobs:
           cerbos compile cerbos/policies 2>&1 | tee artifacts/cerbos-policy/compile.log
 
       - name: Run Cerbos Policy Tests
-        if: hashFiles('cerbos/tests/**') != ''
+        if: ${{ steps.changes.outputs.run-policies == 'true' && hashFiles('cerbos/tests/**') != '' }}
         shell: bash
         run: |
           set -o pipefail
@@ -66,7 +136,7 @@ jobs:
           cerbos compile --tests=cerbos/tests cerbos/policies 2>&1 | tee artifacts/cerbos-policy/tests.log
 
       - name: Upload Cerbos Policy Evidence
-        if: always()
+        if: ${{ always() && steps.changes.outputs.run-policies == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: cerbos-policy-evidence
