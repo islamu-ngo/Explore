@@ -4,7 +4,7 @@
 name: Contributor License Agreement
 
 on:
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] Metadata-only CLA check: trusted base checkout, read-only token, no PR-head code execution.
     types: [opened, edited, synchronize, reopened, ready_for_review]
 
 permissions:
