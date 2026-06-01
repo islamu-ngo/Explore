@@ -106,6 +106,39 @@ Checks:
 3. Rerun `docker compose run --rm keycloak-init` after changing or rotating `KEYCLOAK_BLAZOR_CLIENT_SECRET`.
 4. If this is a disposable local stack and no secret is configured, set `KEYCLOAK_INIT_ALLOW_DEFAULT_LOCAL_SECRET=true` intentionally, then rerun `keycloak-init`. Do not use that flag in production.
 5. If the client is missing, verify `docker/keycloak/realm-export.json` imported successfully and that `KEYCLOAK_REALM` matches the imported realm name.
+6. For external Keycloak setup, rerun `/onboarding/auth-provider` bootstrap mode with the same Blazor client ID and the intended runtime client secret. The setup flow updates existing clients by `clientId`; it does not require manually editing the Keycloak UI when the bootstrap credential has client-secret update permission.
+
+### External Keycloak bootstrap fails before contacting Keycloak
+
+Symptoms:
+- setup page reports a bad Keycloak URL or unsafe host.
+- API returns a safe failure code such as `keycloak_invalid_url` or `keycloak_unsafe_host`.
+
+Checks:
+1. Use an absolute `http://` or `https://` Keycloak base URL with no embedded username/password, query string, or fragment.
+2. Do not use `localhost`, loopback, link-local, unspecified, or multicast IP literals from the setup form. Use the operator-facing Keycloak DNS name instead.
+3. For Compose-managed local Keycloak, prefer the Compose `keycloak-init` service instead of the external bootstrap UI path.
+
+### External Keycloak bootstrap authentication or permission failure
+
+Symptoms:
+- setup returns `keycloak_auth_failed`, `keycloak_realm_check_failed`, `keycloak_realm_create_failed`, `keycloak_client_create_failed`, or `keycloak_client_secret_update_failed`.
+- Keycloak logs show Admin API `401`, `403`, or rejected client operations.
+
+Checks:
+1. Confirm the one-time bootstrap username/password or service-account secret is valid in Keycloak.
+2. Confirm the credential can read the target realm, create the realm when using create mode, list clients, create clients, and update client secrets.
+3. If using patch-existing mode, verify the realm already exists. Missing realms return `keycloak_realm_not_found`; switch to create mode only if the operator intends ISLAMU to create the realm.
+4. If client creation fails with a conflict, rerun bootstrap after confirming the existing client ID is correct. The adapter locates clients by `clientId` before creation and treats existing realms as safe to patch.
+5. Do not paste raw Keycloak Admin API response bodies, access tokens, admin passwords, client secrets, or setup secrets into issue reports. Use the safe failure code and Keycloak status code instead.
+
+### External Keycloak bootstrap succeeds but login still fails
+
+Checks:
+1. Confirm the Keycloak authority saved by setup is `<base-url>/realms/<realm>` and is reachable from both API and Blazor BFF.
+2. Confirm reverse-proxy public origin matches the Blazor client redirect URIs and web origins in Keycloak.
+3. Trigger `/bff/auth/refresh-schemes` or restart the Blazor BFF if testing outside the setup UI. The onboarding UI calls the refresh path after successful bootstrap.
+4. If `KEYCLOAK_BLAZOR_CLIENT_SECRET` is also configured as deployment-managed, confirm the saved application-managed value is not being overridden by deployment config.
 
 ## Setup Secret Failures
 

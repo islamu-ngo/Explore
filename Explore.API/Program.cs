@@ -316,6 +316,10 @@ builder.Services.AddHealthChecks()
         "idempotency-cleanup",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "idempotency", "cleanup", "infrastructure"])
+    .AddCheck<StorageReadinessHealthCheck>(
+        "storage",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "storage", "infrastructure"])
     .AddCheck<CerbosReadinessHealthCheck>(
         "cerbos",
         failureStatus: HealthStatus.Unhealthy,

@@ -7,6 +7,7 @@ using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
@@ -23,6 +24,7 @@ public class FinalizeStorageUploadSessionCommandHandler
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly ITenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly BusinessMetrics _metrics;
 
     public FinalizeStorageUploadSessionCommandHandler(
         IFileStorageProviderResolver providerResolver,
@@ -31,7 +33,8 @@ public class FinalizeStorageUploadSessionCommandHandler
         IStorageUsageCounterRepository usageCounterRepository,
         IStorageObjectRepository storageObjectRepository,
         ITenantContext tenantContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        BusinessMetrics metrics)
     {
         _providerResolver = providerResolver;
         _storagePolicyResolver = storagePolicyResolver;
@@ -40,6 +43,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         _storageObjectRepository = storageObjectRepository;
         _tenantContext = tenantContext;
         _unitOfWork = unitOfWork;
+        _metrics = metrics;
     }
 
     public async Task<BaseCommandResponse<StorageUploadSessionDto>> Handle(
@@ -48,11 +52,15 @@ public class FinalizeStorageUploadSessionCommandHandler
     {
         if (request.UploadSessionId == Guid.Empty)
         {
+            _metrics.RecordStorageUploadSession(null, "finalize", "failed", "validation_failed");
+
             return Failure("Upload finalization failed.", ["UploadSessionId is required."]);
         }
 
         if (request.Content is null || !request.Content.CanRead)
         {
+            _metrics.RecordStorageUploadSession(null, "finalize", "failed", "validation_failed");
+
             return Failure("Upload finalization failed.", ["A readable upload content stream is required."]);
         }
 
@@ -65,16 +73,25 @@ public class FinalizeStorageUploadSessionCommandHandler
 
         if (!sessionResponse.Success || sessionResponse.Id is null)
         {
+            RecordFinalizeFailure(sessionResponse, policy.Provider);
+            return sessionResponse;
+        }
+
+        if (sessionResponse.Id.Status == StorageUploadSessionStates.Finalized)
+        {
+            _metrics.RecordStorageUploadSession(sessionResponse.Id.Provider, "finalize", "idempotent");
             return sessionResponse;
         }
 
         var session = await _uploadSessionRepository.GetByIdForUpdateAsync(request.UploadSessionId, cancellationToken);
         if (session is null || session.TenantId != tenantId)
         {
-            return Failure(
+            var failure = Failure(
                 "Upload session was not found.",
                 ["Upload session was not found."],
                 FailureCodes.StorageUploadSessionNotFound);
+            _metrics.RecordStorageUploadSession(policy.Provider, "finalize", "failed", failure.FailureCode);
+            return failure;
         }
 
         try
@@ -91,13 +108,27 @@ public class FinalizeStorageUploadSessionCommandHandler
                     session.ExpectedSizeBytes),
                 cancellationToken);
 
-            return await _unitOfWork.ExecuteInTransactionAsync(
+            var response = await _unitOfWork.ExecuteInTransactionAsync(
                 async ct => await FinalizeAsync(session.Id, tenantId, policy, writeResult, ct),
                 cancellationToken);
+
+            if (response.Success)
+            {
+                _metrics.RecordStorageUploadSession(writeResult.Provider, "finalize", "succeeded");
+                _metrics.RecordStorageUploadBytes(writeResult.SizeBytes, writeResult.Provider, "succeeded");
+                _metrics.RecordStorageQuotaReservation(writeResult.Provider, "commit", "succeeded");
+                _metrics.RecordStorageQuotaBytes(writeResult.SizeBytes, writeResult.Provider, "commit", "succeeded");
+            }
+            else
+            {
+                _metrics.RecordStorageUploadSession(session.Provider, "finalize", "failed", response.FailureCode);
+            }
+
+            return response;
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or ArgumentException)
         {
-            return await _unitOfWork.ExecuteInTransactionAsync(
+            var response = await _unitOfWork.ExecuteInTransactionAsync(
                 async ct => await FailSessionAsync(
                     session.Id,
                     tenantId,
@@ -106,6 +137,27 @@ public class FinalizeStorageUploadSessionCommandHandler
                     "Storage provider could not accept the upload.",
                     ct),
                 cancellationToken);
+
+            _metrics.RecordStorageUploadSession(session.Provider, "finalize", "failed", response.FailureCode);
+            _metrics.RecordStorageUploadBytes(session.ExpectedSizeBytes, session.Provider, "failed", response.FailureCode);
+            _metrics.RecordStorageQuotaReservation(session.Provider, "release", "succeeded");
+            _metrics.RecordStorageQuotaBytes(session.ReservedBytes, session.Provider, "release", "succeeded");
+
+            return response;
+        }
+    }
+
+    private void RecordFinalizeFailure(
+        BaseCommandResponse<StorageUploadSessionDto> response,
+        string fallbackProvider)
+    {
+        var provider = response.Id?.Provider ?? fallbackProvider;
+        _metrics.RecordStorageUploadSession(provider, "finalize", "failed", response.FailureCode);
+
+        if (response.FailureCode == FailureCodes.StorageUploadSessionExpired && response.Id is not null)
+        {
+            _metrics.RecordStorageQuotaReservation(provider, "release", "succeeded");
+            _metrics.RecordStorageQuotaBytes(response.Id.ReservedBytes, provider, "release", "succeeded");
         }
     }
 

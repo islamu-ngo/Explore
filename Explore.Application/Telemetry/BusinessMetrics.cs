@@ -1,19 +1,22 @@
 // ABOUTME: Defines custom OpenTelemetry business metrics for the platform.
-// ABOUTME: Tracks domain activity plus external API-key, email-dispatch, notification fanout, and governance signals.
+// ABOUTME: Tracks domain activity plus external API-key, email-dispatch, storage, notification fanout, and governance signals.
 
 using System.Diagnostics.Metrics;
+using Explore.Application.Responses;
+using Explore.Domain;
 
 namespace Explore.Application.Telemetry;
 
 /// <summary>
 /// Custom business metrics exposed via OpenTelemetry.
-/// All counters include dimensional tags (tenant_id, resource_type) for multi-tenant analytics.
+/// Metrics use metric-specific bounded tags; not every metric includes tenant_id.
 /// Meter name: "Explore.Business"
 /// </summary>
-public sealed class BusinessMetrics
+public sealed class BusinessMetrics : IDisposable
 {
     public const string MeterName = "Explore.Business";
 
+    private readonly Meter _meter;
     private readonly Counter<long> _eventsCreated;
     private readonly Counter<long> _eventsPublished;
     private readonly Counter<long> _registrationsCreated;
@@ -36,10 +39,19 @@ public sealed class BusinessMetrics
     private readonly Counter<long> _idempotencyCleanupRows;
     private readonly Counter<long> _aiProviderHealthChecks;
     private readonly Counter<long> _aiProviderRequests;
+    private readonly Counter<long> _storageUploadSessions;
+    private readonly Histogram<long> _storageUploadBytes;
+    private readonly Counter<long> _storageReads;
+    private readonly Histogram<long> _storageReadBytes;
+    private readonly Counter<long> _storageDeletes;
+    private readonly Counter<long> _storageQuotaReservations;
+    private readonly Histogram<long> _storageQuotaBytes;
+    private readonly Counter<long> _storageProviderTests;
 
     public BusinessMetrics(IMeterFactory meterFactory)
     {
-        var meter = meterFactory.Create(MeterName);
+        _meter = meterFactory.Create(MeterName);
+        var meter = _meter;
 
         _eventsCreated = meter.CreateCounter<long>(
             "explore.events.created",
@@ -150,6 +162,51 @@ public sealed class BusinessMetrics
             "explore.ai.provider.requests",
             unit: "{request}",
             description: "Total AI provider requests by provider, outcome, and bounded failure category");
+
+        _storageUploadSessions = meter.CreateCounter<long>(
+            "explore.storage.upload_sessions",
+            unit: "{session}",
+            description: "Total storage upload session lifecycle outcomes by provider and bounded category");
+
+        _storageUploadBytes = meter.CreateHistogram<long>(
+            "explore.storage.upload_bytes",
+            unit: "By",
+            description: "Storage upload byte counts by provider and bounded outcome");
+
+        _storageReads = meter.CreateCounter<long>(
+            "explore.storage.reads",
+            unit: "{read}",
+            description: "Total storage read outcomes by provider, visibility, and bounded failure category");
+
+        _storageReadBytes = meter.CreateHistogram<long>(
+            "explore.storage.read_bytes",
+            unit: "By",
+            description: "Storage read byte counts by provider, visibility, and bounded outcome");
+
+        _storageDeletes = meter.CreateCounter<long>(
+            "explore.storage.deletes",
+            unit: "{delete}",
+            description: "Total storage delete outcomes by provider and bounded failure category");
+
+        _storageQuotaReservations = meter.CreateCounter<long>(
+            "explore.storage.quota_reservations",
+            unit: "{reservation}",
+            description: "Total storage quota reservation outcomes by provider and bounded operation");
+
+        _storageQuotaBytes = meter.CreateHistogram<long>(
+            "explore.storage.quota_bytes",
+            unit: "By",
+            description: "Storage quota reservation byte counts by provider, operation, and bounded outcome");
+
+        _storageProviderTests = meter.CreateCounter<long>(
+            "explore.storage.provider_tests",
+            unit: "{test}",
+            description: "Total storage provider connection test outcomes by provider and bounded failure category");
+    }
+
+    public void Dispose()
+    {
+        _meter.Dispose();
     }
 
     public void RecordEventCreated(string? tenantId = null, string? eventType = null)
@@ -321,10 +378,201 @@ public sealed class BusinessMetrics
             new KeyValuePair<string, object?>("failure_category", NormalizeTag(failureCategory ?? "none")));
     }
 
+    public void RecordStorageUploadSession(
+        string? provider,
+        string? operation,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        _storageUploadSessions.Add(1,
+            new KeyValuePair<string, object?>("provider", NormalizeStorageProvider(provider)),
+            new KeyValuePair<string, object?>("operation", NormalizeStorageOperation(operation)),
+            new KeyValuePair<string, object?>("outcome", NormalizeStorageOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeStorageFailureCategory(failureCategory)));
+    }
+
+    public void RecordStorageUploadBytes(
+        long byteCount,
+        string? provider,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        if (byteCount < 0)
+        {
+            return;
+        }
+
+        _storageUploadBytes.Record(byteCount,
+            new KeyValuePair<string, object?>("provider", NormalizeStorageProvider(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeStorageOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeStorageFailureCategory(failureCategory)));
+    }
+
+    public void RecordStorageRead(
+        string? provider,
+        string? outcome,
+        string? failureCategory,
+        string? visibility)
+    {
+        _storageReads.Add(1,
+            new KeyValuePair<string, object?>("provider", NormalizeStorageProvider(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeStorageOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeStorageFailureCategory(failureCategory)),
+            new KeyValuePair<string, object?>("visibility", NormalizeStorageVisibility(visibility)));
+    }
+
+    public void RecordStorageReadBytes(
+        long byteCount,
+        string? provider,
+        string? outcome,
+        string? visibility)
+    {
+        if (byteCount < 0)
+        {
+            return;
+        }
+
+        _storageReadBytes.Record(byteCount,
+            new KeyValuePair<string, object?>("provider", NormalizeStorageProvider(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeStorageOutcome(outcome)),
+            new KeyValuePair<string, object?>("visibility", NormalizeStorageVisibility(visibility)));
+    }
+
+    public void RecordStorageDelete(string? provider, string? outcome, string? failureCategory = null)
+    {
+        _storageDeletes.Add(1,
+            new KeyValuePair<string, object?>("provider", NormalizeStorageProvider(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeStorageOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeStorageFailureCategory(failureCategory)));
+    }
+
+    public void RecordStorageQuotaReservation(
+        string? provider,
+        string? operation,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        _storageQuotaReservations.Add(1,
+            new KeyValuePair<string, object?>("provider", NormalizeStorageProvider(provider)),
+            new KeyValuePair<string, object?>("operation", NormalizeStorageOperation(operation)),
+            new KeyValuePair<string, object?>("outcome", NormalizeStorageOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeStorageFailureCategory(failureCategory)));
+    }
+
+    public void RecordStorageQuotaBytes(
+        long byteCount,
+        string? provider,
+        string? operation,
+        string? outcome)
+    {
+        if (byteCount < 0)
+        {
+            return;
+        }
+
+        _storageQuotaBytes.Record(byteCount,
+            new KeyValuePair<string, object?>("provider", NormalizeStorageProvider(provider)),
+            new KeyValuePair<string, object?>("operation", NormalizeStorageOperation(operation)),
+            new KeyValuePair<string, object?>("outcome", NormalizeStorageOutcome(outcome)));
+    }
+
+    public void RecordStorageProviderTest(string? provider, string? outcome, string? failureCategory = null)
+    {
+        _storageProviderTests.Add(1,
+            new KeyValuePair<string, object?>("provider", NormalizeStorageProvider(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeStorageOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeStorageFailureCategory(failureCategory)));
+    }
+
     private static string NormalizeTag(string? value)
     {
         return string.IsNullOrWhiteSpace(value)
             ? "unknown"
             : value.Trim().ToLowerInvariant();
+    }
+
+    private static string NormalizeStorageProvider(string? provider)
+    {
+        return NormalizeTag(provider) switch
+        {
+            StorageProviders.Local => StorageProviders.Local,
+            StorageProviders.S3Compatible => StorageProviders.S3Compatible,
+            StorageProviders.LegacyExternal => StorageProviders.LegacyExternal,
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeStorageOperation(string? operation)
+    {
+        return NormalizeTag(operation) switch
+        {
+            "create" => "create",
+            "finalize" => "finalize",
+            "cancel" => "cancel",
+            "read" => "read",
+            "delete" => "delete",
+            "reserve" => "reserve",
+            "release" => "release",
+            "commit" => "commit",
+            "test" => "test",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeStorageOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "succeeded" => "succeeded",
+            "failed" => "failed",
+            "idempotent" => "idempotent",
+            "skipped" => "skipped",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeStorageVisibility(string? visibility)
+    {
+        return NormalizeTag(visibility) switch
+        {
+            StorageObjectVisibilities.PublicImage => StorageObjectVisibilities.PublicImage,
+            StorageObjectVisibilities.AuthenticatedTenant => StorageObjectVisibilities.AuthenticatedTenant,
+            StorageObjectVisibilities.PrivateOwner => StorageObjectVisibilities.PrivateOwner,
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeStorageFailureCategory(string? failureCategory)
+    {
+        if (string.IsNullOrWhiteSpace(failureCategory))
+        {
+            return "none";
+        }
+
+        return NormalizeTag(failureCategory) switch
+        {
+            "none" => "none",
+            "validation_failed" => "validation_failed",
+            "metadata_not_found" => "metadata_not_found",
+            "object_not_found" => "object_not_found",
+            "missing_object_key" => "missing_object_key",
+            "access_denied" => "access_denied",
+            "provider_resolution_failed" => "provider_resolution_failed",
+            "provider_unavailable" => "provider_unavailable",
+            "delete_failed" => "delete_failed",
+            "local_storage_unavailable" => "local_storage_unavailable",
+            "s3_not_configured" => "s3_not_configured",
+            "s3_unavailable" => "s3_unavailable",
+            FailureCodes.QuotaExceeded => FailureCodes.QuotaExceeded,
+            FailureCodes.StorageUploadTooLarge => FailureCodes.StorageUploadTooLarge,
+            FailureCodes.StorageUploadSessionNotFound => FailureCodes.StorageUploadSessionNotFound,
+            FailureCodes.StorageUploadSessionFinalized => FailureCodes.StorageUploadSessionFinalized,
+            FailureCodes.StorageUploadSessionExpired => FailureCodes.StorageUploadSessionExpired,
+            FailureCodes.StorageUploadSessionInvalidState => FailureCodes.StorageUploadSessionInvalidState,
+            FailureCodes.StorageUploadSizeMismatch => FailureCodes.StorageUploadSizeMismatch,
+            FailureCodes.StorageUploadContentTypeMismatch => FailureCodes.StorageUploadContentTypeMismatch,
+            FailureCodes.StorageUploadWriteFailed => FailureCodes.StorageUploadWriteFailed,
+            _ => "unknown"
+        };
     }
 }

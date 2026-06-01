@@ -7,6 +7,7 @@ using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.StorageObject.Validators;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using FluentValidation;
@@ -25,6 +26,7 @@ public class CreateStorageUploadSessionCommandHandler
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly BusinessMetrics _metrics;
 
     public CreateStorageUploadSessionCommandHandler(
         IStoragePolicyResolver storagePolicyResolver,
@@ -32,7 +34,8 @@ public class CreateStorageUploadSessionCommandHandler
         IStorageUsageCounterRepository usageCounterRepository,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        BusinessMetrics metrics)
     {
         _storagePolicyResolver = storagePolicyResolver;
         _uploadSessionRepository = uploadSessionRepository;
@@ -40,6 +43,7 @@ public class CreateStorageUploadSessionCommandHandler
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
+        _metrics = metrics;
     }
 
     public async Task<BaseCommandResponse<StorageUploadSessionDto>> Handle(
@@ -51,6 +55,8 @@ public class CreateStorageUploadSessionCommandHandler
 
         if (!validationResult.IsValid)
         {
+            _metrics.RecordStorageUploadSession(null, "create", "failed", "validation_failed");
+
             return Failure(
                 "Upload session reservation failed.",
                 validationResult.Errors.Select(error => error.ErrorMessage));
@@ -61,6 +67,12 @@ public class CreateStorageUploadSessionCommandHandler
 
         if (request.UploadSessionDto.ExpectedSizeBytes > policy.MaxUploadBytes)
         {
+            _metrics.RecordStorageUploadSession(
+                policy.Provider,
+                "create",
+                "failed",
+                FailureCodes.StorageUploadTooLarge);
+
             return Failure(
                 "Upload exceeds the configured per-file limit.",
                 [
@@ -69,9 +81,38 @@ public class CreateStorageUploadSessionCommandHandler
                 FailureCodes.StorageUploadTooLarge);
         }
 
-        return await _unitOfWork.ExecuteInTransactionAsync(
+        var response = await _unitOfWork.ExecuteInTransactionAsync(
             async ct => await ReserveSessionAsync(request.UploadSessionDto, tenantId, policy, ct),
             cancellationToken);
+
+        RecordCreateMetrics(response, policy.Provider, request.UploadSessionDto.ExpectedSizeBytes);
+
+        return response;
+    }
+
+    private void RecordCreateMetrics(
+        BaseCommandResponse<StorageUploadSessionDto> response,
+        string provider,
+        long expectedSizeBytes)
+    {
+        var idempotentReplay = IsIdempotentReplay(response);
+        var outcome = response.Success
+            ? (idempotentReplay ? "idempotent" : "succeeded")
+            : "failed";
+
+        _metrics.RecordStorageUploadSession(provider, "create", outcome, response.FailureCode);
+
+        if (response.Success && !idempotentReplay)
+        {
+            _metrics.RecordStorageQuotaReservation(provider, "reserve", "succeeded");
+            _metrics.RecordStorageQuotaBytes(expectedSizeBytes, provider, "reserve", "succeeded");
+            return;
+        }
+
+        if (!response.Success && response.FailureCode == FailureCodes.QuotaExceeded)
+        {
+            _metrics.RecordStorageQuotaReservation(provider, "reserve", "failed", response.FailureCode);
+        }
     }
 
     private async Task<BaseCommandResponse<StorageUploadSessionDto>> ReserveSessionAsync(
@@ -205,6 +246,9 @@ public class CreateStorageUploadSessionCommandHandler
 
     private static string? NormalizeOptional(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool IsIdempotentReplay(BaseCommandResponse<StorageUploadSessionDto> response)
+        => response.Message?.Contains("already exists", StringComparison.OrdinalIgnoreCase) == true;
 
     private static string ResolveSafeDisplayName(CreateStorageUploadSessionDto dto)
         => NormalizeOptional(dto.SafeDisplayName)

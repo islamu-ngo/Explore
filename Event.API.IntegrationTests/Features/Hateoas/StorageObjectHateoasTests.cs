@@ -1,3 +1,6 @@
+// ABOUTME: HATEOAS contract tests for storage object metadata collection and detail endpoints.
+// ABOUTME: Verifies storage UI affordances are exposed through HAL links instead of client-side role checks.
+
 using System.Net;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
@@ -24,62 +27,49 @@ public class StorageObjectHateoasTests
     [Test]
     public async Task GetAll_ShouldIncludeHalStructure()
     {
-        // Act
         var response = await _fixture.Client.GetAsync(BaseUrl);
 
-        // Assert
-        if (response.StatusCode != HttpStatusCode.OK)
-            return; // Endpoint requires authentication
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var content = await response.Content.ReadAsStringAsync();
         var json = JsonDocument.Parse(content);
 
-        // Controller may not yet be converted to HATEOAS
-        if (!json.RootElement.TryGetProperty("_links", out _))
-            return;
+        await Assert.That(json.RootElement.TryGetProperty("_links", out _)).IsTrue();
+        await Assert.That(json.RootElement.TryGetProperty("_embedded", out var embedded)).IsTrue();
+        await Assert.That(embedded.TryGetProperty("items", out _)).IsTrue();
     }
 
     [Test]
     public async Task GetAll_ShouldIncludeSelfLink()
     {
-        // Act
         var response = await _fixture.Client.GetAsync(BaseUrl);
 
-        // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var content = await response.Content.ReadAsStringAsync();
         var json = JsonDocument.Parse(content);
 
-        if (json.RootElement.TryGetProperty("_links", out var links))
-        {
-            await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
-            var href = selfLink.GetProperty("href").GetString();
-            await Assert.That(href).Contains("/api/storageobject");
-        }
+        await Assert.That(json.RootElement.TryGetProperty("_links", out var links)).IsTrue();
+        await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
+        var href = selfLink.GetProperty("href").GetString();
+        await Assert.That(href).Contains("/api/storageobject");
     }
 
     [Test]
     public async Task GetAll_WithoutAuth_ShouldNotIncludeCreateLink()
     {
-        // Arrange - No authentication
         var request = new HttpRequestMessage(HttpMethod.Get, BaseUrl);
 
-        // Act
         var response = await _fixture.Client.SendAsync(request);
 
-        // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var content = await response.Content.ReadAsStringAsync();
         var json = JsonDocument.Parse(content);
 
-        if (json.RootElement.TryGetProperty("_links", out var links))
-        {
-            // Create (upload) link requires authentication
-            var hasCreateLink = links.TryGetProperty("create", out _);
-            await Assert.That(hasCreateLink).IsFalse();
-        }
+        await Assert.That(json.RootElement.TryGetProperty("_links", out var links)).IsTrue();
+        await Assert.That(links.TryGetProperty("create", out _)).IsFalse();
+        await Assert.That(links.TryGetProperty("create-upload-session", out _)).IsFalse();
     }
 
     [Test]

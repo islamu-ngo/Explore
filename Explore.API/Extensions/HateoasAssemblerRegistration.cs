@@ -34,6 +34,7 @@ using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Notification;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
@@ -183,6 +184,14 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<StorageObjectDto>, StorageObjectDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<StorageObjectListDto>, StorageObjectCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<StorageObjectDto, StorageObjectListDto>, StorageObjectResourceAssembler>();
+
+        // Storage administration
+        services.AddScoped<ILinkPolicy<InstanceStorageSettingsDto>, InstanceStorageSettingsLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<InstanceStorageSettingsDto>, InstanceStorageSettingsCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto>, InstanceStorageSettingsResourceAssembler>();
+        services.AddScoped<ILinkPolicy<TenantStorageSettingsDto>, TenantStorageSettingsLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<TenantStorageSettingsDto>, TenantStorageSettingsCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<TenantStorageSettingsDto, TenantStorageSettingsDto>, TenantStorageSettingsResourceAssembler>();
 
         // OrganizationReview (same DTO for detail and list)
         services.AddScoped<ILinkPolicy<OrganizationReviewDto>, OrganizationReviewDetailLinkPolicy>();

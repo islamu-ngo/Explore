@@ -3,13 +3,13 @@
 
 # Local-First File Storage - Implementation Plan
 
-Last Updated: 2026-05-30 Europe/Brussels
+Last Updated: 2026-05-31 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Request:** Make server-local file storage the default backend while keeping S3-compatible object storage optional. Instance and tenant admins need controls for provider choice, upload limits, quotas, usage, health, and operator actions.
 - **Task directory:** `dev/active/local-first-file-storage/`
-- **Planning status:** PR 1 foundation, PR 2 provider/policy foundations, PR 3.1 Application upload-session commands, PR 3.2 API upload-session endpoints, PR 3.3 metadata-driven download/public image handlers, PR 3.4 arbitrary-key route removal, PR 3.5 BFF upload-session/proxy refactor, PR 3.6 OpenAPI/generated-client regeneration, and PR 4.1 instance storage admin CQRS/API are implemented after user approval - do not implement remaining work as one mega-PR.
+- **Planning status:** PR 1 foundation, PR 2 provider/policy foundations, PR 3.1 Application upload-session commands, PR 3.2 API upload-session endpoints, PR 3.3 metadata-driven download/public image handlers, PR 3.4 arbitrary-key route removal, PR 3.5 BFF upload-session/proxy refactor, PR 3.6 OpenAPI/generated-client regeneration, PR 4.1 instance storage admin CQRS/API, PR 4.2 tenant storage admin CQRS/API, PR 4.3 storage readiness health checks, and PR 4.4 storage metrics are implemented after user approval - do not implement remaining work as one mega-PR.
 - **Senior CTO decision:** Split before approval. The direction is right, but storage provider selection, persistence/quota integrity, API contract changes, BFF upload security, Blazor admin UX, and operations docs must be delivered in separate reviewable slices.
 - **Matched intents:** No exact intent exists for cross-layer storage-provider architecture. Fallback Contract applies. Closest intents: `add-cqrs-handler`, `add-write-endpoint`, `add-get-endpoint`, `add-ef-migration`, `openapi-contract-change`, `add-hal-link`, `blazor-component-affordance`.
 - **Relevant skills loaded:** `senior-cto-feedback`, `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, `design-system`, `accessibility`, `error-tracking`, `aspire`, `outbox-pattern`.
@@ -17,7 +17,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 - **Primary layers touched:** Domain, Application, Persistence, Infrastructure, API, Blazor BFF, Blazor Client, Docs, Docker Compose, Aspire.
 - **Estimated complexity:** XL. The safe path is a sequence of small PRs, not one cross-layer feature branch.
 - **Baseline verification:** `dotnet build --configuration Release --verbosity quiet` passed on 2026-05-29 with existing package/deprecation warnings.
-- **Latest verification:** `Explore.Application`, `Explore.Persistence`, and `Explore.API` Release builds passed on 2026-05-30 after PR 4.1. Focused TUnit controller tests for instance storage provider test/recalculate admin gating passed individually with `--treenode-filter`. User reported OpenAPI schema and NSwag client regeneration before PR 4.1; regenerate again after Phase 4 admin API contract stabilization. Full Architecture, root Release build, and `Explore.Blazor.Client.Tests` remain blocked by unrelated active-worktree failures documented in context until rechecked.
+- **Latest verification:** `Explore.Application`, `Event.Application.UnitTests`, and `Explore.API` Release builds passed on 2026-05-31 after PR 4.4 with existing warnings. Focused storage metrics, upload-session, and storage content-reader TUnit tests passed individually with `--treenode-filter`. Context7 .NET docs were used for current `System.Diagnostics.Metrics`/OpenTelemetry instrumentation guidance. User reported OpenAPI schema and NSwag client regeneration after PR 4.2; PR 4.3 and PR 4.4 did not add OpenAPI-described controller contracts. Full Architecture was rerun and remains blocked by unrelated active-worktree failures documented in context. Root Release build and `Explore.Blazor.Client.Tests` remain blocked by unrelated active-worktree failures until rechecked.
 
 ### Contribution Contract Answers
 
@@ -219,7 +219,7 @@ Browser selects file
 
 - **Goal:** Replace S3-first upload/read semantics with session-based, provider-neutral endpoints.
 - **Relevant files:** `StorageObjectController.cs`, `RouteNames.cs`, storage CQRS commands/queries/validators, BFF storage endpoints/session store, OpenAPI/client.
-- **Progress:** Phase 3.1 Application upload-session commands/validators, Phase 3.2 API upload-session/create/upload/cancel endpoints, Phase 3.3 download/public image refactor, Phase 3.4 arbitrary-key route removal, and Phase 3.5 BFF upload-session/proxy refactor are implemented. OpenAPI/client regeneration is not yet implemented.
+- **Progress:** Phase 3.1 Application upload-session commands/validators, Phase 3.2 API upload-session/create/upload/cancel endpoints, Phase 3.3 download/public image refactor, Phase 3.4 arbitrary-key route removal, Phase 3.5 BFF upload-session/proxy refactor, and Phase 3.6 OpenAPI/client regeneration are implemented.
 - **Acceptance criteria:**
   - Upload session endpoint validates auth, tenant, content type, expected size, quota, idempotency, and expiry.
   - Multipart upload path streams bytes and does not read generic files fully into memory.
@@ -238,6 +238,7 @@ Browser selects file
   - Secret-bearing S3 fields are write-only/redacted on reads.
   - Health checks distinguish local selected, S3 selected, S3 disabled, root unwritable, quota reservation failure.
   - HAL/status links expose test/recalculate/save/delete affordances.
+- **Progress:** Phase 4.1 instance storage admin CQRS/API, Phase 4.2 tenant storage admin CQRS/API, Phase 4.2 OpenAPI/generated-client refresh, Phase 4.3 storage readiness health checks, and Phase 4.4 storage metrics are implemented. HAL policies remain.
 - **Validation:** API auth/authorization tests, HAL tests, health tests, metrics tags review.
 
 ### PR 5 - Blazor BFF And Client UX
@@ -336,7 +337,7 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
   - quota rejections,
   - reservations expired,
   - provider tests.
-- Safe tags: `tenant_id`, `provider`, `outcome`, `failure_category`, maybe `visibility`; no IDs, filenames, paths, raw keys, endpoints, subjects, or exception text.
+- Safe storage metric tags: `provider`, `operation`, `outcome`, `failure_category`, and `visibility` where relevant; no tenant IDs, user IDs, object IDs, upload session IDs, filenames, paths, raw keys, endpoints, subjects, secrets, or exception text.
 - Logs: correlation ID, tenant ID, provider, operation, bounded failure code, status. No secrets or paths.
 - Admin status: used bytes, reserved bytes, quota, effective max upload, selected provider, provider health, local free bytes best effort, last reconciliation.
 

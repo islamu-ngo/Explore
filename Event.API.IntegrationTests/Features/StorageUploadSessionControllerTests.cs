@@ -9,6 +9,7 @@ using System.Text.Json;
 using Explore.API.Controllers;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
@@ -210,7 +211,10 @@ public sealed class StorageUploadSessionControllerTests
         httpContext.Request.ContentType = contentType;
         httpContext.Request.ContentLength = contentLength;
 
-        return new StorageObjectController(_mediator, _tenantContext)
+        return new StorageObjectController(
+            _mediator,
+            _tenantContext,
+            Substitute.For<IResourceAssembler<StorageObjectDto, StorageObjectListDto>>())
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };

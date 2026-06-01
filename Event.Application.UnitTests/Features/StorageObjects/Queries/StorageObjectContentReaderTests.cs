@@ -1,17 +1,19 @@
 // ABOUTME: Unit tests for metadata-driven storage object content reads.
 // ABOUTME: Verifies visibility gates and provider-neutral stream opening without caller-supplied keys.
 
+using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Models.Storage;
 using Explore.Application.Services;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.StorageObjects.Queries;
 
-public sealed class StorageObjectContentReaderTests
+public sealed class StorageObjectContentReaderTests : IDisposable
 {
     private readonly Guid _storageObjectId = Guid.CreateVersion7();
     private readonly Guid _tenantId = Guid.CreateVersion7();
@@ -20,6 +22,7 @@ public sealed class StorageObjectContentReaderTests
     private readonly IFileStorageProviderResolver _providerResolver = Substitute.For<IFileStorageProviderResolver>();
     private readonly IFileStorageProvider _provider = Substitute.For<IFileStorageProvider>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
+    private readonly BusinessMetrics _metrics = CreateMetrics();
 
     public StorageObjectContentReaderTests()
     {
@@ -30,6 +33,11 @@ public sealed class StorageObjectContentReaderTests
                 "image/png",
                 3,
                 DateTimeOffset.UtcNow));
+    }
+
+    public void Dispose()
+    {
+        _metrics.Dispose();
     }
 
     [Test]
@@ -88,7 +96,8 @@ public sealed class StorageObjectContentReaderTests
             _storageObjectRepository,
             _providerResolver,
             _currentUserService,
-            NullLogger<StorageObjectContentReader>.Instance);
+            NullLogger<StorageObjectContentReader>.Instance,
+            _metrics);
 
     private StorageObject CreateStorageObject(string visibility, Guid? createdBy)
         => new()
@@ -112,4 +121,11 @@ public sealed class StorageObjectContentReaderTests
             LifecycleState = StorageObjectLifecycleStates.Active,
             CreatedBy = createdBy
         };
+
+    private static BusinessMetrics CreateMetrics()
+    {
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+        return new BusinessMetrics(meterFactory);
+    }
 }

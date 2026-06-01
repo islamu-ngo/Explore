@@ -3,7 +3,7 @@
 
 # Local-First File Storage - Context
 
-Last Updated: 2026-05-30 Europe/Brussels
+Last Updated: 2026-05-31 Europe/Brussels
 
 ## SESSION PROGRESS (2026-05-29 Europe/Brussels)
 
@@ -99,16 +99,40 @@ Last Updated: 2026-05-30 Europe/Brussels
   - `IStorageObjectRepository` and `IStorageUsageCounterRepository` gained entity-returning instance-admin report methods that intentionally bypass tenant filters with the auditable `InstanceStorageAdministration` reason;
   - `InstanceSettingsController` now exposes provider-neutral `POST /api/instance/settings/storage/test` and new `POST /api/instance/settings/storage/usage/recalculate` endpoints through MediatR, with instance-admin/setup-secret gating kept at the existing controller boundary;
   - `docs/STORAGE.md` and `docs/API_CHANGELOG.md` were updated for the provider-neutral admin contract.
+- Implemented PR 4.2 tenant storage admin CQRS/API:
+  - added `TenantStorageSettingsDto` with effective policy, usage, read-only/delegation state, provider-neutral upload/quota values, and redacted optional S3 override fields;
+  - added `TenantStorageSettingService` behind `ITenantStorageSettingService` to read effective current-tenant policy through `IStoragePolicyResolver`, resolve tenant or instance S3 settings depending on delegation lock state, map provider usage counters, and write tenant-scope overrides through `IHierarchicalSettingsResolver`;
+  - added MediatR query/command handlers for `GET/PUT /api/tenant/settings/storage`, with tenant context binding, tenant-admin/instance-admin authorization checks, manual `TenantStorageSettingsDtoValidator` instantiation, lock/read-only rejection before persistence, instance max-upload ceiling enforcement, allowed provider enforcement, transactional writes, and tenant-scoped settings/S3 cache invalidation;
+  - added `TenantStorageSettingsController` using ASP.NET Core attribute routing, `[ApiController]`, `[Authorize]`, explicit response metadata, and `BaseCommandResponse<Guid>` result mapping;
+  - added focused API integration tests for locked tenants, upload ceiling validation, cross-tenant admin denial, CQRS dispatch, success response mapping, policy failure `400`, and admin failure `403`;
+  - updated storage and API changelog docs for tenant storage administration behavior.
+- User reported OpenAPI schema and generated API client were regenerated after the Phase 4.2 tenant storage API contract changes.
+- Implemented PR 4.3 storage readiness health checks:
+  - added `StorageReadinessHealthCheck` to resolve instance storage policy through `IStoragePolicyResolver`, select the configured `IFileStorageProvider`, call the provider-neutral `TestAsync` probe, and map availability into ASP.NET Core `HealthCheckResult`;
+  - registered the check in `Explore.API/Program.cs` as `storage` with `ready`, `storage`, and `infrastructure` tags, so `/health` includes storage while `/alive` remains liveness-only;
+  - local-first readiness validates only the selected local provider and does not require S3 configuration;
+  - S3-compatible readiness is unhealthy only when the selected provider is `s3_compatible` and the provider reports missing or unreachable configuration;
+  - readiness data is bounded to provider/status/support/failure-code fields and intentionally excludes paths, endpoints, bucket names, object keys, access keys, and secrets;
+  - added focused API integration health-check tests for local healthy, selected S3 unavailable, local root unavailable, and provider-resolution failure cases;
+  - updated operations, storage, and API changelog docs.
+- Implemented PR 4.4 storage metrics:
+  - extended `BusinessMetrics` under the existing `Explore.Business` OpenTelemetry meter with provider-neutral storage upload-session, upload-byte, read, read-byte, delete, quota reservation/byte, and provider-test instruments;
+  - kept storage metric tags bounded to provider, operation, outcome, failure category, and visibility, with explicit normalization and no tenant IDs, user IDs, object IDs, upload session IDs, object keys, paths, filenames, endpoints, buckets, access keys, secrets, raw exception text, or provider response bodies;
+  - instrumented Application boundary flows after validation, transaction, provider IO, and provider-test outcomes in upload create/cancel/finalize handlers, metadata-backed content reads, storage deletes, and admin provider tests;
+  - aligned delete behavior with the existing handler contract by resolving the provider and deleting the backing blob before metadata deletion, while recording bounded delete failures;
+  - made already-finalized upload finalization return idempotently before provider writes, avoiding duplicate provider writes during retry/replay;
+  - added `BusinessMetricsStorageTests` and updated existing storage command/content-reader unit tests for the new `BusinessMetrics` dependency;
+  - updated storage and operations docs with the storage metric family and tag safety policy.
 
 ### IN PROGRESS
 
-- PR 4.2 tenant storage admin CQRS/API is next.
+- PR 4.5 HAL policies for storage/admin affordances are next.
 
 ### NEXT
 
-1. Continue with PR 4.2 tenant storage admin CQRS/API.
+1. Continue with PR 4.5 HAL policies for storage/admin affordances.
 2. Re-read target source files before editing because this repo has an active dirty worktree.
-3. Regenerate OpenAPI/schema client again after the Phase 4 admin API surface stabilizes; PR 3.6 was completed before these new admin endpoints.
+3. Phase 4.4 did not add an OpenAPI-described controller contract; regenerate OpenAPI/client again after future controller/HAL API contract changes.
 4. Resolve or work around unrelated generated-client test compile errors before running the Blazor client test project.
 5. After each slice, update plan/context/tasks before reporting completion.
 
@@ -121,21 +145,24 @@ Last Updated: 2026-05-30 Europe/Brussels
 - Full API integration suite is currently not a clean PR 3.3 signal because real-Postgres lanes fail on pending EF model changes/migration drift in the active worktree and one authorization matrix path returned `504 GatewayTimeout`. Focused storage API tests and anonymous-protected smoke passed after rebuilding the test host.
 - Focused PR 3.4 storage route tests passed after removing arbitrary-key API routes; full API integration suite was not rerun because the broader suite remains noisy for the unrelated reasons above.
 - Full Architecture tests are currently blocked by unrelated active-worktree issues:
-  - `AuthorizationParityTests.AllLinkPoliciesHaveExplicitPermissionActions` reports multiline `RequirePermission(...)` calls in `ActorLinkPolicy.cs` and `EventLinkPolicy.cs`.
-  - `CqrsPatternTests.Queries_ShouldResideIn_QueriesNamespace` reports a non-query `*Request` type from the active AI integration work (`AiChatRequest`) outside a Queries namespace.
+  - `BlazorClientArchitectureTests.Rule_1_07_Services_MustNotUse_IJSRuntime_OutsideInterop` reports `Explore.Blazor.Client/Services/NotificationRefreshStreamClient.cs`.
+  - `BlazorClientArchitectureTests.Rule_1_14_InterfaceFiles_MustNotDeclare_ModelTypes` reports notification interface files under `Explore.Blazor.Client/Contracts/Services/Notifications/`.
+  - `BlazorClientArchitectureTests.Rule_1_17_RawHttpJsonHelpers_MustStayIn_ApprovedBoundaries` reports `Explore.Blazor.Client/Services/ImageUploadClient.cs`.
+  - `AuthorizationParityTests.AllLinkPoliciesHaveExplicitPermissionActions` reports existing `RequirePermission(...)` calls in `ActorLinkPolicy.cs` and `EventLinkPolicy.cs`.
+  - `CqrsPatternTests.Queries_ShouldResideIn_QueriesNamespace` reports a non-query `*Request` type from active AI integration work outside a Queries namespace.
 - Full root Release build is currently blocked by unrelated active-worktree compile errors:
   - `Event.Application.UnitTests/Features/AiAssistant/Queries/GetAiAssistantBootstrapQueryHandlerTests.cs` references `SettingSource.System` and an old `ResolvedSetting` constructor.
   - `Explore.Blazor.Client.Tests/Services/CustomPropertyAdminServiceTests.cs` has generated-client anonymous type mismatches.
 - `Explore.Blazor.Client.Tests` project build is currently blocked by the same unrelated `CustomPropertyAdminServiceTests` generated-client anonymous type mismatches, so focused client service tests for the BFF upload client could not be executed through that test project in this slice.
 - `git diff --check` currently fails in unrelated generated client whitespace at `Explore.Blazor.Client/Clients/EventApiClient.g.cs` lines 5610, 6944, 7941, 8024, 8111, 8197, 37567, 37653, and 38734. That generated file was not part of the PR 3.5 BFF upload proxy changes.
-- OpenAPI schema/client were reported regenerated for PR 3.6, but Phase 4.1 changed the API contract again by adding provider-neutral admin fields and `storage/usage/recalculate`; regenerate again when Phase 4 API contract stabilizes.
+- OpenAPI schema/client were reported regenerated after PR 4.2. PR 4.3 only registered a health check and PR 4.4 only added metrics/instrumentation; neither added an OpenAPI-described controller contract.
 
 ## Quick Resume
 
 1. Read `dev/active/local-first-file-storage/local-first-file-storage-plan.md`.
 2. Read `dev/active/local-first-file-storage/local-first-file-storage-tasks.md`.
 3. Review the PR 1 files/migration if continuing the same slice.
-4. Continue with PR 4.2 tenant storage admin CQRS/API.
+4. Continue with PR 4.5 HAL policies for storage/admin affordances.
 5. Keep all three dev docs current after every meaningful implementation slice.
 
 ## Key Files And Responsibilities
@@ -239,6 +266,17 @@ Last Updated: 2026-05-30 Europe/Brussels
 - Architecture tests passed on 2026-05-29 after PR 3.1 upload-session commands:
   - `dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
   - Result: 180 passed, 1 existing skipped, 0 failed.
+- Phase 4.4 storage metrics verification passed on 2026-05-31:
+  - `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet`
+  - `dotnet build Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+  - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/*BusinessMetricsStorageTests*/*" --minimum-expected-tests 4 --no-progress --maximum-parallel-tests 1`
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/*StorageUploadSessionCommandHandlerTests*/*" --minimum-expected-tests 10 --no-progress --maximum-parallel-tests 1`
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --verbosity quiet -- --treenode-filter "/*/*/*StorageObjectContentReaderTests*/*" --minimum-expected-tests 3 --no-progress --maximum-parallel-tests 1`
+  - Result: metrics 4 passed, upload-session handlers 12 passed, content-reader 3 passed.
+- Full Architecture verification failed on 2026-05-31 due unrelated active-worktree issues:
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+  - Result: 175 passed, 5 failed, 1 skipped.
 - API project build passed on 2026-05-29 after PR 3.2 upload-session endpoints:
   - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`
   - Result: 0 errors with existing warnings.
@@ -288,11 +326,12 @@ Full implementation validation remains the plan section 7 command list.
 
 ## Current Known Risks / Unknowns
 
-- Public arbitrary-key endpoints are the highest-risk contract to carry forward.
-- Existing public storage list/detail endpoints may be wrong for generic private files.
-- Exact visibility/purpose/lifecycle enum names need implementation design in PR 1.
+- Storage/admin HAL affordance policies are implemented in the API layer, but Phase 4.5 is not fully validated until the API integration test project compiles again and focused HATEOAS/client affordance tests run.
+- Blazor client/admin dashboards are still not fully provider-neutral or policy-driven; Phase 5 remains required before claiming end-user local-first UX completion.
+- Existing public storage list/detail endpoints still need careful treatment before broad generic/private file workflows are exposed in UI.
 - Local filesystem capacity reporting in containers is best effort; docs must avoid over-promising per-tenant physical free space.
-- S3 secret ownership/redaction should align with the current `SECRETS.md` model before the admin read DTOs are finalized.
+- Quarantine/orphan reconciliation and destructive cleanup remain deferred to Phase 6.5.
+- Full Architecture/root/Blazor client verification is currently blocked by unrelated active-worktree drift documented above.
 
 ## Handoff Notes
 
@@ -306,3 +345,20 @@ Full implementation validation remains the plan section 7 command list.
 - **Documentation impact:** Runtime/operator docs (`docs/STORAGE.md`, `CONFIGURATION.md`, `SELF_HOSTING.md`, backup/restore, API changelog) still need updates when provider/API behavior changes in later PRs.
 - **Risks:** OpenAPI/NSwag generated client drift still blocks clean Blazor client test-project verification; PR 3.6 should regenerate and stabilize those artifacts.
 - **Notes for next contributor/agent:** Keep local filesystem first-class and provider-neutral. Provider implementations, policy resolver, Application upload-session commands, API upload/finalization endpoints, metadata-driven content reads, and arbitrary-key API removal now exist; remaining BFF/client flows must not use `IObjectStorageService` or caller-supplied object keys for local storage.
+
+### Handoff - 2026-05-31 Europe/Brussels
+
+- **Current state:** PR 4.4 storage metrics are implemented after the PR 4.1 instance admin API, PR 4.2 tenant admin API, PR 4.2 OpenAPI/client regeneration, and PR 4.3 storage readiness checks. Phase 4 now has HAL affordance policies remaining.
+- **Next action:** Start PR 4.5 by adding storage/admin HAL policies and tests so storage UI actions can be gated from `_links` instead of local roles/claims.
+- **Blockers:** Full Architecture currently fails five unrelated active-worktree checks in Blazor client, existing HATEOAS permission metadata, and active AI CQRS naming. Root Release build and Blazor client tests remain blocked by unrelated active-worktree drift until rechecked.
+- **Modified storage files:** `BusinessMetrics`, upload-session create/cancel/finalize handlers, delete handler, metadata-backed content reader, instance storage setting service, metrics-focused unit tests, storage command/content-reader test setup, storage/operations docs, and workstream docs.
+- **Validation:** `Event.Application.UnitTests` and `Explore.API` Release builds passed after the metrics/disposal changes. Focused `BusinessMetricsStorageTests`, `StorageUploadSessionCommandHandlerTests`, and `StorageObjectContentReaderTests` passed with TUnit `--treenode-filter`. Touched-file `git diff --check` and trailing-whitespace scans passed.
+- **Documentation impact:** `docs/OPERATIONS.md` now lists the storage metric family and safe tags; `docs/STORAGE.md` documents provider-neutral storage metrics and excluded sensitive/high-cardinality values. Dev plan/context/tasks mark Phase 4.4 complete and Phase 4.5 next.
+
+### Handoff - 2026-05-31 Europe/Brussels - Phase 4.5 HAL implementation
+
+- **Current state:** Storage/admin HAL affordance implementation is in place. Storage object list/detail endpoints now return HAL collection/detail resources. Active objects expose `content`, `public-image`, and `presigned-download` read links where applicable; create/upload-session/edit/delete affordances carry storage-object authorization metadata and are filtered server-side by the shared HATEOAS pipeline. Instance storage settings now have HAL wrappers with `edit`, `provider-test`, and `recalculate-usage` links; tenant storage settings now have HAL wrappers with `edit` suppressed when delegation is locked or settings are read-only.
+- **Modified storage files:** `Explore.API/Hateoas/Policies/StorageObjectLinkPolicy.cs`, `Explore.API/Hateoas/Policies/StorageAdminLinkPolicy.cs`, `Explore.API/Hateoas/Assemblers/StorageAdminResourceAssemblers.cs`, `Explore.API/Extensions/HateoasAssemblerRegistration.cs`, `StorageObjectController`, `InstanceSettingsController`, `TenantStorageSettingsController`, `ExploreJsonContext`, storage/admin HATEOAS/controller tests, `docs/STORAGE.md`, and workstream docs.
+- **Validation:** `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet` passed with 0 warnings/errors. `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet` passed with existing package warnings. Touched-file `git diff --check` and trailing-whitespace scans passed. `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` is blocked outside this slice by `Event.API.IntegrationTests/Fixtures/KeycloakTokenClient.cs` `CS1503` overload mismatches.
+- **Next action:** Once the unrelated Keycloak fixture compile drift is resolved, run focused storage/admin HATEOAS tests and then regenerate OpenAPI/NSwag client artifacts because storage object/admin GET response shapes now expose HAL resources.
+- **Documentation impact:** `docs/STORAGE.md` now documents storage object/admin HAL affordances and the rule that UI actions must be driven by `_links` plus status, while server authorization remains authoritative.

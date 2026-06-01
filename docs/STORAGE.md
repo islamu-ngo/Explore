@@ -6,8 +6,8 @@ ABOUTME: Separates implemented object flows from UI/client gaps so operators do 
 > **Audience:** Operators | Admins | Contributors
 > **Status:** Mixed
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-30
-> **Source Anchors:** `Explore.Infrastructure/Storage/`, `Explore.Infrastructure/Services/ObjectStorageService.cs`, `Explore.API/Controllers/StorageObjectController.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
+> **Last Verified:** 2026-05-31
+> **Source Anchors:** `Explore.Infrastructure/Storage/`, `Explore.Infrastructure/Services/ObjectStorageService.cs`, `Explore.API/Controllers/StorageObjectController.cs`, `Explore.API/Controllers/TenantStorageSettingsController.cs`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 Storage uses S3-compatible object storage for uploaded assets and metadata-backed `StorageObject` records for application discovery.
 
@@ -19,7 +19,7 @@ Storage uses S3-compatible object storage for uploaded assets and metadata-backe
 | Configuration resolution | `S3ConfigResolver` resolves tenant-aware settings from persisted settings first, then `IConfiguration`, with a five-minute cache. |
 | Public reads | `StorageObjectController` streams file content by `StorageObject.Id`; public images use the same metadata reader with public-image visibility checks. Caller-supplied object-key read and presign routes are removed. |
 | Authenticated writes | Upload URL generation requires authentication; `StorageObject` create/update/delete operations require authentication and `storage_object` resource authorization. |
-| Admin settings | Instance admins can read/update provider policy, quotas, max-upload ceilings, delegation lock, usage, and redacted optional S3 settings through instance settings endpoints. Provider test and usage recalculation actions are API-backed. |
+| Admin settings | Instance admins can read/update provider policy, quotas, max-upload ceilings, delegation lock, usage, and redacted optional S3 settings through instance settings endpoints. Provider test and usage recalculation actions are API-backed. Tenant admins can read effective tenant policy, usage, lock state, and redacted optional S3 overrides through tenant settings endpoints; writes are accepted only when instance delegation is unlocked and values stay within instance ceilings and allowed providers. |
 | Local self-hosting | Docker Compose can run MinIO through the optional `storage` profile. |
 
 The API delete endpoint exists, but `Explore.Blazor.Client/Services/ImageStorageService.cs` still returns `false` from `DeleteImageAsync`. Do not document a completed Blazor client delete flow until that helper is implemented.
@@ -61,8 +61,9 @@ Direct object-key read routes are not part of the local-first contract. The remo
 | Generate upload URL | Requires authentication. |
 | Create/update/delete storage object metadata | Requires authentication and `storage_object` resource authorization. |
 | Instance storage settings read/update/test/recalculate | Instance-admin/setup-secret boundaries are handled by instance settings endpoints. Read responses redact S3 secrets and expose configured flags instead. |
+| Tenant storage settings read/update | Requires tenant-admin or instance-admin authority for the current tenant. `GET/PUT /api/tenant/settings/storage` returns effective policy, read-only lock state, usage, and redacted optional S3 overrides; updates are rejected while delegation is locked or when max-upload/provider validation fails. |
 
-HATEOAS policies mark create/delete affordances as authenticated operations. Treat link presence as an authorization hint, not as a replacement for server-side enforcement.
+HAL links are the client source of truth for storage UI affordances. Storage object collection/detail responses expose public read links (`content`, `public-image`, `presigned-download`) only for active objects and expose mutation links (`create`, `create-upload-session`, `edit`, `delete`) through server-side authorization metadata. Instance storage settings expose `edit`, `provider-test`, and `recalculate-usage` affordances for authorized instance administrators. Tenant storage settings expose `edit` only when instance delegation allows tenant overrides and the effective policy is not read-only. Treat link presence as an authorization hint, not as a replacement for server-side enforcement.
 
 ## Backup And Restore Impact
 
@@ -82,10 +83,17 @@ See [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) for the full operatio
 | Upload URL generation fails | Confirm `S3Settings:*` or persisted S3 settings include endpoint, bucket, region, and credentials. |
 | Reads return missing-object behavior | Check whether `StorageObject` metadata points to an object key that exists in the bucket. |
 | Settings update appears ignored | Wait for the resolver cache window or trigger the settings path that invalidates `S3ConfigResolver`; cache invalidation is tenant-scoped when a tenant id is available. |
+| Tenant storage settings are read-only | Instance policy has locked tenant storage delegation through `governance.lock_tenant_storage`; an instance administrator must unlock delegation before tenant overrides can be saved. |
 | Local MinIO unavailable | Confirm Docker Compose was started with `--profile storage` and that bucket initialization completed. |
 | Tenant override confusion | Check `governance.lock_tenant_storage` and whether the runtime is single-tenant or multi-tenant. |
 
-The storage connection test resolves the currently selected `IFileStorageProvider` and returns a provider-neutral status snapshot. Local mode validates the deployment-managed data root; S3-compatible mode reports unavailable status when selected but incomplete or unreachable. Usage recalculation rebuilds used/quarantined object totals from metadata while preserving active reserved-byte counters.
+The `storage` readiness check and admin connection test both resolve the currently selected `IFileStorageProvider` and return provider-neutral status snapshots. Local mode validates the deployment-managed data root is writable without requiring S3. S3-compatible mode reports unavailable status only when selected and incomplete or unreachable. Readiness payloads expose bounded provider/status/failure-code fields, not filesystem paths, endpoints, bucket names, object keys, access keys, or secrets. Usage recalculation rebuilds used/quarantined object totals from metadata while preserving active reserved-byte counters.
+
+## Metrics
+
+Storage emits provider-neutral OpenTelemetry metrics through the `Explore.Business` meter. The current metric family covers upload-session create/finalize/cancel events, upload bytes, metadata-backed read outcomes and bytes, delete outcomes, quota reservation/release/commit events and bytes, and admin provider-test outcomes.
+
+All storage metric dimensions are bounded to provider, operation, outcome, failure category, and visibility where relevant. They intentionally do not include tenant IDs, user IDs, storage-object IDs, upload-session IDs, object keys, filesystem paths, filenames, endpoints, bucket names, access keys, secrets, raw exception text, or provider response bodies. Use admin APIs and logs for targeted object investigation instead of adding high-cardinality metric labels.
 
 ## Related Documentation
 

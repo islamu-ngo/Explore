@@ -230,6 +230,9 @@ public static class GovernanceSettingKeys
         public const string TimeoutSeconds = "ai_assistant.timeout_seconds";
         public const string RetentionDays = "ai_assistant.retention_days";
         public const string DailyMessageLimit = "ai_assistant.daily_message_limit";
+        public const string DailyTenantMessageLimit = "ai_assistant.daily_tenant_message_limit";
+        public const string ConcurrentRunLimit = "ai_assistant.concurrent_run_limit";
+        public const string SelectedReferenceLimit = "ai_assistant.selected_reference_limit";
         public const string ToolProposalsEnabled = "ai_assistant.tool_proposals_enabled";
         public const string StreamingEnabled = "ai_assistant.streaming_enabled";
         public const string AllowAnonymousAccess = "ai_assistant.allow_anonymous_access";

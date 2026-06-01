@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for local-first storage upload session command handlers.
 // ABOUTME: Verifies quota reservation, idempotency, validation, cancellation, and expiry behavior.
 
+using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.StorageObject;
@@ -8,12 +9,13 @@ using Explore.Application.Features.StorageObjects.Handlers.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.StorageObjects.Commands;
 
-public sealed class StorageUploadSessionCommandHandlerTests
+public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
 {
     private readonly Guid _tenantId = Guid.CreateVersion7();
     private readonly Guid _userId = Guid.CreateVersion7();
@@ -26,6 +28,7 @@ public sealed class StorageUploadSessionCommandHandlerTests
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly BusinessMetrics _metrics = CreateMetrics();
 
     public StorageUploadSessionCommandHandlerTests()
     {
@@ -41,6 +44,11 @@ public sealed class StorageUploadSessionCommandHandlerTests
                 Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<StorageUploadSessionDto>>>>(),
                 Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<Func<CancellationToken, Task<BaseCommandResponse<StorageUploadSessionDto>>>>()(CancellationToken.None));
+    }
+
+    public void Dispose()
+    {
+        _metrics.Dispose();
     }
 
     [Test]
@@ -345,7 +353,8 @@ public sealed class StorageUploadSessionCommandHandlerTests
             _usageCounterRepository,
             _tenantContext,
             _currentUserService,
-            _unitOfWork);
+            _unitOfWork,
+            _metrics);
 
     private CancelStorageUploadSessionCommandHandler CreateCancelHandler()
         => new(
@@ -353,7 +362,8 @@ public sealed class StorageUploadSessionCommandHandlerTests
             _uploadSessionRepository,
             _usageCounterRepository,
             _tenantContext,
-            _unitOfWork);
+            _unitOfWork,
+            _metrics);
 
     private FinalizeStorageUploadSessionCommandHandler CreateFinalizeHandler()
         => new(
@@ -363,7 +373,8 @@ public sealed class StorageUploadSessionCommandHandlerTests
             _usageCounterRepository,
             _storageObjectRepository,
             _tenantContext,
-            _unitOfWork);
+            _unitOfWork,
+            _metrics);
 
     private static CreateStorageUploadSessionDto CreateUploadDto(
         long expectedSizeBytes = 10,
@@ -414,4 +425,11 @@ public sealed class StorageUploadSessionCommandHandlerTests
             ProviderSource: SettingSource.TenantOverride,
             MaxUploadSource: SettingSource.TenantOverride,
             QuotaSource: SettingSource.TenantOverride);
+
+    private static BusinessMetrics CreateMetrics()
+    {
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+        return new BusinessMetrics(meterFactory);
+    }
 }

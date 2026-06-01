@@ -29,6 +29,7 @@ public static class RateLimitingExtensions
     public const string WritePolicy = "Write";
     public const string SetupSecretPolicy = "SetupSecret";
     public const string AnalyticsRelayPolicy = "AnalyticsRelay";
+    public const string AiAssistantPolicy = "AiAssistant";
 
     public static IServiceCollection AddApiRateLimiting(
         this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
@@ -52,6 +53,8 @@ public static class RateLimitingExtensions
                 options.AddPolicy(SetupSecretPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(AnalyticsRelayPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AiAssistantPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
             });
 
@@ -77,6 +80,10 @@ public static class RateLimitingExtensions
         // Analytics relay limits
         var analyticsRelayPermitLimit = section.GetValue("AnalyticsRelay:PermitLimit", 120);
         var analyticsRelayWindowSeconds = section.GetValue("AnalyticsRelay:WindowSeconds", 60);
+
+        // AI assistant send limits
+        var aiAssistantPermitLimit = section.GetValue("AiAssistant:PermitLimit", 12);
+        var aiAssistantWindowSeconds = section.GetValue("AiAssistant:WindowSeconds", 60);
 
         // Setup-secret bootstrap limits
         var setupSecretPermitLimit = section.GetValue("SetupSecret:PermitLimit", 5);
@@ -200,6 +207,21 @@ public static class RateLimitingExtensions
                         AutoReplenishment = true
                     });
             });
+
+            options.AddPolicy(AiAssistantPolicy, httpContext =>
+            {
+                var userId = GetAuthenticatedPartitionKey(httpContext);
+
+                return RateLimitPartition.GetFixedWindowLimiter($"ai-assistant:{userId}", _ =>
+                    new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = aiAssistantPermitLimit,
+                        Window = TimeSpan.FromSeconds(aiAssistantWindowSeconds),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    });
+            });
         });
 
         return services;
@@ -248,6 +270,7 @@ public static class RateLimitingExtensions
             WritePolicy => writePermitLimit,
             SetupSecretPolicy => setupSecretPermitLimit,
             AnalyticsRelayPolicy => analyticsRelayPermitLimit,
+            AiAssistantPolicy => aiAssistantPermitLimit,
             _ => globalTokenLimit
         };
     }
@@ -271,6 +294,11 @@ public static class RateLimitingExtensions
         if (context.Request.Path.StartsWithSegments("/api/analytics", StringComparison.OrdinalIgnoreCase))
         {
             return AnalyticsRelayPolicy;
+        }
+
+        if (context.Request.Path.StartsWithSegments("/api/ai/assistant", StringComparison.OrdinalIgnoreCase))
+        {
+            return AiAssistantPolicy;
         }
 
         if (HttpMethods.IsPost(context.Request.Method)

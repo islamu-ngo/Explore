@@ -9,10 +9,12 @@ using Explore.API.Attributes;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.API.Models;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
 using MediatR;
@@ -28,15 +30,21 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class StorageObjectController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ITenantContext _tenantContext;
+    private readonly IResourceAssembler<StorageObjectDto, StorageObjectListDto> _resourceAssembler;
 
-    public StorageObjectController(IMediator mediator, ITenantContext tenantContext)
+    public StorageObjectController(
+        IMediator mediator,
+        ITenantContext tenantContext,
+        IResourceAssembler<StorageObjectDto, StorageObjectListDto> resourceAssembler)
     {
         _mediator = mediator;
         _tenantContext = tenantContext;
+        _resourceAssembler = resourceAssembler;
     }
 
     // GET: api/storageobject
@@ -45,10 +53,10 @@ public class StorageObjectController : ControllerBase
     [HttpGet(Name = RouteNames.GetStorageObjects)]
     [EndpointSummary("Get all Storage Objects")]
     [EndpointDescription("Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.")]
-    [ProducesResponseType(typeof(PaginatedResult<StorageObjectListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HalCollectionResource<StorageObjectListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [OutputCache(PolicyName = "ListData")]
-    public async Task<ActionResult<PaginatedResult<StorageObjectListDto>>> GetAll(
+    public async Task<ActionResult<HalCollectionResource<StorageObjectListDto>>> GetAll(
         [FromQuery] PaginationQueryRequest query,
         CancellationToken cancellationToken = default)
     {
@@ -57,7 +65,13 @@ public class StorageObjectController : ControllerBase
             PageNumber = query.PageNumber,
             PageSize = query.PageSize
         }, cancellationToken);
-        return Ok(storageObjects);
+        var halResource = await _resourceAssembler.ToCollectionResource(
+            storageObjects,
+            RouteNames.GetStorageObjects,
+            additionalRouteValues: null,
+            HttpContext);
+
+        return Ok(halResource);
     }
 
     // GET: api/storageobject/{id}
@@ -66,14 +80,19 @@ public class StorageObjectController : ControllerBase
     [HttpGet("{id:guid}", Name = RouteNames.GetStorageObjectById)]
     [EndpointSummary("Get Storage Object by ID")]
     [EndpointDescription("Retrieve details of a specific storage object")]
-    [ProducesResponseType(typeof(StorageObjectDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HalResource<StorageObjectDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
-    public async Task<ActionResult<StorageObjectDto>> GetById(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<HalResource<StorageObjectDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var storageObject = await _mediator.Send(new GetStorageObjectDetailsRequest { Id = id }, cancellationToken);
+        if (storageObject is null)
+        {
+            return NotFound();
+        }
 
-        return Ok(storageObject);
+        var halResource = await _resourceAssembler.ToResource(storageObject, HttpContext);
+        return Ok(halResource);
     }
 
     // GET: api/storageobject/{id}/content

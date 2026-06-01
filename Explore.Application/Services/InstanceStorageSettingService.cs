@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Models.Storage;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
 
@@ -19,19 +20,22 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
     private readonly IStorageUsageCounterRepository _usageCounterRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly BusinessMetrics _metrics;
 
     public InstanceStorageSettingService(
         ISystemSettingRepository systemSettingRepository,
         IStoragePolicyResolver storagePolicyResolver,
         IStorageUsageCounterRepository usageCounterRepository,
         IStorageObjectRepository storageObjectRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        BusinessMetrics metrics)
     {
         _systemSettingRepository = systemSettingRepository;
         _storagePolicyResolver = storagePolicyResolver;
         _usageCounterRepository = usageCounterRepository;
         _storageObjectRepository = storageObjectRepository;
         _unitOfWork = unitOfWork;
+        _metrics = metrics;
     }
 
     public async Task<InstanceStorageSettingsDto> ReadSettingsAsync(CancellationToken cancellationToken = default)
@@ -143,9 +147,23 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
 
     public async Task<InstanceStorageProviderStatusDto> TestProviderAsync(CancellationToken cancellationToken = default)
     {
-        var provider = await _storagePolicyResolver.ResolveProviderAsync(null, cancellationToken);
-        var status = await provider.TestAsync(cancellationToken);
-        return MapProviderStatus(status);
+        try
+        {
+            var provider = await _storagePolicyResolver.ResolveProviderAsync(null, cancellationToken);
+            var status = await provider.TestAsync(cancellationToken);
+
+            _metrics.RecordStorageProviderTest(
+                status.Provider,
+                status.IsAvailable ? "succeeded" : "failed",
+                status.FailureCode);
+
+            return MapProviderStatus(status);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            _metrics.RecordStorageProviderTest(null, "failed", "provider_resolution_failed");
+            throw;
+        }
     }
 
     public async Task<InstanceStorageUsageDto> RecalculateUsageAsync(CancellationToken cancellationToken = default)

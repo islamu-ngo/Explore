@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using MediatR;
 
@@ -19,19 +20,22 @@ public class CancelStorageUploadSessionCommandHandler
     private readonly IStorageUsageCounterRepository _usageCounterRepository;
     private readonly ITenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly BusinessMetrics _metrics;
 
     public CancelStorageUploadSessionCommandHandler(
         IStoragePolicyResolver storagePolicyResolver,
         IStorageUploadSessionRepository uploadSessionRepository,
         IStorageUsageCounterRepository usageCounterRepository,
         ITenantContext tenantContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        BusinessMetrics metrics)
     {
         _storagePolicyResolver = storagePolicyResolver;
         _uploadSessionRepository = uploadSessionRepository;
         _usageCounterRepository = usageCounterRepository;
         _tenantContext = tenantContext;
         _unitOfWork = unitOfWork;
+        _metrics = metrics;
     }
 
     public async Task<BaseCommandResponse<StorageUploadSessionDto>> Handle(
@@ -40,15 +44,37 @@ public class CancelStorageUploadSessionCommandHandler
     {
         if (request.UploadSessionId == Guid.Empty)
         {
+            _metrics.RecordStorageUploadSession(null, "cancel", "failed", "validation_failed");
+
             return Failure("Upload session cancellation failed.", ["UploadSessionId is required."]);
         }
 
         var tenantId = _tenantContext.TenantId;
         var policy = await _storagePolicyResolver.ResolveAsync(tenantId, cancellationToken);
 
-        return await _unitOfWork.ExecuteInTransactionAsync(
+        var response = await _unitOfWork.ExecuteInTransactionAsync(
             async ct => await CancelSessionAsync(request.UploadSessionId, tenantId, policy, ct),
             cancellationToken);
+
+        RecordCancelMetrics(response, policy.Provider);
+
+        return response;
+    }
+
+    private void RecordCancelMetrics(BaseCommandResponse<StorageUploadSessionDto> response, string fallbackProvider)
+    {
+        var provider = response.Id?.Provider ?? fallbackProvider;
+        var outcome = response.Success
+            ? (IsAlreadyClosed(response) ? "idempotent" : "succeeded")
+            : "failed";
+
+        _metrics.RecordStorageUploadSession(provider, "cancel", outcome, response.FailureCode);
+
+        if (response.Success && !IsAlreadyClosed(response) && response.Id is not null)
+        {
+            _metrics.RecordStorageQuotaReservation(provider, "release", "succeeded");
+            _metrics.RecordStorageQuotaBytes(response.Id.ReservedBytes, provider, "release", "succeeded");
+        }
     }
 
     private async Task<BaseCommandResponse<StorageUploadSessionDto>> CancelSessionAsync(
@@ -130,4 +156,7 @@ public class CancelStorageUploadSessionCommandHandler
             Errors = errors.ToList(),
             FailureCode = failureCode
         };
+
+    private static bool IsAlreadyClosed(BaseCommandResponse<StorageUploadSessionDto> response)
+        => response.Message?.Contains("already closed", StringComparison.OrdinalIgnoreCase) == true;
 }

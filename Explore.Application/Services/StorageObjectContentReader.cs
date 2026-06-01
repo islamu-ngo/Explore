@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Models.Storage;
+using Explore.Application.Telemetry;
 using Explore.Domain;
 using Microsoft.Extensions.Logging;
 
@@ -16,17 +17,20 @@ public sealed class StorageObjectContentReader : IStorageObjectContentReader
     private readonly IFileStorageProviderResolver _providerResolver;
     private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<StorageObjectContentReader> _logger;
+    private readonly BusinessMetrics _metrics;
 
     public StorageObjectContentReader(
         IStorageObjectRepository storageObjectRepository,
         IFileStorageProviderResolver providerResolver,
         ICurrentUserService currentUserService,
-        ILogger<StorageObjectContentReader> logger)
+        ILogger<StorageObjectContentReader> logger,
+        BusinessMetrics metrics)
     {
         _storageObjectRepository = storageObjectRepository;
         _providerResolver = providerResolver;
         _currentUserService = currentUserService;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task<StorageObjectContentResult?> OpenAsync(
@@ -36,23 +40,37 @@ public sealed class StorageObjectContentReader : IStorageObjectContentReader
     {
         if (storageObjectId == Guid.Empty)
         {
+            _metrics.RecordStorageRead(null, "failed", "validation_failed", null);
             return null;
         }
 
         var storageObject = await _storageObjectRepository.GetById(storageObjectId);
         if (storageObject is null)
         {
+            _metrics.RecordStorageRead(null, "failed", "metadata_not_found", null);
             return null;
         }
 
         if (!CanRead(storageObject, publicImagesOnly))
         {
+            _metrics.RecordStorageRead(
+                storageObject.Provider,
+                "failed",
+                "access_denied",
+                storageObject.Visibility);
+
             return null;
         }
 
         if (string.IsNullOrWhiteSpace(storageObject.ObjectKey))
         {
             _logger.LogWarning("Storage object {StorageObjectId} has no provider object key.", storageObjectId);
+            _metrics.RecordStorageRead(
+                storageObject.Provider,
+                "failed",
+                "missing_object_key",
+                storageObject.Visibility);
+
             return null;
         }
 
@@ -62,6 +80,17 @@ public sealed class StorageObjectContentReader : IStorageObjectContentReader
             var readResult = await provider.OpenReadAsync(
                 new FileStorageReadInput(storageObject.ObjectKey, storageObject.ContentType),
                 cancellationToken);
+
+            _metrics.RecordStorageRead(
+                storageObject.Provider,
+                "succeeded",
+                null,
+                storageObject.Visibility);
+            _metrics.RecordStorageReadBytes(
+                readResult.Length,
+                storageObject.Provider,
+                "succeeded",
+                storageObject.Visibility);
 
             return new StorageObjectContentResult(
                 readResult.Content,
@@ -73,11 +102,23 @@ public sealed class StorageObjectContentReader : IStorageObjectContentReader
         catch (FileNotFoundException ex)
         {
             _logger.LogWarning(ex, "Storage provider object was not found for storage object {StorageObjectId}.", storageObjectId);
+            _metrics.RecordStorageRead(
+                storageObject.Provider,
+                "failed",
+                "object_not_found",
+                storageObject.Visibility);
+
             return null;
         }
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Storage provider {Provider} is unavailable for storage object {StorageObjectId}.", storageObject.Provider, storageObjectId);
+            _metrics.RecordStorageRead(
+                storageObject.Provider,
+                "failed",
+                "provider_unavailable",
+                storageObject.Visibility);
+
             return null;
         }
     }

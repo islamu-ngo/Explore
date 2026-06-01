@@ -5,6 +5,7 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Analytics;
@@ -15,6 +16,7 @@ using Explore.Application.Features.Footer.Requests.Commands;
 using Explore.Application.Features.Footer.Requests.Queries;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -36,17 +38,20 @@ public class InstanceSettingsController : ExploreControllerBase
     private readonly IAdminContext _adminContext;
     private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly IDeploymentModeProvider _deploymentModeProvider;
+    private readonly IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto> _storageSettingsAssembler;
 
     public InstanceSettingsController(
         IMediator mediator,
         IAdminContext adminContext,
         ISetupSecretProvider setupSecretProvider,
-        IDeploymentModeProvider deploymentModeProvider)
+        IDeploymentModeProvider deploymentModeProvider,
+        IResourceAssembler<InstanceStorageSettingsDto, InstanceStorageSettingsDto> storageSettingsAssembler)
     {
         _mediator = mediator;
         _adminContext = adminContext;
         _setupSecretProvider = setupSecretProvider;
         _deploymentModeProvider = deploymentModeProvider;
+        _storageSettingsAssembler = storageSettingsAssembler;
     }
 
     // ── Governance Sub-Resource Endpoints ──────────────────────────────
@@ -296,13 +301,15 @@ public class InstanceSettingsController : ExploreControllerBase
     [HttpGet("storage", Name = RouteNames.GetInstanceStorageSettings)]
     [EndpointSummary("Get Instance Storage Settings")]
     [EndpointDescription("Returns provider policy, quotas, usage, health, and redacted optional S3 settings. Only instance admins can access.")]
-    [ProducesResponseType(typeof(InstanceStorageSettingsDto), StatusCodes.Status200OK)]
+    [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
+    [ProducesResponseType(typeof(HalResource<InstanceStorageSettingsDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<InstanceStorageSettingsDto>> GetStorageSettings(CancellationToken cancellationToken = default)
+    public async Task<ActionResult<HalResource<InstanceStorageSettingsDto>>> GetStorageSettings(CancellationToken cancellationToken = default)
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceStorageSettingsQuery(), cancellationToken);
-        return Ok(settings);
+        var halResource = await _storageSettingsAssembler.ToResource(settings, HttpContext);
+        return Ok(halResource);
     }
 
     [HttpPut("storage", Name = RouteNames.UpdateInstanceStorageSettings)]

@@ -3,14 +3,14 @@
 
 # Local-First File Storage - Task Checklist
 
-Last Updated: 2026-05-30 Europe/Brussels
+Last Updated: 2026-05-31 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** PR 4.1 instance storage admin CQRS/API implemented after PR 3 completed through OpenAPI/schema client regeneration.
-- **Completed:** 27/46 planning/review/implementation tasks.
-- **Current priority:** Continue PR 4 admin APIs, health, metrics, and HAL.
-- **Next recommended slice:** PR 4 / Phase 4.2 - add tenant storage admin CQRS/API.
+- **Overall status:** PR 4.5 storage/admin HAL affordance implementation is in place; full validation is blocked by unrelated API integration fixture compile drift.
+- **Completed:** 30/46 planning/review/implementation tasks.
+- **Current priority:** Finish PR 4.5 validation once `Event.API.IntegrationTests` compiles again.
+- **Next recommended slice:** Resolve or wait for the unrelated Keycloak fixture compile drift, then run focused storage/admin HATEOAS tests and continue to Phase 5 client affordance gating.
 
 ## Implementation Maintenance Rules
 
@@ -189,28 +189,28 @@ Last Updated: 2026-05-30 Europe/Brussels
   - **Validation:** `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet`; `dotnet build Explore.Persistence/Explore.Persistence.csproj --configuration Release --verbosity quiet`; `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`; focused TUnit controller tests for instance storage provider test/recalculate admin gating passed individually with `--treenode-filter`.
   - **Effort:** L
   - **Dependencies:** Phase 2
-- [ ] **4.2 Add tenant storage admin CQRS/API**
-  - **Files:** tenant settings features/controller/DTOs.
-  - **Acceptance:** Locked tenants are read-only; unlocked tenants can override only within ceilings and allowed providers.
-  - **Validation:** API tests for lock/ceiling/cross-tenant denial.
+- [x] **4.2 Add tenant storage admin CQRS/API**
+  - **Files:** `TenantStorageSettingsController`, tenant storage settings CQRS requests/handlers, `TenantStorageSettingsDto`, `TenantStorageSettingService`, DI registration, route names, docs, and focused API integration tests.
+  - **Acceptance:** Locked tenants are read-only; unlocked tenants can override only `local` or `s3_compatible` within the instance max-upload ceiling; S3 secrets are redacted on reads and preserved unless explicitly replaced.
+  - **Validation:** `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` passed with existing suite warnings; seven focused TUnit tests for lock, ceiling, cross-tenant denial, and controller result mapping passed individually with `--treenode-filter`.
   - **Effort:** L
   - **Dependencies:** 4.1
-- [ ] **4.3 Add storage health checks**
-  - **Files:** API/Infrastructure health checks and tests.
-  - **Acceptance:** Local default healthy without S3; S3 unhealthy only when selected and broken; root unwritable/disk-full signals are operator-visible.
-  - **Validation:** API health integration tests.
+- [x] **4.3 Add storage health checks**
+  - **Files:** `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.API/Program.cs`, API integration health tests, storage/operations docs.
+  - **Acceptance:** Local default is checked through the selected local provider without requiring S3; S3-compatible provider is only tested when instance policy selects it; local root unwritable/disk-full failures surface as bounded `local_storage_unavailable` readiness data without leaking paths or secrets.
+  - **Validation:** `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`; `dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`; four focused storage health TUnit tests passed individually with `--treenode-filter`.
   - **Effort:** M
   - **Dependencies:** 2.5
-- [ ] **4.4 Add storage metrics**
-  - **Files:** `BusinessMetrics`/storage metrics service and docs.
-  - **Acceptance:** Upload/read/delete/quota/reservation/provider-test metrics use bounded tags and no sensitive values.
-  - **Validation:** Unit tests or metrics inspection tests.
+- [x] **4.4 Add storage metrics**
+  - **Files:** `Explore.Application/Telemetry/BusinessMetrics.cs`, storage upload/cancel/finalize/delete handlers, `StorageObjectContentReader`, `InstanceStorageSettingService`, `Event.Application.UnitTests/Telemetry/BusinessMetricsStorageTests.cs`, storage command/content-reader tests, `docs/OPERATIONS.md`, `docs/STORAGE.md`.
+  - **Acceptance:** Upload-session, upload-byte, read, read-byte, delete, quota reservation/byte, and provider-test metrics use bounded provider/operation/outcome/failure-category/visibility tags. Metrics intentionally exclude tenant IDs, user IDs, object keys, storage object IDs, upload session IDs, filesystem paths, filenames, endpoints, buckets, access keys, secrets, raw exception text, and provider response bodies.
+  - **Validation:** `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet`; `dotnet build Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`; focused `BusinessMetricsStorageTests`; focused upload-session/content-reader tests; `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`.
   - **Effort:** M
   - **Dependencies:** 3.2
 - [ ] **4.5 Add HAL policies for storage/admin affordances**
-  - **Files:** API HATEOAS policies/assemblers and tests.
-  - **Acceptance:** UI action buttons can be gated by `_links`/status, not roles.
-  - **Validation:** HATEOAS tests and bUnit tests.
+  - **Files:** `StorageObjectLinkPolicy`, `StorageAdminLinkPolicy`, storage admin resource assemblers, HATEOAS assembler registration, storage object/admin controllers, JSON source generation context, storage/admin HATEOAS contract tests, focused controller tests, `docs/STORAGE.md`.
+  - **Acceptance:** Storage object collection/detail responses emit active-object read links and authorization-filtered create/upload-session/edit/delete links; instance storage settings emit edit/provider-test/recalculate affordances; tenant storage settings emit edit only when delegation is unlocked and effective settings are not read-only. UI action buttons can be gated by `_links`/status, not roles.
+  - **Validation:** `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet` passed; `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet` passed with existing package warnings; touched-file diff/trailing-whitespace checks passed. `Event.API.IntegrationTests` build is blocked outside this slice by `KeycloakTokenClient` `CS1503` overload mismatches, so focused HATEOAS tests and bUnit/client affordance tests remain pending.
   - **Effort:** M
   - **Dependencies:** 4.1, 4.2
 
@@ -290,7 +290,7 @@ Last Updated: 2026-05-30 Europe/Brussels
 
 - [ ] LSP diagnostics clean for modified files where available.
 - [ ] `dotnet build --configuration Release --verbosity quiet` passes.
-  - Latest attempt is blocked outside storage by unrelated notification test required-member compile errors and duplicate actor subscription persistence members in the active worktree.
+  - Not rerun for Phase 4.5; API integration test-project build is currently blocked outside storage by unrelated Keycloak fixture compile drift documented in context.
 - [x] `Event.Domain.UnitTests` passes.
 - [x] `Event.Application.UnitTests` passes.
 - [x] `Explore.Infrastructure.Tests` passes.
@@ -298,8 +298,10 @@ Last Updated: 2026-05-30 Europe/Brussels
 - [ ] `Event.API.IntegrationTests` passes.
 - [ ] `Explore.Blazor.IntegrationTests` passes.
 - [ ] `Explore.Blazor.Client.Tests` passes.
-- [x] `Event.Architecture.Tests` passes.
+- [ ] `Event.Architecture.Tests` passes.
+  - Latest Phase 4.4 attempt failed in unrelated active-worktree checks: Blazor client JS/runtime boundary, interface-file model declarations, raw HTTP JSON helper use, existing HATEOAS explicit-permission metadata, and the active AI CQRS namespace issue.
 - [ ] OpenAPI and generated client refreshed if API contracts changed.
+  - Needs regeneration after Phase 4.5 because storage object/admin GET response shapes now return HAL resources.
 - [x] Docs updated where behavior/config/operations/API changed.
 - [x] Dev docs refreshed with final state and remaining work.
 

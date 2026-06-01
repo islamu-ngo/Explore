@@ -1,0 +1,162 @@
+// ABOUTME: Link-policy contract tests for storage object and storage admin HAL affordances.
+// ABOUTME: Protects storage UI action gates from drifting away from server authorization metadata.
+
+using Explore.API.Hateoas;
+using Explore.API.Hateoas.Policies;
+using Explore.Application.Authorization;
+using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.StorageObject;
+using Explore.Application.DTOs.Tenant;
+using Explore.Application.Hateoas;
+using Explore.Domain;
+using TUnit.Assertions;
+using TUnit.Core;
+
+namespace Event.Api.IntegrationTests.Features.Hateoas;
+
+public sealed class StorageAdminHateoasTests
+{
+    [Test]
+    public async Task StorageObjectDetailLinks_ExposeContentAndPermissionBoundMutations()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var dto = CreateStorageObject(tenantId);
+        var policy = new StorageObjectDetailLinkPolicy();
+
+        var links = policy.GetLinks(dto, user: null).ToArray();
+
+        await Assert.That(links.Single(link => link.Rel == LinkRelations.Self).RouteName)
+            .IsEqualTo(RouteNames.GetStorageObjectById);
+        await Assert.That(links.Single(link => link.Rel == "content").RouteName)
+            .IsEqualTo(RouteNames.GetStorageObjectContent);
+        await Assert.That(links.Single(link => link.Rel == "public-image").RouteName)
+            .IsEqualTo(RouteNames.GetPublicStorageObjectImage);
+
+        var edit = links.Single(link => link.Rel == LinkRelations.Edit);
+        await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateStorageObject);
+        await Assert.That(edit.RequiresAuth).IsTrue();
+        await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.StorageObject);
+        await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.StorageObjects.Update);
+        await Assert.That(edit.PermissionResourceId).IsEqualTo(dto.Id.ToString());
+        await Assert.That(GetAttribute<string>(edit, "tenantId")).IsEqualTo(tenantId.ToString());
+
+        var delete = links.Single(link => link.Rel == LinkRelations.Delete);
+        await Assert.That(delete.RouteName).IsEqualTo(RouteNames.DeleteStorageObject);
+        await Assert.That(delete.RequiresAuth).IsTrue();
+        await Assert.That(delete.PermissionResourceKind).IsEqualTo(ResourceKinds.StorageObject);
+        await Assert.That(delete.PermissionAction).IsEqualTo(AuthorizationActions.StorageObjects.Delete);
+    }
+
+    [Test]
+    public async Task StorageObjectCollectionLinks_ExposeCreateAndUploadSessionAffordances()
+    {
+        var policy = new StorageObjectCollectionLinkPolicy();
+
+        var links = policy.GetCollectionLinks(user: null).ToArray();
+
+        var create = links.Single(link => link.Rel == LinkRelations.Create);
+        await Assert.That(create.RouteName).IsEqualTo(RouteNames.CreateStorageObject);
+        await Assert.That(create.RequiresAuth).IsTrue();
+        await Assert.That(create.PermissionResourceKind).IsEqualTo(ResourceKinds.StorageObject);
+        await Assert.That(create.PermissionAction).IsEqualTo(AuthorizationActions.StorageObjects.Create);
+
+        var uploadSession = links.Single(link => link.Rel == "create-upload-session");
+        await Assert.That(uploadSession.RouteName).IsEqualTo(RouteNames.CreateStorageUploadSession);
+        await Assert.That(uploadSession.RequiresAuth).IsTrue();
+        await Assert.That(uploadSession.PermissionResourceKind).IsEqualTo(ResourceKinds.StorageObject);
+        await Assert.That(uploadSession.PermissionAction).IsEqualTo(AuthorizationActions.StorageObjects.Create);
+    }
+
+    [Test]
+    public async Task InstanceStorageSettingsLinks_ExposeAdminActionPermissionMetadata()
+    {
+        var policy = new InstanceStorageSettingsLinkPolicy();
+
+        var links = policy.GetLinks(new InstanceStorageSettingsDto(), user: null).ToArray();
+
+        var self = links.Single(link => link.Rel == LinkRelations.Self);
+        await Assert.That(self.RouteName).IsEqualTo(RouteNames.GetInstanceStorageSettings);
+        await Assert.That(self.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
+        await Assert.That(self.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.View);
+
+        var edit = links.Single(link => link.Rel == LinkRelations.Edit);
+        await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateInstanceStorageSettings);
+        await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.InstanceSetting);
+        await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.Update);
+
+        var providerTest = links.Single(link => link.Rel == "provider-test");
+        await Assert.That(providerTest.RouteName).IsEqualTo(RouteNames.TestInstanceStorageConnection);
+        await Assert.That(providerTest.Method).IsEqualTo("POST");
+        await Assert.That(providerTest.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.Update);
+
+        var recalculate = links.Single(link => link.Rel == "recalculate-usage");
+        await Assert.That(recalculate.RouteName).IsEqualTo(RouteNames.RecalculateInstanceStorageUsage);
+        await Assert.That(recalculate.Method).IsEqualTo("POST");
+        await Assert.That(recalculate.PermissionAction).IsEqualTo(AuthorizationActions.InstanceSettings.Update);
+    }
+
+    [Test]
+    public async Task TenantStorageSettingsLinks_ExposeEditOnlyWhenDelegationAllowsOverrides()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var policy = new TenantStorageSettingsLinkPolicy();
+        var editable = new TenantStorageSettingsDto
+        {
+            TenantId = tenantId,
+            TenantOverridesAllowed = true,
+            TenantStorageLocked = false,
+            IsReadOnly = false
+        };
+        var locked = new TenantStorageSettingsDto
+        {
+            TenantId = tenantId,
+            TenantOverridesAllowed = false,
+            TenantStorageLocked = true,
+            IsReadOnly = true
+        };
+
+        var editableLinks = policy.GetLinks(editable, user: null).ToArray();
+        var lockedLinks = policy.GetLinks(locked, user: null).ToArray();
+
+        var edit = editableLinks.Single(link => link.Rel == LinkRelations.Edit);
+        await Assert.That(edit.RouteName).IsEqualTo(RouteNames.UpdateTenantStorageSettings);
+        await Assert.That(edit.PermissionResourceKind).IsEqualTo(ResourceKinds.TenantSetting);
+        await Assert.That(edit.PermissionAction).IsEqualTo(AuthorizationActions.TenantSettings.Update);
+        await Assert.That(edit.PermissionResourceId).IsEqualTo($"{tenantId}:storage");
+        await Assert.That(GetAttribute<string>(edit, "tenantId")).IsEqualTo(tenantId.ToString());
+        await Assert.That(GetAttribute<bool>(edit, "isLockedByInstance")).IsFalse();
+        await Assert.That(edit.PermissionScope!.TenantId).IsEqualTo(tenantId.ToString());
+
+        await Assert.That(lockedLinks.Any(link => link.Rel == LinkRelations.Edit)).IsFalse();
+        await Assert.That(lockedLinks.Single(link => link.Rel == LinkRelations.Self).PermissionAction)
+            .IsEqualTo(AuthorizationActions.TenantSettings.View);
+    }
+
+    private static StorageObjectDto CreateStorageObject(Guid tenantId) =>
+        new()
+        {
+            Id = Guid.CreateVersion7(),
+            FileTypeId = 1,
+            Uri = "/storage/test.png",
+            Provider = StorageProviders.Local,
+            FullName = "test.png",
+            SafeDisplayName = "test.png",
+            Extension = ".png",
+            Size = 1024,
+            Visibility = StorageObjectVisibilities.PublicImage,
+            Purpose = StorageObjectPurposes.EventImage,
+            LifecycleState = StorageObjectLifecycleStates.Active,
+            TenantId = tenantId
+        };
+
+    private static T? GetAttribute<T>(LinkDefinition link, string name)
+    {
+        if (link.PermissionResourceAttributes is null ||
+            !link.PermissionResourceAttributes.TryGetValue(name, out var value))
+        {
+            return default;
+        }
+
+        return value is T typed ? typed : default;
+    }
+}
