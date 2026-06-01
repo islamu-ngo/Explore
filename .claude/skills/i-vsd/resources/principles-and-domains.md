@@ -26,14 +26,14 @@
 | --- | --- |
 | Strategic | Does strategy pressure the provider toward deception, surveillance, riba, lock-in, abandonment, or enshittification? |
 | Design | Do flows and defaults protect user interest rather than exploiting satisfaction, inattention, fear, guilt, or confusion? |
-| Technical | Are responsibilities inspectable, enforceable, reversible, secure, portable, maintainable, and tenant-safe? |
+| Technical | Are responsibilities inspectable, enforceable, reversible, secure, portable, maintainable, and safely isolated for the product model? |
 | Operational | Are promises supported by support, incident response, moderation, backup, EOL, and migration practices? |
 | Governance | Are harmful decisions constrained, auditable, appealable, and escalated to the right authority? |
 | Evaluation | Is there evidence from audits, incidents, complaints, appeals, stakeholder feedback, and longitudinal review? |
 
 ## Principle-To-Domain Examples
 
-- Trust in technical architecture: tenant isolation, backup recovery, privileged-access logs, and credible self-hosting docs.
+- Trust in technical architecture: account/workspace/tenant or local-user isolation, backup recovery, privileged-access logs, and credible self-hosting docs where relevant.
 - Truthfulness in marketing: bounded AI, privacy, open-source, availability, and comparison claims.
 - Justice in moderation: clear rules, proportional enforcement, appeals, and consistency metrics.
 - Non-Harm in privacy/security: least data, threat modeling, vulnerability reporting, and incident response.

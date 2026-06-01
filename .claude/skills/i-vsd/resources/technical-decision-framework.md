@@ -1,4 +1,4 @@
-<!-- ABOUTME: I-VSD technical decision framework for stack selection, portability, privacy, auth, tenancy, standards, and operations. -->
+<!-- ABOUTME: I-VSD technical decision framework for stack selection, portability, privacy, auth, isolation, standards, and operations. -->
 <!-- ABOUTME: Separates architecture traceability from unproven claims about reliability, trust, security, or accessibility. -->
 
 # Technical Decision Framework
@@ -11,7 +11,7 @@
 - Client or instance freedom where relevant.
 - No unjustified vendor lock-in.
 - Privacy-respecting architecture and minimal telemetry.
-- Inspectable authentication, authorization, tenancy, and administrative powers.
+- Inspectable authentication, authorization, account/workspace/tenant or local-user isolation, and administrative powers.
 - Community governance for shared infrastructure.
 - Standards orientation and interoperability.
 - Federation readiness without premature claims.
@@ -26,4 +26,4 @@ Not allowed without evidence: “This stack proves reliability, accessibility, s
 
 ## Evidence Expectations
 
-Architecture records, dependency choices, auth/authz design, tenant model, export docs, tests, runbooks, accessibility strategy, threat model, ops plan, and known tradeoffs.
+Architecture records, dependency choices, auth/authz design, account/workspace/tenant or local-user isolation model where relevant, export docs, tests, runbooks, accessibility strategy, threat model, ops plan, and known tradeoffs.

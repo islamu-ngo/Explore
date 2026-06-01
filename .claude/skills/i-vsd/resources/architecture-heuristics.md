@@ -17,7 +17,7 @@
 - Is self-hosting credible and documented where promised?
 - Are user-owned content, analytics, telemetry, and logs separated?
 - Are hosting, retention, backups, processing locations, and provider dependencies disclosed?
-- Are tenant boundaries explicit and tested?
+- Are account, workspace, organization, tenant, or local-user boundaries explicit and tested where relevant?
 - Are password hashing, key management, encryption, patching, and vulnerability reporting present?
 - Are backups tested and recovery responsibilities documented?
 - Is shutdown/EOL documented with migration tools?
@@ -25,7 +25,7 @@
 
 ## Evidence Expectations
 
-Architecture decision records, threat models, dependency lists, export docs, self-hosting docs, backup tests, security audit findings, tenant-isolation tests, incident response docs, and EOL plans.
+Architecture decision records, threat models, dependency lists, export docs, self-hosting docs, backup tests, security audit findings, account/workspace/tenant isolation tests where relevant, incident response docs, and EOL plans.
 
 ## Anti-Patterns
 

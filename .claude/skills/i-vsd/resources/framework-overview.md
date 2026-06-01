@@ -7,7 +7,7 @@ I-VSD is an Islamic provider-responsibility framework for software providers who
 
 ## Scope
 
-Apply I-VSD to web platforms, SaaS, APIs, self-hostable systems, CLI/MCP tools, AI-native systems, mobile apps, plugins, and infrastructure when the provider continues to influence design, data, governance, availability, policies, incentives, or stakeholder effects.
+Apply I-VSD to web platforms, SaaS, closed-source products, open-source projects, desktop apps, mobile apps, APIs, self-hostable systems, CLI/MCP tools, AI-native systems, plugins, marketplaces, community platforms, internal tools, and infrastructure when the provider continues to influence design, data, governance, availability, policies, incentives, or stakeholder effects.
 
 Do not apply it as a universal legal verdict, fatwa, Sharia certification, product certification, or proof that users experience the product as ethical.
 
@@ -22,7 +22,7 @@ Do not apply it as a universal legal verdict, fatwa, Sharia certification, produ
 
 - Strategic: mission, funding, ownership, partnerships, open-source posture, market pressure, long-term stewardship.
 - Design: UX, defaults, consent, pricing visibility, accessibility, localization, content controls, persuasive design.
-- Technical: architecture, data, security, tenancy, APIs, AI, auth, interoperability, backups, portability, dependencies.
+- Technical: architecture, data, security, account/workspace/tenant or local-user isolation, APIs, AI, auth, interoperability, backups, portability, dependencies.
 - Operational: support, incidents, moderation, vulnerability handling, migrations, continuity, EOL, promise keeping.
 - Governance: decision rights, accountability, appeals, auditability, contribution rules, partner screening, escalation.
 - Evaluation: harm reports, complaints, audits, accessibility findings, appeals, support burden, incident metrics, longitudinal review.
