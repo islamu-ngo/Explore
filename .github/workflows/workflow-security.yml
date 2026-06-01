@@ -101,6 +101,8 @@ jobs:
           dotnet run .github/scripts/validate-action-pins.cs -- .github/workflows
           dotnet run .github/scripts/validate-dependabot-policy.cs -- .github/dependabot.yml
           dotnet run .github/scripts/validate-dockerfile-base-images.cs -- Explore.API/Dockerfile Explore.Blazor/Dockerfile
+          dotnet run .github/scripts/validate-workflow-cache-policy.cs -- .github/workflows
+          dotnet run .github/scripts/validate-deploy-workflow-contract.cs
 
       - name: Install actionlint
         if: ${{ steps.changes.outputs.run-scan == 'true' }}
