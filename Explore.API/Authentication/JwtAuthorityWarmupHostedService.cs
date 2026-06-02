@@ -96,6 +96,13 @@ internal sealed class JwtAuthorityWarmupHostedService : IHostedService, IDisposa
         {
             throw;
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning(
+                "[JWT-Warmup] Timed out after {Timeout}s while prefetching OIDC/JWKS metadata. Background retry will continue.",
+                WarmupTimeout.TotalSeconds);
+            return false;
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(
