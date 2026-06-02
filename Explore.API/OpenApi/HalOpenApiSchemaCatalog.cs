@@ -100,6 +100,18 @@ internal static class HalOpenApiSchemaCatalog
 
         // Tenant settings DTOs
         typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantBrandingSettingsDocumentDto),
+
+        // AI assistant DTOs
+        typeof(Explore.Application.DTOs.Ai.AiAssistantBootstrapDto),
+        typeof(Explore.Application.DTOs.Ai.AiConversationSummaryDto),
+        typeof(Explore.Application.DTOs.Ai.AiConversationDto),
+        typeof(Explore.Application.DTOs.Ai.AiRunDto),
+
+        // Storage DTOs
+        typeof(Explore.Application.DTOs.StorageObject.StorageObjectDto),
+        typeof(Explore.Application.DTOs.StorageObject.StorageObjectListDto),
+        typeof(Explore.Application.DTOs.Onboarding.InstanceStorageSettingsDto),
+        typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
     ];
 
     public static IReadOnlyDictionary<string, Type> DetailResourceMappings { get; } = new Dictionary<string, Type>
@@ -152,6 +164,14 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfProjectionStatusDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionStatusDto),
         ["HalResourceOfProjectionDirtyScopeDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionDirtyScopeDto),
         ["HalResourceOfTenantBrandingSettingsDocumentDto"] = typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantBrandingSettingsDocumentDto),
+        ["HalResourceOfAiAssistantBootstrapDto"] = typeof(Explore.Application.DTOs.Ai.AiAssistantBootstrapDto),
+        ["HalResourceOfAiConversationSummaryDto"] = typeof(Explore.Application.DTOs.Ai.AiConversationSummaryDto),
+        ["HalResourceOfAiConversationDto"] = typeof(Explore.Application.DTOs.Ai.AiConversationDto),
+        ["HalResourceOfAiRunDto"] = typeof(Explore.Application.DTOs.Ai.AiRunDto),
+        ["HalResourceOfStorageObjectDto"] = typeof(Explore.Application.DTOs.StorageObject.StorageObjectDto),
+        ["HalResourceOfStorageObjectListDto"] = typeof(Explore.Application.DTOs.StorageObject.StorageObjectListDto),
+        ["HalResourceOfInstanceStorageSettingsDto"] = typeof(Explore.Application.DTOs.Onboarding.InstanceStorageSettingsDto),
+        ["HalResourceOfTenantStorageSettingsDto"] = typeof(Explore.Application.DTOs.Tenant.TenantStorageSettingsDto),
     };
 
     public static IReadOnlyDictionary<string, string> CollectionEmbeddedItemResourceMappings { get; } = new Dictionary<string, string>
@@ -182,6 +202,8 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfProjectionDirtyScopeDto"] = "HalResourceOfProjectionDirtyScopeDto",
         ["HalCollectionEmbeddedOfTagListDto"] = "HalResourceOfTagListDto",
         ["HalCollectionEmbeddedOfTenantUserRoleGrantListDto"] = "HalResourceOfTenantUserRoleGrantListDto",
+        ["HalCollectionEmbeddedOfAiConversationSummaryDto"] = "HalResourceOfAiConversationSummaryDto",
+        ["HalCollectionEmbeddedOfStorageObjectListDto"] = "HalResourceOfStorageObjectListDto",
     };
 
     public static bool IsCatalogedDetailResourceSchema(string schemaName)

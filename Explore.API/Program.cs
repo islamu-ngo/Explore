@@ -482,8 +482,8 @@ if (!string.IsNullOrWhiteSpace(setupSecretForStartupReminder))
 // integration tests (Event.API.IntegrationTests) can fetch /openapi/event-api.json.
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing") || isOpenApiGeneration)
 {
-    app.MapOpenApi();
-    app.UseSwagger();
+app.MapOpenApi().DisableRequestTimeout();
+app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v0.1/swagger.json", "Explore API v0.1"));
     app.MapScalarApiReference();
 }

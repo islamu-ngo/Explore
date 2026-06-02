@@ -185,10 +185,11 @@ public class ApiClientNamingTests
     public async Task GeneratedClient_DoesNotEmitUntypedHalEmbeddedItemCollections()
     {
         var generatedClientSource = GetGeneratedClientSource();
+        var offenders = GetUntypedHalEmbeddedCollectionTypeNames(generatedClientSource);
 
-        await Assert.That(generatedClientSource.Contains("public System.Collections.Generic.ICollection<object>? Items", StringComparison.Ordinal))
-            .IsFalse()
-            .Because("HAL embedded collection item arrays must reference typed HAL resource schemas instead of falling back to ICollection<object>.");
+        await Assert.That(offenders).IsEmpty()
+            .Because("HAL embedded collection item arrays should stay typed so generated clients do not fall back to ICollection<object>. "
+                + $"Actual offenders: [{string.Join(", ", offenders)}].");
     }
 
     private static List<string> GetAsyncMethodNames() =>
@@ -205,5 +206,35 @@ public class ApiClientNamingTests
             "../../../../Explore.Blazor.Client/Clients/EventApiClient.g.cs"));
 
         return File.ReadAllText(generatedClientPath);
+    }
+
+    private static List<string> GetUntypedHalEmbeddedCollectionTypeNames(string generatedClientSource)
+    {
+        var offenders = new List<string>();
+        string? currentType = null;
+
+        using var reader = new StringReader(generatedClientSource);
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith("public partial class ", StringComparison.Ordinal))
+            {
+                currentType = trimmed["public partial class ".Length..]
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+                continue;
+            }
+
+            if (currentType is not null
+                && trimmed.Contains("public System.Collections.Generic.ICollection<object>? Items", StringComparison.Ordinal))
+            {
+                offenders.Add(currentType);
+            }
+        }
+
+        return offenders
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(name => name)
+            .ToList();
     }
 }
