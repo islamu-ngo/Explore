@@ -51,6 +51,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IImageContentClassifier, ImageContentClassifier>();
         services.AddScoped<IImageFileReaderService, ImageFileReaderService>();
         services.AddScoped<IImagePreviewService, ImagePreviewService>();
+        services.AddScoped<IStorageObjectUrlResolver, StorageObjectUrlResolver>();
         services.AddScoped<IImageUploadClient, ImageUploadClient>();
         services.AddScoped<IImageStorageRecordClient, ImageStorageRecordClient>();
         services.AddScoped<IImageStorageService, ImageStorageService>();

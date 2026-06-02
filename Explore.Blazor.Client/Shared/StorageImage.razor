@@ -1,0 +1,125 @@
+@* ABOUTME: Provider-neutral image display component for metadata-backed storage objects. *@
+@* ABOUTME: Resolves stable storage object IDs/references through ImageStorageService with accessible states. *@
+
+@using Explore.Blazor.Client.Services
+@inject IImageStorageService ImageStorageService
+@inject ILogger<StorageImage> Logger
+
+<div class="storage-image" style="@ContainerStyle" aria-busy="@BusyState">
+    @if (_isLoading && !_hasError)
+    {
+        <div class="storage-image__placeholder" role="status" aria-live="polite">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+            <span class="sr-only">Loading image</span>
+        </div>
+    }
+    else if (_hasError)
+    {
+        <div class="storage-image__error" role="img" aria-label="@ErrorMessage">
+            <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Color="Color.Secondary" Size="Size.Large" />
+            <MudText Typo="Typo.caption">@ErrorMessage</MudText>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_imageUrl))
+    {
+        <img src="@_imageUrl"
+             alt="@Alt"
+             class="storage-image__media"
+             style="@ImageStyle"
+             @onload="OnImageLoaded"
+             @onerror="OnImageError" />
+    }
+    else
+    {
+        <div class="storage-image__placeholder">
+            <MudIcon Icon="@(PlaceholderIcon ?? Icons.Material.Filled.Image)"
+                     Color="Color.Secondary"
+                     Size="Size.Large" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid? StorageObjectId { get; set; }
+    [Parameter] public string? StorageReference { get; set; }
+    [Parameter] public string? ImageUrl { get; set; }
+    [Parameter] public string Alt { get; set; } = string.Empty;
+    [Parameter] public string ObjectFit { get; set; } = "cover";
+    [Parameter] public string? BorderRadius { get; set; }
+    [Parameter] public string? ContainerStyle { get; set; }
+    [Parameter] public string? PlaceholderIcon { get; set; }
+    [Parameter] public string? ErrorText { get; set; }
+    [Parameter] public string? FallbackUrl { get; set; }
+
+    private string? _imageUrl;
+    private bool _isLoading = true;
+    private bool _hasError;
+    private string BusyState => _isLoading ? "true" : "false";
+
+    private string ErrorMessage => string.IsNullOrWhiteSpace(ErrorText) ? "Failed to load image" : ErrorText;
+
+    private string ImageStyle =>
+        $"object-fit: {ObjectFit};{(string.IsNullOrWhiteSpace(BorderRadius) ? string.Empty : $" border-radius: {BorderRadius};")}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadImageAsync();
+    }
+
+    private async Task LoadImageAsync()
+    {
+        _isLoading = true;
+        _hasError = false;
+        _imageUrl = null;
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(ImageUrl))
+            {
+                _imageUrl = ImageUrl;
+                _isLoading = false;
+                return;
+            }
+
+            if (StorageObjectId is { } storageObjectId && storageObjectId != Guid.Empty)
+            {
+                _imageUrl = await ImageStorageService.GetPresignedUrlByIdAsync(storageObjectId);
+            }
+            else if (!string.IsNullOrWhiteSpace(StorageReference))
+            {
+                _imageUrl = await ImageStorageService.GetImageUrlAsync(StorageReference);
+            }
+
+            _hasError = string.IsNullOrWhiteSpace(_imageUrl)
+                && (StorageObjectId is not null || !string.IsNullOrWhiteSpace(StorageReference));
+            _isLoading = false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading stored image.");
+            _hasError = true;
+            _isLoading = false;
+        }
+    }
+
+    private void OnImageLoaded()
+    {
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private void OnImageError()
+    {
+        if (!string.IsNullOrWhiteSpace(FallbackUrl))
+        {
+            _imageUrl = FallbackUrl;
+        }
+        else
+        {
+            _hasError = true;
+        }
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+}

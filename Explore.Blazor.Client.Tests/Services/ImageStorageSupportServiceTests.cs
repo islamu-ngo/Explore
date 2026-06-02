@@ -1,5 +1,5 @@
 // ABOUTME: Focused tests for ImageStorageService support seams extracted during Phase 3.
-// ABOUTME: Covers file reading, preview generation from bytes, and content-type classification behavior.
+// ABOUTME: Covers file reading, preview generation, content-type classification, and URL resolution behavior.
 
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -89,5 +89,36 @@ public class ImageStorageSupportServiceTests
         await Assert.That(classifier.GetFileTypeId("video/mp4")).IsEqualTo(3);
         await Assert.That(classifier.GetFileTypeId("audio/mpeg")).IsEqualTo(4);
         await Assert.That(classifier.GetFileTypeId("application/octet-stream")).IsEqualTo(5);
+    }
+
+    [Test]
+    public async Task StorageObjectUrlResolver_ResolvePublicImageUrl_ReturnsStableMetadataUrl_WhenGuidProvided()
+    {
+        var storageObjectId = Guid.NewGuid();
+        var resolver = new StorageObjectUrlResolver();
+
+        var result = resolver.ResolvePublicImageUrl(storageObjectId.ToString());
+
+        await Assert.That(result).IsEqualTo($"/api/storageobject/{storageObjectId}/public");
+    }
+
+    [Test]
+    public async Task StorageObjectUrlResolver_ResolvePublicImageUrl_PreservesExistingStorageApiPath()
+    {
+        var resolver = new StorageObjectUrlResolver();
+
+        var result = resolver.ResolvePublicImageUrl("/api/storageobject/00000000-0000-0000-0000-000000000001/public");
+
+        await Assert.That(result).IsEqualTo("/api/storageobject/00000000-0000-0000-0000-000000000001/public");
+    }
+
+    [Test]
+    public async Task StorageObjectUrlResolver_ResolvePublicImageUrl_RejectsProviderObjectKeys()
+    {
+        var resolver = new StorageObjectUrlResolver();
+
+        var result = resolver.ResolvePublicImageUrl("tenant/files/raw-object-key.jpg");
+
+        await Assert.That(result).IsNull();
     }
 }

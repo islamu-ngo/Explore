@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for image storage orchestration around upload sessions, records, and previews.
-// ABOUTME: Covers legacy direct uploads plus metadata-backed public image URL helpers.
+// ABOUTME: Covers trusted direct uploads plus metadata-backed public image URL helpers.
 
 using System.Net;
 using System.Net.Http;
@@ -136,7 +136,7 @@ public class ImageStorageServiceTests
     public async Task UploadImageFromBytesAsync_ReturnsTrue_WhenUploadSucceeds()
     {
         // Arrange
-        _httpClientFactory.CreateClient("S3Upload")
+        _httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload)
             .Returns(CreateHttpClient(new HttpResponseMessage(HttpStatusCode.OK)));
 
         var fileData = new FileUploadData
@@ -157,7 +157,7 @@ public class ImageStorageServiceTests
     public async Task UploadImageFromBytesAsync_ReturnsFalse_WhenUploadFails()
     {
         // Arrange
-        _httpClientFactory.CreateClient("S3Upload")
+        _httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload)
             .Returns(CreateHttpClient(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
 
         var fileData = new FileUploadData
@@ -219,7 +219,7 @@ public class ImageStorageServiceTests
                 ExpiresInMinutes = 30
             });
 
-        _httpClientFactory.CreateClient("S3Upload")
+        _httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload)
             .Returns(CreateHttpClient(new HttpResponseMessage(HttpStatusCode.OK)));
 
         var storageId = Guid.NewGuid();
@@ -285,7 +285,7 @@ public class ImageStorageServiceTests
         var result = await _service.GetImageUrlAsync(storageObjectId.ToString());
 
         // Assert
-        await Assert.That(result).IsEqualTo($"/api/StorageObject/{storageObjectId}/public");
+        await Assert.That(result).IsEqualTo($"/api/storageobject/{storageObjectId}/public");
     }
 
     [Test]

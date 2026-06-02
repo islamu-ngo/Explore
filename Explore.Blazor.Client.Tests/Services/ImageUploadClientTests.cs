@@ -66,10 +66,10 @@ public sealed class ImageUploadClientTests
     }
 
     [Test]
-    public async Task UploadImageFromBytesAsync_UsesS3UploadClientAndReturnsTrue_WhenUploadSucceeds()
+    public async Task UploadImageFromBytesAsync_UsesDirectStorageUploadClientAndReturnsTrue_WhenUploadSucceeds()
     {
         var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
-        _httpClientFactory.CreateClient("S3Upload").Returns(new HttpClient(handler));
+        _httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload).Returns(new HttpClient(handler));
         var client = CreateClient();
         var fileData = new FileUploadData
         {

@@ -1,44 +1,61 @@
+@* ABOUTME: Accessible image picker that reads browser files through the storage service. *@
+@* ABOUTME: Applies policy inputs for accepted types and size while surfacing preview/error/status state. *@
+
 @using Microsoft.AspNetCore.Components.Forms
 @using Explore.Blazor.Client.Services
-@using Microsoft.Extensions.Logging
 @inject IImageStorageService ImageStorageService
 @inject ILogger<ImageUpload> Logger
 
-<div class="d-flex flex-column gap-2" style="@($"width: {Width};")">
-    <div class="relative d-flex justify-center align-center overflow-hidden rounded-lg border-2 border-dashed mud-border-primary" 
-         style="@($"height: {Height}; background-color: var(--mud-palette-background-grey);")">
-        
-        @if (!string.IsNullOrEmpty(PreviewUrl))
+<div class="image-upload" style="@($"width: {Width};")" aria-busy="@BusyState">
+    <div class="@PreviewClass" style="@PreviewStyle">
+        @if (!string.IsNullOrWhiteSpace(PreviewUrl))
         {
-            <img src="@PreviewUrl" alt="@(Alt ?? "Image preview")" style="width: 100%; height: 100%; object-fit: cover;" />
+            <img src="@PreviewUrl" alt="@PreviewAlt" class="image-upload__image" />
         }
         else
         {
-            <div class="d-flex flex-column align-center gap-2 pa-4 text-center">
+            <div class="image-upload__placeholder">
                 <MudIcon Icon="@(Icon ?? Icons.Material.Filled.Image)" Size="Size.Large" Color="Color.Secondary" />
                 <MudText Typo="Typo.body2" Color="Color.Secondary">@(PlaceholderText ?? "No image selected")</MudText>
             </div>
         }
+
+        @if (IsBusy)
+        {
+            <div class="image-upload__loading" role="status" aria-live="polite">
+                <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                <span class="sr-only">@_statusMessage</span>
+            </div>
+        }
     </div>
 
-    @if (!string.IsNullOrEmpty(_errorMessage))
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
     {
         <div role="alert">
-            <MudAlert Severity="Severity.Error" Dense="true" Class="my-1" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">@_errorMessage</MudAlert>
+            <MudAlert Severity="Severity.Error"
+                      Dense="true"
+                      Class="image-upload__alert"
+                      ShowCloseIcon="true"
+                      CloseIconClicked="@(() => _errorMessage = null)">
+                @_errorMessage
+            </MudAlert>
         </div>
     }
 
-    <div class="d-flex justify-center gap-2">
+    <div class="image-upload__actions">
         <MudFileUpload T="IBrowserFile"
                        @ref="_fileUpload"
                        FilesChanged="OnFileSelected"
                        Accept="@AcceptedFormats"
-                       MaximumFileCount="1">
+                       MaximumFileCount="1"
+                       Disabled="@IsBusy">
             <CustomContent Context="fileUpload">
-                <MudButton Elevation="0" Variant="Variant.Outlined"
+                <MudButton Elevation="0"
+                           Variant="Variant.Outlined"
                            StartIcon="@Icons.Material.Filled.CloudUpload"
                            Color="Color.Primary"
                            Size="Size.Small"
+                           Disabled="@IsBusy"
                            OnClick="@fileUpload.OpenFilePickerAsync">
                     @(UploadButtonText ?? "Select Image")
                 </MudButton>
@@ -47,185 +64,126 @@
 
         @if (HasImage)
         {
-            <MudButton Elevation="0" Variant="Variant.Text"
+            <MudButton Elevation="0"
+                       Variant="Variant.Text"
                        Color="Color.Error"
                        StartIcon="@Icons.Material.Filled.Delete"
                        Size="Size.Small"
+                       Disabled="@IsBusy"
                        OnClick="RemoveImage">
                 Remove
             </MudButton>
         }
     </div>
 
-    @if (!string.IsNullOrEmpty(HintText))
+    @if (!string.IsNullOrWhiteSpace(EffectiveHintText))
     {
-        <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">@HintText</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Class="image-upload__hint">
+            @EffectiveHintText
+        </MudText>
     }
 </div>
 
 @code {
     [Parameter] public string? PreviewUrl { get; set; }
     [Parameter] public EventCallback<string?> PreviewUrlChanged { get; set; }
-
-    /// <summary>
-    /// Legacy callback that passes IBrowserFile. Prefer using FileDataSelected for reliable WASM uploads.
-    /// </summary>
-    [Parameter] public EventCallback<IBrowserFile?> FileSelected { get; set; }
-
-    /// <summary>
-    /// Preferred callback that passes FileUploadData (bytes read into memory).
-    /// This prevents stream exhaustion issues in Blazor WASM.
-    /// </summary>
     [Parameter] public EventCallback<FileUploadData?> FileDataSelected { get; set; }
-
-    // Customization parameters
     [Parameter] public string Width { get; set; } = "100%";
     [Parameter] public string Height { get; set; } = "250px";
     [Parameter] public string? PlaceholderText { get; set; }
     [Parameter] public string? UploadButtonText { get; set; }
-    [Parameter] public string? HintText { get; set; } = "Supported formats: JPG, PNG, GIF, WebP (Max 5MB)";
+    [Parameter] public string? HintText { get; set; }
     [Parameter] public string? Icon { get; set; }
     [Parameter] public string? Alt { get; set; }
     [Parameter] public string AcceptedFormats { get; set; } = ".jpg,.jpeg,.png,.gif,.webp";
-    [Parameter] public long MaxFileSize { get; set; } = 5 * 1024 * 1024; // 5MB default
-
-    /// <summary>
-    /// Set to true to show a loading indicator while processing the file.
-    /// </summary>
+    [Parameter] public string[] AllowedContentTypes { get; set; } =
+    [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp"
+    ];
+    [Parameter] public long MaxFileSize { get; set; } = 5 * 1024 * 1024;
     [Parameter] public bool IsProcessing { get; set; }
 
     private MudFileUpload<IBrowserFile>? _fileUpload;
     private bool _isReadingFile;
-    private bool HasImage => !string.IsNullOrEmpty(PreviewUrl);
     private string? _errorMessage;
+    private string _statusMessage = "Processing selected image";
+
+    private bool HasImage => !string.IsNullOrWhiteSpace(PreviewUrl);
+    private bool IsBusy => _isReadingFile || IsProcessing;
+    private string BusyState => IsBusy ? "true" : "false";
+    private string PreviewAlt => string.IsNullOrWhiteSpace(Alt) ? "Image preview" : Alt;
+    private string PreviewClass => HasImage
+        ? "image-upload__preview image-upload__preview--has-image"
+        : "image-upload__preview";
+    private string PreviewStyle => $"height: {Height};";
+    private string EffectiveHintText =>
+        HintText ?? $"Supported formats: JPG, PNG, GIF, WebP. Max {FormatBytes(MaxFileSize)}.";
 
     private async Task OnFileSelected(IBrowserFile? file)
     {
         _errorMessage = null;
-        if (file == null) return;
-
-        // Validate file type
-        var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
-        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+        if (file is null || IsBusy)
         {
-            _errorMessage = "Please select a valid image file (JPG, PNG, GIF, or WebP)";
             return;
         }
 
-        // Validate file size
+        if (!IsAllowedContentType(file.ContentType))
+        {
+            _errorMessage = "Select a JPG, PNG, GIF, or WebP image.";
+            return;
+        }
+
         if (file.Size > MaxFileSize)
         {
-            var maxSizeMB = MaxFileSize / (1024.0 * 1024.0);
-            _errorMessage = $"File size must be less than {maxSizeMB:F1}MB";
+            _errorMessage = $"Image must be {FormatBytes(MaxFileSize)} or smaller.";
             return;
         }
 
         _isReadingFile = true;
+        _statusMessage = "Reading selected image";
         StateHasChanged();
 
         try
         {
-            Logger.LogInformation("[ImageUpload] Starting file processing for {FileName} ({Size} bytes)", file.Name, file.Size);
-
-            // STEP 1: Read the file bytes FIRST - this is reliable
-            // We'll generate the preview from these bytes (skip browser-side resizing which can hang)
-            Logger.LogInformation("[ImageUpload] Step 1: Reading file {FileName} ({Size} bytes) into memory...", file.Name, file.Size);
             var fileData = await ImageStorageService.ReadFileAsync(file, MaxFileSize);
-
-            if (fileData == null)
+            if (fileData is null)
             {
-                Logger.LogError("[ImageUpload] ReadFileAsync returned null for {FileName}", file.Name);
-                _errorMessage = "Failed to read the selected file. Please try again.";
+                _errorMessage = "Failed to read the selected image. Try another file.";
                 await RemoveImage();
                 return;
             }
 
-            Logger.LogInformation("[ImageUpload] Step 1a: Successfully read {ByteCount} bytes from {FileName}", fileData.Size, fileData.FileName);
-
-            // STEP 2: Generate preview from the bytes we just read
-            // Use full-size bytes directly - browser-side resizing (RequestImageFileAsync) can hang in WASM
-            Logger.LogInformation("[ImageUpload] Step 2: Generating preview from bytes...");
-            string localPreview = ImageStorageService.GenerateLocalPreviewFromBytes(fileData);
-
-            if (string.IsNullOrEmpty(localPreview))
-            {
-                Logger.LogWarning("[ImageUpload] Failed to generate preview for {FileName}", fileData.FileName);
-                _errorMessage = "Failed to generate image preview";
-                // Continue anyway - the upload might still work
-            }
-            else
-            {
-                Logger.LogInformation("[ImageUpload] Step 2a: Preview generated successfully");
-            }
-
-            // STEP 3: Update preview URL and notify parent
-            // Yield to allow UI thread to process before heavy operations
-            await Task.Yield();
-            Logger.LogInformation("[ImageUpload] Step 3: Setting preview URL (length={Length} chars)...", localPreview?.Length ?? 0);
-            try
+            _statusMessage = "Generating image preview";
+            var localPreview = ImageStorageService.GenerateLocalPreviewFromBytes(fileData);
+            if (!string.IsNullOrWhiteSpace(localPreview))
             {
                 PreviewUrl = localPreview;
-                Logger.LogInformation("[ImageUpload] Step 3a: PreviewUrl property set");
-
-                // Use InvokeAsync to ensure we're on the correct sync context
-                await InvokeAsync(() =>
-                {
-                    Logger.LogInformation("[ImageUpload] Step 3b: Inside InvokeAsync, calling StateHasChanged...");
-                    StateHasChanged();
-                });
-                Logger.LogInformation("[ImageUpload] Step 3c: StateHasChanged completed");
-
-                // Yield again after render to let browser process
-                await Task.Yield();
-
-                if (PreviewUrlChanged.HasDelegate)
-                {
-                    Logger.LogInformation("[ImageUpload] Step 3d: Invoking PreviewUrlChanged callback...");
-                    await PreviewUrlChanged.InvokeAsync(localPreview);
-                    Logger.LogInformation("[ImageUpload] Step 3e: PreviewUrlChanged callback completed");
-                }
-                else
-                {
-                    Logger.LogWarning("[ImageUpload] Step 3d: PreviewUrlChanged has no delegate");
-                }
-            }
-            catch (Exception previewEx)
-            {
-                Logger.LogError(previewEx, "[ImageUpload] Error during preview URL update: {Message}", previewEx.Message);
-                // Continue - don't fail the entire upload just because preview failed
-            }
-
-            // STEP 4: Pass the file data to the parent component for upload
-            Logger.LogInformation("[ImageUpload] Step 4: Checking FileDataSelected delegate (HasDelegate={HasDelegate})...", FileDataSelected.HasDelegate);
-            if (FileDataSelected.HasDelegate)
-            {
-                Logger.LogInformation("[ImageUpload] Step 4a: Invoking FileDataSelected callback with {Size} bytes...", fileData.Size);
-                await FileDataSelected.InvokeAsync(fileData);
-                Logger.LogInformation("[ImageUpload] Step 4b: FileDataSelected callback completed successfully");
+                await PreviewUrlChanged.InvokeAsync(localPreview);
             }
             else
             {
-                Logger.LogWarning("[ImageUpload] FileDataSelected has no delegate - parent callback not configured!");
+                _errorMessage = "Failed to generate an image preview.";
             }
 
-            // STEP 5: Also invoke legacy callback for backward compatibility
-            if (FileSelected.HasDelegate)
+            if (FileDataSelected.HasDelegate)
             {
-                Logger.LogInformation("[ImageUpload] Step 5: Invoking legacy FileSelected callback...");
-                await FileSelected.InvokeAsync(file);
+                _statusMessage = "Preparing image upload";
+                await FileDataSelected.InvokeAsync(fileData);
             }
-
-            Logger.LogInformation("[ImageUpload] ✓ File processing completed successfully for {FileName}", file.Name);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error processing selected file {FileName}", file.Name);
-            _errorMessage = $"An error occurred while processing the image: {ex.Message}";
+            Logger.LogError(ex, "Error processing selected image.");
+            _errorMessage = "An error occurred while processing the image.";
             await RemoveImage();
         }
         finally
         {
             _isReadingFile = false;
+            _statusMessage = "Processing selected image";
             StateHasChanged();
         }
     }
@@ -236,22 +194,28 @@
         _errorMessage = null;
         await PreviewUrlChanged.InvokeAsync(null);
 
-        // Notify parent that file was removed
         if (FileDataSelected.HasDelegate)
         {
             await FileDataSelected.InvokeAsync(null);
         }
-        if (FileSelected.HasDelegate)
-        {
-            await FileSelected.InvokeAsync(null);
-        }
 
-        // Clear the file upload component
-        if (_fileUpload != null)
+        if (_fileUpload is not null)
         {
             await _fileUpload.ClearAsync();
         }
 
         StateHasChanged();
+    }
+
+    private bool IsAllowedContentType(string? contentType) =>
+        !string.IsNullOrWhiteSpace(contentType)
+        && AllowedContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase);
+
+    private static string FormatBytes(long bytes)
+    {
+        const double oneMiB = 1024d * 1024d;
+        return bytes >= oneMiB
+            ? $"{bytes / oneMiB:0.#} MB"
+            : $"{bytes} bytes";
     }
 }

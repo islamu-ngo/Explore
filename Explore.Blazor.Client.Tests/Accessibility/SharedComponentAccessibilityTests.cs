@@ -1,4 +1,4 @@
-// ABOUTME: bUnit accessibility tests for shared components (ErrorState, S3Image).
+// ABOUTME: bUnit accessibility tests for shared components (ErrorState, ImageUpload, StorageImage).
 // ABOUTME: Validates WCAG role="alert", alt text defaults, and ARIA patterns in rendered markup.
 
 using Explore.Blazor.Client.Services;
@@ -102,10 +102,48 @@ public class SharedComponentAccessibilityTests : IDisposable
 
     #endregion
 
-    #region S3Image Component
+    #region ImageUpload Component
 
     [Test]
-    public async Task S3Image_DefaultAlt_IsEmpty_ForDecorativeImages()
+    public async Task ImageUpload_RendersPolicyDrivenHintAndIdleBusyState()
+    {
+        // Arrange
+        var imageService = Substitute.For<IImageStorageService>();
+        _ctx.Services.AddSingleton(imageService);
+
+        // Act
+        var cut = _ctx.RenderMudComponent<ImageUpload>(p =>
+            p.Add(x => x.AcceptedFormats, ".png,.webp")
+             .Add(x => x.AllowedContentTypes, ["image/png", "image/webp"])
+             .Add(x => x.MaxFileSize, 2 * 1024 * 1024));
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("Max 2 MB", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("aria-busy=\"false\"");
+    }
+
+    [Test]
+    public async Task ImageUpload_RendersPreviewAlt_WhenPreviewExists()
+    {
+        // Arrange
+        var imageService = Substitute.For<IImageStorageService>();
+        _ctx.Services.AddSingleton(imageService);
+
+        // Act
+        var cut = _ctx.RenderMudComponent<ImageUpload>(p =>
+            p.Add(x => x.PreviewUrl, "/api/storageobject/00000000-0000-0000-0000-000000000001/public")
+             .Add(x => x.Alt, "Event banner preview"));
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("alt=\"Event banner preview\"");
+    }
+
+    #endregion
+
+    #region StorageImage Component
+
+    [Test]
+    public async Task StorageImage_DefaultAlt_IsEmpty_ForDecorativeImages()
     {
         // Arrange — mock image service to return a URL
         var imageService = Substitute.For<IImageStorageService>();
@@ -114,7 +152,7 @@ public class SharedComponentAccessibilityTests : IDisposable
         _ctx.Services.AddSingleton(imageService);
 
         // Act
-        var cut = _ctx.Render<S3Image>(p =>
+        var cut = _ctx.Render<StorageImage>(p =>
             p.Add(x => x.ImageUrl, "https://example.com/image.jpg"));
 
         // Assert — default alt should be empty string (decorative image per WCAG)
@@ -122,14 +160,14 @@ public class SharedComponentAccessibilityTests : IDisposable
     }
 
     [Test]
-    public async Task S3Image_RendersCustomAlt_WhenProvided()
+    public async Task StorageImage_RendersCustomAlt_WhenProvided()
     {
         // Arrange
         var imageService = Substitute.For<IImageStorageService>();
         _ctx.Services.AddSingleton(imageService);
 
         // Act
-        var cut = _ctx.Render<S3Image>(p =>
+        var cut = _ctx.Render<StorageImage>(p =>
             p.Add(x => x.ImageUrl, "https://example.com/photo.jpg")
              .Add(x => x.Alt, "Community gathering at sunset"));
 
@@ -138,14 +176,14 @@ public class SharedComponentAccessibilityTests : IDisposable
     }
 
     [Test]
-    public async Task S3Image_ShowsBrokenImageIcon_OnError()
+    public async Task StorageImage_ShowsPlaceholder_WhenNoImageReferenceExists()
     {
         // Arrange — no image URL or key = placeholder state
         var imageService = Substitute.For<IImageStorageService>();
         _ctx.Services.AddSingleton(imageService);
 
         // Act — render with no image data
-        var cut = _ctx.Render<S3Image>();
+        var cut = _ctx.Render<StorageImage>();
 
         // Assert — placeholder should be visible (not an img with missing alt)
         await Assert.That(cut.Markup).DoesNotContain("<img");

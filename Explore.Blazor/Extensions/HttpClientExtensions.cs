@@ -44,8 +44,8 @@ public static class HttpClientExtensions
             .AddHttpMessageHandler<BffCookieForwardingHandler>()
             .ConfigureDevCertBypass(environment);
 
-        // Named "S3Upload" — used by ImageStorageService for presigned URL uploads
-        services.AddHttpClient("S3Upload", client =>
+        // Named direct storage upload client — used only for trusted server-issued provider upload URLs.
+        services.AddHttpClient(StorageHttpClientNames.DirectUpload, client =>
         {
             client.Timeout = TimeSpan.FromMinutes(5);
         })
@@ -58,7 +58,7 @@ public static class HttpClientExtensions
 
         services.AddTypedApiClient<Explore.Blazor.Client.Services.EventTemplateSync.IEventTemplateSyncService, Explore.Blazor.Client.Services.EventTemplateSync.EventTemplateSyncService>(apiBaseUrl, environment)
             .AddInteractiveResilience();
-            
+
         services.AddTypedApiClient<Explore.Blazor.Client.Services.EventSessionTemplateSync.IEventSessionTemplateSyncService, Explore.Blazor.Client.Services.EventSessionTemplateSync.EventSessionTemplateSyncService>(apiBaseUrl, environment)
             .AddInteractiveResilience();
 

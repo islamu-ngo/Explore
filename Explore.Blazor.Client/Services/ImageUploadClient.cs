@@ -1,4 +1,4 @@
-// ABOUTME: Image upload transport client for BFF upload sessions, upload proxy, and presigned S3 uploads.
+// ABOUTME: Image upload transport client for BFF upload sessions, upload proxy, and direct provider uploads.
 // ABOUTME: Keeps upload-specific raw multipart/streaming HTTP isolated from ImageStorageService orchestration.
 
 using System.Net;
@@ -80,7 +80,7 @@ public sealed class ImageUploadClient(
 
             if (string.IsNullOrWhiteSpace(response.UploadUrl))
             {
-                logger.LogWarning("UploadUrl is null or empty. Check server S3 configuration (bucket/endpoint/credentials)");
+                logger.LogWarning("UploadUrl is null or empty. Check server storage provider configuration.");
                 return null;
             }
 
@@ -192,48 +192,48 @@ public sealed class ImageUploadClient(
 
         try
         {
-            logger.LogInformation("Uploading to S3: {FileName}, Size: {Size} bytes, ContentType: {ContentType}, Host: {Host}",
+            logger.LogInformation("Uploading directly to storage provider: {FileName}, Size: {Size} bytes, ContentType: {ContentType}, Host: {Host}",
                 file.Name, file.Size, file.ContentType, validatedUri.Host);
 
-            using var s3Client = httpClientFactory.CreateClient("S3Upload");
+            using var directUploadClient = httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload);
             await using var stream = file.OpenReadStream(maxAllowedSize: DefaultMaxFileSize);
             using var content = new StreamContent(stream);
             content.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
 
-            logger.LogDebug("Sending PUT request to S3...");
-            var response = await s3Client.PutAsync(validatedUri, content);
+            logger.LogDebug("Sending PUT request to direct storage provider URL.");
+            var response = await directUploadClient.PutAsync(validatedUri, content);
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                logger.LogError("S3 upload failed: {StatusCode} - {ReasonPhrase} - {ErrorContent}",
+                logger.LogError("Direct storage upload failed: {StatusCode} - {ReasonPhrase} - {ErrorContent}",
                     (int)response.StatusCode, response.ReasonPhrase, errorContent);
 
                 if (response.StatusCode == HttpStatusCode.Forbidden)
                 {
-                    logger.LogError("S3 403 Forbidden - Check: 1) CORS config on bucket 2) Pre-signed URL expired 3) Content-Type mismatch");
+                    logger.LogError("Direct upload 403 Forbidden - Check: provider CORS, URL expiry, and Content-Type match.");
                 }
                 else if (response.StatusCode == HttpStatusCode.BadRequest)
                 {
-                    logger.LogError("S3 400 Bad Request - Check: 1) Content-Type header matches pre-signed URL 2) Request headers are correct");
+                    logger.LogError("Direct upload 400 Bad Request - Check provider URL and request headers.");
                 }
             }
             else
             {
                 var etag = response.Headers.ETag?.Tag ?? "no-etag";
-                logger.LogInformation("S3 upload successful! ETag: {ETag}", etag);
+                logger.LogInformation("Direct storage upload successful. ETag: {ETag}", etag);
             }
 
             return response.IsSuccessStatusCode;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request error uploading to S3. This may be a CORS issue - check bucket CORS configuration.");
+            logger.LogError(ex, "HTTP request error during direct storage upload. This may be a provider CORS issue.");
             return false;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error uploading image to S3");
+            logger.LogError(ex, "Error uploading image to direct storage provider");
             return false;
         }
     }
@@ -266,52 +266,52 @@ public sealed class ImageUploadClient(
 
         try
         {
-            logger.LogInformation("Uploading to S3: {FileName}, Size: {Size} bytes, ContentType: {ContentType}, Host: {Host}",
+            logger.LogInformation("Uploading directly to storage provider: {FileName}, Size: {Size} bytes, ContentType: {ContentType}, Host: {Host}",
                 fileData.FileName, fileData.Size, fileData.ContentType, validatedUri.Host);
 
-            using var s3Client = httpClientFactory.CreateClient("S3Upload");
+            using var directUploadClient = httpClientFactory.CreateClient(StorageHttpClientNames.DirectUpload);
             using var content = new ByteArrayContent(fileData.Content);
             content.Headers.ContentType = new MediaTypeHeaderValue(fileData.ContentType);
 
-            logger.LogDebug("Sending PUT request to S3 with ByteArrayContent ({Size} bytes)...", fileData.Size);
+            logger.LogDebug("Sending PUT request to direct storage provider URL with ByteArrayContent ({Size} bytes).", fileData.Size);
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-            var response = await s3Client.PutAsync(validatedUri, content, cts.Token);
+            var response = await directUploadClient.PutAsync(validatedUri, content, cts.Token);
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                logger.LogError("S3 upload failed: {StatusCode} - {ReasonPhrase} - {ErrorContent}",
+                logger.LogError("Direct storage upload failed: {StatusCode} - {ReasonPhrase} - {ErrorContent}",
                     (int)response.StatusCode, response.ReasonPhrase, errorContent);
 
                 if (response.StatusCode == HttpStatusCode.Forbidden)
                 {
-                    logger.LogError("S3 403 Forbidden - Check: 1) CORS config on bucket 2) Pre-signed URL expired 3) Content-Type mismatch");
+                    logger.LogError("Direct upload 403 Forbidden - Check provider CORS, URL expiry, and Content-Type match.");
                 }
                 else if (response.StatusCode == HttpStatusCode.BadRequest)
                 {
-                    logger.LogError("S3 400 Bad Request - Check: 1) Content-Type header matches pre-signed URL 2) Request headers are correct");
+                    logger.LogError("Direct upload 400 Bad Request - Check provider URL and request headers.");
                 }
 
                 return false;
             }
 
             var etag = response.Headers.ETag?.Tag ?? "no-etag";
-            logger.LogInformation("S3 upload successful! ETag: {ETag}, Size: {Size} bytes", etag, fileData.Size);
+            logger.LogInformation("Direct storage upload successful. ETag: {ETag}, Size: {Size} bytes", etag, fileData.Size);
             return true;
         }
         catch (OperationCanceledException)
         {
-            logger.LogError("S3 upload timed out after 3 minutes for file {FileName}", fileData.FileName);
+            logger.LogError("Direct storage upload timed out after 3 minutes for file {FileName}", fileData.FileName);
             return false;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "HTTP request error uploading to S3. This may be a CORS issue - check bucket CORS configuration. File: {FileName}", fileData.FileName);
+            logger.LogError(ex, "HTTP request error during direct storage upload. This may be a provider CORS issue. File: {FileName}", fileData.FileName);
             return false;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unexpected error uploading image to S3. File: {FileName}", fileData.FileName);
+            logger.LogError(ex, "Unexpected error uploading image to direct storage provider. File: {FileName}", fileData.FileName);
             return false;
         }
     }

@@ -1,3 +1,6 @@
+// ABOUTME: WebAssembly host bootstrap for the Blazor client application.
+// ABOUTME: Registers client-side DI, BFF HTTP clients, MudBlazor, routing, localization, and auth state.
+
 using System.Globalization;
 using Blazouter.Extensions;
 using Explore.Blazor.Client.Clients;
@@ -112,16 +115,16 @@ builder.Services.AddScoped<IAnalyticsInterop, AnalyticsInterop>();
 builder.Services.AddScoped<ICookieConsentInterop, CookieConsentInterop>();
 builder.Services.AddScoped<CookieConsentStateService>();
 
-// Register message handler for S3 cross-origin uploads
-builder.Services.AddTransient<S3UploadMessageHandler>();
+// Register message handler for direct provider upload URLs issued by the server.
+builder.Services.AddTransient<DirectStorageUploadMessageHandler>();
 
-// Register named HTTP client for S3 uploads (ImageStorageService)
-// Uses S3UploadMessageHandler to set CORS mode for cross-origin PUT requests to Hetzner Object Storage
-builder.Services.AddHttpClient("S3Upload", client =>
+// Register named HTTP client for direct storage-provider uploads.
+// Browser upload flows should use the BFF upload-session/proxy path; this remains for trusted server-issued URLs.
+builder.Services.AddHttpClient(StorageHttpClientNames.DirectUpload, client =>
 {
     client.Timeout = TimeSpan.FromMinutes(5); // Allow large file uploads
 })
-.AddHttpMessageHandler<S3UploadMessageHandler>();
+.AddHttpMessageHandler<DirectStorageUploadMessageHandler>();
 
 builder.Services.AddScoped<Explore.Blazor.Client.Services.Http.BffClient>();
 builder.Services.AddScoped<Explore.Blazor.Client.Services.Http.IBffClient>(sp =>

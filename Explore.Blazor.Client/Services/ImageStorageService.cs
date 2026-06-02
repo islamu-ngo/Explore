@@ -1,5 +1,5 @@
-// ABOUTME: Image storage orchestration service for upload sessions, legacy presigned uploads, and previews.
-// ABOUTME: Keeps browser flows on server-issued BFF sessions while preserving shared non-browser upload helpers.
+// ABOUTME: Image storage orchestration service for upload sessions, metadata records, and previews.
+// ABOUTME: Keeps browser flows on server-issued BFF sessions while preserving trusted direct-upload helpers.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services.Http;
@@ -148,6 +148,7 @@ public class ImageStorageService : IImageStorageService
     private readonly IImagePreviewService _previewService;
     private readonly IImageUploadClient _uploadClient;
     private readonly IImageStorageRecordClient _storageRecordClient;
+    private readonly IStorageObjectUrlResolver _storageObjectUrlResolver;
     private const long DefaultMaxFileSize = 10 * 1024 * 1024; // 10MB
 
     public ImageStorageService(
@@ -160,7 +161,8 @@ public class ImageStorageService : IImageStorageService
         IImagePreviewService? previewService = null,
         IImageContentClassifier? contentClassifier = null,
         IImageUploadClient? uploadClient = null,
-        IImageStorageRecordClient? storageRecordClient = null)
+        IImageStorageRecordClient? storageRecordClient = null,
+        IStorageObjectUrlResolver? storageObjectUrlResolver = null)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
@@ -180,6 +182,7 @@ public class ImageStorageService : IImageStorageService
             _apiClient,
             classifier,
             NullLogger<ImageStorageRecordClient>.Instance);
+        _storageObjectUrlResolver = storageObjectUrlResolver ?? new StorageObjectUrlResolver();
     }
 
     /// <inheritdoc />
@@ -238,7 +241,7 @@ public class ImageStorageService : IImageStorageService
 
             _logger.LogDebug("Got upload session response. ObjectKey: {ObjectKey}", uploadResponse.ObjectKey);
 
-            // Step 2: Upload to S3 using bytes
+            // Step 2: Upload through the provider-neutral BFF proxy in browser runtime.
             if (OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
             {
                 var bffUploadResult = await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, fileData);
@@ -252,7 +255,7 @@ public class ImageStorageService : IImageStorageService
             var uploadSuccess = await UploadImageFromBytesAsync(uploadResponse.UploadUrl, fileData);
             if (!uploadSuccess)
             {
-                _logger.LogError("S3 upload failed for file {FileName}", fileData.FileName);
+                _logger.LogError("Direct storage upload failed for file {FileName}", fileData.FileName);
                 return new ImageUploadResult
                 {
                     Success = false,
@@ -260,7 +263,7 @@ public class ImageStorageService : IImageStorageService
                 };
             }
 
-            _logger.LogDebug("S3 upload completed successfully for {FileName}", fileData.FileName);
+            _logger.LogDebug("Direct storage upload completed successfully for {FileName}", fileData.FileName);
 
             // Step 3: Create StorageObject record
             return await _storageRecordClient.CreateRecordFromBytesAsync(uploadResponse, fileData);
@@ -303,7 +306,7 @@ public class ImageStorageService : IImageStorageService
                 };
             }
 
-            // Step 2: Upload to S3
+            // Step 2: Upload through the provider-neutral BFF proxy in browser runtime.
             if (OperatingSystem.IsBrowser() && !string.IsNullOrWhiteSpace(uploadResponse.UploadSessionId))
             {
                 var bffUploadResult = await _uploadClient.UploadViaBffProxyAsync(uploadResponse.UploadSessionId, file);
@@ -357,23 +360,13 @@ public class ImageStorageService : IImageStorageService
 
         try
         {
-            if (Uri.TryCreate(imageKey, UriKind.Absolute, out var uri) &&
-                string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            var resolvedUrl = _storageObjectUrlResolver.ResolvePublicImageUrl(imageKey);
+            if (!string.IsNullOrEmpty(resolvedUrl))
             {
-                imageKey = uri.AbsolutePath;
+                return resolvedUrl;
             }
 
-            if (imageKey.StartsWith("/api/storageobject/", StringComparison.OrdinalIgnoreCase))
-            {
-                return imageKey;
-            }
-
-            if (Guid.TryParse(imageKey, out var storageObjectId))
-            {
-                return $"/api/StorageObject/{storageObjectId}/public";
-            }
-
-            _logger.LogWarning("Image key is not a metadata-backed storage URL or storage object ID.");
+            _logger.LogWarning("Image reference is not a metadata-backed storage URL or storage object ID.");
             return null;
         }
         catch (Exception ex)
@@ -390,9 +383,7 @@ public class ImageStorageService : IImageStorageService
     {
         try
         {
-            return storageObjectId == Guid.Empty
-                ? null
-                : $"/api/StorageObject/{storageObjectId}/public";
+            return _storageObjectUrlResolver.ResolvePublicImageUrl(storageObjectId);
         }
         catch (Exception ex)
         {

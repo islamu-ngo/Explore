@@ -1,0 +1,30 @@
+/* ABOUTME: Scoped styles for the provider-neutral stored image component. */
+/* ABOUTME: Keeps placeholder, loading, error, and media states stable and accessible. */
+
+.storage-image {
+    align-items: center;
+    background-color: var(--mud-palette-background-grey);
+    display: flex;
+    justify-content: center;
+    min-block-size: var(--isl-target-min);
+    overflow: hidden;
+}
+
+.storage-image__media {
+    block-size: 100%;
+    inline-size: 100%;
+}
+
+.storage-image__placeholder,
+.storage-image__error {
+    align-items: center;
+    color: var(--mud-palette-text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-2);
+    justify-content: center;
+    min-block-size: var(--isl-target-min);
+    padding-block: var(--isl-space-4);
+    padding-inline: var(--isl-space-4);
+    text-align: center;
+}
