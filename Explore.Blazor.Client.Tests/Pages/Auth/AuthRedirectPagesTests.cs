@@ -1,10 +1,12 @@
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Diagnostics;
 using Bunit.TestDoubles;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Tests.Common;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
@@ -52,15 +54,9 @@ public class AuthRedirectPagesTests : IDisposable
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!nav.Uri.EndsWith("/auth/challenge?provider=keycloak&returnUrl=%2F", StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("Expected navigation to keycloak challenge with default returnUrl.");
-            }
-        });
+        await WaitForNavigationAsync(nav, uri => IsChallengeNavigation(uri, "keycloak", "/"));
 
-        await Assert.That(nav.Uri).EndsWith("/auth/challenge?provider=keycloak&returnUrl=%2F");
+        await AssertChallengeNavigationAsync(nav.Uri, "keycloak", "/");
     }
 
     [Test]
@@ -75,15 +71,9 @@ public class AuthRedirectPagesTests : IDisposable
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!nav.Uri.EndsWith("/auth/challenge?provider=keycloak&returnUrl=%2Fadmin%2Ftenant%2Fsettings", StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("Expected navigation to keycloak challenge with forwarded returnUrl.");
-            }
-        });
+        await WaitForNavigationAsync(nav, uri => IsChallengeNavigation(uri, "keycloak", "/admin/tenant/settings"));
 
-        await Assert.That(nav.Uri).EndsWith("/auth/challenge?provider=keycloak&returnUrl=%2Fadmin%2Ftenant%2Fsettings");
+        await AssertChallengeNavigationAsync(nav.Uri, "keycloak", "/admin/tenant/settings");
     }
 
     [Test]
@@ -139,15 +129,9 @@ public class AuthRedirectPagesTests : IDisposable
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!nav.Uri.EndsWith("/auth/challenge?provider=google&returnUrl=%2Fsetup", StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("Expected navigation to forced Google challenge URL.");
-            }
-        });
+        await WaitForNavigationAsync(nav, uri => IsChallengeNavigation(uri, "google", "/setup"));
 
-        await Assert.That(nav.Uri).EndsWith("/auth/challenge?provider=google&returnUrl=%2Fsetup");
+        await AssertChallengeNavigationAsync(nav.Uri, "google", "/setup");
     }
 
     [Test]
@@ -205,15 +189,9 @@ public class AuthRedirectPagesTests : IDisposable
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!nav.Uri.EndsWith("/auth/challenge?provider=atproto&returnUrl=%2Fdashboard&login_hint=user.bsky.social", StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("Expected automatic redirect to ATProto challenge with login_hint.");
-            }
-        });
+        await WaitForNavigationAsync(nav, uri => IsChallengeNavigation(uri, "atproto", "/dashboard", "user.bsky.social"));
 
-        await Assert.That(nav.Uri).EndsWith("/auth/challenge?provider=atproto&returnUrl=%2Fdashboard&login_hint=user.bsky.social");
+        await AssertChallengeNavigationAsync(nav.Uri, "atproto", "/dashboard", "user.bsky.social");
     }
 
     [Test]
@@ -317,6 +295,81 @@ public class AuthRedirectPagesTests : IDisposable
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient("BffSelfClient").Returns(client);
         _ctx.Services.AddSingleton(factory);
+    }
+
+    private static async Task WaitForNavigationAsync(BunitNavigationManager navigationManager, Func<string, bool> predicate, int timeoutMs = 5000)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        while (stopwatch.ElapsedMilliseconds < timeoutMs)
+        {
+            if (predicate(navigationManager.Uri))
+            {
+                return;
+            }
+
+            await Task.Delay(10);
+        }
+
+        if (predicate(navigationManager.Uri))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException($"Expected navigation did not occur. Last URI: {navigationManager.Uri}");
+    }
+
+    private static bool IsChallengeNavigation(string uri, string provider, string returnUrl, string? loginHint = null)
+    {
+        try
+        {
+            var parsedUri = new Uri(uri, UriKind.Absolute);
+            var query = QueryHelpers.ParseQuery(parsedUri.Query);
+
+            if (!string.Equals(parsedUri.AbsolutePath, "/auth/challenge", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!string.Equals(query["provider"].ToString(), provider, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!string.Equals(query["returnUrl"].ToString(), returnUrl, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (loginHint is null)
+            {
+                return !query.ContainsKey("login_hint");
+            }
+
+            return string.Equals(query["login_hint"].ToString(), loginHint, StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task AssertChallengeNavigationAsync(string uri, string provider, string returnUrl, string? loginHint = null)
+    {
+        var parsedUri = new Uri(uri, UriKind.Absolute);
+        var query = QueryHelpers.ParseQuery(parsedUri.Query);
+
+        await Assert.That(parsedUri.AbsolutePath).IsEqualTo("/auth/challenge");
+        await Assert.That(query["provider"].ToString()).IsEqualTo(provider);
+        await Assert.That(query["returnUrl"].ToString()).IsEqualTo(returnUrl);
+
+        if (loginHint is null)
+        {
+            await Assert.That(query.ContainsKey("login_hint")).IsFalse();
+        }
+        else
+        {
+            await Assert.That(query["login_hint"].ToString()).IsEqualTo(loginHint);
+        }
     }
 
     private sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder)

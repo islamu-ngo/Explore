@@ -53,7 +53,9 @@ public sealed class ActorSubscriptionButtonTests : IDisposable
         _subscriptionService.SubscribeAsync(targetActorId, Arg.Any<CancellationToken>())
             .Returns(new ActorSubscriptionCommandResult(true, Guid.NewGuid(), "Subscribed"));
         _subscriptionService.GetSubscriptionAsync(targetActorId, Arg.Any<CancellationToken>())
-            .Returns(new ActorSubscriptionDto { TargetActorId = targetActorId, StatusCode = "ACTIVE", ConcurrencyStamp = Guid.NewGuid() });
+            .Returns(
+                (ActorSubscriptionDto?)null,
+                new ActorSubscriptionDto { TargetActorId = targetActorId, StatusCode = "ACTIVE", ConcurrencyStamp = Guid.NewGuid() });
 
         var cut = RenderButton(targetActorId, canSubscribe: true, canViewSubscription: true, targetName: "Community Org");
         await cut.InvokeAsync(() => cut.Find("button").Click());

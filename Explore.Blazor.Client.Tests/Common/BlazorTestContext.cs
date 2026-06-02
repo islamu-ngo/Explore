@@ -4,6 +4,7 @@
 using Explore.Application.Authentication;
 using Explore.Application.Contracts.Identity;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Services.Docking;
 using MudBlazor;
 using MudBlazor.Interop;
@@ -75,6 +76,7 @@ public class BlazorTestContext : BunitContext
         AddAuthorizationSubstrateMocks();
         AddAppearanceThemeMock();
         AddPublicExperienceMock();
+        Services.AddScoped(_ => Substitute.For<INotificationRefreshStreamClient>());
         var dockLayoutPersistence = Substitute.For<IDockLayoutPersistence>();
         dockLayoutPersistence.LoadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DockLayoutSnapshot?>(null));

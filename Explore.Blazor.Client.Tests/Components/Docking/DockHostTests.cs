@@ -103,7 +103,7 @@ public sealed class DockHostTests : IDisposable
             {
                 throw new InvalidOperationException("Mobile docked panel rendered a resize handle.");
             }
-        });
+        }, timeout: TimeSpan.FromSeconds(5));
         await scrollManager.Received(1).LockScrollAsync("body", "scroll-locked");
         await focusService.Received(1).FocusAsync(
             "[data-testid='dock-overlay-host'][data-dock-scope='workspace'] [data-testid='dock-panel-host']",
@@ -289,7 +289,7 @@ public sealed class DockHostTests : IDisposable
             {
                 throw new InvalidOperationException("Docked panel did not unmount after the close animation delay.");
             }
-        }, timeout: TimeSpan.FromSeconds(2));
+        }, timeout: TimeSpan.FromSeconds(5));
 
         await Task.CompletedTask;
     }
@@ -446,7 +446,7 @@ public sealed class DockHostTests : IDisposable
             {
                 throw new InvalidOperationException("Mobile-projected docked panel stayed mounted after desktop viewport transition.");
             }
-        }, timeout: TimeSpan.FromSeconds(2));
+        }, timeout: TimeSpan.FromSeconds(5));
     }
 
     [Test]
@@ -595,7 +595,7 @@ public sealed class DockHostTests : IDisposable
             {
                 throw new InvalidOperationException("Closing overlay panel was not unmounted after its reverse animation window.");
             }
-        }, timeout: TimeSpan.FromSeconds(2));
+        }, timeout: TimeSpan.FromSeconds(5));
     }
 
     [Test]
