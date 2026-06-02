@@ -33,6 +33,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IInstanceStorageSettingService, InstanceStorageSettingService>();
         services.AddScoped<IInstanceSmtpSettingService, InstanceSmtpSettingService>();
         services.AddScoped<IAuthProviderConfigurationService, AuthProviderConfigurationService>();
+        services.AddScoped<IKeycloakIdentityContractContributor, EventKeycloakIdentityContractContributor>();
+        services.AddScoped<IKeycloakRealmDesiredStateBuilder, KeycloakRealmDesiredStateBuilder>();
         services.AddScoped<IAnalyticsGovernanceService, AnalyticsGovernanceService>();
         services.AddScoped<IModuleCapabilityService, ModuleCapabilityService>();
         services.AddScoped<SettingUpsertService>();
