@@ -23,6 +23,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// </summary>
 [Category(TestCategories.Security)]
 [ClassDataSource<SecurityInfrastructureFixture>(Shared = SharedType.PerAssembly)]
+[NotInParallel("SecurityInfra")]
 public class SecurityIntegrationTests : IAsyncDisposable
 {
     private readonly SecurityInfrastructureFixture _infra;

@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Event.Api.IntegrationTests.Features;
 
+[NotInParallel("SingleTenantAuthenticatedApiFixture")]
 [ClassDataSource<SingleTenantAuthenticatedApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class ExternalApiKeyIntegrationTests
 {

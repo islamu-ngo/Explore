@@ -10,16 +10,6 @@ public class ApiTestFixture : IAsyncInitializer, IAsyncDisposable
 
     public async Task InitializeAsync()
     {
-        // Set environment variable for connection string as a fallback for main Program.cs
-        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "Host=localhost;Database=explore_db_test;Username=postgres;Password=postgres");
-
-        // Mock Keycloak Environment Variables (Critical for Program.cs startup before WAF configuration overrides)
-        Environment.SetEnvironmentVariable("Keycloak__Authority", "https://auth.example.com");
-        Environment.SetEnvironmentVariable("Keycloak__Realm", "ISLAMU");
-        Environment.SetEnvironmentVariable("Keycloak__Audience", "islamu-event-api");
-        Environment.SetEnvironmentVariable("Keycloak__RequireHttpsMetadata", "false");
-        Environment.SetEnvironmentVariable("Keycloak__MetadataAddress", "https://auth.example.com/.well-known/openid-configuration");
-
         Factory = new CustomWebApplicationFactory();
         Client = Factory.CreateClient();
         await Task.CompletedTask;

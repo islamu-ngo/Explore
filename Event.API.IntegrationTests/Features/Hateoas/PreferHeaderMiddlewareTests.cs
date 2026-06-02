@@ -9,6 +9,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 /// Unit tests for PreferHeaderMiddleware.
 /// Tests RFC 7240 Prefer header processing behavior.
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class PreferHeaderMiddlewareTests
 {

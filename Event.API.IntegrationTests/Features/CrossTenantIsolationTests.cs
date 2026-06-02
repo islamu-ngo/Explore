@@ -42,6 +42,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// </summary>
 [Category(TestCategories.Security)]
 [ClassDataSource<KeycloakOnlyFixture>(Shared = SharedType.PerAssembly)]
+[NotInParallel("SecurityInfra")]
 public class CrossTenantIsolationTests : IAsyncDisposable
 {
     private readonly KeycloakOnlyFixture _keycloak;

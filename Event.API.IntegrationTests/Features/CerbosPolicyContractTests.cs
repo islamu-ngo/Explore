@@ -13,6 +13,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// YAML policies produce correct ALLOW/DENY decisions for every role × resource × action.
 /// </summary>
 [Category(TestCategories.PolicyContract)]
+[NotInParallel("SecurityInfra")]
 [ClassDataSource<SecurityInfrastructureFixture>(Shared = SharedType.PerAssembly)]
 public class CerbosPolicyContractTests : IDisposable
 {

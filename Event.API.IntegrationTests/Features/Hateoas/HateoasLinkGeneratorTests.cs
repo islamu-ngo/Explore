@@ -10,6 +10,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 /// Integration tests for HateoasLinkGenerator.
 /// Tests that link generation works correctly for all entity types.
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class HateoasLinkGeneratorTests
 {

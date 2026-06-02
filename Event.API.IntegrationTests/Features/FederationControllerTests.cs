@@ -10,6 +10,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// Integration tests for federation-related controllers.
 /// These manage ATProto/ActivityPub entities (Actor keys, indexed DIDs, sync state, records).
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class FederationControllerTests
 {

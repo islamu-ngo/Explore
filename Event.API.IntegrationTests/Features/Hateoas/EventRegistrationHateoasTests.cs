@@ -10,6 +10,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 /// HATEOAS-specific tests for EventRegistrationController.
 /// Validates event registration links including user, event session, and event references.
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class EventRegistrationHateoasTests
 {

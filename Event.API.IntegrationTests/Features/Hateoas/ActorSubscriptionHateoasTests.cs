@@ -22,6 +22,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 
 [Category(TestCategories.Fast)]
 [Category("ActorSubscription")]
+[NotInParallel("AuthenticatedApiFixture")]
 [ClassDataSource<AuthenticatedApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class ActorSubscriptionHateoasTests(AuthenticatedApiTestFixture fixture)
 {

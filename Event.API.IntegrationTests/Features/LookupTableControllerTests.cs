@@ -10,6 +10,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// Lookup tables are read-only reference data with no tenant filtering.
 /// All GET endpoints should be publicly accessible (AllowAnonymous).
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class LookupTableControllerTests
 {

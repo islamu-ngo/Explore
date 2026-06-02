@@ -9,6 +9,7 @@ using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features.Hateoas;
 
+[NotInParallel("AuthenticatedApiFixture")]
 [ClassDataSource<AuthenticatedApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class HateoasLinkDeserializationTests
 {

@@ -10,6 +10,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 /// HATEOAS-specific tests for AtprotoRecordController.
 /// Validates ATProto record links including DID references for federation support.
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class AtprotoRecordHateoasTests
 {

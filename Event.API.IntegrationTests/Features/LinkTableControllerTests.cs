@@ -12,6 +12,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// Note: Some link table controllers (EventCategories, EventTags,
 /// EventSessionSpeaker, TagTypeTags) do not exist yet and return NotFound.
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class LinkTableControllerTests
 {

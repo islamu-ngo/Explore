@@ -17,6 +17,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 /// Authenticated users should see auth-required links (create).
 /// Permission-bound links (edit, delete) are controlled by IAuthorizationProvider.
 /// </summary>
+[NotInParallel("AuthenticatedApiFixture")]
 [ClassDataSource<AuthenticatedApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class HateoasAuthorizationIntegrationTests
 {

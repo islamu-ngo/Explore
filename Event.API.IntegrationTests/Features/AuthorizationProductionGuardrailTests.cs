@@ -33,6 +33,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// outside the Testing environment, and no allow-all stub can be injected accidentally.
 /// </summary>
 [Category(TestCategories.Fast)]
+[NotInParallel("SecurityInfra")]
 public class AuthorizationProductionGuardrailTests
 {
     [Test]

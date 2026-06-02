@@ -10,6 +10,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// Integration tests for multi-tenancy controllers.
 /// These manage tenant configuration and user-tenant relationships.
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class TenantControllerTests
 {

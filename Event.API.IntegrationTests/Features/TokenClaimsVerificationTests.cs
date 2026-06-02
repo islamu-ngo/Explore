@@ -17,6 +17,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// </summary>
 [Category(TestCategories.Security)]
 [ClassDataSource<SecurityInfrastructureFixture>(Shared = SharedType.PerAssembly)]
+[NotInParallel("SecurityInfra")]
 public class TokenClaimsVerificationTests
 {
     private readonly SecurityInfrastructureFixture _infra;

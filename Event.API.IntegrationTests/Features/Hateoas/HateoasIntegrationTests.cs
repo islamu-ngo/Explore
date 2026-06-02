@@ -12,6 +12,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 /// Integration tests for HATEOAS functionality.
 /// Tests RFC 7240 Prefer header processing, HAL+JSON responses, and pagination links.
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class HateoasIntegrationTests
 {

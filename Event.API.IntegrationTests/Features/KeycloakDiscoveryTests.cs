@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using FluentAssertions;
+using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -13,6 +14,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// that would cause token validation failures in the API.
 /// </summary>
 [Category(TestCategories.Security)]
+[NotInParallel("SecurityInfra")]
 [ClassDataSource<SecurityInfrastructureFixture>(Shared = SharedType.PerAssembly)]
 public class KeycloakDiscoveryTests : IDisposable
 {

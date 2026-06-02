@@ -19,6 +19,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// Validates the gRPC transport path separately from HTTP API tests.
 /// </summary>
 [Category(TestCategories.PolicyContract)]
+[NotInParallel("SecurityInfra")]
 [ClassDataSource<SecurityInfrastructureFixture>(Shared = SharedType.PerAssembly)]
 public class CerbosGrpcSdkTests : IDisposable
 {

@@ -10,6 +10,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 /// HATEOAS-specific tests for TagController.
 /// Validates tag-specific links including events using this tag.
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class TagHateoasTests
 {

@@ -11,6 +11,7 @@ using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
 
+[NotInParallel("SingleTenantAuthenticatedApiFixture")]
 [ClassDataSource<SingleTenantAuthenticatedApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class TenantNavigationCacheTests
 {

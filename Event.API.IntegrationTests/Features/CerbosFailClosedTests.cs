@@ -36,6 +36,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// </summary>
 [Category(TestCategories.Security)]
 [ClassDataSource<KeycloakOnlyFixture>(Shared = SharedType.PerAssembly)]
+[NotInParallel("SecurityInfra")]
 public class CerbosFailClosedTests : IAsyncDisposable
 {
     private readonly KeycloakOnlyFixture _keycloak;

@@ -22,6 +22,7 @@ namespace Event.Api.IntegrationTests.Features.Notifications;
 
 [Category(TestCategories.Fast)]
 [Category("NotificationFanout")]
+[NotInParallel("AuthenticatedApiFixture")]
 [ClassDataSource<AuthenticatedApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class EventPublishedNotificationFanoutIntegrationTests(AuthenticatedApiTestFixture fixture)
 {

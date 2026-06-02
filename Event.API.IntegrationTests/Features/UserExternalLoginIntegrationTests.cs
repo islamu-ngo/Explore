@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Event.Api.IntegrationTests.Features;
 
+[NotInParallel("AuthenticatedApiFixture")]
 [ClassDataSource<AuthenticatedApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class UserExternalLoginIntegrationTests
 {

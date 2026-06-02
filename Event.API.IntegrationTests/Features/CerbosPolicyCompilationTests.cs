@@ -14,6 +14,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// before they reach production.
 /// </summary>
 [Category(TestCategories.PolicyContract)]
+[NotInParallel("SecurityInfra")]
 [ClassDataSource<SecurityInfrastructureFixture>(Shared = SharedType.PerAssembly)]
 public class CerbosPolicyCompilationTests : IDisposable
 {

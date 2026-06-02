@@ -18,6 +18,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// denies anonymous access to protected endpoints and allows authenticated access.
 /// Uses per-request X-Test-Auth header for thread-safe parallel test execution.
 /// </summary>
+[NotInParallel("AuthenticatedApiFixture")]
 [ClassDataSource<AuthenticatedApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class AuthorizationIntegrationTests
 {

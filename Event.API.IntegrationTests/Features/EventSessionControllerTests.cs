@@ -7,6 +7,7 @@ using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
 
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class EventSessionControllerTests
 {

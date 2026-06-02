@@ -7,6 +7,7 @@ using Explore.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TUnit.Assertions;
@@ -27,8 +28,11 @@ public class EventMultiTagFilterTests : IAsyncDisposable
             builder.UseEnvironment("Testing");
             builder.ConfigureServices(services =>
             {
-        services.RemoveExploreDbContextRegistrations();
+                services.RemoveExploreDbContextRegistrations();
                 services.AddInMemoryExploreDbContext($"InMemoryDb_{Guid.NewGuid()}");
+
+                services.RemoveAll<IDistributedCache>();
+                services.AddDistributedMemoryCache();
 
                 // Mock ITenantSlugCache to always resolve our tenant
                 services.RemoveAll<ITenantSlugCache>();

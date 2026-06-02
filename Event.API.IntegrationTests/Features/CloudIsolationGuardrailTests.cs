@@ -14,6 +14,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// Prevents accidental use of production/cloud Keycloak, S3, or other external services.
 /// </summary>
 [Category(TestCategories.Fast)]
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class CloudIsolationGuardrailTests
 {
