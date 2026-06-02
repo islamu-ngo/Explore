@@ -272,6 +272,11 @@ public static class InfrastructureServicesRegistration
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<IdempotencyCleanupSettings>, IdempotencyCleanupSettingsValidator>();
         services.AddScoped<IIdempotencyCleanupService, IdempotencyCleanupService>();
+        services.AddOptions<StorageReconciliationSettings>()
+            .Bind(configuration.GetSection(StorageReconciliationSettings.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<StorageReconciliationSettings>, StorageReconciliationSettingsValidator>();
+        services.AddScoped<IStorageReconciliationService, StorageReconciliationService>();
 
         // PDS Synchronization services
         services.Configure<PdsSyncSettings>(configuration.GetSection(PdsSyncSettings.SectionName));

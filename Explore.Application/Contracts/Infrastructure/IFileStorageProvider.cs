@@ -11,6 +11,8 @@ public interface IFileStorageProvider
 
     Task<FileStorageWriteResult> WriteAsync(FileStorageWriteInput input, CancellationToken cancellationToken);
 
+    Task<bool> ExistsAsync(FileStorageExistsInput input, CancellationToken cancellationToken);
+
     Task<FileStorageReadResult> OpenReadAsync(FileStorageReadInput input, CancellationToken cancellationToken);
 
     Task<FileStorageDeleteResult> DeleteAsync(FileStorageDeleteInput input, CancellationToken cancellationToken);

@@ -11,4 +11,18 @@ public interface IStorageObjectRepository : IGenericRepository<StorageObject, Gu
     Task<List<StorageObject>> GetFilesWithDetails();
     Task<(List<StorageObject> Items, int TotalCount)> GetFilesWithDetailsPaged(int pageNumber, int pageSize);
     Task<IReadOnlyList<StorageObject>> GetAllForInstanceStorageReportAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<StorageObject>> ListActiveForReconciliationAsync(
+        DateTime createdBeforeUtc,
+        int limit,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<StorageObject>> ListDeleteEligibleForReconciliationAsync(
+        DateTime deleteBeforeUtc,
+        int limit,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<string>> ListKnownObjectKeysAsync(
+        string provider,
+        IReadOnlyCollection<string> objectKeys,
+        CancellationToken cancellationToken);
 }

@@ -67,4 +67,17 @@ public class StorageObject : ITenantEntity, IAuditableEntity, ISoftDeletable, IC
 
         LifecycleState = StorageObjectLifecycleStates.DeleteRequested;
     }
+
+    public void MarkDeleted(Guid? userId, DateTime utcNow)
+    {
+        if (LifecycleState == StorageObjectLifecycleStates.Deleted && IsDeleted)
+        {
+            return;
+        }
+
+        LifecycleState = StorageObjectLifecycleStates.Deleted;
+        IsDeleted = true;
+        DeletedAt = utcNow;
+        DeletedBy = userId;
+    }
 }

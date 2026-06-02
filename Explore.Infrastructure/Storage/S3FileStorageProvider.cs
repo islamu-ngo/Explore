@@ -31,6 +31,38 @@ public sealed class S3FileStorageProvider : IFileStorageProvider
 
     public string Provider => StorageProviders.S3Compatible;
 
+    public async Task<bool> ExistsAsync(
+        FileStorageExistsInput input,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+
+        if (string.IsNullOrWhiteSpace(input.ObjectKey))
+        {
+            throw new ArgumentException("A storage object key is required.", nameof(input));
+        }
+
+        var config = await ResolveRequiredConfigAsync(cancellationToken);
+        var client = _clientFactory.CreateDataClient(config);
+
+        try
+        {
+            await client.GetObjectMetadataAsync(
+                new GetObjectMetadataRequest
+                {
+                    BucketName = config.BucketName,
+                    Key = input.ObjectKey
+                },
+                cancellationToken);
+
+            return true;
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+    }
+
     public async Task<FileStorageWriteResult> WriteAsync(
         FileStorageWriteInput input,
         CancellationToken cancellationToken)

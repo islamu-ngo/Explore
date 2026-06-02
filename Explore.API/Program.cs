@@ -232,6 +232,7 @@ if (!isOpenApiGeneration)
     if (!builder.Environment.IsEnvironment("Testing"))
     {
         builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
+        builder.Services.AddHostedService<StorageReconciliationProcessor>();
     }
 
     if (emailDispatchProcessorSettings.Enabled &&
@@ -320,6 +321,10 @@ builder.Services.AddHealthChecks()
         "storage",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "storage", "infrastructure"])
+    .AddCheck<StorageReconciliationHealthCheck>(
+        "storage-reconciliation",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "storage", "reconciliation", "infrastructure"])
     .AddCheck<CerbosReadinessHealthCheck>(
         "cerbos",
         failureStatus: HealthStatus.Unhealthy,

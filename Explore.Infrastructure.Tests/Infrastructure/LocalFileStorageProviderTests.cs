@@ -78,6 +78,47 @@ public sealed class LocalFileStorageProviderTests
     }
 
     [Test]
+    public async Task ExistsAsync_ReturnsFalseWhenObjectIsMissing()
+    {
+        var provider = CreateProvider(out var root);
+
+        try
+        {
+            var exists = await provider.ExistsAsync(
+                new FileStorageExistsInput("tenants/missing/2026/06/02/missing.txt"),
+                CancellationToken.None);
+
+            await Assert.That(exists).IsFalse();
+        }
+        finally
+        {
+            DeleteRootIfExists(root);
+        }
+    }
+
+    [Test]
+    public async Task ExistsAsync_ReturnsTrueForStoredObject()
+    {
+        var provider = CreateProvider(out var root);
+
+        try
+        {
+            await using var content = new MemoryStream(Encoding.UTF8.GetBytes("exists"));
+            var writeResult = await provider.WriteAsync(
+                new FileStorageWriteInput(Guid.CreateVersion7(), content, "text/plain", "exists.txt", ".txt", 6, 1024),
+                CancellationToken.None);
+
+            var exists = await provider.ExistsAsync(new FileStorageExistsInput(writeResult.ObjectKey), CancellationToken.None);
+
+            await Assert.That(exists).IsTrue();
+        }
+        finally
+        {
+            DeleteRootIfExists(root);
+        }
+    }
+
+    [Test]
     public async Task DeleteAsync_WhenCalledTwice_IsIdempotent()
     {
         var provider = CreateProvider(out var root);
@@ -94,6 +135,70 @@ public sealed class LocalFileStorageProviderTests
 
             await Assert.That(firstDelete.Deleted).IsTrue();
             await Assert.That(secondDelete.Deleted).IsFalse();
+        }
+        finally
+        {
+            DeleteRootIfExists(root);
+        }
+    }
+
+    [Test]
+    public async Task ListObjectsAsync_ExcludesQuarantineAndTemporaryFiles()
+    {
+        var provider = CreateProvider(out var root);
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "tenants", "a"));
+            Directory.CreateDirectory(Path.Combine(root, ".quarantine", "20260602"));
+            await File.WriteAllTextAsync(Path.Combine(root, "tenants", "a", "stored.txt"), "stored");
+            await File.WriteAllTextAsync(Path.Combine(root, "tenants", "a", "stored.txt.tmp-test"), "temp");
+            await File.WriteAllTextAsync(Path.Combine(root, ".health-test"), "ok");
+            await File.WriteAllTextAsync(Path.Combine(root, ".quarantine", "20260602", "stored.txt"), "quarantined");
+
+            var objects = new List<FileStorageInventoryObject>();
+            await foreach (var item in provider.ListObjectsAsync(10, CancellationToken.None))
+            {
+                objects.Add(item);
+            }
+
+            await Assert.That(objects.Count).IsEqualTo(1);
+            await Assert.That(objects[0].ObjectKey).IsEqualTo("tenants/a/stored.txt");
+        }
+        finally
+        {
+            DeleteRootIfExists(root);
+        }
+    }
+
+    [Test]
+    public async Task QuarantineAsync_MovesObjectOutOfInventory()
+    {
+        var provider = CreateProvider(out var root);
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "tenants", "a"));
+            var objectPath = Path.Combine(root, "tenants", "a", "orphan.txt");
+            await File.WriteAllTextAsync(objectPath, "orphan");
+
+            var result = await provider.QuarantineAsync(
+                new FileStorageQuarantineInput(
+                    "tenants/a/orphan.txt",
+                    "metadata_record_missing",
+                    new DateTime(2026, 6, 2, 9, 0, 0, DateTimeKind.Utc)),
+                CancellationToken.None);
+
+            var objects = new List<FileStorageInventoryObject>();
+            await foreach (var item in provider.ListObjectsAsync(10, CancellationToken.None))
+            {
+                objects.Add(item);
+            }
+
+            await Assert.That(result.Quarantined).IsTrue();
+            await Assert.That(File.Exists(objectPath)).IsFalse();
+            await Assert.That(Directory.Exists(Path.Combine(root, ".quarantine", "20260602"))).IsTrue();
+            await Assert.That(objects).IsEmpty();
         }
         finally
         {

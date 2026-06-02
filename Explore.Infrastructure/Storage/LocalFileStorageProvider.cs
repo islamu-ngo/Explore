@@ -3,6 +3,7 @@
 
 using System.Buffers;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models.Storage;
@@ -12,9 +13,10 @@ using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Storage;
 
-public sealed class LocalFileStorageProvider : IFileStorageProvider
+public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
 {
     private const int BufferSize = 128 * 1024;
+    private const string QuarantineDirectoryName = ".quarantine";
     private static readonly char[] InvalidExtensionChars = Path.GetInvalidFileNameChars();
 
     private readonly LocalFileStorageOptions _options;
@@ -126,6 +128,17 @@ public sealed class LocalFileStorageProvider : IFileStorageProvider
         }
     }
 
+    public Task<bool> ExistsAsync(
+        FileStorageExistsInput request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var path = ResolveObjectPath(request.ObjectKey);
+        return Task.FromResult(File.Exists(path));
+    }
+
     public Task<FileStorageReadResult> OpenReadAsync(
         FileStorageReadInput request,
         CancellationToken cancellationToken)
@@ -205,6 +218,90 @@ public sealed class LocalFileStorageProvider : IFileStorageProvider
         }
     }
 
+    public async IAsyncEnumerable<FileStorageInventoryObject> ListObjectsAsync(
+        int limit,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        if (limit <= 0)
+        {
+            yield break;
+        }
+
+        var root = ResolveRootPath();
+        if (!Directory.Exists(root))
+        {
+            yield break;
+        }
+
+        var yielded = 0;
+        foreach (var path in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (ShouldSkipInventoryPath(root, path))
+            {
+                continue;
+            }
+
+            var fileInfo = new FileInfo(path);
+            if (!fileInfo.Exists)
+            {
+                continue;
+            }
+
+            var objectKey = Path.GetRelativePath(root, path)
+                .Replace(Path.DirectorySeparatorChar, '/')
+                .Replace(Path.AltDirectorySeparatorChar, '/');
+
+            yield return new FileStorageInventoryObject(
+                Provider,
+                objectKey,
+                fileInfo.Length,
+                fileInfo.LastWriteTimeUtc);
+
+            yielded++;
+            if (yielded >= limit)
+            {
+                yield break;
+            }
+
+            await Task.Yield();
+        }
+    }
+
+    public Task<FileStorageQuarantineResult> QuarantineAsync(
+        FileStorageQuarantineInput request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrWhiteSpace(request.Reason))
+        {
+            throw new ArgumentException("A quarantine reason is required.", nameof(request));
+        }
+
+        var sourcePath = ResolveObjectPath(request.ObjectKey);
+        if (!File.Exists(sourcePath))
+        {
+            return Task.FromResult(new FileStorageQuarantineResult(Provider, request.ObjectKey, Quarantined: false));
+        }
+
+        var root = ResolveRootPath();
+        var quarantinePath = Path.Combine(
+            root,
+            QuarantineDirectoryName,
+            request.UtcNow.ToString("yyyyMMdd", CultureInfo.InvariantCulture),
+            $"{HashObjectKey(request.ObjectKey)}-{Path.GetFileName(sourcePath)}");
+
+        Directory.CreateDirectory(Path.GetDirectoryName(quarantinePath)
+            ?? throw new InvalidOperationException("Unable to resolve quarantine directory."));
+
+        File.Move(sourcePath, quarantinePath, overwrite: false);
+
+        return Task.FromResult(new FileStorageQuarantineResult(Provider, request.ObjectKey, Quarantined: true));
+    }
+
     internal string ResolveObjectPath(string objectKey)
     {
         if (string.IsNullOrWhiteSpace(objectKey))
@@ -242,6 +339,23 @@ public sealed class LocalFileStorageProvider : IFileStorageProvider
         }
 
         return fullPath;
+    }
+
+    private static bool ShouldSkipInventoryPath(string root, string path)
+    {
+        var relativePath = Path.GetRelativePath(root, path)
+            .Replace(Path.DirectorySeparatorChar, '/')
+            .Replace(Path.AltDirectorySeparatorChar, '/');
+
+        var segments = relativePath.Split('/');
+        if (segments.Any(segment => string.Equals(segment, QuarantineDirectoryName, StringComparison.Ordinal)))
+        {
+            return true;
+        }
+
+        var fileName = Path.GetFileName(path);
+        return fileName.StartsWith(".health-", StringComparison.Ordinal) ||
+               fileName.Contains(".tmp-", StringComparison.Ordinal);
     }
 
     private string ResolveRootPath()
@@ -284,6 +398,13 @@ public sealed class LocalFileStorageProvider : IFileStorageProvider
         }
 
         return trimmed.ToLowerInvariant();
+    }
+
+    private static string HashObjectKey(string objectKey)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(objectKey);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant();
     }
 
     private static void TryDeleteTempFile(string tempPath)

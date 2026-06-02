@@ -47,6 +47,8 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _storageQuotaReservations;
     private readonly Histogram<long> _storageQuotaBytes;
     private readonly Counter<long> _storageProviderTests;
+    private readonly Counter<long> _storageReconciliationRuns;
+    private readonly Counter<long> _storageReconciliationObjects;
 
     public BusinessMetrics(IMeterFactory meterFactory)
     {
@@ -202,6 +204,16 @@ public sealed class BusinessMetrics : IDisposable
             "explore.storage.provider_tests",
             unit: "{test}",
             description: "Total storage provider connection test outcomes by provider and bounded failure category");
+
+        _storageReconciliationRuns = meter.CreateCounter<long>(
+            "explore.storage.reconciliation_runs",
+            unit: "{run}",
+            description: "Total storage reconciliation passes by mode and bounded outcome");
+
+        _storageReconciliationObjects = meter.CreateCounter<long>(
+            "explore.storage.reconciliation_objects",
+            unit: "{object}",
+            description: "Total storage reconciliation object decisions by provider, category, action, and bounded outcome");
     }
 
     public void Dispose()
@@ -484,6 +496,35 @@ public sealed class BusinessMetrics : IDisposable
             new KeyValuePair<string, object?>("failure_category", NormalizeStorageFailureCategory(failureCategory)));
     }
 
+    public void RecordStorageReconciliationRun(string? mode, string? outcome, string? failureCategory = null)
+    {
+        _storageReconciliationRuns.Add(1,
+            new KeyValuePair<string, object?>("mode", NormalizeStorageReconciliationMode(mode)),
+            new KeyValuePair<string, object?>("outcome", NormalizeStorageOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeStorageFailureCategory(failureCategory)));
+    }
+
+    public void RecordStorageReconciliationObjects(
+        long count,
+        string? provider,
+        string? category,
+        string? action,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        _storageReconciliationObjects.Add(count,
+            new KeyValuePair<string, object?>("provider", NormalizeStorageProvider(provider)),
+            new KeyValuePair<string, object?>("category", NormalizeStorageReconciliationCategory(category)),
+            new KeyValuePair<string, object?>("action", NormalizeStorageReconciliationAction(action)),
+            new KeyValuePair<string, object?>("outcome", NormalizeStorageOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeStorageFailureCategory(failureCategory)));
+    }
+
     private static string NormalizeTag(string? value)
     {
         return string.IsNullOrWhiteSpace(value)
@@ -515,6 +556,9 @@ public sealed class BusinessMetrics : IDisposable
             "release" => "release",
             "commit" => "commit",
             "test" => "test",
+            "scan" => "scan",
+            "exists" => "exists",
+            "quarantine" => "quarantine",
             _ => "unknown"
         };
     }
@@ -563,6 +607,9 @@ public sealed class BusinessMetrics : IDisposable
             "local_storage_unavailable" => "local_storage_unavailable",
             "s3_not_configured" => "s3_not_configured",
             "s3_unavailable" => "s3_unavailable",
+            "reconciliation_failed" => "reconciliation_failed",
+            "inventory_unavailable" => "inventory_unavailable",
+            "quarantine_failed" => "quarantine_failed",
             FailureCodes.QuotaExceeded => FailureCodes.QuotaExceeded,
             FailureCodes.StorageUploadTooLarge => FailureCodes.StorageUploadTooLarge,
             FailureCodes.StorageUploadSessionNotFound => FailureCodes.StorageUploadSessionNotFound,
@@ -572,6 +619,43 @@ public sealed class BusinessMetrics : IDisposable
             FailureCodes.StorageUploadSizeMismatch => FailureCodes.StorageUploadSizeMismatch,
             FailureCodes.StorageUploadContentTypeMismatch => FailureCodes.StorageUploadContentTypeMismatch,
             FailureCodes.StorageUploadWriteFailed => FailureCodes.StorageUploadWriteFailed,
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeStorageReconciliationMode(string? mode)
+    {
+        return NormalizeTag(mode) switch
+        {
+            "dry_run" => "dry_run",
+            "report" => "report",
+            "quarantine" => "quarantine",
+            "delete" => "delete",
+            "mixed" => "mixed",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeStorageReconciliationCategory(string? category)
+    {
+        return NormalizeTag(category) switch
+        {
+            "metadata" => "metadata",
+            "backing_object" => "backing_object",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeStorageReconciliationAction(string? action)
+    {
+        return NormalizeTag(action) switch
+        {
+            "scan" => "scan",
+            "missing" => "missing",
+            "orphan" => "orphan",
+            "quarantine" => "quarantine",
+            "delete" => "delete",
+            "skip" => "skip",
             _ => "unknown"
         };
     }

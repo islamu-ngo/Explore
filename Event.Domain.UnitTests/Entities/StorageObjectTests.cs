@@ -56,6 +56,21 @@ public class StorageObjectTests
         await Assert.That(entity.LifecycleState).IsEqualTo(StorageObjectLifecycleStates.DeleteRequested);
     }
 
+    [Test]
+    public async Task MarkDeleted_SetsLifecycleAndSoftDeleteMetadata()
+    {
+        var entity = CreateStorageObject();
+        var userId = Guid.CreateVersion7();
+        var utcNow = new DateTime(2026, 6, 2, 9, 0, 0, DateTimeKind.Utc);
+
+        entity.MarkDeleted(userId, utcNow);
+
+        await Assert.That(entity.LifecycleState).IsEqualTo(StorageObjectLifecycleStates.Deleted);
+        await Assert.That(entity.IsDeleted).IsTrue();
+        await Assert.That(entity.DeletedAt).IsEqualTo(utcNow);
+        await Assert.That(entity.DeletedBy).IsEqualTo(userId);
+    }
+
     private static StorageObject CreateStorageObject()
     {
         return new StorageObject
