@@ -7,10 +7,11 @@ Last Updated: 2026-06-01 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Implementation started for the Application registry foundation.
-- **Completed:** Current-state investigation, old AI workstream migration analysis, new plan/context/tasks creation, Phase 1.1 registry contracts, Phase 1.2 common JSON payload guard.
-- **Current priority:** Phase 1.3 registry-backed prompt/parser wiring.
-- **Next recommended slice:** Phase 1.3: registry-back prompt schema and parser while preserving current `CreateEventDraft` behavior.
+- **Overall status:** Application registry foundation, first-tool migration, and Application-level confirmation are complete through Phase 3.2.
+- **Completed:** Current-state investigation, old AI workstream migration analysis, new plan/context/tasks creation, Phase 1.1 registry contracts, Phase 1.2 common JSON payload guard, Phase 1.3 registry-backed prompt/parser wiring, Phase 2.1 `CreateEventDraft` registry metadata, Phase 2.2 schema/mapper drift tests, Phase 3.1 confirm/reject commands, and Phase 3.2 `CreateEventDraft` executor.
+- **Current priority:** Phase 3.3: persist/query safe execution result metadata without raw provider/tool payload leakage.
+- **Next recommended slice:** Phase 3.3, then Phase 4 API/HAL/OpenAPI confirm/reject endpoints and DB-backed duplicate-confirm flow tests.
+- **Verification note:** Application build, targeted AI tests, full serial Application unit tests, and architecture tests are green for the Phase 3.1/3.2 slice.
 
 ## Implementation Maintenance Rules
 
@@ -22,7 +23,7 @@ Last Updated: 2026-06-01 Europe/Brussels
 - [x] Final implementation summary must include Implemented / Verified / Remaining / Next / Docs updated.
 - [x] Do not claim “done” unless all three dev docs reflect actual state.
 
-## Phase 0: Plan Review And Baseline ⏳ NOT STARTED
+## Phase 0: Plan Review And Baseline 🟡 PARTIAL
 
 - [x] **0.1 User reviews and approves/corrects scope**
   - **Files:** `dev/active/ai-tool-contract-registry/*`.
@@ -45,7 +46,7 @@ Last Updated: 2026-06-01 Europe/Brussels
   - **Effort:** S
   - **Dependencies:** 0.1.
 
-## Phase 1: Application Tool Contract Registry Foundation ⏳ NOT STARTED
+## Phase 1: Application Tool Contract Registry Foundation ✅ COMPLETE
 
 - [x] **1.1 Define registry contracts**
   - **Files:** new `Explore.Application/Features/AiAssistant/Tools/AiToolDefinition.cs`, `AiToolContractRegistry.cs`, `IAiToolContractRegistry.cs`, `AiToolValidationResult.cs`, `AiToolExecutionContext.cs`.
@@ -61,42 +62,45 @@ Last Updated: 2026-06-01 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** 1.1.
 
-- [ ] **1.3 Registry-back prompt schema and parser**
+- [x] **1.3 Registry-back prompt schema and parser**
   - **Files:** `AiSystemPromptFactory.cs`, `AiStructuredActionParser.cs`, `AiPromptContextBuilder.cs`, `SendAiMessageCommandHandler.cs`, prompt/parser tests.
   - **Acceptance:** Current provider-visible behavior remains `CreateEventDraft` only; no schema when tool proposals disabled; parser uses registry allow-list.
   - **Validation:** `AiPromptContextBuilderTests`, `AiStructuredActionParserTests`, Application build.
   - **Effort:** L
   - **Dependencies:** 1.1, 1.2.
 
-## Phase 2: Migrate CreateEventDraft Into Registry ⏳ NOT STARTED
+## Phase 2: Migrate CreateEventDraft Into Registry ✅ COMPLETE
 
-- [ ] **2.1 Register CreateEventDraft tool definition**
+- [x] **2.1 Register CreateEventDraft tool definition**
   - **Files:** new `CreateEventDraftAiToolDefinition.cs`; existing payload/mapper/schema files.
   - **Acceptance:** Tool definition provides schema, allowed fields, mapper, confirmation metadata, and required authorization metadata; existing mapper safety remains.
+  - **Progress:** Phase 2 completed mapper metadata, `ResourceKinds.Event` + `AuthorizationActions.Create` metadata, provider/MCP exposure flags, and single-source allowed fields.
   - **Validation:** `CreateEventDraftAiActionMapperTests` pass.
   - **Effort:** M
   - **Dependencies:** 1.3.
 
-- [ ] **2.2 Add schema/mapper drift tests**
+- [x] **2.2 Add schema/mapper drift tests**
   - **Files:** new or extended `CreateEventDraftAiToolDefinitionTests.cs`.
   - **Acceptance:** Schema field set and mapper allowed field set cannot silently drift.
   - **Validation:** Targeted Application tests.
   - **Effort:** S
   - **Dependencies:** 2.1.
 
-## Phase 3: Proposed Action Confirmation Engine ⏳ NOT STARTED
+## Phase 3: Proposed Action Confirmation Engine 🚧 PARTIAL
 
-- [ ] **3.1 Add confirm/reject commands and handlers**
+- [x] **3.1 Add confirm/reject commands and handlers**
   - **Files:** new `ConfirmAiProposedActionCommand.cs`, `RejectAiProposedActionCommand.cs`, handlers/tests.
   - **Acceptance:** Authenticated current user only; wrong tenant/user fails closed; duplicate confirm safe; reject has no side effects.
-  - **Validation:** Application command tests.
+  - **Progress:** Added authenticated commands, authorization metadata, fail-closed tenant/user checks, duplicate-safe confirmed/rejected handling, and proposed-action transition persistence through `UpdateProposedActionAsync`.
+  - **Validation:** Application command tests passed.
   - **Effort:** L
   - **Dependencies:** 2.1.
 
-- [ ] **3.2 Add CreateEventDraft executor**
+- [x] **3.2 Add CreateEventDraft executor**
   - **Files:** new executor; existing `CreateEventDraftAiActionMapper.cs`, `CreateEventCommand.cs`.
   - **Acceptance:** Executor dispatches `CreateEventCommand` through MediatR; no direct event repository insert; created event is draft with empty program graph.
-  - **Validation:** Application tests and later DB-backed API flow.
+  - **Progress:** Added `CreateEventDraftAiToolExecutor`; confirm handler dispatches existing `CreateEventCommand` through MediatR, marks executed on success, marks failed on mapper/create failure, and never writes event repositories directly.
+  - **Validation:** Application tests passed; DB-backed API flow remains Phase 4.
   - **Effort:** L
   - **Dependencies:** 3.1.
 
