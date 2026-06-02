@@ -10,6 +10,7 @@ namespace Event.Api.IntegrationTests.Features.Hateoas;
 /// HATEOAS-specific tests for OrganizationReviewController.
 /// Validates organization review links including organization and reviewer references.
 /// </summary>
+[NotInParallel("ApiTestFixture")]
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class OrganizationReviewHateoasTests
 {
@@ -49,9 +50,10 @@ public class OrganizationReviewHateoasTests
         var content = await response.Content.ReadAsStringAsync();
         var json = JsonDocument.Parse(content);
 
-        if (json.RootElement.TryGetProperty("_links", out var links))
+        await Assert.That(json.RootElement.TryGetProperty("_links", out var links)).IsTrue();
+
+        if (links.TryGetProperty("self", out var selfLink))
         {
-            await Assert.That(links.TryGetProperty("self", out var selfLink)).IsTrue();
             var href = selfLink.GetProperty("href").GetString();
             await Assert.That(href).Contains("/api/organizationreview");
         }

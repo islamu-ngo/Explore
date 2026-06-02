@@ -154,6 +154,13 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
         yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetStorageObjects,
+            null,
+            "GET",
+            "All storage objects");
+
+        yield return new LinkDefinition(
             LinkRelations.Create,
             RouteNames.CreateStorageObject,
             null,

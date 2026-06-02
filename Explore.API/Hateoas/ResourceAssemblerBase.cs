@@ -121,6 +121,8 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
             links[pair.Key] = pair.Value;
         }
 
+        EnsureCollectionSelfLink(links, httpContext);
+
         return HalCollectionResource<TListDto>.FromPagination(
             items,
             paginatedResult.PageNumber,
@@ -176,6 +178,8 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
             links[pair.Key] = pair.Value;
         }
 
+        EnsureCollectionSelfLink(links, httpContext);
+
         return new HalCollectionResource<TListDto>
         {
             PageNumber = 1,
@@ -201,6 +205,22 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
     protected virtual Dictionary<string, object>? GetEmbeddedResources(TDto dto, HttpContext httpContext)
     {
         return null;
+    }
+
+    private static void EnsureCollectionSelfLink(Dictionary<string, HalLink> links, HttpContext httpContext)
+    {
+        if (links.ContainsKey(LinkRelations.Self))
+        {
+            return;
+        }
+
+        var requestPath = httpContext.Request.Path + httpContext.Request.QueryString;
+        if (string.IsNullOrWhiteSpace(requestPath))
+        {
+            return;
+        }
+
+        links[LinkRelations.Self] = HalLink.Create(requestPath);
     }
 
     /// <summary>

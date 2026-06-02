@@ -98,6 +98,13 @@ public sealed class OrganizationReviewCollectionLinkPolicy : ICollectionLinkPoli
     /// <inheritdoc />
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
+        yield return new LinkDefinition(
+            LinkRelations.Self,
+            RouteNames.GetOrganizationReviews,
+            null,
+            "GET",
+            "All reviews");
+
         // Create link - requires authentication
         yield return new LinkDefinition(
             "create",
