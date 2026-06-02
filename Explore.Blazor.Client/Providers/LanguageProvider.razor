@@ -20,7 +20,7 @@
 
     private const string PersistenceKey = "culture-state";
 
-    private Models.LanguageContext _languageContext = Models.LanguageContext.ForLanguage("en");
+    private global::Explore.Blazor.Client.Models.LanguageContext _languageContext = global::Explore.Blazor.Client.Models.LanguageContext.ForLanguage("en");
     private Action<string>? _languageChangedShim;
     private PersistingComponentStateSubscription _persistSubscription;
 
@@ -67,7 +67,7 @@
 
             await TranslationService.PreloadAsync(lang);
 
-            _languageContext = Models.LanguageContext.ForLanguage(lang);
+            _languageContext = global::Explore.Blazor.Client.Models.LanguageContext.ForLanguage(lang);
             _languageContext.DirectionOverride = cookieDir is "ltr" or "rtl" ? cookieDir : "auto";
 
             await JSRuntime.InvokeVoidAsync(
@@ -88,7 +88,7 @@
         try
         {
             var previousOverride = _languageContext.DirectionOverride;
-            _languageContext = Models.LanguageContext.ForLanguage(newLanguage);
+            _languageContext = global::Explore.Blazor.Client.Models.LanguageContext.ForLanguage(newLanguage);
             _languageContext.DirectionOverride = previousOverride;
 
             await JSRuntime.InvokeVoidAsync(

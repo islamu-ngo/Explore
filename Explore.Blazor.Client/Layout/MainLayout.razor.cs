@@ -81,7 +81,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     public bool? InitialTheme { get; set; }
 
     [CascadingParameter(Name = "Language")]
-    public Models.LanguageContext? LanguageContext { get; set; }
+    public global::Explore.Blazor.Client.Models.LanguageContext? LanguageContext { get; set; }
 
     private bool _isRtl => LanguageContext?.EffectiveIsRtl ?? false;
 
