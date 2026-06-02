@@ -33,6 +33,26 @@ public class SetupSecretForwardingHandlerTests
     }
 
     [Test]
+    public async Task SendAsync_OnboardingPath_WithAnonymousSetupSessionCookie_AddsXSetupSecretHeader()
+    {
+        var httpContext = new DefaultHttpContext();
+        var sessionService = new SetupSecretSessionService();
+        var sessionId = sessionService.CreateAnonymousSession("anonymous-setup-secret");
+        httpContext.Request.Headers.Cookie = $"setup-secret-session={sessionId}";
+
+        var innerHandler = new CapturingHandler();
+        using var handler = CreateHandler(httpContext, sessionService, innerHandler);
+
+        using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/api/InstanceOnboarding/auth-provider-configuration/internal");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
+        await Assert.That(innerHandler.CapturedRequest.Headers.GetValues("X-Setup-Secret").Single()).IsEqualTo("anonymous-setup-secret");
+    }
+
+    [Test]
     public async Task SendAsync_NonOnboardingPath_DoesNotAddHeader()
     {
         var httpContext = new DefaultHttpContext();

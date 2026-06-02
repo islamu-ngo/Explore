@@ -14,8 +14,9 @@ public enum SetupSecretSource
 {
     None = 0,
     ServerSideSetupSession = 1,
-    ProtectedSetupCookie = 2,
-    DevelopmentConfiguration = 3
+    AnonymousSetupSession = 2,
+    ProtectedSetupCookie = 3,
+    DevelopmentConfiguration = 4
 }
 
 public sealed record SetupSecretResolutionResult(
@@ -100,6 +101,7 @@ public sealed class SetupSecretResolver(
     IHostEnvironment environment) : ISetupSecretResolver
 {
     private const string SetupSecretCookieName = "setup-secret";
+    private const string SetupSecretSessionCookieName = "setup-secret-session";
 
     public SetupSecretResolutionResult Resolve(
         HttpContext? httpContext = null,
@@ -113,6 +115,14 @@ public sealed class SetupSecretResolver(
             return SetupSecretResolutionResult.FoundFrom(
                 SetupSecretSource.ServerSideSetupSession,
                 sessionSecret);
+        }
+
+        var anonymousSessionSecret = ResolveAnonymousSessionSecret(context);
+        if (!string.IsNullOrWhiteSpace(anonymousSessionSecret))
+        {
+            return SetupSecretResolutionResult.FoundFrom(
+                SetupSecretSource.AnonymousSetupSession,
+                anonymousSessionSecret);
         }
 
         var cookieSecret = ResolveProtectedCookieSecret(context);
@@ -143,6 +153,14 @@ public sealed class SetupSecretResolver(
         return string.IsNullOrWhiteSpace(userId)
             ? null
             : setupSecretSessionService.GetForUser(userId)?.Trim();
+    }
+
+    private string? ResolveAnonymousSessionSecret(HttpContext? httpContext)
+    {
+        var sessionId = httpContext?.Request.Cookies[SetupSecretSessionCookieName];
+        return string.IsNullOrWhiteSpace(sessionId)
+            ? null
+            : setupSecretSessionService.GetForAnonymousSession(sessionId.Trim())?.Trim();
     }
 
     private SetupSecretResolutionResult ResolveProtectedCookieSecret(HttpContext? httpContext)

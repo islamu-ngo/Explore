@@ -32,9 +32,11 @@ public class TokenCircuitHandler : CircuitHandler
     public override Task OnCircuitOpenedAsync(Circuit circuit, CancellationToken cancellationToken)
     {
         var httpContext = _httpContextAccessor.HttpContext;
+        CaptureCookieHeader(httpContext, circuit.Id);
+
         if (httpContext?.User?.Identity?.IsAuthenticated != true)
         {
-            _logger.LogDebug("[TokenCircuitHandler] No authenticated user during circuit open - skipping token capture");
+            _logger.LogDebug("[TokenCircuitHandler] No authenticated user during circuit open - skipping identity/token capture");
             return Task.CompletedTask;
         }
 
@@ -51,18 +53,6 @@ public class TokenCircuitHandler : CircuitHandler
                 _circuitUserContext.SetSessionId(httpContext.User.FindFirst("sid")?.Value);
                 _logger.LogDebug("[TokenCircuitHandler] Captured userId {UserId} for circuit {CircuitId}",
                     userId, circuit.Id);
-            }
-
-            // Capture auth cookie so BffSelfClient can present it on BFF endpoints.
-            if (httpContext.Request.Headers.TryGetValue("Cookie", out var cookieHeader))
-            {
-                var cookieValue = cookieHeader.ToString();
-                if (!string.IsNullOrEmpty(cookieValue))
-                {
-                    _bffAuthCookieStore.SetCookieHeader(cookieValue);
-                    _logger.LogDebug("[TokenCircuitHandler] Captured auth cookie for circuit {CircuitId} (length: {Length})",
-                        circuit.Id, cookieValue.Length);
-                }
             }
 
             // Strategy 1: Read from HttpContext.Items where CaptureAccessTokenAsync middleware stored it.
@@ -105,6 +95,27 @@ public class TokenCircuitHandler : CircuitHandler
         }
 
         return Task.CompletedTask;
+    }
+
+    private void CaptureCookieHeader(HttpContext? httpContext, string circuitId)
+    {
+        // BffSelfClient uses the captured cookie header for server-side calls back through
+        // BFF endpoints. First-run setup is unauthenticated, so capture this before the
+        // authenticated-user token path exits.
+        if (httpContext?.Request.Headers.TryGetValue("Cookie", out var cookieHeader) != true)
+        {
+            return;
+        }
+
+        var cookieValue = cookieHeader.ToString();
+        if (string.IsNullOrEmpty(cookieValue))
+        {
+            return;
+        }
+
+        _bffAuthCookieStore.SetCookieHeader(cookieValue);
+        _logger.LogDebug("[TokenCircuitHandler] Captured BFF cookie header for circuit {CircuitId} (length: {Length})",
+            circuitId, cookieValue.Length);
     }
 
     public override Func<CircuitInboundActivityContext, Task> CreateInboundActivityHandler(

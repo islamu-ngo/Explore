@@ -4,6 +4,7 @@
 using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -22,11 +23,15 @@ public interface ISetupSecretSessionService
     void SetForUser(string userId, string secret);
     string? GetForUser(string userId);
     void ClearForUser(string userId);
+    string CreateAnonymousSession(string secret);
+    string? GetForAnonymousSession(string sessionId);
+    void ClearAnonymousSession(string sessionId);
 }
 
 public sealed class SetupSecretSessionService : ISetupSecretSessionService
 {
-    private readonly ConcurrentDictionary<string, SecretEntry> _store = new();
+    private readonly ConcurrentDictionary<string, SecretEntry> _userStore = new();
+    private readonly ConcurrentDictionary<string, SecretEntry> _anonymousStore = new();
 
     public void SetForUser(string userId, string secret)
     {
@@ -35,7 +40,7 @@ public sealed class SetupSecretSessionService : ISetupSecretSessionService
             return;
         }
 
-        _store[userId] = new SecretEntry(secret.Trim(), DateTime.UtcNow);
+        _userStore[userId] = new SecretEntry(secret.Trim(), DateTime.UtcNow);
         CleanupExpiredEntries();
     }
 
@@ -46,14 +51,14 @@ public sealed class SetupSecretSessionService : ISetupSecretSessionService
             return null;
         }
 
-        if (!_store.TryGetValue(userId, out var entry))
+        if (!_userStore.TryGetValue(userId, out var entry))
         {
             return null;
         }
 
         if (entry.StoredAtUtc < DateTime.UtcNow.AddHours(-2))
         {
-            _store.TryRemove(userId, out _);
+            _userStore.TryRemove(userId, out _);
             return null;
         }
 
@@ -67,15 +72,64 @@ public sealed class SetupSecretSessionService : ISetupSecretSessionService
             return;
         }
 
-        _store.TryRemove(userId, out _);
+        _userStore.TryRemove(userId, out _);
+    }
+
+    public string CreateAnonymousSession(string secret)
+    {
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            return string.Empty;
+        }
+
+        var sessionId = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        _anonymousStore[sessionId] = new SecretEntry(secret.Trim(), DateTime.UtcNow);
+        CleanupExpiredEntries();
+        return sessionId;
+    }
+
+    public string? GetForAnonymousSession(string sessionId)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            return null;
+        }
+
+        if (!_anonymousStore.TryGetValue(sessionId, out var entry))
+        {
+            return null;
+        }
+
+        if (entry.StoredAtUtc < DateTime.UtcNow.AddHours(-2))
+        {
+            _anonymousStore.TryRemove(sessionId, out _);
+            return null;
+        }
+
+        return entry.Secret;
+    }
+
+    public void ClearAnonymousSession(string sessionId)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            return;
+        }
+
+        _anonymousStore.TryRemove(sessionId, out _);
     }
 
     private void CleanupExpiredEntries()
     {
         var cutoff = DateTime.UtcNow.AddHours(-2);
-        foreach (var key in _store.Where(kvp => kvp.Value.StoredAtUtc < cutoff).Select(kvp => kvp.Key).ToList())
+        foreach (var key in _userStore.Where(kvp => kvp.Value.StoredAtUtc < cutoff).Select(kvp => kvp.Key).ToList())
         {
-            _store.TryRemove(key, out _);
+            _userStore.TryRemove(key, out _);
+        }
+
+        foreach (var key in _anonymousStore.Where(kvp => kvp.Value.StoredAtUtc < cutoff).Select(kvp => kvp.Key).ToList())
+        {
+            _anonymousStore.TryRemove(key, out _);
         }
     }
 

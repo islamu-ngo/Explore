@@ -295,7 +295,9 @@
 
     private void ContinueToAuthConfig()
     {
-        Navigation.NavigateTo("/onboarding/auth-provider");
+        // The setup-secret cookie is set after the current Blazor Server circuit starts.
+        // Force a fresh request so BFF self-clients can forward the new HttpOnly cookie.
+        Navigation.NavigateTo("/onboarding/auth-provider", forceLoad: true);
     }
 
     private void ContinueToProviderLogin(AuthProviderQuickAction provider)

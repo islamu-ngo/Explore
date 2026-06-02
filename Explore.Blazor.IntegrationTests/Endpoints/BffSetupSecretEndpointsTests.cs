@@ -98,6 +98,52 @@ public sealed class BffSetupSecretEndpointsTests
         handler.CapturedSetupSecretHeader.Should().BeNull();
     }
 
+    [Test]
+    public async Task SetupSecret_Post_WhenBrowserFacingRequestIsHttp_SetsNonSecureCookie()
+    {
+        using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
+        await using var app = await CreateAppAsync(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/bff/setup-secret")
+        {
+            Content = JsonContent.Create(new { secret = "candidate-secret" })
+        };
+
+        using var response = await app.Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var cookie = response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("setup-secret=", StringComparison.Ordinal));
+        var sessionCookie = response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("setup-secret-session=", StringComparison.Ordinal));
+        var normalizedCookie = cookie.ToLowerInvariant();
+        var normalizedSessionCookie = sessionCookie.ToLowerInvariant();
+        normalizedCookie.Should().NotContain("; secure");
+        normalizedSessionCookie.Should().NotContain("; secure");
+        normalizedCookie.Should().Contain("httponly");
+        normalizedSessionCookie.Should().Contain("httponly");
+    }
+
+    [Test]
+    public async Task SetupSecret_Post_WhenBrowserFacingRequestIsHttps_SetsSecureCookie()
+    {
+        using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
+        await using var app = await CreateAppAsync(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost/bff/setup-secret")
+        {
+            Content = JsonContent.Create(new { secret = "candidate-secret" })
+        };
+
+        using var response = await app.Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var cookie = response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("setup-secret=", StringComparison.Ordinal));
+        var sessionCookie = response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("setup-secret-session=", StringComparison.Ordinal));
+        var normalizedCookie = cookie.ToLowerInvariant();
+        var normalizedSessionCookie = sessionCookie.ToLowerInvariant();
+        normalizedCookie.Should().Contain("; secure");
+        normalizedSessionCookie.Should().Contain("; secure");
+        normalizedCookie.Should().Contain("httponly");
+        normalizedSessionCookie.Should().Contain("httponly");
+    }
+
     private static async Task<TestBffApp> CreateAppAsync(ValidateSecretHandler handler)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

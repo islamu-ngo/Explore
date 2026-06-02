@@ -11,6 +11,8 @@ namespace Explore.Blazor.Extensions;
 public static class BffSetupSecretEndpoints
 {
     private const int MaxSetupSecretLength = 512;
+    private const string SetupSecretCookieName = "setup-secret";
+    private const string SetupSecretSessionCookieName = "setup-secret-session";
     private const string SetupSecretRequiredDetail = "Setup secret is required.";
     private const string InvalidSetupSecretDetail = "Invalid setup secret.";
     private const string SetupAlreadyCompletedDetail = "Setup is already completed.";
@@ -55,7 +57,6 @@ public static class BffSetupSecretEndpoints
     // causing IResult.ExecuteAsync to never run. We use direct response writing instead.
     private static async Task HandleGetSetupSecretStatusAsync(HttpContext ctx)
     {
-        var env = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
         var sessionService = (ISetupSecretSessionService)ctx.RequestServices.GetRequiredService<SetupSecretSessionService>();
         var secretResolver = ctx.RequestServices.GetRequiredService<ISetupSecretResolver>();
         var secret = ResolvePersistedSetupSecret(ctx, secretResolver);
@@ -71,7 +72,7 @@ public static class BffSetupSecretEndpoints
         {
             if (IsPermanentValidationFailure(validation.StatusCode))
             {
-                ClearSetupSecret(ctx, sessionService, !env.IsDevelopment());
+                ClearSetupSecret(ctx, sessionService, ShouldUseSecureSetupCookie(ctx));
                 await ctx.Response.WriteAsJsonAsync(new SetupSecretStatusResponse
                 {
                     HasPersistedSecret = false,
@@ -99,7 +100,6 @@ public static class BffSetupSecretEndpoints
 
     private static async Task HandleSetupSecretAsync(HttpContext ctx)
     {
-        var env = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
         var sessionService = (ISetupSecretSessionService)ctx.RequestServices.GetRequiredService<SetupSecretSessionService>();
         var request = await ReadSetupSecretRequestAsync(ctx);
         if (!request.IsValid)
@@ -120,19 +120,18 @@ public static class BffSetupSecretEndpoints
         {
             if (IsPermanentValidationFailure(validation.StatusCode))
             {
-                ClearSetupSecret(ctx, sessionService, !env.IsDevelopment());
+                ClearSetupSecret(ctx, sessionService, ShouldUseSecureSetupCookie(ctx));
             }
 
             await WriteProblemAsync(ctx, validation.StatusCode, "Setup Secret Validation Failed", validation.Error);
             return;
         }
 
-        PersistSetupSecret(ctx, sessionService, secret, !env.IsDevelopment());
+        PersistSetupSecret(ctx, sessionService, secret, ShouldUseSecureSetupCookie(ctx));
     }
 
     private static async Task HandleSetupSecretSyncAsync(HttpContext ctx)
     {
-        var env = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
         var sessionService = (ISetupSecretSessionService)ctx.RequestServices.GetRequiredService<SetupSecretSessionService>();
         var request = await ReadSetupSecretRequestAsync(ctx);
         if (!request.IsValid)
@@ -166,14 +165,14 @@ public static class BffSetupSecretEndpoints
         {
             if (IsPermanentValidationFailure(validation.StatusCode))
             {
-                ClearSetupSecret(ctx, sessionService, !env.IsDevelopment(), userId);
+                ClearSetupSecret(ctx, sessionService, ShouldUseSecureSetupCookie(ctx), userId);
             }
 
             await WriteProblemAsync(ctx, validation.StatusCode, "Setup Secret Validation Failed", validation.Error);
             return;
         }
 
-        PersistSetupSecret(ctx, sessionService, secret, !env.IsDevelopment(), userId);
+        PersistSetupSecret(ctx, sessionService, secret, ShouldUseSecureSetupCookie(ctx), userId);
     }
 
     // Permanent failures invalidate the persisted secret (user must re-enter):
@@ -186,9 +185,8 @@ public static class BffSetupSecretEndpoints
 
     private static IResult HandleDeleteSetupSecret(HttpContext ctx)
     {
-        var env = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
         var sessionService = (ISetupSecretSessionService)ctx.RequestServices.GetRequiredService<SetupSecretSessionService>();
-        ClearSetupSecret(ctx, sessionService, !env.IsDevelopment());
+        ClearSetupSecret(ctx, sessionService, ShouldUseSecureSetupCookie(ctx));
         return Results.Ok();
     }
 
@@ -210,6 +208,8 @@ public static class BffSetupSecretEndpoints
         var result = setupSecretResolver.Resolve(ctx);
         return result.Found ? result.Secret?.Trim() : null;
     }
+
+    private static bool ShouldUseSecureSetupCookie(HttpContext ctx) => ctx.Request.IsHttps;
 
     private static async Task<SetupSecretRequestReadResult> ReadSetupSecretRequestAsync(HttpContext ctx)
     {
@@ -396,14 +396,16 @@ public static class BffSetupSecretEndpoints
         string? userId = null)
     {
         var cookieProtector = ctx.RequestServices.GetRequiredService<ISetupSecretCookieProtector>();
-        ctx.Response.Cookies.Append("setup-secret", cookieProtector.Protect(secret), new CookieOptions
+        ctx.Response.Cookies.Append(SetupSecretCookieName, cookieProtector.Protect(secret), CreateSetupCookieOptions(secureCookie));
+
+        var anonymousSessionId = sessionService.CreateAnonymousSession(secret);
+        if (!string.IsNullOrWhiteSpace(anonymousSessionId))
         {
-            MaxAge = TimeSpan.FromMinutes(60),
-            Path = "/",
-            SameSite = SameSiteMode.Lax,
-            HttpOnly = true,
-            Secure = secureCookie
-        });
+            ctx.Response.Cookies.Append(
+                SetupSecretSessionCookieName,
+                anonymousSessionId,
+                CreateSetupCookieOptions(secureCookie));
+        }
 
         var resolvedUserId = string.IsNullOrWhiteSpace(userId) ? ResolveUserId(ctx) : userId;
         if (!string.IsNullOrWhiteSpace(resolvedUserId))
@@ -418,13 +420,14 @@ public static class BffSetupSecretEndpoints
         bool secureCookie,
         string? userId = null)
     {
-        ctx.Response.Cookies.Delete("setup-secret", new CookieOptions
+        var anonymousSessionId = ctx.Request.Cookies[SetupSecretSessionCookieName];
+        if (!string.IsNullOrWhiteSpace(anonymousSessionId))
         {
-            Path = "/",
-            SameSite = SameSiteMode.Lax,
-            HttpOnly = true,
-            Secure = secureCookie
-        });
+            sessionService.ClearAnonymousSession(anonymousSessionId.Trim());
+        }
+
+        ctx.Response.Cookies.Delete(SetupSecretCookieName, CreateSetupCookieOptions(secureCookie));
+        ctx.Response.Cookies.Delete(SetupSecretSessionCookieName, CreateSetupCookieOptions(secureCookie));
 
         var resolvedUserId = string.IsNullOrWhiteSpace(userId) ? ResolveUserId(ctx) : userId;
         if (!string.IsNullOrWhiteSpace(resolvedUserId))
@@ -453,6 +456,15 @@ public static class BffSetupSecretEndpoints
             .GetMethod(nameof(ISetupSecretSessionService.ClearForUser), [typeof(string)])?
             .Invoke(sessionService, [userId]);
     }
+
+    private static CookieOptions CreateSetupCookieOptions(bool secureCookie) => new()
+    {
+        MaxAge = TimeSpan.FromMinutes(60),
+        Path = "/",
+        SameSite = SameSiteMode.Lax,
+        HttpOnly = true,
+        Secure = secureCookie
+    };
 
     // ──────────────────────────────────────────────
     // Internal DTOs
