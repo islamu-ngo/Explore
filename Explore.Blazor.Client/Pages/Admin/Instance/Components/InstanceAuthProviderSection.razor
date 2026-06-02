@@ -60,6 +60,63 @@
                                 <MudStack Spacing="2">
                                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
                                         <div>
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                <MudText Typo="Typo.subtitle2">Keycloak client-secret rotation</MudText>
+                                                <MudChip T="string" Size="Size.Small" Color="@OwnershipChipColor(Model.KeycloakClientSecretOwnership)" Variant="Variant.Outlined">
+                                                    @Model.KeycloakClientSecretOwnership.Badge
+                                                </MudChip>
+                                            </MudStack>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                Rotates only the configured confidential Blazor client secret. Secret values and temporary admin credentials are cleared after submit and never returned.
+                                            </MudText>
+                                        </div>
+                                        <MudButton Elevation="0"
+                                                   Variant="Variant.Filled"
+                                                   Color="Color.Warning"
+                                                   StartIcon="@(_isRotatingKeycloakClientSecret ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.VpnKey)"
+                                                   Disabled="@(!CanRotateKeycloakClientSecret)"
+                                                   OnClick="RotateKeycloakClientSecretAsync">
+                                            @(_isRotatingKeycloakClientSecret ? "Rotating..." : "Rotate Client Secret")
+                                        </MudButton>
+                                    </MudStack>
+
+                                    <MudAlert Severity="@OwnershipAlertSeverity(Model.KeycloakClientSecretOwnership)" Dense="true">
+                                        @Model.KeycloakClientSecretOwnership.Description
+                                    </MudAlert>
+
+                                    @if (IsKeycloakSecretApplicationManaged)
+                                    {
+                                        <MudTextField Variant="Variant.Outlined" T="string" Label="New client secret" InputType="InputType.Password" @bind-Value="_newKeycloakClientSecret" />
+                                        <MudTextField Variant="Variant.Outlined" T="string" Label="Temporary admin username" @bind-Value="_rotationKeycloakAdminUsername" />
+                                        <MudTextField Variant="Variant.Outlined" T="string" Label="Temporary admin password" InputType="InputType.Password" @bind-Value="_rotationKeycloakAdminPassword" />
+                                        <MudCheckBox T="bool" @bind-Value="_confirmApplicationManagedKeycloakSecret" Color="Color.Warning">
+                                            I understand ISLAMU Event will store this new application-managed Keycloak client secret and refresh authentication schemes after rotation.
+                                        </MudCheckBox>
+                                    }
+                                    else
+                                    {
+                                        <MudAlert Severity="Severity.Warning" Dense="true">
+                                            Deployment-managed secrets must be rotated in the deployment secret provider and the matching Keycloak client. The application will not store or overwrite them.
+                                        </MudAlert>
+                                    }
+
+                                    @if (_keycloakSecretRotationResult is not null)
+                                    {
+                                        <MudAlert Severity="@PlanSeverity(_keycloakSecretRotationResult.Status)" Dense="true">
+                                            @_keycloakSecretRotationResult.Message
+                                        </MudAlert>
+                                        @if (!string.IsNullOrWhiteSpace(_keycloakSecretRotationResult.OperatorInstructions))
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_keycloakSecretRotationResult.OperatorInstructions</MudText>
+                                        }
+                                    }
+                                </MudStack>
+                            </MudPaper>
+
+                            <MudPaper Outlined="true" Class="pa-4 mt-2">
+                                <MudStack Spacing="2">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                                        <div>
                                             <MudText Typo="Typo.subtitle2">Keycloak realm doctor</MudText>
                                             <MudText Typo="Typo.body2" Color="Color.Secondary">
                                                 Runs read-only diagnostics against the configured realm. Temporary admin credentials are used only for this request and are cleared after the run.
@@ -116,7 +173,7 @@
                                         <div>
                                             <MudText Typo="Typo.subtitle2">Keycloak sync preview</MudText>
                                             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                                Builds a read-only additive sync plan from the configured realm. Apply is intentionally unavailable until backup-confirmed repair is implemented.
+                                                Builds a read-only additive sync plan from the configured realm, then applies only backup-confirmed additive repairs.
                                             </MudText>
                                         </div>
                                         <MudButton Elevation="0"
@@ -127,14 +184,27 @@
                                                    OnClick="PreviewKeycloakSyncAsync">
                                             @(_isPreviewingKeycloakSync ? "Previewing..." : "Preview Sync")
                                         </MudButton>
-                                    </MudStack>
+                                     </MudStack>
 
-                                    <MudAlert Severity="Severity.Info" Dense="true">
-                                        Preview is read-only. It may use the same temporary admin fields above, clears the password after the request, and never stores Keycloak credentials.
-                                    </MudAlert>
+                                     <MudAlert Severity="Severity.Info" Dense="true">
+                                        Preview is read-only. Apply requires a confirmed Keycloak backup, uses the temporary admin fields above, clears the password after the request, and never deletes realms, users, groups, or unrelated clients.
+                                     </MudAlert>
 
-                                    @if (_keycloakSyncPlan is not null)
-                                    {
+                                     <MudCheckBox T="bool" @bind-Value="_keycloakBackupConfirmed" Color="Color.Warning">
+                                         I have a current Keycloak backup and understand apply only adds or updates ISLAMU-owned realm settings.
+                                     </MudCheckBox>
+
+                                     <MudButton Elevation="0"
+                                                Variant="Variant.Filled"
+                                                Color="Color.Warning"
+                                                StartIcon="@(_isApplyingKeycloakSync ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Build)"
+                                                Disabled="@(!CanApplyKeycloakSync)"
+                                                OnClick="ApplyKeycloakSyncAsync">
+                                         @(_isApplyingKeycloakSync ? "Applying..." : "Apply Additive Repairs")
+                                     </MudButton>
+
+                                     @if (_keycloakSyncPlan is not null)
+                                     {
                                         <MudAlert Severity="@PlanSeverity(_keycloakSyncPlan.Status)" Dense="true">
                                             @_keycloakSyncPlan.Message
                                         </MudAlert>
@@ -404,11 +474,19 @@
     private bool _isDownloadingPackage;
     private bool _isRunningKeycloakDoctor;
     private bool _isPreviewingKeycloakSync;
+    private bool _isApplyingKeycloakSync;
+    private bool _isRotatingKeycloakClientSecret;
     private bool _useTemporaryKeycloakAdmin;
+    private bool _keycloakBackupConfirmed;
+    private bool _confirmApplicationManagedKeycloakSecret;
     private string _temporaryKeycloakAdminUsername = string.Empty;
     private string _temporaryKeycloakAdminPassword = string.Empty;
+    private string _rotationKeycloakAdminUsername = string.Empty;
+    private string _rotationKeycloakAdminPassword = string.Empty;
+    private string _newKeycloakClientSecret = string.Empty;
     private KeycloakRealmDoctorResultModel? _keycloakDoctorResult;
     private KeycloakRealmSyncPlanModel? _keycloakSyncPlan;
+    private KeycloakClientSecretRotationResultModel? _keycloakSecretRotationResult;
     private InstanceCommandResponseModel? _syncResult;
     private InstanceCommandResponseModel? _downloadResult;
 
@@ -512,6 +590,8 @@
     private bool CanRunKeycloakDoctor =>
         !_isRunningKeycloakDoctor
         && !_isPreviewingKeycloakSync
+        && !_isApplyingKeycloakSync
+        && !_isRotatingKeycloakClientSecret
         && OnboardingService is not null
         && Model.KeycloakEnabled
         && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
@@ -523,6 +603,8 @@
     private bool CanPreviewKeycloakSync =>
         !_isPreviewingKeycloakSync
         && !_isRunningKeycloakDoctor
+        && !_isApplyingKeycloakSync
+        && !_isRotatingKeycloakClientSecret
         && OnboardingService is not null
         && Model.KeycloakEnabled
         && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
@@ -530,6 +612,37 @@
         && (!_useTemporaryKeycloakAdmin
             || (!string.IsNullOrWhiteSpace(_temporaryKeycloakAdminUsername)
                 && !string.IsNullOrWhiteSpace(_temporaryKeycloakAdminPassword)));
+
+    private bool CanApplyKeycloakSync =>
+        !_isApplyingKeycloakSync
+        && !_isPreviewingKeycloakSync
+        && !_isRunningKeycloakDoctor
+        && !_isRotatingKeycloakClientSecret
+        && _keycloakBackupConfirmed
+        && OnboardingService is not null
+        && Model.KeycloakEnabled
+        && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
+        && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
+        && !string.IsNullOrWhiteSpace(_temporaryKeycloakAdminUsername)
+        && !string.IsNullOrWhiteSpace(_temporaryKeycloakAdminPassword);
+
+    private bool IsKeycloakSecretApplicationManaged =>
+        !Model.KeycloakClientSecretOwnership.Mode.Equals("deployment-managed", StringComparison.OrdinalIgnoreCase);
+
+    private bool CanRotateKeycloakClientSecret =>
+        !_isRotatingKeycloakClientSecret
+        && !_isRunningKeycloakDoctor
+        && !_isPreviewingKeycloakSync
+        && !_isApplyingKeycloakSync
+        && OnboardingService is not null
+        && Model.KeycloakEnabled
+        && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
+        && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
+        && (!IsKeycloakSecretApplicationManaged
+            || (_confirmApplicationManagedKeycloakSecret
+                && !string.IsNullOrWhiteSpace(_newKeycloakClientSecret)
+                && !string.IsNullOrWhiteSpace(_rotationKeycloakAdminUsername)
+                && !string.IsNullOrWhiteSpace(_rotationKeycloakAdminPassword)));
 
     private static Severity DoctorSeverity(string status) => status.ToLowerInvariant() switch
     {
@@ -543,9 +656,12 @@
     {
         "healthy" => Severity.Success,
         "up-to-date" => Severity.Success,
+        "applied" => Severity.Success,
+        "rotated" => Severity.Success,
         "changes-planned" => Severity.Warning,
         "planned" => Severity.Warning,
         "warning" => Severity.Warning,
+        "operator-action-required" => Severity.Warning,
         _ => Severity.Error
     };
 
@@ -692,6 +808,66 @@
         {
             _temporaryKeycloakAdminPassword = string.Empty;
             _isPreviewingKeycloakSync = false;
+        }
+    }
+
+    private async Task ApplyKeycloakSyncAsync()
+    {
+        if (!CanApplyKeycloakSync || OnboardingService is null)
+        {
+            return;
+        }
+
+        _isApplyingKeycloakSync = true;
+        StateHasChanged();
+
+        try
+        {
+            _keycloakSyncPlan = await OnboardingService.ApplyKeycloakRealmSyncAsync(new KeycloakRealmSyncApplyRequestModel
+            {
+                BackupConfirmed = _keycloakBackupConfirmed,
+                BootstrapAdminUsername = _temporaryKeycloakAdminUsername,
+                BootstrapAdminPassword = _temporaryKeycloakAdminPassword,
+                ApiClientId = "islamu-event-api"
+            });
+        }
+        finally
+        {
+            _temporaryKeycloakAdminPassword = string.Empty;
+            _keycloakBackupConfirmed = false;
+            _isApplyingKeycloakSync = false;
+        }
+    }
+
+    private async Task RotateKeycloakClientSecretAsync()
+    {
+        if (!CanRotateKeycloakClientSecret || OnboardingService is null)
+        {
+            return;
+        }
+
+        _isRotatingKeycloakClientSecret = true;
+        _keycloakSecretRotationResult = null;
+        StateHasChanged();
+
+        try
+        {
+            _keycloakSecretRotationResult = await OnboardingService.RotateKeycloakClientSecretAsync(new KeycloakClientSecretRotationRequestModel
+            {
+                ClientId = Model.KeycloakClientId,
+                SecretOwnershipMode = Model.KeycloakClientSecretOwnership.Mode,
+                ConfirmApplicationManagedSecret = _confirmApplicationManagedKeycloakSecret,
+                NewClientSecret = IsKeycloakSecretApplicationManaged ? _newKeycloakClientSecret : null,
+                BootstrapAdminUsername = IsKeycloakSecretApplicationManaged ? _rotationKeycloakAdminUsername : null,
+                BootstrapAdminPassword = IsKeycloakSecretApplicationManaged ? _rotationKeycloakAdminPassword : null
+            });
+        }
+        finally
+        {
+            _newKeycloakClientSecret = string.Empty;
+            _rotationKeycloakAdminPassword = string.Empty;
+            _confirmApplicationManagedKeycloakSecret = false;
+            _isRotatingKeycloakClientSecret = false;
         }
     }
 

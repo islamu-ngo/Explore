@@ -1,6 +1,8 @@
 // ABOUTME: DTO for instance-level authentication provider configuration managed during setup and admin UI.
 // ABOUTME: Represents enabled auth providers (Keycloak, ATProto, Google) and their credentials.
 
+using Explore.Application.DTOs.Secrets;
+
 namespace Explore.Application.DTOs.Onboarding;
 
 public class AuthProviderConfigurationDto
@@ -11,6 +13,7 @@ public class AuthProviderConfigurationDto
     public string KeycloakClientId { get; set; } = string.Empty;
     public string KeycloakClientSecret { get; set; } = string.Empty;
     public bool KeycloakDetectedFromEnvironment { get; set; }
+    public SecretOwnershipDto KeycloakClientSecretOwnership { get; set; } = new();
 
     // ATProto Login
     public bool AtprotoLoginEnabled { get; set; }

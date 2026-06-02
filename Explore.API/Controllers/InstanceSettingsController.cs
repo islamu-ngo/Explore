@@ -567,6 +567,27 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(result);
     }
 
+    [HttpPost("auth-provider/keycloak/client-secret/rotate", Name = RouteNames.RotateInstanceKeycloakClientSecret)]
+    [EndpointSummary("Rotate Keycloak Client Secret")]
+    [EndpointDescription("Rotates an application-managed Keycloak client secret. Deployment-managed secrets return operator instructions and are not changed by the application.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(KeycloakClientSecretRotationResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<KeycloakClientSecretRotationResultDto>> RotateKeycloakClientSecret(
+        [FromBody] KeycloakClientSecretRotationRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
+        if (!await _adminContext.IsInstanceAdminAsync(userId.Value, cancellationToken)) return Forbid();
+
+        var result = await _mediator.Send(
+            new RotateKeycloakClientSecretCommand { UserId = userId.Value, Request = request },
+            cancellationToken);
+        return Ok(result);
+    }
+
     [HttpGet("auth-provider/status", Name = RouteNames.GetInstanceAuthProviderConfigurationStatus)]
     [AllowAnonymous]
     [EndpointSummary("Check Auth Provider Configuration Status")]

@@ -407,6 +407,146 @@ public sealed class KeycloakBootstrapServiceTests
         await Assert.That(serializedResult).DoesNotContain("admin-token");
     }
 
+    [Test]
+    public async Task ApplyRealmSyncAsync_WithoutBackupConfirmation_DoesNotContactKeycloak()
+    {
+        var configuration = CreateConfiguration();
+        var handler = new OrderedMessageHandler(_ => throw new InvalidOperationException("Keycloak should not be contacted."));
+        var service = CreateService(handler);
+
+        var result = await service.ApplyRealmSyncAsync(configuration, new KeycloakRealmSyncApplyRequestDto(), CancellationToken.None);
+
+        await Assert.That(result.Status).IsEqualTo("blocked");
+        await Assert.That(result.Operations.Any(operation => operation.OperationId == "keycloak-backup-confirmation-required")).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task ApplyRealmSyncAsync_WithTemporaryAdminCredentials_AppliesOnlyAdditiveAdminApiChangesAndRedactsSecrets()
+    {
+        var configuration = CreateConfiguration();
+        var request = new KeycloakRealmSyncApplyRequestDto
+        {
+            BackupConfirmed = true,
+            BootstrapAdminUsername = "bootstrap-admin",
+            BootstrapAdminPassword = "temporary-admin-secret",
+            ApiClientId = "islamu-event-api"
+        };
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Get, "/auth/realms/ISLAMU/.well-known/openid-configuration", _ => JsonResponse("{}")),
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
+                { "access_token": "admin-token" }
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU", _ => JsonResponse("{}")),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
+                [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => JsonResponse(ClientRepresentationJson(
+                "blazor-uuid",
+                "islamu-event-blazor",
+                includeRefreshTokenSettings: false))),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)),
+            ExpectOfflineAccessRole(),
+            ExpectDefaultRole(),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/roles-by-id/default-role-uuid/composites/realm", _ => JsonResponse("[]")),
+            ExpectDefaultRoleCompositeUpdate(),
+            ExpectOfflineAccessScopeLookup(),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
+                [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/optional-client-scopes", _ => JsonResponse("[]")),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/default-client-scopes", _ => JsonResponse("[]")),
+            ExpectOfflineAccessScopeLookup(),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid/optional-client-scopes/offline-scope-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/client-scopes/offline-scope-uuid/scope-mappings/realm/composite", _ => JsonResponse("[]")),
+            ExpectOfflineAccessRole(),
+            ExpectOfflineAccessScopeMappingUpdate(),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("[]")),
+            Expect(HttpMethod.Post, "/auth/admin/realms/ISLAMU/clients", _ => new HttpResponseMessage(HttpStatusCode.Created)));
+        var service = CreateService(handler);
+
+        var result = await service.ApplyRealmSyncAsync(configuration, request, CancellationToken.None);
+
+        await Assert.That(result.Status).IsEqualTo("applied");
+        await Assert.That(result.Operations.Any(operation => operation.OperationId == "keycloak-blazor-client-update" && operation.Status == "applied")).IsTrue();
+        await Assert.That(result.Operations.Any(operation => operation.OperationId == "keycloak-default-role-offline-access-add" && operation.Status == "applied")).IsTrue();
+        await Assert.That(result.Operations.Any(operation => operation.OperationId == "keycloak-api-client-add" && operation.Status == "applied")).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(21);
+        await Assert.That(handler.Requests.Any(x => x.Method == HttpMethod.Delete)).IsFalse();
+        await Assert.That(handler.Requests.Skip(2).All(x => x.Method == HttpMethod.Get || x.Method == HttpMethod.Post || x.Method == HttpMethod.Put)).IsTrue();
+
+        var serializedResult = JsonSerializer.Serialize(result);
+        await Assert.That(serializedResult).DoesNotContain(request.BootstrapAdminPassword);
+        await Assert.That(serializedResult).DoesNotContain("admin-token");
+    }
+
+    [Test]
+    public async Task RotateClientSecretAsync_WhenInputsAreValid_UsesPutAndRedactsSecrets()
+    {
+        var configuration = CreateConfiguration();
+        var request = new KeycloakClientSecretRotationRequestDto
+        {
+            ClientId = "islamu-event-blazor",
+            SecretOwnershipMode = "application-managed",
+            ConfirmApplicationManagedSecret = true,
+            NewClientSecret = "replacement-client-secret",
+            BootstrapAdminUsername = "bootstrap-admin",
+            BootstrapAdminPassword = "temporary-admin-secret"
+        };
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Get, "/auth/realms/ISLAMU/.well-known/openid-configuration", _ => JsonResponse("{}")),
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
+                { "access_token": "admin-token" }
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
+                [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => JsonResponse(ClientRepresentationJson(
+                "blazor-uuid",
+                "islamu-event-blazor",
+                secret: "old-client-secret",
+                includeRefreshTokenSettings: true))),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)));
+        var service = CreateService(handler);
+
+        var result = await service.RotateClientSecretAsync(configuration, request, CancellationToken.None);
+
+        await Assert.That(result.Status).IsEqualTo("rotated");
+        await Assert.That(result.Operations.Any(operation => operation.OperationId == "keycloak-client-secret-rotated" && operation.Status == "applied")).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(5);
+        await Assert.That(handler.Requests.Any(x => x.Method == HttpMethod.Delete)).IsFalse();
+        await Assert.That(handler.Requests[4].Body).Contains(request.NewClientSecret);
+        await Assert.That(handler.Requests[4].Body).DoesNotContain(request.BootstrapAdminPassword);
+
+        var serializedResult = JsonSerializer.Serialize(result);
+        await Assert.That(serializedResult).DoesNotContain(request.NewClientSecret!);
+        await Assert.That(serializedResult).DoesNotContain(request.BootstrapAdminPassword!);
+        await Assert.That(serializedResult).DoesNotContain("admin-token");
+    }
+
+    [Test]
+    public async Task RotateClientSecretAsync_WhenTargetClientDiffers_ReturnsBlockedWithoutHttpRequest()
+    {
+        var configuration = CreateConfiguration();
+        var request = new KeycloakClientSecretRotationRequestDto
+        {
+            ClientId = "unmanaged-client",
+            SecretOwnershipMode = "application-managed",
+            ConfirmApplicationManagedSecret = true,
+            NewClientSecret = "replacement-client-secret",
+            BootstrapAdminUsername = "bootstrap-admin",
+            BootstrapAdminPassword = "temporary-admin-secret"
+        };
+        var handler = new OrderedMessageHandler(_ => throw new InvalidOperationException("Keycloak should not be contacted."));
+        var service = CreateService(handler);
+
+        var result = await service.RotateClientSecretAsync(configuration, request, CancellationToken.None);
+
+        await Assert.That(result.Status).IsEqualTo("blocked");
+        await Assert.That(result.Operations.Any(operation => operation.OperationId == "keycloak-client-secret-target-unsupported")).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(0);
+    }
+
     private static KeycloakBootstrapService CreateService(OrderedMessageHandler handler)
     {
         return new KeycloakBootstrapService(

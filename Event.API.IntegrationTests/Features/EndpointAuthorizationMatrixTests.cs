@@ -45,6 +45,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// </summary>
 [Category(TestCategories.Security)]
 [ClassDataSource<KeycloakOnlyFixture>(Shared = SharedType.PerAssembly)]
+[NotInParallel("SecurityInfra")]
 public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 {
     private readonly KeycloakOnlyFixture _keycloak;
@@ -551,6 +552,58 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             "instance admin should be able to preview read-only Keycloak realm sync plans");
+    }
+
+    [Test]
+    public async Task Matrix_InstanceAdmin_KeycloakRealmSyncApply_RegularUserDenied()
+    {
+        var token = await _keycloak.TokenClient.GetUserTokenAsync();
+        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/sync-apply", token);
+        request.Content = new StringContent("{\"backupConfirmed\":true}", Encoding.UTF8, "application/json");
+
+        var response = await _regularUserClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+            "Keycloak realm sync apply should only be accessible to instance admins");
+    }
+
+    [Test]
+    public async Task Matrix_InstanceAdmin_KeycloakRealmSyncApply_InstanceAdminOK()
+    {
+        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
+        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/sync-apply", token);
+        request.Content = new StringContent("{\"backupConfirmed\":true}", Encoding.UTF8, "application/json");
+
+        var response = await _instanceAdminClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            "instance admin should be able to apply backup-confirmed additive Keycloak realm repairs");
+    }
+
+    [Test]
+    public async Task Matrix_InstanceAdmin_KeycloakClientSecretRotate_RegularUserDenied()
+    {
+        var token = await _keycloak.TokenClient.GetUserTokenAsync();
+        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/client-secret/rotate", token);
+        request.Content = new StringContent("{\"secretOwnershipMode\":\"deployment-managed\"}", Encoding.UTF8, "application/json");
+
+        var response = await _regularUserClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+            "Keycloak client-secret rotation should only be accessible to instance admins");
+    }
+
+    [Test]
+    public async Task Matrix_InstanceAdmin_KeycloakClientSecretRotate_InstanceAdminOK()
+    {
+        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
+        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/client-secret/rotate", token);
+        request.Content = new StringContent("{\"secretOwnershipMode\":\"deployment-managed\"}", Encoding.UTF8, "application/json");
+
+        var response = await _instanceAdminClient.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            "instance admin should receive safe operator instructions for deployment-managed Keycloak secrets");
     }
 
     [Test]

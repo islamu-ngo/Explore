@@ -700,6 +700,7 @@ public static class RouteNames
     public const string RunInstanceKeycloakRealmDoctor = "RunInstanceKeycloakRealmDoctor";
     public const string PreviewInstanceKeycloakRealmSync = "PreviewInstanceKeycloakRealmSync";
     public const string ApplyInstanceKeycloakRealmSync = "ApplyInstanceKeycloakRealmSync";
+    public const string RotateInstanceKeycloakClientSecret = "RotateInstanceKeycloakClientSecret";
     public const string GetInstanceAuthProviderConfigurationStatus = "GetInstanceAuthProviderConfigurationStatus";
     public const string GetInstanceAuthorizationProviderConfiguration = "GetInstanceAuthorizationProviderConfiguration";
     public const string UpdateInstanceAuthorizationProviderConfiguration = "UpdateInstanceAuthorizationProviderConfiguration";

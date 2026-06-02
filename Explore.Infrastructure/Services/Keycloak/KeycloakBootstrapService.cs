@@ -9,6 +9,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.Services;
 using Explore.Application.Onboarding;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,13 +28,14 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     };
 
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IKeycloakRealmDesiredStateBuilder _desiredStateBuilder;
     private readonly ILogger<KeycloakBootstrapService> _logger;
     private readonly KeycloakBootstrapOptions _options;
 
     public KeycloakBootstrapService(
         IHttpClientFactory httpClientFactory,
         ILogger<KeycloakBootstrapService> logger)
-        : this(httpClientFactory, logger, Options.Create(new KeycloakBootstrapOptions()))
+        : this(httpClientFactory, logger, Options.Create(new KeycloakBootstrapOptions()), KeycloakRealmDesiredStateBuilder.CreateDefault())
     {
     }
 
@@ -41,8 +43,18 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         IHttpClientFactory httpClientFactory,
         ILogger<KeycloakBootstrapService> logger,
         IOptions<KeycloakBootstrapOptions> options)
+        : this(httpClientFactory, logger, options, KeycloakRealmDesiredStateBuilder.CreateDefault())
+    {
+    }
+
+    public KeycloakBootstrapService(
+        IHttpClientFactory httpClientFactory,
+        ILogger<KeycloakBootstrapService> logger,
+        IOptions<KeycloakBootstrapOptions> options,
+        IKeycloakRealmDesiredStateBuilder desiredStateBuilder)
     {
         _httpClientFactory = httpClientFactory;
+        _desiredStateBuilder = desiredStateBuilder;
         _logger = logger;
         _options = options.Value;
     }
@@ -623,6 +635,284 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 "Keycloak returned a response that could not be parsed safely.",
                 "Verify the authority points to a Keycloak realm and retry."));
             return CompleteSyncPlan(plan, operations, diagnostics);
+        }
+    }
+
+    public async Task<KeycloakClientSecretRotationResultDto> RotateClientSecretAsync(
+        AuthProviderConfigurationDto configuration,
+        KeycloakClientSecretRotationRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var clientId = string.IsNullOrWhiteSpace(request.ClientId)
+            ? configuration.KeycloakClientId
+            : request.ClientId.Trim();
+        var result = new KeycloakClientSecretRotationResultDto
+        {
+            ClientId = clientId,
+            SecretOwnershipMode = "application-managed"
+        };
+
+        if (!configuration.KeycloakEnabled
+            || string.IsNullOrWhiteSpace(configuration.KeycloakAuthority)
+            || string.IsNullOrWhiteSpace(configuration.KeycloakClientId))
+        {
+            return CompleteRotationResult(
+                result,
+                "blocked",
+                "Keycloak provider configuration is incomplete.",
+                SyncOperation(
+                    "keycloak-client-secret-configuration-missing",
+                    "configuration",
+                    "auth-provider",
+                    "Keycloak",
+                    "none",
+                    "blocked",
+                    "Keycloak provider configuration is incomplete.",
+                    "Enable Keycloak and save authority/client settings before rotating the client secret."));
+        }
+
+        if (!clientId.Equals(configuration.KeycloakClientId, StringComparison.Ordinal))
+        {
+            return CompleteRotationResult(
+                result,
+                "blocked",
+                "Only the configured Keycloak Blazor client secret can be rotated by this workflow.",
+                SyncOperation(
+                    "keycloak-client-secret-target-unsupported",
+                    "client-secret",
+                    "client",
+                    clientId,
+                    "none",
+                    "blocked",
+                    "Requested client is outside the managed rotation boundary.",
+                    "Use the configured Keycloak client ID until the multi-project identity contract registry is available."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.NewClientSecret)
+            || string.IsNullOrWhiteSpace(request.BootstrapAdminUsername)
+            || string.IsNullOrWhiteSpace(request.BootstrapAdminPassword))
+        {
+            return CompleteRotationResult(
+                result,
+                "blocked",
+                "New client secret and temporary admin credentials are required.",
+                SyncOperation(
+                    "keycloak-client-secret-rotation-inputs-missing",
+                    "client-secret",
+                    "client",
+                    clientId,
+                    "none",
+                    "blocked",
+                    "Rotation request is missing required application-managed inputs.",
+                    "Enter the replacement client secret and temporary Keycloak admin credentials."));
+        }
+
+        if (!TryParseAuthority(configuration.KeycloakAuthority, _options.AllowLocalUrls, out var baseUri, out var realm, out var failureCode))
+        {
+            return CompleteRotationResult(
+                result,
+                "blocked",
+                "Keycloak authority URL is not valid or is not safe for client-secret rotation.",
+                SyncOperation(
+                    failureCode,
+                    "configuration",
+                    "auth-provider",
+                    "Keycloak authority",
+                    "none",
+                    "blocked",
+                    "Keycloak authority URL is invalid or unsafe.",
+                    "Use a Keycloak realm authority such as https://keycloak.example.com/realms/islamu."));
+        }
+
+        var client = _httpClientFactory.CreateClient(HttpClientName);
+        try
+        {
+            var diagnostics = new List<KeycloakRealmDoctorCheckDto>();
+            await AddDiscoveryCheckAsync(client, baseUri!, realm, diagnostics, cancellationToken);
+            if (HasBlockingCheck(diagnostics))
+            {
+                return CompleteRotationResult(
+                    result,
+                    "blocked",
+                    "Keycloak discovery is unreachable, so the client secret was not rotated.",
+                    SyncOperation(
+                        "keycloak-client-secret-discovery-blocked",
+                        "client-secret",
+                        "client",
+                        clientId,
+                        "none",
+                        "blocked",
+                        "Keycloak discovery failed before rotation.",
+                        "Resolve Keycloak reachability before retrying."));
+            }
+
+            var tokenRequest = new KeycloakBootstrapRequestDto
+            {
+                KeycloakBaseUrl = baseUri!.ToString(),
+                Realm = realm,
+                BlazorClientId = configuration.KeycloakClientId,
+                BootstrapAdminUsername = request.BootstrapAdminUsername,
+                BootstrapAdminPassword = request.BootstrapAdminPassword
+            };
+
+            var accessToken = await RequestAdminTokenAsync(client, baseUri!, tokenRequest, cancellationToken);
+            if (string.IsNullOrWhiteSpace(accessToken))
+            {
+                return CompleteRotationResult(
+                    result,
+                    "blocked",
+                    "Keycloak admin authentication failed.",
+                    SyncOperation(
+                        "keycloak-client-secret-admin-auth-failed",
+                        "client-secret",
+                        "client",
+                        clientId,
+                        "none",
+                        "blocked",
+                        "Temporary admin authentication failed.",
+                        "Verify the temporary admin username, password, and Keycloak master realm configuration."));
+            }
+
+            var lookup = await FindClientAsync(client, baseUri!, realm, clientId, accessToken, cancellationToken);
+            if (!lookup.Success)
+            {
+                return CompleteRotationResult(
+                    result,
+                    "blocked",
+                    "Keycloak client lookup failed.",
+                    SyncOperation(
+                        "keycloak-client-secret-client-lookup-failed",
+                        "client-secret",
+                        "client",
+                        clientId,
+                        "none",
+                        "blocked",
+                        "Keycloak client lookup failed before rotation.",
+                        "Verify temporary admin permissions and retry."));
+            }
+
+            if (string.IsNullOrWhiteSpace(lookup.ClientUuid))
+            {
+                return CompleteRotationResult(
+                    result,
+                    "blocked",
+                    "Configured Keycloak client does not exist.",
+                    SyncOperation(
+                        "keycloak-client-secret-client-missing",
+                        "client-secret",
+                        "client",
+                        clientId,
+                        "none",
+                        "blocked",
+                        "Configured Keycloak client was not found.",
+                        "Run the Keycloak sync preview/apply workflow to create the managed client before rotating its secret."));
+            }
+
+            var clientUri = BuildUri(baseUri!, "admin", "realms", realm, "clients", lookup.ClientUuid);
+            var representation = await GetClientRepresentationAsync(client, clientUri, accessToken, cancellationToken);
+            if (representation is null)
+            {
+                return CompleteRotationResult(
+                    result,
+                    "blocked",
+                    "Keycloak client representation could not be read.",
+                    SyncOperation(
+                        "keycloak-client-secret-client-unreadable",
+                        "client-secret",
+                        "client",
+                        clientId,
+                        "none",
+                        "blocked",
+                        "Keycloak client representation could not be read before rotation.",
+                        "Verify temporary admin permissions and retry."));
+            }
+
+            representation["secret"] = request.NewClientSecret;
+            var updated = await UpdateClientRepresentationAsync(client, clientUri, accessToken, representation, cancellationToken);
+            if (!updated)
+            {
+                return CompleteRotationResult(
+                    result,
+                    "blocked",
+                    "Keycloak rejected the client-secret rotation request.",
+                    SyncOperation(
+                        "keycloak-client-secret-update-failed",
+                        "client-secret",
+                        "client",
+                        clientId,
+                        "update",
+                        "blocked",
+                        "Keycloak client secret could not be updated.",
+                        "Verify temporary admin permissions and retry."));
+            }
+
+            return CompleteRotationResult(
+                result,
+                "rotated",
+                "Keycloak client secret was rotated and saved as an application-managed secret.",
+                SyncOperation(
+                    "keycloak-client-secret-rotated",
+                    "client-secret",
+                    "client",
+                    clientId,
+                    "update",
+                    "applied",
+                    "Keycloak client secret was rotated.",
+                    "The new secret was sent to Keycloak and will be persisted by the Application handler. Secret values are not returned."));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            return CompleteRotationResult(
+                result,
+                "blocked",
+                "Keycloak client-secret rotation timed out.",
+                SyncOperation(
+                    "keycloak-client-secret-timeout",
+                    "client-secret",
+                    "client",
+                    clientId,
+                    "update",
+                    "blocked",
+                    "Keycloak rotation request timed out.",
+                    "Check network connectivity and retry."));
+        }
+        catch (HttpRequestException)
+        {
+            return CompleteRotationResult(
+                result,
+                "blocked",
+                "Keycloak was unreachable during client-secret rotation.",
+                SyncOperation(
+                    "keycloak-client-secret-unreachable",
+                    "client-secret",
+                    "client",
+                    clientId,
+                    "update",
+                    "blocked",
+                    "Keycloak was unreachable during rotation.",
+                    "Check the Keycloak authority URL, DNS, TLS, and firewall configuration."));
+        }
+        catch (JsonException)
+        {
+            return CompleteRotationResult(
+                result,
+                "blocked",
+                "Keycloak returned a response that could not be parsed safely.",
+                SyncOperation(
+                    "keycloak-client-secret-invalid-response",
+                    "client-secret",
+                    "client",
+                    clientId,
+                    "update",
+                    "blocked",
+                    "Keycloak response format was invalid during rotation.",
+                    "Verify the authority points to a Keycloak realm and retry."));
         }
     }
 
@@ -1506,83 +1796,18 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     private static bool HasBlockingCheck(IEnumerable<KeycloakRealmDoctorCheckDto> checks) =>
         checks.Any(check => string.Equals(check.Status, "blocked", StringComparison.OrdinalIgnoreCase));
 
-    private static KeycloakRealmDesiredStateDto BuildDesiredState(
+    private KeycloakRealmDesiredStateDto BuildDesiredState(
         string realm,
         string blazorClientId,
-        KeycloakRealmSyncPreviewRequestDto request)
-    {
-        var clients = new List<KeycloakClientDesiredStateDto>
-        {
-            new()
-            {
-                ClientId = blazorClientId,
-                DisplayName = blazorClientId,
-                ClientKind = "blazor-confidential",
-                Enabled = true,
-                PublicClient = false,
-                BearerOnly = false,
-                StandardFlowEnabled = true,
-                DirectAccessGrantsEnabled = false,
-                ServiceAccountsEnabled = false,
-                RedirectUris = request.BlazorRedirectUris,
-                WebOrigins = request.BlazorWebOrigins,
-                OptionalClientScopes = ["offline_access"]
-            }
-        };
-
-        if (!string.IsNullOrWhiteSpace(request.ApiClientId))
-        {
-            clients.Add(new KeycloakClientDesiredStateDto
-            {
-                ClientId = request.ApiClientId,
-                DisplayName = request.ApiClientId,
-                ClientKind = "api-bearer",
-                Enabled = true,
-                PublicClient = false,
-                BearerOnly = true,
-                StandardFlowEnabled = false,
-                DirectAccessGrantsEnabled = false,
-                ServiceAccountsEnabled = false,
-                ProtocolMappers =
-                [
-                    new KeycloakProtocolMapperDesiredStateDto
-                    {
-                        Name = $"{request.ApiClientId}-audience",
-                        MapperType = "oidc-audience-mapper",
-                        IncludedClientAudience = request.ApiClientId,
-                        AddToAccessToken = true,
-                        AddToIdToken = false
-                    }
-                ]
-            });
-        }
-
-        return new KeycloakRealmDesiredStateDto
+        KeycloakRealmSyncPreviewRequestDto request) =>
+        _desiredStateBuilder.Build(new KeycloakRealmDesiredStateBuildRequestDto
         {
             Realm = realm,
             BlazorClientId = blazorClientId,
             ApiClientId = request.ApiClientId,
-            DestructiveOperationsSupported = false,
-            RequiredRealmRoles = ["offline_access"],
-            RoleComposites =
-            [
-                new KeycloakRoleCompositeDesiredStateDto
-                {
-                    RoleName = $"default-roles-{realm.ToLowerInvariant()}",
-                    CompositeRoleNames = ["offline_access"]
-                }
-            ],
-            ClientScopes =
-            [
-                new KeycloakClientScopeDesiredStateDto
-                {
-                    Name = "offline_access",
-                    RealmRoleMappings = ["offline_access"]
-                }
-            ],
-            Clients = clients
-        };
-    }
+            BlazorRedirectUris = request.BlazorRedirectUris,
+            BlazorWebOrigins = request.BlazorWebOrigins
+        });
 
     private static async Task AddSyncPreviewOperationsAsync(
         HttpClient client,
@@ -2382,6 +2607,23 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             Changes = changes ?? [],
             RequiresBackupBeforeApply = requiresBackupBeforeApply
         };
+
+    private static KeycloakClientSecretRotationResultDto CompleteRotationResult(
+        KeycloakClientSecretRotationResultDto result,
+        string status,
+        string message,
+        KeycloakRealmSyncOperationDto operation)
+    {
+        result.Status = status;
+        result.Message = message;
+        result.Operations = [operation];
+        if (string.IsNullOrWhiteSpace(result.OperatorInstructions) && status == "blocked")
+        {
+            result.OperatorInstructions = operation.Reason;
+        }
+
+        return result;
+    }
 
     private static KeycloakRealmSyncPlanDto CompleteSyncPlan(
         KeycloakRealmSyncPlanDto plan,

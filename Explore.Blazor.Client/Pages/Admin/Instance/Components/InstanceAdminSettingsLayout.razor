@@ -323,7 +323,7 @@
         var renderTask = InstanceOnboardingService.GetRenderPolicyAsync();
         var storageTask = InstanceOnboardingService.GetStorageSettingsAsync();
         var smtpTask = InstanceOnboardingService.GetSmtpSettingsAsync();
-        var authTask = InstanceOnboardingService.GetAuthProviderConfigurationAsync();
+        var authTask = InstanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync();
         var authorizationTask = InstanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync();
         var analyticsTask = InstanceOnboardingService.GetAnalyticsGovernanceSettingsAsync();
         var footerGovTask = InstanceOnboardingService.GetFooterGovernanceSettingsAsync();

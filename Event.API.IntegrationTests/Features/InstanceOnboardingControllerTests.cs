@@ -985,6 +985,37 @@ public class InstanceOnboardingControllerTests
                 Operations = []
             });
         }
+
+        public Task<KeycloakRealmSyncPlanDto> ApplyRealmSyncAsync(
+            AuthProviderConfigurationDto configuration,
+            KeycloakRealmSyncApplyRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new KeycloakRealmSyncPlanDto
+            {
+                Status = "blocked",
+                Message = "Keycloak sync apply is not configured in this test fake.",
+                Authority = configuration.KeycloakAuthority,
+                ClientId = configuration.KeycloakClientId,
+                ApiClientId = request.ApiClientId,
+                Operations = []
+            });
+        }
+
+        public Task<KeycloakClientSecretRotationResultDto> RotateClientSecretAsync(
+            AuthProviderConfigurationDto configuration,
+            KeycloakClientSecretRotationRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new KeycloakClientSecretRotationResultDto
+            {
+                Status = "blocked",
+                Message = "Keycloak client-secret rotation is not configured in this test fake.",
+                ClientId = request.ClientId ?? configuration.KeycloakClientId,
+                SecretOwnershipMode = request.SecretOwnershipMode,
+                Operations = []
+            });
+        }
     }
 
     private sealed class PassthroughClaimsTransformationFactory : AuthenticatedWebApplicationFactory

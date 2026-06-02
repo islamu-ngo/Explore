@@ -46,11 +46,13 @@ public interface IInstanceOnboardingService
     Task<int> GetActiveTenantCountAsync();
 
     Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsync();
+    Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsAdminAsync();
     Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config);
     Task<InstanceCommandResponseModel> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestModel request);
     Task<KeycloakRealmDoctorResultModel> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestModel request);
     Task<KeycloakRealmSyncPlanModel> PreviewKeycloakRealmSyncAsync(KeycloakRealmSyncPreviewRequestModel request);
     Task<KeycloakRealmSyncPlanModel> ApplyKeycloakRealmSyncAsync(KeycloakRealmSyncApplyRequestModel request);
+    Task<KeycloakClientSecretRotationResultModel> RotateKeycloakClientSecretAsync(KeycloakClientSecretRotationRequestModel request);
     Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config);
     Task<bool> IsAuthProviderConfiguredAsync();
     Task RefreshAuthSchemesAsync();
@@ -312,6 +314,9 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     public async Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsync() =>
         await GetSettingsAsync(_api.GetAuthProviderConfigurationAsync, () => new AuthProviderConfigurationModel());
 
+    public async Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsAdminAsync() =>
+        await GetSettingsAsync(_api.GetAuthProviderConfigurationAsAdminAsync, () => new AuthProviderConfigurationModel());
+
     public Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config) =>
         SendCommandAsync(ct => _api.SaveAuthProviderConfigurationAsync(config, ct));
 
@@ -371,6 +376,22 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         {
             _logger.LogError(ex, "Failed to apply Keycloak realm sync plan.");
             return KeycloakRealmSyncPlanModel.Blocked("Keycloak sync apply failed. Check admin access and retry.");
+        }
+    }
+
+    public async Task<KeycloakClientSecretRotationResultModel> RotateKeycloakClientSecretAsync(KeycloakClientSecretRotationRequestModel request)
+    {
+        try
+        {
+            var response = await _api.RotateKeycloakClientSecretAsync(request, CancellationToken.None);
+            return response.IsSuccessStatusCode && response.Content is not null
+                ? response.Content
+                : KeycloakClientSecretRotationResultModel.Blocked("Keycloak client-secret rotation failed. Check admin access and retry.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to rotate Keycloak client secret.");
+            return KeycloakClientSecretRotationResultModel.Blocked("Keycloak client-secret rotation failed. Check admin access and retry.");
         }
     }
 
@@ -958,6 +979,7 @@ public class AuthProviderConfigurationModel
     public string KeycloakClientId { get; set; } = string.Empty;
     public string KeycloakClientSecret { get; set; } = string.Empty;
     public bool KeycloakDetectedFromEnvironment { get; set; }
+    public SecretOwnershipModel KeycloakClientSecretOwnership { get; set; } = new();
     public bool AtprotoLoginEnabled { get; set; }
     public string AtprotoPublicUrl { get; set; } = string.Empty;
     public bool GoogleSsoEnabled { get; set; }
@@ -1043,6 +1065,47 @@ public class KeycloakRealmSyncApplyRequestModel
     public string? ApiClientId { get; set; } = "islamu-event-api";
     public IReadOnlyList<string> BlazorRedirectUris { get; set; } = [];
     public IReadOnlyList<string> BlazorWebOrigins { get; set; } = [];
+}
+
+public class KeycloakClientSecretRotationRequestModel
+{
+    public string? ClientId { get; set; }
+    public string SecretOwnershipMode { get; set; } = "application-managed";
+    public bool ConfirmApplicationManagedSecret { get; set; }
+    public string? NewClientSecret { get; set; }
+    public string? BootstrapAdminUsername { get; set; }
+    public string? BootstrapAdminPassword { get; set; }
+}
+
+public class KeycloakClientSecretRotationResultModel
+{
+    public string Status { get; set; } = "blocked";
+    public string Message { get; set; } = string.Empty;
+    public string ClientId { get; set; } = string.Empty;
+    public string SecretOwnershipMode { get; set; } = "application-managed";
+    public bool AuthSchemesReloaded { get; set; }
+    public bool RequiresRestart { get; set; }
+    public string OperatorInstructions { get; set; } = string.Empty;
+    public IReadOnlyList<KeycloakRealmSyncOperationModel> Operations { get; set; } = [];
+
+    public static KeycloakClientSecretRotationResultModel Blocked(string message) => new()
+    {
+        Status = "blocked",
+        Message = message,
+        Operations =
+        [
+            new KeycloakRealmSyncOperationModel
+            {
+                OperationId = "keycloak_client_secret_rotation_failed",
+                Category = "client-secret",
+                TargetType = "client",
+                Action = "update",
+                Status = "blocked",
+                Summary = message,
+                Reason = "The client-secret rotation could not be completed safely."
+            }
+        ]
+    };
 }
 
 public class KeycloakRealmSyncPlanModel

@@ -28,6 +28,25 @@ public class AuthProviderConfigurationSourceTests
         await Assert.That(source).Contains("_keycloakBootstrap.BlazorClientSecret = string.Empty;");
     }
 
+    [Test]
+    public async Task AuthProviderConfiguration_ShouldAllowBootstrap_WhenKeycloakDetectedFromDeployment()
+    {
+        var source = await ReadAuthProviderConfigurationAsync();
+
+        await Assert.That(source).DoesNotContain("!_model.KeycloakDetectedFromEnvironment &&");
+        await Assert.That(source).Contains("You can still patch the external realm during setup before the first admin account exists.");
+    }
+
+    [Test]
+    public async Task AuthProviderConfiguration_ShouldPreserveKeycloakBasePath_WhenSeedingBootstrapDefaults()
+    {
+        var source = await ReadAuthProviderConfigurationAsync();
+
+        await Assert.That(source).Contains("var basePath = authorityUri.AbsolutePath[..realmIndex].TrimEnd('/');");
+        await Assert.That(source).Contains("authorityUri.GetLeftPart(UriPartial.Authority) + basePath");
+        await Assert.That(source).Contains("_keycloakBootstrap.BlazorClientSecret = _model.KeycloakClientSecret;");
+    }
+
     private static async Task<string> ReadAuthProviderConfigurationAsync()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -25,4 +25,9 @@ public interface IKeycloakBootstrapService
         AuthProviderConfigurationDto configuration,
         KeycloakRealmSyncApplyRequestDto request,
         CancellationToken cancellationToken);
+
+    Task<KeycloakClientSecretRotationResultDto> RotateClientSecretAsync(
+        AuthProviderConfigurationDto configuration,
+        KeycloakClientSecretRotationRequestDto request,
+        CancellationToken cancellationToken);
 }

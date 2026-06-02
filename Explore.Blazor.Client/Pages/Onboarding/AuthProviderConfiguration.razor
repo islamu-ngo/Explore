@@ -103,42 +103,41 @@
                                     {
                                         <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
                                             <MudText Typo="Typo.caption">
-                                                Keycloak credentials were detected from environment variables and cannot be modified here.
+                                                Keycloak runtime values were detected from deployment configuration and prefilled below. You can still patch the external realm during setup before the first admin account exists.
                                             </MudText>
                                         </MudAlert>
                                     }
+
+                                    <MudRadioGroup T="KeycloakConfigurationMode" @bind-Value="_keycloakConfigurationMode">
+                                        <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Manual" Color="Color.Primary" Dense="true">
+                                            Use an already configured Keycloak realm
+                                        </MudRadio>
+                                        <div data-testid="keycloak-bootstrap-mode-radio">
+                                            <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Bootstrap" Color="Color.Primary" Dense="true">
+                                                Let ISLAMU configure Keycloak clients now
+                                            </MudRadio>
+                                        </div>
+                                    </MudRadioGroup>
+
+                                    @if (_keycloakConfigurationMode == KeycloakConfigurationMode.Manual)
+                                    {
+                                        <MudTextField Variant="Variant.Outlined" T="string"
+                                                      Label="Authority URL (Required)"
+                                                      @bind-Value="_model.KeycloakAuthority"
+                                                      Placeholder="https://keycloak.example.com/realms/myrealm"
+                                                      HelperText="The Keycloak realm URL used for OIDC discovery." />
+                                        <MudTextField Variant="Variant.Outlined" T="string"
+                                                      Label="Client ID (Required)"
+                                                      @bind-Value="_model.KeycloakClientId"
+                                                      Placeholder="my-client" />
+                                        <MudTextField Variant="Variant.Outlined" T="string"
+                                                      Label="Client Secret"
+                                                      InputType="InputType.Password"
+                                                      @bind-Value="_model.KeycloakClientSecret"
+                                                      HelperText="Optional for public clients. Required for confidential clients." />
+                                    }
                                     else
                                     {
-                                        <MudRadioGroup T="KeycloakConfigurationMode" @bind-Value="_keycloakConfigurationMode">
-                                            <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Manual" Color="Color.Primary" Dense="true">
-                                                Use an already configured Keycloak realm
-                                            </MudRadio>
-                                            <div data-testid="keycloak-bootstrap-mode-radio">
-                                                <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Bootstrap" Color="Color.Primary" Dense="true">
-                                                    Let ISLAMU configure Keycloak clients now
-                                                </MudRadio>
-                                            </div>
-                                        </MudRadioGroup>
-
-                                        @if (_keycloakConfigurationMode == KeycloakConfigurationMode.Manual)
-                                        {
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="Authority URL (Required)"
-                                                          @bind-Value="_model.KeycloakAuthority"
-                                                          Placeholder="https://keycloak.example.com/realms/myrealm"
-                                                          HelperText="The Keycloak realm URL used for OIDC discovery." />
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="Client ID (Required)"
-                                                          @bind-Value="_model.KeycloakClientId"
-                                                          Placeholder="my-client" />
-                                            <MudTextField Variant="Variant.Outlined" T="string"
-                                                          Label="Client Secret"
-                                                          InputType="InputType.Password"
-                                                          @bind-Value="_model.KeycloakClientSecret"
-                                                          HelperText="Optional for public clients. Required for confidential clients." />
-                                        }
-                                        else
-                                        {
                                             <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
                                                 ISLAMU will use the bootstrap admin credential one time to create or patch Keycloak clients. The admin credential is not stored after this request.
                                             </MudAlert>
@@ -193,7 +192,6 @@
                                                            @bind-Value="_keycloakBootstrap.BootstrapAdminPassword"
                                                            Immediate="true"
                                                            HelperText="Cleared from this form after submit, whether bootstrap succeeds or fails." />
-                                        }
                                     }
                                 }
                             </MudStack>
@@ -432,7 +430,6 @@
 
     private bool ShouldBootstrapKeycloak =>
         _model.KeycloakEnabled &&
-        !_model.KeycloakDetectedFromEnvironment &&
         _keycloakConfigurationMode == KeycloakConfigurationMode.Bootstrap;
 
     private void SeedKeycloakBootstrapDefaults()
@@ -440,19 +437,28 @@
         if (!string.IsNullOrWhiteSpace(_model.KeycloakAuthority) &&
             Uri.TryCreate(_model.KeycloakAuthority, UriKind.Absolute, out var authorityUri))
         {
-            _keycloakBootstrap.KeycloakBaseUrl = authorityUri.GetLeftPart(UriPartial.Authority);
-
             var realmPrefix = "/realms/";
             var realmIndex = authorityUri.AbsolutePath.IndexOf(realmPrefix, StringComparison.OrdinalIgnoreCase);
             if (realmIndex >= 0)
             {
+                var basePath = authorityUri.AbsolutePath[..realmIndex].TrimEnd('/');
+                _keycloakBootstrap.KeycloakBaseUrl = authorityUri.GetLeftPart(UriPartial.Authority) + basePath;
                 _keycloakBootstrap.Realm = Uri.UnescapeDataString(authorityUri.AbsolutePath[(realmIndex + realmPrefix.Length)..].Trim('/'));
+            }
+            else
+            {
+                _keycloakBootstrap.KeycloakBaseUrl = authorityUri.ToString().TrimEnd('/');
             }
         }
 
         if (!string.IsNullOrWhiteSpace(_model.KeycloakClientId))
         {
             _keycloakBootstrap.BlazorClientId = _model.KeycloakClientId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_model.KeycloakClientSecret))
+        {
+            _keycloakBootstrap.BlazorClientSecret = _model.KeycloakClientSecret;
         }
     }
 

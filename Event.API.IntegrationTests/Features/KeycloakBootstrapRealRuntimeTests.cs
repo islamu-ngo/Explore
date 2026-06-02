@@ -15,7 +15,7 @@ namespace Event.Api.IntegrationTests.Features;
 
 [Category(TestCategories.Security)]
 [ClassDataSource<KeycloakOnlyFixture>(Shared = SharedType.PerAssembly)]
-[NotInParallel("KeycloakBootstrapRealRuntime")]
+[NotInParallel("SecurityInfra")]
 public sealed class KeycloakBootstrapRealRuntimeTests
 {
     private const string BaseUrl = "/api/instanceonboarding";
@@ -35,6 +35,51 @@ public sealed class KeycloakBootstrapRealRuntimeTests
         using var factory = new RealKeycloakBootstrapFactory(_keycloak.KeycloakBaseUrl);
         using var client = factory.CreateClient();
         var payload = CreateBootstrapRequest(_keycloak.KeycloakBaseUrl, RotatedBlazorSecret);
+
+        try
+        {
+            var response = await SendBootstrapRequestAsync(client, payload);
+
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            var commandResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+            await Assert.That(commandResponse).IsNotNull();
+            await Assert.That(commandResponse!.Success).IsTrue();
+            await Assert.That(commandResponse.Message).DoesNotContain(payload.BootstrapAdminPassword);
+            await Assert.That(commandResponse.Message).DoesNotContain(payload.BlazorClientSecret);
+
+            var token = await _keycloak.CreateTokenClient(RotatedBlazorSecret)
+                .GetUserTokenAsync(CancellationToken.None);
+            await Assert.That(token).IsNotNull();
+            await Assert.That(token).IsNotEmpty();
+
+            var offlineAccessToken = await _keycloak.CreateTokenClient(RotatedBlazorSecret)
+                .GetUserTokenWithOfflineAccessAsync(CancellationToken.None);
+            await Assert.That(offlineAccessToken).IsNotNull();
+            await Assert.That(offlineAccessToken).IsNotEmpty();
+
+            using var internalConfigRequest = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"{BaseUrl}/auth-provider-configuration/internal");
+            internalConfigRequest.Headers.Add("X-Setup-Secret", SetupSecret);
+            var internalConfigResponse = await client.SendAsync(internalConfigRequest);
+
+            await Assert.That(internalConfigResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            var config = await internalConfigResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
+            await Assert.That(config).IsNotNull();
+            await Assert.That(config!.KeycloakEnabled).IsTrue();
+            await Assert.That(config.KeycloakAuthority).IsEqualTo($"{_keycloak.KeycloakBaseUrl}/realms/{KeycloakContainerFixture.RealmName}");
+            await Assert.That(config.KeycloakClientId).IsEqualTo(KeycloakContainerFixture.TestClientId);
+            await Assert.That(config.KeycloakClientSecret).IsEqualTo(RotatedBlazorSecret);
+            await Assert.That(config.KeycloakClientSecret).DoesNotContain(payload.BootstrapAdminPassword);
+        }
+        finally
+        {
+            await SendBootstrapRequestAsync(client, CreateBootstrapRequest(_keycloak.KeycloakBaseUrl, KeycloakContainerFixture.TestClientSecret));
+        }
+    }
+
+    private static async Task<HttpResponseMessage> SendBootstrapRequestAsync(HttpClient client, KeycloakBootstrapRequestDto payload)
+    {
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
             $"{BaseUrl}/auth-provider-configuration/keycloak-bootstrap")
@@ -42,40 +87,7 @@ public sealed class KeycloakBootstrapRealRuntimeTests
             Content = JsonContent.Create(payload)
         };
         request.Headers.Add("X-Setup-Secret", SetupSecret);
-
-        var response = await client.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var commandResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-        await Assert.That(commandResponse).IsNotNull();
-        await Assert.That(commandResponse!.Success).IsTrue();
-        await Assert.That(commandResponse.Message).DoesNotContain(payload.BootstrapAdminPassword);
-        await Assert.That(commandResponse.Message).DoesNotContain(payload.BlazorClientSecret);
-
-        var token = await _keycloak.CreateTokenClient(RotatedBlazorSecret)
-            .GetUserTokenAsync(CancellationToken.None);
-        await Assert.That(token).IsNotNull();
-        await Assert.That(token).IsNotEmpty();
-
-        var offlineAccessToken = await _keycloak.CreateTokenClient(RotatedBlazorSecret)
-            .GetUserTokenWithOfflineAccessAsync(CancellationToken.None);
-        await Assert.That(offlineAccessToken).IsNotNull();
-        await Assert.That(offlineAccessToken).IsNotEmpty();
-
-        using var internalConfigRequest = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"{BaseUrl}/auth-provider-configuration/internal");
-        internalConfigRequest.Headers.Add("X-Setup-Secret", SetupSecret);
-        var internalConfigResponse = await client.SendAsync(internalConfigRequest);
-
-        await Assert.That(internalConfigResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var config = await internalConfigResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
-        await Assert.That(config).IsNotNull();
-        await Assert.That(config!.KeycloakEnabled).IsTrue();
-        await Assert.That(config.KeycloakAuthority).IsEqualTo($"{_keycloak.KeycloakBaseUrl}/realms/{KeycloakContainerFixture.RealmName}");
-        await Assert.That(config.KeycloakClientId).IsEqualTo(KeycloakContainerFixture.TestClientId);
-        await Assert.That(config.KeycloakClientSecret).IsEqualTo(RotatedBlazorSecret);
-        await Assert.That(config.KeycloakClientSecret).DoesNotContain(payload.BootstrapAdminPassword);
+        return await client.SendAsync(request);
     }
 
     private static KeycloakBootstrapRequestDto CreateBootstrapRequest(string keycloakBaseUrl, string blazorSecret)

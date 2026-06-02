@@ -57,8 +57,10 @@ Last Updated: 2026-06-01 Europe/Brussels
   - `dotnet build --configuration Release --verbosity quiet` passed with 25 projects, 0 errors, and existing warnings.
   - Focused Architecture `ApiContractArchitectureTests` and `EndpointClassificationArchitectureTests` passed.
 - Phase 4 onboarding UI mode implemented:
-  - `AuthProviderConfiguration.razor` now offers manual OIDC configuration or Keycloak bootstrap configuration when Keycloak is enabled and not environment-managed.
+  - `AuthProviderConfiguration.razor` now offers manual OIDC configuration or Keycloak bootstrap configuration when Keycloak is enabled, including first-run setup with deployment-prefilled Keycloak runtime values.
+  - The onboarding read path uses the setup-secret-gated internal auth-provider endpoint before any account exists; post-onboarding admin settings use the separate instance-admin auth-provider route.
   - Bootstrap mode collects Keycloak base URL, realm, Blazor BFF client ID/secret, optional API client ID/secret, and one-time admin username/password.
+  - Bootstrap default seeding preserves Keycloak path prefixes such as `/auth` before `/realms/{realm}` and can prefill the Blazor client secret from the setup-internal configuration response.
   - The UI labels bootstrap admin credentials as one-time/not stored, calls `InstanceOnboardingService.BootstrapKeycloakRealmAsync`, relies on the service-level auth-scheme refresh, and clears bootstrap client/admin secrets after submit whether bootstrap succeeds or fails.
   - Added focused `AuthProviderConfigurationSourceTests` to guard the visible bootstrap affordance and secret-clearing call path.
 

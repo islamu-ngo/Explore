@@ -108,7 +108,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     public async Task InstanceAdminSettingsLayout_RendersAuthenticationAndAuthorizationProviderSettings()
     {
         // Arrange
-        _instanceOnboardingService.GetAuthProviderConfigurationAsync()
+        _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync()
             .Returns(new AuthProviderConfigurationModel
             {
                 KeycloakEnabled = true,
@@ -164,7 +164,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     public async Task InstanceAdminSettingsLayout_AuthProvidersSave_UpdatesAuthenticationAndAuthorizationProviders()
     {
         // Arrange
-        _instanceOnboardingService.GetAuthProviderConfigurationAsync()
+        _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync()
             .Returns(new AuthProviderConfigurationModel { KeycloakEnabled = true });
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
             .Returns(new AuthorizationProviderConfigurationModel { Provider = "cerbos", CerbosGrpcEndpoint = "cerbosgrpc.local:3593" });
@@ -365,7 +365,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _instanceOnboardingService.GetRenderPolicyAsync().Returns(new RenderPolicyModel());
         _instanceOnboardingService.GetStorageSettingsAsync().Returns(new InstanceStorageSettingsModel());
         _instanceOnboardingService.GetSmtpSettingsAsync().Returns(new InstanceSmtpSettingsModel());
-        _instanceOnboardingService.GetAuthProviderConfigurationAsync().Returns(new AuthProviderConfigurationModel());
+        _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync().Returns(new AuthProviderConfigurationModel());
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
             .Returns(new AuthorizationProviderConfigurationModel { Provider = "local" });
         _instanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationModel>())

@@ -8,16 +8,21 @@ using Explore.Application.DTOs.Onboarding;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Microsoft.Extensions.Configuration;
 
 namespace Explore.Application.Services;
 
 public class AuthProviderConfigurationService : IAuthProviderConfigurationService
 {
     private readonly ISystemSettingRepository _systemSettingRepository;
+    private readonly IConfiguration _configuration;
 
-    public AuthProviderConfigurationService(ISystemSettingRepository systemSettingRepository)
+    public AuthProviderConfigurationService(
+        ISystemSettingRepository systemSettingRepository,
+        IConfiguration configuration)
     {
         _systemSettingRepository = systemSettingRepository;
+        _configuration = configuration;
     }
 
     public async Task<AuthProviderConfigurationDto> ReadConfigurationAsync()
@@ -29,6 +34,14 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
         var atprotoPublicUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.AtprotoPublicUrl);
         var googleSsoEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.GoogleSsoEnabled);
         var googleClientId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.GoogleClientId);
+        var keycloakSecret = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret);
+
+        var keycloakSecretDeploymentManaged = IsDeploymentManaged(InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret)
+                                             || IsDeploymentManaged("Keycloak:ClientSecret")
+                                             || IsDeploymentManaged("Authentication:Keycloak:ClientSecret");
+        var storedKeycloakSecretConfigured = !string.IsNullOrWhiteSpace(DeserializeString(keycloakSecret?.Value, string.Empty));
+        var configuredKeycloakSecretConfigured = !string.IsNullOrWhiteSpace(_configuration["Keycloak:ClientSecret"])
+                                                 || !string.IsNullOrWhiteSpace(_configuration["Authentication:Keycloak:ClientSecret"]);
 
         return new AuthProviderConfigurationDto
         {
@@ -36,6 +49,16 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
             KeycloakAuthority = DeserializeString(keycloakAuthority?.Value, string.Empty),
             KeycloakClientId = DeserializeString(keycloakClientId?.Value, string.Empty),
             KeycloakClientSecret = string.Empty, // Never return secrets on read
+            KeycloakClientSecretOwnership = CreateOwnershipMetadata(
+                keycloakSecretDeploymentManaged,
+                configured: keycloakSecretDeploymentManaged
+                    ? configuredKeycloakSecretConfigured
+                    : storedKeycloakSecretConfigured || configuredKeycloakSecretConfigured,
+                bootstrapAvailable: !keycloakSecretDeploymentManaged
+                    && !storedKeycloakSecretConfigured
+                    && configuredKeycloakSecretConfigured,
+                applicationManagedDescription: "Keycloak client secret can be rotated and stored by ISLAMU Event. Deployment values only seed runtime configuration until an application-managed secret is saved.",
+                deploymentManagedDescription: "Keycloak client secret is deployment-managed. Rotate it in the deployment secret provider and update the matching Keycloak client outside the Admin UI."),
             AtprotoLoginEnabled = DeserializeBoolean(atprotoLoginEnabled?.Value, false),
             AtprotoPublicUrl = DeserializeString(atprotoPublicUrl?.Value, string.Empty),
             GoogleSsoEnabled = DeserializeBoolean(googleSsoEnabled?.Value, false),
@@ -198,6 +221,55 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
         existing.UpdatedAt = DateTime.UtcNow;
 
         await _systemSettingRepository.Update(existing);
+    }
+
+    private bool IsDeploymentManaged(string key)
+    {
+        var configuredKeys = _configuration.GetSection("Secrets:Ownership:DeploymentManagedKeys")
+            .GetChildren()
+            .Select(section => section.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .ToArray();
+
+        return configuredKeys.Any(candidate =>
+            candidate.Equals("*", StringComparison.OrdinalIgnoreCase)
+            || candidate.Equals(key, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static DTOs.Secrets.SecretOwnershipDto CreateOwnershipMetadata(
+        bool deploymentManaged,
+        bool configured,
+        bool bootstrapAvailable,
+        string applicationManagedDescription,
+        string deploymentManagedDescription)
+    {
+        if (deploymentManaged)
+        {
+            return new DTOs.Secrets.SecretOwnershipDto
+            {
+                Mode = "deployment-managed",
+                Source = "deployment",
+                Badge = "Managed by Deployment",
+                Description = deploymentManagedDescription,
+                Editable = false,
+                Configured = configured,
+                BootstrapAvailable = false
+            };
+        }
+
+        return new DTOs.Secrets.SecretOwnershipDto
+        {
+            Mode = "application-managed",
+            Source = bootstrapAvailable ? "deployment-bootstrap" : "application",
+            Badge = bootstrapAvailable ? "Bootstrap from Deployment" : "Managed by Application",
+            Description = bootstrapAvailable
+                ? "This secret was detected from deployment configuration. If you rotate it from the Admin UI, saved application settings will be used from then on."
+                : applicationManagedDescription,
+            Editable = true,
+            Configured = configured,
+            BootstrapAvailable = bootstrapAvailable
+        };
     }
 
     private static bool DeserializeBoolean(string? rawValue, bool defaultValue)

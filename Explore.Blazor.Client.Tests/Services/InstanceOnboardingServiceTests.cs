@@ -338,6 +338,65 @@ public class InstanceOnboardingServiceTests
 
     #endregion
 
+    #region AuthProviderConfigurationAsync
+
+    [Test]
+    public async Task GetAuthProviderConfigurationAsync_UsesSetupInternalEndpoint()
+    {
+        // Arrange
+        Uri? requestUri = null;
+        var expected = new AuthProviderConfigurationModel
+        {
+            KeycloakEnabled = true,
+            KeycloakAuthority = "https://keycloak.example.com/auth/realms/ISLAMU",
+            KeycloakClientId = "islamu-event-blazor",
+            KeycloakClientSecret = "runtime-secret",
+            KeycloakDetectedFromEnvironment = true
+        };
+        SetupBffClient(request =>
+        {
+            requestUri = request.RequestUri;
+            return Task.FromResult(CreateJsonResponse(expected));
+        });
+
+        // Act
+        var result = await _service.GetAuthProviderConfigurationAsync();
+
+        // Assert
+        await Assert.That(requestUri).IsNotNull();
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/InstanceOnboarding/auth-provider-configuration/internal");
+        await Assert.That(result.KeycloakDetectedFromEnvironment).IsTrue();
+        await Assert.That(result.KeycloakClientSecret).IsEqualTo("runtime-secret");
+    }
+
+    [Test]
+    public async Task GetAuthProviderConfigurationAsAdminAsync_UsesInstanceAdminEndpoint()
+    {
+        // Arrange
+        Uri? requestUri = null;
+        var expected = new AuthProviderConfigurationModel
+        {
+            KeycloakEnabled = true,
+            KeycloakAuthority = "https://keycloak.example.com/realms/ISLAMU",
+            KeycloakClientId = "islamu-event-blazor"
+        };
+        SetupBffClient(request =>
+        {
+            requestUri = request.RequestUri;
+            return Task.FromResult(CreateJsonResponse(expected));
+        });
+
+        // Act
+        var result = await _service.GetAuthProviderConfigurationAsAdminAsync();
+
+        // Assert
+        await Assert.That(requestUri).IsNotNull();
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/auth-provider");
+        await Assert.That(result.KeycloakClientId).IsEqualTo("islamu-event-blazor");
+    }
+
+    #endregion
+
     #region AuthorizationProviderAdminAsync
 
     [Test]
