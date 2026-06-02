@@ -1,4 +1,5 @@
 // ABOUTME: .NET Aspire AppHost for local development orchestration.
+// ABOUTME: Wires predictable local storage, service references, and startup order for dev hosts.
 // Each project resolves Postgres via BootstrapSecretLoader (Infisical /postgresql -> POSTGRESQL_* env -> Postgresql:* config).
 // AppHost only orchestrates startup order + service references; bootstrap credentials come from user-secrets or the shell env.
 
@@ -9,6 +10,8 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 var builder = DistributedApplication.CreateBuilder(args);
 var repositoryRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
 var cerbosPolicyPackagePath = Path.Combine(repositoryRoot, "cerbos", "policies");
+var localStorageRootPath = Path.Combine(repositoryRoot, "storage-data", "aspire-local");
+Directory.CreateDirectory(localStorageRootPath);
 
 
 Console.WriteLine("===========================================");
@@ -43,7 +46,11 @@ var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WithReference(messaging)
     .WaitFor(messaging)
     .WithEnvironment("EmailDispatchRabbitMq__Enabled", "true")
-    .WithEnvironment("Cerbos__PolicyPackagePath", cerbosPolicyPackagePath);
+    .WithEnvironment("Cerbos__PolicyPackagePath", cerbosPolicyPackagePath)
+    .WithEnvironment("Storage__Local__RootPath", localStorageRootPath)
+    .WithEnvironment("Storage__Local__CreateRootIfMissing", "true")
+    .WithEnvironment("StorageReconciliation__Enabled", "true")
+    .WithEnvironment("StorageReconciliation__DryRun", "true");
 
 // Explore Blazor - loads its own secrets via AddInfisicalCompatibility()
 // Service discovery (via WithReference) automatically resolves the API URL at runtime.

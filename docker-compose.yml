@@ -1,3 +1,6 @@
+# ABOUTME: Docker Compose topology for the ISLAMU Event platform.
+# ABOUTME: Uses PostgreSQL plus a durable local storage volume by default; MinIO remains opt-in.
+
 name: islamu-event-platform
 
 x-keycloak-env: &keycloak-env
@@ -38,6 +41,15 @@ x-s3-env: &s3-env
   S3Settings__BucketName: ${S3_BUCKET_NAME:-explore}
   S3Settings__AccessKeyId: ${S3_ACCESS_KEY_ID:-minioadmin}
   S3Settings__SecretAccessKey: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+
+x-local-storage-env: &local-storage-env
+  Storage__Local__RootPath: ${LOCAL_STORAGE_ROOT_PATH:-/app/storage-data/local}
+  Storage__Local__CreateRootIfMissing: ${LOCAL_STORAGE_CREATE_ROOT_IF_MISSING:-true}
+  StorageReconciliation__Enabled: ${STORAGE_RECONCILIATION_ENABLED:-true}
+  StorageReconciliation__DryRun: ${STORAGE_RECONCILIATION_DRY_RUN:-true}
+  StorageReconciliation__QuarantineMissingObjects: ${STORAGE_RECONCILIATION_QUARANTINE_MISSING_OBJECTS:-false}
+  StorageReconciliation__QuarantineOrphanLocalFiles: ${STORAGE_RECONCILIATION_QUARANTINE_ORPHAN_LOCAL_FILES:-false}
+  StorageReconciliation__DeleteQuarantinedObjects: ${STORAGE_RECONCILIATION_DELETE_QUARANTINED_OBJECTS:-false}
 
 services:
   postgres:
@@ -133,7 +145,7 @@ services:
       context: .
       dockerfile: Explore.API/Dockerfile
     environment:
-      <<: [*keycloak-env, *s3-env, *secrets-env, *postgres-bootstrap-env]
+      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *postgres-bootstrap-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
       DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-}
@@ -153,6 +165,7 @@ services:
       - "minio.localhost:host-gateway"
     volumes:
       - ./cerbos/policies:/app/cerbos/policies:ro
+      - local_storage_data:/app/storage-data/local
     depends_on:
       postgres:
         condition: service_healthy
@@ -287,5 +300,6 @@ volumes:
   postgres_data:
   redis_data:
   keycloak_data:
+  local_storage_data:
   minio_data:
   cerbos_data:
