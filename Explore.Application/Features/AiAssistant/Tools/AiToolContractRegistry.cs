@@ -9,6 +9,9 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
 {
     private readonly IReadOnlyDictionary<AiProposedActionKind, AiToolDefinition> _definitionsByKind;
 
+    public static AiToolContractRegistry CreateDefault()
+        => new([CreateEventDraftAiToolDefinition.Create()]);
+
     public AiToolContractRegistry(IEnumerable<AiToolDefinition> definitions)
     {
         Definitions = definitions.ToList();

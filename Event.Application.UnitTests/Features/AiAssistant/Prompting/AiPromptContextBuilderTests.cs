@@ -1,9 +1,10 @@
 // ABOUTME: Unit tests for AI prompt request construction and bounded message packing.
-// ABOUTME: Verifies system prompt safety text, tool schema allow-listing, and context size limits.
+// ABOUTME: Verifies system prompt safety text, registry-backed tool schema allow-listing, and context size limits.
 
-using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Features.AiAssistant.Prompting;
+using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Ai;
@@ -46,6 +47,21 @@ public sealed class AiPromptContextBuilderTests
         await Assert.That(request.ActionSchema.JsonSchema).Contains("\"organizationId\"");
         await Assert.That(request.ActionSchema.JsonSchema).DoesNotContain("\"eventStatusId\"");
         await Assert.That(request.ActionSchema.JsonSchema).DoesNotContain("\"sessions\"");
+    }
+
+    [Test]
+    public async Task Build_WhenToolProposalsEnabledButRegistryIsEmpty_DoesNotAddActionSchema()
+    {
+        var conversation = CreateConversation();
+        conversation.AddMessage(AiMessageRole.User, "Draft an event", conversation.UserId, DateTime.UtcNow);
+        var builder = new AiPromptContextBuilder(new AiSystemPromptFactory(new AiToolContractRegistry([])));
+
+        var request = builder.Build(
+            conversation,
+            CreateSettings(toolProposalsEnabled: true),
+            AiProviderDefaults.FakeModelId);
+
+        await Assert.That(request.ActionSchema).IsNull();
     }
 
     [Test]

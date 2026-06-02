@@ -14,4 +14,5 @@ public interface IAiConversationRepository : IGenericRepository<AiConversation, 
     Task<int> CountTenantMessagesSinceAsync(DateTime sinceUtc, CancellationToken cancellationToken);
     Task<int> CountRunningConversationsForUserAsync(Guid userId, CancellationToken cancellationToken);
     Task<AiProposedAction?> GetProposedActionForUpdateAsync(Guid proposedActionId, CancellationToken cancellationToken);
+    Task UpdateProposedActionAsync(AiProposedAction proposedAction, CancellationToken cancellationToken);
 }

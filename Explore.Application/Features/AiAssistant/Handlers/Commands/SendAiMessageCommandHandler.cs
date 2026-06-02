@@ -10,6 +10,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.AiAssistant.Prompting;
 using Explore.Application.DTOs.Ai.Validators;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
+using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Responses;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
@@ -54,8 +55,9 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         _currentUserService = currentUserService;
         _modelCatalog = modelCatalog;
         _chatProvider = chatProvider;
-        _promptContextBuilder = new AiPromptContextBuilder();
-        _structuredActionParser = new AiStructuredActionParser();
+        var toolRegistry = AiToolContractRegistry.CreateDefault();
+        _promptContextBuilder = new AiPromptContextBuilder(new AiSystemPromptFactory(toolRegistry));
+        _structuredActionParser = new AiStructuredActionParser(toolRegistry);
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(

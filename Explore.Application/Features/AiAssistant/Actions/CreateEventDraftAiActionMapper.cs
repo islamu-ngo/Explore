@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 using Explore.Application.DTOs.Event;
+using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Features.AiAssistant.Prompting;
 using Explore.Domain.Ai;
 
@@ -13,32 +14,6 @@ public sealed class CreateEventDraftAiActionMapper
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
-    };
-
-    private static readonly HashSet<string> AllowedJsonPropertyNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "title",
-        "subtitle",
-        "description",
-        "content",
-        "slug",
-        "eventTypeId",
-        "audienceGenderId",
-        "audienceAgeId",
-        "organizationId",
-        "groupId",
-        "price",
-        "currencyCode",
-        "isRegistrationRequired",
-        "externalRegistrationUrl",
-        "visibilityTypeId",
-        "eventFormatId",
-        "madhabId",
-        "timezone",
-        "eventTimeZoneId",
-        "eventUrl",
-        "categoryIds",
-        "tagIds"
     };
 
     public CreateEventDraftAiActionMappingResult Map(
@@ -74,7 +49,7 @@ public sealed class CreateEventDraftAiActionMapper
 
             foreach (var property in document.RootElement.EnumerateObject())
             {
-                if (!AllowedJsonPropertyNames.Contains(property.Name))
+                if (!CreateEventDraftAiToolDefinition.AllowedPayloadFields.Contains(property.Name))
                 {
                     return CreateEventDraftAiActionMappingResult.Failure(
                         "unsupported_payload_field",

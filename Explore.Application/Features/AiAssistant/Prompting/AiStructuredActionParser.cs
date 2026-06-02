@@ -1,15 +1,25 @@
 // ABOUTME: Validates provider proposed actions before they become persisted AI proposals.
 // ABOUTME: Enforces allow-listed action kinds and JSON-object payload boundaries for untrusted model output.
 
-using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure.Ai;
+using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Domain.Ai;
 
 namespace Explore.Application.Features.AiAssistant.Prompting;
 
 public sealed class AiStructuredActionParser
 {
-    private static readonly HashSet<AiProposedActionKind> AllowedKinds = [AiProposedActionKind.CreateEventDraft];
+    private readonly IAiToolContractRegistry _toolRegistry;
+
+    public AiStructuredActionParser()
+        : this(AiToolContractRegistry.CreateDefault())
+    {
+    }
+
+    public AiStructuredActionParser(IAiToolContractRegistry toolRegistry)
+    {
+        _toolRegistry = toolRegistry;
+    }
 
     public AiStructuredActionParseResult Parse(IReadOnlyList<AiProposedActionCandidate> candidates)
     {
@@ -17,37 +27,18 @@ public sealed class AiStructuredActionParser
 
         foreach (var candidate in candidates)
         {
-            if (!AllowedKinds.Contains(candidate.Kind))
+            var validationResult = _toolRegistry.ValidatePayload(candidate.Kind, candidate.PayloadJson);
+            if (!validationResult.Succeeded)
             {
                 return AiStructuredActionParseResult.Failure(
-                    "unknown_action_kind",
-                    "AI provider returned an unsupported proposed action kind.");
-            }
-
-            if (!IsJsonObject(candidate.PayloadJson))
-            {
-                return AiStructuredActionParseResult.Failure(
-                    "invalid_tool_arguments",
-                    "AI provider returned invalid action payload JSON.");
+                    validationResult.FailureCode ?? "invalid_tool_arguments",
+                    validationResult.FailureMessage ?? "AI provider returned invalid action payload JSON.");
             }
 
             actions.Add(new AiParsedProposedAction(candidate.Kind, candidate.PayloadJson, candidate.Summary));
         }
 
         return AiStructuredActionParseResult.Success(actions);
-    }
-
-    private static bool IsJsonObject(string payloadJson)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(payloadJson);
-            return document.RootElement.ValueKind == JsonValueKind.Object;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
     }
 }
 

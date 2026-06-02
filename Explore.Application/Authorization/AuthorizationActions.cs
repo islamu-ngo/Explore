@@ -52,6 +52,12 @@ public static class AuthorizationActions
     /// <summary>Send a message into an AI assistant conversation.</summary>
     public const string SendMessage = "send_message";
 
+    /// <summary>Confirm an AI-proposed action before executing a mutating tool.</summary>
+    public const string ConfirmAction = "confirm_action";
+
+    /// <summary>Reject an AI-proposed action without executing side effects.</summary>
+    public const string RejectAction = "reject_action";
+
     // ── Resource-scoped action catalogs ─────────────────────────────────
     //
     // Each nested class documents the valid actions for its Cerbos resource kind.
@@ -201,6 +207,8 @@ public static class AuthorizationActions
         public const string View = AuthorizationActions.View;
         public const string Create = AuthorizationActions.Create;
         public const string SendMessage = AuthorizationActions.SendMessage;
+        public const string ConfirmAction = AuthorizationActions.ConfirmAction;
+        public const string RejectAction = AuthorizationActions.RejectAction;
     }
 
     /// <summary>Valid actions for the <c>islamuevent_category</c> resource kind.</summary>

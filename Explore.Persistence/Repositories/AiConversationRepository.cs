@@ -240,6 +240,22 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
             .FirstOrDefaultAsync(action => action.Id == proposedActionId, cancellationToken);
     }
 
+    public async Task UpdateProposedActionAsync(AiProposedAction proposedAction, CancellationToken cancellationToken)
+    {
+        await _dbContext.AiProposedActions
+            .Where(existingAction => existingAction.Id == proposedAction.Id)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(existingAction => existingAction.Status, proposedAction.Status)
+                .SetProperty(existingAction => existingAction.ConfirmedBy, proposedAction.ConfirmedBy)
+                .SetProperty(existingAction => existingAction.ConfirmedAt, proposedAction.ConfirmedAt)
+                .SetProperty(existingAction => existingAction.RejectedBy, proposedAction.RejectedBy)
+                .SetProperty(existingAction => existingAction.RejectedAt, proposedAction.RejectedAt)
+                .SetProperty(existingAction => existingAction.ResultResourceId, proposedAction.ResultResourceId)
+                .SetProperty(existingAction => existingAction.FailureCode, proposedAction.FailureCode)
+                .SetProperty(existingAction => existingAction.FailureMessage, proposedAction.FailureMessage),
+                cancellationToken);
+    }
+
     private static IQueryable<AiConversation> IncludeConversationDetails(IQueryable<AiConversation> query)
     {
         return query

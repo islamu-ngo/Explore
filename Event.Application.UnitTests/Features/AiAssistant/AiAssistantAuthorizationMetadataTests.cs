@@ -16,6 +16,8 @@ public sealed class AiAssistantAuthorizationMetadataTests
     {
         await AssertAuthorization<CreateAiConversationCommand>(AuthorizationActions.AiConversations.Create);
         await AssertAuthorization<SendAiMessageCommand>(AuthorizationActions.AiConversations.SendMessage);
+        await AssertAuthorization<ConfirmAiProposedActionCommand>(AuthorizationActions.AiConversations.ConfirmAction);
+        await AssertAuthorization<RejectAiProposedActionCommand>(AuthorizationActions.AiConversations.RejectAction);
         await AssertAuthorization<GetAiConversationListQuery>(AuthorizationActions.AiConversations.View);
         await AssertAuthorization<GetAiConversationDetailQuery>(AuthorizationActions.AiConversations.View);
         await AssertAuthorization<GetAiRunStatusQuery>(AuthorizationActions.AiConversations.View);
@@ -31,10 +33,14 @@ public sealed class AiAssistantAuthorizationMetadataTests
             ConversationId = conversationId,
             Message = new SendAiMessageRequestDto { Content = "hello", IdempotencyKey = "key" }
         };
+        ISecureRequest confirm = new ConfirmAiProposedActionCommand { ProposedActionId = conversationId };
+        ISecureRequest reject = new RejectAiProposedActionCommand { ProposedActionId = conversationId };
         ISecureRequest detail = new GetAiConversationDetailQuery { ConversationId = conversationId };
         ISecureRequest runStatus = new GetAiRunStatusQuery { ConversationId = conversationId, RunId = Guid.CreateVersion7() };
 
         await Assert.That(send.ResourceId).IsEqualTo(conversationId.ToString());
+        await Assert.That(confirm.ResourceId).IsEqualTo(conversationId.ToString());
+        await Assert.That(reject.ResourceId).IsEqualTo(conversationId.ToString());
         await Assert.That(detail.ResourceId).IsEqualTo(conversationId.ToString());
         await Assert.That(runStatus.ResourceId).IsEqualTo(conversationId.ToString());
     }

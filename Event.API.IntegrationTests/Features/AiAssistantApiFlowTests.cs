@@ -118,7 +118,7 @@ public sealed class AiAssistantApiFlowTests
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
         var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
-        await Assert.That(json.RootElement.GetProperty("code").GetString()).IsEqualTo("idempotency_key_reuse");
+        await Assert.That(json.RootElement.GetProperty("code").GetString()).IsEqualTo("idempotency_key_conflict");
     }
 
     [Test]
@@ -441,6 +441,29 @@ public sealed class AiAssistantApiFlowTests
                 .FirstOrDefault(candidate => candidate.Id == proposedActionId);
 
             return Task.FromResult(action);
+        }
+
+        public Task UpdateProposedActionAsync(AiProposedAction proposedAction, CancellationToken cancellationToken)
+        {
+            var existingAction = TenantConversations
+                .SelectMany(conversation => conversation.ProposedActions)
+                .FirstOrDefault(candidate => candidate.Id == proposedAction.Id);
+
+            if (existingAction is null)
+            {
+                return Task.CompletedTask;
+            }
+
+            existingAction.Status = proposedAction.Status;
+            existingAction.ConfirmedBy = proposedAction.ConfirmedBy;
+            existingAction.ConfirmedAt = proposedAction.ConfirmedAt;
+            existingAction.RejectedBy = proposedAction.RejectedBy;
+            existingAction.RejectedAt = proposedAction.RejectedAt;
+            existingAction.ResultResourceId = proposedAction.ResultResourceId;
+            existingAction.FailureCode = proposedAction.FailureCode;
+            existingAction.FailureMessage = proposedAction.FailureMessage;
+
+            return Task.CompletedTask;
         }
     }
 
