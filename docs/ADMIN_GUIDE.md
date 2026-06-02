@@ -37,7 +37,7 @@ Instance settings are the platform-control surface. Use them for:
 - Governance and render policy defaults.
 - Authentication provider configuration.
 - Module, domain, branding, and localization settings.
-- Platform S3 storage and SMTP settings.
+- Provider-neutral storage policy, quotas, delegation, optional S3-compatible settings, and SMTP settings.
 - Analytics and privacy settings.
 - Footer governance and platform API keys.
 - Tenant management in multi-tenant deployments.
@@ -85,9 +85,11 @@ There is no standalone SEO administration page. Public discovery is configured t
 | Revoke tenant API key | Integrations for that tenant stop authenticating. | Rotate by creating the replacement key first, then revoke the old key. |
 | Edit templates or custom properties | Event creation and downstream projections can change. | Review template sync conflicts and custom-property promotion reports before applying broad changes. |
 
-### Planned Tenant Overrides
+### Tenant Storage Overrides
 
-Tenant-specific SMTP, storage, and analytics override controls are future work in the explored UI. Platform-level settings remain the current operational source for those providers.
+Tenant storage settings are implemented under tenant administration when the instance policy allows delegation. Tenant administrators can select allowed providers and upload-size settings only within the instance ceilings; S3-compatible secrets are redacted on reads and preserved unless explicitly replaced. When `governance.lock_tenant_storage` is enabled, the tenant surface is read-only and clients must gate save affordances from HAL `_links` plus the server-provided read-only state.
+
+Tenant-specific SMTP and analytics override controls remain future work in the explored UI. Platform-level settings remain the current operational source for those providers.
 
 ## Organization Administration
 
@@ -142,7 +144,7 @@ Dangerous operation: deleting or broadly changing a property definition can affe
 
 | Area | Current admin scope | Recovery note |
 |---|---|---|
-| Storage | Platform S3 storage settings are managed from instance administration. | Verify keys against [CONFIGURATION.md](CONFIGURATION.md) and [SECRETS.md](SECRETS.md); confirm backups in [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md). |
+| Storage | Provider-neutral instance storage settings manage local default, optional S3-compatible mode, quotas, max upload, provider health, usage recalculation, and tenant delegation. Tenant storage overrides are available only when delegation is unlocked. | Verify `Storage:Local:*`, optional `S3Settings:*`, and secrets against [CONFIGURATION.md](CONFIGURATION.md) and [SECRETS.md](SECRETS.md); confirm database and object-storage backups in [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md). |
 | SMTP | Platform SMTP settings are managed from instance administration. | Keep provider credentials in the configured secret provider; test mail after changes. |
 | Localization | Instance localization supports offline/emergency controls and bundle export. | Use forced offline mode or reset-to-offline behavior if remote localization becomes unsafe. |
 | Analytics/privacy | Instance analytics and privacy settings are platform-level controls. | Verify data sharing and retention expectations before enabling integrations. |

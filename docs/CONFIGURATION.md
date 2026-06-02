@@ -7,7 +7,7 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Status:** Implemented
 > **Owner:** Platform/Ops
 > **Last Verified:** 2026-05-23
-> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
+> **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
 
@@ -58,6 +58,8 @@ Commonly consumed sections in code:
 - `RequestTimeouts:*`
 - `Cerbos:*`
 - `Deployment:*`
+- `Storage:Local:*` (deployment-managed local filesystem storage)
+- `StorageReconciliation:*` (dry-run-first storage drift worker)
 - `S3Settings:*` (fallback source for storage resolver)
 - `SecretProvider:*`
 - `SecretRefresh:*`
@@ -72,6 +74,33 @@ Commonly consumed sections in code:
 | Key | Default | Description |
 |---|---:|---|
 | `Persistence:EnableRlsTenantSession` | `false` | Registers the PostgreSQL tenant-session interceptor that sets `app.current_tenant_id` when EF Core opens a connection. This does not enable RLS policies by itself; keep disabled outside prototype environments until runtime app-role, migration-role, admin/system-path, and table-policy rollout work is complete. |
+
+### Storage Static Configuration
+
+Local-first storage is deployment-managed. The filesystem root is bound from static configuration and is not a tenant/admin database setting.
+
+| Key | Default | Description |
+|---|---|---|
+| `Storage:Local:RootPath` | provider default unless Compose/Aspire overrides | API-owned local storage root. Compose sets `/app/storage-data/local` and mounts it to `local_storage_data`; Aspire sets `storage-data/aspire-local` under the repository root. |
+| `Storage:Local:CreateRootIfMissing` | `true` in Compose/Aspire overrides | Allows startup/health/provider code to create the local root when the deployment grants write permission. |
+
+Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback source. Persisted `s3.*` and `s3.access_key_id`/`s3.secret_access_key` settings take precedence through `S3ConfigResolver` when S3-compatible storage is selected.
+
+`StorageReconciliation:*` controls the API-hosted drift worker and is validated at startup:
+
+| Key | Default | Description |
+|---|---:|---|
+| `StorageReconciliation:Enabled` | `true` | Enables the hosted worker and reconciliation health check. Disabled reports intentional degraded health. |
+| `StorageReconciliation:DryRun` | `true` | Report-only mode. Mutating flags are ignored while dry-run is true. |
+| `StorageReconciliation:InitialDelaySeconds` | `45` | Initial worker delay after API startup. |
+| `StorageReconciliation:PollingIntervalMinutes` | `360` | Worker interval between passes. |
+| `StorageReconciliation:BatchSize` | `500` | Maximum metadata rows or inventory objects per pass. |
+| `StorageReconciliation:MissingObjectQuarantineGraceHours` | `24` | Age threshold before missing backing objects can quarantine metadata. |
+| `StorageReconciliation:OrphanFileQuarantineGraceHours` | `24` | Age threshold before orphan local files can be moved to quarantine. |
+| `StorageReconciliation:DeleteGraceHours` | `720` | Age threshold before delete-eligible metadata can be physically deleted and soft-deleted. |
+| `StorageReconciliation:QuarantineMissingObjects` | `false` | Enables metadata quarantine for missing backing objects when `DryRun=false`. |
+| `StorageReconciliation:QuarantineOrphanLocalFiles` | `false` | Enables local orphan quarantine when `DryRun=false`. |
+| `StorageReconciliation:DeleteQuarantinedObjects` | `false` | Enables idempotent provider delete plus metadata soft-delete when `DryRun=false`. |
 
 ### AI Provider Static Configuration
 
@@ -242,10 +271,13 @@ Keycloak base URL: `KEYCLOAK_ENDPOINT` (Infisical `/keycloak`). No hardcoded fal
 
 Storage naming rules:
 
-- runtime .NET settings use `S3Settings:*`;
-- Compose/environment overrides use `S3Settings__*`;
+- local filesystem runtime settings use `Storage:Local:*`;
+- local filesystem Compose/environment overrides use `Storage__Local__*`;
+- optional S3-compatible runtime settings use `S3Settings:*`;
+- optional S3-compatible Compose/environment overrides use `S3Settings__*`;
+- reconciliation worker settings use `StorageReconciliation:*` or `StorageReconciliation__*`;
 - Infisical/domain secret definitions use the `STORAGE_S3_*` key family under storage paths;
-- do not document new `Storage__*` keys unless source code is changed to bind them.
+- do not expose or persist deployment-managed local filesystem paths through tenant/admin setting keys.
 
 ## Blazor Server Compatibility Mapping
 
@@ -297,7 +329,7 @@ Sensitive runtime credentials use a separate secret-setting key space. Do not ex
 | Concern | Governance key family | Secret-bearing key family |
 |---|---|---|
 | SMTP | `email.*` | `email.smtp_username`, `email.smtp_password` |
-| S3-compatible storage | `s3.*` | `s3.access_key_id`, `s3.secret_access_key` |
+| Optional S3-compatible storage | `s3.*` | `s3.access_key_id`, `s3.secret_access_key` |
 | Authentication | `auth.*` | `auth.keycloak_client_secret`, `auth.google_client_secret` |
 | Cerbos admin credentials | `cerbos.*` | `cerbos.custom_admin_username`, `cerbos.custom_admin_password` |
 | AI assistant | `ai_assistant.*` | `ai_assistant.api_key` |
@@ -419,7 +451,7 @@ Post-onboarding management note:
 
 Cache behavior uses hierarchical cache keys such as `HierSettings:System` and scope-specific keys for tenant, organization, group, and user settings. The resolver honors lock flags so a higher-scope locked value prevents lower-scope overrides.
 
-Runtime resolvers may add more specific precedence. For S3, `S3ConfigResolver` reads database settings first (`s3.*` and `s3.access_key_id`/`s3.secret_access_key`) and falls back to `IConfiguration` (`S3Settings:*`). For SMTP, `SmtpConfigResolver` reads through the hierarchical settings resolver for governance and secret-bearing email keys.
+Runtime resolvers may add more specific precedence. For local storage, the deployment-managed `Storage:Local:*` section is the root authority. For S3, `S3ConfigResolver` reads database settings first (`s3.*` and `s3.access_key_id`/`s3.secret_access_key`) and falls back to `IConfiguration` (`S3Settings:*`). For SMTP, `SmtpConfigResolver` reads through the hierarchical settings resolver for governance and secret-bearing email keys.
 
 ## Deployment Mode Configuration
 
@@ -489,7 +521,7 @@ Hard-limit quota definitions for Layer 3 custom properties (Rule 16). Each has a
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `governance.lock_tenant_smtp` | bool | `false` | Prevent tenant from overriding instance SMTP |
-| `governance.lock_tenant_storage` | bool | `false` | Prevent tenant from overriding instance S3 |
+| `governance.lock_tenant_storage` | bool | `false` | Prevent tenant from overriding instance storage policy |
 | `governance.lock_tenant_analytics` | bool | `false` | Prevent tenant from overriding instance analytics |
 | `governance.lock_tenant_ai_assistant` | bool | `false` | Prevent tenant from overriding instance AI assistant |
 

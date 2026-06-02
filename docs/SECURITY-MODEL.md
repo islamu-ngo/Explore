@@ -83,17 +83,18 @@ Cookie-authenticated unsafe BFF endpoints must validate antiforgery tokens becau
 
 Do not add new unsafe `/bff/*` endpoints without either `.ValidateAntiforgery()` or a documented bootstrap/internal exception with equivalent compensating controls.
 
-## Storage Upload Destination Binding
+## Storage Upload Session Binding
 
-The Blazor BFF upload proxy is an SSRF-sensitive boundary because it performs server-side `PUT` requests to a URL associated with user-uploaded content. Browser callers must not control that destination directly.
+The Blazor BFF upload proxy is an SSRF-sensitive boundary because browser uploads could otherwise try to make the server send bytes to attacker-chosen destinations. Browser callers must not control provider, tenant, destination URL, object key, local path, or max-size policy.
 
-- Browser upload flow starts with `/bff/storage/upload-session`. The BFF obtains the presigned upload URL from the API, validates that it is an HTTPS presigned destination with required signing markers, and stores the exact approved destination in distributed cache under an opaque upload session id.
-- `/bff/storage/upload-proxy` accepts `uploadSessionId`, `contentType`, and `file`, not a trusted raw `uploadUrl`. It resolves the upload session server-side and rejects missing, expired, cross-user, content-type-mismatched, or unknown sessions.
-- Arbitrary HTTPS URLs, private/internal hosts, or presigned-looking attacker URLs must not be proxied merely because they contain S3-style query parameters.
+- Browser upload flow starts with `/bff/storage/upload-session`. The BFF asks the API for a provider-neutral upload session and stores only the approved session metadata under an opaque BFF upload-session id.
+- `/bff/storage/upload-proxy` accepts `uploadSessionId`, `contentType`, and `file`, not a trusted raw `uploadUrl`, provider object key, or filesystem path. It resolves the BFF session server-side and rejects missing, expired, cross-user, content-type-mismatched, size-mismatched, or unknown sessions.
+- The BFF streams bytes to the API upload-session content endpoint. The API owns provider selection and writes to the selected `IFileStorageProvider`.
+- Arbitrary HTTPS URLs, private/internal hosts, local filesystem paths, or presigned-looking attacker values must not be proxied merely because they resemble storage destinations.
 - Upload sessions are short-lived, user-bound, content-type-bound, and consumed after successful upload. This keeps the browser path bound to a server-issued upload intent without duplicating tenant storage policy in the UI layer.
-- BFF storage logs must not include raw upstream response bodies, presigned URLs, signatures, tokens, or object secrets. Use safe fields such as host, status code, `hasBody`, and session failure code.
+- BFF/API storage logs must not include raw upstream response bodies, presigned URLs, signatures, tokens, object keys, filesystem paths, filenames, or object secrets. Use safe fields such as status code, presence booleans, bounded provider labels, and session failure code.
 
-Server-side/non-browser code paths may still use direct presigned upload URLs when the server owns the trusted URL. Browser-facing upload proxy paths must use the upload-session contract.
+Server-side/non-browser code paths may still use direct provider upload URLs when the server owns the trusted URL. Browser-facing upload proxy paths must use the upload-session contract.
 
 Forwarded-host trust for direct API traffic:
 

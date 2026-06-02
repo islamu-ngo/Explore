@@ -6,7 +6,7 @@ ABOUTME: Grounds release operations in Docker Compose, PostgreSQL, Keycloak, obj
 > **Audience:** Operators
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-06-02
 > **Source Anchors:** `docker-compose.yml`, `Event.MigrationService/Worker.cs`, `Explore.API/Program.cs`, `docs/SELF_HOSTING.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`
 
 This runbook covers self-hosted deployments using the repository Docker Compose topology. Treat every upgrade as a data operation first and an image rollout second.
@@ -17,7 +17,7 @@ This runbook covers self-hosted deployments using the repository Docker Compose 
 |---|---|---|
 | Application PostgreSQL data | `postgres` volume `postgres_data` | Tenants, events, users, settings, outbox, and data-protection keys when stored through EF contexts. |
 | Keycloak PostgreSQL data | `keycloak-db` volume `keycloak_data` | Realms, clients, roles, users, and login configuration. |
-| Object storage | `minio` volume `minio_data` or external S3 bucket | Uploaded files, images, and storage-backed assets. |
+| Object storage | API volume `local_storage_data`; optional `minio` volume `minio_data` or external S3 bucket when selected | Uploaded files, images, and storage-backed assets. |
 | Secrets and environment | `.env`, secret-provider project, Keycloak client secrets | Required to recreate the same runtime identity and storage bindings. |
 | Release manifest | image tags, commit SHA, migration state, docs version | Required for rollback and audit. |
 
@@ -39,7 +39,9 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
    ```
 
 4. Back up object storage:
-   - for local MinIO, copy the `minio_data` volume or use an S3-compatible sync tool;
+   - for local-first Compose, copy the API `local_storage_data` named volume or the deployment-managed `Storage:Local:RootPath`;
+   - for Aspire/local-dev state that must be preserved, copy `storage-data/aspire-local`;
+   - for local MinIO/S3-compatible mode, copy the `minio_data` volume or use an S3-compatible sync tool;
    - for external S3, use provider-native versioning or bucket replication.
 5. Export secret-provider configuration or capture the exact secret paths and key names used by the release.
 6. Store backups outside the host running Docker Compose.
@@ -55,7 +57,7 @@ Do not treat Docker image tags alone as a backup. Database schema and secret-pro
 
 2. Restore PostgreSQL data into clean volumes or clean databases.
 3. Restore Keycloak data before starting Keycloak-dependent application services.
-4. Restore object storage before user-facing traffic resumes.
+4. Restore object storage before user-facing traffic resumes. For local-first Compose, restore `local_storage_data` or the configured `Storage:Local:RootPath`; for S3-compatible mode, restore `minio_data` or the external bucket.
 5. Restore the matching `.env` and secret-provider values.
 6. Start dependencies first, then application services:
 
@@ -86,7 +88,7 @@ docker compose up -d islamu-event-api islamu-event-ui
    - API `/alive` returns healthy;
    - API `/health` is healthy, or degraded only for an optional dependency that is intentionally disabled;
    - Blazor can reach the API through its configured base URL.
-8. Watch logs for migration failures, Keycloak discovery failures, secret-provider failures, and Cerbos readiness failures.
+8. Watch logs for migration failures, Keycloak discovery failures, secret-provider failures, storage readiness/reconciliation drift, and Cerbos readiness failures.
 9. Keep the previous images and backups until smoke tests pass.
 
 ## Rollback Rules
@@ -98,6 +100,7 @@ Rollback depends on whether migrations are reversible:
 | No schema/data migration ran | Revert images and restart services. |
 | Backward-compatible migration ran | Revert images only if release notes say the old version tolerates the new schema. |
 | Destructive or non-reversible migration ran | Restore database/object-storage backups and then revert images. |
+| Storage reconciliation mutations ran against the wrong object store | Stop write traffic, disable destructive reconciliation flags, restore database and object-storage backups from the same manifest, then restart with dry-run reconciliation. |
 | Secret/key rotation changed runtime identity | Restore matching secret-provider values before restarting old images. |
 
 If release notes do not explicitly state that a rollback is image-only safe, assume a database restore is required.
@@ -110,7 +113,8 @@ If release notes do not explicitly state that a rollback is image-only safe, ass
 - [ ] API `/alive` and `/health` return expected status.
 - [ ] Blazor loads and can proxy API requests.
 - [ ] Initial admin login works through Keycloak.
-- [ ] Object uploads/downloads work when storage is enabled.
+- [ ] Object uploads/downloads work with local-first storage or the intentionally selected S3-compatible provider.
+- [ ] Storage reconciliation is either dry-run/healthy or intentionally disabled/degraded, and destructive flags match the release plan.
 - [ ] Cerbos readiness is healthy when `authz` profile/provider is enabled.
 - [ ] Release notes and docs impact are complete.
 

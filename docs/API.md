@@ -25,6 +25,10 @@ For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Gen
 - API: `http://localhost:7039`
 - Compose runs the API with `ASPNETCORE_ENVIRONMENT=Production`, so Swagger UI, Scalar, and `/openapi/event-api.json` are not exposed there unless the environment is intentionally changed.
 
+### Operational Endpoints
+
+`/alive`, `/health`, and `/metrics` are runtime operational endpoints, not generated OpenAPI controller operations. Storage local-first readiness is reported through the `storage` health check, and the dry-run-first reconciliation worker posture is reported through `storage-reconciliation`. These health payloads use bounded status/failure fields and must not expose filesystem paths, object keys, bucket names, endpoints, access keys, or secrets.
+
 ---
 
 ## Middleware Pipeline (Exact Order)

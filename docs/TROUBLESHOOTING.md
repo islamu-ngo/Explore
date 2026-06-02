@@ -267,6 +267,34 @@ Checks:
 5. If refresh is enabled, check `secrets_refresh_failures_total` Prometheus metric for recurring failures.
 6. Key mapping: Infisical/domain secret names use `SCREAMING_SNAKE_CASE`, while .NET environment overrides use double-underscore keys such as `S3Settings__Endpoint`. PostgreSQL bootstrap values are discrete `POSTGRESQL_*` values, not a single URL-form connection string; see [SECRETS.md](SECRETS.md).
 
+## Storage Readiness Or Upload Failures
+
+Symptoms:
+- API `/health` reports the `storage` check as unhealthy.
+- Upload sessions fail before bytes are accepted.
+- Metadata-backed downloads return missing-object behavior.
+
+Checks:
+1. Confirm the selected provider in instance storage settings. Local-first deployments should not require the Compose `storage` profile or S3 credentials.
+2. For local-first storage, verify the API process can read/write `Storage:Local:RootPath`. Compose defaults to `/app/storage-data/local` mounted on the `local_storage_data` volume.
+3. For optional S3-compatible mode, verify `S3Settings:*` values or persisted `s3.*` settings point to the intended endpoint/bucket and that secrets are present.
+4. Use the instance storage provider test action or `/health` response failure code; do not expose host filesystem paths, bucket names, object keys, access keys, or raw provider errors in tickets.
+5. If metadata exists but downloads fail, run reconciliation in dry-run mode and compare the reported missing-object/orphan counts before changing lifecycle state.
+
+## Storage Reconciliation Drift
+
+Symptoms:
+- `storage-reconciliation` health is degraded or operators see recurring dry-run drift counts.
+- Local files exist on disk without matching metadata.
+- Metadata points to missing backing objects.
+
+Checks:
+1. `StorageReconciliation:DryRun` defaults to `true`; dry-run reports drift without mutation.
+2. Before enabling mutations, confirm backups include application PostgreSQL plus `local_storage_data` or the selected S3-compatible object store from the same release manifest.
+3. To quarantine missing metadata/object mismatches, set `StorageReconciliation:DryRun=false` and only the needed quarantine flag.
+4. To physically delete delete-eligible objects, also set `StorageReconciliation:DeleteQuarantinedObjects=true`; provider delete is idempotent, but metadata is soft-deleted afterward.
+5. If mutations ran against the wrong environment, stop write traffic, turn dry-run back on, restore database and object-storage backups together, then rerun dry-run reconciliation.
+
 ## Upgrade Or Restore Regressions
 
 Symptoms:
@@ -279,7 +307,7 @@ Checks:
 1. Stop write traffic before repeated restore attempts.
 2. Compare the release manifest, database dump timestamp, object storage snapshot, and secret/config snapshot from [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).
 3. Verify application PostgreSQL and Keycloak PostgreSQL were restored from the intended snapshots.
-4. Verify `S3Settings:*` values point to the restored bucket or compatible object store.
+4. Verify `Storage:Local:RootPath` points to the restored local storage data, or that `S3Settings:*` values point to the restored bucket or compatible object store when S3-compatible mode is selected.
 5. If migrations already ran, do not manually edit migration history tables; decide rollback vs corrective migration using the rollback matrix in [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).
 
 ## Local URLs

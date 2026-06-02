@@ -2556,7 +2556,7 @@ Table "storage_objects" {
     (provider, object_key) [unique, note: 'Filtered when object_key is present.']
   }
 
-  Note: 'Tenant-scoped file metadata. Provider keys are internal; public access resolves through application metadata and visibility.'
+  Note: 'Tenant-scoped file metadata. Provider keys are internal; public access resolves through application metadata and visibility. Storage reconciliation uses lifecycle/quarantine/delete metadata to report drift, quarantine unsafe rows, and soft-delete physically removed objects.'
 }
 
 Table "storage_upload_sessions" {

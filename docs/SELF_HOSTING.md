@@ -6,7 +6,7 @@ ABOUTME: Covers infrastructure services, setup secret, migrations, health checks
 > **Audience:** Operators
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-06-02
 > **Source Anchors:** `docker-compose.yml`, `Explore.AppHost/AppHost.cs`, `Event.MigrationService/`, `Explore.API/Program.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`
 
 This guide covers running ISLAMU Event outside the Aspire developer loop. The repository `docker-compose.yml` is the current self-hosting source of truth.
@@ -20,14 +20,14 @@ This guide covers running ISLAMU Event outside the Aspire developer loop. The re
 | Keycloak DB | Yes | `keycloak-db` | Keycloak PostgreSQL database | internal |
 | Keycloak | Yes | `keycloak` | OIDC identity provider and realm import | `8080:8080` |
 | Keycloak Init | Yes | `keycloak-init` | One-shot client-secret synchronization after realm import | internal |
-| API | Yes | `islamu-event-api` | REST API, migrations, health, metrics | `7039:8080` |
+| API | Yes | `islamu-event-api` | REST API, migrations, health, metrics, local storage volume | `7039:8080` |
 | Blazor BFF | Yes | `islamu-event-ui` | Server host and YARP proxy to API | `7002:8080` |
-| MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile | `9005:9000`, `9006:9001` |
+| MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile when an instance selects optional S3 mode | `9005:9000`, `9006:9001` |
 | Cerbos | Optional | `cerbos` | External authorization PDP profile | `3592:3592`, `3593:3593` |
 
 Profiles:
 
-- `storage` starts MinIO and creates the configured bucket.
+- `storage` starts MinIO and creates the configured bucket for optional S3-compatible mode. It is not required for local-first storage.
 - `authz` starts Cerbos for deployments that select Cerbos authorization.
 
 Email dispatch modes:
@@ -44,7 +44,7 @@ Email dispatch modes:
 docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
    ```
 
-3. Add optional storage when local S3/MinIO is needed:
+3. Add optional MinIO only when S3-compatible storage is selected or tested:
 
    ```bash
    docker compose --profile storage up -d
@@ -89,7 +89,14 @@ Use the key names consumed by the Compose file and source code. Do not invent ge
 
 ### Storage
 
-Runtime storage settings bind to `S3Settings:*`.
+Local-first storage is available in the required API service without MinIO. Compose mounts the API path `/app/storage-data/local` to the durable named volume `local_storage_data`.
+
+| Compose/API Key | Canonical .NET Key | Purpose |
+|---|---|---|
+| `LOCAL_STORAGE_ROOT_PATH` | `Storage:Local:RootPath` | Optional override for the API local storage root. The Compose default is `/app/storage-data/local`. |
+| `LOCAL_STORAGE_CREATE_ROOT_IF_MISSING` | `Storage:Local:CreateRootIfMissing` | Optional override for allowing the API to create the root. The Compose default is `true`. |
+
+Optional S3-compatible settings bind to `S3Settings:*`.
 
 | Compose/API Key | Canonical .NET Key |
 |---|---|
@@ -100,7 +107,21 @@ Runtime storage settings bind to `S3Settings:*`.
 | `S3Settings__AccessKeyId` | `S3Settings:AccessKeyId` |
 | `S3Settings__SecretAccessKey` | `S3Settings:SecretAccessKey` |
 
-Infisical/domain secret definitions use the `STORAGE_S3_*` family under storage paths. Keep docs and secret-provider values aligned with `S3Settings:*`; do not use stale `Storage__*` keys.
+Infisical/domain secret definitions use the `STORAGE_S3_*` family under storage paths. Keep optional S3 docs and secret-provider values aligned with `S3Settings:*`; do not use stale generic S3 aliases such as `Storage__Endpoint`.
+
+### Storage Reconciliation
+
+The API starts storage reconciliation in enabled dry-run mode by default. Compose exposes the safety-critical flags through environment variables:
+
+| Compose/API Key | Canonical .NET Key | Default |
+|---|---|---:|
+| `STORAGE_RECONCILIATION_ENABLED` | `StorageReconciliation:Enabled` | `true` |
+| `STORAGE_RECONCILIATION_DRY_RUN` | `StorageReconciliation:DryRun` | `true` |
+| `STORAGE_RECONCILIATION_QUARANTINE_MISSING_OBJECTS` | `StorageReconciliation:QuarantineMissingObjects` | `false` |
+| `STORAGE_RECONCILIATION_QUARANTINE_ORPHAN_LOCAL_FILES` | `StorageReconciliation:QuarantineOrphanLocalFiles` | `false` |
+| `STORAGE_RECONCILIATION_DELETE_QUARANTINED_OBJECTS` | `StorageReconciliation:DeleteQuarantinedObjects` | `false` |
+
+Enable destructive cleanup only after reviewing dry-run output, confirming backups include the local storage volume or selected S3 bucket, and intentionally setting `StorageReconciliation:DryRun=false` plus the specific mutation flag.
 
 ### API And Blazor
 
@@ -216,13 +237,17 @@ Optional RabbitMQ dispatch readiness is reported separately by `email-dispatch-r
 
 Expired write-retry replay-cache cleanup is reported by `idempotency-cleanup`. `Healthy` means cleanup is enabled in delete or dry-run mode. `Degraded` means cleanup is intentionally disabled; expired keys remain ineligible for replay, but physical cleanup is paused.
 
+Storage readiness is reported by `storage`. Local-first deployments do not need MinIO/S3 for this check; the API verifies the selected local provider can write to the API-owned data root. S3-compatible readiness is probed only when the instance selects that provider.
+
+Storage reconciliation posture is reported by `storage-reconciliation`. `Healthy` means the worker is enabled in dry-run or mutation mode. `Degraded` means reconciliation is intentionally disabled. Invalid reconciliation settings fail startup through options validation.
+
 ## Backup And Upgrade
 
 Before every upgrade:
 
 1. Back up application PostgreSQL data.
 2. Back up Keycloak PostgreSQL data.
-3. Back up object storage if `storage` is enabled.
+3. Back up object storage. For local-first Compose, include the `local_storage_data` volume. If the optional `storage` profile or external S3-compatible provider is selected, include `minio_data` or the provider bucket as well.
 4. Record image tags, commit SHA, enabled Compose profiles, and secret-provider key names.
 5. Read release notes for migrations, config changes, rollback constraints, and docs impact.
 

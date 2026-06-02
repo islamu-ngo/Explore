@@ -7,7 +7,7 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 > **Status:** Mixed
 > **Owner:** Platform/Ops
 > **Last Verified:** 2026-05-31
-> **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
+> **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.API/HealthChecks/StorageReadinessHealthCheck.cs`, `Explore.API/HealthChecks/StorageReconciliationHealthCheck.cs`, `Explore.API/BackgroundServices/StorageReconciliationProcessor.cs`, `Explore.ServiceDefaults/`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, `docs/TROUBLESHOOTING.md`
 
 This page is the operational reference for implemented runtime behavior. Task procedures should live in dedicated runbooks and be linked from here.
 
@@ -53,6 +53,8 @@ Sensitive values are redacted before output. Do not add checks that print raw co
 4. `Explore.Blazor` (waits for migration completion and API readiness)
 
 The Blazor app resolves the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Do not hardcode the Compose/API host port into AppHost documentation.
+
+Aspire local development uses the local filesystem storage provider by default. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`, so local upload/download flows do not require MinIO or S3-compatible settings.
 
 ## API Startup Behavior
 
@@ -104,6 +106,7 @@ Readiness interpretation:
 | `email-dispatch-rabbitmq` | API | RabbitMQ Dispatch Mode is disabled, or enabled and topology can be declared | Not used | RabbitMQ mode is enabled but the broker/topology is unreachable or invalid |
 | `idempotency-cleanup` | API | Expired idempotency cleanup is enabled in delete or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
 | `storage` | API | Selected storage provider is available. Local mode verifies the API-owned data root is writable; S3-compatible mode verifies bucket reachability only when selected. | Not used | Selected provider cannot be resolved, selected local root is not writable, or selected S3-compatible storage is missing/unreachable |
+| `storage-reconciliation` | API | Storage reconciliation worker is enabled in dry-run or mutation mode | Reconciliation is intentionally disabled | Invalid reconciliation options fail startup |
 | `ai-provider` | API | AI provider integration is disabled, deterministic fake provider is enabled, or OpenAI-compatible settings are valid | Not used | AI provider is enabled but no runnable provider is configured, or provider endpoint/settings fail egress validation |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
 | `islamu-event-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
@@ -120,6 +123,7 @@ Operational rules:
 - RabbitMQ Dispatch Mode is optional transport infrastructure. When `EmailDispatchRabbitMq:Enabled=false`, the `email-dispatch-rabbitmq` check is healthy without opening a broker connection. When enabled, missing broker connectivity or failed topology declaration is unhealthy because the operator explicitly selected RabbitMQ transport.
 - Idempotency cleanup is an optional operational worker over the PostgreSQL replay cache. `Degraded` means cleanup is intentionally disabled; stale rows remain ignored for replay but are not physically deleted until cleanup is re-enabled.
 - Storage readiness follows the selected instance storage policy. Local-first deployments do not need S3 for `/health`; S3 configuration is probed only when `s3_compatible` is the selected provider. The readiness payload exposes bounded provider/status/failure-code fields and does not include filesystem paths, endpoints, bucket names, access keys, object keys, or secrets.
+- Storage reconciliation is dry-run-first. `StorageReconciliation:DryRun=true` reports drift without metadata or provider mutations. Destructive cleanup requires `DryRun=false` plus a specific mutation flag such as `DeleteQuarantinedObjects=true`; health and logs expose bounded settings/counts only.
 - AI provider readiness is intentionally configuration-first. `AiProvider:Enabled=false` is healthy-disabled. If enabled, unsupported providers, missing required OpenAI-compatible endpoint/key/model values, local/private endpoints without explicit opt-in, embedded endpoint credentials, query strings, or fragments make readiness unhealthy before chat/send is broadly enabled. The readiness payload exposes only bounded booleans and provider/status labels, not endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, or raw provider errors.
 
 ## Deployment Protection and Evidence
@@ -258,6 +262,8 @@ Current counters include:
 - `explore.storage.deletes` (`provider`, `outcome`, `failure_category`) — provider-neutral blob delete plus metadata delete outcomes; labels intentionally exclude storage-object IDs, object keys, paths, filenames, endpoints, bucket names, and raw provider errors.
 - `explore.storage.quota_reservations` (`provider`, `operation`, `outcome`, `failure_category`) — quota reserve/release/commit outcomes around upload sessions.
 - `explore.storage.quota_bytes` (`provider`, `operation`, `outcome`) — byte histogram for quota reserve/release/commit operations.
+- `explore.storage.reconciliation_runs` (`mode`, `outcome`, `failure_category`) — storage drift scan outcomes; labels intentionally exclude tenant IDs, storage-object IDs, object keys, filenames, paths, endpoints, bucket names, and raw provider errors.
+- `explore.storage.reconciliation_objects` (`provider`, `category`, `action`, `outcome`, `failure_category`) — aggregate object decisions from reconciliation scans; labels are bounded to provider/category/action/outcome and intentionally exclude identifiers, paths, object keys, filenames, and secrets.
 - `explore.storage.provider_tests` (`provider`, `outcome`, `failure_category`) — admin storage provider test outcomes; labels intentionally exclude local filesystem roots, S3 endpoints, bucket names, access keys, secrets, and raw exception text.
 
 ### Notification Fanout Operations

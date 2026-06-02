@@ -103,12 +103,12 @@ Cookie-authenticated BFF mutations use a double-submit-style antiforgery contrac
 
 Browser-mediated storage uploads use BFF-owned upload sessions rather than caller-supplied destination URLs:
 
-1. The browser asks `/bff/storage/upload-session` for an upload session. The BFF calls the API generate-upload-url endpoint server-side, validates the returned presigned destination shape, and stores the exact approved destination in distributed cache.
-2. The browser receives an opaque `uploadSessionId`, object key, view URL, and expiry. It does not need to send a raw presigned upload URL back to the BFF proxy.
-3. The browser uploads bytes to `/bff/storage/upload-proxy` with `uploadSessionId`, `contentType`, and `file`. The proxy resolves the session, verifies the authenticated user and content type, and PUTs only to the exact server-issued destination.
-4. `/bff/storage/upload-proxy` rejects arbitrary HTTPS or presigned-looking URLs because client-provided destinations are not trusted.
+1. The browser asks `/bff/storage/upload-session` for an upload session. The BFF calls the provider-neutral API upload-session endpoint server-side and stores the approved session metadata in distributed cache.
+2. The browser receives an opaque `uploadSessionId`, metadata-backed view URL, and expiry. It does not receive a raw provider object key, local path, or trusted upload destination.
+3. The browser uploads bytes to `/bff/storage/upload-proxy` with `uploadSessionId`, `contentType`, and `file`. The proxy resolves the session, verifies the authenticated user, content type, and expected size, then streams bytes to the API upload-session content endpoint.
+4. `/bff/storage/upload-proxy` rejects arbitrary HTTPS URLs, local filesystem paths, provider object keys, or presigned-looking values because client-provided destinations are not trusted.
 5. Upload sessions are short-lived, user-bound, content-type-bound, and consumed after successful proxy upload. Both storage BFF endpoints remain protected by authorization and antiforgery validation.
-6. Non-browser/server paths may still use direct presigned upload URLs where the server code owns the trusted URL; browser paths must use the BFF upload-session flow.
+6. Non-browser/server paths may still use direct provider upload URLs where the server code owns the trusted URL; browser paths must use the BFF upload-session flow.
 
 ## Auth-State Serialization Boundary
 

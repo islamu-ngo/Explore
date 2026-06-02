@@ -69,7 +69,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 ## Runtime And Operations
 - [CONFIGURATION.md](CONFIGURATION.md) - environment/config settings and secret providers.
 - [SECRETS.md](SECRETS.md) - multi-provider secret management (Explore.Secrets library).
-- [STORAGE.md](STORAGE.md) - S3-compatible object storage configuration, API boundaries, and backup impact.
+- [STORAGE.md](STORAGE.md) - local-first object storage, optional S3-compatible configuration, reconciliation, API boundaries, and backup impact.
 - [EMAIL_NOTIFICATIONS.md](EMAIL_NOTIFICATIONS.md) - SMTP email delivery and its boundary from in-app notifications.
 - [NOTIFICATIONS.md](NOTIFICATIONS.md) - in-app notification lifecycle, inbox UI, and API boundaries.
 - [SEO.md](SEO.md) - sitemap, robots, render-policy, and public-discovery SEO behavior.
@@ -78,7 +78,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [TESTING.md](TESTING.md) - TUnit framework, test projects, TDD workflow.
 - [TEST_RELIABILITY.md](TEST_RELIABILITY.md) - flaky/deferred runtime, stress, E2E, and visual-test tracking.
 - [BENCHMARKS.md](BENCHMARKS.md) - BenchmarkDotNet runtime benchmarks, API pipeline benchmarks, PostgreSQL/Testcontainers benchmark runs, and cold-start agent benchmark boundaries.
-- [SELF_HOSTING.md](SELF_HOSTING.md) - Docker Compose, Keycloak, MinIO, reverse proxy.
+- [SELF_HOSTING.md](SELF_HOSTING.md) - Docker Compose, Keycloak, local storage volume, optional MinIO, reverse proxy.
 - [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) - backup, restore, upgrade, and rollback runbook.
 - [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) - release readiness and documentation contract.
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - practical issue resolution.
