@@ -11,6 +11,7 @@
 @inject IPublicExperienceService PublicExperienceService
 @inject ITenantPublicExperienceAdminService TenantPublicExperienceAdminService
 @inject ITenantBrandingSettingsAdminService TenantBrandingSettingsAdminService
+@inject ITenantStorageSettingsAdminService TenantStorageSettingsAdminService
 @inject AiAssistantState AiAssistantState
 @inject ISnackbar Snackbar
 
@@ -216,18 +217,7 @@
                         }
                         else if (_currentSection == "storage" && _model.CanOverrideStorage)
                         {
-                            <div class="settings-section">
-                                <div class="settings-section-header">
-                                    <MudText Typo="Typo.h5" Style="font-weight: 700;">Object Storage</MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-                                        Configure S3-compatible object storage for this tenant. When overridden, file uploads for this tenant will use a dedicated storage bucket.
-                                    </MudText>
-                                </div>
-                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
-                                    Tenant-specific storage configuration is enabled by your platform administrator. Per-tenant override controls will be available in a future update.
-                                    Currently, files are stored using the platform-level storage settings.
-                                </MudAlert>
-                            </div>
+                            <TenantStorageSection Model="_storageModel" IsSaving="_submitState.IsSubmitting" />
                         }
                         else if (_currentSection == "analytics" && _model.CanOverrideAnalytics)
                         {
@@ -355,6 +345,7 @@
 @code {
     private TenantPolicySettingsModel _model = new();
     private TenantBrandingSettingsAdminModel _brandingModel = new();
+    private TenantStorageSettingsModel _storageModel = new();
     private TenantPublicExperienceAdminModel _publicExperienceModel = new();
     private TenantPublicExperienceSection? _publicExperienceSection;
     private bool _isLoading = true;
@@ -390,6 +381,10 @@
         _hasAnnouncementBar = HasUsableAnnouncementBar(_model);
         _brandingModel = await TenantBrandingSettingsAdminService.GetAsync();
         _publicExperienceModel = await TenantPublicExperienceAdminService.GetSettingsAsync();
+        if (_model.CanOverrideStorage)
+        {
+            _storageModel = await TenantStorageSettingsAdminService.GetAsync();
+        }
         _isLoading = false;
     }
 
@@ -406,6 +401,12 @@
         if (_currentSection == "branding")
         {
             await SaveBrandingAsync();
+            return;
+        }
+
+        if (_currentSection == "storage" && _model.CanOverrideStorage)
+        {
+            await SaveStorageAsync();
             return;
         }
 
@@ -524,6 +525,26 @@
             : response.Message;
     }
 
+    private async Task SaveStorageAsync()
+    {
+        _submitState.Start();
+        _errorMessage = null;
+
+        var response = await TenantStorageSettingsAdminService.SaveAsync(_storageModel);
+        _submitState.Complete();
+
+        if (response.Success)
+        {
+            _storageModel = await TenantStorageSettingsAdminService.GetAsync();
+            Snackbar.Add("Tenant storage settings saved.", Severity.Success);
+            return;
+        }
+
+        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+            ? "Failed to save tenant storage settings."
+            : response.Message;
+    }
+
     private void SelectSection(string section)
     {
         _currentSection = section;
@@ -535,7 +556,13 @@
         _showMobileMenu = true;
     }
 
-    private bool CanSaveCurrentSection => _currentSection != "branding" || (_brandingModel.Exists && _brandingModel.CanReplace);
+    private bool CanSaveCurrentSection =>
+        _currentSection switch
+        {
+            "branding" => _brandingModel.Exists && _brandingModel.CanReplace,
+            "storage" => _storageModel.IsEditable,
+            _ => true
+        };
 
     private async Task RefreshShellExperienceAsync()
     {

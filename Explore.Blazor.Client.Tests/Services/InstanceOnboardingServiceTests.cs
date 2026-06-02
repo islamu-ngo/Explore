@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for InstanceOnboardingService BFF endpoint mapping and command behavior.
+// ABOUTME: Covers onboarding/admin settings, auth provider flows, and storage HAL affordance mapping.
+
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -644,6 +647,107 @@ public class InstanceOnboardingServiceTests
 
         // Assert
         await Assert.That(result.Success).IsFalse();
+    }
+
+    #endregion
+
+    #region StorageSettingsAsync
+
+    [Test]
+    public async Task GetStorageSettingsAsync_MapsHalLinksAndUsage()
+    {
+        // Arrange
+        var payload = new Dictionary<string, object?>
+        {
+            ["provider"] = "local",
+            ["defaultMaxUploadBytes"] = 10 * 1024 * 1024,
+            ["defaultTenantQuotaBytes"] = 1024L * 1024 * 1024,
+            ["instanceMaxUploadBytes"] = 100L * 1024 * 1024,
+            ["lockTenantStorage"] = false,
+            ["usage"] = new Dictionary<string, object?>
+            {
+                ["usedBytes"] = 4096,
+                ["reservedBytes"] = 2048,
+                ["quarantinedBytes"] = 0,
+                ["objectCount"] = 3
+            },
+            ["providerStatus"] = new Dictionary<string, object?>
+            {
+                ["provider"] = "local",
+                ["isAvailable"] = true,
+                ["message"] = "OK"
+            },
+            ["_links"] = new Dictionary<string, object?>
+            {
+                ["edit"] = new { href = "/api/instance/settings/storage", method = "PUT" },
+                ["provider-test"] = new { href = "/api/instance/settings/storage/test", method = "POST" },
+                ["recalculate-usage"] = new { href = "/api/instance/settings/storage/recalculate-usage", method = "POST" }
+            }
+        };
+        SetupBffClient(CreateJsonResponse(payload));
+
+        // Act
+        var result = await _service.GetStorageSettingsAsync();
+
+        // Assert
+        await Assert.That(result.Provider).IsEqualTo(StorageProviderOptions.Local);
+        await Assert.That(result.CanUpdate).IsTrue();
+        await Assert.That(result.CanTestProvider).IsTrue();
+        await Assert.That(result.CanRecalculateUsage).IsTrue();
+        await Assert.That(result.Usage.UsedBytes).IsEqualTo(4096);
+        await Assert.That(result.ProviderStatus.IsAvailable).IsTrue();
+    }
+
+    [Test]
+    public async Task UpdateStorageSettingsAsync_UsesStorageSettingsEndpoint_WhenEditAffordancePresent()
+    {
+        // Arrange
+        Uri? requestUri = null;
+        HttpMethod? method = null;
+        string? requestBody = null;
+        SetupBffClient(async request =>
+        {
+            requestUri = request.RequestUri;
+            method = request.Method;
+            requestBody = await request.Content!.ReadAsStringAsync();
+            return CreateJsonResponse(new InstanceCommandResponseModel { Success = true, Message = "Updated" });
+        });
+
+        // Act
+        var result = await _service.UpdateStorageSettingsAsync(new InstanceStorageSettingsModel
+        {
+            CanUpdate = true,
+            Provider = StorageProviderOptions.Local,
+            DefaultMaxUploadBytes = 10 * 1024 * 1024,
+            DefaultTenantQuotaBytes = 1024L * 1024 * 1024,
+            InstanceMaxUploadBytes = 100L * 1024 * 1024
+        });
+
+        // Assert
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(requestUri).IsNotNull();
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/storage");
+        await Assert.That(method).IsEqualTo(HttpMethod.Put);
+        await Assert.That(requestBody).Contains("\"provider\":\"local\"", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task UpdateStorageSettingsAsync_DoesNotCallApi_WhenEditAffordanceMissing()
+    {
+        // Arrange
+        var called = false;
+        SetupBffClient(request =>
+        {
+            called = true;
+            return Task.FromResult(CreateJsonResponse(new InstanceCommandResponseModel { Success = true }));
+        });
+
+        // Act
+        var result = await _service.UpdateStorageSettingsAsync(new InstanceStorageSettingsModel { CanUpdate = false });
+
+        // Assert
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(called).IsFalse();
     }
 
     #endregion

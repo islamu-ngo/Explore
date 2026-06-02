@@ -103,6 +103,9 @@ public static class ServiceCollectionExtensions
         services.AddBffRefitClient<ITenantBrandingSettingsApi>(configureBffRefitClient)
             .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<ITenantBrandingSettingsAdminService, TenantBrandingSettingsAdminService>();
+        services.AddBffRefitClient<ITenantStorageSettingsApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
+        services.AddScoped<ITenantStorageSettingsAdminService, TenantStorageSettingsAdminService>();
         services.AddScoped<IAppearanceThemeService, AppearanceThemeService>();
         services.AddScoped<IUserAppearancePreferencesService, UserAppearancePreferencesService>();
 

@@ -40,6 +40,7 @@ public interface IInstanceOnboardingService
     Task<InstanceStorageSettingsModel> GetStorageSettingsAsync();
     Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings);
     Task<StorageConnectionTestResult> TestStorageConnectionAsync();
+    Task<StorageUsageOperationResult> RecalculateStorageUsageAsync();
     Task<InstanceSmtpSettingsModel> GetSmtpSettingsAsync();
     Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings);
     Task<SmtpConnectionTestResult> TestSmtpConnectionAsync();
@@ -253,23 +254,90 @@ public class InstanceOnboardingService : IInstanceOnboardingService
 
     // ── Infrastructure Settings ──────────────────────────────────────────
 
-    public async Task<InstanceStorageSettingsModel> GetStorageSettingsAsync() =>
-        await GetSettingsAsync(_api.GetStorageSettingsAsync, () => new InstanceStorageSettingsModel());
+    public async Task<InstanceStorageSettingsModel> GetStorageSettingsAsync()
+    {
+        try
+        {
+            var response = await _api.GetStorageSettingsAsync(CancellationToken.None);
+            if (!response.IsSuccessStatusCode || response.Content is null)
+            {
+                return InstanceStorageSettingsModel.Failed("Unable to load storage settings.");
+            }
+
+            return InstanceStorageSettingsModel.FromHal(response.Content);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch storage settings.");
+            return InstanceStorageSettingsModel.Failed("Unable to load storage settings.");
+        }
+    }
 
     public Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings) =>
-        SendCommandAsync(ct => _api.UpdateStorageSettingsAsync(settings, ct));
+        settings.CanUpdate
+            ? SendCommandAsync(ct => _api.UpdateStorageSettingsAsync(settings.ToDto(), ct))
+            : Task.FromResult(new InstanceCommandResponseModel
+            {
+                Success = false,
+                Message = "The API did not expose a storage settings edit affordance."
+            });
 
     public async Task<StorageConnectionTestResult> TestStorageConnectionAsync()
     {
         try
         {
             var response = await _api.TestStorageConnectionAsync(CancellationToken.None);
-            return response.IsSuccessStatusCode ? response.Content ?? new() : new();
+            if (!response.IsSuccessStatusCode || response.Content is null)
+            {
+                return new StorageConnectionTestResult
+                {
+                    Success = false,
+                    Message = "Storage provider test failed."
+                };
+            }
+
+            return StorageConnectionTestResult.FromStatus(StorageProviderStatusModel.FromDto(response.Content));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to test storage connection.");
-            return new StorageConnectionTestResult();
+            return new StorageConnectionTestResult
+            {
+                Success = false,
+                Message = "Storage provider test failed."
+            };
+        }
+    }
+
+    public async Task<StorageUsageOperationResult> RecalculateStorageUsageAsync()
+    {
+        try
+        {
+            var response = await _api.RecalculateStorageUsageAsync(CancellationToken.None);
+            if (!response.IsSuccessStatusCode || response.Content is null)
+            {
+                return new StorageUsageOperationResult
+                {
+                    Success = false,
+                    Message = "Storage usage recalculation failed."
+                };
+            }
+
+            return new StorageUsageOperationResult
+            {
+                Success = true,
+                Message = "Storage usage recalculated.",
+                Usage = StorageUsageModel.FromDto(response.Content)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to recalculate storage usage.");
+            return new StorageUsageOperationResult
+            {
+                Success = false,
+                Message = "Storage usage recalculation failed."
+            };
         }
     }
 
@@ -914,24 +982,6 @@ public class PolicyPackageDownloadModel
 }
 
 // ── Infrastructure Models ────────────────────────────────────────────────
-
-public class InstanceStorageSettingsModel
-{
-    public string S3Endpoint { get; set; } = string.Empty;
-    public string S3PublicEndpoint { get; set; } = string.Empty;
-    public string S3BucketName { get; set; } = string.Empty;
-    public string S3AccessKeyId { get; set; } = string.Empty;
-    public string S3SecretAccessKey { get; set; } = string.Empty;
-    public string S3Region { get; set; } = string.Empty;
-    public bool S3ForcePathStyle { get; set; } = true;
-    public int S3UploadUrlExpirationMinutes { get; set; } = 60;
-}
-
-public class StorageConnectionTestResult
-{
-    public bool Success { get; set; }
-    public string Message { get; set; } = string.Empty;
-}
 
 public class InstanceSmtpSettingsModel
 {

@@ -1,0 +1,43 @@
+/* ABOUTME: Scoped layout styles for tenant storage policy and override controls. */
+/* ABOUTME: Keeps policy summary, usage counters, and provider fields responsive. */
+
+.tenant-storage-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-4);
+}
+
+.tenant-storage-section__alert {
+    margin-block-start: var(--isl-space-3);
+}
+
+.tenant-storage-section__summary,
+.tenant-storage-section__usage {
+    display: grid;
+    gap: var(--isl-space-3);
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.tenant-storage-section__summary-item,
+.tenant-storage-section__usage-item {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md);
+    min-block-size: 5rem;
+    padding-block: var(--isl-space-3);
+    padding-inline: var(--isl-space-3);
+}
+
+.tenant-storage-section__form,
+.tenant-storage-section__provider-panel {
+    margin-block-start: var(--isl-space-2);
+}
+
+.tenant-storage-section__provider-panel {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-3);
+    padding-block: var(--isl-space-4);
+    padding-inline: var(--isl-space-4);
+}

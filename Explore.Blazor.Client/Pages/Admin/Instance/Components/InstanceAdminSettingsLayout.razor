@@ -244,7 +244,7 @@
                             {
                                 <MudStack Row="true" Justify="Justify.FlexEnd">
                                     <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync"
-                                               Disabled="_submitState.IsSubmitting"
+                                               Disabled="_submitState.IsSubmitting || !CanSaveCurrentSection"
                                                StartIcon="@(_submitState.IsSubmitting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
                                         @(_submitState.IsSubmitting ? "Saving..." : "Save Settings")
                                     </MudButton>
@@ -293,6 +293,8 @@
 
     private bool IsSingleTenantMode => string.Equals(_deploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
                                        || string.IsNullOrWhiteSpace(_deploymentMode);
+
+    private bool CanSaveCurrentSection => _currentSection != "storage" || _storageModel.CanUpdate;
 
     private static bool IsSettingsSection(string section) =>
         section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "announcement-bar" or "public-experience" or "advanced" or "analytics-privacy" or "footer-governance"

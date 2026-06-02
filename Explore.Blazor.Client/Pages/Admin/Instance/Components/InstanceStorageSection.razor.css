@@ -1,0 +1,51 @@
+/* ABOUTME: Scoped layout styles for the instance storage dashboard. */
+/* ABOUTME: Provides stable metric tiles, provider panels, and responsive action layout. */
+
+.storage-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-4);
+}
+
+.storage-section__header {
+    gap: var(--isl-space-3);
+}
+
+.storage-section__alert,
+.storage-section__status,
+.storage-section__operation-result {
+    margin-block-start: var(--isl-space-3);
+}
+
+.storage-section__metrics {
+    display: grid;
+    gap: var(--isl-space-3);
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.storage-section__metric {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md);
+    min-block-size: 5rem;
+    padding-block: var(--isl-space-3);
+    padding-inline: var(--isl-space-3);
+}
+
+.storage-section__form,
+.storage-section__provider-panel {
+    margin-block-start: var(--isl-space-2);
+}
+
+.storage-section__provider-panel {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-3);
+    padding-block: var(--isl-space-4);
+    padding-inline: var(--isl-space-4);
+}
+
+.storage-section__actions {
+    flex-wrap: wrap;
+}

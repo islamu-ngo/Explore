@@ -2,6 +2,7 @@
 // ABOUTME: Covers onboarding flow, governance sub-resources, infrastructure settings, auth/authz providers, and analytics/footer governance.
 
 using Refit;
+using Explore.Blazor.Client.Clients;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -79,13 +80,16 @@ public interface IInstanceOnboardingApi
     // ── Infrastructure Settings ──────────────────────────────────────────
 
     [Get("/api/instance/settings/storage")]
-    Task<IApiResponse<InstanceStorageSettingsModel>> GetStorageSettingsAsync(CancellationToken cancellationToken);
+    Task<IApiResponse<HalResourceOfInstanceStorageSettingsDto>> GetStorageSettingsAsync(CancellationToken cancellationToken);
 
     [Put("/api/instance/settings/storage")]
-    Task<IApiResponse<InstanceCommandResponseModel>> UpdateStorageSettingsAsync([Body] InstanceStorageSettingsModel settings, CancellationToken cancellationToken);
+    Task<IApiResponse<InstanceCommandResponseModel>> UpdateStorageSettingsAsync([Body] InstanceStorageSettingsDto settings, CancellationToken cancellationToken);
 
     [Post("/api/instance/settings/storage/test")]
-    Task<IApiResponse<StorageConnectionTestResult>> TestStorageConnectionAsync(CancellationToken cancellationToken);
+    Task<IApiResponse<InstanceStorageProviderStatusDto>> TestStorageConnectionAsync(CancellationToken cancellationToken);
+
+    [Post("/api/instance/settings/storage/recalculate-usage")]
+    Task<IApiResponse<InstanceStorageUsageDto>> RecalculateStorageUsageAsync(CancellationToken cancellationToken);
 
     [Get("/api/instance/settings/smtp")]
     Task<IApiResponse<InstanceSmtpSettingsModel>> GetSmtpSettingsAsync(CancellationToken cancellationToken);
