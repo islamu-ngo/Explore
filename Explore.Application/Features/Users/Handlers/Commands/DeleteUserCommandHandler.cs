@@ -61,14 +61,18 @@ public class DeleteUserCommandHandler : IRequestHandler<DeleteUserCommand, Unit>
                 await _userAuthenticationTokenRepository.HardDelete(token);
             }
 
-            // Hard delete linked actor identity PII (if personal actor exists).
+            // Anonymize linked actor identity PII so events remain visible without revealing the deleted user's identity.
             var actor = await _actorRepository.GetActorByUserId(request.UserId);
             if (actor != null)
             {
                 var actorPii = await _actorPiiRepository.GetById(actor.Id);
                 if (actorPii != null)
                 {
-                    await _actorPiiRepository.HardDelete(actorPii);
+                    actorPii.DisplayName = $"DeletedUser{Guid.NewGuid():N}";
+                    actorPii.Did = null;
+                    actorPii.Handle = null;
+                    actorPii.ProfilePictureUri = null;
+                    await _actorPiiRepository.Update(actorPii);
                 }
             }
 

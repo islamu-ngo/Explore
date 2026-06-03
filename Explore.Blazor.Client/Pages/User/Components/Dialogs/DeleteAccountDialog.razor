@@ -1,0 +1,118 @@
+@* ABOUTME: Confirmation dialog requiring typed "DELETE" input before permanently removing user PII. *@
+@* ABOUTME: Calls IUserService.DeleteUserAsync which dispatches the backend DeleteUserCommand. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+@using Microsoft.Extensions.Logging
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" Class="mr-2" />
+            Delete Account
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">
+            <MudText Typo="Typo.body2">
+                <strong>This action is irreversible.</strong>
+            </MudText>
+            <MudText Typo="Typo.body2" Class="mt-2">
+                The following will be permanently deleted:
+            </MudText>
+            <ul class="mt-1 mb-0">
+                <li>Your email, name, and profile information</li>
+                <li>Your linked authentication tokens</li>
+                <li>Your personal actor identity data</li>
+            </ul>
+        </MudAlert>
+
+        <MudText Typo="Typo.body2" Class="mb-3">
+            To confirm, type <strong>DELETE</strong> below:
+        </MudText>
+
+        <MudTextField T="string"
+                       @bind-Value="_confirmationInput"
+                       Variant="Variant.Outlined"
+                       Placeholder="Type DELETE to confirm"
+                       Immediate="true"
+                       Disabled="@_isDeleting"
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Filled.DeleteForever"
+                       AdornmentColor="Color.Error" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Elevation="0" Color="Color.Primary" OnClick="Cancel" Variant="Variant.Text" Disabled="@_isDeleting">Cancel</MudButton>
+        <MudButton Elevation="0" Variant="Variant.Filled" Color="Color.Error"
+                   OnClick="ConfirmDelete"
+                   Disabled="@(!_canDelete || _isDeleting)"
+                   StartIcon="@(_isDeleting ? Icons.Material.Filled.HourglassBottom : Icons.Material.Filled.DeleteForever)">
+            @(_isDeleting ? "Deleting..." : "Permanently Delete Account")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Inject]
+    private IUserService UserService { get; set; } = default!;
+
+    [Inject]
+    private ISnackbar Snackbar { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    [Inject]
+    private ILogger<DeleteAccountDialog> Logger { get; set; } = default!;
+
+    private string _confirmationInput = string.Empty;
+    private bool _isDeleting = false;
+
+    private bool _canDelete =>
+        string.Equals(_confirmationInput?.Trim(), "DELETE", StringComparison.Ordinal) && !_isDeleting;
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (!_canDelete) return;
+
+        _isDeleting = true;
+        StateHasChanged();
+
+        try
+        {
+            Logger.LogInformation("User confirmed account deletion");
+
+            var success = await UserService.DeleteUserAsync();
+
+            if (success)
+            {
+                Logger.LogInformation("Account deleted successfully, redirecting to sign-out");
+                Snackbar.Add("Account deleted. Signing you out...", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+                Navigation.NavigateTo("/logout", forceLoad: true);
+            }
+            else
+            {
+                Logger.LogWarning("Account deletion failed — API returned false");
+                Snackbar.Add("Failed to delete your account. Please try again.", Severity.Error);
+                _isDeleting = false;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during account deletion");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _isDeleting = false;
+            StateHasChanged();
+        }
+    }
+}

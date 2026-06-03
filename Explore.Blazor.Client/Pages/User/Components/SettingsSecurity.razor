@@ -5,9 +5,11 @@
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Services.Http
 @using Explore.Blazor.Client.Components.Forms
+@using Explore.Blazor.Client.Pages.User.Components.Dialogs
 @using MudBlazor
 @inject IUserService UserService
 @inject IBffClient BffClient
+@inject IDialogService DialogService
 @inject ILogger<SettingsSecurity> Logger
 
 <div class="settings-section">
@@ -92,6 +94,25 @@
         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
             For security, at least one provider must remain linked to your account.
         </MudAlert>
+
+        <MudDivider Class="my-6" />
+
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600; color: var(--mud-palette-error);" Class="mb-2">Danger Zone</MudText>
+        <MudPaper Elevation="0" Class="pa-4 border-solid border-1 rounded-lg" Style="border-color: var(--mud-palette-error);">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.body1" Style="font-weight: 500;">Delete Account</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Permanently remove your personal information. This cannot be undone.
+                    </MudText>
+                </div>
+                <MudButton Elevation="0" Color="Color.Error" Variant="Variant.Outlined"
+                           OnClick="ShowDeleteAccountDialog"
+                           StartIcon="@Icons.Material.Filled.DeleteForever">
+                    Delete Account
+                </MudButton>
+            </div>
+        </MudPaper>
     }
 </div>
 
@@ -247,6 +268,11 @@
         public string Provider { get; set; } = string.Empty;
         public string ProviderKey { get; set; } = string.Empty;
         public string ProviderDisplayName { get; set; } = string.Empty;
+    }
+
+    private async Task ShowDeleteAccountDialog()
+    {
+        await DeleteAccountDialog.ShowAsync(DialogService);
     }
 
     private sealed class BaseCommandResponseOfGuidLike
