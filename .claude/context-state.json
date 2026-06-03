@@ -8,6 +8,6 @@
     "Domain": "Active (DDD)",
     "Infra": "Active (EF Core)"
   },
-  "RecentFocus": "Unknown (enterprise-ci-cd-hardening-plan.md)",
-  "LastUpdate": "2026-05-27 15:46:31"
+  "RecentFocus": "Application (DeleteUserCommandHandlerTests.cs)",
+  "LastUpdate": "2026-06-03 20:37:14"
 }
