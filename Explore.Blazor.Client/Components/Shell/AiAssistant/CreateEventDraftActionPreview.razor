@@ -1,0 +1,48 @@
+@* ABOUTME: Safe preview for an AI CreateEventDraft proposed action. *@
+@* ABOUTME: Extracts only user-reviewable fields instead of rendering raw payload JSON. *@
+@using System.Text.Json
+
+@if (!string.IsNullOrWhiteSpace(Title) || !string.IsNullOrWhiteSpace(Description))
+{
+    <div class="ai-rail__action-preview" data-testid="ai-action-preview">
+        @if (!string.IsNullOrWhiteSpace(Title))
+        {
+            <MudText Typo="Typo.body2" Class="ai-rail__action-preview-title">@Title</MudText>
+        }
+        @if (!string.IsNullOrWhiteSpace(Description))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@Description</MudText>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? PayloadJson { get; set; }
+
+    private string? Title => ReadString("title");
+
+    private string? Description => ReadString("description");
+
+    private string? ReadString(string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(PayloadJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(PayloadJson);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty(propertyName, out var property)
+                && property.ValueKind == JsonValueKind.String
+                    ? property.GetString()
+                    : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+}

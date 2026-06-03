@@ -1,0 +1,55 @@
+@* ABOUTME: HAL-gated card for an AI proposed action in the assistant rail. *@
+@* ABOUTME: Shows proposal preview separately from committed/failed result state. *@
+@using Explore.Blazor.Client.Services.Ai
+
+@if (Action is not null)
+{
+    <article class="ai-rail__action-card" data-testid="ai-rail-proposed-action">
+        <div class="ai-rail__action-content">
+            <MudText Typo="Typo.body2" Class="ai-rail__action-title">@Action.Kind</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@Action.Status</MudText>
+            @if (string.Equals(Action.Kind, "CreateEventDraft", StringComparison.OrdinalIgnoreCase))
+            {
+                <CreateEventDraftActionPreview PayloadJson="@Action.PayloadJson" />
+            }
+            <AiActionResultCard Action="Action" />
+        </div>
+        <div class="ai-rail__action-buttons">
+            @if (AiAssistantConversationState.CanReject(Action))
+            {
+                <MudButton Variant="Variant.Text"
+                           Size="Size.Small"
+                           Disabled="@IsBusy"
+                           OnClick="() => OnReject.InvokeAsync(Action)"
+                           data-testid="ai-rail-reject-action">
+                    Reject
+                </MudButton>
+            }
+            @if (AiAssistantConversationState.CanConfirm(Action))
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           Disabled="@IsBusy"
+                           OnClick="() => OnConfirm.InvokeAsync(Action)"
+                           data-testid="ai-rail-confirm-action">
+                    Confirm
+                </MudButton>
+            }
+        </div>
+    </article>
+}
+
+@code {
+    [Parameter]
+    public ProposedActions2? Action { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public EventCallback<ProposedActions2> OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback<ProposedActions2> OnReject { get; set; }
+}

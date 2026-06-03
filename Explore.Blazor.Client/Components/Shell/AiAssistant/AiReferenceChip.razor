@@ -1,0 +1,30 @@
+@* ABOUTME: Removable chip for a selected AI reference in the assistant rail. *@
+@* ABOUTME: Supports mouse and keyboard removal without making authorization decisions. *@
+
+<button type="button"
+        class="ai-rail__chip"
+        @onclick="RemoveAsync"
+        @onkeydown="HandleKeyDownAsync"
+        aria-label="Remove @Reference.DisplayName"
+        data-testid="ai-reference-chip">
+    @Reference.DisplayName
+    <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+</button>
+
+@code {
+    [Parameter]
+    public HalResourceOfAiReferenceSearchResultDto Reference { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<Guid> OnRemove { get; set; }
+
+    private Task RemoveAsync() => OnRemove.InvokeAsync(Reference.ReferenceId);
+
+    private Task HandleKeyDownAsync(KeyboardEventArgs args)
+    {
+        return string.Equals(args.Key, "Delete", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(args.Key, "Backspace", StringComparison.OrdinalIgnoreCase)
+            ? RemoveAsync()
+            : Task.CompletedTask;
+    }
+}

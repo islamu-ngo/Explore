@@ -1,0 +1,136 @@
+@* ABOUTME: Event reference search and selection UI for the AI assistant rail. *@
+@* ABOUTME: Debounces search input and preserves HAL-linked references for parent state. *@
+@using Explore.Blazor.Client.Services.Ai
+@implements IDisposable
+
+<div class="ai-rail__reference-search" role="search">
+    <label class="ai-rail__label" for="ai-rail-reference-search">Search events</label>
+    <input id="ai-rail-reference-search"
+           class="ai-rail__input"
+           value="@SearchTerm"
+           @oninput="HandleInputAsync"
+           placeholder="Search event references"
+           data-testid="ai-rail-reference-search" />
+    <MudButton Variant="Variant.Outlined"
+               Size="Size.Small"
+               Disabled="@IsSearchDisabled"
+               OnClick="SearchNowAsync"
+               data-testid="ai-rail-reference-search-submit">
+        Search
+    </MudButton>
+</div>
+
+@if (IsSearching)
+{
+    <MudText Typo="Typo.caption" Color="Color.Secondary" role="status" aria-live="polite">
+        Searching references...
+    </MudText>
+}
+else if (HasSearched && Results.Count == 0 && SearchTerm.Trim().Length >= MinimumSearchLength)
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ai-rail__empty">
+        No matching event references found.
+    </MudText>
+}
+
+@if (Results.Count > 0)
+{
+    <div class="ai-rail__reference-list" role="list" aria-label="AI reference search results">
+        @foreach (var reference in Results)
+        {
+            <button type="button"
+                    class="ai-rail__reference-card"
+                    role="listitem"
+                    @onclick="() => OnSelect.InvokeAsync(reference)"
+                    data-testid="ai-rail-reference-result">
+                <span>@reference.DisplayName</span>
+                @if (AiAssistantConversationState.HasEventLink(reference))
+                {
+                    <span class="ai-rail__reference-affordance">Event link available</span>
+                }
+            </button>
+        }
+    </div>
+}
+
+@if (SelectedReferences.Count > 0)
+{
+    <div class="ai-rail__chip-list" aria-label="Selected AI references">
+        @foreach (var reference in SelectedReferences)
+        {
+            <AiReferenceChip Reference="reference" OnRemove="OnRemove" />
+        }
+    </div>
+}
+
+@code {
+    private const int MinimumSearchLength = 2;
+    private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(300);
+    private CancellationTokenSource? _debounceCts;
+
+    [Parameter]
+    public string SearchTerm { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SearchTermChanged { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<HalResourceOfAiReferenceSearchResultDto> Results { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<HalResourceOfAiReferenceSearchResultDto> SelectedReferences { get; set; } = [];
+
+    [Parameter]
+    public bool IsSearching { get; set; }
+
+    [Parameter]
+    public bool HasSearched { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSearch { get; set; }
+
+    [Parameter]
+    public EventCallback<HalResourceOfAiReferenceSearchResultDto> OnSelect { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnRemove { get; set; }
+
+    private bool IsSearchDisabled => IsSearching || SearchTerm.Trim().Length < MinimumSearchLength;
+
+    private async Task HandleInputAsync(ChangeEventArgs args)
+    {
+        SearchTerm = args.Value?.ToString() ?? string.Empty;
+        await SearchTermChanged.InvokeAsync(SearchTerm);
+
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+
+        _ = DebounceSearchAsync(SearchTerm, token);
+    }
+
+    private Task SearchNowAsync() => IsSearchDisabled ? Task.CompletedTask : OnSearch.InvokeAsync(SearchTerm.Trim());
+
+    private async Task DebounceSearchAsync(string term, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(DebounceDelay, cancellationToken);
+            if (!cancellationToken.IsCancellationRequested && term.Trim().Length >= MinimumSearchLength)
+            {
+                await InvokeAsync(() => OnSearch.InvokeAsync(term.Trim()));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when the user continues typing before the debounce window elapses.
+        }
+    }
+
+    public void Dispose()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+    }
+}

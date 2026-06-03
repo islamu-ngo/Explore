@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
+using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Contracts.Services.Events;
@@ -10,6 +11,7 @@ using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Ai;
 using Explore.Blazor.Client.Services.Accessibility;
 using Explore.Blazor.Client.Services.Docking;
 using Explore.Blazor.Client.Services.Http;
@@ -44,6 +46,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventSessionTemplates.IEventSessionTemplateService, EventSessionTemplateService>();
         services.AddScoped<ILandingPageService, LandingPageService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAiAssistantClientService, AiAssistantClientService>();
         services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
         services.AddBffRefitClient<IMapsApi>(configureBffRefitClient)
             .ConfigureBffRefitClient(configureBffRefitClientBuilder);
@@ -128,6 +131,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SidebarState>();
         services.AddScoped<MainContentAppearanceState>();
         services.AddScoped<AiAssistantState>();
+        services.AddScoped<AiAssistantConversationState>();
         services.AddScoped<TenantNavLinksState>();
         services.AddScoped<DockLayoutState>();
         services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());

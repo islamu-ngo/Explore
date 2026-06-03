@@ -1,0 +1,33 @@
+@* ABOUTME: Read-only result state for completed or failed AI proposed actions. *@
+@* ABOUTME: Keeps committed-result display separate from proposed action preview. *@
+
+@if (Action is not null && ShouldRenderResult)
+{
+    <div class="ai-rail__action-result" data-testid="ai-action-result">
+        @if (Action.ResultResourceId is Guid resultId)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Success">
+                Created result @resultId
+            </MudText>
+        }
+        else if (!string.IsNullOrWhiteSpace(Action.FailureCode) || !string.IsNullOrWhiteSpace(Action.FailureMessage))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error">
+                @FailureText
+            </MudText>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public ProposedActions2? Action { get; set; }
+
+    private bool ShouldRenderResult => Action?.ResultResourceId is not null
+        || !string.IsNullOrWhiteSpace(Action?.FailureCode)
+        || !string.IsNullOrWhiteSpace(Action?.FailureMessage);
+
+    private string FailureText => !string.IsNullOrWhiteSpace(Action?.FailureMessage)
+        ? Action.FailureMessage!
+        : Action?.FailureCode ?? "Action failed.";
+}

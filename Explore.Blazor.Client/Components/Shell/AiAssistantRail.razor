@@ -1,5 +1,8 @@
 @* ABOUTME: Shell-level AI assistant rail hosted in MainLayout, outside page content. *@
 @* ABOUTME: Slides in from the right; persists across page navigations. *@
+@using Explore.Blazor.Client.Contracts.Services.Ai
+@using Explore.Blazor.Client.Components.Shell.AiAssistant
+@using Explore.Blazor.Client.Services.Ai
 @implements IDisposable
 
 @if (AiAssistantState.IsAvailable)
@@ -27,16 +30,140 @@
         </div>
 
         <div class="ai-rail__body">
-            <div class="ai-rail__placeholder">
-                <MudIcon Icon="@Icons.Material.Outlined.SmartToy"
-                         Size="Size.Large"
-                         Color="Color.Primary"
-                         Class="ai-rail__placeholder-icon" />
-                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary"
-                         Class="ai-rail__placeholder-text">
-                    AI Assistant is ready. Chat functionality is coming soon.
-                </MudText>
-            </div>
+            @if (ConversationState.IsLoading)
+            {
+                <div class="ai-rail__placeholder" role="status" aria-live="polite">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" />
+                    <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                        Loading assistant context...
+                    </MudText>
+                </div>
+            }
+            else
+            {
+                <section class="ai-rail__section" aria-labelledby="ai-rail-conversations-title">
+                    <div class="ai-rail__section-heading">
+                        <MudText Typo="Typo.subtitle2" Class="ai-rail__section-title" id="ai-rail-conversations-title">
+                            Conversations
+                        </MudText>
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="CreateConversationAsync"
+                                   Disabled="@_isCommandRunning"
+                                   data-testid="ai-rail-new-conversation">
+                            New
+                        </MudButton>
+                    </div>
+
+                    @if (ConversationState.Conversations.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ai-rail__empty">
+                            Start a conversation to ask for event planning help.
+                        </MudText>
+                    }
+                    else
+                    {
+                        <div class="ai-rail__conversation-list" role="list" aria-label="AI conversations">
+                            @foreach (var conversation in ConversationState.Conversations)
+                            {
+                                <button type="button"
+                                        class="@GetConversationButtonClass(conversation.Id)"
+                                        role="listitem"
+                                        @onclick="() => SelectConversationAsync(conversation.Id)"
+                                        data-testid="ai-rail-conversation">
+                                    <span class="ai-rail__conversation-title">@GetConversationTitle(conversation)</span>
+                                    <span class="ai-rail__conversation-status">@conversation.Status</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </section>
+
+                @if (ConversationState.SelectedConversation is not null)
+                {
+                    <section class="ai-rail__section" aria-labelledby="ai-rail-messages-title">
+                        <MudText Typo="Typo.subtitle2" Class="ai-rail__section-title" id="ai-rail-messages-title">
+                            Messages
+                        </MudText>
+
+                        @if (ConversationState.SelectedConversation.Messages?.Count > 0)
+                        {
+                            <div class="ai-rail__message-list" role="log" aria-live="polite" aria-label="AI conversation messages">
+                                @foreach (var message in ConversationState.SelectedConversation.Messages.OrderBy(message => message.Sequence))
+                                {
+                                    <article class="@GetMessageClass(message.Role)" data-testid="ai-rail-message">
+                                        <span class="ai-rail__message-role">@message.Role</span>
+                                        <p>@message.Content</p>
+                                    </article>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ai-rail__empty">
+                                No messages yet.
+                            </MudText>
+                        }
+
+                        <div class="ai-rail__composer" role="form" aria-label="Send an AI assistant message">
+                            <label class="ai-rail__label" for="ai-rail-prompt">Prompt</label>
+                            <textarea id="ai-rail-prompt"
+                                      class="ai-rail__textarea"
+                                      rows="3"
+                                      @bind="_promptText"
+                                      placeholder="Ask the assistant to draft or plan an event..."
+                                      data-testid="ai-rail-prompt"></textarea>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Disabled="@IsSendDisabled"
+                                       OnClick="SendMessageAsync"
+                                       data-testid="ai-rail-send">
+                                Send
+                            </MudButton>
+                        </div>
+                    </section>
+
+                    <section class="ai-rail__section" aria-labelledby="ai-rail-references-title">
+                        <MudText Typo="Typo.subtitle2" Class="ai-rail__section-title" id="ai-rail-references-title">
+                            References
+                        </MudText>
+                        <AiReferencePicker SearchTerm="@_referenceSearchTerm"
+                                           SearchTermChanged="OnReferenceSearchTermChanged"
+                                           Results="ConversationState.ReferenceResults"
+                                           SelectedReferences="ConversationState.SelectedReferences"
+                                           IsSearching="@_isReferenceSearchRunning"
+                                           HasSearched="@_hasSearchedReferences"
+                                           OnSearch="SearchReferencesAsync"
+                                           OnSelect="SelectReference"
+                                           OnRemove="RemoveReference" />
+                    </section>
+
+                    @if (ConversationState.SelectedConversation.ProposedActions?.Count > 0)
+                    {
+                        <section class="ai-rail__section" aria-labelledby="ai-rail-actions-title">
+                            <MudText Typo="Typo.subtitle2" Class="ai-rail__section-title" id="ai-rail-actions-title">
+                                Proposed actions
+                            </MudText>
+
+                            @foreach (var action in ConversationState.SelectedConversation.ProposedActions)
+                            {
+                                <AiProposedActionCard Action="action"
+                                                      IsBusy="@IsActionBusy(action.Id)"
+                                                      OnConfirm="ConfirmActionAsync"
+                                                      OnReject="RejectActionAsync" />
+                            }
+                        </section>
+                    }
+                }
+            }
+
+            @if (!string.IsNullOrWhiteSpace(ConversationState.ErrorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="ai-rail__alert" data-testid="ai-rail-error">
+                    @ConversationState.ErrorMessage
+                </MudAlert>
+            }
         </div>
     </aside>
 }
@@ -46,8 +173,22 @@
     [Inject]
     protected AiAssistantState AiAssistantState { get; set; } = null!;
 
+    [Inject]
+    protected AiAssistantConversationState ConversationState { get; set; } = null!;
+
+    [Inject]
+    protected IAiAssistantClientService ClientService { get; set; } = null!;
+
     [Parameter]
     public bool HostedInDock { get; set; }
+
+    private readonly HashSet<Guid> _busyActionIds = [];
+    private bool _hasLoaded;
+    private bool _hasSearchedReferences;
+    private bool _isCommandRunning;
+    private bool _isReferenceSearchRunning;
+    private string _promptText = string.Empty;
+    private string _referenceSearchTerm = string.Empty;
 
     private string RootClass => string.Join(' ', new[]
     {
@@ -56,13 +197,249 @@
         HostedInDock ? "ai-rail--docked" : null
     }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
+    private bool IsSendDisabled =>
+        _isCommandRunning
+        || ConversationState.SelectedConversation?.Id is not Guid
+        || string.IsNullOrWhiteSpace(_promptText);
+
     protected override void OnInitialized()
     {
         AiAssistantState.OnChange += StateHasChanged;
+        ConversationState.OnChange += StateHasChanged;
     }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_hasLoaded && AiAssistantState.IsAvailable && (AiAssistantState.IsOpen || HostedInDock))
+        {
+            await LoadConversationsAsync();
+        }
+    }
+
+    private async Task LoadConversationsAsync()
+    {
+        _hasLoaded = true;
+        ConversationState.SetLoading(true);
+        ConversationState.SetError(null);
+
+        var conversations = await ClientService.GetConversationsAsync();
+        ConversationState.SetConversations(conversations);
+
+        if (ConversationState.SelectedConversation is null && conversations.FirstOrDefault()?.Id is Guid firstConversationId)
+        {
+            await SelectConversationAsync(firstConversationId);
+        }
+
+        ConversationState.SetLoading(false);
+    }
+
+    private async Task CreateConversationAsync()
+    {
+        await RunCommandAsync(async () =>
+        {
+            var result = await ClientService.CreateConversationAsync(new CreateAiConversationRequestDto
+            {
+                Title = "AI Assistant"
+            });
+
+            if (!result.Success || result.Id is not Guid conversationId)
+            {
+                ConversationState.SetError(result.Message ?? "The AI assistant conversation could not be created.");
+                return;
+            }
+
+            _hasLoaded = false;
+            await LoadConversationsAsync();
+            await SelectConversationAsync(conversationId);
+        });
+    }
+
+    private async Task SelectConversationAsync(Guid? conversationId)
+    {
+        if (conversationId is not Guid id)
+        {
+            return;
+        }
+
+        ConversationState.SetLoading(true);
+        ConversationState.SetError(null);
+
+        var conversation = await ClientService.GetConversationAsync(id);
+        if (conversation is null)
+        {
+            ConversationState.SetError("The AI assistant conversation could not be loaded.");
+        }
+
+        ConversationState.SelectConversation(conversation);
+        ConversationState.SetLoading(false);
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (ConversationState.SelectedConversation?.Id is not Guid conversationId || string.IsNullOrWhiteSpace(_promptText))
+        {
+            return;
+        }
+
+        var content = _promptText.Trim();
+        var idempotencyKey = $"blazor-ai-send-{Guid.CreateVersion7()}";
+
+        await RunCommandAsync(async () =>
+        {
+            var result = await ClientService.SendMessageAsync(conversationId, content, idempotencyKey);
+            if (!result.Success)
+            {
+                ConversationState.SetError(result.Message ?? "The AI assistant message could not be sent.");
+                return;
+            }
+
+            _promptText = string.Empty;
+            await SelectConversationAsync(conversationId);
+        });
+    }
+
+    private async Task SearchReferencesAsync(string? searchTerm)
+    {
+        var term = (searchTerm ?? _referenceSearchTerm).Trim();
+        _referenceSearchTerm = term;
+        if (term.Length < 2)
+        {
+            _hasSearchedReferences = false;
+            ConversationState.SetReferenceResults([]);
+            return;
+        }
+
+        _hasSearchedReferences = true;
+        _isReferenceSearchRunning = true;
+        ConversationState.SetError(null);
+
+        var references = await ClientService.SearchReferencesAsync(term);
+        ConversationState.SetReferenceResults(references);
+        _isReferenceSearchRunning = false;
+    }
+
+    private void SelectReference(HalResourceOfAiReferenceSearchResultDto reference)
+    {
+        if (ConversationState.SelectedReferences.Any(selected => selected.ReferenceId == reference.ReferenceId))
+        {
+            return;
+        }
+
+        ConversationState.SetSelectedReferences([.. ConversationState.SelectedReferences, reference]);
+    }
+
+    private void RemoveReference(Guid referenceId)
+    {
+        ConversationState.SetSelectedReferences(
+            ConversationState.SelectedReferences.Where(reference => reference.ReferenceId != referenceId).ToList());
+    }
+
+    private async Task ConfirmActionAsync(ProposedActions2 action)
+    {
+        if (ConversationState.SelectedConversation?.Id is not Guid conversationId || action.Id is not Guid actionId)
+        {
+            return;
+        }
+
+        await RunActionAsync(actionId, async () =>
+        {
+            var result = await ClientService.ConfirmProposedActionAsync(
+                conversationId,
+                actionId,
+                $"blazor-ai-confirm-{Guid.CreateVersion7()}");
+
+            if (!result.Success)
+            {
+                ConversationState.SetError(result.Message ?? "The AI proposed action could not be confirmed.");
+                return;
+            }
+
+            await SelectConversationAsync(conversationId);
+        });
+    }
+
+    private async Task RejectActionAsync(ProposedActions2 action)
+    {
+        if (ConversationState.SelectedConversation?.Id is not Guid conversationId || action.Id is not Guid actionId)
+        {
+            return;
+        }
+
+        await RunActionAsync(actionId, async () =>
+        {
+            var result = await ClientService.RejectProposedActionAsync(conversationId, actionId);
+            if (!result.Success)
+            {
+                ConversationState.SetError(result.Message ?? "The AI proposed action could not be rejected.");
+                return;
+            }
+
+            await SelectConversationAsync(conversationId);
+        });
+    }
+
+    private async Task RunCommandAsync(Func<Task> operation)
+    {
+        if (_isCommandRunning)
+        {
+            return;
+        }
+
+        _isCommandRunning = true;
+        try
+        {
+            await operation();
+        }
+        finally
+        {
+            _isCommandRunning = false;
+        }
+    }
+
+    private async Task RunActionAsync(Guid actionId, Func<Task> operation)
+    {
+        if (!_busyActionIds.Add(actionId))
+        {
+            return;
+        }
+
+        try
+        {
+            await operation();
+        }
+        finally
+        {
+            _busyActionIds.Remove(actionId);
+        }
+    }
+
+    private Task OnReferenceSearchTermChanged(string value)
+    {
+        _referenceSearchTerm = value;
+        return Task.CompletedTask;
+    }
+
+    private bool IsActionBusy(Guid? actionId) => actionId is Guid id && _busyActionIds.Contains(id);
+
+    private string GetConversationButtonClass(Guid? conversationId) => string.Join(' ', new[]
+    {
+        "ai-rail__conversation-button",
+        ConversationState.SelectedConversation?.Id == conversationId ? "ai-rail__conversation-button--selected" : null
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private static string GetConversationTitle(HalResourceOfAiConversationSummaryDto conversation) =>
+        string.IsNullOrWhiteSpace(conversation.Title) ? "Untitled conversation" : conversation.Title;
+
+    private static string GetMessageClass(string? role) => string.Join(' ', new[]
+    {
+        "ai-rail__message",
+        string.Equals(role, "User", StringComparison.OrdinalIgnoreCase) ? "ai-rail__message--user" : null,
+        string.Equals(role, "Assistant", StringComparison.OrdinalIgnoreCase) ? "ai-rail__message--assistant" : null
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
     public void Dispose()
     {
         AiAssistantState.OnChange -= StateHasChanged;
+        ConversationState.OnChange -= StateHasChanged;
     }
 }
