@@ -46,8 +46,12 @@ public sealed class AiAssistantControllerTests
         AssertRoute(nameof(AiAssistantController.GetConversations), typeof(HttpGetAttribute), "conversations", RouteNames.GetAiConversations);
         AssertRoute(nameof(AiAssistantController.CreateConversation), typeof(HttpPostAttribute), "conversations", RouteNames.CreateAiConversation);
         AssertRoute(nameof(AiAssistantController.GetConversation), typeof(HttpGetAttribute), "conversations/{conversationId:guid}", RouteNames.GetAiConversation);
+        AssertRoute(nameof(AiAssistantController.SearchReferences), typeof(HttpGetAttribute), "references", RouteNames.SearchAiReferences);
         AssertRoute(nameof(AiAssistantController.SendMessage), typeof(HttpPostAttribute), "conversations/{conversationId:guid}/messages", RouteNames.SendAiMessage);
+        AssertRoute(nameof(AiAssistantController.ConfirmProposedAction), typeof(HttpPostAttribute), "conversations/{conversationId:guid}/proposed-actions/{proposedActionId:guid}/confirm", RouteNames.ConfirmAiProposedAction);
+        AssertRoute(nameof(AiAssistantController.RejectProposedAction), typeof(HttpPostAttribute), "conversations/{conversationId:guid}/proposed-actions/{proposedActionId:guid}/reject", RouteNames.RejectAiProposedAction);
         AssertRoute(nameof(AiAssistantController.GetRunStatus), typeof(HttpGetAttribute), "conversations/{conversationId:guid}/runs/{runId:guid}", RouteNames.GetAiRunStatus);
+        AssertRoute(nameof(AiAssistantController.CancelRun), typeof(HttpPostAttribute), "conversations/{conversationId:guid}/runs/{runId:guid}/cancel", RouteNames.CancelAiRun);
     }
 
     [Test]
@@ -87,6 +91,55 @@ public sealed class AiAssistantControllerTests
     }
 
     [Test]
+    public async Task SearchReferences_DispatchesQueryAndReturnsHalCollectionWithEventLinks()
+    {
+        var eventId = Guid.CreateVersion7();
+        var reference = new AiReferenceSearchResultDto(
+            "Event",
+            eventId,
+            "Community Iftar",
+            "Public meal",
+            DateOnly.FromDateTime(DateTime.UtcNow),
+            null,
+            "Published",
+            "Public",
+            "Local");
+        _mediator.Send(Arg.Any<SearchAiReferencesQuery>(), Arg.Any<CancellationToken>())
+            .Returns([reference]);
+        _linkGenerator.GeneratePath(RouteNames.SearchAiReferences, Arg.Any<object>(), Arg.Any<HttpContext>())
+            .Returns("/api/ai/assistant/references?searchTerm=iftar&limit=20");
+        _linkGenerator.GeneratePath(RouteNames.GetEventById, Arg.Any<object>(), Arg.Any<HttpContext>())
+            .Returns($"/api/Event/{eventId}");
+        var controller = CreateController();
+
+        var actionResult = await controller.SearchReferences("iftar", 999, CancellationToken.None);
+
+        var ok = actionResult.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        var resource = ok!.Value as HalCollectionResource<AiReferenceSearchResultDto>;
+        await Assert.That(resource).IsNotNull();
+        await Assert.That(resource!.PageSize).IsEqualTo(20);
+        await Assert.That(resource.TotalCount).IsEqualTo(1);
+        await Assert.That(resource.Links[LinkRelations.Self].Href).Contains("references");
+        var item = resource.Embedded.Items.Single();
+        await Assert.That(item.Data).IsEqualTo(reference);
+        await Assert.That(item.Links[LinkRelations.Event].Href).Contains(eventId.ToString());
+        await _mediator.Received(1).Send(
+            Arg.Is<SearchAiReferencesQuery>(query => query.SearchTerm == "iftar" && query.Limit == 20),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SearchReferences_UsesAiAssistantRateLimitPolicy()
+    {
+        var attribute = typeof(AiAssistantController).GetMethod(nameof(AiAssistantController.SearchReferences))!
+            .GetCustomAttribute<EnableRateLimitingAttribute>();
+
+        await Assert.That(attribute).IsNotNull();
+        await Assert.That(attribute!.PolicyName).IsEqualTo(RateLimitingExtensions.AiAssistantPolicy);
+    }
+
+    [Test]
     public async Task SendMessage_PropagatesIdempotencyHeaderAndReturnsAcceptedRunLocation()
     {
         var conversationId = Guid.CreateVersion7();
@@ -122,6 +175,202 @@ public sealed class AiAssistantControllerTests
     {
         var method = typeof(AiAssistantController).GetMethod(nameof(AiAssistantController.SendMessage))!;
         var attribute = method.GetCustomAttribute<EnableRateLimitingAttribute>();
+
+        await Assert.That(attribute).IsNotNull();
+        await Assert.That(attribute!.PolicyName).IsEqualTo(RateLimitingExtensions.AiAssistantPolicy);
+    }
+
+    [Test]
+    public async Task ConfirmProposedAction_PropagatesIdempotencyHeaderAndReturnsOk()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var proposedActionId = Guid.CreateVersion7();
+        var eventId = Guid.CreateVersion7();
+        var response = Success(eventId);
+        _mediator.Send(Arg.Any<ConfirmAiProposedActionCommand>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+        var controller = CreateController();
+
+        var actionResult = await controller.ConfirmProposedAction(
+            conversationId,
+            proposedActionId,
+            "confirm-key",
+            CancellationToken.None);
+
+        var ok = actionResult.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        await Assert.That(ok!.Value).IsEqualTo(response);
+        await _mediator.Received(1).Send(
+            Arg.Is<ConfirmAiProposedActionCommand>(command =>
+                command.ProposedActionId == proposedActionId &&
+                command.IdempotencyKey == "confirm-key"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ConfirmProposedAction_WhenRejectedStateConflict_ReturnsSafeProblemDetails()
+    {
+        _mediator.Send(Arg.Any<ConfirmAiProposedActionCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Failure("AI proposed action was already rejected.", "proposed_action_rejected"));
+        var controller = CreateController();
+
+        var actionResult = await controller.ConfirmProposedAction(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            "confirm-key",
+            CancellationToken.None);
+
+        var result = actionResult.Result as ObjectResult;
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        await Assert.That(result.ContentTypes).Contains("application/problem+json");
+        var problem = result.Value as ProblemDetails;
+        await Assert.That(problem).IsNotNull();
+        await Assert.That(problem!.Extensions["code"]).IsEqualTo("proposed_action_rejected");
+        await Assert.That(problem.Detail).DoesNotContain("payload");
+        await Assert.That(problem.Detail).DoesNotContain("prompt");
+    }
+
+    [Test]
+    public async Task RejectProposedAction_DispatchesCommandAndReturnsOk()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var proposedActionId = Guid.CreateVersion7();
+        var response = Success(proposedActionId);
+        _mediator.Send(Arg.Any<RejectAiProposedActionCommand>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+        var controller = CreateController();
+
+        var actionResult = await controller.RejectProposedAction(conversationId, proposedActionId, CancellationToken.None);
+
+        var ok = actionResult.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        await Assert.That(ok!.Value).IsEqualTo(response);
+        await _mediator.Received(1).Send(
+            Arg.Is<RejectAiProposedActionCommand>(command => command.ProposedActionId == proposedActionId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProposedActionEndpoints_UseAiAssistantRateLimitPolicy()
+    {
+        var confirm = typeof(AiAssistantController).GetMethod(nameof(AiAssistantController.ConfirmProposedAction))!
+            .GetCustomAttribute<EnableRateLimitingAttribute>();
+        var reject = typeof(AiAssistantController).GetMethod(nameof(AiAssistantController.RejectProposedAction))!
+            .GetCustomAttribute<EnableRateLimitingAttribute>();
+
+        await Assert.That(confirm).IsNotNull();
+        await Assert.That(confirm!.PolicyName).IsEqualTo(RateLimitingExtensions.AiAssistantPolicy);
+        await Assert.That(reject).IsNotNull();
+        await Assert.That(reject!.PolicyName).IsEqualTo(RateLimitingExtensions.AiAssistantPolicy);
+    }
+
+    [Test]
+    public async Task CancelRun_DispatchesCommandAndReturnsOk()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var runId = Guid.CreateVersion7();
+        var response = Success(runId);
+        _mediator.Send(Arg.Any<CancelAiRunCommand>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+        var controller = CreateController();
+
+        var actionResult = await controller.CancelRun(conversationId, runId, CancellationToken.None);
+
+        var ok = actionResult.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        await Assert.That(ok!.Value).IsEqualTo(response);
+        await _mediator.Received(1).Send(
+            Arg.Is<CancelAiRunCommand>(command => command.ConversationId == conversationId && command.RunId == runId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CancelRun_WhenRunIsComplete_ReturnsSafeConflictProblemDetails()
+    {
+        _mediator.Send(Arg.Any<CancelAiRunCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Failure("Completed AI runs cannot be cancelled.", "run_not_cancellable"));
+        var controller = CreateController();
+
+        var actionResult = await controller.CancelRun(Guid.CreateVersion7(), Guid.CreateVersion7(), CancellationToken.None);
+
+        var result = actionResult.Result as ObjectResult;
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        await Assert.That(result.ContentTypes).Contains("application/problem+json");
+        var problem = result.Value as ProblemDetails;
+        await Assert.That(problem).IsNotNull();
+        await Assert.That(problem!.Extensions["code"]).IsEqualTo("run_not_cancellable");
+        await Assert.That(problem.Detail).DoesNotContain("payload");
+        await Assert.That(problem.Detail).DoesNotContain("prompt");
+    }
+
+    [Test]
+    public async Task GetRunStatus_WhenRunIsCancellable_AddsCancelLink()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var runId = Guid.CreateVersion7();
+        _mediator.Send(Arg.Any<GetAiRunStatusQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new AiRunDto
+            {
+                Id = runId,
+                Status = "InProgress",
+                Provider = "fake",
+                ModelId = "fake-ai-assistant-v1",
+                QueuedAt = DateTime.UtcNow
+            });
+        _linkGenerator.GeneratePath(RouteNames.GetAiRunStatus, Arg.Any<object>(), Arg.Any<HttpContext>())
+            .Returns($"/api/ai/assistant/conversations/{conversationId}/runs/{runId}");
+        _linkGenerator.GeneratePath(RouteNames.GetAiConversation, Arg.Any<object>(), Arg.Any<HttpContext>())
+            .Returns($"/api/ai/assistant/conversations/{conversationId}");
+        _linkGenerator.GeneratePath(RouteNames.CancelAiRun, Arg.Any<object>(), Arg.Any<HttpContext>())
+            .Returns($"/api/ai/assistant/conversations/{conversationId}/runs/{runId}/cancel");
+        var controller = CreateController();
+
+        var actionResult = await controller.GetRunStatus(conversationId, runId, CancellationToken.None);
+
+        var ok = actionResult.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        var resource = ok!.Value as HalResource<AiRunDto>;
+        await Assert.That(resource).IsNotNull();
+        await Assert.That(resource!.Links[LinkRelations.CancelRun].Href).Contains("/cancel");
+        await Assert.That(resource.Links[LinkRelations.CancelRun].Method).IsEqualTo("POST");
+    }
+
+    [Test]
+    public async Task GetRunStatus_WhenRunIsTerminal_DoesNotAddCancelLink()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var runId = Guid.CreateVersion7();
+        _mediator.Send(Arg.Any<GetAiRunStatusQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new AiRunDto
+            {
+                Id = runId,
+                Status = "Succeeded",
+                Provider = "fake",
+                ModelId = "fake-ai-assistant-v1",
+                QueuedAt = DateTime.UtcNow
+            });
+        _linkGenerator.GeneratePath(RouteNames.GetAiRunStatus, Arg.Any<object>(), Arg.Any<HttpContext>())
+            .Returns($"/api/ai/assistant/conversations/{conversationId}/runs/{runId}");
+        _linkGenerator.GeneratePath(RouteNames.GetAiConversation, Arg.Any<object>(), Arg.Any<HttpContext>())
+            .Returns($"/api/ai/assistant/conversations/{conversationId}");
+        var controller = CreateController();
+
+        var actionResult = await controller.GetRunStatus(conversationId, runId, CancellationToken.None);
+
+        var ok = actionResult.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        var resource = ok!.Value as HalResource<AiRunDto>;
+        await Assert.That(resource).IsNotNull();
+        await Assert.That(resource!.Links.ContainsKey(LinkRelations.CancelRun)).IsFalse();
+    }
+
+    [Test]
+    public async Task CancelRun_UsesAiAssistantRateLimitPolicy()
+    {
+        var attribute = typeof(AiAssistantController).GetMethod(nameof(AiAssistantController.CancelRun))!
+            .GetCustomAttribute<EnableRateLimitingAttribute>();
 
         await Assert.That(attribute).IsNotNull();
         await Assert.That(attribute!.PolicyName).IsEqualTo(RateLimitingExtensions.AiAssistantPolicy);
@@ -190,11 +439,26 @@ public sealed class AiAssistantControllerTests
         var resource = new HalResource<AiConversationDto>(CreateDetail(conversationId, "Active"));
         resource.WithLink(LinkRelations.Self, HalLink.Create($"/api/ai/assistant/conversations/{conversationId}"));
         resource.WithLink(LinkRelations.SendMessage, HalLink.CreateAction($"/api/ai/assistant/conversations/{conversationId}/messages", "POST"));
+        resource.Data.ProposedActions =
+        [
+            new AiProposedActionDto
+            {
+                Id = Guid.CreateVersion7(),
+                Kind = "CreateEventDraft",
+                Status = "Proposed",
+                CreatedAt = DateTime.UtcNow,
+                Links = new Dictionary<string, HalLink>
+                {
+                    [LinkRelations.ConfirmAction] = HalLink.CreateAction($"/api/ai/assistant/conversations/{conversationId}/proposed-actions/action/confirm", "POST")
+                }
+            }
+        ];
 
         var json = JsonSerializer.Serialize(resource, ExploreJsonContext.Default.Options);
 
         await Assert.That(json).Contains("_links");
         await Assert.That(json).Contains("send-message");
+        await Assert.That(json).Contains("confirm-action");
         await Assert.That(json).Contains("POST");
         await Assert.That(json).Contains(conversationId.ToString());
     }

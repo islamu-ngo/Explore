@@ -3,7 +3,6 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event;
 using Explore.Application.Features.AiAssistant.Handlers.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
@@ -22,6 +21,8 @@ public sealed class AiProposedActionCommandHandlerTests
     private readonly Guid _conversationId = Guid.CreateVersion7();
     private readonly Guid _eventId = Guid.CreateVersion7();
     private readonly IAiConversationRepository _conversationRepository = Substitute.For<IAiConversationRepository>();
+    private readonly IOrganizationMemberRepository _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+    private readonly IGroupMemberRepository _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IMediator _mediator = Substitute.For<IMediator>();
@@ -31,6 +32,8 @@ public sealed class AiProposedActionCommandHandlerTests
         _tenantContext.TenantId.Returns(_tenantId);
         _currentUserService.IsAuthenticated.Returns(true);
         _currentUserService.UserId.Returns(_userId);
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(_userId, Arg.Any<string>()).Returns([]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(_userId, Arg.Any<string>()).Returns([]);
         _mediator.Send(Arg.Any<CreateEventCommand>(), Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponse<Guid>
             {
@@ -91,7 +94,37 @@ public sealed class AiProposedActionCommandHandlerTests
         await Assert.That(sentCommand.Request.Days).IsEmpty();
         await Assert.That(sentCommand.Request.Rooms).IsEmpty();
         await Assert.That(sentCommand.Request.AgendaItems).IsEmpty();
+        await _conversationRepository.Received(1).CreateToolExecutionAsync(
+            Arg.Is<AiToolExecution>(execution =>
+                execution.TenantId == _tenantId
+                && execution.ProposedActionId == _actionId
+                && execution.ToolName == "CreateEventDraft"
+                && execution.Succeeded
+                && execution.CompletedAt != null
+                && execution.FailureCode == null
+                && execution.FailureMessage == null),
+            Arg.Any<CancellationToken>());
         await _conversationRepository.Received(1).UpdateProposedActionAsync(action, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Confirm_WhenCreateEventDraftUsesAllowedOrganization_DispatchesOrganizationScopedCreateCommand()
+    {
+        var organizationId = Guid.CreateVersion7();
+        AiProposedAction action = CreateProposedAction(payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + organizationId + "\"}");
+        CreateEventCommand? sentCommand = null;
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(_userId, Arg.Any<string>()).Returns([organizationId]);
+        _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
+        _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+
+        BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Executed);
+        await Assert.That(sentCommand).IsNotNull();
+        await Assert.That(sentCommand!.Request.OrganizationId).IsEqualTo(organizationId);
+        await Assert.That(sentCommand.Request.Title).IsEqualTo("Community Dinner");
     }
 
     [Test]
@@ -107,6 +140,7 @@ public sealed class AiProposedActionCommandHandlerTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(_eventId);
         await _mediator.DidNotReceive().Send(Arg.Any<CreateEventCommand>(), Arg.Any<CancellationToken>());
+        await _conversationRepository.DidNotReceive().CreateToolExecutionAsync(Arg.Any<AiToolExecution>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().UpdateProposedActionAsync(Arg.Any<AiProposedAction>(), Arg.Any<CancellationToken>());
     }
 
@@ -122,6 +156,17 @@ public sealed class AiProposedActionCommandHandlerTests
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Failed);
         await Assert.That(action.FailureCode).IsNotNull();
         await _mediator.DidNotReceive().Send(Arg.Any<CreateEventCommand>(), Arg.Any<CancellationToken>());
+        await _conversationRepository.Received(1).CreateToolExecutionAsync(
+            Arg.Is<AiToolExecution>(execution =>
+                execution.TenantId == _tenantId
+                && execution.ProposedActionId == _actionId
+                && execution.ToolName == "CreateEventDraft"
+                && !execution.Succeeded
+                && execution.CompletedAt != null
+                && execution.FailureCode == action.FailureCode
+                && execution.FailureMessage == action.FailureMessage
+                && execution.FailureMessage != action.PayloadJson),
+            Arg.Any<CancellationToken>());
         await _conversationRepository.Received(1).UpdateProposedActionAsync(action, Arg.Any<CancellationToken>());
     }
 
@@ -137,6 +182,7 @@ public sealed class AiProposedActionCommandHandlerTests
         await Assert.That(result.Id).IsEqualTo(_actionId);
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Rejected);
         await Assert.That(action.RejectedBy).IsEqualTo(_userId);
+        await _conversationRepository.DidNotReceive().CreateToolExecutionAsync(Arg.Any<AiToolExecution>(), Arg.Any<CancellationToken>());
         await _conversationRepository.Received(1).UpdateProposedActionAsync(action, Arg.Any<CancellationToken>());
         await _mediator.DidNotReceive().Send(Arg.Any<CreateEventCommand>(), Arg.Any<CancellationToken>());
     }
@@ -174,7 +220,13 @@ public sealed class AiProposedActionCommandHandlerTests
     }
 
     private ConfirmAiProposedActionCommandHandler CreateConfirmHandler()
-        => new(_conversationRepository, _tenantContext, _currentUserService, _mediator);
+        => new(
+            _conversationRepository,
+            _organizationMemberRepository,
+            _groupMemberRepository,
+            _tenantContext,
+            _currentUserService,
+            _mediator);
 
     private RejectAiProposedActionCommandHandler CreateRejectHandler()
         => new(_conversationRepository, _tenantContext, _currentUserService);

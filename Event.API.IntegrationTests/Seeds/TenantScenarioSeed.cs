@@ -2,8 +2,11 @@
 // ABOUTME: Creates a complete tenant + user + actor graph for test scenarios.
 
 using Event.Api.IntegrationTests.Builders;
+using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace Event.Api.IntegrationTests.Seeds;
 
@@ -15,6 +18,14 @@ public static class TenantScenarioSeed
 {
     /// <summary>Carries the IDs of all entities created by a tenant scenario seed.</summary>
     public sealed record TenantScenarioResult(Guid TenantId, Guid UserId, Guid ActorId);
+
+    /// <summary>Carries the IDs for a tenant user that can publish events for an organization.</summary>
+    public sealed record TenantOrganizationScenarioResult(
+        Guid TenantId,
+        Guid UserId,
+        Guid ActorId,
+        Guid OrganizationId,
+        Guid OrganizationActorId);
 
     /// <summary>
     /// Seeds an active tenant with a user and user-type actor.
@@ -41,6 +52,94 @@ public static class TenantScenarioSeed
         await context.SaveChangesAsync();
 
         return new TenantScenarioResult(tenant.Id, user.Id, actor.Id);
+    }
+
+    /// <summary>
+    /// Seeds an active tenant user plus an approved organization publisher the user can create events for.
+    /// </summary>
+    public static async Task<TenantOrganizationScenarioResult> SeedActiveTenantWithOrganizationPublisherAsync(ExploreDbContext context)
+    {
+        TenantScenarioResult seeded = await SeedActiveTenantWithUserAsync(context);
+        await EnsureOrgAdminCanCreateEventsAsync(context);
+
+        var organizationId = Guid.CreateVersion7();
+        var organization = new Organization
+        {
+            Id = organizationId,
+            TenantId = seeded.TenantId,
+            Tenant = null!,
+            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
+            ApprovalStatus = null!,
+            Pii = new OrganizationPii
+            {
+                OrganizationId = organizationId,
+                FullName = "AI Test Publisher Organization"
+            },
+            CreatedAt = DateTime.UtcNow,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
+        context.Organizations.Add(organization);
+        await context.SaveChangesAsync();
+
+        var organizationActor = new ActorBuilder()
+            .WithTenantId(seeded.TenantId)
+            .WithActorType(ActorTypeEnum.Organization)
+            .WithDisplayName("AI Test Publisher Organization")
+            .Build();
+        organizationActor.OrganizationId = organizationId;
+        context.Actors.Add(organizationActor);
+        await context.SaveChangesAsync();
+
+        organization.ActorId = organizationActor.Id;
+        context.OrganizationMembers.Add(new OrganizationMember
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = seeded.TenantId,
+            Tenant = null!,
+            OrganizationId = organizationId,
+            Organization = null!,
+            UserId = seeded.UserId,
+            User = null!,
+            RoleId = (int)RoleEnum.OrgAdmin,
+            Role = null!,
+            CreatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+
+        return new TenantOrganizationScenarioResult(
+            seeded.TenantId,
+            seeded.UserId,
+            seeded.ActorId,
+            organizationId,
+            organizationActor.Id);
+    }
+
+    private static async Task EnsureOrgAdminCanCreateEventsAsync(ExploreDbContext context)
+    {
+        var eventCreatePermissionId = await context.Permissions
+            .Where(permission => permission.MasterCode == PermissionCodes.EventCreate)
+            .Select(permission => permission.Id)
+            .SingleAsync();
+
+        var roleId = (int)RoleEnum.OrgAdmin;
+        var exists = await context.RolePermissions
+            .AnyAsync(rolePermission => rolePermission.RoleId == roleId
+                && rolePermission.PermissionId == eventCreatePermissionId);
+
+        if (exists)
+        {
+            return;
+        }
+
+        context.RolePermissions.Add(new RolePermission
+        {
+            RoleId = roleId,
+            Role = null!,
+            PermissionId = eventCreatePermissionId,
+            Permission = null!,
+            GrantedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
     }
 
     /// <summary>

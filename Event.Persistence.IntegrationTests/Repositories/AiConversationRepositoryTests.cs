@@ -8,6 +8,7 @@ using Explore.Domain.Ai;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 using TUnit.Core;
 
 namespace Event.Persistence.IntegrationTests.Repositories;
@@ -167,6 +168,232 @@ public sealed class AiConversationRepositoryTests(PostgreSqlContainerFixture fix
         await Assert.That(action).IsNotNull();
         await Assert.That(action!.Conversation).IsNotNull();
         await Assert.That(action.PayloadJson).Contains("Tenant A event");
+    }
+
+    [Test]
+    public async Task ToolExecutionMetadata_CanBePersistedAndQueriedWithoutPayloadLeakage()
+    {
+        await fixture.ResetAsync();
+        var tenantA = await SeedTenantAndUserAsync("ai-tool-execution-a");
+        var tenantB = await SeedTenantAndUserAsync("ai-tool-execution-b", tenantA.UserId);
+        Guid actionId;
+
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            var conversation = NewConversation(tenantA, "Tenant A");
+            actionId = conversation.ProposeAction(
+                AiProposedActionKind.CreateEventDraft,
+                "{\"title\":\"Tenant A event\",\"secret\":\"do not store\"}",
+                messageId: null,
+                tenantA.UserId,
+                DateTime.UtcNow).Id;
+            seedContext.AiConversations.Add(conversation);
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var executionContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.TenantId)))
+        {
+            var repository = new AiConversationRepository(executionContext);
+            var execution = new AiToolExecution
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenantA.TenantId,
+                ProposedActionId = actionId,
+                ToolName = "CreateEventDraft",
+                StartedAt = DateTime.UtcNow
+            };
+            execution.MarkSucceeded(DateTime.UtcNow.AddMilliseconds(10));
+
+            await repository.CreateToolExecutionAsync(execution, CancellationToken.None);
+
+            var failedExecution = new AiToolExecution
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenantA.TenantId,
+                ProposedActionId = actionId,
+                ToolName = "CreateEventDraft",
+                StartedAt = DateTime.UtcNow.AddMilliseconds(20)
+            };
+            failedExecution.MarkFailed("invalid_tool_arguments", "Title is required.", DateTime.UtcNow.AddMilliseconds(30));
+
+            await repository.CreateToolExecutionAsync(failedExecution, CancellationToken.None);
+        }
+
+        await using var wrongTenantContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantB.TenantId));
+        var wrongTenantRepository = new AiConversationRepository(wrongTenantContext);
+        IReadOnlyList<AiToolExecution> hiddenExecutions = await wrongTenantRepository.ListToolExecutionsForProposedActionAsync(actionId, CancellationToken.None);
+
+        await using var tenantContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.TenantId));
+        var tenantRepository = new AiConversationRepository(tenantContext);
+        IReadOnlyList<AiToolExecution> executions = await tenantRepository.ListToolExecutionsForProposedActionAsync(actionId, CancellationToken.None);
+
+        await Assert.That(hiddenExecutions).IsEmpty();
+        await Assert.That(executions.Count).IsEqualTo(2);
+        AiToolExecution failed = executions[0];
+        AiToolExecution succeeded = executions[1];
+        await Assert.That(failed.ToolName).IsEqualTo("CreateEventDraft");
+        await Assert.That(failed.Succeeded).IsFalse();
+        await Assert.That(failed.CompletedAt).IsNotNull();
+        await Assert.That(failed.FailureCode).IsEqualTo("invalid_tool_arguments");
+        await Assert.That(failed.FailureMessage).IsEqualTo("Title is required.");
+        await Assert.That(succeeded.ToolName).IsEqualTo("CreateEventDraft");
+        await Assert.That(succeeded.Succeeded).IsTrue();
+        await Assert.That(succeeded.CompletedAt).IsNotNull();
+        await Assert.That(succeeded.FailureCode).IsNull();
+        await Assert.That(succeeded.FailureMessage).IsNull();
+        foreach (AiToolExecution execution in executions)
+        {
+            await Assert.That(execution.ToolName).DoesNotContain("Tenant A event");
+            await Assert.That(execution.ToolName).DoesNotContain("secret");
+            await Assert.That(execution.FailureMessage ?? string.Empty).DoesNotContain("Tenant A event");
+            await Assert.That(execution.FailureMessage ?? string.Empty).DoesNotContain("secret");
+        }
+    }
+
+    [Test]
+    public async Task RedactExpiredConversationsAsync_RedactsCurrentTenantOnlyAndSoftDeletesConversation()
+    {
+        await fixture.ResetAsync();
+        var now = new DateTime(2026, 06, 03, 12, 0, 0, DateTimeKind.Utc);
+        var expiredAt = now.AddDays(-45);
+        var tenantA = await SeedTenantAndUserAsync("ai-retention-a");
+        var tenantB = await SeedTenantAndUserAsync("ai-retention-b", tenantA.UserId);
+        Guid expiredConversationId;
+        Guid otherTenantConversationId;
+
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            var expiredConversation = NewConversation(tenantA, "Secret AI plan");
+            expiredConversation.CreatedAt = expiredAt;
+            expiredConversation.AddMessage(AiMessageRole.User, "Secret prompt content", tenantA.UserId, expiredAt.AddMinutes(1));
+            expiredConversation.AddReference(AiReferenceKind.Event, Guid.CreateVersion7(), "Secret event", "Secret reference summary", tenantA.UserId, expiredAt.AddMinutes(2));
+            var action = expiredConversation.ProposeAction(
+                AiProposedActionKind.CreateEventDraft,
+                "{\"title\":\"Secret proposed event\"}",
+                messageId: null,
+                tenantA.UserId,
+                expiredAt.AddMinutes(3));
+            var run = expiredConversation.QueueRun("fake", "fake-ai-assistant-v1", expiredAt.AddMinutes(4));
+            run.Fail("provider_error", "Secret provider failure", expiredAt.AddMinutes(5));
+            expiredConversation.UpdatedAt = expiredAt;
+            expiredConversationId = expiredConversation.Id;
+
+            var otherTenantConversation = NewConversation(tenantB, "Other tenant secret");
+            otherTenantConversation.CreatedAt = expiredAt;
+            otherTenantConversation.AddMessage(AiMessageRole.User, "Other tenant prompt", tenantB.UserId, expiredAt.AddMinutes(1));
+            otherTenantConversation.UpdatedAt = expiredAt;
+            otherTenantConversationId = otherTenantConversation.Id;
+
+            var recentConversation = NewConversation(tenantA, "Recent AI plan");
+            recentConversation.Id = Guid.CreateVersion7();
+            recentConversation.CreatedAt = now.AddDays(-1);
+            recentConversation.AddMessage(AiMessageRole.User, "Recent prompt content", tenantA.UserId, now.AddHours(-1));
+
+            seedContext.AiConversations.AddRange(expiredConversation, otherTenantConversation, recentConversation);
+            seedContext.AiToolExecutions.Add(new AiToolExecution
+            {
+                Id = Guid.CreateVersion7(),
+                TenantId = tenantA.TenantId,
+                ProposedActionId = action.Id,
+                ToolName = "CreateEventDraft",
+                StartedAt = expiredAt.AddMinutes(6),
+                CompletedAt = expiredAt.AddMinutes(7),
+                Succeeded = false,
+                FailureCode = "tool_failure",
+                FailureMessage = "Secret tool failure"
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var cleanupContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.TenantId)))
+        {
+            var repository = new AiConversationRepository(cleanupContext);
+
+            var result = await repository.RedactExpiredConversationsAsync(
+                now.AddDays(-30),
+                retentionDays: 30,
+                now,
+                dryRun: false,
+                CancellationToken.None);
+
+            await Assert.That(result.EligibleConversations).IsEqualTo(1);
+            await Assert.That(result.RedactedConversations).IsEqualTo(1);
+            await Assert.That(result.RedactedMessages).IsEqualTo(1);
+            await Assert.That(result.RedactedRuns).IsEqualTo(1);
+            await Assert.That(result.RedactedReferences).IsEqualTo(1);
+            await Assert.That(result.RedactedProposedActions).IsEqualTo(1);
+            await Assert.That(result.RedactedToolExecutions).IsEqualTo(1);
+        }
+
+        await using var verifyContext = fixture.CreateDbContext();
+        var redacted = await verifyContext.AiConversations
+            .IgnoreQueryFilters()
+            .Include(conversation => conversation.Messages)
+            .Include(conversation => conversation.Runs)
+            .Include(conversation => conversation.References)
+            .Include(conversation => conversation.ProposedActions)
+            .FirstAsync(conversation => conversation.Id == expiredConversationId);
+        var toolExecution = await verifyContext.AiToolExecutions
+            .IgnoreQueryFilters()
+            .SingleAsync(execution => execution.ProposedActionId == redacted.ProposedActions.Single().Id);
+        var otherTenant = await verifyContext.AiConversations
+            .IgnoreQueryFilters()
+            .Include(conversation => conversation.Messages)
+            .FirstAsync(conversation => conversation.Id == otherTenantConversationId);
+
+        await Assert.That(redacted.IsDeleted).IsTrue();
+        await Assert.That(redacted.DeletedAt).IsEqualTo(now);
+        await Assert.That(redacted.Title).IsEqualTo("[redacted AI conversation]");
+        await Assert.That(redacted.Messages.Single().Content).IsEqualTo("[redacted by AI retention policy]");
+        await Assert.That(redacted.Runs.Single().FailureMessage).IsNull();
+        await Assert.That(redacted.References.Single().DisplayName).IsEqualTo("[redacted reference]");
+        await Assert.That(redacted.References.Single().Summary).IsNull();
+        await Assert.That(redacted.ProposedActions.Single().PayloadJson).IsEqualTo("{}");
+        await Assert.That(toolExecution.FailureMessage).IsNull();
+        await Assert.That(otherTenant.IsDeleted).IsFalse();
+        await Assert.That(otherTenant.Messages.Single().Content).IsEqualTo("Other tenant prompt");
+    }
+
+    [Test]
+    public async Task RedactExpiredConversationsAsync_WhenDryRun_DoesNotRedactContent()
+    {
+        await fixture.ResetAsync();
+        var now = new DateTime(2026, 06, 03, 12, 0, 0, DateTimeKind.Utc);
+        var tenant = await SeedTenantAndUserAsync("ai-retention-dry-run");
+
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            var conversation = NewConversation(tenant, "Dry run secret");
+            conversation.CreatedAt = now.AddDays(-60);
+            conversation.AddMessage(AiMessageRole.User, "Dry run prompt", tenant.UserId, now.AddDays(-59));
+            conversation.UpdatedAt = now.AddDays(-59);
+            seedContext.AiConversations.Add(conversation);
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var cleanupContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenant.TenantId)))
+        {
+            var repository = new AiConversationRepository(cleanupContext);
+            var result = await repository.RedactExpiredConversationsAsync(
+                now.AddDays(-30),
+                retentionDays: 30,
+                now,
+                dryRun: true,
+                CancellationToken.None);
+
+            await Assert.That(result.EligibleConversations).IsEqualTo(1);
+            await Assert.That(result.RedactedConversations).IsEqualTo(0);
+            await Assert.That(result.DryRun).IsTrue();
+        }
+
+        await using var verifyContext = fixture.CreateDbContext();
+        var saved = await verifyContext.AiConversations
+            .IgnoreQueryFilters()
+            .Include(conversation => conversation.Messages)
+            .SingleAsync(conversation => conversation.Title == "Dry run secret");
+
+        await Assert.That(saved.IsDeleted).IsFalse();
+        await Assert.That(saved.Messages.Single().Content).IsEqualTo("Dry run prompt");
     }
 
     private async Task<AiTestScope> SeedTenantAndUserAsync(string slugPrefix, Guid? userId = null)

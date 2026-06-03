@@ -10,6 +10,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
+using Explore.Application.Models;
 using Explore.Application.Responses;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
@@ -333,6 +334,8 @@ public sealed class AiAssistantApiFlowTests
     private sealed class InMemoryAiConversationStore
     {
         public Dictionary<Guid, AiConversation> Conversations { get; } = [];
+
+        public List<AiToolExecution> ToolExecutions { get; } = [];
     }
 
     private sealed class InMemoryAiConversationRepository(
@@ -464,6 +467,46 @@ public sealed class AiAssistantApiFlowTests
             existingAction.FailureMessage = proposedAction.FailureMessage;
 
             return Task.CompletedTask;
+        }
+
+        public Task CreateToolExecutionAsync(AiToolExecution toolExecution, CancellationToken cancellationToken)
+        {
+            store.ToolExecutions.Add(toolExecution);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<AiToolExecution>> ListToolExecutionsForProposedActionAsync(Guid proposedActionId, CancellationToken cancellationToken)
+        {
+            var executions = store.ToolExecutions
+                .Where(execution => execution.TenantId == tenantContext.TenantId && execution.ProposedActionId == proposedActionId)
+                .OrderByDescending(execution => execution.StartedAt)
+                .ThenByDescending(execution => execution.Id)
+                .ToList();
+
+            return Task.FromResult<IReadOnlyList<AiToolExecution>>(executions);
+        }
+
+        public Task<AiRetentionCleanupResult> RedactExpiredConversationsAsync(
+            DateTime cutoffUtc,
+            int retentionDays,
+            DateTime utcNow,
+            bool dryRun,
+            CancellationToken cancellationToken)
+        {
+            int eligibleConversations = TenantConversations
+                .Count(conversation => (conversation.UpdatedAt ?? conversation.CreatedAt) <= cutoffUtc);
+
+            return Task.FromResult(new AiRetentionCleanupResult(
+                cutoffUtc,
+                retentionDays,
+                eligibleConversations,
+                RedactedConversations: 0,
+                RedactedMessages: 0,
+                RedactedRuns: 0,
+                RedactedReferences: 0,
+                RedactedProposedActions: 0,
+                RedactedToolExecutions: 0,
+                DryRun: dryRun));
         }
     }
 

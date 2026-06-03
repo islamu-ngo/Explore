@@ -11,6 +11,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     private readonly IInstanceOnboardingService _onboardingService;
     private readonly ITenantOnboardingService _tenantOnboardingService;
     private readonly ITenantPublicExperienceAdminService _publicExperienceAdminService;
+    private readonly ITenantStorageSettingsAdminService _tenantStorageSettingsAdminService;
     private readonly BunitNavigationManager _nav;
 
     public TenantAdminSettingsRedirectTests()
@@ -22,9 +23,12 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _onboardingService = _ctx.AddMockService<IInstanceOnboardingService>();
         _tenantOnboardingService = _ctx.AddMockService<ITenantOnboardingService>();
         _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
+        _tenantStorageSettingsAdminService = _ctx.AddMockService<ITenantStorageSettingsAdminService>();
         _ctx.AddMockService<ITenantBrandingSettingsAdminService>();
         _publicExperienceAdminService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new TenantPublicExperienceAdminModel());
+        _tenantStorageSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new TenantStorageSettingsModel());
 
         _nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         _nav.NavigateTo("/admin/tenant/settings");

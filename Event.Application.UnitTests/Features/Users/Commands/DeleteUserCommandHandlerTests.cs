@@ -117,4 +117,58 @@ public class DeleteUserCommandHandlerTests
         await _userRepository.Received(1).Delete(Arg.Is<User>(u =>
             u.Id == userId));
     }
+
+    [Test]
+    public async Task Handle_AnonymizesActorPii_InsteadOfHardDeleting()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var command = new DeleteUserCommand { UserId = userId };
+
+        var user = DataBuilder.User.Generate();
+        user.Id = userId;
+
+        var actor = new Actor
+        {
+            Id = actorId,
+            UserId = userId,
+            ActorType = new ActorType { FullName = "User", MasterCode = "USER" },
+            Tenant = new Tenant
+            {
+                FullName = "Test",
+                Slug = "test",
+                TenantStatus = new TenantStatus { FullName = "Active", MasterCode = "ACTIVE", IsActiveState = true }
+            },
+            Pii = new ActorPii { DisplayName = "Real Name" }
+        };
+        var actorPii = new ActorPii
+        {
+            ActorId = actorId,
+            DisplayName = "Real Name",
+            Did = "did:plc:abc123",
+            Handle = "user.bsky.social",
+            ProfilePictureUri = "https://cdn.example.com/avatar.jpg"
+        };
+
+        _userRepository.GetById(userId).Returns(user);
+        _userRepository.Delete(user).Returns(Task.CompletedTask);
+        _userPiiRepository.GetById(userId).Returns((UserPii?)null);
+        _userAuthenticationTokenRepository.GetByUser(userId).Returns(new List<UserAuthenticationToken>());
+        _actorRepository.GetActorByUserId(userId).Returns(actor);
+        _actorPiiRepository.GetById(actorId).Returns(actorPii);
+        _actorPiiRepository.Update(Arg.Any<ActorPii>()).Returns(Task.CompletedTask);
+
+        // Act
+        await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await _actorPiiRepository.DidNotReceive().HardDelete(Arg.Any<ActorPii>());
+        await _actorPiiRepository.Received(1).Update(Arg.Is<ActorPii>(a =>
+            a.ActorId == actorId
+            && a.DisplayName.StartsWith("DeletedUser")
+            && a.Did == null
+            && a.Handle == null
+            && a.ProfilePictureUri == null));
+    }
 }

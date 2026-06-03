@@ -51,6 +51,60 @@ public sealed class AiAssistantHateoasTests
     }
 
     [Test]
+    public async Task ProposedActionPolicy_WhenConversationActiveAndActionProposed_EmitsConfirmAndRejectLinks()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var proposedActionId = Guid.CreateVersion7();
+        var conversation = CreateDetail(conversationId, "Active");
+        var action = CreateProposedAction(proposedActionId, "Proposed");
+
+        var links = AiProposedActionLinkPolicy.GetLinks(conversation, action).ToList();
+
+        var confirm = links.Single(link => link.Rel == LinkRelations.ConfirmAction);
+        var reject = links.Single(link => link.Rel == LinkRelations.RejectAction);
+        await Assert.That(confirm.RouteName).IsEqualTo(RouteNames.ConfirmAiProposedAction);
+        await Assert.That(confirm.Method).IsEqualTo("POST");
+        await Assert.That(confirm.RequiresAuth).IsTrue();
+        await Assert.That(confirm.PermissionResourceKind).IsEqualTo(ResourceKinds.AiConversation);
+        await Assert.That(confirm.PermissionAction).IsEqualTo(AuthorizationActions.AiConversations.ConfirmAction);
+        await Assert.That(RouteValue(confirm.RouteValues, "conversationId")).IsEqualTo(conversationId);
+        await Assert.That(RouteValue(confirm.RouteValues, "proposedActionId")).IsEqualTo(proposedActionId);
+        await Assert.That(reject.RouteName).IsEqualTo(RouteNames.RejectAiProposedAction);
+        await Assert.That(reject.Method).IsEqualTo("POST");
+        await Assert.That(reject.RequiresAuth).IsTrue();
+        await Assert.That(reject.PermissionAction).IsEqualTo(AuthorizationActions.AiConversations.RejectAction);
+        await Assert.That(RouteValue(reject.RouteValues, "conversationId")).IsEqualTo(conversationId);
+        await Assert.That(RouteValue(reject.RouteValues, "proposedActionId")).IsEqualTo(proposedActionId);
+    }
+
+    [Test]
+    [Arguments("Executed")]
+    [Arguments("Rejected")]
+    [Arguments("Failed")]
+    public async Task ProposedActionPolicy_WhenActionIsNotProposed_OmitsConfirmAndRejectLinks(string actionStatus)
+    {
+        var links = AiProposedActionLinkPolicy.GetLinks(
+                CreateDetail(Guid.CreateVersion7(), "Active"),
+                CreateProposedAction(Guid.CreateVersion7(), actionStatus))
+            .ToList();
+
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.ConfirmAction)).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.RejectAction)).IsFalse();
+    }
+
+    [Test]
+    public async Task ProposedActionPolicy_WhenConversationIsNotActive_OmitsConfirmAndRejectLinks()
+    {
+        var links = AiProposedActionLinkPolicy.GetLinks(
+                CreateDetail(Guid.CreateVersion7(), "Archived"),
+                CreateProposedAction(Guid.CreateVersion7(), "Proposed"))
+            .ToList();
+
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.ConfirmAction)).IsFalse();
+        await Assert.That(links.Any(link => link.Rel == LinkRelations.RejectAction)).IsFalse();
+    }
+
+    [Test]
     public async Task CollectionPolicy_EmitsAuthenticatedCreateAndActiveItemSendLinks()
     {
         var activeId = Guid.CreateVersion7();
@@ -107,6 +161,15 @@ public sealed class AiAssistantHateoasTests
             Id = id,
             TenantId = Guid.CreateVersion7(),
             UserId = Guid.CreateVersion7(),
+            Status = status,
+            CreatedAt = DateTime.UtcNow
+        };
+
+    private static AiProposedActionDto CreateProposedAction(Guid id, string status) =>
+        new()
+        {
+            Id = id,
+            Kind = "CreateEventDraft",
             Status = status,
             CreatedAt = DateTime.UtcNow
         };
