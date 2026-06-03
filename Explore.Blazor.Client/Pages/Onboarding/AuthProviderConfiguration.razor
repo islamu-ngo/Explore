@@ -112,7 +112,9 @@
                                         <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Manual" Color="Color.Primary" Dense="true">
                                             Use an already configured Keycloak realm
                                         </MudRadio>
-                                        <div data-testid="keycloak-bootstrap-mode-radio">
+                                        <div data-testid="keycloak-bootstrap-mode-radio"
+                                             @onclick="SelectKeycloakBootstrapMode"
+                                             style="cursor: pointer;">
                                             <MudRadio T="KeycloakConfigurationMode" Value="KeycloakConfigurationMode.Bootstrap" Color="Color.Primary" Dense="true">
                                                 Let ISLAMU configure Keycloak clients now
                                             </MudRadio>
@@ -138,9 +140,10 @@
                                     }
                                     else
                                     {
-                                            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
-                                                ISLAMU will use the bootstrap admin credential one time to create or patch Keycloak clients. The admin credential is not stored after this request.
-                                            </MudAlert>
+                                        <div data-testid="keycloak-bootstrap-fields">
+                                             <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                                                 ISLAMU will use the bootstrap admin credential one time to create or patch Keycloak clients. The admin credential is not stored after this request.
+                                             </MudAlert>
                                             <MudSelect T="int" Variant="Variant.Outlined"
                                                        Label="Bootstrap action"
                                                        @bind-Value="_keycloakBootstrap.Mode"
@@ -186,12 +189,13 @@
                                                            @bind-Value="_keycloakBootstrap.BootstrapAdminUsername"
                                                            Immediate="true"
                                                            HelperText="Used only for this bootstrap request and never stored by ISLAMU." />
-                                             <MudTextField Variant="Variant.Outlined" T="string"
-                                                           Label="One-time Keycloak admin password (Required)"
-                                                           InputType="InputType.Password"
-                                                           @bind-Value="_keycloakBootstrap.BootstrapAdminPassword"
-                                                           Immediate="true"
-                                                           HelperText="Cleared from this form after submit, whether bootstrap succeeds or fails." />
+                                              <MudTextField Variant="Variant.Outlined" T="string"
+                                                            Label="One-time Keycloak admin password (Required)"
+                                                            InputType="InputType.Password"
+                                                            @bind-Value="_keycloakBootstrap.BootstrapAdminPassword"
+                                                            Immediate="true"
+                                                            HelperText="Cleared from this form after submit, whether bootstrap succeeds or fails." />
+                                        </div>
                                     }
                                 }
                             </MudStack>
@@ -376,6 +380,11 @@
                 ClearKeycloakBootstrapSecrets();
             }
         }
+    }
+
+    private void SelectKeycloakBootstrapMode()
+    {
+        _keycloakConfigurationMode = KeycloakConfigurationMode.Bootstrap;
     }
 
     private async Task SaveAndContinueAsync()
