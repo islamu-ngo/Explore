@@ -353,7 +353,7 @@ Canonical keys:
 | `ai_assistant.max_output_tokens` | int | `1024` | Maximum requested provider completion size. |
 | `ai_assistant.temperature` | decimal | `0.2` | Provider sampling temperature. Keep low for structured assistant workflows. |
 | `ai_assistant.timeout_seconds` | int | `30` | Provider call timeout budget. Cancellation tokens must still flow through all calls. |
-| `ai_assistant.retention_days` | int | `30` | Default persisted conversation retention window. Retention/redaction enforcement is required before broad history enablement. |
+| `ai_assistant.retention_days` | int | `30` | Default persisted conversation retention window. The Phase 8 retention cleanup operation uses this tenant-resolved value to select expired conversations, supports dry-run, redacts prompt/action/reference/failure content, and soft-deletes expired conversation shells. Scheduling/operator automation is tracked separately from the cleanup primitive. |
 | `ai_assistant.daily_message_limit` | int | `50` | Per-user daily assistant message limit enforced before provider calls. |
 | `ai_assistant.daily_tenant_message_limit` | int | `1000` | Per-tenant daily assistant user-message limit enforced before provider calls. |
 | `ai_assistant.concurrent_run_limit` | int | `1` | Per-user concurrent assistant run limit. Existing idempotency replays are allowed before this quota check. |
