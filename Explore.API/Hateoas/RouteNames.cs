@@ -214,8 +214,12 @@ public static class RouteNames
     public const string GetAiConversations = "GetAiConversations";
     public const string CreateAiConversation = "CreateAiConversation";
     public const string GetAiConversation = "GetAiConversation";
+    public const string SearchAiReferences = "SearchAiReferences";
     public const string SendAiMessage = "SendAiMessage";
+    public const string ConfirmAiProposedAction = "ConfirmAiProposedAction";
+    public const string RejectAiProposedAction = "RejectAiProposedAction";
     public const string GetAiRunStatus = "GetAiRunStatus";
+    public const string CancelAiRun = "CancelAiRun";
     public const string GetPublicExperienceSettings = "GetPublicExperienceSettings";
     public const string GetPublicExperienceShell = "GetPublicExperienceShell";
     public const string GetTranslationByLanguage = "GetTranslationByLanguage";

@@ -27,6 +27,8 @@ namespace Explore.API.Controllers;
 public sealed class AiAssistantController : ControllerBase
 {
     private const string IdempotencyKeyHeader = "Idempotency-Key";
+    private const int DefaultReferenceLimit = 10;
+    private const int MaxReferenceLimit = 20;
 
     private readonly IMediator _mediator;
     private readonly IHateoasLinkGenerator _linkGenerator;
@@ -127,6 +129,39 @@ public sealed class AiAssistantController : ControllerBase
         return Ok(await _conversationAssembler.ToResource(conversation, HttpContext));
     }
 
+    [HttpGet("references", Name = RouteNames.SearchAiReferences)]
+    [EndpointSummary("Search AI references")]
+    [EndpointDescription("Searches lightweight tenant-visible event references for AI assistant prompt context without returning full event content.")]
+    [ProducesResponseType(typeof(HalCollectionResource<AiReferenceSearchResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [EnableRateLimiting(RateLimitingExtensions.AiAssistantPolicy)]
+    public async Task<ActionResult<HalCollectionResource<AiReferenceSearchResultDto>>> SearchReferences(
+        [FromQuery] string searchTerm,
+        [FromQuery] int limit = 10,
+        CancellationToken cancellationToken = default)
+    {
+        int normalizedLimit = NormalizeReferenceLimit(limit);
+        IReadOnlyList<AiReferenceSearchResultDto> references = await _mediator.Send(new SearchAiReferencesQuery
+        {
+            SearchTerm = searchTerm,
+            Limit = normalizedLimit
+        }, cancellationToken);
+
+        var items = references.Select(CreateReferenceResource).ToList();
+        var links = new Dictionary<string, HalLink>();
+        AddLink(links, LinkRelations.Self, RouteNames.SearchAiReferences, new { searchTerm, limit = normalizedLimit });
+
+        return Ok(HalCollectionResource<AiReferenceSearchResultDto>.Create(
+            items,
+            pageNumber: 1,
+            pageSize: normalizedLimit,
+            totalCount: references.Count,
+            links));
+    }
+
     [HttpPost("conversations/{conversationId:guid}/messages", Name = RouteNames.SendAiMessage)]
     [EndpointSummary("Send AI conversation message")]
     [EndpointDescription("Sends a bounded user message into an owned AI conversation using an Idempotency-Key header and guarded Application orchestration.")]
@@ -166,6 +201,69 @@ public sealed class AiAssistantController : ControllerBase
         return AcceptedAtRoute(RouteNames.GetAiRunStatus, new { conversationId, runId = response.Id }, response);
     }
 
+    [HttpPost("conversations/{conversationId:guid}/proposed-actions/{proposedActionId:guid}/confirm", Name = RouteNames.ConfirmAiProposedAction)]
+    [EndpointSummary("Confirm AI proposed action")]
+    [EndpointDescription("Confirms one owned AI-proposed action and executes it through the governed Application tool executor path.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    [EnableRateLimiting(RateLimitingExtensions.AiAssistantPolicy)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> ConfirmProposedAction(
+        Guid conversationId,
+        Guid proposedActionId,
+        [FromHeader(Name = IdempotencyKeyHeader)] string? idempotencyKey,
+        CancellationToken cancellationToken = default)
+    {
+        _ = conversationId;
+        var response = await _mediator.Send(new ConfirmAiProposedActionCommand
+        {
+            ProposedActionId = proposedActionId,
+            IdempotencyKey = idempotencyKey
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToAiAssistantProblem(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpPost("conversations/{conversationId:guid}/proposed-actions/{proposedActionId:guid}/reject", Name = RouteNames.RejectAiProposedAction)]
+    [EndpointSummary("Reject AI proposed action")]
+    [EndpointDescription("Rejects one owned AI-proposed action without executing any tool side effects.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [EnableRateLimiting(RateLimitingExtensions.AiAssistantPolicy)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> RejectProposedAction(
+        Guid conversationId,
+        Guid proposedActionId,
+        CancellationToken cancellationToken = default)
+    {
+        _ = conversationId;
+        var response = await _mediator.Send(new RejectAiProposedActionCommand
+        {
+            ProposedActionId = proposedActionId
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToAiAssistantProblem(response);
+        }
+
+        return Ok(response);
+    }
+
     [HttpGet("conversations/{conversationId:guid}/runs/{runId:guid}", Name = RouteNames.GetAiRunStatus)]
     [EndpointSummary("Get AI run status")]
     [EndpointDescription("Returns safe status metadata for one AI provider run in an owned conversation.")]
@@ -192,7 +290,42 @@ public sealed class AiAssistantController : ControllerBase
         var resource = new HalResource<AiRunDto>(run);
         AddResourceLink(resource, LinkRelations.Self, RouteNames.GetAiRunStatus, new { conversationId, runId });
         AddResourceLink(resource, LinkRelations.Up, RouteNames.GetAiConversation, new { conversationId });
+        if (IsCancellableRun(run.Status))
+        {
+            AddResourceLink(resource, LinkRelations.CancelRun, RouteNames.CancelAiRun, new { conversationId, runId }, "POST");
+        }
+
         return Ok(resource);
+    }
+
+    [HttpPost("conversations/{conversationId:guid}/runs/{runId:guid}/cancel", Name = RouteNames.CancelAiRun)]
+    [EndpointSummary("Cancel AI run")]
+    [EndpointDescription("Cancels one queued or in-progress AI provider run in an owned conversation without producing proposed actions.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [EnableRateLimiting(RateLimitingExtensions.AiAssistantPolicy)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> CancelRun(
+        Guid conversationId,
+        Guid runId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new CancelAiRunCommand
+        {
+            ConversationId = conversationId,
+            RunId = runId
+        }, cancellationToken);
+
+        if (!response.Success)
+        {
+            return this.ToAiAssistantProblem(response);
+        }
+
+        return Ok(response);
     }
 
     private void AddResourceLink<T>(
@@ -212,5 +345,36 @@ public sealed class AiAssistantController : ControllerBase
 
         resource.WithLink(rel, method is null ? HalLink.Create(path) : HalLink.CreateAction(path, method));
     }
+
+    private HalResource<AiReferenceSearchResultDto> CreateReferenceResource(AiReferenceSearchResultDto reference)
+    {
+        var resource = new HalResource<AiReferenceSearchResultDto>(reference);
+        AddResourceLink(resource, LinkRelations.Event, RouteNames.GetEventById, new { id = reference.ReferenceId });
+        return resource;
+    }
+
+    private void AddLink(Dictionary<string, HalLink> links, string rel, string routeName, object routeValues, string? method = null)
+    {
+        var path = _linkGenerator.GeneratePath(routeName, routeValues, HttpContext);
+
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            links[rel] = method is null ? HalLink.Create(path) : HalLink.CreateAction(path, method);
+        }
+    }
+
+    private static int NormalizeReferenceLimit(int limit)
+    {
+        if (limit <= 0)
+        {
+            return DefaultReferenceLimit;
+        }
+
+        return Math.Min(limit, MaxReferenceLimit);
+    }
+
+    private static bool IsCancellableRun(string status) =>
+        string.Equals(status, "Queued", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(status, "InProgress", StringComparison.OrdinalIgnoreCase);
 
 }

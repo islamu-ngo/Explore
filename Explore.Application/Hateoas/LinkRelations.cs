@@ -250,9 +250,24 @@ public static class LinkRelations
     public const string Revoke = "revoke";
 
     /// <summary>
+    /// Action link for cancelling an AI provider run before it completes.
+    /// </summary>
+    public const string CancelRun = "cancel-run";
+
+    /// <summary>
     /// Action link for sending a message into an AI assistant conversation.
     /// </summary>
     public const string SendMessage = "send-message";
+
+    /// <summary>
+    /// Action link for confirming an AI-proposed action before execution.
+    /// </summary>
+    public const string ConfirmAction = "confirm-action";
+
+    /// <summary>
+    /// Action link for rejecting an AI-proposed action without side effects.
+    /// </summary>
+    public const string RejectAction = "reject-action";
 
     #endregion
 }

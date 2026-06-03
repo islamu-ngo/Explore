@@ -189,6 +189,19 @@ public class AiConversation : ITenantEntity, IAuditableEntity, ISoftDeletable, I
         UpdatedAt = utcNow;
     }
 
+    public void CancelRun(AiRun run, DateTime utcNow)
+    {
+        if (run.ConversationId != Id)
+        {
+            throw new InvalidOperationException("AI run does not belong to this conversation.");
+        }
+
+        run.Cancel(utcNow);
+        Status = AiConversationStatus.Active;
+        BlockedReason = null;
+        UpdatedAt = utcNow;
+    }
+
     public void Block(string reason, DateTime utcNow)
     {
         if (string.IsNullOrWhiteSpace(reason))

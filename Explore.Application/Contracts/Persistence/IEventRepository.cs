@@ -41,6 +41,18 @@ public interface IEventRepository : IGenericRepository<Event, Guid>
     Task<List<Event>> GetPublishedPublicEventsForSitemap(int maxCount, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Searches public event references that are safe to expose as lightweight AI context.
+    /// </summary>
+    /// <param name="searchTerm">Trimmed search term.</param>
+    /// <param name="limit">Maximum number of event entities to return.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Tenant-filtered event entities for application-layer reference mapping.</returns>
+    Task<IReadOnlyList<Event>> SearchAiReferenceEventsAsync(
+        string searchTerm,
+        int limit,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Gets a paginated list of events for the current user.
     /// </summary>
     /// <param name="userId">The user ID.</param>

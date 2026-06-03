@@ -12,5 +12,7 @@ public sealed class ConfirmAiProposedActionCommand : IRequest<BaseCommandRespons
 {
     public Guid ProposedActionId { get; set; }
 
+    public string? IdempotencyKey { get; set; }
+
     string? ISecureRequest.ResourceId => ProposedActionId == Guid.Empty ? null : ProposedActionId.ToString();
 }

@@ -7,12 +7,15 @@ using Explore.Application.Features.AiAssistant.Actions;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain.Ai;
+using Explore.Domain.Constants;
 using MediatR;
 
 namespace Explore.Application.Features.AiAssistant.Handlers.Commands;
 
 public sealed class ConfirmAiProposedActionCommandHandler(
     IAiConversationRepository conversationRepository,
+    IOrganizationMemberRepository organizationMemberRepository,
+    IGroupMemberRepository groupMemberRepository,
     ITenantContext tenantContext,
     ICurrentUserService currentUserService,
     IMediator mediator) : IRequestHandler<ConfirmAiProposedActionCommand, BaseCommandResponse<Guid>>
@@ -53,12 +56,23 @@ public sealed class ConfirmAiProposedActionCommandHandler(
             action.Confirm(userId, utcNow);
         }
 
+        var execution = new AiToolExecution
+        {
+            Id = Guid.CreateVersion7(),
+            TenantId = action.TenantId,
+            ProposedActionId = action.Id,
+            ToolName = GetToolName(action.Kind),
+            StartedAt = utcNow
+        };
+
         CreateEventDraftAiToolExecutionResult executionResult = await ExecuteAsync(action, cancellationToken);
         if (!executionResult.Succeeded)
         {
             action.MarkFailed(
                 executionResult.FailureCode ?? "ai_tool_execution_failed",
                 executionResult.FailureMessage ?? "AI tool execution failed.");
+            execution.MarkFailed(action.FailureCode!, action.FailureMessage, DateTime.UtcNow);
+            await conversationRepository.CreateToolExecutionAsync(execution, cancellationToken);
             await conversationRepository.UpdateProposedActionAsync(action, cancellationToken);
 
             return Failure(
@@ -69,6 +83,8 @@ public sealed class ConfirmAiProposedActionCommandHandler(
         }
 
         action.MarkExecuted(executionResult.ResultResourceId!.Value);
+        execution.MarkSucceeded(DateTime.UtcNow);
+        await conversationRepository.CreateToolExecutionAsync(execution, cancellationToken);
         await conversationRepository.UpdateProposedActionAsync(action, cancellationToken);
 
         return Success(executionResult.ResultResourceId.Value, "AI proposed action confirmed and executed.");
@@ -86,8 +102,26 @@ public sealed class ConfirmAiProposedActionCommandHandler(
         }
 
         var executor = new CreateEventDraftAiToolExecutor(mediator);
-        return await executor.ExecuteAsync(action.PayloadJson, CreateEventDraftAiActionMappingContext.Empty, cancellationToken);
+        var mappingContext = await CreateMappingContextAsync(action.Conversation!.UserId);
+        return await executor.ExecuteAsync(action.PayloadJson, mappingContext, cancellationToken);
     }
+
+    private async Task<CreateEventDraftAiActionMappingContext> CreateMappingContextAsync(Guid userId)
+    {
+        var allowedOrganizationIds = await organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
+            userId,
+            PermissionCodes.EventCreate);
+        var allowedGroupIds = await groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+            userId,
+            PermissionCodes.EventCreate);
+
+        return new CreateEventDraftAiActionMappingContext(
+            allowedOrganizationIds.ToHashSet(),
+            allowedGroupIds.ToHashSet());
+    }
+
+    private static string GetToolName(AiProposedActionKind kind)
+        => kind == AiProposedActionKind.CreateEventDraft ? "CreateEventDraft" : kind.ToString();
 
     private static bool IsActionVisibleToCurrentPrincipal(AiProposedAction? action, Guid tenantId, Guid userId)
         => action?.Conversation is not null

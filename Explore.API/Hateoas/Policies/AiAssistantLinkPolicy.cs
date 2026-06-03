@@ -50,6 +50,43 @@ public sealed class AiConversationDetailLinkPolicy : ILinkPolicy<AiConversationD
         string.Equals(status, "Active", StringComparison.OrdinalIgnoreCase);
 }
 
+public static class AiProposedActionLinkPolicy
+{
+    public static IEnumerable<LinkDefinition> GetLinks(AiConversationDto conversation, AiProposedActionDto action)
+    {
+        if (!IsActive(conversation.Status) || !IsProposed(action.Status))
+        {
+            yield break;
+        }
+
+        var routeValues = new { conversationId = conversation.Id, proposedActionId = action.Id };
+
+        yield return new LinkDefinition(
+            LinkRelations.ConfirmAction,
+            RouteNames.ConfirmAiProposedAction,
+            routeValues,
+            "POST",
+            "Confirm proposed action",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.AiConversations.ConfirmAction, ResourceDescriptors.AiConversation, conversation);
+
+        yield return new LinkDefinition(
+            LinkRelations.RejectAction,
+            RouteNames.RejectAiProposedAction,
+            routeValues,
+            "POST",
+            "Reject proposed action",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.AiConversations.RejectAction, ResourceDescriptors.AiConversation, conversation);
+    }
+
+    private static bool IsActive(string status) =>
+        string.Equals(status, "Active", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsProposed(string status) =>
+        string.Equals(status, "Proposed", StringComparison.OrdinalIgnoreCase);
+}
+
 public sealed class AiConversationCollectionLinkPolicy : ICollectionLinkPolicy<AiConversationSummaryDto>
 {
     public IEnumerable<LinkDefinition> GetItemLinks(AiConversationSummaryDto dto, ClaimsPrincipal? user)

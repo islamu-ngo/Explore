@@ -56,7 +56,13 @@ internal static class AiAssistantProblemDetails
         {
             "unauthenticated" => StatusCodes.Status401Unauthorized,
             "conversation_not_found" => StatusCodes.Status404NotFound,
+            "run_not_found" => StatusCodes.Status404NotFound,
+            "proposed_action_not_found" => StatusCodes.Status404NotFound,
             "conversation_not_active" => StatusCodes.Status409Conflict,
+            "run_not_cancellable" => StatusCodes.Status409Conflict,
+            "proposed_action_rejected" => StatusCodes.Status409Conflict,
+            "proposed_action_failed" => StatusCodes.Status409Conflict,
+            "invalid_proposed_action_state" => StatusCodes.Status409Conflict,
             "idempotency_key_conflict" => StatusCodes.Status409Conflict,
             "idempotency_replay_failed" => StatusCodes.Status409Conflict,
             FailureCodes.QuotaExceeded => StatusCodes.Status422UnprocessableEntity,

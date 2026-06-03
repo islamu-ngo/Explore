@@ -2,6 +2,7 @@
 // ABOUTME: Uses tenant query filters, no-tracking reads, and tracking lookups for state transitions.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Models;
 using Explore.Domain.Ai;
 using Microsoft.EntityFrameworkCore;
 
@@ -256,6 +257,144 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
                 cancellationToken);
     }
 
+    public async Task CreateToolExecutionAsync(AiToolExecution toolExecution, CancellationToken cancellationToken)
+    {
+        await _dbContext.AiToolExecutions.AddAsync(toolExecution, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AiToolExecution>> ListToolExecutionsForProposedActionAsync(
+        Guid proposedActionId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.AiToolExecutions
+            .AsNoTracking()
+            .Where(execution => execution.ProposedActionId == proposedActionId)
+            .OrderByDescending(execution => execution.StartedAt)
+            .ThenByDescending(execution => execution.Id)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<AiRetentionCleanupResult> RedactExpiredConversationsAsync(
+        DateTime cutoffUtc,
+        int retentionDays,
+        DateTime utcNow,
+        bool dryRun,
+        CancellationToken cancellationToken)
+    {
+        var conversationIds = await _dbContext.AiConversations
+            .AsNoTracking()
+            .Where(conversation => (conversation.UpdatedAt ?? conversation.CreatedAt) <= cutoffUtc)
+            .OrderBy(conversation => conversation.UpdatedAt ?? conversation.CreatedAt)
+            .Select(conversation => conversation.Id)
+            .ToListAsync(cancellationToken);
+
+        if (conversationIds.Count == 0)
+        {
+            return new AiRetentionCleanupResult(cutoffUtc, retentionDays, 0, 0, 0, 0, 0, 0, 0, dryRun);
+        }
+
+        var proposedActionIds = await _dbContext.AiProposedActions
+            .AsNoTracking()
+            .Where(action => conversationIds.Contains(action.ConversationId))
+            .Select(action => action.Id)
+            .ToListAsync(cancellationToken);
+
+        var messageCount = await _dbContext.AiMessages
+            .AsNoTracking()
+            .Where(message => conversationIds.Contains(message.ConversationId))
+            .CountAsync(cancellationToken);
+        var runCount = await _dbContext.AiRuns
+            .AsNoTracking()
+            .Where(run => conversationIds.Contains(run.ConversationId))
+            .CountAsync(cancellationToken);
+        var referenceCount = await _dbContext.AiConversationReferences
+            .AsNoTracking()
+            .Where(reference => conversationIds.Contains(reference.ConversationId))
+            .CountAsync(cancellationToken);
+        var proposedActionCount = proposedActionIds.Count;
+        var toolExecutionCount = proposedActionIds.Count == 0
+            ? 0
+            : await _dbContext.AiToolExecutions
+                .AsNoTracking()
+                .Where(execution => proposedActionIds.Contains(execution.ProposedActionId))
+                .CountAsync(cancellationToken);
+
+        if (dryRun)
+        {
+            return new AiRetentionCleanupResult(
+                cutoffUtc,
+                retentionDays,
+                conversationIds.Count,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                dryRun);
+        }
+
+        await _dbContext.AiMessages
+            .Where(message => conversationIds.Contains(message.ConversationId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(message => message.Content, RetentionRedactedMessage),
+                cancellationToken);
+
+        await _dbContext.AiRuns
+            .Where(run => conversationIds.Contains(run.ConversationId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(run => run.FailureMessage, (string?)null),
+                cancellationToken);
+
+        await _dbContext.AiConversationReferences
+            .Where(reference => conversationIds.Contains(reference.ConversationId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(reference => reference.DisplayName, RetentionRedactedReference)
+                .SetProperty(reference => reference.Summary, (string?)null),
+                cancellationToken);
+
+        await _dbContext.AiProposedActions
+            .Where(action => conversationIds.Contains(action.ConversationId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(action => action.PayloadJson, RetentionRedactedPayload)
+                .SetProperty(action => action.FailureMessage, (string?)null),
+                cancellationToken);
+
+        if (proposedActionIds.Count > 0)
+        {
+            await _dbContext.AiToolExecutions
+                .Where(execution => proposedActionIds.Contains(execution.ProposedActionId))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(execution => execution.FailureMessage, (string?)null),
+                    cancellationToken);
+        }
+
+        var redactedConversationCount = await _dbContext.AiConversations
+            .Where(conversation => conversationIds.Contains(conversation.Id))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(conversation => conversation.Title, RetentionRedactedTitle)
+                .SetProperty(conversation => conversation.BlockedReason, (string?)null)
+                .SetProperty(conversation => conversation.IsDeleted, true)
+                .SetProperty(conversation => conversation.DeletedAt, utcNow)
+                .SetProperty(conversation => conversation.DeletedBy, (Guid?)null)
+                .SetProperty(conversation => conversation.UpdatedAt, utcNow)
+                .SetProperty(conversation => conversation.UpdatedBy, (Guid?)null),
+                cancellationToken);
+
+        return new AiRetentionCleanupResult(
+            cutoffUtc,
+            retentionDays,
+            conversationIds.Count,
+            redactedConversationCount,
+            messageCount,
+            runCount,
+            referenceCount,
+            proposedActionCount,
+            toolExecutionCount,
+            dryRun);
+    }
+
     private static IQueryable<AiConversation> IncludeConversationDetails(IQueryable<AiConversation> query)
     {
         return query
@@ -264,4 +403,9 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
             .Include(conversation => conversation.References.OrderBy(reference => reference.CreatedAt))
             .Include(conversation => conversation.ProposedActions.OrderBy(action => action.CreatedAt));
     }
+
+    private const string RetentionRedactedMessage = "[redacted by AI retention policy]";
+    private const string RetentionRedactedReference = "[redacted reference]";
+    private const string RetentionRedactedPayload = "{}";
+    private const string RetentionRedactedTitle = "[redacted AI conversation]";
 }

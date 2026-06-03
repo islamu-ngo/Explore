@@ -151,6 +151,40 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             .ToListAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Event>> SearchAiReferenceEventsAsync(
+        string searchTerm,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        string trimmedTerm = searchTerm.Trim();
+
+        if (string.IsNullOrWhiteSpace(trimmedTerm) || limit <= 0)
+        {
+            return [];
+        }
+
+        var specification = new EventQuerySpecification()
+            .And(EventFilter.PubliclyDiscoverable())
+            .And(EventFilter.SearchTerm(trimmedTerm));
+
+        IQueryable<Event> query = _dbContext.Events
+            .AsNoTracking()
+            .Include(e => e.EventStatus)
+            .Include(e => e.VisibilityType)
+            .Include(e => e.EventFormat);
+
+        query = specification.Apply(query, DateTimeOffset.UtcNow);
+
+        return await query
+            .OrderBy(e => e.FirstSessionStartUtc == null)
+            .ThenBy(e => e.FirstSessionStartUtc)
+            .ThenBy(e => e.Title)
+            .ThenBy(e => e.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Applies subquery filters that require access to junction table DbSets,
     /// and JSONB filters that use PostgreSQL-specific operators.

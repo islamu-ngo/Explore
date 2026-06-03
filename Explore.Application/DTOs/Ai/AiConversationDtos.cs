@@ -1,6 +1,9 @@
 // ABOUTME: DTO contracts for AI assistant conversations, messages, runs, references, and actions.
 // ABOUTME: Shapes private assistant history without exposing provider secrets or raw infrastructure errors.
 
+using System.Text.Json.Serialization;
+using Explore.Application.Hateoas;
+
 namespace Explore.Application.DTOs.Ai;
 
 public sealed class CreateAiConversationRequestDto
@@ -86,4 +89,8 @@ public sealed class AiProposedActionDto
     public string? FailureCode { get; set; }
     public string? FailureMessage { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    [JsonPropertyName("_links")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, HalLink>? Links { get; set; }
 }

@@ -167,6 +167,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfAiAssistantBootstrapDto"] = typeof(Explore.Application.DTOs.Ai.AiAssistantBootstrapDto),
         ["HalResourceOfAiConversationSummaryDto"] = typeof(Explore.Application.DTOs.Ai.AiConversationSummaryDto),
         ["HalResourceOfAiConversationDto"] = typeof(Explore.Application.DTOs.Ai.AiConversationDto),
+        ["HalResourceOfAiReferenceSearchResultDto"] = typeof(Explore.Application.DTOs.Ai.AiReferenceSearchResultDto),
         ["HalResourceOfAiRunDto"] = typeof(Explore.Application.DTOs.Ai.AiRunDto),
         ["HalResourceOfStorageObjectDto"] = typeof(Explore.Application.DTOs.StorageObject.StorageObjectDto),
         ["HalResourceOfStorageObjectListDto"] = typeof(Explore.Application.DTOs.StorageObject.StorageObjectListDto),
@@ -203,6 +204,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalCollectionEmbeddedOfTagListDto"] = "HalResourceOfTagListDto",
         ["HalCollectionEmbeddedOfTenantUserRoleGrantListDto"] = "HalResourceOfTenantUserRoleGrantListDto",
         ["HalCollectionEmbeddedOfAiConversationSummaryDto"] = "HalResourceOfAiConversationSummaryDto",
+        ["HalCollectionEmbeddedOfAiReferenceSearchResultDto"] = "HalResourceOfAiReferenceSearchResultDto",
         ["HalCollectionEmbeddedOfStorageObjectListDto"] = "HalResourceOfStorageObjectListDto",
     };
 
