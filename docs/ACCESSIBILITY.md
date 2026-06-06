@@ -94,6 +94,14 @@ These 8 rules apply to every `.razor` component:
 
 8. **Dynamic content**: Content that updates without page navigation must be announced via `IAccessibilityAnnouncerService` OR be within an ARIA live region.
 
+AI assistant rail additions:
+
+- The shell AI assistant rail is a complementary landmark and must keep a meaningful `aria-label` in both docked and mobile-overlay modes.
+- Reference chips must be keyboard-removable with Delete or Backspace in addition to pointer removal.
+- Proposed action Confirm/Reject buttons must remain real buttons, not clickable text or icons without labels.
+- Loading, empty, disabled, and safe error states need visible text so the panel remains understandable without color or motion.
+- Assistant actions are affordances from HAL links; do not expose disabled buttons based on local role/claim guesses when the API omitted the corresponding link.
+
 ### PR-4: CSS Direction Ban (Immediate)
 
 **Banned properties** (use logical equivalents):

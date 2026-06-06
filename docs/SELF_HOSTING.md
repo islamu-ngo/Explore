@@ -24,6 +24,7 @@ This guide covers running ISLAMU Event outside the Aspire developer loop. The re
 | Blazor BFF | Yes | `islamu-event-ui` | Server host and YARP proxy to API | `7002:8080` |
 | MinIO | Optional | `minio`, `minio-init` | S3-compatible storage profile when an instance selects optional S3 mode | `9005:9000`, `9006:9001` |
 | Cerbos | Optional | `cerbos` | External authorization PDP profile | `3592:3592`, `3593:3593` |
+| AI provider | Optional | external/self-hosted | OpenAI-compatible or fake AI assistant provider selected by `AiProvider:*` plus tenant governance settings | deployment-specific |
 
 Profiles:
 
@@ -133,6 +134,33 @@ Enable destructive cleanup only after reviewing dry-run output, confirming backu
 | `API_ENDPOINT` | Blazor | API base URL fallback for BFF proxying outside Aspire. |
 
 `docker-compose.yml` sets Blazor `API_ENDPOINT` with a default of `http://islamu-event-api:8080/`, matching the Compose API service name. Operators only need to override `API_ENDPOINT` when routing the BFF to a different API host.
+
+### AI Assistant
+
+The AI assistant is optional. Self-hosted deployments can run with AI disabled, with the deterministic fake provider for smoke tests, with an explicitly configured OpenAI-compatible provider, or with opt-in SDK-backed OpenAI/Azure OpenAI modes.
+
+| Canonical .NET Key | Purpose |
+|---|---|
+| `AiProvider:Enabled` | Enables provider readiness evaluation. Disabled mode is health-safe and performs no provider call. |
+| `AiProvider:Provider` | Supported values include `none`, `fake`, `openai-compatible`, `openai-sdk`, and `azure-openai`. Keep `openai-compatible` for generic/self-hosted OpenAI-compatible endpoints. |
+| `AiProvider:EndpointUrl` | Provider base URL for OpenAI-compatible or Azure OpenAI mode. Do not include credentials, query strings, or fragments. Azure OpenAI endpoints must use HTTPS. |
+| `AiProvider:ApiKey` | Sensitive provider credential. Never expose through logs, health data, metrics, browser payloads, issue templates, or screenshots. |
+| `AiProvider:ModelId` | Default model identifier for provider calls. For Azure OpenAI this is the deployment name. Health data reports only configured/not-configured flags, not the raw value. |
+| `AiProvider:AzureCredentialMode` | Azure OpenAI credential mode: `api-key` or `default-azure-credential`. Prefer `default-azure-credential` for Azure-hosted deployments with managed identity. |
+| `AiProvider:AzureTenantId` | Optional tenant ID for `DefaultAzureCredential`. |
+| `AiProvider:AllowLocalProviderEndpoints` | Explicit opt-in for loopback/private provider URLs in local-model deployments. Keep disabled for public SaaS providers. |
+| `AiRetentionCleanup:*` | Static scheduler settings for tenant-scoped AI conversation retention cleanup. The per-tenant retention window remains `ai_assistant.retention_days`. |
+| `Mcp:*` | Optional API-hosted Model Context Protocol adapter posture. Disabled by default. |
+
+Operational notes:
+
+- `/health` includes `ai-provider` and `ai-retention-cleanup`. Disabled AI provider mode is healthy; disabled retention cleanup is intentionally degraded.
+- AI run progress uses authenticated polling through the API run-status route. Streaming is reserved and disabled until a future hardening slice implements transport, timeout, cancellation, logging, authentication, and fallback behavior.
+- The Blazor UI gates assistant reference/proposal actions by API HAL links. Do not recreate role/claim checks in the browser.
+- `AiRetentionCleanup:DryRun=true` is recommended before first enabling destructive AI history redaction in a new environment.
+- MCP is optional. Keep `Mcp:Enabled=false` unless the deployment intentionally exposes the API-hosted stateless Streamable HTTP MCP endpoint. The adapter exposes safe registry discovery, conversation metadata resources, and proposal-first tool mutation; mutating MCP tools remain registry-backed and require the normal product/API confirmation path before side effects occur.
+- When enabling MCP, expose only the authenticated API endpoint configured by `Mcp:EndpointPath`, verify the `mcp-adapter` readiness check, and keep `Mcp:Stateless=true` plus `Mcp:EnableLegacySse=false`. Self-hosters can disable MCP instantly by setting `Mcp:Enabled=false` and restarting the API; the rest of the platform remains functional.
+- MCP support requests must not include prompts, tool payloads, provider responses, tenant IDs, endpoint URLs, API keys, model secrets, or raw MCP request/response bodies.
 
 ## First-Run Setup Secret
 

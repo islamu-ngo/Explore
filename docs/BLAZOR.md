@@ -131,6 +131,18 @@ The browser authentication state is intentionally display-only:
 
 Generated DTOs preserve HAL `_links` through extension data. Per-resource UI affordances must be gated by HAL links from the API, not by duplicating role checks in Razor components. Admin authorization-provider setup/sync UI surfaces server-confirmed status, sync, and manual-package download affordances; the browser never owns Cerbos Admin API credentials or access tokens.
 
+### AI Assistant Client Surface
+
+The product assistant follows the same BFF and service-layer boundary:
+
+1. Razor components use `IAiAssistantClientService`, not `IEventApiClient` directly.
+2. `AiAssistantClientService` calls generated API client methods through the BFF/YARP path and returns safe command results or HAL resources.
+3. `AiAssistantConversationState` owns selected conversation, reference search results, selected references, loading/error state, and HAL affordance helpers.
+4. Confirm/Reject proposal buttons are rendered only when the proposed action has `confirm-action` / `reject-action` links.
+5. Reference event affordances are rendered only when the reference HAL resource has an `event` link.
+6. AI run progress uses polling through the run-status endpoint; no Blazor streaming transport is active for assistant runs.
+7. Browser code must not display or log raw provider payloads, full prompt content, API keys, endpoint URLs, model secrets, or local authorization claims.
+
 ## Render And Public Experience
 
 Route rendering decisions are governed by runtime policy services and documented in [RENDER_POLICIES.md](RENDER_POLICIES.md). In Blazor code, the important contributor rules are:
@@ -153,6 +165,7 @@ Source-grounded examples:
 | Pattern | Examples |
 |---|---|
 | Layout/shell state | `MainLayout.razor.cs`, `AppSideNav.razor.cs`, `AnnouncementBar.razor.cs` |
+| AI assistant state | `AiAssistantState`, `AiAssistantConversationState`, `IAiAssistantClientService` |
 | Cross-component event bridge | `CookieConsentStateService` |
 | Public-experience cache | `PublicExperienceService` |
 | Render decisions | `RuntimeRenderPolicyService` |
@@ -178,6 +191,7 @@ Do not duplicate the specialized docs in this guide.
 4. Adding custom correlation headers where .NET/OpenTelemetry `Activity` flow already handles trace propagation.
 5. Updating DTOs without refreshing `schemas/openapi.json` and rebuilding the generated client.
 6. Repeating render-policy, design-system, localization, or accessibility reference tables inside Blazor-specific docs.
+7. Enabling an AI assistant button without the corresponding HAL link from the API.
 
 ## Related Docs
 

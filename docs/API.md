@@ -581,6 +581,13 @@ Authorization decisions are also traced via `ActivitySource` named `Explore.Auth
 - The endpoint disables request timeout, sends no-store/no-cache headers, and sets `X-Accel-Buffering: no`. Do not add `text/event-stream` to response compression or proxy buffering rules.
 - Existing notification list/detail/unread APIs remain the source of truth. Blazor keeps polling as fallback if the SSE stream disconnects or is unavailable.
 
+### AI Assistant Run Polling
+
+- AI assistant run progress uses authenticated polling as the supported transport. `POST /api/ai/assistant/conversations/{conversationId}/messages` returns `202 Accepted` with a `Location` route to `GET /api/ai/assistant/conversations/{conversationId}/runs/{runId}`.
+- The run-status response is a HAL resource. It includes `self` and conversation `up` links, plus `cancel-run` only while the run is queued or in progress.
+- Streaming is intentionally not part of the current AI assistant contract. `ai_assistant.streaming_enabled` remains disabled until a separate hardening slice covers transport buffering, cancellation, timeout behavior, authentication, logs, and non-streaming fallback.
+- Polling responses must remain safe metadata only: status, provider label, model label, timestamps, bounded failure code/message, and HAL links. Do not return prompt content, provider response bodies, tool payloads, provider request IDs tied to content, endpoint URLs, API keys, or raw provider exceptions.
+
 ### PdsSyncWorker
 - Polls `PdsSyncOutbox` table for pending AT Protocol sync entries.
 - Processes batches with configurable polling interval and batch size.

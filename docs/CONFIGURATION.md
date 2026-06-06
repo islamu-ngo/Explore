@@ -66,7 +66,9 @@ Commonly consumed sections in code:
 - `EmailDispatchProcessor:*` (Basic Dispatch Mode background worker)
 - `EmailDispatchRabbitMq:*` (optional RabbitMQ Dispatch Mode transport foundation)
 - `IdempotencyCleanup:*` (expired write-retry replay-cache cleanup)
+- `AiRetentionCleanup:*` (scheduled tenant-scoped AI conversation retention cleanup)
 - `AiProvider:*` (AI provider readiness/egress validation foundation)
+- `Mcp:*` (optional Model Context Protocol adapter posture)
 - `Persistence:*` (database runtime options)
 
 ### Persistence Configuration
@@ -109,10 +111,12 @@ Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback
 | Key | Default | Description |
 |---|---:|---|
 | `AiProvider:Enabled` | `false` | Enables provider readiness evaluation. Disabled reports healthy-disabled and performs no provider network call. |
-| `AiProvider:Provider` | `none` | Supported values: `none`, `fake`, `openai-compatible`. |
-| `AiProvider:EndpointUrl` | unset | Admin/deployment-controlled provider base URL. Must be absolute HTTP/HTTPS, with no embedded credentials, query string, or fragment. Local/private endpoints require explicit opt-in. |
+| `AiProvider:Provider` | `none` | Supported values: `none`, `fake`, `openai-compatible`, `openai-sdk`, and `azure-openai`. SDK-backed modes are opt-in; `openai-compatible` remains the generic/self-hosted fallback. |
+| `AiProvider:EndpointUrl` | unset | Admin/deployment-controlled provider base URL. Required for `openai-compatible` and `azure-openai`; Azure OpenAI must use HTTPS. Must have no embedded credentials, query string, or fragment. Local/private endpoints require explicit opt-in. |
 | `AiProvider:ApiKey` | unset | Sensitive provider credential. Never expose in browser payloads, health data, logs, metrics, traces, screenshots, or issue templates. |
-| `AiProvider:ModelId` | unset | Default model identifier for the concrete adapter. Health/metrics use only boolean presence flags, not the raw model ID. |
+| `AiProvider:ModelId` | unset | Default model identifier for the concrete adapter. For Azure OpenAI this is the deployment name passed to the Azure SDK. Health/metrics use only boolean presence flags, not the raw model ID. |
+| `AiProvider:AzureCredentialMode` | `api-key` | Azure OpenAI credential mode: `api-key` or `default-azure-credential`. Prefer `default-azure-credential` for Azure-hosted deployments with managed identity. |
+| `AiProvider:AzureTenantId` | unset | Optional tenant ID used to constrain `DefaultAzureCredential` for Azure OpenAI. Leave unset for the SDK default chain. |
 | `AiProvider:AllowLocalProviderEndpoints` | `false` | Allows loopback/link-local/private provider URLs for deliberate self-hosted/local-model deployments. Keep `false` for public SaaS/provider endpoints. |
 | `AiProvider:MaxInputTokens` | `8000` | Provider request input budget seed. Handlers must still enforce prompt/reference bounds. |
 | `AiProvider:MaxOutputTokens` | `1024` | Provider response budget seed. |
@@ -120,6 +124,26 @@ Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback
 | `AiProvider:TimeoutSeconds` | `30` | Provider call timeout budget. Must be between 1 and 300. |
 | `AiProvider:RetentionDays` | `30` | Retention seed; enforcement is separate from provider health. |
 | `AiProvider:DailyMessageLimit` | `50` | Abuse/cost-control seed; enforcement is separate from provider health. |
+
+### MCP Adapter Static Configuration
+
+The Model Context Protocol adapter is optional and disabled by default. It is hosted by the API only when explicitly enabled, and it remains an adapter over the AI Tool Contract Registry rather than a second tool authority. The implementation wires configuration, health, endpoint registration, read-only registry discovery, safe AI conversation resources, a confirmation prompt, and proposal-first tool mutation through the normal MediatR/API confirmation path.
+
+| Key | Default | Description |
+|---|---:|---|
+| `Mcp:Enabled` | `false` | Enables the API-hosted MCP endpoint. Keep disabled unless an operator intentionally exposes MCP. |
+| `Mcp:EndpointPath` | `/mcp` | Route prefix for the Streamable HTTP MCP endpoint. |
+| `Mcp:Stateless` | `true` | Uses stateless Streamable HTTP so API replicas do not require MCP session affinity. |
+| `Mcp:EnableLegacySse` | `false` | Reserved for a future trusted-isolated deployment decision. Legacy SSE is not part of the default MCP posture. |
+
+MCP must not expose provider credentials, endpoint URLs, model IDs, prompts, provider responses, tool payloads, tenant IDs, or raw provider errors in configuration diagnostics, health data, logs, metrics, or browser responses. Mutating MCP tools must keep using the proposal/confirmation workflow and must never write repositories directly.
+
+Operational expectations:
+
+- Keep `Mcp:Enabled=false` unless an operator intentionally exposes the authenticated API-hosted endpoint to trusted MCP clients.
+- Keep `Mcp:Stateless=true`; the initial adapter is designed for stateless Streamable HTTP and API replicas without MCP session affinity.
+- Keep `Mcp:EnableLegacySse=false`; legacy SSE is not supported by this implementation.
+- Verify `/health/ready` includes `mcp-adapter` before exposing MCP. Disabled MCP reports intentional degraded readiness posture; enabled MCP reports healthy configuration posture.
 
 The `ai-provider` readiness check reports safe booleans such as `endpointConfigured`, `apiKeyConfigured`, and `modelConfigured`; it never reports raw endpoint URLs, API keys, prompts, responses, model IDs, provider request IDs, or provider exception bodies.
 
@@ -220,6 +244,22 @@ Static cleanup settings bind from `IdempotencyCleanup` and are validated at star
 | `ExpirationGraceHours` | `24` | Safety buffer after `ExpiresAt` before a row is eligible for physical delete. Must be zero or greater. |
 
 Cleanup is instance/system-scoped because idempotency rows are ephemeral replay-cache entries, not tenant-owned source-of-truth or compliance evidence. Logs, health data, and metrics expose only bounded settings/counts; they must not include raw idempotency keys, request paths, response bodies, or tenant IDs.
+
+### AI Retention Cleanup Configuration
+
+AI assistant history retention is tenant-owned source-of-truth data, so the hosted cleanup worker iterates active tenants, binds tenant context per tenant, resolves each tenant's `ai_assistant.retention_days`, and then invokes the tenant-filtered redaction cleanup path. The worker does not bypass tenant filters and must not log prompts, provider responses, tool payloads, selected reference content, tenant IDs, or provider secrets.
+
+Static scheduler settings bind from `AiRetentionCleanup` and are validated at startup with `ValidateOnStart`:
+
+| Key | Default | Description |
+|---|---:|---|
+| `Enabled` | `true` | Enables the API-hosted AI retention cleanup loop. When disabled, the `ai-retention-cleanup` readiness check reports `Degraded` intentionally. |
+| `DryRun` | `false` | Counts eligible expired AI conversations across active tenants without redacting or soft-deleting rows. Use this before destructive cleanup in a new environment. |
+| `InitialDelaySeconds` | `30` | Delay before the first cleanup pass after API startup. Must be zero or greater. |
+| `PollingIntervalMinutes` | `60` | Delay between cleanup passes. Must be greater than zero. |
+| `MaxTenantsPerPass` | `100` | Maximum active tenant lookups processed per cleanup pass. Must be greater than zero. |
+
+The per-tenant retention window still comes from the governance setting `ai_assistant.retention_days` (default 30 days). Static `AiRetentionCleanup:*` settings only control the scheduler posture, dry-run mode, and pass bounds.
 
 ## Secret Provider Configuration
 
@@ -345,7 +385,7 @@ Canonical keys:
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `ai_assistant.enabled` | bool | `false` | Master enable switch. Disabled remains the safe default until provider health, egress validation, auth, quotas, and retention gates are implemented. |
-| `ai_assistant.provider` | string | `"none"` | Active provider: `none`, `fake`, or `openai-compatible`. `fake` is for deterministic tests/dev flows; real providers require model and credential configuration. |
+| `ai_assistant.provider` | string | `"none"` | Tenant/runtime provider intent. Static `AiProvider:*` controls concrete Infrastructure wiring and currently supports `none`, `fake`, `openai-compatible`, `openai-sdk`, and `azure-openai`. `fake` is for deterministic tests/dev flows; real providers require model and credential configuration. |
 | `ai_assistant.endpoint_url` | string | `""` | Provider base URL for self-hosted or OpenAI-compatible adapters. This is deployment/admin-controlled; browser or request payloads must never choose outbound provider hosts. |
 | `ai_assistant.api_key` | string | `""` | Sensitive provider credential. Treat as write-only/redacted; never expose to Blazor, API responses, logs, screenshots, traces, or issue templates. |
 | `ai_assistant.model_id` | string | `""` | Default model ID. Real providers are not considered configured unless both API key and model ID are present. |
@@ -359,7 +399,7 @@ Canonical keys:
 | `ai_assistant.concurrent_run_limit` | int | `1` | Per-user concurrent assistant run limit. Existing idempotency replays are allowed before this quota check. |
 | `ai_assistant.selected_reference_limit` | int | `8` | Maximum selected references that future reference-aware prompts may pack into one request. |
 | `ai_assistant.tool_proposals_enabled` | bool | `false` | Allows provider output to become persisted proposed actions only. Mutating tools still require server validation, HAL affordance checks, user confirmation, idempotency, and audit before execution. |
-| `ai_assistant.streaming_enabled` | bool | `false` | Enables streaming only after transport, cancellation, timeout, and logging safety are implemented. |
+| `ai_assistant.streaming_enabled` | bool | `false` | Reserved for a future streaming transport. Current AI assistant run progress uses authenticated polling through `GET /api/ai/assistant/conversations/{conversationId}/runs/{runId}`; keep this disabled until streaming transport buffering, cancellation, timeout, authentication, logging safety, and polling fallback are explicitly implemented and verified. |
 | `ai_assistant.allow_anonymous_access` | bool | `false` | Legacy/public-availability flag for safe bootstrap surfaces only. Private conversation/history/send/action endpoints must remain authenticated. |
 
 Important notes:

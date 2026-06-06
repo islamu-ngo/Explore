@@ -105,9 +105,10 @@ Readiness interpretation:
 | `email-dispatch` | API | Selected Basic Dispatch trigger is enabled (`TickerQ` scheduler or hosted-service fallback) | Dispatch is intentionally disabled | TickerQ mode selected while scheduler is disabled; invalid dispatch/scheduler options fail startup; RabbitMQ is not checked in Basic mode |
 | `email-dispatch-rabbitmq` | API | RabbitMQ Dispatch Mode is disabled, or enabled and topology can be declared | Not used | RabbitMQ mode is enabled but the broker/topology is unreachable or invalid |
 | `idempotency-cleanup` | API | Expired idempotency cleanup is enabled in delete or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
+| `ai-retention-cleanup` | API | AI retention cleanup is enabled in redaction or dry-run mode | Cleanup is intentionally disabled | Invalid cleanup options fail startup |
 | `storage` | API | Selected storage provider is available. Local mode verifies the API-owned data root is writable; S3-compatible mode verifies bucket reachability only when selected. | Not used | Selected provider cannot be resolved, selected local root is not writable, or selected S3-compatible storage is missing/unreachable |
 | `storage-reconciliation` | API | Storage reconciliation worker is enabled in dry-run or mutation mode | Reconciliation is intentionally disabled | Invalid reconciliation options fail startup |
-| `ai-provider` | API | AI provider integration is disabled, deterministic fake provider is enabled, or OpenAI-compatible settings are valid | Not used | AI provider is enabled but no runnable provider is configured, or provider endpoint/settings fail egress validation |
+| `ai-provider` | API | AI provider integration is disabled, deterministic fake provider is enabled, or OpenAI-compatible/OpenAI SDK/Azure OpenAI settings are valid | Not used | AI provider is enabled but no runnable provider is configured, or provider endpoint/settings fail egress validation |
 | `cerbos` | API | Local provider mode is selected, or configured Cerbos PDP passes gRPC health | Not used | Instance `authorization.provider` is `cerbos` and the PDP is missing or unreachable |
 | `islamu-event-api` | Blazor | BFF can reach API readiness endpoint | Not used | API readiness endpoint is unavailable or unhealthy |
 | `secret_provider` | API, Blazor | Secret backend path is healthy | Secret backend has transient failures within the configured threshold | Secret backend crossed the unhealthy threshold |
@@ -122,9 +123,10 @@ Operational rules:
 - Basic Email Dispatch Mode skips RabbitMQ readiness entirely. A self-hosted deployment can send registration confirmation email with API + PostgreSQL + configured SMTP only. The default trigger is TickerQ `email-dispatch-drain`; the hosted service mode is a fallback over the same drain service.
 - RabbitMQ Dispatch Mode is optional transport infrastructure. When `EmailDispatchRabbitMq:Enabled=false`, the `email-dispatch-rabbitmq` check is healthy without opening a broker connection. When enabled, missing broker connectivity or failed topology declaration is unhealthy because the operator explicitly selected RabbitMQ transport.
 - Idempotency cleanup is an optional operational worker over the PostgreSQL replay cache. `Degraded` means cleanup is intentionally disabled; stale rows remain ignored for replay but are not physically deleted until cleanup is re-enabled.
+- AI retention cleanup is an optional operational worker over tenant-owned AI assistant history. `Degraded` means cleanup is intentionally disabled; expired conversations remain readable until cleanup is re-enabled. Dry-run is healthy and records counts without redaction.
 - Storage readiness follows the selected instance storage policy. Local-first deployments do not need S3 for `/health`; S3 configuration is probed only when `s3_compatible` is the selected provider. The readiness payload exposes bounded provider/status/failure-code fields and does not include filesystem paths, endpoints, bucket names, access keys, object keys, or secrets.
 - Storage reconciliation is dry-run-first. `StorageReconciliation:DryRun=true` reports drift without metadata or provider mutations. Destructive cleanup requires `DryRun=false` plus a specific mutation flag such as `DeleteQuarantinedObjects=true`; health and logs expose bounded settings/counts only.
-- AI provider readiness is intentionally configuration-first. `AiProvider:Enabled=false` is healthy-disabled. If enabled, unsupported providers, missing required OpenAI-compatible endpoint/key/model values, local/private endpoints without explicit opt-in, embedded endpoint credentials, query strings, or fragments make readiness unhealthy before chat/send is broadly enabled. The readiness payload exposes only bounded booleans and provider/status labels, not endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, or raw provider errors.
+- AI provider readiness is intentionally configuration-first. `AiProvider:Enabled=false` is healthy-disabled. If enabled, unsupported providers, missing required provider endpoint/key/model values, local/private endpoints without explicit opt-in, Azure OpenAI non-HTTPS endpoints, embedded endpoint credentials, query strings, or fragments make readiness unhealthy before chat/send is broadly enabled. The readiness payload exposes only bounded booleans and provider/status labels, not endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, or raw provider errors.
 
 ## Deployment Protection and Evidence
 
@@ -194,7 +196,21 @@ AI assistant send requests have layered abuse controls:
 - Application handlers enforce `ai_assistant.daily_message_limit`, `ai_assistant.daily_tenant_message_limit`, and `ai_assistant.concurrent_run_limit` before provider calls.
 - Idempotency replay is evaluated before quota checks so successful retries do not consume additional provider calls.
 - AI run cancellation is persisted through the authenticated cancel-run API for queued/in-progress runs only. Run-status HAL exposes `cancel-run` only while a run is cancellable; completed runs return safe conflict ProblemDetails. The send-message pipeline already passes the request `CancellationToken` into provider calls, but cross-request provider abort orchestration is not a scheduler/registry feature yet.
+- AI run progress uses authenticated polling, not streaming. `SendAiMessage` returns the run-status route and clients poll `GET /api/ai/assistant/conversations/{conversationId}/runs/{runId}` until the run reaches a terminal state. `ai_assistant.streaming_enabled` remains reserved and disabled until a future slice hardens streaming transport, proxy buffering, request cancellation, timeout behavior, auth, logging, and non-streaming fallback.
 - 429 and quota ProblemDetails must not include prompts, model responses, selected reference content, provider request IDs, endpoint URLs, API keys, or raw provider errors.
+
+MCP adapter operations are opt-in:
+- The MCP adapter is disabled by default through `Mcp:Enabled=false` and must be explicitly enabled by self-hosters/operators.
+- The adapter exposes a bounded readiness check named `mcp-adapter`, read-only registry discovery, safe AI conversation resources, and a confirmation prompt. Mutating MCP tools persist proposed actions through MediatR and require the normal product/API confirmation path before side effects occur.
+- The selected transport is API-hosted stateless Streamable HTTP. Legacy SSE remains disabled unless a separate trusted-isolated deployment decision is made.
+- MCP tools must be registry-backed and mutating tools must use the proposal/confirmation path; MCP must not mutate repositories directly.
+- MCP health, logs, metrics, and errors must not include prompts, selected reference content, tool payloads, provider responses, provider endpoint URLs, API keys, tenant IDs, or raw provider exceptions.
+
+MCP recovery and operator actions:
+- If `mcp-adapter` is degraded because MCP is disabled, no recovery is required; this is the default safe posture.
+- If MCP is enabled but readiness fails, disable `Mcp:Enabled`, restart the API, and inspect bounded startup/configuration errors. Do not capture prompts, payloads, provider responses, API keys, endpoint URLs, tenant IDs, or raw MCP request bodies in support tickets.
+- If external agents report mutation failures, inspect the returned failure code from `propose_ai_tool_action` and the normal AI conversation/proposed-action API state. Do not bypass the confirmation flow or write repositories directly.
+- If a client requires legacy SSE, treat that as a new architecture decision. The current adapter intentionally supports stateless Streamable HTTP only.
 
 ### Request Timeouts (`RequestTimeouts` config section)
 
@@ -241,6 +257,8 @@ Added to every response by `SecurityHeadersMiddleware`:
 
 Meter `Explore.Business` exposes source-defined business counters. Counter names and tags are not uniform across all events; check the metric-specific tags before building dashboards.
 
+AI provider tracing uses the `Explore.Ai.Provider` activity source. Provider spans are platform-owned and redacted; they intentionally do not use SDK GenAI middleware because prompts, responses, tool payloads, provider endpoints, model IDs, provider request IDs, tenant/user IDs, API keys, and raw provider errors must not be exported.
+
 Current counters include:
 
 - `explore.events.created` (`tenant_id`, `event_type`)
@@ -254,8 +272,13 @@ Current counters include:
 - `explore.email_dispatch.rabbitmq.consumes` (`tenant_id`, `outcome`, `failure_category`) — future manual-ack RabbitMQ delivery outcomes; labels intentionally exclude recipient, subject, body, provider message ID, publish event ID, delivery tag, raw broker error text, and connection strings.
 - `explore.notifications.fanout_runs` (`tenant_id`, `fanout_kind`, `outcome`) — notification fanout run outcomes; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
 - `explore.notifications.fanout_subscribers` (`tenant_id`, `fanout_kind`, `outcome`) — aggregate subscriber decisions for notification fanout; labels intentionally exclude event IDs, actor IDs, subscriber IDs, notification IDs, event titles, and deduplication keys.
-- `explore.ai.provider.health_checks` (`provider`, `status`, `reason`) — AI provider readiness outcomes; labels intentionally exclude endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, and raw errors.
-- `explore.ai.provider.requests` (`provider`, `outcome`, `failure_category`) — future AI provider call outcomes; labels intentionally exclude tenant/user prompt content, selected reference content, model IDs, endpoint URLs, provider request IDs, and raw provider errors.
+- `explore.ai.provider.health_checks` (`provider`, `status`, `reason`) — AI provider readiness outcomes; labels intentionally exclude endpoint URLs, API keys, model IDs, prompts, responses, provider request IDs, tenant/user IDs, and raw errors.
+- `explore.ai.provider.requests` (`provider`, `outcome`, `failure_category`) — AI provider call outcomes; labels intentionally exclude tenant/user prompt content, selected reference content, raw tool payloads, model IDs, endpoint URLs, API keys, provider request IDs, and raw provider errors.
+- `explore.ai.provider.request_duration` (`provider`, `outcome`, `failure_category`) — AI provider request duration histogram in seconds; labels intentionally use the same bounded dimensions as provider request counters.
+- `explore.ai.provider.token_usage` (`provider`, `token_type`) — AI provider token usage histogram for input/output/total tokens; labels intentionally exclude prompts, responses, model IDs, endpoints, provider request IDs, tenant/user IDs, and provider errors.
+- `explore.ai.provider.proposed_actions` (`provider`, `action_kind`) — aggregate count of provider-returned proposed actions; labels intentionally include only bounded action kinds such as `create_event_draft`, not raw tool arguments or proposal payloads.
+- `explore.ai.retention.cleanup_runs` (`mode`, `outcome`) — scheduled AI retention cleanup pass outcomes in `dry_run` or `redact` mode; labels intentionally exclude tenant IDs, prompts, responses, provider IDs, and tool payloads.
+- `explore.ai.retention.cleanup_rows` (`mode`, `category`) — bounded aggregate row counts for eligible/redacted AI retention cleanup categories; labels intentionally exclude tenant IDs and content-bearing identifiers.
 - `explore.storage.upload_sessions` (`provider`, `operation`, `outcome`, `failure_category`) — provider-neutral upload session create/finalize/cancel outcomes; labels intentionally exclude tenant IDs, user IDs, upload-session IDs, filenames, object keys, paths, endpoints, bucket names, access keys, secrets, and raw exception text.
 - `explore.storage.upload_bytes` (`provider`, `outcome`, `failure_category`) — upload byte histogram for accepted/attempted provider writes; labels are bounded to provider and outcome categories.
 - `explore.storage.reads` (`provider`, `outcome`, `failure_category`, `visibility`) — metadata-backed storage read outcomes after lifecycle and visibility checks; labels intentionally exclude storage-object IDs, object keys, paths, filenames, tenant IDs, user IDs, and raw provider errors.
@@ -709,7 +732,7 @@ Lifecycle classes:
 | `outbox_messages`, `pds_sync_outbox`, `policy_change_outbox` | Durable side-effect ledger | Transactional outbox processors | Processors update status; no completed-row cleanup | Completed rows: 30 days. Failed/dead-lettered rows: retain until operator resolution, then 90 days | Consider monthly `CreatedAt` range partitions when completed rows dominate scans; worker indexes must keep pending/retry rows hot | Add cleanup that deletes only completed/resolved rows and never deletes pending, processing, retry, failed, or dead-letter rows |
 | `email_dispatch_outbox` | Durable side-effect ledger with email PII snapshots | Registration/email dispatch state machine | Delivery state changes, soft delete fields, parking/replay; no age cleanup | Sent rows: 180 days. Dead-lettered/unknown/parked rows: retain until operator resolution, then 180 days | Consider monthly `CreatedAt` range partitions when dispatch history exceeds 25M rows or status polling slows | Add PII-aware retention that redacts body/recipient snapshots before or instead of deleting unresolved evidence |
 | `email_dispatch_attempts`, `email_dispatch_receipts` | Durable side-effect ledger | Email dispatch drain/consumer idempotency | No automated cleanup; child rows cascade only if parent is physically deleted | Attempts/receipts follow parent retention; failed/unknown evidence stays while parent is unresolved | Partition only with parent strategy; independent partitioning risks expensive parent/child maintenance | Add parent-aware cleanup/redaction tests so child evidence cannot outlive or disappear before parent policy |
-| `ai_conversations`, `ai_messages`, `ai_runs`, `ai_conversation_references`, `ai_proposed_actions`, `ai_tool_executions` | User-facing operational state with provider/prompt sensitivity | AI assistant conversation, proposal, and confirmed-tool audit flows | Implemented primitive: `RunAiRetentionCleanupCommand` resolves tenant `ai_assistant.retention_days`; repository cleanup is tenant-filtered, dry-run capable, redacts message content/action payload/reference summaries/failure messages/tool failure messages, and soft-deletes expired conversation shells. Automated scheduling/runbook polish remains Phase 8 follow-up. | 30 days by default via `ai_assistant.retention_days`, tenant-configurable through governance settings | Do not partition initially; cleanup predicates use tenant plus conversation age and should stay index-backed until AI history volume proves otherwise | Add operator scheduling/runbook/metrics integration before broad history enablement; never log prompt content, action payloads, provider responses, or model secrets |
+| `ai_conversations`, `ai_messages`, `ai_runs`, `ai_conversation_references`, `ai_proposed_actions`, `ai_tool_executions` | User-facing operational state with provider/prompt sensitivity | AI assistant conversation, proposal, and confirmed-tool audit flows | Implemented: `AiRetentionCleanupProcessor` iterates active tenants, binds tenant context, resolves each tenant's `ai_assistant.retention_days`, supports `AiRetentionCleanup:DryRun`, redacts message content/action payload/reference summaries/failure messages/tool failure messages, and soft-deletes expired conversation shells through tenant-filtered repository cleanup. | 30 days by default via `ai_assistant.retention_days`, tenant-configurable through governance settings | Do not partition initially; cleanup predicates use tenant plus conversation age and should stay index-backed until AI history volume proves otherwise | Monitor `ai-retention-cleanup` readiness and `explore.ai.retention.*` metrics before broad history enablement; never log prompt content, action payloads, provider responses, or model secrets |
 | `idempotency_records` | Ephemeral safety cache | `IdempotencyMiddleware` / `IIdempotencyRepository` | Implemented: reads ignore expired rows, and `IdempotencyCleanupProcessor` deletes rows older than `ExpiresAt + IdempotencyCleanup:ExpirationGraceHours` in bounded batches; dry-run is available | Delete after `ExpiresAt + 24h` safety buffer by default | Do not partition initially; TTL delete by `ExpiresAt` should be enough unless write volume is extreme | Monitor `idempotency-cleanup` readiness and cleanup metrics; revisit only if delete volume or index bloat threatens SLOs |
 | `custom_property_projection_dirty_scope` | Rebuildable projection/cache backlog | Projection rebuild/drain coordination | Drained rows remain; pending rows are quota-bounded | Pending rows stay until drained; drained rows retained 7 days for diagnostics | No partitioning initially; the table is quota-bounded per tenant | Add drained-row cleanup and metrics for deleted/drained/pending counts |
 | `event_custom_property_projections`, `event_session_custom_property_projections` | Rebuildable projection/cache | Projection updaters from Layer 3 values | Rebuild and source deletes replace/remove rows; no age cleanup | No independent age retention; rows live while source values and exposure rules require them | Consider tenant/hash or event-date-adjacent strategy only after projection query SLOs require it; range partitioning by `UpdatedAt` is not useful for most lookup predicates | Keep rebuild-first recovery; add periodic consistency checks before partitioning |
@@ -786,6 +809,24 @@ The worker is explicitly instance/system-scoped because `idempotency_records` ar
 | `explore.idempotency.cleanup_rows` | `mode`, `outcome` | Eligible row count in dry-run mode or deleted row count in delete mode. |
 
 Metric tags and logs intentionally exclude raw idempotency keys, request paths, response bodies, tenant IDs, and exception text.
+
+### AI Retention Cleanup Operations
+
+The `ai-retention-cleanup` readiness check reports the current AI retention cleanup posture:
+
+- `Healthy` when cleanup is enabled in redaction mode or dry-run mode.
+- `Degraded` when cleanup is intentionally disabled.
+
+The worker is tenant-scoped by design. Each pass reads active tenant lookups, sets tenant context for one tenant at a time, resolves that tenant's `ai_assistant.retention_days`, and invokes the tenant-filtered retention cleanup primitive. It does not disable tenant filters and it does not log tenant IDs, prompt content, provider responses, selected references, proposed-action payloads, API keys, model IDs, or raw provider exceptions.
+
+Use `AiRetentionCleanup:DryRun=true` before first enabling destructive redaction in an environment, then watch logs and `Explore.Business` metrics:
+
+| Metric | Bounded tags | Meaning |
+|---|---|---|
+| `explore.ai.retention.cleanup_runs` | `mode`, `outcome` | One all-tenant cleanup pass in `dry_run` or `redact` mode, with `succeeded`, `partial_failure`, or `failed` outcome. |
+| `explore.ai.retention.cleanup_rows` | `mode`, `category` | Aggregate eligible/redacted row counts for bounded categories such as `eligible_conversations`, `redacted_messages`, and `redacted_proposed_actions`. |
+
+If a pass reports partial failure, inspect bounded worker logs and health configuration first. Do not enable verbose logging that prints prompt text, provider responses, tool payloads, reference summaries, or tenant identifiers.
 
 ---
 

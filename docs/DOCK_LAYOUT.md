@@ -42,6 +42,13 @@ Sources:
 - `Explore.Blazor.Client/Components/Shell/ShellDockPanels.cs`
 - `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs`
 
+AI assistant panel behavior:
+
+- `AiAssistantRail` preserves the shell dock descriptor, persisted open/width state, fixed/mobile overlay projection, and close/backdrop behavior supplied by the dock layer.
+- Conversation history, reference search, send, confirm, and reject actions flow through `IAiAssistantClientService` and `AiAssistantConversationState`.
+- Proposed-action and reference affordances are rendered from HAL links only; the dock layer does not authorize assistant actions.
+- Full-panel bUnit coverage exercises unavailable state, history/message loading, create, send, reference search/select/remove, HAL-gated proposal actions, and safe command errors.
+
 ## Architecture Overview
 
 The runtime is split into four layers.

@@ -57,6 +57,16 @@ Dependency direction is inward: presentation -> application -> domain.
 4. API-local OpenAPI transformers and Swashbuckle transition filters adjust schemas to reflect HAL structure.
 5. API versioning is read from three non-URL sources combined (`ApiVersionReader.Combine`): media-type parameter (`Accept: application/json;v=0.1`), query string (`?api-version=0.1`), and custom header (`X-Api-Version: 0.1`). URL-segment versioning (e.g. `/api/v0.1/controller`) is intentionally unsupported — every endpoint has exactly one canonical path so that `operationId`, `RouteNames`, and HAL link generation stay stable across versions.
 
+## MCP Adapter Boundary
+1. The initial Model Context Protocol adapter is an optional `Explore.API` presentation adapter, not a new authority for AI tools.
+2. MCP hosting uses ASP.NET Core Streamable HTTP through the official C# MCP SDK, with stateless transport selected explicitly.
+3. The adapter is disabled by default through `Mcp:Enabled=false`; self-hosted deployments must remain fully functional without MCP.
+4. MCP tools, resources, and prompts must be registry-backed. Tool definitions and JSON schemas come from `IAiToolContractRegistry`, and mutating tools follow the existing proposal/confirmation path.
+5. MCP endpoints must require authenticated, tenant-resolved requests and fail closed when tenant or principal context is missing.
+6. MCP logs, health, metrics, and errors must not expose prompts, provider responses, tool payloads, tenant IDs, provider endpoint URLs, API keys, or raw provider exceptions.
+
+See [ADR-010](adr/ADR-010-mcp-adapter-hosting-strategy.md) for the hosting, transport, auth, tenancy, and disable-path decision.
+
 ## Specification Pattern (Query Composition)
 Complex filtering uses a custom Specification Pattern:
 1. `IQuerySpecification<T>` composes `IFilterSpecification<T>` + `ISortSpecification<T>` via immutable builder.
