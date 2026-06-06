@@ -19,6 +19,7 @@ public sealed class AiAssistantAuthorizationMetadataTests
         await AssertAuthorization<ConfirmAiProposedActionCommand>(AuthorizationActions.AiConversations.ConfirmAction);
         await AssertAuthorization<RejectAiProposedActionCommand>(AuthorizationActions.AiConversations.RejectAction);
         await AssertAuthorization<CancelAiRunCommand>(AuthorizationActions.AiConversations.CancelRun);
+        await AssertAuthorization<ProposeAiToolActionCommand>(AuthorizationActions.AiConversations.ProposeAction);
         await AssertAuthorization<GetAiConversationListQuery>(AuthorizationActions.AiConversations.View);
         await AssertAuthorization<GetAiConversationDetailQuery>(AuthorizationActions.AiConversations.View);
         await AssertAuthorization<GetAiRunStatusQuery>(AuthorizationActions.AiConversations.View);
@@ -37,6 +38,7 @@ public sealed class AiAssistantAuthorizationMetadataTests
         ISecureRequest confirm = new ConfirmAiProposedActionCommand { ProposedActionId = conversationId };
         ISecureRequest reject = new RejectAiProposedActionCommand { ProposedActionId = conversationId };
         ISecureRequest cancel = new CancelAiRunCommand { ConversationId = conversationId, RunId = Guid.CreateVersion7() };
+        ISecureRequest propose = new ProposeAiToolActionCommand { ConversationId = conversationId, ToolName = "CreateEventDraft", PayloadJson = "{}" };
         ISecureRequest detail = new GetAiConversationDetailQuery { ConversationId = conversationId };
         ISecureRequest runStatus = new GetAiRunStatusQuery { ConversationId = conversationId, RunId = Guid.CreateVersion7() };
 
@@ -44,6 +46,7 @@ public sealed class AiAssistantAuthorizationMetadataTests
         await Assert.That(confirm.ResourceId).IsEqualTo(conversationId.ToString());
         await Assert.That(reject.ResourceId).IsEqualTo(conversationId.ToString());
         await Assert.That(cancel.ResourceId).IsEqualTo(conversationId.ToString());
+        await Assert.That(propose.ResourceId).IsEqualTo(conversationId.ToString());
         await Assert.That(detail.ResourceId).IsEqualTo(conversationId.ToString());
         await Assert.That(runStatus.ResourceId).IsEqualTo(conversationId.ToString());
     }

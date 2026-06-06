@@ -45,6 +45,38 @@ public sealed class AiReferencePromptPackerTests
     }
 
     [Test]
+    public async Task Pack_RespectsTotalTokenBudgetWhenProvided()
+    {
+        var references = Enumerable.Range(1, 3)
+            .Select(index => new AiSelectedReferenceDto("Event", Guid.CreateVersion7(), $"Event {index}", "Summary"))
+            .ToList();
+
+        string packed = new AiReferencePromptPacker(new FixedAiTokenEstimator(1)).Pack(
+            references,
+            maxReferences: 3,
+            maxTotalTokens: 2);
+
+        await Assert.That(packed).Contains("Event 1");
+        await Assert.That(packed).Contains("Event 2");
+        await Assert.That(packed).DoesNotContain("Event 3");
+    }
+
+    [Test]
+    public async Task Pack_WhenTokenBudgetIsZero_ReturnsEmptyString()
+    {
+        var references = new[]
+        {
+            new AiSelectedReferenceDto("Event", Guid.CreateVersion7(), "Event", "Summary")
+        };
+
+        string packed = new AiReferencePromptPacker(new FixedAiTokenEstimator(1)).Pack(
+            references,
+            maxTotalTokens: 0);
+
+        await Assert.That(packed).IsEqualTo(string.Empty);
+    }
+
+    [Test]
     public async Task Pack_WhenInputsAreEmptyOrInvalid_ReturnsEmptyString()
     {
         var packer = new AiReferencePromptPacker();
@@ -52,5 +84,13 @@ public sealed class AiReferencePromptPackerTests
         await Assert.That(packer.Pack([])).IsEqualTo(string.Empty);
         await Assert.That(packer.Pack([new AiSelectedReferenceDto("Event", Guid.CreateVersion7(), "Title", null)], maxReferences: 0)).IsEqualTo(string.Empty);
         await Assert.That(packer.Pack([new AiSelectedReferenceDto("", Guid.CreateVersion7(), "Title", null)])).IsEqualTo(string.Empty);
+    }
+
+    private sealed class FixedAiTokenEstimator(int tokensPerNonEmptyInput) : IAiTokenEstimator
+    {
+        public bool IsTokenizerBacked => true;
+
+        public int CountTokens(string? content)
+            => string.IsNullOrWhiteSpace(content) ? 0 : tokensPerNonEmptyInput;
     }
 }

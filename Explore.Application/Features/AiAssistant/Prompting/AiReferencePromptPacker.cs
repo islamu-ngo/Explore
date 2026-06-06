@@ -11,19 +11,38 @@ public sealed class AiReferencePromptPacker
     public const int DefaultMaxCharactersPerReference = 500;
     public const int DefaultMaxTotalCharacters = 2_000;
 
+    private readonly IAiTokenEstimator _tokenEstimator;
+
+    public AiReferencePromptPacker()
+        : this(new ApproximateAiTokenEstimator())
+    {
+    }
+
+    public AiReferencePromptPacker(IAiTokenEstimator tokenEstimator)
+    {
+        _tokenEstimator = tokenEstimator;
+    }
+
     public string Pack(
         IReadOnlyList<AiSelectedReferenceDto> references,
         int maxReferences = DefaultMaxReferences,
         int maxCharactersPerReference = DefaultMaxCharactersPerReference,
-        int maxTotalCharacters = DefaultMaxTotalCharacters)
+        int maxTotalCharacters = DefaultMaxTotalCharacters,
+        int? maxTokensPerReference = null,
+        int? maxTotalTokens = null)
     {
-        if (references.Count == 0 || maxReferences <= 0 || maxCharactersPerReference <= 0 || maxTotalCharacters <= 0)
+        if (references.Count == 0 ||
+            maxReferences <= 0 ||
+            maxCharactersPerReference <= 0 ||
+            maxTotalCharacters <= 0 ||
+            (maxTotalTokens.HasValue && maxTotalTokens.Value <= 0))
         {
             return string.Empty;
         }
 
         var blocks = new List<string>();
         var totalCharacters = 0;
+        var totalTokens = 0;
 
         foreach (AiSelectedReferenceDto reference in references.Take(maxReferences))
         {
@@ -38,8 +57,21 @@ public sealed class AiReferencePromptPacker
                 break;
             }
 
+            int blockTokens = _tokenEstimator.CountTokens(block);
+            if (maxTokensPerReference is not null && blockTokens > maxTokensPerReference.Value)
+            {
+                block = TruncateToTokenBudget(block, maxTokensPerReference.Value);
+                blockTokens = _tokenEstimator.CountTokens(block);
+            }
+
+            if (maxTotalTokens is not null && totalTokens + blockTokens > maxTotalTokens.Value)
+            {
+                break;
+            }
+
             blocks.Add(block);
             totalCharacters += block.Length;
+            totalTokens += blockTokens;
         }
 
         if (blocks.Count == 0)
@@ -75,6 +107,35 @@ public sealed class AiReferencePromptPacker
         }
 
         return value[..maxCharacters].TrimEnd();
+    }
+
+    private string TruncateToTokenBudget(string value, int maxTokens)
+    {
+        if (maxTokens <= 0)
+        {
+            return string.Empty;
+        }
+
+        var low = 0;
+        var high = value.Length;
+        var best = string.Empty;
+
+        while (low <= high)
+        {
+            int midpoint = low + ((high - low) / 2);
+            string candidate = value[..midpoint].TrimEnd();
+            if (_tokenEstimator.CountTokens(candidate) <= maxTokens)
+            {
+                best = candidate;
+                low = midpoint + 1;
+            }
+            else
+            {
+                high = midpoint - 1;
+            }
+        }
+
+        return best;
     }
 
     private static string EscapeAttribute(string value) => EscapeText(value).Replace("\"", "&quot;");

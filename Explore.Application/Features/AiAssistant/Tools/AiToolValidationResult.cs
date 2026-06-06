@@ -6,10 +6,11 @@ namespace Explore.Application.Features.AiAssistant.Tools;
 public sealed record AiToolValidationResult(
     bool Succeeded,
     string? FailureCode,
-    string? FailureMessage)
+    string? FailureMessage,
+    string? CorrectionMessage = null)
 {
-    public static AiToolValidationResult Success() => new(true, null, null);
+    public static AiToolValidationResult Success() => new(true, null, null, null);
 
-    public static AiToolValidationResult Failure(string failureCode, string failureMessage)
-        => new(false, failureCode, failureMessage);
+    public static AiToolValidationResult Failure(string failureCode, string failureMessage, string? correctionMessage = null)
+        => new(false, failureCode, failureMessage, correctionMessage);
 }

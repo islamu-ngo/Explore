@@ -2,8 +2,8 @@
 // ABOUTME: Verifies tenant governance, authentication, validation, and persistence boundaries.
 
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Infrastructure.Ai;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.Features.AiAssistant.Handlers.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Commands;

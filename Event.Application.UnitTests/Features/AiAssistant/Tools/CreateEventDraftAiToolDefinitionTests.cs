@@ -36,6 +36,20 @@ public sealed class CreateEventDraftAiToolDefinitionTests
     }
 
     [Test]
+    public async Task JsonSchema_RequiresTitleAndDisallowsAdditionalProperties()
+    {
+        using var document = JsonDocument.Parse(CreateEventDraftAiToolDefinition.JsonSchema);
+        var root = document.RootElement;
+        var requiredFields = root.GetProperty("required")
+            .EnumerateArray()
+            .Select(field => field.GetString())
+            .ToArray();
+
+        await Assert.That(root.GetProperty("additionalProperties").GetBoolean()).IsFalse();
+        await Assert.That(requiredFields).Contains("title");
+    }
+
+    [Test]
     public async Task Mapper_AcceptsEveryAllowedPayloadField()
     {
         var mapper = new CreateEventDraftAiActionMapper();

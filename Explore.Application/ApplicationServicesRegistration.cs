@@ -7,6 +7,7 @@ using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Scheduling;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Services;
 using Explore.Application.Settings;
 using Explore.Domain.Services.Scheduling;
@@ -23,6 +24,7 @@ public static class ApplicationServicesRegistration
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(ApplicationServicesRegistration).Assembly));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+        services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());
 
         // Onboarding Services
         services.AddScoped<ITenantPolicySettingService, TenantPolicySettingService>();

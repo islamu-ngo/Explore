@@ -1,4 +1,4 @@
-// ABOUTME: Validates untrusted AI tool payload JSON against allow-list and deny-list field policies.
+// ABOUTME: Validates untrusted AI tool payload JSON against registry field policies before schema checks.
 // ABOUTME: Fails closed for malformed JSON, non-object payloads, unknown fields, and forbidden fields.
 
 using System.Text.Json;
@@ -10,14 +10,15 @@ public static class AiToolPayloadGuard
     public static AiToolValidationResult ValidateJsonObject(
         string payloadJson,
         IReadOnlySet<string> allowedFields,
-        IReadOnlySet<string>? forbiddenFields = null)
+        IReadOnlySet<string>? forbiddenFields = null,
+        string? schemaJson = null)
     {
         try
         {
             using var document = JsonDocument.Parse(payloadJson);
             if (document.RootElement.ValueKind != JsonValueKind.Object)
             {
-                return AiToolValidationResult.Failure(
+                return Failure(
                     "invalid_tool_arguments",
                     "AI tool payload must be a JSON object.");
             }
@@ -26,26 +27,34 @@ public static class AiToolPayloadGuard
             {
                 if (forbiddenFields?.Contains(property.Name) == true)
                 {
-                    return AiToolValidationResult.Failure(
+                    return Failure(
                         "forbidden_tool_argument",
                         "AI tool payload contains a field that is not allowed.");
                 }
 
                 if (!allowedFields.Contains(property.Name))
                 {
-                    return AiToolValidationResult.Failure(
+                    return Failure(
                         "unsupported_tool_argument",
                         "AI tool payload contains an unsupported field.");
                 }
+            }
+
+            if (!string.IsNullOrWhiteSpace(schemaJson))
+            {
+                return AiToolJsonSchemaPayloadValidator.Validate(document.RootElement, schemaJson);
             }
 
             return AiToolValidationResult.Success();
         }
         catch (JsonException)
         {
-            return AiToolValidationResult.Failure(
+            return Failure(
                 "invalid_tool_arguments",
                 "AI tool payload must be valid JSON.");
         }
     }
+
+    private static AiToolValidationResult Failure(string failureCode, string failureMessage)
+        => AiToolValidationResult.Failure(failureCode, failureMessage, AiToolCorrectionMessages.SchemaExactRetry);
 }

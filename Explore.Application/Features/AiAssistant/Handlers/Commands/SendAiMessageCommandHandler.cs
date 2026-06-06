@@ -7,8 +7,8 @@ using System.Text;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Features.AiAssistant.Prompting;
 using Explore.Application.DTOs.Ai.Validators;
+using Explore.Application.Features.AiAssistant.Prompting;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Responses;
@@ -35,9 +35,8 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAiModelCatalog _modelCatalog;
-    private readonly IAiChatProvider _chatProvider;
     private readonly AiPromptContextBuilder _promptContextBuilder;
-    private readonly AiStructuredActionParser _structuredActionParser;
+    private readonly AiProviderResponseResolver _providerResponseResolver;
 
     public SendAiMessageCommandHandler(
         IAiConversationRepository conversationRepository,
@@ -54,10 +53,11 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _modelCatalog = modelCatalog;
-        _chatProvider = chatProvider;
         var toolRegistry = AiToolContractRegistry.CreateDefault();
         _promptContextBuilder = new AiPromptContextBuilder(new AiSystemPromptFactory(toolRegistry));
-        _structuredActionParser = new AiStructuredActionParser(toolRegistry);
+        _providerResponseResolver = new AiProviderResponseResolver(
+            chatProvider,
+            new AiStructuredActionParser(toolRegistry));
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -201,33 +201,23 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         run.Start(utcNow);
         await _conversationRepository.Update(conversation);
 
-        var providerResult = await _chatProvider.SendAsync(
-            _promptContextBuilder.Build(conversation, settings, modelId), cancellationToken);
+        var providerResolution = await _providerResponseResolver.ResolveAsync(
+            _promptContextBuilder.Build(conversation, settings, modelId),
+            cancellationToken);
 
-        if (!providerResult.Succeeded || providerResult.Response is null)
+        if (!providerResolution.Succeeded || providerResolution.Response is null || providerResolution.ParseResult is null)
         {
-            var errorCode = providerResult.Error?.Code ?? "provider_failure";
-            var errorMessage = providerResult.Error?.Message ?? "AI provider failed.";
+            var errorCode = providerResolution.FailureCode ?? "provider_failure";
+            var errorMessage = providerResolution.FailureMessage ?? "AI provider failed.";
             conversation.FailRun(run, errorCode, errorMessage, DateTime.UtcNow);
             await _conversationRepository.Update(conversation);
             return Failure("AI provider failed to complete the run.", [errorMessage], errorCode, run.Id);
         }
 
-        var assistantText = BuildAssistantMessage(providerResult.Response);
+        var assistantText = BuildAssistantMessage(providerResolution.Response);
         var assistantMessage = conversation.AddMessage(AiMessageRole.Assistant, assistantText, null, DateTime.UtcNow);
 
-        var proposedActionParseResult = _structuredActionParser.Parse(providerResult.Response.ProposedActions);
-
-        if (!proposedActionParseResult.Succeeded)
-        {
-            var failureCode = proposedActionParseResult.FailureCode ?? "invalid_tool_arguments";
-            var failureMessage = proposedActionParseResult.FailureMessage ?? "AI provider returned invalid action payload JSON.";
-            conversation.FailRun(run, failureCode, failureMessage, DateTime.UtcNow);
-            await _conversationRepository.Update(conversation);
-            return Failure(failureMessage, [failureMessage], failureCode, run.Id);
-        }
-
-        foreach (var proposedAction in proposedActionParseResult.Actions)
+        foreach (var proposedAction in providerResolution.ParseResult.Actions)
         {
             conversation.ProposeAction(
                 proposedAction.Kind,
@@ -366,4 +356,5 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
             Errors = errors.ToList(),
             FailureCode = failureCode
         };
+
 }

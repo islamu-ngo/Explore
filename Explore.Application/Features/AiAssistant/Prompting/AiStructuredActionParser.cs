@@ -32,7 +32,8 @@ public sealed class AiStructuredActionParser
             {
                 return AiStructuredActionParseResult.Failure(
                     validationResult.FailureCode ?? "invalid_tool_arguments",
-                    validationResult.FailureMessage ?? "AI provider returned invalid action payload JSON.");
+                    validationResult.FailureMessage ?? "AI provider returned invalid action payload JSON.",
+                    validationResult.CorrectionMessage);
             }
 
             actions.Add(new AiParsedProposedAction(candidate.Kind, candidate.PayloadJson, candidate.Summary));
@@ -51,11 +52,15 @@ public sealed record AiStructuredActionParseResult(
     bool Succeeded,
     IReadOnlyList<AiParsedProposedAction> Actions,
     string? FailureCode,
-    string? FailureMessage)
+    string? FailureMessage,
+    string? CorrectionMessage = null)
 {
     public static AiStructuredActionParseResult Success(IReadOnlyList<AiParsedProposedAction> actions)
-        => new(true, actions, null, null);
+        => new(true, actions, null, null, null);
 
-    public static AiStructuredActionParseResult Failure(string failureCode, string failureMessage)
-        => new(false, [], failureCode, failureMessage);
+    public static AiStructuredActionParseResult Failure(
+        string failureCode,
+        string failureMessage,
+        string? correctionMessage = null)
+        => new(false, [], failureCode, failureMessage, correctionMessage);
 }

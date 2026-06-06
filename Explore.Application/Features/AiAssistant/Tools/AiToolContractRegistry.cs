@@ -36,6 +36,7 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
         return AiToolPayloadGuard.ValidateJsonObject(
             payloadJson,
             definition.AllowedPayloadFields,
-            definition.ForbiddenPayloadFields);
+            definition.ForbiddenPayloadFields,
+            definition.JsonSchema);
     }
 }

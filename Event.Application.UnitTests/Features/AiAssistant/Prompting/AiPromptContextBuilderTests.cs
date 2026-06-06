@@ -82,6 +82,38 @@ public sealed class AiPromptContextBuilderTests
     }
 
     [Test]
+    public async Task Build_WhenTokenBudgetIsSmall_KeepsNewestMessagesThatFit()
+    {
+        var conversation = CreateConversation();
+        conversation.AddMessage(AiMessageRole.User, "Older message", conversation.UserId, DateTime.UtcNow.AddSeconds(1));
+        conversation.AddMessage(AiMessageRole.Assistant, "Middle message", null, DateTime.UtcNow.AddSeconds(2));
+        conversation.AddMessage(AiMessageRole.User, "Newest message", conversation.UserId, DateTime.UtcNow.AddSeconds(3));
+        var builder = new AiPromptContextBuilder(new AiSystemPromptFactory(), new FixedAiTokenEstimator(1));
+
+        var request = builder.Build(conversation, CreateSettings(maxInputTokens: 3), AiProviderDefaults.FakeModelId);
+
+        await Assert.That(request.Messages.Count).IsEqualTo(2);
+        await Assert.That(request.Messages[0].Content).Contains("Middle message");
+        await Assert.That(request.Messages[1].Content).Contains("Newest message");
+        await Assert.That(request.Messages[0].Content).DoesNotContain("Older message");
+    }
+
+    [Test]
+    public async Task Build_WhenActionSchemaExceedsTokenBudget_OmitsActionSchema()
+    {
+        var conversation = CreateConversation();
+        conversation.AddMessage(AiMessageRole.User, "Draft an event", conversation.UserId, DateTime.UtcNow);
+        var builder = new AiPromptContextBuilder(new AiSystemPromptFactory(), new FixedAiTokenEstimator(10));
+
+        var request = builder.Build(
+            conversation,
+            CreateSettings(toolProposalsEnabled: true, maxInputTokens: 19),
+            AiProviderDefaults.FakeModelId);
+
+        await Assert.That(request.ActionSchema).IsNull();
+    }
+
+    [Test]
     public async Task Build_ExcludesToolMessagesFromProviderContext()
     {
         var conversation = CreateConversation();
@@ -105,11 +137,14 @@ public sealed class AiPromptContextBuilderTests
             ConcurrencyStamp = Guid.CreateVersion7()
         };
 
-    private static AiAssistantSettingGroup CreateSettings(bool toolProposalsEnabled = false)
+    private static AiAssistantSettingGroup CreateSettings(bool toolProposalsEnabled = false, int? maxInputTokens = null)
     {
         var group = new AiAssistantSettingGroup();
         group.Populate(new Dictionary<string, ResolvedSetting>
         {
+            [GovernanceSettingKeys.AiAssistant.MaxInputTokens] = Setting(
+                GovernanceSettingKeys.AiAssistant.MaxInputTokens,
+                maxInputTokens ?? 8000),
             [GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled] = Setting(
                 GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
                 toolProposalsEnabled),
@@ -127,4 +162,12 @@ public sealed class AiPromptContextBuilderTests
         Source = SettingSource.SystemDefault,
         IsLocked = false
     };
+
+    private sealed class FixedAiTokenEstimator(int tokensPerNonEmptyInput) : IAiTokenEstimator
+    {
+        public bool IsTokenizerBacked => true;
+
+        public int CountTokens(string? content)
+            => string.IsNullOrWhiteSpace(content) ? 0 : tokensPerNonEmptyInput;
+    }
 }

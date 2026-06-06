@@ -3,8 +3,8 @@
 
 using System.Text.Json;
 using Explore.Application.DTOs.Event;
-using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Features.AiAssistant.Prompting;
+using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Domain.Ai;
 
 namespace Explore.Application.Features.AiAssistant.Actions;

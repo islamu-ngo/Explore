@@ -43,6 +43,19 @@ public sealed class AiStructuredActionParserTests
     }
 
     [Test]
+    public async Task Parse_WhenPayloadFailsSchemaValidation_ReturnsCorrectionMessage()
+    {
+        var result = new AiStructuredActionParser().Parse(
+            [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"description\":\"Missing title\"}")]);
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("missing_tool_argument");
+        await Assert.That(result.FailureMessage).DoesNotContain("title");
+        await Assert.That(result.CorrectionMessage).Contains("matches the registered schema exactly");
+        await Assert.That(result.CorrectionMessage).DoesNotContain("Missing title");
+    }
+
+    [Test]
     public async Task Parse_WhenPayloadContainsForbiddenField_ReturnsForbiddenToolArgumentFailure()
     {
         var result = new AiStructuredActionParser().Parse(

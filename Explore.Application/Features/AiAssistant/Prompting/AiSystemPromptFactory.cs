@@ -31,7 +31,10 @@ public sealed class AiSystemPromptFactory
 
     public string CreateSystemPrompt() => SystemPrompt;
 
-    public AiStructuredActionSchema? CreateActionSchema(AiAssistantSettingGroup settings)
+    public AiStructuredActionSchema? CreateActionSchema(
+        AiAssistantSettingGroup settings,
+        int? maxSchemaTokens = null,
+        IAiTokenEstimator? tokenEstimator = null)
     {
         if (!settings.ToolProposalsEnabled)
         {
@@ -47,8 +50,16 @@ public sealed class AiSystemPromptFactory
             return null;
         }
 
-        return new AiStructuredActionSchema(
+        var schema = new AiStructuredActionSchema(
             definitions.Select(definition => definition.Kind).ToList(),
             definitions[0].JsonSchema);
+
+        if (maxSchemaTokens is not null && tokenEstimator is not null &&
+            tokenEstimator.CountTokens(schema.JsonSchema) > maxSchemaTokens.Value)
+        {
+            return null;
+        }
+
+        return schema;
     }
 }

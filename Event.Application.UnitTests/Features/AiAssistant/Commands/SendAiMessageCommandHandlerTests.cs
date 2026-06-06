@@ -227,6 +227,71 @@ public sealed class SendAiMessageCommandHandlerTests
             request.ActionSchema.AllowedKinds.Contains(AiProposedActionKind.CreateEventDraft)), Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task Handle_WhenProviderFirstReturnsInvalidToolPayload_RetriesWithSafeCorrectionAndPersistsCorrectedProposal()
+    {
+        var conversation = CreateConversation();
+        var capturedPayloads = new List<AiChatPayload>();
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _chatProvider.SendAsync(Arg.Do<AiChatPayload>(payload => capturedPayloads.Add(payload)), Arg.Any<CancellationToken>())
+            .Returns(
+                AiChatProviderResult.Success(new AiChatResponse(
+                    string.Empty,
+                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"description\":\"raw-invalid-secret\"}")],
+                    new AiTokenUsage(1, 2, 3))),
+                AiChatProviderResult.Success(new AiChatResponse(
+                    string.Empty,
+                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Corrected Draft\"}")],
+                    new AiTokenUsage(1, 2, 3))));
+
+        var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(capturedPayloads.Count).IsEqualTo(2);
+        await Assert.That(capturedPayloads[1].Messages.Count).IsEqualTo(capturedPayloads[0].Messages.Count + 1);
+        var correctionMessage = capturedPayloads[1].Messages.Last().Content;
+        await Assert.That(correctionMessage).Contains("Failure code: missing_tool_argument");
+        await Assert.That(correctionMessage).Contains("matches the registered schema exactly");
+        await Assert.That(correctionMessage).DoesNotContain("raw-invalid-secret");
+        await Assert.That(correctionMessage).DoesNotContain("description");
+        await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Active);
+        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Succeeded);
+        await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
+        await Assert.That(conversation.ProposedActions.Single().PayloadJson).Contains("Corrected Draft");
+        await _chatProvider.Received(2).SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenProviderRetryStillReturnsInvalidToolPayload_FailsClosedWithSafeReason()
+    {
+        var conversation = CreateConversation();
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
+            .Returns(
+                AiChatProviderResult.Success(new AiChatResponse(
+                    string.Empty,
+                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"description\":\"first-secret\"}")],
+                    new AiTokenUsage(1, 2, 3))),
+                AiChatProviderResult.Success(new AiChatResponse(
+                    string.Empty,
+                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"description\":\"second-secret\"}")],
+                    new AiTokenUsage(1, 2, 3))));
+
+        var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("missing_tool_argument");
+        await Assert.That(result.Errors.Single()).DoesNotContain("first-secret");
+        await Assert.That(result.Errors.Single()).DoesNotContain("second-secret");
+        await Assert.That(result.Errors.Single()).DoesNotContain("description");
+        await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Blocked);
+        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Failed);
+        await Assert.That(conversation.ProposedActions.Count).IsEqualTo(0);
+        await _chatProvider.Received(2).SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
+    }
+
     private SendAiMessageCommandHandler CreateHandler()
         => new(
             _conversationRepository,
