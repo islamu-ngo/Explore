@@ -219,6 +219,14 @@
                                   Required="true"
                                   Class="create-event__title-input mb-1" />
 
+                    <MudTextField T="string" @bind-Value="createDto.Subtitle"
+                                  Label="Subtitle"
+                                  Placeholder="Optional short line shown under the event name"
+                                  Variant="Variant.Text"
+                                  FullWidth="true"
+                                  Immediate="true"
+                                  Class="create-event__subtitle-input mb-2" />
+
                     @* --- Event Timezone (event-level, shared by all dedicated session pages) --- *@
                     <div class="d-flex align-center gap-2 mb-2">
                         <MudButton Elevation="0" Variant="Variant.Text"
@@ -430,6 +438,31 @@
                             </MudSelect>
                         </EventOptionRow>
 
+                        <EventOptionRow Title="Pricing"
+                                        Icon="@Icons.Material.Filled.Payments"
+                                        Summary="@PricingSummary"
+                                        Description="Set event-level pricing. Individual program items can still override price later."
+                                        Disabled="@AreEventOptionsDisabled">
+                            <div class="create-event__option-editor-group">
+                                <MudNumericField T="double?" @bind-Value="createDto.Price"
+                                                 Variant="Variant.Text"
+                                                 Margin="Margin.Dense"
+                                                 Min="0"
+                                                 HideSpinButtons="true"
+                                                 Class="create-event__option-select create-event__price-input"
+                                                 Disabled="@AreEventOptionsDisabled"
+                                                 aria-label="Event price" />
+                                <MudTextField T="string" @bind-Value="createDto.CurrencyCode"
+                                              Variant="Variant.Text"
+                                              Margin="Margin.Dense"
+                                              Placeholder="EUR"
+                                              MaxLength="3"
+                                              Class="create-event__option-select create-event__currency-input"
+                                              Disabled="@AreEventOptionsDisabled"
+                                              aria-label="Currency code" />
+                            </div>
+                        </EventOptionRow>
+
                         <EventOptionRow Title="Event type"
                                         Icon="@Icons.Material.Filled.Category"
                                         Summary="@EventTypeSummary"
@@ -448,6 +481,28 @@
                                     @foreach (var type in eventTypes)
                                     {
                                         <MudSelectItem T="int?" Value="@((int?)type.Id)">@type.FullName</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </EventOptionRow>
+
+                        <EventOptionRow Title="Islamic context"
+                                        Icon="@Icons.Material.Filled.Mosque"
+                                        Summary="@MadhabSummary"
+                                        Description="Optional event-level madhab signal. More Islamic scheduling details are added from the detail page."
+                                        Disabled="@AreEventOptionsDisabled">
+                            <MudSelect T="int?" @bind-Value="selectedMadhabId"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Class="create-event__option-select"
+                                       Disabled="@AreEventOptionsDisabled"
+                                       aria-label="Madhab">
+                                <MudSelectItem T="int?" Value="@((int?)null)">No madhab</MudSelectItem>
+                                @if (madhabs != null)
+                                {
+                                    @foreach (var madhab in madhabs)
+                                    {
+                                        <MudSelectItem T="int?" Value="@((int?)madhab.Id)">@madhab.FullName</MudSelectItem>
                                     }
                                 }
                             </MudSelect>

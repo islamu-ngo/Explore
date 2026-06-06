@@ -1273,6 +1273,64 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         return "Location TBD";
     }
 
+    private static string GetAudienceText(EventListDto eventItem)
+    {
+        var gender = string.IsNullOrWhiteSpace(eventItem.AudienceGenderFullName)
+            ? "All genders"
+            : eventItem.AudienceGenderFullName;
+        var age = string.IsNullOrWhiteSpace(eventItem.AudienceAgeFullName)
+            ? "All ages"
+            : eventItem.AudienceAgeFullName;
+        return $"{gender} · {age}";
+    }
+
+    private static string GetProgramCountText(EventDto detail, ICollection<EventSessionListDto>? sessions)
+    {
+        var count = detail.SessionCount ?? sessions?.Count ?? 0;
+        return count switch
+        {
+            0 => "Program not published yet",
+            1 => "1 program item",
+            _ => $"{count} program items"
+        };
+    }
+
+    private static string GetRegistrationPolicyText(EventDto detail)
+    {
+        if (!string.IsNullOrWhiteSpace(detail.RegistrationPolicyFullName))
+        {
+            return detail.RegistrationPolicyFullName;
+        }
+
+        return detail.IsRegistrationRequired == true
+            ? "Registration required"
+            : "Registration optional";
+    }
+
+    private static Color GetFormatColor(EventDto detail)
+    {
+        if (string.Equals(detail.EventFormatMasterCode, "DIGITAL", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Info;
+        }
+
+        return string.Equals(detail.EventFormatMasterCode, "HYBRID", StringComparison.OrdinalIgnoreCase)
+            ? Color.Tertiary
+            : Color.Default;
+    }
+
+    private static string GetFormatIcon(EventDto detail)
+    {
+        if (string.Equals(detail.EventFormatMasterCode, "DIGITAL", StringComparison.OrdinalIgnoreCase))
+        {
+            return Icons.Material.Filled.Videocam;
+        }
+
+        return string.Equals(detail.EventFormatMasterCode, "HYBRID", StringComparison.OrdinalIgnoreCase)
+            ? Icons.Material.Filled.Devices
+            : Icons.Material.Filled.LocationOn;
+    }
+
     private string GetEventImage(EventListDto eventItem)
     {
         return ImageHelper.GetEventImageUrl(eventItem.FeaturedImageUri, eventItem.Title, GetEventColorForEvent(eventItem));
@@ -1304,6 +1362,11 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _ => Color.Default
     };
 
+    private bool CanManageSelectedEvent =>
+        _selectedEventDetail?.HasHalLink("edit")
+        ?? _selectedEvent?.HasHalLink("edit")
+        ?? false;
+
     /// <summary>
     /// Returns the profile page URL for the given actor, or null if no public profile exists for that actor type.
     /// Organization (ActorTypeId=2) → /organization/profile/{id}.
@@ -1328,42 +1391,22 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private bool HasDetailTags()
     {
-        if (_selectedEventDetail?.AdditionalProperties == null) return false;
-        return _selectedEventDetail.AdditionalProperties.TryGetValue("tags", out var val) && val != null;
+        return GetDetailTagItems().Any();
     }
 
     private IEnumerable<string> GetDetailTags()
     {
-        if (_selectedEventDetail?.AdditionalProperties == null) yield break;
-        if (!_selectedEventDetail.AdditionalProperties.TryGetValue("tags", out var val) || val is not System.Text.Json.JsonElement jsonArray) yield break;
-        if (jsonArray.ValueKind != System.Text.Json.JsonValueKind.Array) yield break;
-        foreach (var item in jsonArray.EnumerateArray())
-        {
-            var name = item.TryGetProperty("fullName", out var fn) ? fn.GetString()
-                     : item.TryGetProperty("name", out var n) ? n.GetString()
-                     : null;
-            if (!string.IsNullOrEmpty(name)) yield return name;
-        }
+        return GetDetailTagItems().Select(item => item.Name);
     }
 
     private bool HasDetailCategories()
     {
-        if (_selectedEventDetail?.AdditionalProperties == null) return false;
-        return _selectedEventDetail.AdditionalProperties.TryGetValue("categories", out var val) && val != null;
+        return GetDetailCategoryItems().Any();
     }
 
     private IEnumerable<string> GetDetailCategories()
     {
-        if (_selectedEventDetail?.AdditionalProperties == null) yield break;
-        if (!_selectedEventDetail.AdditionalProperties.TryGetValue("categories", out var val) || val is not System.Text.Json.JsonElement jsonArray) yield break;
-        if (jsonArray.ValueKind != System.Text.Json.JsonValueKind.Array) yield break;
-        foreach (var item in jsonArray.EnumerateArray())
-        {
-            var name = item.TryGetProperty("fullName", out var fn) ? fn.GetString()
-                     : item.TryGetProperty("name", out var n) ? n.GetString()
-                     : null;
-            if (!string.IsNullOrEmpty(name)) yield return name;
-        }
+        return GetDetailCategoryItems().Select(item => item.Name);
     }
 
     // ── Event prev/next navigation ──
@@ -1540,25 +1583,52 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private IEnumerable<TagCategoryManagerPopup.TagCategoryItem> GetDetailTagItems()
     {
-        if (_selectedEventDetail?.AdditionalProperties == null) yield break;
-        if (!_selectedEventDetail.AdditionalProperties.TryGetValue("tags", out var val) || val is not System.Text.Json.JsonElement jsonArray) yield break;
-        if (jsonArray.ValueKind != System.Text.Json.JsonValueKind.Array) yield break;
-        foreach (var item in jsonArray.EnumerateArray())
+        if (_selectedEventDetail?.Tags is { Count: > 0 })
         {
-            var id = item.TryGetProperty("id", out var idProp) && idProp.TryGetGuid(out var g) ? g : (Guid?)null;
-            var name = item.TryGetProperty("fullName", out var fn) ? fn.GetString()
-                     : item.TryGetProperty("name", out var n) ? n.GetString()
-                     : null;
-            if (id.HasValue && !string.IsNullOrEmpty(name))
-                yield return new TagCategoryManagerPopup.TagCategoryItem(id.Value, name);
+            foreach (var tag in _selectedEventDetail.Tags)
+            {
+                if (tag.Id.HasValue && !string.IsNullOrWhiteSpace(tag.FullName))
+                {
+                    yield return new TagCategoryManagerPopup.TagCategoryItem(tag.Id.Value, tag.FullName);
+                }
+            }
+
+            yield break;
+        }
+
+        foreach (var item in GetTagCategoryItemsFromAdditionalProperties("tags"))
+        {
+            yield return item;
         }
     }
 
     private IEnumerable<TagCategoryManagerPopup.TagCategoryItem> GetDetailCategoryItems()
     {
+        if (_selectedEventDetail?.Categories is { Count: > 0 })
+        {
+            foreach (var category in _selectedEventDetail.Categories)
+            {
+                if (category.Id.HasValue && !string.IsNullOrWhiteSpace(category.FullName))
+                {
+                    yield return new TagCategoryManagerPopup.TagCategoryItem(category.Id.Value, category.FullName);
+                }
+            }
+
+            yield break;
+        }
+
+        foreach (var item in GetTagCategoryItemsFromAdditionalProperties("categories"))
+        {
+            yield return item;
+        }
+    }
+
+    private IEnumerable<TagCategoryManagerPopup.TagCategoryItem> GetTagCategoryItemsFromAdditionalProperties(string propertyName)
+    {
         if (_selectedEventDetail?.AdditionalProperties == null) yield break;
-        if (!_selectedEventDetail.AdditionalProperties.TryGetValue("categories", out var val) || val is not System.Text.Json.JsonElement jsonArray) yield break;
+        if (!_selectedEventDetail.AdditionalProperties.TryGetValue(propertyName, out var val) || val is not System.Text.Json.JsonElement jsonArray) yield break;
         if (jsonArray.ValueKind != System.Text.Json.JsonValueKind.Array) yield break;
+
         foreach (var item in jsonArray.EnumerateArray())
         {
             var id = item.TryGetProperty("id", out var idProp) && idProp.TryGetGuid(out var g) ? g : (Guid?)null;
@@ -1566,7 +1636,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
                      : item.TryGetProperty("name", out var n) ? n.GetString()
                      : null;
             if (id.HasValue && !string.IsNullOrEmpty(name))
+            {
                 yield return new TagCategoryManagerPopup.TagCategoryItem(id.Value, name);
+            }
         }
     }
 

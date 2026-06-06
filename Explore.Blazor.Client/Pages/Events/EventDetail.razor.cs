@@ -59,6 +59,7 @@ public partial class EventDetail : ComponentBase
     private List<Guid> _userRegistrationIds = new();
     private bool _canDelete = false;
     private bool _canEdit = false;
+    private bool _canManageTeam = false;
     private bool _isAuthenticated = false;
     private bool _isCheckingAuth = true;
     private string? _errorMessage;
@@ -120,6 +121,8 @@ public partial class EventDetail : ComponentBase
                     ImageUri = _eventDetails.BackgroundImageUri ?? string.Empty,
                     BackgroundEffect = _eventDetails.BackgroundEffect ?? "None"
                 };
+                _islamicAspect = MapIslamicAspect(_eventDetails.IslamicAspect);
+                _techAspect = MapTechAspect(_eventDetails.TechAspect);
 
                 // Load event sessions
                 _eventSessions = await EventService.GetSessionsByEventAsync(EventId);
@@ -131,7 +134,9 @@ public partial class EventDetail : ComponentBase
 
                 // Check registration status and load aspects in parallel
                 var registrationTask = CheckRegistrationStatusAsync();
-                var aspectsTask = LoadEventAspectsAsync();
+                var aspectsTask = NeedsAspectFallbackLoad()
+                    ? LoadEventAspectsAsync()
+                    : Task.CompletedTask;
                 var daysTask = EventDayService.GetDaysByEventAsync(EventId);
                 var eventAgendaTask = EventAgendaItemService.GetAgendaItemsByEventAsync(EventId);
                 var agendaTask = _primarySession?.Id != null && _primarySession.Id != Guid.Empty
@@ -178,6 +183,9 @@ public partial class EventDetail : ComponentBase
         _primarySession = PersistedState.PrimarySession;
         _islamicAspect = PersistedState.IslamicAspect;
         _techAspect = PersistedState.TechAspect;
+        _eventDays = PersistedState.EventDays;
+        _eventAgendaItems = PersistedState.EventAgendaItems;
+        _agendaItems = PersistedState.SessionAgendaItems;
         _appearance = PersistedState.Appearance ?? new AppearanceSettings();
         _isLoading = false;
         _isCheckingRegistration = true;
@@ -206,6 +214,9 @@ public partial class EventDetail : ComponentBase
             PrimarySession = _primarySession,
             IslamicAspect = _islamicAspect,
             TechAspect = _techAspect,
+            EventDays = _eventDays?.ToList() ?? new List<EventDayListDto>(),
+            EventAgendaItems = _eventAgendaItems?.ToList() ?? new List<EventAgendaItemListDto>(),
+            SessionAgendaItems = _agendaItems?.ToList() ?? new List<EventSessionAgendaItemListDto>(),
             Appearance = _appearance
         };
     }
@@ -218,31 +229,101 @@ public partial class EventDetail : ComponentBase
         public EventSessionListDto? PrimarySession { get; init; }
         public EventIslamicAspectDto? IslamicAspect { get; init; }
         public EventTechAspectDto? TechAspect { get; init; }
+        public List<EventDayListDto> EventDays { get; init; } = new();
+        public List<EventAgendaItemListDto> EventAgendaItems { get; init; } = new();
+        public List<EventSessionAgendaItemListDto> SessionAgendaItems { get; init; } = new();
         public AppearanceSettings? Appearance { get; init; }
     }
+
+    private static EventIslamicAspectDto? MapIslamicAspect(IslamicAspect? aspect)
+    {
+        if (aspect is null)
+        {
+            return null;
+        }
+
+        return new EventIslamicAspectDto
+        {
+            MadhabId = aspect.MadhabId,
+            MadhabName = aspect.MadhabName,
+            ReferencePrayer = aspect.ReferencePrayer,
+            PrayerTimeOffset = aspect.PrayerTimeOffset,
+            GenderMode = aspect.GenderMode,
+            GenderModeName = aspect.GenderModeName,
+            IncludesQuranRecitation = aspect.IncludesQuranRecitation,
+            PrimaryLanguageId = aspect.PrimaryLanguageId,
+            PrimaryLanguageName = aspect.PrimaryLanguageName
+        };
+    }
+
+    private static EventTechAspectDto? MapTechAspect(TechAspect? aspect)
+    {
+        if (aspect is null)
+        {
+            return null;
+        }
+
+        return new EventTechAspectDto
+        {
+            GithubRepoUrl = aspect.GithubRepoUrl,
+            HackathonTrack = aspect.HackathonTrack,
+            SkillLevel = aspect.SkillLevel,
+            SkillLevelName = aspect.SkillLevelName,
+            TechStackTags = aspect.TechStackTags,
+            RequiresLaptop = aspect.RequiresLaptop,
+            IsCodingCompetition = aspect.IsCodingCompetition,
+            MaxTeamSize = aspect.MaxTeamSize,
+            PrizePool = aspect.PrizePool,
+            PrizeCurrencyCode = aspect.PrizeCurrencyCode
+        };
+    }
+
+    private bool NeedsAspectFallbackLoad()
+    {
+        return ShouldLoadIslamicAspectFallback() || ShouldLoadTechAspectFallback();
+    }
+
+    private bool ShouldLoadIslamicAspectFallback() =>
+        _islamicAspect is null && HasAvailableAspect("Islamic");
+
+    private bool ShouldLoadTechAspectFallback() =>
+        _techAspect is null && HasAvailableAspect("Tech");
+
+    private bool HasAvailableAspect(string aspectName) =>
+        _eventDetails?.AvailableAspects?.Any(aspect =>
+            string.Equals(aspect, aspectName, StringComparison.OrdinalIgnoreCase)) == true;
 
     /// <summary>
     /// Loads event aspects (Islamic and Tech) for the current event.
     /// </summary>
     private async Task LoadEventAspectsAsync()
     {
-        try
+        if (ShouldLoadIslamicAspectFallback())
         {
-            var islamicTask = EventAspectService.GetIslamicAspectAsync(EventId);
-            var techTask = EventAspectService.GetTechAspectAsync(EventId);
-
-            await Task.WhenAll(islamicTask, techTask);
-
-            _islamicAspect = await islamicTask;
-            _techAspect = await techTask;
-
-            Logger.LogDebug("Loaded aspects for event {EventId}: Islamic={HasIslamic}, Tech={HasTech}",
-                EventId, _islamicAspect != null, _techAspect != null);
+            try
+            {
+                _islamicAspect = await EventAspectService.GetIslamicAspectAsync(EventId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading Islamic aspect for event {EventId}", EventId);
+            }
         }
-        catch (Exception ex)
+
+        if (ShouldLoadTechAspectFallback())
         {
-            Logger.LogError(ex, "Error loading event aspects for event {EventId}", EventId);
+            try
+            {
+                _techAspect = await EventAspectService.GetTechAspectAsync(EventId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading tech aspect for event {EventId}", EventId);
+            }
         }
+
+        Logger.LogDebug("Loaded aspects for event {EventId}: Islamic={HasIslamic}, Tech={HasTech}",
+            EventId, _islamicAspect != null, _techAspect != null);
     }
 
     private async Task LoadEventAgendaAsync()
@@ -355,12 +436,14 @@ public partial class EventDetail : ComponentBase
         {
             _canEdit = false;
             _canDelete = false;
+            _canManageTeam = false;
             return;
         }
 
         _canEdit = _eventDetails.HasHalLink("edit");
         _canDelete = _eventDetails.HasHalLink("delete");
-        Logger.LogDebug("HAL link authorization for event {EventId}: CanEdit={CanEdit}, CanDelete={CanDelete}", EventId, _canEdit, _canDelete);
+        _canManageTeam = _eventDetails.HasHalLink("team");
+        Logger.LogDebug("HAL link authorization for event {EventId}: CanEdit={CanEdit}, CanDelete={CanDelete}, CanManageTeam={CanManageTeam}", EventId, _canEdit, _canDelete, _canManageTeam);
     }
 
     /// <summary>
@@ -565,6 +648,18 @@ public partial class EventDetail : ComponentBase
             }
         }
 
+        var needsDays = allowedScopes.Contains(RegistrationPolicyHelper.ScopeDay);
+        if (needsDays && (_eventDays == null || !_eventDays.Any()) && !allowedScopes.Contains(RegistrationPolicyHelper.ScopeEvent))
+        {
+            await AccessibilityFocusService.SaveFocusAsync();
+            await DialogService.ShowMessageBoxAsync(
+                "Registration unavailable",
+                "No event days are available for this event yet.",
+                yesText: "OK");
+            await AccessibilityFocusService.RestoreFocusAsync();
+            return;
+        }
+
         await AccessibilityFocusService.SaveFocusAsync();
 
         var parameters = new DialogParameters
@@ -605,7 +700,7 @@ public partial class EventDetail : ComponentBase
         if (IsCancelledEvent()) return "Event Cancelled";
         if (_isUserRegistered) return "Already Registered";
         if (!_isAuthenticated) return "Login to Register";
-        if (_primarySession == null) return "Registration unavailable";
+        if (!HasAvailableRegistrationTarget()) return "Registration unavailable";
         return _eventDetails?.IsRegistrationRequired == true ? "Register now" : "Join us";
     }
 
@@ -614,7 +709,11 @@ public partial class EventDetail : ComponentBase
     /// </summary>
     private bool IsButtonDisabled()
     {
-        return _isCheckingRegistration || _isCancellingRegistration || _isUserRegistered || IsCancelledEvent() || _primarySession == null;
+        return _isCheckingRegistration
+            || _isCancellingRegistration
+            || _isUserRegistered
+            || IsCancelledEvent()
+            || !HasAvailableRegistrationTarget();
     }
 
     /// <summary>
@@ -623,6 +722,19 @@ public partial class EventDetail : ComponentBase
     private Color GetButtonColor()
     {
         return _isUserRegistered ? Color.Success : Color.Primary;
+    }
+
+    private bool HasAvailableRegistrationTarget()
+    {
+        if (_eventDetails is null)
+        {
+            return false;
+        }
+
+        var allowedScopes = RegistrationPolicyHelper.GetAllowedScopes(_eventDetails.RegistrationPolicyId);
+        return allowedScopes.Contains(RegistrationPolicyHelper.ScopeEvent)
+            || (allowedScopes.Contains(RegistrationPolicyHelper.ScopeDay) && _eventDays?.Any() == true)
+            || (allowedScopes.Contains(RegistrationPolicyHelper.ScopeSessionSelection) && _eventSessions?.Any() == true);
     }
 
     #region OG Metadata Helpers
@@ -1131,20 +1243,87 @@ public partial class EventDetail : ComponentBase
             : AppearanceStyleBuilder.BuildSurfaceStyle(_appearance, $"#{GetEventColor()}");
     }
 
-    private string GetDateMonth() => _eventDetails?.FirstSessionDate?.ToString("MMM") ?? "";
-    private string GetDateDay() => _eventDetails?.FirstSessionDate?.ToString("dd") ?? "";
-    private string GetDateFull() => _eventDetails?.FirstSessionDate?.ToString("dddd, MMMM d, yyyy") ?? "";
+    private string GetDateMonth() => _eventDetails?.FirstSessionDate?.ToString("MMM") ?? "TBD";
+    private string GetDateDay() => _eventDetails?.FirstSessionDate?.ToString("dd") ?? "--";
+    private string GetDateFull() => _eventDetails?.FirstSessionDate?.ToString("dddd, MMMM d, yyyy") ?? "Date to be announced";
 
     private string GetTimeRange()
     {
         if (_eventDetails == null) return string.Empty;
 
-        var start = _eventDetails.FirstSessionDate?.ToString("d") ?? "";
+        var start = _eventDetails.FirstSessionDate?.ToString("d") ?? "Schedule pending";
         if (_eventDetails.LastSessionDate.HasValue && _eventDetails.LastSessionDate.Value != _eventDetails.FirstSessionDate)
         {
             var end = _eventDetails.LastSessionDate.Value.ToString("d");
             return $"{start} - {end}";
         }
         return start;
+    }
+
+    private bool IsDigitalEvent() =>
+        string.Equals(_eventDetails?.EventFormatMasterCode, "DIGITAL", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsHybridEvent() =>
+        string.Equals(_eventDetails?.EventFormatMasterCode, "HYBRID", StringComparison.OrdinalIgnoreCase);
+
+    private string GetLocationHint()
+    {
+        if (IsDigitalEvent())
+        {
+            return "Online event";
+        }
+
+        if (IsHybridEvent())
+        {
+            return "Hybrid event";
+        }
+
+        return string.IsNullOrWhiteSpace(GetFullLocation())
+            ? "Location to be announced"
+            : "Register to see any private address details";
+    }
+
+    private string GetAudienceDisplay()
+    {
+        var gender = string.IsNullOrWhiteSpace(_eventDetails?.AudienceGenderFullName)
+            ? "All genders"
+            : _eventDetails!.AudienceGenderFullName;
+        var age = string.IsNullOrWhiteSpace(_eventDetails?.AudienceAgeFullName)
+            ? "All ages"
+            : _eventDetails!.AudienceAgeFullName;
+        return $"{gender} · {age}";
+    }
+
+    private string GetPriceDisplay()
+    {
+        if (_eventDetails?.Price is > 0)
+        {
+            return $"{_eventDetails.CurrencyCode ?? "EUR"} {_eventDetails.Price:0.##}";
+        }
+
+        return "Free";
+    }
+
+    private string GetRegistrationPolicyDisplay()
+    {
+        if (!string.IsNullOrWhiteSpace(_eventDetails?.RegistrationPolicyFullName))
+        {
+            return _eventDetails.RegistrationPolicyFullName;
+        }
+
+        return _eventDetails?.IsRegistrationRequired == true
+            ? "Registration required"
+            : "Registration optional";
+    }
+
+    private string GetProgramSummary()
+    {
+        var count = _eventDetails?.SessionCount ?? _eventSessions?.Count ?? 0;
+        return count switch
+        {
+            0 => "Program not published yet",
+            1 => "1 program item",
+            _ => $"{count} program items"
+        };
     }
 }

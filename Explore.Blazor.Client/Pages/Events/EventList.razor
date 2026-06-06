@@ -408,7 +408,7 @@
                             <div>
                                 <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Audience</MudText>
                                 <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    @_selectedEvent.AudienceGenderFullName · @_selectedEvent.AudienceAgeFullName
+                                    @GetAudienceText(_selectedEvent)
                                 </MudText>
                             </div>
                         </div>
@@ -461,6 +461,36 @@
                                     <div>
                                         <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Madhab</MudText>
                                         <MudText Typo="Typo.body2" Color="Color.Secondary">@_selectedEventDetail.MadhabFullName</MudText>
+                                    </div>
+                                </div>
+                            }
+
+                            @if (_selectedEventDetail != null)
+                            {
+                                <div class="d-flex gap-3 align-center">
+                                    <MudIcon Icon="@Icons.Material.Outlined.EventNote" Color="Color.Primary" Size="Size.Small" />
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Program</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@GetProgramCountText(_selectedEventDetail, _selectedEventSessions)</MudText>
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(_selectedEventDetail.Timezone))
+                                {
+                                    <div class="d-flex gap-3 align-center">
+                                        <MudIcon Icon="@Icons.Material.Outlined.Language" Color="Color.Primary" Size="Size.Small" />
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Timezone</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">@_selectedEventDetail.Timezone</MudText>
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="d-flex gap-3 align-center">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Rule" Color="Color.Primary" Size="Size.Small" />
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Registration policy</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@GetRegistrationPolicyText(_selectedEventDetail)</MudText>
                                     </div>
                                 </div>
                             }
@@ -535,7 +565,7 @@
                         <MudDivider Class="mb-4" />
                         <div class="d-flex align-center justify-space-between mb-2">
                             <MudText Typo="Typo.overline" Style="font-weight: 600;">TAGS</MudText>
-                            @if (_selectedEvent.HasManagementLinks())
+                            @if (CanManageSelectedEvent)
                             {
                                 <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
                                                OnClick="@OpenTagManagement"
@@ -564,7 +594,7 @@
                         <MudDivider Class="mb-4" />
                         <div class="d-flex align-center justify-space-between mb-2">
                             <MudText Typo="Typo.overline" Style="font-weight: 600;">CATEGORIES</MudText>
-                            @if (_selectedEvent.HasManagementLinks())
+                            @if (CanManageSelectedEvent)
                             {
                                 <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
                                                OnClick="@OpenCategoryManagement"
@@ -599,8 +629,8 @@
                             {
                                 <div class="mb-2">
                                     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                                             Color="@(_selectedEventDetail.EventFormatMasterCode == "Digital" ? Color.Info : _selectedEventDetail.EventFormatMasterCode == "Hybrid" ? Color.Tertiary : Color.Default)"
-                                             Icon="@(_selectedEventDetail.EventFormatMasterCode == "Digital" ? Icons.Material.Filled.Videocam : _selectedEventDetail.EventFormatMasterCode == "Hybrid" ? Icons.Material.Filled.Devices : Icons.Material.Filled.LocationOn)">
+                                             Color="@GetFormatColor(_selectedEventDetail)"
+                                             Icon="@GetFormatIcon(_selectedEventDetail)">
                                         @_selectedEventDetail.EventFormatFullName
                                     </MudChip>
                                 </div>

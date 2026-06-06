@@ -3,8 +3,8 @@ using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Models.EventSessions;
-using Explore.Blazor.Client.Pages.Events.Models;
 using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Pages.Events.Models;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 

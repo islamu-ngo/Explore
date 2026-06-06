@@ -1,0 +1,122 @@
+@* ABOUTME: Dialog for assigning a role to a user via preset selection for event team management. *@
+@* ABOUTME: Uses preset labels only — never exposes RoleScopeEnum, security internals, or claim inspection. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using MudBlazor
+@inject IEventTeamService EventTeamService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField Variant="Variant.Outlined" T="string" @bind-Value="_userEmail"
+                       Label="User email" Required="true" RequiredError="Email is required"
+                       InputType="InputType.Email" Class="mb-4" />
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Select a role</MudText>
+        @if (_presets.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="rounded-lg">
+                No roles are currently assignable for this event.
+            </MudAlert>
+        }
+        else
+        {
+            @foreach (var preset in _presets)
+            {
+                <MudPaper Elevation="0"
+                          Class="@GetPresetCardClass(preset)"
+                          @onclick="() => SelectPreset(preset)">
+                    <div class="d-flex align-center justify-space-between gap-3">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@preset.FullName</MudText>
+                            @if (!string.IsNullOrEmpty(preset.Description))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@preset.Description</MudText>
+                            }
+                        </div>
+                        @if (SelectedPreset == preset)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" />
+                        }
+                    </div>
+                </MudPaper>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(_userEmail) || SelectedPreset == null)">
+            Assign
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public List<EventRolePresetDto> Presets { get; set; } = [];
+
+    private string _userEmail = "";
+    private EventRolePresetDto? SelectedPreset { get; set; }
+    private List<EventRolePresetDto> _presets = [];
+
+    protected override void OnInitialized()
+    {
+        _presets = Presets;
+    }
+
+    private void SelectPreset(EventRolePresetDto preset)
+    {
+        SelectedPreset = preset;
+    }
+
+    private string GetPresetCardClass(EventRolePresetDto preset)
+    {
+        var selectedClass = SelectedPreset == preset
+            ? "border-primary mud-border-primary"
+            : "mud-border-lines-default";
+
+        return $"pa-3 mb-2 cursor-pointer border-solid border-1 rounded-lg {selectedClass}";
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_userEmail) || SelectedPreset == null)
+        {
+            Snackbar.Add("Email and role are required", Severity.Warning);
+            return;
+        }
+
+         try
+         {
+            if (SelectedPreset.RoleId is null)
+            {
+                Snackbar.Add("Selected role is invalid", Severity.Warning);
+                return;
+            }
+
+            var response = await EventTeamService.AssignRoleAsync(
+                EventId,
+                _userEmail.Trim(),
+                SelectedPreset.RoleId.Value);
+
+            if (response?.Success == true)
+            {
+                Snackbar.Add("Role assigned successfully", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add(response?.Message ?? "Error assigning role", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error assigning role: {ex.Message}", Severity.Error);
+        }
+    }
+}

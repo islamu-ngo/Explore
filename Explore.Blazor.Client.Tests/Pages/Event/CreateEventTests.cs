@@ -1,10 +1,10 @@
+using System.Reflection;
 using Blazouter.Services;
 using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Explore.Blazor.Client.Services;
 using MudBlazor;
-using System.Reflection;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 

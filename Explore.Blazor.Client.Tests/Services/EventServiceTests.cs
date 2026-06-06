@@ -423,8 +423,8 @@ public class EventServiceTests
         var expectedId = Guid.NewGuid();
         var expectedResponse = ComponentDataBuilder.SuccessResponse(expectedId);
 
-            _apiClient.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(expectedResponse);
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        .Returns(expectedResponse);
 
         // Act
         var result = await _service.CreateEventAsync(createDto);
@@ -440,8 +440,8 @@ public class EventServiceTests
     {
         // Arrange
         var createDto = ComponentDataBuilder.CreateEventRequest.Generate();
-            _apiClient.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(CreateApiException("Bad Request", 400, "Validation failed"));
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        .ThrowsAsync(CreateApiException("Bad Request", 400, "Validation failed"));
 
         // Act
         var result = await _service.CreateEventAsync(createDto);
@@ -456,8 +456,8 @@ public class EventServiceTests
         // Arrange
         var createDto = ComponentDataBuilder.CreateEventRequest.Generate();
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
-            _apiClient.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(expectedResponse);
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventDraftRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        .Returns(expectedResponse);
 
         // Act
         await _service.CreateEventAsync(createDto);

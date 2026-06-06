@@ -1,0 +1,146 @@
+@* ABOUTME: Manages event team members — displays assignments with role chips and invite/remove affordances gated by HAL links. *@
+@* ABOUTME: Embedded in EventDetail page for event-scoped operational role management. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Pages.Events.Dialogs
+@using Microsoft.AspNetCore.Components
+
+<MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden">
+    <div class="d-flex justify-space-between align-center flex-wrap gap-4 mb-4">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.Groups" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" HtmlTag="h2" Style="font-weight: 700;">Event Team</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Manage roles and access for this event</MudText>
+            </div>
+        </MudStack>
+
+        @if (_canManageTeam)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                        OnClick="OpenAssignDialog" StartIcon="@Icons.Material.Filled.PersonAdd"
+                        Class="rounded-pill">
+                Assign Role
+            </MudButton>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4 rounded-lg"
+                  ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    <div class="d-flex gap-4 mb-4 flex-wrap">
+        <MudTextField T="string" @bind-Value="_searchString"
+                      Placeholder="Search members..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Class="rounded-pill"
+                      Style="max-width: 400px;" />
+
+        <MudSelect T="int?" Label="Role" @bind-Value="_roleFilter" Variant="Variant.Outlined"
+                   Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter"
+                   Style="min-width: 180px;" Clearable="true" Class="rounded-pill">
+            @foreach (var role in RoleHelper.GetAllEventRoles())
+            {
+                <MudSelectItem Value="(int?)role.Id">@role.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </div>
+
+    <MudTable Items="@FilteredMembers" Hover="true" Loading="@_loading" Striped="true"
+              Elevation="0" Class="border-none" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Member</MudTh>
+            <MudTh>Role</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Effective</MudTh>
+            @if (HasAnyMemberActions)
+            {
+                <MudTh Style="text-align:right">Actions</MudTh>
+            }
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Member">
+                <div class="d-flex align-center gap-3">
+                    <MudAvatar Color="Color.Secondary" Size="Size.Small" Variant="Variant.Filled">
+                        @(string.IsNullOrEmpty(context.UserEmail) ? "?" : context.UserEmail.Substring(0, 1).ToUpper())
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@(context.UserFullName ?? context.UserEmail)</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.UserEmail</MudText>
+                    </div>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Role">
+                <MudChip T="string" Color="@RoleHelper.GetEventRoleColor(context.RoleId ?? 0)"
+                         Size="Size.Small" Variant="Variant.Filled">
+                    @RoleHelper.GetEventRoleName(context.RoleId ?? 0)
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsEffective == true)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">Active</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Text">Scheduled or inactive</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Effective">
+                @if (context.StartsAtUtc.HasValue)
+                {
+                    <MudText Typo="Typo.caption">
+                        @context.StartsAtUtc.Value.LocalDateTime.ToString("MMM d, yyyy")
+                    </MudText>
+                }
+            </MudTd>
+            @if (HasAnyMemberActions)
+            {
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    @if (CanRevokeMember(context))
+                    {
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                            <MudMenuItem OnClick="@(() => RevokeMember(context))"
+                                         Icon="@Icons.Material.Filled.PersonRemove"
+                                         IconColor="Color.Error">
+                                Revoke
+                            </MudMenuItem>
+                        </MudMenu>
+                    }
+                </MudTd>
+            }
+        </RowTemplate>
+        <NoRecordsContent>
+            <div class="d-flex flex-column align-center justify-center pa-8">
+                <MudIcon Icon="@Icons.Material.Filled.PeopleOutline" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.h6" Class="mt-2" Style="font-weight: 700;">No team members found</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                    @if (_canManageTeam)
+                    {
+                        <span>Assign roles to invite team members.</span>
+                    }
+                    else
+                    {
+                        <span>No team members have been assigned yet.</span>
+                    }
+                </MudText>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>

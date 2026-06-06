@@ -2,8 +2,8 @@
 // ABOUTME: Keeps session save orchestration testable while preserving page-level validation, navigation, and submit UX.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Models.EventSessions;
+using Explore.Blazor.Client.Services;
 
 namespace Explore.Blazor.Client.Pages.Events.Sessions;
 

@@ -3,16 +3,16 @@
 
 using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
-using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
-using Explore.Blazor.Client.Services.Ai;
 using Explore.Blazor.Client.Services.Accessibility;
+using Explore.Blazor.Client.Services.Ai;
 using Explore.Blazor.Client.Services.Docking;
 using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Client.Services.Lookup;
@@ -37,6 +37,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
+        services.AddBffRefitClient<IGroupApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
+        services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ICustomPropertyAdminService, CustomPropertyAdminService>();
@@ -86,6 +89,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILocationRoomService, LocationRoomService>();
         services.AddScoped<IActorService, ActorService>();
         services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
+        services.AddScoped<IEventTeamService, EventTeamService>();
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
 
         // Notification services
@@ -138,6 +142,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDockLayoutPersistence, Explore.Blazor.Client.Services.Interop.LocalStorageDockLayoutPersistence>();
 
         // User-scoped settings (auth-branching: API for authenticated, localStorage for anonymous)
+        services.AddBffRefitClient<IUserSettingsApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IUserSettingsService, UserSettingsService>();
 
         // Accessibility services (ARIA announcements + focus management)

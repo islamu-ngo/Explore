@@ -1,17 +1,18 @@
 // ABOUTME: Code-behind for the Luma-inspired Edit Event page.
 // ABOUTME: Loads existing event data, pre-fills the form, handles session management, image upload, and event update.
 
-using System.Linq;
 using System.Globalization;
+using System.Linq;
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Forms;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Helpers;
-using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Models.CustomProperties;
+using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Pages.Events.Models;
@@ -20,7 +21,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
-using Explore.Blazor.Client.Components.Forms;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
@@ -756,7 +756,7 @@ public partial class EventEdit
                 {
                     Navigation.NavigateTo(navigateToOnSuccess);
                 }
-                
+
                 _submitState.Complete();
                 return true;
             }

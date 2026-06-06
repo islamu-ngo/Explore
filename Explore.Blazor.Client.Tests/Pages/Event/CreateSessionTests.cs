@@ -1,10 +1,10 @@
+using System.Reflection;
+using System.Text.Json;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
-using Explore.Blazor.Client.Pages.Events.Sessions;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models.EventSessionGroups;
 using Explore.Blazor.Client.Models.EventSessions;
-using System.Reflection;
-using System.Text.Json;
+using Explore.Blazor.Client.Pages.Events.Sessions;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
 

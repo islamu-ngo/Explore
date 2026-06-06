@@ -121,6 +121,11 @@
     opacity: 0.5;
 }
 
+::deep .create-event__subtitle-input .mud-input-slot {
+    font-size: 1rem;
+    color: var(--mud-palette-text-secondary);
+}
+
 ::deep .create-event__timezone-btn {
     position: static !important;
     margin-bottom: var(--isl-space-2);
@@ -245,6 +250,14 @@
 
 ::deep .create-event__template-select {
     max-width: 18rem;
+}
+
+::deep .create-event__price-input {
+    max-width: 7rem;
+}
+
+::deep .create-event__currency-input {
+    max-width: 5rem;
 }
 
 ::deep .create-event__template-preview {

@@ -65,6 +65,13 @@
                                             Edit
                                         </MudMenuItem>
                                     }
+                                    @if (_canManageTeam)
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Groups"
+                                                     Href="@($"#team-section")">
+                                            Manage Team
+                                        </MudMenuItem>
+                                    }
                                     @if (_canDelete)
                                     {
                                         <MudMenuItem Icon="@Icons.Material.Filled.Delete"
@@ -76,6 +83,39 @@
                                 </MudMenu>
                             </div>
                         }
+                    </div>
+
+                    <div class="event-detail-side-panel mb-6" aria-label="Event overview">
+                        <MudText Typo="Typo.subtitle2" Class="event-detail-side-panel__title">
+                            Event overview
+                        </MudText>
+                        <div class="event-detail-side-panel__row">
+                            <span>Format</span>
+                            <strong>@(_eventDetails.EventFormatFullName ?? "Event")</strong>
+                        </div>
+                        <div class="event-detail-side-panel__row">
+                            <span>Program</span>
+                            <strong>@GetProgramSummary()</strong>
+                        </div>
+                        <div class="event-detail-side-panel__row">
+                            <span>Registration</span>
+                            <strong>@GetRegistrationPolicyDisplay()</strong>
+                        </div>
+                        <div class="event-detail-side-panel__row">
+                            <span>Price</span>
+                            <strong>@GetPriceDisplay()</strong>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(_eventDetails.Timezone))
+                        {
+                            <div class="event-detail-side-panel__row">
+                                <span>Timezone</span>
+                                <strong>@_eventDetails.Timezone</strong>
+                            </div>
+                        }
+                        <div class="event-detail-side-panel__row">
+                            <span>Visibility</span>
+                            <strong>@(_eventDetails.VisibilityTypeFullName ?? "Visible")</strong>
+                        </div>
                     </div>
 
                     @* Hosted By Section *@
@@ -229,14 +269,14 @@
                     @* Location Block *@
                     <div class="d-flex align-center gap-4 mb-10">
                         <div class="event-icon-box">
-                            <MudIcon Icon="@(_eventDetails.EventFormatMasterCode == "Digital" ? Icons.Material.Filled.Videocam : Icons.Material.Filled.LocationOn)" Class="event-icon-box--icon" />
+                            <MudIcon Icon="@(IsDigitalEvent() ? Icons.Material.Filled.Videocam : IsHybridEvent() ? Icons.Material.Filled.Devices : Icons.Material.Filled.LocationOn)" Class="event-icon-box--icon" />
                         </div>
                         <div>
                             <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.2;">
                                 @GetLocationDisplay()
                             </MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                @(_eventDetails.EventFormatMasterCode == "Digital" ? "Online Event" : "Register to See Full Address")
+                                @GetLocationHint()
                             </MudText>
                         </div>
                     </div>
@@ -283,6 +323,9 @@
                                             <MudText Typo="Typo.body1" Style="font-weight: 600;">Welcome! To join the event, please register below.</MudText>
                                             <MudText Typo="Typo.body2" Color="Color.Success" Style="font-weight: 700;">Free Registration</MudText>
                                         }
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @GetRegistrationPolicyDisplay()
+                                        </MudText>
                                     </div>
                                     
                                     <MudButton Variant="Variant.Filled" Color="GetButtonColor()"
@@ -380,8 +423,28 @@
                                     <div>
                                         <MudText Typo="Typo.body2" Color="Color.Secondary">Audience</MudText>
                                         <MudText Typo="Typo.body1" Style="font-weight: 600;">
-                                            @(_eventDetails.AudienceGenderFullName ?? "All") · @(_eventDetails.AudienceAgeFullName ?? "All Ages")
+                                            @GetAudienceDisplay()
                                         </MudText>
+                                    </div>
+                                </div>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <div class="d-flex align-center gap-3">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Rule" Color="Color.Secondary" />
+                                    <div>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">Registration policy</MudText>
+                                        <MudText Typo="Typo.body1" Style="font-weight: 600;">@GetRegistrationPolicyDisplay()</MudText>
+                                    </div>
+                                </div>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <div class="d-flex align-center gap-3">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Payments" Color="Color.Secondary" />
+                                    <div>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">Pricing</MudText>
+                                        <MudText Typo="Typo.body1" Style="font-weight: 600;">@GetPriceDisplay()</MudText>
                                     </div>
                                 </div>
                             </MudItem>
@@ -545,6 +608,15 @@
                                 @* Multiple sessions: use existing session manager *@
                                 <EventSessionManager EventId="EventId" ShowRegisterButton="false" />
                             }
+                        </section>
+                    }
+
+                    @if (_canManageTeam)
+                    {
+                        <section class="mb-12">
+                    <section id="team-section">
+                        <EventTeamManager EventId="EventId" CanManageTeam="_canManageTeam" />
+                    </section>
                         </section>
                     }
 

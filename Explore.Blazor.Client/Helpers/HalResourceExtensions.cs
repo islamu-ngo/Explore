@@ -731,6 +731,9 @@ public static class HalResourceExtensions
     public static bool HasHalLink(this ActorSubscriptionListDto dto, string linkRel)
         => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
+    public static bool HasHalLink(this EventTeamMemberDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
     public static bool HasLink(this HalResourceOfActorSubscriptionDto dto, string linkRel)
         => dto._links?.ContainsKey(linkRel) == true;
 

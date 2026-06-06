@@ -2,9 +2,9 @@
 // ABOUTME: Covers program-section assignment and unassignment without rendering Razor pages.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Models.EventSessions;
 using Explore.Blazor.Client.Pages.Events.Sessions;
+using Explore.Blazor.Client.Services;
 using NSubstitute;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;

@@ -2,6 +2,7 @@
 // ABOUTME: Handles publisher selection, inline image upload, description dialog, session management, and event creation.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Forms;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.EventTemplates;
 using Explore.Blazor.Client.Helpers;
@@ -12,7 +13,6 @@ using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using MudBlazor;
-using Explore.Blazor.Client.Components.Forms;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
@@ -60,7 +60,7 @@ public partial class CreateEvent : IDisposable
 
     // Form state
     private Guid? _currentUserId;
-private CreateEventDraftRequestDto createDto = new();
+    private CreateEventDraftRequestDto createDto = new();
     private EditContext _editContext = default!;
     private FormSubmitState _submitState = new();
     private ServerValidationErrorStore _errorStore = new();
@@ -132,6 +132,8 @@ private CreateEventDraftRequestDto createDto = new();
     private string AudienceSummary => BuildAudienceSummary();
     private string RegistrationSummary => BuildRegistrationSummary();
     private string EventTypeSummary => GetLookupName(eventTypes, createDto.EventTypeId) ?? "Select event type";
+    private string PricingSummary => BuildPricingSummary();
+    private string MadhabSummary => GetLookupName(madhabs, selectedMadhabId) ?? "No madhab set";
     private List<string> SelectedCategoryNames => GetSelectedNames(allCategories, selectedCategoryIds);
     private List<string> SelectedTagNames => GetSelectedNames(allTags, selectedTagIds);
     private string CategoriesSummary => SelectedCategoryNames.Count == 0 ? "No categories selected" : string.Join(", ", SelectedCategoryNames);
@@ -224,6 +226,16 @@ private CreateEventDraftRequestDto createDto = new();
         return $"{policy} · Capacity set per session";
     }
 
+    private string BuildPricingSummary()
+    {
+        if (createDto.Price is > 0)
+        {
+            return $"{createDto.CurrencyCode ?? "EUR"} {createDto.Price:0.##}";
+        }
+
+        return "Free event";
+    }
+
     private static string? GetLookupName(IEnumerable<VisibilityTypeListDto>? items, int? selectedId) =>
         items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
 
@@ -237,6 +249,9 @@ private CreateEventDraftRequestDto createDto = new();
         items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
 
     private static string? GetLookupName(IEnumerable<EventTypeListDto>? items, int? selectedId) =>
+        items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
+
+    private static string? GetLookupName(IEnumerable<MadhabListDto>? items, int? selectedId) =>
         items?.FirstOrDefault(item => item.Id == selectedId)?.FullName;
 
     private static List<string> GetSelectedNames(IEnumerable<CategoryListDto>? items, IReadOnlyCollection<Guid> selectedIds) =>
@@ -887,9 +902,9 @@ private CreateEventDraftRequestDto createDto = new();
             Logger.LogError(ex, "Failed to load event templates for event type {EventTypeId}", eventTypeId);
             if (IsCurrentTemplateListRequest(requestVersion, eventTypeId))
             {
-            eventTemplates = Array.Empty<EventTemplateListModel>();
-            _templateLoadError = "Event templates could not be loaded. You can still create a vanilla event.";
-        }
+                eventTemplates = Array.Empty<EventTemplateListModel>();
+                _templateLoadError = "Event templates could not be loaded. You can still create a vanilla event.";
+            }
         }
         finally
         {
@@ -1147,7 +1162,7 @@ private CreateEventDraftRequestDto createDto = new();
                 createDto.GroupId);
             var response = await EventService.CreateEventAsync(createDto);
 
-        if (response?.Success == true && response.Id.HasValue && response.Id != Guid.Empty)
+            if (response?.Success == true && response.Id.HasValue && response.Id != Guid.Empty)
             {
                 _submitState.Complete();
                 createdEventId = response.Id.Value;
@@ -1159,11 +1174,11 @@ private CreateEventDraftRequestDto createDto = new();
                     return;
                 }
 
-        if (intent == CreateEventSubmitIntent.SaveDraftAndAddSession)
-        {
-            Navigation.NavigateTo($"/events/{createdEventId}/sessions/create");
-            return;
-        }
+                if (intent == CreateEventSubmitIntent.SaveDraftAndAddSession)
+                {
+                    Navigation.NavigateTo($"/events/{createdEventId}/sessions/create");
+                    return;
+                }
 
                 await ReviewAndPublishDraftAsync(createdEventId);
             }
@@ -1377,5 +1392,16 @@ private CreateEventDraftRequestDto createDto = new();
     {
         createDto.CategoryIds = selectedCategoryIds.ToList();
         createDto.TagIds = selectedTagIds.ToList();
+        if (createDto.Price is > 0)
+        {
+            createDto.CurrencyCode = string.IsNullOrWhiteSpace(createDto.CurrencyCode)
+                ? "EUR"
+                : createDto.CurrencyCode.Trim().ToUpperInvariant();
+        }
+        else
+        {
+            createDto.Price = null;
+            createDto.CurrencyCode = null;
+        }
     }
 }
