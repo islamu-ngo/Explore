@@ -433,6 +433,20 @@ public partial class EventService : IEventService
 
             return await _apiClient.CreateEventAsync(request);
         }
+        catch (ApiException<BaseCommandResponseOfGuid> ex)
+        {
+            _logger.LogWarning(ex, "Event creation rejected by API validation");
+            return ex.Result;
+        }
+        catch (ApiException<ProblemDetails> ex)
+        {
+            _logger.LogWarning(ex, "Event creation rejected with problem details");
+            return new BaseCommandResponseOfGuid
+            {
+                Success = false,
+                Message = ex.Result?.Detail ?? ex.Result?.Title ?? "Event could not be created."
+            };
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating event");

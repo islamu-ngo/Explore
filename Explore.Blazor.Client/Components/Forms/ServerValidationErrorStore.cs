@@ -1,6 +1,6 @@
+using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components.Forms;
-using System.Text.Json;
 
 namespace Explore.Blazor.Client.Components.Forms;
 
@@ -13,10 +13,10 @@ public class ServerValidationErrorStore
     {
         _editContext = editContext;
         _messageStore = new ValidationMessageStore(_editContext);
-        
+
         // Ensure errors are cleared on standard validation request
         _editContext.OnValidationRequested += (s, e) => ClearErrors();
-        _editContext.OnFieldChanged += (s, e) => 
+        _editContext.OnFieldChanged += (s, e) =>
         {
             if (_messageStore != null)
             {
