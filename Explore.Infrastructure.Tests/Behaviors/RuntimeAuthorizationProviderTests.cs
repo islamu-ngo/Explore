@@ -71,7 +71,7 @@ public class RuntimeAuthorizationProviderTests
         var runtimeProvider = new RuntimeAuthorizationProvider(
             new CerbosAuthorizationService(
                 cerbosClient,
-                new CerbosPrincipalBuilder(adminContext, machinePrincipalAccessor),
+                new CerbosPrincipalBuilder(adminContext, machinePrincipalAccessor, Substitute.For<IEventAuthoritySnapshotService>()),
                 adminContext,
                 machinePrincipalAccessor,
                 settingsResolver,
@@ -119,6 +119,35 @@ public class RuntimeAuthorizationProviderTests
 
         await Assert.That(result).IsFalse();
         await fixture.CerbosClient.Received(1).CheckResourcesAsync(Arg.Any<CheckResourcesRequest>(), Arg.Any<Metadata>());
+    }
+
+    [Test]
+    public async Task IsAllowedBatchAsync_WithInstanceCerbosMode_UsesLocalAuthorizationForAiConversations()
+    {
+        var fixture = CreateRuntimeProviderFixture();
+        fixture.AdminContext.UserId.Returns(Guid.NewGuid());
+        fixture.AdminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        fixture.SystemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
+            .Returns(CreateAuthorizationProviderSetting("cerbos"));
+
+        var results = await fixture.RuntimeProvider.IsAllowedBatchAsync(
+        [
+            new AuthorizationCheck(
+                ResourceKinds.AiConversation,
+                "GetAiConversationListQuery",
+                AuthorizationActions.AiConversations.View,
+                null),
+            new AuthorizationCheck(
+                ResourceKinds.AiConversation,
+                "CreateAiConversationCommand",
+                AuthorizationActions.AiConversations.Create,
+                null)
+        ]);
+
+        await Assert.That(results).IsEquivalentTo([true, true]);
+        await fixture.CerbosClient.DidNotReceive().CheckResourcesAsync(
+            Arg.Any<CheckResourcesRequest>(),
+            Arg.Any<Metadata>());
     }
 
     [Test]
@@ -319,7 +348,7 @@ public class RuntimeAuthorizationProviderTests
 
         var cerbosProvider = new CerbosAuthorizationService(
             cerbosClient,
-            new CerbosPrincipalBuilder(adminContext, machinePrincipalAccessor),
+            new CerbosPrincipalBuilder(adminContext, machinePrincipalAccessor, Substitute.For<IEventAuthoritySnapshotService>()),
             adminContext,
             machinePrincipalAccessor,
             settingsResolver,

@@ -160,6 +160,11 @@ public static class LinkRelations
     public const string Members = "members";
 
     /// <summary>
+    /// Team members with operational roles for an event.
+    /// </summary>
+    public const string Team = "team";
+
+    /// <summary>
     /// Registration action for an event or session.
     /// </summary>
     public const string Registration = "registration";

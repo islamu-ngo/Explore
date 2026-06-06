@@ -7,6 +7,7 @@ using Cerbos.Sdk.Builder;
 using Cerbos.Sdk.Response;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Settings;
 using Explore.Infrastructure.Services;
 using Grpc.Core;
@@ -258,7 +259,7 @@ public class CerbosAuthorizationServiceTests
     {
         return new CerbosAuthorizationService(
             _cerbosClient,
-            new CerbosPrincipalBuilder(_adminContext, _machinePrincipalAccessor),
+            new CerbosPrincipalBuilder(_adminContext, _machinePrincipalAccessor, Substitute.For<IEventAuthoritySnapshotService>()),
             _adminContext,
             _machinePrincipalAccessor,
             _settingsResolver,

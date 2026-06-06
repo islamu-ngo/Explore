@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for event_day resources.
-# Event days are org-scoped: org admins manage days for their events.
+# Event days are event-scoped child resources governed by event operational roles.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -30,6 +30,18 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_org_admin
+
+    # Event owners can manage days for their event
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_event_owner
+
+    # Event managers can manage days for their event
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_event_manager
 
     # All authenticated users can view event days
     - actions: ["view"]

@@ -97,4 +97,34 @@ public class EventRoleAssignmentRepository : GenericRepository<EventRoleAssignme
                 (a.ExpiresAtUtc == null || a.ExpiresAtUtc > utcNow),
                 cancellationToken);
     }
+
+    public async Task<IReadOnlyList<EventRoleAssignment>> GetTeamMembersForEventAsync(
+        Guid tenantId,
+        Guid eventId,
+        bool includeInactive,
+        CancellationToken cancellationToken)
+    {
+        var utcNow = DateTime.UtcNow;
+
+        var query = _dbContext.EventRoleAssignments
+            .AsNoTracking()
+            .Include(a => a.User)
+                .ThenInclude(u => u.Pii)
+            .Include(a => a.Role)
+            .Where(a => a.TenantId == tenantId && a.EventId == eventId);
+
+        if (!includeInactive)
+        {
+            query = query.Where(a =>
+                a.Status == EventRoleAssignmentStatus.Active &&
+                a.StartsAtUtc <= utcNow &&
+                (a.ExpiresAtUtc == null || a.ExpiresAtUtc > utcNow));
+        }
+
+        return await query
+            .OrderBy(a => a.RoleId)
+            .ThenBy(a => a.User.Pii.FirstName)
+            .ThenBy(a => a.User.Pii.LastName)
+            .ToListAsync(cancellationToken);
+    }
 }

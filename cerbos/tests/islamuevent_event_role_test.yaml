@@ -1,0 +1,488 @@
+# ABOUTME: Cerbos policy test suite for event-scoped operational role derived roles.
+# Tests same-event access, cross-event isolation, missing event context denial, and event-family resource coverage.
+
+name: EventRolePolicyTests
+description: "Validates event-role derived roles across event-family resources"
+
+principals:
+  event_owner:
+    id: "user-event-owner"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments:
+        "event-1":
+          tenantId: "tenant-1"
+          roles: ["event.owner"]
+          permissions:
+            - "event:update"
+            - "event:delete"
+            - "event:publish"
+            - "event:manage-team"
+            - "event:manage-owner"
+            - "event:transfer-ownership"
+            - "event:manage-finance"
+            - "event_session:create"
+            - "event_session:update"
+            - "event_session:delete"
+            - "event_day:create"
+            - "event_day:update"
+            - "event_day:delete"
+            - "event_agenda_item:create"
+            - "event_agenda_item:update"
+            - "event_agenda_item:delete"
+            - "event_registration:view"
+            - "event_registration:manage"
+
+  event_manager:
+    id: "user-event-manager"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments:
+        "event-1":
+          tenantId: "tenant-1"
+          roles: ["event.manager"]
+          permissions:
+            - "event:update"
+            - "event:publish"
+            - "event_session:create"
+            - "event_session:update"
+            - "event_session:delete"
+            - "event_day:create"
+            - "event_day:update"
+            - "event_day:delete"
+            - "event_agenda_item:create"
+            - "event_agenda_item:update"
+            - "event_agenda_item:delete"
+            - "event_registration:view"
+            - "event_registration:manage"
+
+  registration_manager:
+    id: "user-registration-manager"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments:
+        "event-1":
+          tenantId: "tenant-1"
+          roles: ["event.registration_manager"]
+          permissions: ["event_registration:view", "event_registration:manage"]
+
+  check_in_staff:
+    id: "user-check-in-staff"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments:
+        "event-1":
+          tenantId: "tenant-1"
+          roles: ["event.check_in_staff"]
+          permissions: ["event_check_in:view", "event_check_in:manage"]
+
+  regular_user:
+    id: "user-regular"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+
+  other_event_owner:
+    id: "user-other-event-owner"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments:
+        "event-other":
+          tenantId: "tenant-1"
+          roles: ["event.owner"]
+          permissions: ["event:update", "event:delete", "event:manage-team"]
+
+  no_effective_event_assignment:
+    id: "user-no-effective-event-assignment"
+    roles: ["islamuevent_authenticated_user"]
+    attr:
+      isInstanceAdmin: false
+      tenantMemberships: {}
+      orgMemberships: {}
+      eventAssignments: {}
+
+resources:
+  event_1:
+    kind: "islamuevent_event"
+    id: "event-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      actorId: "actor-1"
+      organizationId: "org-1"
+
+  event_missing_event_id:
+    kind: "islamuevent_event"
+    id: "event-missing-event-id"
+    attr:
+      tenantId: "tenant-1"
+      actorId: "actor-1"
+      organizationId: "org-1"
+
+  event_other:
+    kind: "islamuevent_event"
+    id: "event-other"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-other"
+      actorId: "actor-2"
+      organizationId: "org-1"
+
+  event_1_tenant_2:
+    kind: "islamuevent_event"
+    id: "event-1-tenant-2"
+    attr:
+      tenantId: "tenant-2"
+      eventId: "event-1"
+      actorId: "actor-tenant-2"
+      organizationId: "org-2"
+
+  event_session_1:
+    kind: "islamuevent_event_session"
+    id: "session-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      organizationId: "org-1"
+
+  event_session_group_1:
+    kind: "islamuevent_event_session_group"
+    id: "session-group-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      organizationId: "org-1"
+
+  event_day_1:
+    kind: "islamuevent_event_day"
+    id: "event-day-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      organizationId: "org-1"
+
+  event_agenda_item_1:
+    kind: "islamuevent_event_agenda_item"
+    id: "event-agenda-item-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      organizationId: "org-1"
+
+  event_session_agenda_item_1:
+    kind: "islamuevent_event_session_agenda_item"
+    id: "event-session-agenda-item-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      eventSessionId: "session-1"
+      organizationId: "org-1"
+
+  event_registration_1:
+    kind: "islamuevent_event_registration"
+    id: "reg-1"
+    attr:
+      tenantId: "tenant-1"
+      eventId: "event-1"
+      eventSessionId: "session-1"
+      userId: "user-attendee"
+      organizationId: "org-1"
+
+tests:
+  - name: "Event owner can manage event-owner-only event actions"
+    input:
+      principals: ["event_owner"]
+      resources: ["event_1"]
+      actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
+    expected:
+      - principal: "event_owner"
+        resource: "event_1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+          publish: EFFECT_ALLOW
+          manage-team: EFFECT_ALLOW
+          manage-owner: EFFECT_ALLOW
+          transfer-ownership: EFFECT_ALLOW
+          manage-finance: EFFECT_ALLOW
+
+  - name: "Event manager can update and publish but cannot manage ownership or finance"
+    input:
+      principals: ["event_manager"]
+      resources: ["event_1"]
+      actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
+    expected:
+      - principal: "event_manager"
+        resource: "event_1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_DENY
+          publish: EFFECT_ALLOW
+          manage-team: EFFECT_DENY
+          manage-owner: EFFECT_DENY
+          transfer-ownership: EFFECT_DENY
+          manage-finance: EFFECT_DENY
+
+  - name: "Event owner can manage every event-family child resource for their event"
+    input:
+      principals: ["event_owner"]
+      resources: ["event_session_1", "event_session_group_1", "event_day_1", "event_agenda_item_1", "event_session_agenda_item_1"]
+      actions: ["view", "create", "update", "delete"]
+    expected:
+      - principal: "event_owner"
+        resource: "event_session_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+      - principal: "event_owner"
+        resource: "event_session_group_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+      - principal: "event_owner"
+        resource: "event_day_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+      - principal: "event_owner"
+        resource: "event_agenda_item_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+      - principal: "event_owner"
+        resource: "event_session_agenda_item_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+
+  - name: "Event manager can manage event-program child resources for their event"
+    input:
+      principals: ["event_manager"]
+      resources: ["event_session_1", "event_session_group_1", "event_day_1", "event_agenda_item_1", "event_session_agenda_item_1"]
+      actions: ["view", "create", "update", "delete"]
+    expected:
+      - principal: "event_manager"
+        resource: "event_session_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+      - principal: "event_manager"
+        resource: "event_session_group_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+      - principal: "event_manager"
+        resource: "event_day_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+      - principal: "event_manager"
+        resource: "event_agenda_item_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+      - principal: "event_manager"
+        resource: "event_session_agenda_item_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+
+  - name: "Registration manager can manage registrations but not event or program resources"
+    input:
+      principals: ["registration_manager"]
+      resources: ["event_1", "event_session_1", "event_registration_1"]
+      actions: ["view", "update", "delete"]
+    expected:
+      - principal: "registration_manager"
+        resource: "event_1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+      - principal: "registration_manager"
+        resource: "event_session_1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+      - principal: "registration_manager"
+        resource: "event_registration_1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_DENY
+
+  - name: "Event owner can manage registrations for their event"
+    input:
+      principals: ["event_owner"]
+      resources: ["event_registration_1"]
+      actions: ["view", "update", "delete"]
+    expected:
+      - principal: "event_owner"
+        resource: "event_registration_1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+
+  - name: "Regular user without event assignments can only view public event resources"
+    input:
+      principals: ["regular_user"]
+      resources: ["event_1", "event_session_1", "event_registration_1"]
+      actions: ["view", "create", "update", "delete"]
+    expected:
+      - principal: "regular_user"
+        resource: "event_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_DENY
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+      - principal: "regular_user"
+        resource: "event_session_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_DENY
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+      - principal: "regular_user"
+        resource: "event_registration_1"
+        actions:
+          view: EFFECT_ALLOW
+          create: EFFECT_ALLOW
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+
+  - name: "Event assignments are scoped to the same event id"
+    input:
+      principals: ["event_owner", "other_event_owner"]
+      resources: ["event_1", "event_other"]
+      actions: ["update", "delete", "manage-team"]
+    expected:
+      - principal: "event_owner"
+        resource: "event_1"
+        actions:
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+          manage-team: EFFECT_ALLOW
+      - principal: "event_owner"
+        resource: "event_other"
+        actions:
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+          manage-team: EFFECT_DENY
+      - principal: "other_event_owner"
+        resource: "event_1"
+        actions:
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+          manage-team: EFFECT_DENY
+      - principal: "other_event_owner"
+        resource: "event_other"
+        actions:
+          update: EFFECT_ALLOW
+          delete: EFFECT_ALLOW
+          manage-team: EFFECT_ALLOW
+
+  - name: "Event assignments do not grant other-tenant resources without matching hydrated event context"
+    input:
+      principals: ["event_owner"]
+      resources: ["event_1_tenant_2"]
+      actions: ["update", "delete", "manage-team"]
+    expected:
+      - principal: "event_owner"
+        resource: "event_1_tenant_2"
+        actions:
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+          manage-team: EFFECT_DENY
+
+  - name: "Missing eventId prevents event-role derived roles from matching"
+    input:
+      principals: ["event_owner"]
+      resources: ["event_missing_event_id"]
+      actions: ["update", "delete", "manage-team"]
+    expected:
+      - principal: "event_owner"
+        resource: "event_missing_event_id"
+        actions:
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+          manage-team: EFFECT_DENY
+
+  - name: "Revoked expired pending or otherwise ineffective assignments are absent from the payload"
+    input:
+      principals: ["no_effective_event_assignment"]
+      resources: ["event_1", "event_registration_1"]
+      actions: ["update", "delete", "manage-team"]
+    expected:
+      - principal: "no_effective_event_assignment"
+        resource: "event_1"
+        actions:
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+          manage-team: EFFECT_DENY
+      - principal: "no_effective_event_assignment"
+        resource: "event_registration_1"
+        actions:
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+          manage-team: EFFECT_DENY
+
+  - name: "Check-in staff does not receive event-management or registration-management grants"
+    input:
+      principals: ["check_in_staff"]
+      resources: ["event_1", "event_registration_1"]
+      actions: ["view", "update", "delete"]
+    expected:
+      - principal: "check_in_staff"
+        resource: "event_1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_DENY
+          delete: EFFECT_DENY
+      - principal: "check_in_staff"
+        resource: "event_registration_1"
+        actions:
+          view: EFFECT_ALLOW
+          update: EFFECT_DENY
+          delete: EFFECT_DENY

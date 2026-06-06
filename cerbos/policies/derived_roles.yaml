@@ -43,3 +43,68 @@ derivedRoles:
           expr: >
             has(request.resource.attr.organizationId) &&
             request.resource.attr.organizationId in request.principal.attr.orgMemberships
+
+    # ========================================
+    # EVENT-SCOPED DERIVED ROLES
+    # ========================================
+    # These check principal.attr.eventAssignments[resource.attr.eventId].roles
+    # for the relevant role master code. The eventAssignments map is hydrated
+    # on demand by CerbosPrincipalBuilder.EnrichWithEventAssignmentsAsync.
+    # Role codes: event.owner, event.manager, event.registration_manager, event.check_in_staff
+
+    - name: islamuevent_event_owner
+      parentRoles: ["islamuevent_authenticated_user"]
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.eventId) &&
+            has(request.resource.attr.tenantId) &&
+            has(request.principal.attr.eventAssignments) &&
+            request.resource.attr.eventId in request.principal.attr.eventAssignments &&
+            has(request.principal.attr.eventAssignments[request.resource.attr.eventId].tenantId) &&
+            request.principal.attr.eventAssignments[request.resource.attr.eventId].tenantId == request.resource.attr.tenantId &&
+            "event.owner" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles
+
+    - name: islamuevent_event_manager
+      parentRoles: ["islamuevent_authenticated_user"]
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.eventId) &&
+            has(request.resource.attr.tenantId) &&
+            has(request.principal.attr.eventAssignments) &&
+            request.resource.attr.eventId in request.principal.attr.eventAssignments &&
+            has(request.principal.attr.eventAssignments[request.resource.attr.eventId].tenantId) &&
+            request.principal.attr.eventAssignments[request.resource.attr.eventId].tenantId == request.resource.attr.tenantId &&
+            ("event.owner" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles ||
+             "event.manager" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles)
+
+    - name: islamuevent_registration_manager
+      parentRoles: ["islamuevent_authenticated_user"]
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.eventId) &&
+            has(request.resource.attr.tenantId) &&
+            has(request.principal.attr.eventAssignments) &&
+            request.resource.attr.eventId in request.principal.attr.eventAssignments &&
+            has(request.principal.attr.eventAssignments[request.resource.attr.eventId].tenantId) &&
+            request.principal.attr.eventAssignments[request.resource.attr.eventId].tenantId == request.resource.attr.tenantId &&
+            ("event.owner" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles ||
+             "event.manager" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles ||
+             "event.registration_manager" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles)
+
+    - name: islamuevent_check_in_staff
+      parentRoles: ["islamuevent_authenticated_user"]
+      condition:
+        match:
+          expr: >
+            has(request.resource.attr.eventId) &&
+            has(request.resource.attr.tenantId) &&
+            has(request.principal.attr.eventAssignments) &&
+            request.resource.attr.eventId in request.principal.attr.eventAssignments &&
+            has(request.principal.attr.eventAssignments[request.resource.attr.eventId].tenantId) &&
+            request.principal.attr.eventAssignments[request.resource.attr.eventId].tenantId == request.resource.attr.tenantId &&
+            ("event.owner" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles ||
+             "event.manager" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles ||
+             "event.check_in_staff" in request.principal.attr.eventAssignments[request.resource.attr.eventId].roles)

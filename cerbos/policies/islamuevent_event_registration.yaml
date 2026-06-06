@@ -31,6 +31,24 @@ resourcePolicy:
       derivedRoles:
         - islamuevent_org_admin
 
+    # Event owners can manage registrations for their event
+    - actions: ["view", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_event_owner
+
+    # Event managers can view and update registrations for their event
+    - actions: ["view", "update"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_event_manager
+
+    # Registration managers can view and update registrations for their event
+    - actions: ["view", "update"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_registration_manager
+
     # All authenticated users can create registrations (register for events)
     - actions: ["create", "view"]
       effect: EFFECT_ALLOW

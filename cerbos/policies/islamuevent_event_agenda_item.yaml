@@ -1,5 +1,5 @@
 # ABOUTME: Cerbos resource policy for event_agenda_item resources.
-# Event-level agenda items are org-scoped: org admins manage timeline blocks for their events.
+# Event-level agenda items are event-scoped child resources governed by event operational roles.
 
 apiVersion: api.cerbos.dev/v1
 resourcePolicy:
@@ -30,6 +30,18 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_org_admin
+
+    # Event owners can manage agenda items for their event
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_event_owner
+
+    # Event managers can manage agenda items for their event
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_event_manager
 
     # All authenticated users can view event agenda items
     - actions: ["view"]

@@ -7,10 +7,14 @@
       "type": "string",
       "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
     },
+    "eventId": {
+      "type": "string",
+      "description": "Parent event identifier. Used by event-role derived roles to look up principal's event assignments."
+    },
     "organizationId": {
       "type": "string",
       "description": "Owning organization identifier. Used by islamuevent_org_admin derived role."
     }
   },
-  "required": ["tenantId"]
+  "required": ["tenantId", "eventId"]
 }

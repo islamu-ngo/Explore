@@ -50,15 +50,6 @@ public static class RouteNames
     public const string GetEventTemplateSyncDiff = "GetEventTemplateSyncDiff";
     public const string ApplyEventTemplateSync = "ApplyEventTemplateSync";
     public const string GetEventTemplateSyncHistory = "GetEventTemplateSyncHistory";
-
-    // Event Aspect Routes
-    public const string GetEventIslamicAspect = "GetEventIslamicAspect";
-    public const string UpsertEventIslamicAspect = "UpsertEventIslamicAspect";
-    public const string DeleteEventIslamicAspect = "DeleteEventIslamicAspect";
-    public const string GetEventTechAspect = "GetEventTechAspect";
-    public const string UpsertEventTechAspect = "UpsertEventTechAspect";
-    public const string DeleteEventTechAspect = "DeleteEventTechAspect";
-
     #endregion
 
     #region Event Session Routes
@@ -222,6 +213,7 @@ public static class RouteNames
     public const string CancelAiRun = "CancelAiRun";
     public const string GetPublicExperienceSettings = "GetPublicExperienceSettings";
     public const string GetPublicExperienceShell = "GetPublicExperienceShell";
+    public const string RelayAnalyticsEvent = "RelayAnalyticsEvent";
     public const string GetTranslationByLanguage = "GetTranslationByLanguage";
     public const string GetAvailableTranslationLanguages = "GetAvailableTranslationLanguages";
     public const string GetEventSeries = "GetEventSeries";
@@ -562,6 +554,29 @@ public static class RouteNames
     public const string GetFooterGovernanceSettings = "GetFooterGovernanceSettings";
     public const string UpdateFooterGovernanceSettings = "UpdateFooterGovernanceSettings";
     public const string UpdateTenantFooterSettings = "UpdateTenantFooterSettings";
+
+    #endregion
+
+    #region Event Aspect Routes
+
+    public const string GetEventIslamicAspect = "GetEventIslamicAspect";
+    public const string UpsertEventIslamicAspect = "UpsertEventIslamicAspect";
+    public const string DeleteEventIslamicAspect = "DeleteEventIslamicAspect";
+    public const string GetEventTechAspect = "GetEventTechAspect";
+    public const string UpsertEventTechAspect = "UpsertEventTechAspect";
+    public const string DeleteEventTechAspect = "DeleteEventTechAspect";
+
+    #endregion
+
+    #region Event Team Routes
+
+    public const string GetEventTeam = "GetEventTeam";
+    public const string GetEventTeamAssignablePresets = "GetEventTeamAssignablePresets";
+    public const string GetCurrentUserEventPermissions = "GetCurrentUserEventPermissions";
+    public const string AssignEventRole = "AssignEventRole";
+    public const string RevokeEventRole = "RevokeEventRole";
+    public const string UpdateEventRoleAssignmentWindow = "UpdateEventRoleAssignmentWindow";
+    public const string TransferEventOwnership = "TransferEventOwnership";
 
     #endregion
 

@@ -3,8 +3,8 @@ using Explore.Application.Caching;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
-using Explore.Application.Models.InternalEvents;
 using Explore.Application.Models.IntegrationEvents;
+using Explore.Application.Models.InternalEvents;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Domain;
@@ -136,11 +136,11 @@ public class PublishEventCommandHandler(
         string message,
         IEnumerable<string> errors,
         string? failureCode = null) => new()
-    {
-        Success = false,
-        Id = id,
-        Message = message,
-        Errors = errors.ToList(),
-        FailureCode = failureCode
-    };
+        {
+            Success = false,
+            Id = id,
+            Message = message,
+            Errors = errors.ToList(),
+            FailureCode = failureCode
+        };
 }

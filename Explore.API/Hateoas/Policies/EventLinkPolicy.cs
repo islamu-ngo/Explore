@@ -102,6 +102,14 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Create, typeof(EventSessionGroupDto), dto.Id.ToString(), eventScopedResourceAttributes);
 
+        yield return new LinkDefinition(
+            LinkRelations.Team,
+            RouteNames.GetEventTeam,
+            new { eventId = dto.Id },
+            "GET",
+            "Event team",
+            RequiresAuth: true)
+            .RequirePermission(AuthorizationActions.Events.ManageTeam, ResourceDescriptors.Event, dto);
 
         // Categories link
         yield return new LinkDefinition(

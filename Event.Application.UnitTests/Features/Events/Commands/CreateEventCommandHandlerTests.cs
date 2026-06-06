@@ -15,6 +15,7 @@ using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
@@ -58,6 +59,7 @@ public class CreateEventCommandHandlerTests
     private readonly IEventCategoriesRepository _eventCategoriesRepository;
     private readonly IEventTagsRepository _eventTagsRepository;
     private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
+    private readonly IEventRoleAssignmentRepository _eventRoleAssignmentRepository;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly HybridCache _cache;
@@ -99,6 +101,7 @@ public class CreateEventCommandHandlerTests
         _eventCategoriesRepository = Substitute.For<IEventCategoriesRepository>();
         _eventTagsRepository = Substitute.For<IEventTagsRepository>();
         _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
+        _eventRoleAssignmentRepository = Substitute.For<IEventRoleAssignmentRepository>();
         _userContext = Substitute.For<IUserContext>();
         _tenantContext = Substitute.For<ITenantContext>();
         _cache = Substitute.For<HybridCache>();
@@ -129,6 +132,7 @@ public class CreateEventCommandHandlerTests
             _eventSessionRepository,
             _eventSessionIslamicAspectRepository,
             _eventSessionLanguageRepository,
+            _eventRoleAssignmentRepository,
             _actorResolver,
             _audienceAgeRepository,
             _audienceGenderRepository,
@@ -362,6 +366,50 @@ public class CreateEventCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains("permission");
         await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());
+    }
+
+    [Test]
+    public async Task Handle_CreatesEventOwnerAssignmentForCreator()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var command = new CreateEventCommand
+        {
+            Request = new CreateEventRequest
+            {
+                Title = "Owner Test Event",
+                Subtitle = "Test Subtitle",
+                Description = "Description",
+                EventTypeId = 1,
+                AudienceGenderId = 1,
+                AudienceAgeId = 1,
+                Sessions = [CreateSessionRequest()]
+            }
+        };
+
+        _userContext.GetRequiredUserId().Returns(userId);
+        _tenantContext.TenantId.Returns(tenantId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isUserReported: true));
+
+        _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
+        _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
+        _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
+
+        _eventRoleAssignmentRepository.Create(Arg.Any<EventRoleAssignment>())
+            .Returns(callInfo => callInfo.Arg<EventRoleAssignment>());
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _eventRoleAssignmentRepository.Received(1).Create(Arg.Is<EventRoleAssignment>(a =>
+            a.UserId == userId
+            && a.RoleId == (int)RoleEnum.EventOwner
+            && a.Status == EventRoleAssignmentStatus.Active
+            && a.EventId == result.Id
+            && a.TenantId == tenantId
+            && a.ExpiresAtUtc == null));
     }
 
     private static CreateEventSessionRequest CreateSessionRequest() => new()

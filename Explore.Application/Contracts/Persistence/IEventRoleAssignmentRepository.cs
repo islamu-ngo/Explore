@@ -34,4 +34,10 @@ public interface IEventRoleAssignmentRepository : IGenericRepository<EventRoleAs
         Guid excludedAssignmentId,
         DateTime utcNow,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<EventRoleAssignment>> GetTeamMembersForEventAsync(
+        Guid tenantId,
+        Guid eventId,
+        bool includeInactive,
+        CancellationToken cancellationToken);
 }

@@ -135,11 +135,13 @@ public class MachineScopeMappingTests
         await Assert.That(MachineScopeMapping.ScopesPermit(readScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.ConfirmAction)).IsFalse();
         await Assert.That(MachineScopeMapping.ScopesPermit(readScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.RejectAction)).IsFalse();
         await Assert.That(MachineScopeMapping.ScopesPermit(readScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.CancelRun)).IsFalse();
+        await Assert.That(MachineScopeMapping.ScopesPermit(readScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.ProposeAction)).IsFalse();
         await Assert.That(MachineScopeMapping.ScopesPermit(writeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.Create)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(writeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.SendMessage)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(writeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.ConfirmAction)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(writeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.RejectAction)).IsTrue();
         await Assert.That(MachineScopeMapping.ScopesPermit(writeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.CancelRun)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(writeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.ProposeAction)).IsTrue();
     }
 
     [Test]

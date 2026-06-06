@@ -26,8 +26,8 @@ using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
-using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
+using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.User;
 
 /// <summary>

@@ -257,11 +257,11 @@ public class AuthorizationProviderConfigurationServiceTests
         var service = CreateService(repository, invalidator, cerbosConfigResolver);
 
         await Assert.That(async () => await service.ApplyConfigurationAsync(new AuthorizationProviderConfigurationDto
-            {
-                Provider = "cerbos",
-                CerbosGrpcEndpoint = "https://cerbosgrpc.example.com:443",
-                CerbosAdminEndpoint = "https://127.0.0.1:3592"
-            }))
+        {
+            Provider = "cerbos",
+            CerbosGrpcEndpoint = "https://cerbosgrpc.example.com:443",
+            CerbosAdminEndpoint = "https://127.0.0.1:3592"
+        }))
             .Throws<InvalidOperationException>();
 
         await repository.DidNotReceive().Create(Arg.Any<SystemSetting>());

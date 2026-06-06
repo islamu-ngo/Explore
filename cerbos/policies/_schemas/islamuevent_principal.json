@@ -16,6 +16,38 @@
       "type": "object",
       "description": "Map of organizationId to role string (e.g. 'admin') for organization membership checks.",
       "additionalProperties": { "type": "string" }
+    },
+    "eventAssignments": {
+      "type": "object",
+      "description": "Map of eventId to effective assignment data. Only active, non-expired assignments for the request tenant are hydrated by CerbosPrincipalBuilder.EnrichWithEventAssignmentsAsync.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "description": "Tenant identifier used to bind an event assignment to the resource tenant."
+          },
+          "roles": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true,
+            "description": "Role master codes (e.g. 'event.owner', 'event.manager')."
+          },
+          "permissions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true,
+            "description": "Permission codes (e.g. 'event:update', 'event:manage-team')."
+          }
+        },
+        "required": ["tenantId", "roles", "permissions"],
+        "additionalProperties": false
+      }
+    },
+    "nowUtc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Current UTC timestamp in ISO 8601 format for lifecycle time comparisons."
     }
   },
   "required": ["isInstanceAdmin", "tenantMemberships", "orgMemberships"]

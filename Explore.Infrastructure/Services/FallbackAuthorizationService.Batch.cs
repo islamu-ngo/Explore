@@ -121,6 +121,7 @@ public partial class FallbackAuthorizationService
             "islamuevent_user" => EvaluateUserWithProfile(profile, resourceId, action),
             "islamuevent_notification" => true,
             "islamuevent_actor_subscription" => true,
+            "islamuevent_ai_conversation" => true,
             "islamuevent_atproto_record" or "islamuevent_indexed_did" => false,
             _ => false
         };

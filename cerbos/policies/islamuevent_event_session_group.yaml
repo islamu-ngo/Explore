@@ -31,6 +31,18 @@ resourcePolicy:
       derivedRoles:
         - islamuevent_org_admin
 
+    # Event owners can manage session groups for their event
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_event_owner
+
+    # Event managers can manage session groups for their event
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_event_manager
+
     # All authenticated users can view event session groups
     - actions: ["view"]
       effect: EFFECT_ALLOW

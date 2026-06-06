@@ -10,6 +10,7 @@ using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.EventRoleAssignments.Commands;
@@ -24,6 +25,7 @@ public sealed class UpdateEventRoleAssignmentWindowCommandHandlerTests : IDispos
     private readonly IEventRoleAssignmentRepository _assignmentRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IEventRoleAuthorityCeilingService _authorityCeilingService;
+    private readonly IAuditLogRepository _auditLogRepository;
     private readonly UpdateEventRoleAssignmentWindowCommandHandler _handler;
     private readonly Meter _meter;
 
@@ -32,6 +34,7 @@ public sealed class UpdateEventRoleAssignmentWindowCommandHandlerTests : IDispos
         _assignmentRepository = Substitute.For<IEventRoleAssignmentRepository>();
         _eventRepository = Substitute.For<IEventRepository>();
         _authorityCeilingService = Substitute.For<IEventRoleAuthorityCeilingService>();
+        _auditLogRepository = Substitute.For<IAuditLogRepository>();
 
         var meterFactory = Substitute.For<IMeterFactory>();
         _meter = new Meter("test");
@@ -42,7 +45,9 @@ public sealed class UpdateEventRoleAssignmentWindowCommandHandlerTests : IDispos
             _assignmentRepository,
             _eventRepository,
             _authorityCeilingService,
-            metrics);
+            _auditLogRepository,
+            metrics,
+            Substitute.For<ILogger<UpdateEventRoleAssignmentWindowCommandHandler>>());
     }
 
     public void Dispose()
@@ -116,6 +121,11 @@ public sealed class UpdateEventRoleAssignmentWindowCommandHandlerTests : IDispos
         await Assert.That(result.FailureCode).IsEqualTo(EventRoleAuthorityFailureCodes.AuthorityCeilingExceeded);
         await Assert.That(result.Errors).Contains("The role contains permissions outside your same-event authority ceiling.");
         await _assignmentRepository.DidNotReceive().Update(Arg.Any<EventRoleAssignment>());
+        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
+            audit.TenantId == TenantId &&
+            audit.EntityId == assignment.Id.ToString() &&
+            audit.Action == "EventRoleAssignmentWindowUpdateDenied" &&
+            audit.ActorId == ActorUserId));
     }
 
     [Test]
@@ -147,6 +157,11 @@ public sealed class UpdateEventRoleAssignmentWindowCommandHandlerTests : IDispos
         await Assert.That(assignment.Version).IsEqualTo(originalVersion + 1);
         await Assert.That(assignment.UpdatedAt >= beforeHandle && assignment.UpdatedAt <= afterHandle).IsTrue();
         await _assignmentRepository.Received(1).Update(assignment);
+        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
+            audit.TenantId == TenantId &&
+            audit.EntityId == assignment.Id.ToString() &&
+            audit.Action == "EventRoleAssignmentWindowUpdated" &&
+            audit.ActorId == ActorUserId));
     }
 
     private static UpdateEventRoleAssignmentWindowCommand CreateCommand(

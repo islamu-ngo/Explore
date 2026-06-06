@@ -1,6 +1,7 @@
 // ABOUTME: Shared command helpers for event-role assignment write handlers.
 // ABOUTME: Centralizes response failure codes and same-event authority checks.
 
+using System.Text.Json;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -75,5 +76,33 @@ public abstract class EventRoleAssignmentCommandHandlerBase
         return Enum.IsDefined(typeof(RoleEnum), roleId)
             ? ((RoleEnum)roleId).ToString()
             : "unknown";
+    }
+
+    protected static async Task WriteAuditAsync(
+        IAuditLogRepository auditLogRepository,
+        Guid tenantId,
+        Guid entityId,
+        string action,
+        Guid actorUserId,
+        object? oldValues,
+        object? newValues,
+        IReadOnlyCollection<string>? affectedColumns = null)
+    {
+        var audit = new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Tenant = null!,
+            EntityType = nameof(EventRoleAssignment),
+            EntityId = entityId.ToString(),
+            Action = action,
+            OldValues = oldValues is null ? null : JsonSerializer.Serialize(oldValues),
+            NewValues = newValues is null ? null : JsonSerializer.Serialize(newValues),
+            AffectedColumns = affectedColumns is null ? null : JsonSerializer.Serialize(affectedColumns),
+            ActorId = actorUserId,
+            Timestamp = DateTime.UtcNow
+        };
+
+        await auditLogRepository.Create(audit);
     }
 }

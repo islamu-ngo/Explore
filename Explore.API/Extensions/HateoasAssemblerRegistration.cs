@@ -6,8 +6,8 @@ namespace Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.API.Hateoas.Assemblers;
 using Explore.API.Hateoas.Policies;
-using Explore.Application.Contracts.Hateoas;  // For ILinkPolicy, ICollectionLinkPolicy
 using Explore.API.Hateoas.Resources;
+using Explore.Application.Contracts.Hateoas;  // For ILinkPolicy, ICollectionLinkPolicy
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorSubscription;
 using Explore.Application.DTOs.Ai;
@@ -24,8 +24,8 @@ using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
-using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionCustomProperty;
+using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.Group;
@@ -41,8 +41,8 @@ using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
-using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.TenantSettingsDocuments;
+using Explore.Application.DTOs.TenantUserRoleGrant;
 using Explore.Application.DTOs.User;
 
 /// <summary>

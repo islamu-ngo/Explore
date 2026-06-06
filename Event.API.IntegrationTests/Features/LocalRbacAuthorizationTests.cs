@@ -16,7 +16,6 @@ using Explore.Persistence;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +23,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using NSubstitute;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -401,7 +401,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
             builder.ConfigureServices(services =>
             {
-            services.RemoveExploreDbContextRegistrations();
+                services.RemoveExploreDbContextRegistrations();
 
                 services.AddInMemoryExploreDbContext($"LocalRbacDb_{Guid.NewGuid():N}");
 

@@ -20,16 +20,28 @@ resourcePolicy:
         - islamuevent_instance_admin
 
     # Tenant admins can manage all events within their tenant
-    - actions: ["view", "create", "update", "delete"]
+    - actions: ["view", "create", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_tenant_admin
 
     # Org admins can manage events for their organization
-    - actions: ["view", "create", "update", "delete"]
+    - actions: ["view", "create", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
       effect: EFFECT_ALLOW
       derivedRoles:
         - islamuevent_org_admin
+
+    # Event owners have full control over their event
+    - actions: ["view", "update", "delete", "publish", "manage-team", "manage-owner", "transfer-ownership", "manage-finance"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_event_owner
+
+    # Event managers can edit and publish their event
+    - actions: ["view", "update", "publish"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - islamuevent_event_manager
 
     # All authenticated users can view public events
     - actions: ["view"]

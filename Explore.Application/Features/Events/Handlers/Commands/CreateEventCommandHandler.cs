@@ -1,13 +1,13 @@
 // ABOUTME: Handler for the canonical single-submit Create Event graph command.
-// ABOUTME: Validates, resolves publisher ownership, and persists event, sessions, days, rooms, agenda, and taxonomy atomically.
+// ABOUTME: Validates, resolves publisher ownership, persists event graph atomically, and creates initial EventOwner role assignment.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Explore.Application.Contracts.Identity;
 using Explore.Application.Caching;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -19,6 +19,7 @@ using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -31,6 +32,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventSessionLanguageRepository _eventSessionLanguageRepository;
+    private readonly IEventRoleAssignmentRepository _eventRoleAssignmentRepository;
     private readonly IEventActorResolver _actorResolver;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
@@ -71,6 +73,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IEventSessionRepository eventSessionRepository,
         IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
         IEventSessionLanguageRepository eventSessionLanguageRepository,
+        IEventRoleAssignmentRepository eventRoleAssignmentRepository,
         IEventActorResolver actorResolver,
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
@@ -110,6 +113,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _eventSessionRepository = eventSessionRepository;
         _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
         _eventSessionLanguageRepository = eventSessionLanguageRepository;
+        _eventRoleAssignmentRepository = eventRoleAssignmentRepository;
         _actorResolver = actorResolver;
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
@@ -180,6 +184,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             {
                 eventEntity = await _eventRepository.Create(eventEntity);
                 await AssignFeaturedImageActorAsync(dto, actorResult.ActorId);
+                await AssignInitialEventOwnerAsync(eventEntity, currentUserId, ct);
 
                 var dayMaps = await CreateEventDaysAsync(dto, eventEntity, timezoneId, ct);
                 var roomMap = await CreateRoomsAsync(dto, ct);
@@ -303,6 +308,24 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
         storageObject.ActorId = actorId;
         await _storageObjectRepository.Update(storageObject);
+    }
+
+    private async Task AssignInitialEventOwnerAsync(
+        Explore.Domain.Event eventEntity,
+        Guid creatorUserId,
+        CancellationToken ct)
+    {
+        var assignment = EventRoleAssignment.Create(
+            eventEntity.TenantId,
+            eventEntity.Id,
+            creatorUserId,
+            (int)RoleEnum.EventOwner,
+            EventRoleAssignmentStatus.Active,
+            DateTime.UtcNow,
+            expiresAtUtc: null,
+            createdByUserId: creatorUserId);
+
+        await _eventRoleAssignmentRepository.Create(assignment);
     }
 
     private async Task<(Dictionary<string, EventDay> ByKey, Dictionary<DateOnly, EventDay> ByDate)> CreateEventDaysAsync(

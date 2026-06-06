@@ -11,6 +11,7 @@ using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.EventRoleAssignments.Commands;
@@ -28,6 +29,7 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
     private readonly IEventRoleAuthorityCeilingService _authorityCeilingService;
     private readonly IEventAuthoritySnapshotService _snapshotService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogRepository _auditLogRepository;
     private readonly BusinessMetrics _metrics;
 
     public EventRoleAssignmentCommandHandlerTests()
@@ -38,6 +40,7 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
         _authorityCeilingService = Substitute.For<IEventRoleAuthorityCeilingService>();
         _snapshotService = Substitute.For<IEventAuthoritySnapshotService>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
+        _auditLogRepository = Substitute.For<IAuditLogRepository>();
 
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter("test"));
@@ -58,6 +61,47 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
     public void Dispose()
     {
         _metrics.Dispose();
+    }
+
+    [Test]
+    public async Task AssignEventRole_WhenRoleIsEventOwner_WritesOwnerInvariantAuditEvidence()
+    {
+        var handler = new AssignEventRoleCommandHandler(
+            _assignmentRepository,
+            _eventRepository,
+            _userRepository,
+            _authorityCeilingService,
+            _auditLogRepository,
+            _metrics,
+            Substitute.For<ILogger<AssignEventRoleCommandHandler>>());
+
+        var result = await handler.Handle(new AssignEventRoleCommand
+        {
+            TenantId = TenantId,
+            EventId = EventId,
+            TargetUserId = TargetUserId,
+            RoleId = (int)RoleEnum.EventOwner,
+            ActorUserId = ActorUserId,
+            StartsAtUtc = DateTime.UtcNow.AddMinutes(-1)
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("event_owner_transfer_required");
+        await _authorityCeilingService.DidNotReceive().CanAssignRoleAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+        await _assignmentRepository.DidNotReceive().Create(Arg.Any<EventRoleAssignment>());
+        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
+            audit.TenantId == TenantId &&
+            audit.EntityType == nameof(EventRoleAssignment) &&
+            audit.EntityId == EventId.ToString() &&
+            audit.Action == "EventRoleAssignmentDenied" &&
+            audit.ActorId == ActorUserId &&
+            audit.NewValues != null &&
+            audit.NewValues.Contains("application_owner_invariant")));
     }
 
     [Test]
@@ -95,7 +139,9 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             _eventRepository,
             _userRepository,
             _authorityCeilingService,
-            _metrics);
+            _auditLogRepository,
+            _metrics,
+            Substitute.For<ILogger<AssignEventRoleCommandHandler>>());
 
         var result = await handler.Handle(new AssignEventRoleCommand
         {
@@ -110,6 +156,51 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_role_assignment_duplicate");
         await _assignmentRepository.DidNotReceive().Create(Arg.Any<EventRoleAssignment>());
+        await _auditLogRepository.DidNotReceive().Create(Arg.Any<AuditLog>());
+    }
+
+    [Test]
+    public async Task AssignEventRole_WhenAuthorityDenied_WritesAuditEvidence()
+    {
+        _authorityCeilingService.CanAssignRoleAsync(
+                TenantId,
+                EventId,
+                ActorUserId,
+                (int)RoleEnum.CheckInStaff,
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(EventRoleAssignmentAuthorityResult.Denied(
+                EventRoleAuthorityFailureCodes.AuthorityCeilingExceeded,
+                "The role contains permissions outside your same-event authority ceiling.",
+                new[] { PermissionCodes.EventCheckInManage })));
+
+        var handler = new AssignEventRoleCommandHandler(
+            _assignmentRepository,
+            _eventRepository,
+            _userRepository,
+            _authorityCeilingService,
+            _auditLogRepository,
+            _metrics,
+            Substitute.For<ILogger<AssignEventRoleCommandHandler>>());
+
+        var result = await handler.Handle(new AssignEventRoleCommand
+        {
+            TenantId = TenantId,
+            EventId = EventId,
+            TargetUserId = TargetUserId,
+            RoleId = (int)RoleEnum.CheckInStaff,
+            ActorUserId = ActorUserId,
+            StartsAtUtc = DateTime.UtcNow.AddMinutes(-1)
+        }, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(EventRoleAuthorityFailureCodes.AuthorityCeilingExceeded);
+        await _assignmentRepository.DidNotReceive().Create(Arg.Any<EventRoleAssignment>());
+        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
+            audit.TenantId == TenantId &&
+            audit.EntityType == nameof(EventRoleAssignment) &&
+            audit.EntityId == EventId.ToString() &&
+            audit.Action == "EventRoleAssignmentDenied" &&
+            audit.ActorId == ActorUserId));
     }
 
     [Test]
@@ -130,7 +221,9 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             _assignmentRepository,
             _eventRepository,
             _authorityCeilingService,
-            _metrics);
+            _auditLogRepository,
+            _metrics,
+            Substitute.For<ILogger<RevokeEventRoleAssignmentCommandHandler>>());
 
         var result = await handler.Handle(new RevokeEventRoleAssignmentCommand
         {
@@ -149,6 +242,11 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             Arg.Any<int>(),
             Arg.Any<CancellationToken>());
         await _assignmentRepository.DidNotReceive().Update(Arg.Any<EventRoleAssignment>());
+        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
+            audit.TenantId == TenantId &&
+            audit.EntityId == owner.Id.ToString() &&
+            audit.Action == "EventRoleAssignmentRevokeDenied" &&
+            audit.ActorId == ActorUserId));
     }
 
     [Test]
@@ -193,6 +291,11 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("event_ownership_transfer_invalid");
         await Assert.That(currentOwner.Status).IsEqualTo(EventRoleAssignmentStatus.Active);
+        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
+            audit.TenantId == TenantId &&
+            audit.EntityId == currentOwner.Id.ToString() &&
+            audit.Action == "EventOwnershipTransferDenied" &&
+            audit.ActorId == ActorUserId));
     }
 
     [Test]
@@ -242,6 +345,12 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             assignment.RoleId == (int)RoleEnum.EventOwner &&
             assignment.Status == EventRoleAssignmentStatus.Active));
         await _assignmentRepository.Received(1).Update(currentOwner);
+        await _auditLogRepository.Received(1).Create(Arg.Is<AuditLog>(audit =>
+            audit.TenantId == TenantId &&
+            audit.Action == "EventOwnershipTransferred" &&
+            audit.ActorId == ActorUserId &&
+            audit.NewValues != null &&
+            audit.NewValues.Contains("transfer-ownership")));
     }
 
     private static Explore.Domain.Event CreateEvent() =>
@@ -284,5 +393,7 @@ public class EventRoleAssignmentCommandHandlerTests : IDisposable
             _userRepository,
             _snapshotService,
             _unitOfWork,
-            _metrics);
+            _auditLogRepository,
+            _metrics,
+            Substitute.For<ILogger<TransferEventOwnershipCommandHandler>>());
 }

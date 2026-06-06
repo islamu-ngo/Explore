@@ -7,6 +7,10 @@
       "type": "string",
       "description": "Owning tenant identifier. Used by islamuevent_tenant_admin derived role."
     },
+    "eventId": {
+      "type": "string",
+      "description": "Event identifier. Used by event-role derived roles to look up principal's event assignments."
+    },
     "actorId": {
       "type": "string",
       "description": "Actor (creator/owner) identifier."

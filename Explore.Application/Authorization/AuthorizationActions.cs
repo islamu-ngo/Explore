@@ -61,6 +61,9 @@ public static class AuthorizationActions
     /// <summary>Cancel an AI provider run that has not completed.</summary>
     public const string CancelRun = "cancel_run";
 
+    /// <summary>Create an AI-proposed action without executing its side effects.</summary>
+    public const string ProposeAction = "propose_action";
+
     // ── Resource-scoped action catalogs ─────────────────────────────────
     //
     // Each nested class documents the valid actions for its Cerbos resource kind.
@@ -74,6 +77,10 @@ public static class AuthorizationActions
         public const string Create = AuthorizationActions.Create;
         public const string Update = AuthorizationActions.Update;
         public const string Delete = AuthorizationActions.Delete;
+        public const string ManageTeam = "manage-team";
+        public const string ManageOwner = "manage-owner";
+        public const string TransferOwnership = "transfer-ownership";
+        public const string ManageFinance = "manage-finance";
     }
 
     /// <summary>Valid actions for the <c>islamuevent_event_session</c> resource kind.</summary>
@@ -213,6 +220,7 @@ public static class AuthorizationActions
         public const string ConfirmAction = AuthorizationActions.ConfirmAction;
         public const string RejectAction = AuthorizationActions.RejectAction;
         public const string CancelRun = AuthorizationActions.CancelRun;
+        public const string ProposeAction = AuthorizationActions.ProposeAction;
     }
 
     /// <summary>Valid actions for the <c>islamuevent_category</c> resource kind.</summary>

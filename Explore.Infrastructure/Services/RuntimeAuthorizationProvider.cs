@@ -2,6 +2,7 @@
 // ABOUTME: Supports BYO (Bring Your Own) Cerbos per tenant with configurable failure modes.
 
 using System.Text.Json;
+using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Models;
@@ -106,6 +107,14 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
 
         if (byoConfig is not null)
             return await ExecuteByoAsync(byoConfig, checks, cancellationToken);
+
+        // AI conversations are handler-owned self-service resources: the Application handlers
+        // enforce current-user ownership and tenant isolation, matching the bundled Cerbos policy
+        // that allows authenticated users to reach these handlers.
+        if (UsesHandlerOwnedAiConversationAuthorization(checks))
+        {
+            return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
+        }
 
         // Step 2: Fall back to instance-level provider resolution (Cerbos or Local)
         var provider = await ResolveInstanceProviderAsync(cancellationToken);
@@ -244,6 +253,12 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider, IAuth
         });
 
         return mode == "cerbos" ? _cerbosProvider : _localProvider;
+    }
+
+    private static bool UsesHandlerOwnedAiConversationAuthorization(IReadOnlyList<AuthorizationCheck> checks)
+    {
+        return checks.Count > 0
+            && checks.All(check => check.ResourceKind == ResourceKinds.AiConversation);
     }
 
     private static string NormalizeProviderMode(string? rawValue)

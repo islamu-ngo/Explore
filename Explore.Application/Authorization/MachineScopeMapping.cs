@@ -118,12 +118,13 @@ public static class MachineScopeMapping
         AuthorizationActions.Unlock => true,
         AuthorizationActions.SyncApply => true,
         AuthorizationActions.ExportSharedContacts => true,
-            AuthorizationActions.SendMessage => true,
-            AuthorizationActions.ConfirmAction => true,
-            AuthorizationActions.RejectAction => true,
-            AuthorizationActions.CancelRun => true,
-            _ => false
-        };
+        AuthorizationActions.SendMessage => true,
+        AuthorizationActions.ConfirmAction => true,
+        AuthorizationActions.RejectAction => true,
+        AuthorizationActions.CancelRun => true,
+        AuthorizationActions.ProposeAction => true,
+        _ => false
+    };
 
     private static bool HasAny(HashSet<string> scopes, params string[] candidates)
     {
