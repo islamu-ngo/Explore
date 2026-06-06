@@ -32,29 +32,27 @@ public sealed class AiAssistantRailTests : IDisposable
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
 
         await Assert.That(cut.FindAll("[data-testid='shell-ai-rail']")).IsEmpty();
-        await _clientService.DidNotReceive().GetConversationsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _clientService.DidNotReceive().GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task Render_WhenAssistantIsAvailable_LoadsConversationsAndMessages()
     {
         var conversationId = Guid.CreateVersion7();
-        _clientService.GetConversationsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiConversationSummaryDto>>(
-            [
-                new() { Id = conversationId, Title = "Event planning", Status = "Active" }
-            ]));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(
+                CreateConversationCollection(
+                [
+                    new() { Id = conversationId, Title = "Event planning", Status = "Active" }
+                ])));
         _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(new HalResourceOfAiConversationDto
-            {
-                Id = conversationId,
-                Title = "Event planning",
-                Messages =
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(
+                conversationId,
+                "Event planning",
                 [
                     new Messages2 { Role = "User", Sequence = 1, Content = "Plan an iftar" },
                     new Messages2 { Role = "Assistant", Sequence = 2, Content = "I can help with that." }
-                ]
-            }));
+                ])));
         _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
@@ -70,7 +68,7 @@ public sealed class AiAssistantRailTests : IDisposable
             }
         });
 
-        await _clientService.Received(1).GetConversationsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _clientService.Received(1).GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
         await _clientService.Received(1).GetConversationAsync(conversationId, Arg.Any<CancellationToken>());
     }
 
@@ -105,8 +103,8 @@ public sealed class AiAssistantRailTests : IDisposable
                 }
             ]
         });
-        _clientService.GetConversationsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiConversationSummaryDto>>([]));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
         _clientService.ConfirmProposedActionAsync(conversationId, linkedActionId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new AiAssistantCommandResult(true, Guid.CreateVersion7(), "Confirmed", null, [])));
         _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
@@ -140,8 +138,8 @@ public sealed class AiAssistantRailTests : IDisposable
         var conversationId = Guid.CreateVersion7();
         var referenceId = Guid.CreateVersion7();
         _conversationState.SelectConversation(new HalResourceOfAiConversationDto { Id = conversationId, Title = "References" });
-        _clientService.GetConversationsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiConversationSummaryDto>>([]));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
         _clientService.SearchReferencesAsync("iftar", Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiReferenceSearchResultDto>>(
             [
@@ -184,25 +182,23 @@ public sealed class AiAssistantRailTests : IDisposable
     public async Task NewConversation_WhenCreateSucceeds_LoadsCreatedConversation()
     {
         var conversationId = Guid.CreateVersion7();
-        _clientService.GetConversationsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(
-                Task.FromResult<IReadOnlyList<HalResourceOfAiConversationSummaryDto>>([]),
-                Task.FromResult<IReadOnlyList<HalResourceOfAiConversationSummaryDto>>(
-                [
-                    new() { Id = conversationId, Title = "New AI plan", Status = "Active" }
-                ]));
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])),
+                Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(
+                    CreateConversationCollection(
+                    [
+                        new() { Id = conversationId, Title = "New AI plan", Status = "Active" }
+                    ])));
         _clientService.CreateConversationAsync(Arg.Any<CreateAiConversationRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new AiAssistantCommandResult(true, conversationId, "Created", null, [])));
         _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(new HalResourceOfAiConversationDto
-            {
-                Id = conversationId,
-                Title = "New AI plan"
-            }));
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(conversationId, "New AI plan")));
         _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        cut.WaitForElement("[data-testid='ai-rail-new-conversation']");
         await cut.Find("[data-testid='ai-rail-new-conversation']").ClickAsync(new MouseEventArgs());
 
         cut.WaitForAssertion(() =>
@@ -221,21 +217,18 @@ public sealed class AiAssistantRailTests : IDisposable
     public async Task SendMessage_WhenConversationIsSelected_PropagatesGeneratedIdempotencyKeyAndReloadsConversation()
     {
         var conversationId = Guid.CreateVersion7();
-        _conversationState.SelectConversation(new HalResourceOfAiConversationDto { Id = conversationId, Title = "Send test" });
-        _clientService.GetConversationsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiConversationSummaryDto>>([]));
+        _conversationState.SelectConversation(CreateConversation(conversationId, "Send test"));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
         _clientService.SendMessageAsync(conversationId, "Draft a khutbah event", Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new AiAssistantCommandResult(true, Guid.CreateVersion7(), "Sent", null, [])));
         _clientService.GetConversationAsync(conversationId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(new HalResourceOfAiConversationDto
-            {
-                Id = conversationId,
-                Title = "Send test",
-                Messages =
+            .Returns(Task.FromResult<HalResourceOfAiConversationDto?>(CreateConversation(
+                conversationId,
+                "Send test",
                 [
                     new Messages2 { Role = "Assistant", Sequence = 1, Content = "Draft created." }
-                ]
-            }));
+                ])));
         _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
@@ -260,14 +253,15 @@ public sealed class AiAssistantRailTests : IDisposable
     [Test]
     public async Task NewConversation_WhenCreateFails_ShowsSafeErrorMessage()
     {
-        _clientService.GetConversationsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<HalResourceOfAiConversationSummaryDto>>([]));
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(CreateConversationCollection([])));
         _clientService.CreateConversationAsync(Arg.Any<CreateAiConversationRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new AiAssistantCommandResult(false, null, "AI assistant is disabled.", "disabled", [])));
         _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
         _shellState.Open();
 
         var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+        cut.WaitForElement("[data-testid='ai-rail-new-conversation']");
         await cut.Find("[data-testid='ai-rail-new-conversation']").ClickAsync(new MouseEventArgs());
 
         cut.WaitForAssertion(() =>
@@ -277,5 +271,66 @@ public sealed class AiAssistantRailTests : IDisposable
                 throw new InvalidOperationException("Expected safe create failure message.");
             }
         });
+    }
+
+    [Test]
+    public async Task NewConversation_WhenCreateLinkMissing_HidesButtonAndDoesNotCallCreate()
+    {
+        _clientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(
+                CreateConversationCollection([], canCreate: false)));
+        _shellState.SetPolicy(tenantAvailable: true, allowAnonymousAccess: false, isAuthenticated: true);
+        _shellState.Open();
+
+        var cut = _ctx.RenderMudComponent<AiAssistantRail>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Conversation creation is not available for your account.", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected missing HAL create link to render a safe empty state.");
+            }
+        });
+
+        await Assert.That(cut.FindAll("[data-testid='ai-rail-new-conversation']")).IsEmpty();
+        await _clientService.DidNotReceive().CreateConversationAsync(
+            Arg.Any<CreateAiConversationRequestDto>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static HalCollectionResourceOfAiConversationSummaryDto CreateConversationCollection(
+        IReadOnlyList<HalResourceOfAiConversationSummaryDto> conversations,
+        bool canCreate = true)
+    {
+        return new HalCollectionResourceOfAiConversationSummaryDto
+        {
+            _links = canCreate
+                ? new Dictionary<string, HalLink>
+                {
+                    ["create"] = new() { Href = "/api/ai/assistant/conversations", Method = "POST" }
+                }
+                : new Dictionary<string, HalLink>(),
+            _embedded = new HalCollectionEmbeddedOfAiConversationSummaryDto
+            {
+                Items = conversations.ToList()
+            }
+        };
+    }
+
+    private static HalResourceOfAiConversationDto CreateConversation(
+        Guid conversationId,
+        string title,
+        ICollection<Messages2>? messages = null)
+    {
+        return new HalResourceOfAiConversationDto
+        {
+            Id = conversationId,
+            Title = title,
+            Messages = messages,
+            _links = new Dictionary<string, Anonymous6>
+            {
+                ["send-message"] = new() { Href = $"/api/ai/assistant/conversations/{conversationId}/messages", Method = "POST" }
+            }
+        };
     }
 }

@@ -3,9 +3,9 @@
 
 namespace Explore.API.Hateoas.Assemblers;
 
+using Explore.API.Hateoas.Policies;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Ai;
-using Explore.API.Hateoas.Policies;
 using Explore.Application.Hateoas;
 using Microsoft.AspNetCore.Http;
 

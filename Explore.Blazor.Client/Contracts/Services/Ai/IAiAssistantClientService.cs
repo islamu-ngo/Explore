@@ -9,6 +9,10 @@ public interface IAiAssistantClientService
 {
     Task<HalResourceOfAiAssistantBootstrapDto?> GetBootstrapAsync(CancellationToken cancellationToken = default);
 
+    Task<HalCollectionResourceOfAiConversationSummaryDto?> GetConversationCollectionAsync(
+        int limit = 20,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<HalResourceOfAiConversationSummaryDto>> GetConversationsAsync(
         int limit = 20,
         CancellationToken cancellationToken = default);

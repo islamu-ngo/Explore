@@ -9,6 +9,8 @@ public sealed class AiAssistantConversationState
 {
     public IReadOnlyList<HalResourceOfAiConversationSummaryDto> Conversations { get; private set; } = [];
 
+    public bool CanCreateConversation { get; private set; }
+
     public HalResourceOfAiConversationDto? SelectedConversation { get; private set; }
 
     public IReadOnlyList<HalResourceOfAiReferenceSearchResultDto> ReferenceResults { get; private set; } = [];
@@ -41,6 +43,14 @@ public sealed class AiAssistantConversationState
     public void SetConversations(IReadOnlyList<HalResourceOfAiConversationSummaryDto> conversations)
     {
         Conversations = conversations;
+        CanCreateConversation = false;
+        NotifyChanged();
+    }
+
+    public void SetConversationCollection(HalCollectionResourceOfAiConversationSummaryDto? collection)
+    {
+        Conversations = collection?._embedded?.Items?.ToList() ?? [];
+        CanCreateConversation = HasLink(collection?._links, "create");
         NotifyChanged();
     }
 
@@ -65,6 +75,9 @@ public sealed class AiAssistantConversationState
     public static bool CanConfirm(ProposedActions2 proposedAction) => HasLink(proposedAction._links, "confirm-action");
 
     public static bool CanReject(ProposedActions2 proposedAction) => HasLink(proposedAction._links, "reject-action");
+
+    public static bool CanSendMessage(HalResourceOfAiConversationDto? conversation) =>
+        HasLink(conversation?._links, "send-message");
 
     public static bool HasEventLink(HalResourceOfAiReferenceSearchResultDto reference) => HasLink(reference._links, "event");
 

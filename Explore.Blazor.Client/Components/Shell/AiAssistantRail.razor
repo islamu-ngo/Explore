@@ -46,20 +46,25 @@
                         <MudText Typo="Typo.subtitle2" Class="ai-rail__section-title" id="ai-rail-conversations-title">
                             Conversations
                         </MudText>
-                        <MudButton Variant="Variant.Text"
-                                   Size="Size.Small"
-                                   StartIcon="@Icons.Material.Filled.Add"
-                                   OnClick="CreateConversationAsync"
-                                   Disabled="@_isCommandRunning"
-                                   data-testid="ai-rail-new-conversation">
-                            New
-                        </MudButton>
+                        @if (ConversationState.CanCreateConversation)
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       OnClick="CreateConversationAsync"
+                                       Disabled="@_isCommandRunning"
+                                       data-testid="ai-rail-new-conversation">
+                                New
+                            </MudButton>
+                        }
                     </div>
 
                     @if (ConversationState.Conversations.Count == 0)
                     {
                         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ai-rail__empty">
-                            Start a conversation to ask for event planning help.
+                            @(ConversationState.CanCreateConversation
+                                ? "Start a conversation to ask for event planning help."
+                                : "Conversation creation is not available for your account.")
                         </MudText>
                     }
                     else
@@ -200,6 +205,7 @@
     private bool IsSendDisabled =>
         _isCommandRunning
         || ConversationState.SelectedConversation?.Id is not Guid
+        || !AiAssistantConversationState.CanSendMessage(ConversationState.SelectedConversation)
         || string.IsNullOrWhiteSpace(_promptText);
 
     protected override void OnInitialized()
@@ -222,10 +228,15 @@
         ConversationState.SetLoading(true);
         ConversationState.SetError(null);
 
-        var conversations = await ClientService.GetConversationsAsync();
-        ConversationState.SetConversations(conversations);
+        var collection = await ClientService.GetConversationCollectionAsync();
+        ConversationState.SetConversationCollection(collection);
+        if (collection is null)
+        {
+            ConversationState.SetError("AI assistant conversations are not available for your account.");
+        }
 
-        if (ConversationState.SelectedConversation is null && conversations.FirstOrDefault()?.Id is Guid firstConversationId)
+        if (ConversationState.SelectedConversation is null
+            && ConversationState.Conversations.FirstOrDefault()?.Id is Guid firstConversationId)
         {
             await SelectConversationAsync(firstConversationId);
         }
@@ -235,6 +246,12 @@
 
     private async Task CreateConversationAsync()
     {
+        if (!ConversationState.CanCreateConversation)
+        {
+            ConversationState.SetError("Conversation creation is not available for your account.");
+            return;
+        }
+
         await RunCommandAsync(async () =>
         {
             var result = await ClientService.CreateConversationAsync(new CreateAiConversationRequestDto
@@ -278,6 +295,12 @@
     {
         if (ConversationState.SelectedConversation?.Id is not Guid conversationId || string.IsNullOrWhiteSpace(_promptText))
         {
+            return;
+        }
+
+        if (!AiAssistantConversationState.CanSendMessage(ConversationState.SelectedConversation))
+        {
+            ConversationState.SetError("Sending messages is not available for this conversation.");
             return;
         }
 

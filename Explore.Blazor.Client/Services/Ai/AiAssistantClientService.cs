@@ -23,20 +23,27 @@ public sealed class AiAssistantClientService(
         }
     }
 
-    public async Task<IReadOnlyList<HalResourceOfAiConversationSummaryDto>> GetConversationsAsync(
+    public async Task<HalCollectionResourceOfAiConversationSummaryDto?> GetConversationCollectionAsync(
         int limit = 20,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await apiClient.GetAiConversationsAsync(limit, cancellationToken: cancellationToken);
-            return response?._embedded?.Items?.ToList() ?? [];
+            return await apiClient.GetAiConversationsAsync(limit, cancellationToken: cancellationToken);
         }
         catch (ApiException ex)
         {
             logger.LogWarning(ex, "Failed to load AI assistant conversations.");
-            return [];
+            return null;
         }
+    }
+
+    public async Task<IReadOnlyList<HalResourceOfAiConversationSummaryDto>> GetConversationsAsync(
+        int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await GetConversationCollectionAsync(limit, cancellationToken);
+        return response?._embedded?.Items?.ToList() ?? [];
     }
 
     public async Task<HalResourceOfAiConversationDto?> GetConversationAsync(
@@ -63,10 +70,19 @@ public sealed class AiAssistantClientService(
             var response = await apiClient.CreateAiConversationAsync(request, cancellationToken: cancellationToken);
             return AiAssistantCommandResult.FromResponse(response);
         }
+        catch (ApiException<ProblemDetails> ex)
+        {
+            logger.LogWarning(ex, "Failed to create AI assistant conversation.");
+            return AiAssistantCommandResult.Failure(
+                FailureCodeFor(ex),
+                ex.Result?.Detail ?? ex.Result?.Title ?? "The AI assistant conversation could not be created.");
+        }
         catch (ApiException ex)
         {
             logger.LogWarning(ex, "Failed to create AI assistant conversation.");
-            return AiAssistantCommandResult.Failure("api_error", "The AI assistant conversation could not be created.");
+            return AiAssistantCommandResult.Failure(
+                FailureCodeFor(ex),
+                "The AI assistant conversation could not be created.");
         }
     }
 
@@ -169,4 +185,6 @@ public sealed class AiAssistantClientService(
             return AiAssistantCommandResult.Failure("api_error", "The AI proposed action could not be rejected.");
         }
     }
+
+    private static string FailureCodeFor(ApiException ex) => ex.StatusCode == 403 ? "forbidden" : "api_error";
 }

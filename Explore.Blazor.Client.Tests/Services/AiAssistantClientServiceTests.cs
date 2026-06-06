@@ -12,6 +12,32 @@ public sealed class AiAssistantClientServiceTests
     private readonly ILogger<AiAssistantClientService> _logger = Substitute.For<ILogger<AiAssistantClientService>>();
 
     [Test]
+    public async Task GetConversationCollectionAsync_WhenApiSucceeds_PreservesCollectionLinks()
+    {
+        var response = new HalCollectionResourceOfAiConversationSummaryDto
+        {
+            _links = new Dictionary<string, HalLink>
+            {
+                ["create"] = new() { Href = "/api/ai/assistant/conversations", Method = "POST" }
+            },
+            _embedded = new HalCollectionEmbeddedOfAiConversationSummaryDto
+            {
+                Items = [new HalResourceOfAiConversationSummaryDto { Id = Guid.CreateVersion7(), Title = "Planning" }]
+            }
+        };
+
+        _apiClient.GetAiConversationsAsync(20, null, null, Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        var service = CreateService();
+
+        var collection = await service.GetConversationCollectionAsync(20);
+
+        await Assert.That(collection?._embedded?.Items?.Count).IsEqualTo(1);
+        await Assert.That(collection?._links).ContainsKey("create");
+    }
+
+    [Test]
     public async Task SearchReferencesAsync_WhenApiSucceeds_ReturnsHalReferenceItemsWithLinks()
     {
         var referenceId = Guid.CreateVersion7();
@@ -130,6 +156,31 @@ public sealed class AiAssistantClientServiceTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("api_error");
+    }
+
+    [Test]
+    public async Task CreateConversationAsync_WhenForbidden_ReturnsProblemDetailsMessage()
+    {
+        _apiClient.CreateAiConversationAsync(
+                Arg.Any<CreateAiConversationRequestDto>(),
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException<ProblemDetails>(
+                "Forbidden",
+                403,
+                "{}",
+                new Dictionary<string, IEnumerable<string>>(),
+                new ProblemDetails { Title = "Forbidden", Detail = "Create conversations is not available." },
+                null));
+
+        var service = CreateService();
+
+        var result = await service.CreateConversationAsync(new CreateAiConversationRequestDto { Title = "AI Assistant" });
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("forbidden");
+        await Assert.That(result.Message).IsEqualTo("Create conversations is not available.");
     }
 
     private AiAssistantClientService CreateService() => new(_apiClient, _logger);
