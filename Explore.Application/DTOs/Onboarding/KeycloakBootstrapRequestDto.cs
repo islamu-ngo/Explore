@@ -11,6 +11,8 @@ public class KeycloakBootstrapRequestDto
     public string Realm { get; set; } = string.Empty;
     public string BlazorClientId { get; set; } = string.Empty;
     public string BlazorClientSecret { get; set; } = string.Empty;
+    public IReadOnlyList<string> BlazorRedirectUris { get; set; } = [];
+    public IReadOnlyList<string> BlazorWebOrigins { get; set; } = [];
     public string? ApiClientId { get; set; }
     public string? ApiClientSecret { get; set; }
     public KeycloakBootstrapMode Mode { get; set; } = KeycloakBootstrapMode.PatchExistingRealm;

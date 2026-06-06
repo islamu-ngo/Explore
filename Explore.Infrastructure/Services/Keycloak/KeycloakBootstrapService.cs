@@ -2,17 +2,16 @@
 // ABOUTME: Keeps admin credentials and provider response bodies out of persisted state, logs, and result DTOs.
 
 using System.Net;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
-using Explore.Application.Services;
 using Explore.Application.Onboarding;
+using Explore.Application.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Refit;
 
 namespace Explore.Infrastructure.Services.Keycloak;
 
@@ -59,6 +58,32 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         _options = options.Value;
     }
 
+    private IKeycloakAdminApi CreateApi(Uri baseUri)
+    {
+        var client = _httpClientFactory.CreateClient(HttpClientName);
+        client.BaseAddress = new Uri(baseUri.ToString().TrimEnd('/'), UriKind.Absolute);
+        return RestService.For<IKeycloakAdminApi>(
+            client,
+            new RefitSettings
+            {
+                ContentSerializer = new SystemTextJsonContentSerializer(JsonOptions),
+                ExceptionFactory = _ => Task.FromResult<Exception?>(null)
+            });
+    }
+
+    private static string AuthorizationHeader(string accessToken) => $"Bearer {accessToken}";
+
+    private static async Task<T?> ReadJsonResponseAsync<T>(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        if (!response.IsSuccessStatusCode || response.Content is null)
+            return default;
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        return await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions, cancellationToken);
+    }
+
     public async Task<KeycloakBootstrapResultDto> BootstrapAsync(
         KeycloakBootstrapRequestDto request,
         CancellationToken cancellationToken)
@@ -72,23 +97,25 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
 
         try
         {
-            var client = _httpClientFactory.CreateClient(HttpClientName);
-            var accessToken = await RequestAdminTokenAsync(client, baseUri!, request, cancellationToken);
+            var api = CreateApi(baseUri!);
+            var accessToken = await RequestAdminTokenAsync(api, request, cancellationToken);
             if (string.IsNullOrWhiteSpace(accessToken))
             {
                 return Failure(request, "keycloak_auth_failed", "Keycloak admin authentication failed.");
             }
 
-            var realmStatus = await EnsureRealmAsync(client, baseUri!, request, accessToken, cancellationToken);
+            var realmStatus = await EnsureRealmAsync(api, request, accessToken, cancellationToken);
             if (!realmStatus.Success)
                 return realmStatus;
 
             var blazorUpdated = await EnsureClientSecretAsync(
-                client,
-                baseUri!,
+                api,
                 request.Realm,
                 request.BlazorClientId,
                 request.BlazorClientSecret,
+                request.BlazorRedirectUris,
+                request.BlazorWebOrigins,
+                request.ApiClientId,
                 accessToken,
                 bearerOnly: false,
                 cancellationToken);
@@ -100,11 +127,13 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             if (!string.IsNullOrWhiteSpace(request.ApiClientId) && !string.IsNullOrWhiteSpace(request.ApiClientSecret))
             {
                 var apiUpdate = await EnsureClientSecretAsync(
-                    client,
-                    baseUri!,
+                    api,
                     request.Realm,
                     request.ApiClientId,
                     request.ApiClientSecret,
+                    [],
+                    [],
+                    null,
                     accessToken,
                     bearerOnly: true,
                     cancellationToken);
@@ -211,10 +240,10 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             "healthy",
             "Keycloak provider configuration is present."));
 
-        var client = _httpClientFactory.CreateClient(HttpClientName);
+        var api = CreateApi(baseUri!);
         try
         {
-            await AddDiscoveryCheckAsync(client, baseUri!, realm, checks, cancellationToken);
+            await AddDiscoveryCheckAsync(api, realm, checks, cancellationToken);
             if (HasBlockingCheck(checks))
                 return CompleteDoctorResult(result, checks);
 
@@ -250,7 +279,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 BootstrapAdminPassword = request.BootstrapAdminPassword
             };
 
-            var accessToken = await RequestAdminTokenAsync(client, baseUri!, tokenRequest, cancellationToken);
+            var accessToken = await RequestAdminTokenAsync(api, tokenRequest, cancellationToken);
             if (string.IsNullOrWhiteSpace(accessToken))
             {
                 checks.Add(DoctorCheck(
@@ -262,7 +291,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 return CompleteDoctorResult(result, checks);
             }
 
-            await AddAdminRealmChecksAsync(client, baseUri!, realm, configuration.KeycloakClientId, request.ApiClientId, accessToken, checks, cancellationToken);
+            await AddAdminRealmChecksAsync(api, realm, configuration.KeycloakClientId, request.ApiClientId, accessToken, checks, cancellationToken);
             return CompleteDoctorResult(result, checks);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -387,10 +416,10 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             "healthy",
             "Keycloak provider configuration is present."));
 
-        var client = _httpClientFactory.CreateClient(HttpClientName);
+        var api = CreateApi(baseUri!);
         try
         {
-            await AddDiscoveryCheckAsync(client, baseUri!, realm, diagnostics, cancellationToken);
+            await AddDiscoveryCheckAsync(api, realm, diagnostics, cancellationToken);
             if (HasBlockingCheck(diagnostics))
                 return CompleteSyncPlan(plan, operations, diagnostics);
 
@@ -429,7 +458,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 BootstrapAdminPassword = request.BootstrapAdminPassword
             };
 
-            var accessToken = await RequestAdminTokenAsync(client, baseUri!, tokenRequest, cancellationToken);
+            var accessToken = await RequestAdminTokenAsync(api, tokenRequest, cancellationToken);
             if (string.IsNullOrWhiteSpace(accessToken))
             {
                 diagnostics.Add(DoctorCheck(
@@ -441,7 +470,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 return CompleteSyncPlan(plan, operations, diagnostics);
             }
 
-            await AddSyncPreviewOperationsAsync(client, baseUri!, realm, configuration.KeycloakClientId, request, accessToken, operations, diagnostics, cancellationToken);
+            await AddSyncPreviewOperationsAsync(api, realm, configuration.KeycloakClientId, request, accessToken, operations, diagnostics, cancellationToken);
             return CompleteSyncPlan(plan, operations, diagnostics);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -562,10 +591,10 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             return CompleteSyncPlan(plan, operations, diagnostics);
         }
 
-        var client = _httpClientFactory.CreateClient(HttpClientName);
+        var api = CreateApi(baseUri!);
         try
         {
-            await AddDiscoveryCheckAsync(client, baseUri!, realm, diagnostics, cancellationToken);
+            await AddDiscoveryCheckAsync(api, realm, diagnostics, cancellationToken);
             if (HasBlockingCheck(diagnostics))
                 return CompleteSyncPlan(plan, operations, diagnostics);
 
@@ -578,7 +607,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 BootstrapAdminPassword = request.BootstrapAdminPassword
             };
 
-            var accessToken = await RequestAdminTokenAsync(client, baseUri!, tokenRequest, cancellationToken);
+            var accessToken = await RequestAdminTokenAsync(api, tokenRequest, cancellationToken);
             if (string.IsNullOrWhiteSpace(accessToken))
             {
                 diagnostics.Add(DoctorCheck(
@@ -591,8 +620,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             }
 
             await AddSyncApplyOperationsAsync(
-                client,
-                baseUri!,
+                api,
                 realm,
                 configuration,
                 previewRequest,
@@ -726,11 +754,11 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                     "Use a Keycloak realm authority such as https://keycloak.example.com/realms/islamu."));
         }
 
-        var client = _httpClientFactory.CreateClient(HttpClientName);
+        var api = CreateApi(baseUri!);
         try
         {
             var diagnostics = new List<KeycloakRealmDoctorCheckDto>();
-            await AddDiscoveryCheckAsync(client, baseUri!, realm, diagnostics, cancellationToken);
+            await AddDiscoveryCheckAsync(api, realm, diagnostics, cancellationToken);
             if (HasBlockingCheck(diagnostics))
             {
                 return CompleteRotationResult(
@@ -757,7 +785,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 BootstrapAdminPassword = request.BootstrapAdminPassword
             };
 
-            var accessToken = await RequestAdminTokenAsync(client, baseUri!, tokenRequest, cancellationToken);
+            var accessToken = await RequestAdminTokenAsync(api, tokenRequest, cancellationToken);
             if (string.IsNullOrWhiteSpace(accessToken))
             {
                 return CompleteRotationResult(
@@ -775,7 +803,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                         "Verify the temporary admin username, password, and Keycloak master realm configuration."));
             }
 
-            var lookup = await FindClientAsync(client, baseUri!, realm, clientId, accessToken, cancellationToken);
+            var lookup = await FindClientAsync(api, realm, clientId, accessToken, cancellationToken);
             if (!lookup.Success)
             {
                 return CompleteRotationResult(
@@ -810,8 +838,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                         "Run the Keycloak sync preview/apply workflow to create the managed client before rotating its secret."));
             }
 
-            var clientUri = BuildUri(baseUri!, "admin", "realms", realm, "clients", lookup.ClientUuid);
-            var representation = await GetClientRepresentationAsync(client, clientUri, accessToken, cancellationToken);
+            var representation = await GetClientRepresentationAsync(api, realm, lookup.ClientUuid, accessToken, cancellationToken);
             if (representation is null)
             {
                 return CompleteRotationResult(
@@ -830,7 +857,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             }
 
             representation["secret"] = request.NewClientSecret;
-            var updated = await UpdateClientRepresentationAsync(client, clientUri, accessToken, representation, cancellationToken);
+            var updated = await UpdateClientRepresentationAsync(api, realm, lookup.ClientUuid, accessToken, representation, cancellationToken);
             if (!updated)
             {
                 return CompleteRotationResult(
@@ -1005,71 +1032,36 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         };
     }
 
-    private static Uri BuildUri(Uri baseUri, params string[] segments)
-    {
-        var existingPath = baseUri.AbsolutePath.Trim('/');
-        var pathSegments = segments.Select(segment => Uri.EscapeDataString(segment.Trim('/')));
-        var path = string.Join('/', string.IsNullOrEmpty(existingPath)
-            ? pathSegments
-            : [existingPath, .. pathSegments]);
-
-        return new UriBuilder(baseUri)
-        {
-            Path = path
-        }.Uri;
-    }
-
-    private static Uri BuildClientLookupUri(Uri baseUri, string realm, string clientId)
-    {
-        var builder = new UriBuilder(BuildUri(baseUri, "admin", "realms", realm, "clients"))
-        {
-            Query = $"clientId={Uri.EscapeDataString(clientId)}"
-        };
-
-        return builder.Uri;
-    }
-
     private static async Task<string?> RequestAdminTokenAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         KeycloakBootstrapRequestDto request,
         CancellationToken cancellationToken)
     {
-        using var tokenRequest = new HttpRequestMessage(
-            HttpMethod.Post,
-            BuildUri(baseUri, "realms", "master", "protocol", "openid-connect", "token"))
-        {
-            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        using var tokenResponse = await api.RequestAdminTokenAsync(
+            new Dictionary<string, object>
             {
                 ["grant_type"] = "password",
                 ["client_id"] = AdminCliClientId,
                 ["username"] = request.BootstrapAdminUsername,
                 ["password"] = request.BootstrapAdminPassword
-            })
-        };
+            },
+            cancellationToken);
 
-        using var response = await client.SendAsync(tokenRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        if (!tokenResponse.IsSuccessStatusCode || tokenResponse.Content is null)
             return null;
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        await using var stream = await tokenResponse.Content.ReadAsStreamAsync(cancellationToken);
         var token = await JsonSerializer.DeserializeAsync<KeycloakTokenResponse>(stream, JsonOptions, cancellationToken);
         return token?.AccessToken;
     }
 
     private async Task<KeycloakBootstrapResultDto> EnsureRealmAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         KeycloakBootstrapRequestDto request,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        using var checkRequest = CreateAdminRequest(
-            HttpMethod.Get,
-            BuildUri(baseUri, "admin", "realms", request.Realm),
-            accessToken);
-        using var checkResponse = await client.SendAsync(checkRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
+        var checkResponse = await api.GetRealmAsync(request.Realm, AuthorizationHeader(accessToken), cancellationToken);
         if (checkResponse.IsSuccessStatusCode)
             return Success(request, realmCreated: false);
 
@@ -1087,13 +1079,10 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         if (request.Mode != KeycloakBootstrapMode.CreateRealm)
             return Failure(request, "keycloak_realm_not_found", "Keycloak realm was not found and create mode was not requested.");
 
-        using var createRequest = CreateAdminRequest(
-            HttpMethod.Post,
-            BuildUri(baseUri, "admin", "realms"),
-            accessToken,
-            new KeycloakRealmRepresentation(request.Realm, Enabled: true));
-        using var createResponse = await client.SendAsync(createRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
+        var createResponse = await api.CreateRealmAsync(
+            AuthorizationHeader(accessToken),
+            new KeycloakRealmRepresentation(request.Realm, Enabled: true),
+            cancellationToken);
         if (createResponse.IsSuccessStatusCode || createResponse.StatusCode == HttpStatusCode.Conflict)
             return Success(request, realmCreated: createResponse.StatusCode != HttpStatusCode.Conflict);
 
@@ -1106,27 +1095,29 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private async Task<ClientSecretUpdateResult> EnsureClientSecretAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string clientId,
         string secret,
+        IReadOnlyList<string>? redirectUris,
+        IReadOnlyList<string>? webOrigins,
+        string? apiClientId,
         string accessToken,
         bool bearerOnly,
         CancellationToken cancellationToken)
     {
-        var lookup = await FindClientAsync(client, baseUri, realm, clientId, accessToken, cancellationToken);
+        var lookup = await FindClientAsync(api, realm, clientId, accessToken, cancellationToken);
         if (!lookup.Success)
             return ClientSecretUpdateResult.Failure("keycloak_client_lookup_failed", "Keycloak client lookup failed.");
 
         var clientUuid = lookup.ClientUuid;
         if (clientUuid is null)
         {
-            var createResult = await CreateClientAsync(client, baseUri, realm, clientId, accessToken, bearerOnly, cancellationToken);
+            var createResult = await CreateClientAsync(api, realm, clientId, accessToken, bearerOnly, cancellationToken);
             if (!createResult.Success)
                 return createResult;
 
-            lookup = await FindClientAsync(client, baseUri, realm, clientId, accessToken, cancellationToken);
+            lookup = await FindClientAsync(api, realm, clientId, accessToken, cancellationToken);
             if (!lookup.Success)
                 return ClientSecretUpdateResult.Failure("keycloak_client_lookup_failed", "Keycloak client lookup failed.");
 
@@ -1135,8 +1126,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 return ClientSecretUpdateResult.Failure("keycloak_client_not_found", "Keycloak client could not be located after creation.");
         }
 
-        var clientUri = BuildUri(baseUri, "admin", "realms", realm, "clients", clientUuid);
-        var clientRepresentation = await GetClientRepresentationAsync(client, clientUri, accessToken, cancellationToken);
+        var clientRepresentation = await GetClientRepresentationAsync(api, realm, clientUuid, accessToken, cancellationToken);
         if (clientRepresentation is null)
             return ClientSecretUpdateResult.Failure("keycloak_client_lookup_failed", "Keycloak client representation could not be loaded.");
 
@@ -1147,13 +1137,12 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
 
         if (!bearerOnly)
         {
-            var roleResult = await EnsureOfflineAccessRealmRoleAsync(client, baseUri, realm, accessToken, cancellationToken);
+            var roleResult = await EnsureOfflineAccessRealmRoleAsync(api, realm, accessToken, cancellationToken);
             if (!roleResult.Success)
                 return roleResult;
 
             var scopeMappingResult = await EnsureOfflineAccessClientScopeMappingAsync(
-                client,
-                baseUri,
+                api,
                 realm,
                 accessToken,
                 cancellationToken);
@@ -1161,22 +1150,27 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 return scopeMappingResult;
         }
 
-        if (representationSecretMatches && (bearerOnly || HasRefreshTokenSettings(clientRepresentation)))
+        if (representationSecretMatches
+            && HasRequiredClientSettings(clientRepresentation, bearerOnly, redirectUris, webOrigins, apiClientId))
+        {
             return ClientSecretUpdateResult.Succeeded();
+        }
 
         var currentSecret = representationSecretMatches
             ? secret
-            : await GetCurrentClientSecretAsync(client, baseUri, realm, clientUuid, accessToken, cancellationToken);
+            : await GetCurrentClientSecretAsync(api, realm, clientUuid, accessToken, cancellationToken);
         var secretMatches = string.Equals(currentSecret, secret, StringComparison.Ordinal);
 
-        if (secretMatches && (bearerOnly || HasRefreshTokenSettings(clientRepresentation)))
+        if (secretMatches
+            && HasRequiredClientSettings(clientRepresentation, bearerOnly, redirectUris, webOrigins, apiClientId))
+        {
             return ClientSecretUpdateResult.Succeeded();
+        }
 
-        if (!bearerOnly)
+        if (!bearerOnly && !HasRefreshTokenSettings(clientRepresentation))
         {
             var scopeResult = await EnsureOfflineAccessScopeAsync(
-                client,
-                baseUri,
+                api,
                 realm,
                 clientUuid,
                 accessToken,
@@ -1189,15 +1183,14 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             clientRepresentation["secret"] = secret;
 
         if (!bearerOnly)
-            PreserveRefreshTokenSettings(clientRepresentation);
+            EnsureBlazorClientRuntimeSettings(clientRepresentation, redirectUris, webOrigins, apiClientId);
 
-        using var secretRequest = CreateAdminRequest(
-            HttpMethod.Put,
-            clientUri,
-            accessToken,
-            clientRepresentation);
-        using var secretResponse = await client.SendAsync(secretRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
+        var secretResponse = await api.UpdateClientRepresentationAsync(
+            realm,
+            clientUuid,
+            AuthorizationHeader(accessToken),
+            clientRepresentation,
+            cancellationToken);
         if (secretResponse.IsSuccessStatusCode)
             return ClientSecretUpdateResult.Succeeded();
 
@@ -1213,63 +1206,41 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task<ClientLookupResult> FindClientAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string clientId,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        using var request = CreateAdminRequest(
-            HttpMethod.Get,
-            BuildClientLookupUri(baseUri, realm, clientId),
-            accessToken);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        using var response = await api.FindClientsAsync(realm, clientId, AuthorizationHeader(accessToken), cancellationToken);
+        var clients = await ReadJsonResponseAsync<List<KeycloakClientLookupResult>>(response, cancellationToken);
+        if (clients is null)
             return ClientLookupResult.Failure();
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        var clients = await JsonSerializer.DeserializeAsync<List<KeycloakClientLookupResult>>(stream, JsonOptions, cancellationToken);
-        var clientUuid = clients?.FirstOrDefault(x => string.Equals(x.ClientId, clientId, StringComparison.Ordinal))?.Id;
+        var clientUuid = clients.FirstOrDefault(x => string.Equals(x.ClientId, clientId, StringComparison.Ordinal))?.Id;
         return ClientLookupResult.Succeeded(clientUuid);
     }
 
     private static async Task<JsonObject?> GetClientRepresentationAsync(
-        HttpClient client,
-        Uri clientUri,
-        string accessToken,
-        CancellationToken cancellationToken)
-    {
-        using var request = CreateAdminRequest(HttpMethod.Get, clientUri, accessToken);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        return await JsonSerializer.DeserializeAsync<JsonObject>(stream, JsonOptions, cancellationToken);
-    }
-
-    private static async Task<string?> GetCurrentClientSecretAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string clientUuid,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        using var request = CreateAdminRequest(
-            HttpMethod.Get,
-            BuildUri(baseUri, "admin", "realms", realm, "clients", clientUuid, "client-secret"),
-            accessToken);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await api.GetClientRepresentationAsync(realm, clientUuid, AuthorizationHeader(accessToken), cancellationToken);
+        return await ReadJsonResponseAsync<JsonObject>(response, cancellationToken);
+    }
 
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        var representation = await JsonSerializer.DeserializeAsync<JsonObject>(stream, JsonOptions, cancellationToken);
+    private static async Task<string?> GetCurrentClientSecretAsync(
+        IKeycloakAdminApi api,
+        string realm,
+        string clientUuid,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        using var response = await api.GetCurrentClientSecretAsync(realm, clientUuid, AuthorizationHeader(accessToken), cancellationToken);
+        var representation = await ReadJsonResponseAsync<JsonObject>(response, cancellationToken);
         return representation?["value"]?.GetValue<string>();
     }
 
@@ -1287,6 +1258,63 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         return hasOfflineAccess && usesRefreshTokens;
     }
 
+    private static bool HasRequiredClientSettings(
+        JsonObject clientRepresentation,
+        bool bearerOnly,
+        IReadOnlyList<string>? redirectUris,
+        IReadOnlyList<string>? webOrigins,
+        string? apiClientId)
+    {
+        if (bearerOnly)
+            return true;
+
+        return clientRepresentation["enabled"]?.GetValue<bool>() == true
+               && clientRepresentation["standardFlowEnabled"]?.GetValue<bool>() == true
+               && HasRefreshTokenSettings(clientRepresentation)
+               && ContainsAllStringValues(clientRepresentation["redirectUris"], redirectUris)
+               && ContainsAllStringValues(clientRepresentation["webOrigins"], webOrigins)
+               && HasPostLogoutRedirectSettings(clientRepresentation, redirectUris)
+               && HasAudienceMapper(clientRepresentation, apiClientId);
+    }
+
+    private static bool ContainsAllStringValues(JsonNode? currentValuesNode, IReadOnlyList<string>? desiredValues)
+    {
+        var desired = (desiredValues ?? [])
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToArray();
+        if (desired.Length == 0)
+            return true;
+
+        var current = GetStringArray(currentValuesNode);
+        return desired.All(value => current.Contains(value, StringComparer.Ordinal));
+    }
+
+    private static bool HasPostLogoutRedirectSettings(
+        JsonObject clientRepresentation,
+        IReadOnlyList<string>? redirectUris)
+    {
+        if ((redirectUris ?? []).All(string.IsNullOrWhiteSpace))
+            return true;
+
+        var attributes = clientRepresentation["attributes"] as JsonObject;
+        return !string.IsNullOrWhiteSpace(attributes?["post.logout.redirect.uris"]?.GetValue<string>());
+    }
+
+    private static bool HasAudienceMapper(JsonObject clientRepresentation, string? apiClientId)
+    {
+        if (string.IsNullOrWhiteSpace(apiClientId))
+            return true;
+
+        return clientRepresentation["protocolMappers"] is JsonArray mappers
+               && mappers.OfType<JsonObject>().Any(mapper =>
+               {
+                   var config = mapper["config"] as JsonObject;
+                   return string.Equals(mapper["protocolMapper"]?.GetValue<string>(), "oidc-audience-mapper", StringComparison.Ordinal)
+                          && string.Equals(config?["included.client.audience"]?.GetValue<string>(), apiClientId, StringComparison.Ordinal)
+                          && string.Equals(config?["access.token.claim"]?.GetValue<string>(), "true", StringComparison.OrdinalIgnoreCase);
+               });
+    }
+
     private static bool ContainsScope(JsonNode? scopesNode, string expectedScope)
     {
         return scopesNode is JsonArray scopes
@@ -1294,13 +1322,12 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task<ClientSecretUpdateResult> EnsureOfflineAccessRealmRoleAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        var offlineRole = await GetRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        var offlineRole = await GetRealmRoleAsync(api, realm, "offline_access", accessToken, cancellationToken);
         if (offlineRole is null)
         {
             return ClientSecretUpdateResult.Failure(
@@ -1309,7 +1336,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         }
 
         var defaultRoleName = $"default-roles-{realm.ToLowerInvariant()}";
-        var defaultRole = await GetRealmRoleAsync(client, baseUri, realm, defaultRoleName, accessToken, cancellationToken);
+        var defaultRole = await GetRealmRoleAsync(api, realm, defaultRoleName, accessToken, cancellationToken);
         var defaultRoleId = defaultRole?["id"]?.GetValue<string>();
         if (string.IsNullOrWhiteSpace(defaultRoleId))
         {
@@ -1318,13 +1345,12 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 "Keycloak default realm role could not be located.");
         }
 
-        using var request = CreateAdminRequest(
-            HttpMethod.Post,
-            BuildUri(baseUri, "admin", "realms", realm, "roles-by-id", defaultRoleId, "composites"),
-            accessToken,
-            new JsonArray(offlineRole.DeepClone()));
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
+        var response = await api.AddRealmRoleCompositesAsync(
+            realm,
+            defaultRoleId,
+            AuthorizationHeader(accessToken),
+            new JsonArray(offlineRole.DeepClone()),
+            cancellationToken);
         return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict
             ? ClientSecretUpdateResult.Succeeded()
             : ClientSecretUpdateResult.Failure(
@@ -1333,35 +1359,24 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task<JsonObject?> GetRealmRoleAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string roleName,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        using var request = CreateAdminRequest(
-            HttpMethod.Get,
-            BuildUri(baseUri, "admin", "realms", realm, "roles", roleName),
-            accessToken);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        return await JsonSerializer.DeserializeAsync<JsonObject>(stream, JsonOptions, cancellationToken);
+        using var response = await api.GetRealmRoleAsync(realm, roleName, AuthorizationHeader(accessToken), cancellationToken);
+        return await ReadJsonResponseAsync<JsonObject>(response, cancellationToken);
     }
 
     private static async Task<ClientSecretUpdateResult> EnsureOfflineAccessScopeAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string clientUuid,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        var scopeId = await FindClientScopeIdAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        var scopeId = await FindClientScopeIdAsync(api, realm, "offline_access", accessToken, cancellationToken);
         if (string.IsNullOrWhiteSpace(scopeId))
         {
             return ClientSecretUpdateResult.Failure(
@@ -1369,12 +1384,12 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 "Keycloak offline access client scope could not be located.");
         }
 
-        using var request = CreateAdminRequest(
-            HttpMethod.Put,
-            BuildUri(baseUri, "admin", "realms", realm, "clients", clientUuid, "optional-client-scopes", scopeId),
-            accessToken);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
+        var response = await api.AssignOptionalClientScopeAsync(
+            realm,
+            clientUuid,
+            scopeId,
+            AuthorizationHeader(accessToken),
+            cancellationToken);
         return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict
             ? ClientSecretUpdateResult.Succeeded()
             : ClientSecretUpdateResult.Failure(
@@ -1383,13 +1398,12 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task<ClientSecretUpdateResult> EnsureOfflineAccessClientScopeMappingAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        var scopeId = await FindClientScopeIdAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        var scopeId = await FindClientScopeIdAsync(api, realm, "offline_access", accessToken, cancellationToken);
         if (string.IsNullOrWhiteSpace(scopeId))
         {
             return ClientSecretUpdateResult.Failure(
@@ -1398,8 +1412,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         }
 
         return await EnsureOfflineAccessScopeMappingAsync(
-            client,
-            baseUri,
+            api,
             realm,
             scopeId,
             accessToken,
@@ -1407,14 +1420,13 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task<ClientSecretUpdateResult> EnsureOfflineAccessScopeMappingAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string scopeId,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        var offlineRole = await GetRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        var offlineRole = await GetRealmRoleAsync(api, realm, "offline_access", accessToken, cancellationToken);
         if (offlineRole is null)
         {
             return ClientSecretUpdateResult.Failure(
@@ -1422,13 +1434,12 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 "Keycloak offline access realm role could not be located.");
         }
 
-        using var request = CreateAdminRequest(
-            HttpMethod.Post,
-            BuildUri(baseUri, "admin", "realms", realm, "client-scopes", scopeId, "scope-mappings", "realm"),
-            accessToken,
-            new JsonArray(offlineRole.DeepClone()));
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
+        var response = await api.AddClientScopeRealmMappingAsync(
+            realm,
+            scopeId,
+            AuthorizationHeader(accessToken),
+            new JsonArray(offlineRole.DeepClone()),
+            cancellationToken);
         return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict
             ? ClientSecretUpdateResult.Succeeded()
             : ClientSecretUpdateResult.Failure(
@@ -1437,25 +1448,14 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task<string?> FindClientScopeIdAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string scopeName,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        var builder = new UriBuilder(BuildUri(baseUri, "admin", "realms", realm, "client-scopes"))
-        {
-            Query = $"search={Uri.EscapeDataString(scopeName)}"
-        };
-        using var request = CreateAdminRequest(HttpMethod.Get, builder.Uri, accessToken);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        var scopes = await JsonSerializer.DeserializeAsync<List<KeycloakClientScopeLookupResult>>(stream, JsonOptions, cancellationToken);
+        using var response = await api.FindClientScopesAsync(realm, scopeName, AuthorizationHeader(accessToken), cancellationToken);
+        var scopes = await ReadJsonResponseAsync<List<KeycloakClientScopeLookupResult>>(response, cancellationToken);
         return scopes?.FirstOrDefault(scope => string.Equals(scope.Name, scopeName, StringComparison.Ordinal))?.Id;
     }
 
@@ -1482,9 +1482,95 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         attributes["use.refresh.tokens"] = "true";
     }
 
+    private static void EnsureBlazorClientRuntimeSettings(
+        JsonObject clientRepresentation,
+        IReadOnlyList<string>? redirectUris,
+        IReadOnlyList<string>? webOrigins,
+        string? apiClientId)
+    {
+        clientRepresentation["enabled"] = true;
+        clientRepresentation["protocol"] = "openid-connect";
+        clientRepresentation["publicClient"] = false;
+        clientRepresentation["bearerOnly"] = false;
+        clientRepresentation["standardFlowEnabled"] = true;
+
+        PreserveRefreshTokenSettings(clientRepresentation);
+        AddMissingStringValues(clientRepresentation, "redirectUris", redirectUris ?? []);
+        AddMissingStringValues(clientRepresentation, "webOrigins", webOrigins ?? []);
+        EnsurePostLogoutRedirectSettings(clientRepresentation, redirectUris);
+        EnsureAudienceMapper(clientRepresentation, apiClientId);
+    }
+
+    private static void EnsurePostLogoutRedirectSettings(
+        JsonObject clientRepresentation,
+        IReadOnlyList<string>? redirectUris)
+    {
+        if ((redirectUris ?? []).All(string.IsNullOrWhiteSpace))
+            return;
+
+        var attributes = clientRepresentation["attributes"] as JsonObject;
+        if (attributes is null)
+        {
+            attributes = [];
+            clientRepresentation["attributes"] = attributes;
+        }
+
+        if (string.IsNullOrWhiteSpace(attributes["post.logout.redirect.uris"]?.GetValue<string>()))
+            attributes["post.logout.redirect.uris"] = "+";
+    }
+
+    private static void EnsureAudienceMapper(JsonObject clientRepresentation, string? apiClientId)
+    {
+        if (string.IsNullOrWhiteSpace(apiClientId))
+            return;
+
+        var protocolMappers = clientRepresentation["protocolMappers"] as JsonArray;
+        if (protocolMappers is null)
+        {
+            protocolMappers = [];
+            clientRepresentation["protocolMappers"] = protocolMappers;
+        }
+
+        var mapperName = $"{apiClientId}-audience";
+        var mapper = protocolMappers
+            .OfType<JsonObject>()
+            .FirstOrDefault(candidate =>
+            {
+                var config = candidate["config"] as JsonObject;
+                return string.Equals(candidate["name"]?.GetValue<string>(), mapperName, StringComparison.Ordinal)
+                       || (string.Equals(candidate["protocolMapper"]?.GetValue<string>(), "oidc-audience-mapper", StringComparison.Ordinal)
+                           && string.Equals(config?["included.client.audience"]?.GetValue<string>(), apiClientId, StringComparison.Ordinal));
+            });
+
+        if (mapper is null)
+        {
+            protocolMappers.Add(new JsonObject
+            {
+                ["name"] = mapperName,
+                ["protocol"] = "openid-connect",
+                ["protocolMapper"] = "oidc-audience-mapper",
+                ["consentRequired"] = false,
+                ["config"] = CreateAudienceMapperConfig(apiClientId)
+            });
+            return;
+        }
+
+        mapper["name"] = mapperName;
+        mapper["protocol"] = "openid-connect";
+        mapper["protocolMapper"] = "oidc-audience-mapper";
+        mapper["consentRequired"] = false;
+        mapper["config"] = CreateAudienceMapperConfig(apiClientId);
+    }
+
+    private static JsonObject CreateAudienceMapperConfig(string apiClientId) => new()
+    {
+        ["included.client.audience"] = apiClientId,
+        ["id.token.claim"] = "false",
+        ["access.token.claim"] = "true"
+    };
+
     private async Task<ClientSecretUpdateResult> CreateClientAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string clientId,
         string accessToken,
@@ -1494,13 +1580,11 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         var representation = bearerOnly
             ? KeycloakClientRepresentation.CreateBearerOnly(clientId)
             : KeycloakClientRepresentation.CreateConfidentialOidc(clientId);
-        using var request = CreateAdminRequest(
-            HttpMethod.Post,
-            BuildUri(baseUri, "admin", "realms", realm, "clients"),
-            accessToken,
-            representation);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
+        var response = await api.CreateClientAsync(
+            realm,
+            AuthorizationHeader(accessToken),
+            representation,
+            cancellationToken);
         if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict)
             return ClientSecretUpdateResult.Succeeded();
 
@@ -1513,39 +1597,13 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         return ClientSecretUpdateResult.Failure("keycloak_client_create_failed", "Keycloak client could not be created.");
     }
 
-    private static HttpRequestMessage CreateAdminRequest(
-        HttpMethod method,
-        Uri requestUri,
-        string accessToken,
-        object? body = null)
-    {
-        var request = new HttpRequestMessage(method, requestUri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-        if (body is not null)
-        {
-            request.Content = new StringContent(
-                JsonSerializer.Serialize(body, JsonOptions),
-                Encoding.UTF8,
-                "application/json");
-        }
-
-        return request;
-    }
-
     private static async Task AddDiscoveryCheckAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         List<KeycloakRealmDoctorCheckDto> checks,
         CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            BuildUri(baseUri, "realms", realm, ".well-known", "openid-configuration"));
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
+        var response = await api.GetDiscoveryAsync(realm, cancellationToken);
         checks.Add(response.IsSuccessStatusCode
             ? DoctorCheck(
                 "keycloak_discovery_reachable",
@@ -1561,8 +1619,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task AddAdminRealmChecksAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string blazorClientId,
         string? apiClientId,
@@ -1570,8 +1627,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         List<KeycloakRealmDoctorCheckDto> checks,
         CancellationToken cancellationToken)
     {
-        using var realmRequest = CreateAdminRequest(HttpMethod.Get, BuildUri(baseUri, "admin", "realms", realm), accessToken);
-        using var realmResponse = await client.SendAsync(realmRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        var realmResponse = await api.GetRealmAsync(realm, AuthorizationHeader(accessToken), cancellationToken);
         checks.Add(realmResponse.IsSuccessStatusCode
             ? DoctorCheck("keycloak_realm_exists", "Realm", "healthy", "Keycloak realm exists and is readable.")
             : DoctorCheck("keycloak_realm_not_found", "Realm", "blocked", "Keycloak realm could not be read through the Admin API.", "Verify the realm exists and the temporary admin has read access."));
@@ -1579,7 +1635,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         if (!realmResponse.IsSuccessStatusCode)
             return;
 
-        var blazorLookup = await FindClientAsync(client, baseUri, realm, blazorClientId, accessToken, cancellationToken);
+        var blazorLookup = await FindClientAsync(api, realm, blazorClientId, accessToken, cancellationToken);
         if (!blazorLookup.Success || string.IsNullOrWhiteSpace(blazorLookup.ClientUuid))
         {
             checks.Add(DoctorCheck(
@@ -1593,8 +1649,9 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
 
         checks.Add(DoctorCheck("keycloak_blazor_client_exists", "Blazor OIDC client", "healthy", "The configured Blazor Keycloak client exists."));
         var clientRepresentation = await GetClientRepresentationAsync(
-            client,
-            BuildUri(baseUri, "admin", "realms", realm, "clients", blazorLookup.ClientUuid),
+            api,
+            realm,
+            blazorLookup.ClientUuid,
             accessToken,
             cancellationToken);
 
@@ -1610,8 +1667,8 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         }
 
         AddClientRepresentationChecks(clientRepresentation, checks);
-        await AddOfflineAccessChecksAsync(client, baseUri, realm, blazorLookup.ClientUuid, accessToken, checks, cancellationToken);
-        await AddApiClientCheckAsync(client, baseUri, realm, apiClientId, accessToken, checks, cancellationToken);
+        await AddOfflineAccessChecksAsync(api, realm, blazorLookup.ClientUuid, accessToken, checks, cancellationToken);
+        await AddApiClientCheckAsync(api, realm, apiClientId, accessToken, checks, cancellationToken);
     }
 
     private static void AddClientRepresentationChecks(JsonObject clientRepresentation, List<KeycloakRealmDoctorCheckDto> checks)
@@ -1628,49 +1685,48 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task AddOfflineAccessChecksAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string clientUuid,
         string accessToken,
         List<KeycloakRealmDoctorCheckDto> checks,
         CancellationToken cancellationToken)
     {
-        var offlineRole = await GetRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        var offlineRole = await GetRealmRoleAsync(api, realm, "offline_access", accessToken, cancellationToken);
         checks.Add(offlineRole is not null
             ? DoctorCheck("keycloak_offline_access_role_exists", "offline_access realm role", "healthy", "The offline_access realm role exists.")
             : DoctorCheck("keycloak_offline_access_role_missing", "offline_access realm role", "needs-repair", "The offline_access realm role was not found.", "Restore or create the offline_access realm role before enabling offline sessions."));
 
         var defaultRoleName = $"default-roles-{realm.ToLowerInvariant()}";
-        var defaultRole = await GetRealmRoleAsync(client, baseUri, realm, defaultRoleName, accessToken, cancellationToken);
+        var defaultRole = await GetRealmRoleAsync(api, realm, defaultRoleName, accessToken, cancellationToken);
         checks.Add(defaultRole is not null
             ? DoctorCheck("keycloak_default_role_exists", "Default realm role", "healthy", "The default realm role exists.")
             : DoctorCheck("keycloak_default_role_missing", "Default realm role", "needs-repair", "The default realm role was not found.", "Recreate the default realm role or repair realm defaults."));
 
         if (offlineRole is not null && defaultRole?["id"]?.GetValue<string>() is { Length: > 0 } defaultRoleId)
         {
-            var defaultComposites = await GetRealmRoleCompositesAsync(client, baseUri, realm, defaultRoleId, accessToken, cancellationToken);
+            var defaultComposites = await GetRealmRoleCompositesAsync(api, realm, defaultRoleId, accessToken, cancellationToken);
             var hasOfflineComposite = defaultComposites.Any(role => string.Equals(role.Name, "offline_access", StringComparison.Ordinal));
             checks.Add(hasOfflineComposite
                 ? DoctorCheck("keycloak_default_role_offline_access", "Default role offline_access composite", "healthy", "The default realm role includes offline_access as a composite.")
                 : DoctorCheck("keycloak_default_role_offline_access_missing", "Default role offline_access composite", "needs-repair", "The default realm role does not include offline_access as a composite.", "Add offline_access to the default realm role composites."));
         }
 
-        var scopeId = await FindClientScopeIdAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        var scopeId = await FindClientScopeIdAsync(api, realm, "offline_access", accessToken, cancellationToken);
         checks.Add(!string.IsNullOrWhiteSpace(scopeId)
             ? DoctorCheck("keycloak_offline_access_scope_exists", "offline_access client scope", "healthy", "The offline_access client scope exists.")
             : DoctorCheck("keycloak_offline_access_scope_missing", "offline_access client scope", "needs-repair", "The offline_access client scope was not found.", "Restore or create the offline_access client scope."));
 
         if (!string.IsNullOrWhiteSpace(scopeId))
         {
-            var optionalScopes = await GetClientScopesAsync(client, baseUri, realm, clientUuid, "optional-client-scopes", accessToken, cancellationToken);
-            var defaultScopes = await GetClientScopesAsync(client, baseUri, realm, clientUuid, "default-client-scopes", accessToken, cancellationToken);
+            var optionalScopes = await GetClientScopesAsync(api, realm, clientUuid, "optional-client-scopes", accessToken, cancellationToken);
+            var defaultScopes = await GetClientScopesAsync(api, realm, clientUuid, "default-client-scopes", accessToken, cancellationToken);
             var clientHasOfflineScope = optionalScopes.Concat(defaultScopes).Any(scope => string.Equals(scope.Name, "offline_access", StringComparison.Ordinal));
             checks.Add(clientHasOfflineScope
                 ? DoctorCheck("keycloak_client_offline_access_scope", "Blazor client offline_access scope", "healthy", "The Blazor client has offline_access assigned as a client scope.")
                 : DoctorCheck("keycloak_client_offline_access_scope_missing", "Blazor client offline_access scope", "needs-repair", "The Blazor client does not have offline_access assigned as a client scope.", "Assign offline_access to the Blazor client as an optional or default client scope."));
 
-            var scopeMappings = await GetClientScopeRealmMappingsAsync(client, baseUri, realm, scopeId, accessToken, cancellationToken);
+            var scopeMappings = await GetClientScopeRealmMappingsAsync(api, realm, scopeId, accessToken, cancellationToken);
             var scopeMapsOfflineRole = scopeMappings.Any(role => string.Equals(role.Name, "offline_access", StringComparison.Ordinal));
             checks.Add(scopeMapsOfflineRole
                 ? DoctorCheck("keycloak_scope_maps_offline_access", "offline_access scope mapping", "healthy", "The offline_access client scope maps the offline_access realm role.")
@@ -1679,8 +1735,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task AddApiClientCheckAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string? apiClientId,
         string accessToken,
@@ -1690,71 +1745,44 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         if (string.IsNullOrWhiteSpace(apiClientId))
             return;
 
-        var lookup = await FindClientAsync(client, baseUri, realm, apiClientId, accessToken, cancellationToken);
+        var lookup = await FindClientAsync(api, realm, apiClientId, accessToken, cancellationToken);
         checks.Add(lookup.Success && !string.IsNullOrWhiteSpace(lookup.ClientUuid)
             ? DoctorCheck("keycloak_api_client_exists", "API audience client", "healthy", "The configured API client exists.")
             : DoctorCheck("keycloak_api_client_missing", "API audience client", "warning", "The configured API client was not found.", "Create the API audience client if this instance validates API audience through Keycloak."));
     }
 
     private static async Task<IReadOnlyList<KeycloakRoleLookupResult>> GetRealmRoleCompositesAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string roleId,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        using var request = CreateAdminRequest(
-            HttpMethod.Get,
-            BuildUri(baseUri, "admin", "realms", realm, "roles-by-id", roleId, "composites", "realm"),
-            accessToken);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-            return [];
-
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        return await JsonSerializer.DeserializeAsync<List<KeycloakRoleLookupResult>>(stream, JsonOptions, cancellationToken) ?? [];
+        using var response = await api.GetRealmRoleCompositesAsync(realm, roleId, AuthorizationHeader(accessToken), cancellationToken);
+        return await ReadJsonResponseAsync<List<KeycloakRoleLookupResult>>(response, cancellationToken) ?? [];
     }
 
     private static async Task<IReadOnlyList<KeycloakClientScopeLookupResult>> GetClientScopesAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string clientUuid,
         string scopeEndpoint,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        using var request = CreateAdminRequest(
-            HttpMethod.Get,
-            BuildUri(baseUri, "admin", "realms", realm, "clients", clientUuid, scopeEndpoint),
-            accessToken);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-            return [];
-
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        return await JsonSerializer.DeserializeAsync<List<KeycloakClientScopeLookupResult>>(stream, JsonOptions, cancellationToken) ?? [];
+        using var response = await api.GetClientScopesAsync(realm, clientUuid, scopeEndpoint, AuthorizationHeader(accessToken), cancellationToken);
+        return await ReadJsonResponseAsync<List<KeycloakClientScopeLookupResult>>(response, cancellationToken) ?? [];
     }
 
     private static async Task<IReadOnlyList<KeycloakRoleLookupResult>> GetClientScopeRealmMappingsAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string scopeId,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        using var request = CreateAdminRequest(
-            HttpMethod.Get,
-            BuildUri(baseUri, "admin", "realms", realm, "client-scopes", scopeId, "scope-mappings", "realm", "composite"),
-            accessToken);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-            return [];
-
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        return await JsonSerializer.DeserializeAsync<List<KeycloakRoleLookupResult>>(stream, JsonOptions, cancellationToken) ?? [];
+        using var response = await api.GetClientScopeRealmMappingsAsync(realm, scopeId, AuthorizationHeader(accessToken), cancellationToken);
+        return await ReadJsonResponseAsync<List<KeycloakRoleLookupResult>>(response, cancellationToken) ?? [];
     }
 
     private static KeycloakRealmDoctorCheckDto DoctorCheck(
@@ -1810,8 +1838,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         });
 
     private static async Task AddSyncPreviewOperationsAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string blazorClientId,
         KeycloakRealmSyncPreviewRequestDto request,
@@ -1820,8 +1847,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         List<KeycloakRealmDoctorCheckDto> diagnostics,
         CancellationToken cancellationToken)
     {
-        using var realmRequest = CreateAdminRequest(HttpMethod.Get, BuildUri(baseUri, "admin", "realms", realm), accessToken);
-        using var realmResponse = await client.SendAsync(realmRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        var realmResponse = await api.GetRealmAsync(realm, AuthorizationHeader(accessToken), cancellationToken);
         diagnostics.Add(realmResponse.IsSuccessStatusCode
             ? DoctorCheck("keycloak_realm_exists", "Realm", "healthy", "Keycloak realm exists and is readable.")
             : DoctorCheck("keycloak_realm_not_found", "Realm", "blocked", "Keycloak realm could not be read through the Admin API.", "Verify the realm exists and the temporary admin has read access."));
@@ -1840,14 +1866,13 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             return;
         }
 
-        await AddBlazorClientSyncOperationsAsync(client, baseUri, realm, blazorClientId, request, accessToken, operations, cancellationToken);
-        await AddOfflineAccessSyncOperationsAsync(client, baseUri, realm, blazorClientId, accessToken, operations, cancellationToken);
-        await AddApiClientSyncOperationsAsync(client, baseUri, realm, request.ApiClientId, accessToken, operations, cancellationToken);
+        await AddBlazorClientSyncOperationsAsync(api, realm, blazorClientId, request, accessToken, operations, cancellationToken);
+        await AddOfflineAccessSyncOperationsAsync(api, realm, blazorClientId, accessToken, operations, cancellationToken);
+        await AddApiClientSyncOperationsAsync(api, realm, request.ApiClientId, accessToken, operations, cancellationToken);
     }
 
     private static async Task AddBlazorClientSyncOperationsAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string blazorClientId,
         KeycloakRealmSyncPreviewRequestDto request,
@@ -1855,7 +1880,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         List<KeycloakRealmSyncOperationDto> operations,
         CancellationToken cancellationToken)
     {
-        var blazorLookup = await FindClientAsync(client, baseUri, realm, blazorClientId, accessToken, cancellationToken);
+        var blazorLookup = await FindClientAsync(api, realm, blazorClientId, accessToken, cancellationToken);
         if (!blazorLookup.Success)
         {
             operations.Add(SyncOperation(
@@ -1887,8 +1912,9 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         }
 
         var representation = await GetClientRepresentationAsync(
-            client,
-            BuildUri(baseUri, "admin", "realms", realm, "clients", blazorLookup.ClientUuid),
+            api,
+            realm,
+            blazorLookup.ClientUuid,
             accessToken,
             cancellationToken);
         if (representation is null)
@@ -1952,15 +1978,14 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task AddOfflineAccessSyncOperationsAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string blazorClientId,
         string accessToken,
         List<KeycloakRealmSyncOperationDto> operations,
         CancellationToken cancellationToken)
     {
-        var offlineRole = await GetRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        var offlineRole = await GetRealmRoleAsync(api, realm, "offline_access", accessToken, cancellationToken);
         if (offlineRole is null)
         {
             operations.Add(SyncOperation(
@@ -1977,7 +2002,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         }
 
         var defaultRoleName = $"default-roles-{realm.ToLowerInvariant()}";
-        var defaultRole = await GetRealmRoleAsync(client, baseUri, realm, defaultRoleName, accessToken, cancellationToken);
+        var defaultRole = await GetRealmRoleAsync(api, realm, defaultRoleName, accessToken, cancellationToken);
         if (defaultRole is null)
         {
             operations.Add(SyncOperation(
@@ -1992,7 +2017,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         }
         else if (offlineRole is not null && defaultRole["id"]?.GetValue<string>() is { Length: > 0 } defaultRoleId)
         {
-            var composites = await GetRealmRoleCompositesAsync(client, baseUri, realm, defaultRoleId, accessToken, cancellationToken);
+            var composites = await GetRealmRoleCompositesAsync(api, realm, defaultRoleId, accessToken, cancellationToken);
             if (!composites.Any(role => string.Equals(role.Name, "offline_access", StringComparison.Ordinal)))
             {
                 operations.Add(SyncOperation(
@@ -2009,7 +2034,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             }
         }
 
-        var scopeId = await FindClientScopeIdAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        var scopeId = await FindClientScopeIdAsync(api, realm, "offline_access", accessToken, cancellationToken);
         if (string.IsNullOrWhiteSpace(scopeId))
         {
             operations.Add(SyncOperation(
@@ -2026,11 +2051,11 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             return;
         }
 
-        var blazorLookup = await FindClientAsync(client, baseUri, realm, blazorClientId, accessToken, cancellationToken);
+        var blazorLookup = await FindClientAsync(api, realm, blazorClientId, accessToken, cancellationToken);
         if (blazorLookup.Success && !string.IsNullOrWhiteSpace(blazorLookup.ClientUuid))
         {
-            var optionalScopes = await GetClientScopesAsync(client, baseUri, realm, blazorLookup.ClientUuid, "optional-client-scopes", accessToken, cancellationToken);
-            var defaultScopes = await GetClientScopesAsync(client, baseUri, realm, blazorLookup.ClientUuid, "default-client-scopes", accessToken, cancellationToken);
+            var optionalScopes = await GetClientScopesAsync(api, realm, blazorLookup.ClientUuid, "optional-client-scopes", accessToken, cancellationToken);
+            var defaultScopes = await GetClientScopesAsync(api, realm, blazorLookup.ClientUuid, "default-client-scopes", accessToken, cancellationToken);
             var hasOfflineScope = optionalScopes.Concat(defaultScopes).Any(scope => string.Equals(scope.Name, "offline_access", StringComparison.Ordinal));
             if (!hasOfflineScope)
             {
@@ -2048,7 +2073,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             }
         }
 
-        var mappings = await GetClientScopeRealmMappingsAsync(client, baseUri, realm, scopeId, accessToken, cancellationToken);
+        var mappings = await GetClientScopeRealmMappingsAsync(api, realm, scopeId, accessToken, cancellationToken);
         if (!mappings.Any(role => string.Equals(role.Name, "offline_access", StringComparison.Ordinal)))
         {
             operations.Add(SyncOperation(
@@ -2066,8 +2091,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task AddApiClientSyncOperationsAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string? apiClientId,
         string accessToken,
@@ -2077,7 +2101,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         if (string.IsNullOrWhiteSpace(apiClientId))
             return;
 
-        var lookup = await FindClientAsync(client, baseUri, realm, apiClientId, accessToken, cancellationToken);
+        var lookup = await FindClientAsync(api, realm, apiClientId, accessToken, cancellationToken);
         if (!lookup.Success)
         {
             operations.Add(SyncOperation(
@@ -2109,8 +2133,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private async Task AddSyncApplyOperationsAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         AuthProviderConfigurationDto configuration,
         KeycloakRealmSyncPreviewRequestDto request,
@@ -2119,8 +2142,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         List<KeycloakRealmDoctorCheckDto> diagnostics,
         CancellationToken cancellationToken)
     {
-        using var realmRequest = CreateAdminRequest(HttpMethod.Get, BuildUri(baseUri, "admin", "realms", realm), accessToken);
-        using var realmResponse = await client.SendAsync(realmRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        var realmResponse = await api.GetRealmAsync(realm, AuthorizationHeader(accessToken), cancellationToken);
         diagnostics.Add(realmResponse.IsSuccessStatusCode
             ? DoctorCheck("keycloak_realm_exists", "Realm", "healthy", "Keycloak realm exists and is readable.")
             : DoctorCheck("keycloak_realm_not_found", "Realm", "blocked", "Keycloak realm could not be read through the Admin API.", "Verify the realm exists and the temporary admin has read access."));
@@ -2139,14 +2161,13 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             return;
         }
 
-        await ApplyBlazorClientAsync(client, baseUri, realm, configuration, request, accessToken, operations, cancellationToken);
-        await ApplyOfflineAccessAsync(client, baseUri, realm, configuration.KeycloakClientId, accessToken, operations, cancellationToken);
-        await ApplyApiClientAsync(client, baseUri, realm, request.ApiClientId, accessToken, operations, cancellationToken);
+        await ApplyBlazorClientAsync(api, realm, configuration, request, accessToken, operations, cancellationToken);
+        await ApplyOfflineAccessAsync(api, realm, configuration.KeycloakClientId, accessToken, operations, cancellationToken);
+        await ApplyApiClientAsync(api, realm, request.ApiClientId, accessToken, operations, cancellationToken);
     }
 
     private async Task ApplyBlazorClientAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         AuthProviderConfigurationDto configuration,
         KeycloakRealmSyncPreviewRequestDto request,
@@ -2155,7 +2176,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         CancellationToken cancellationToken)
     {
         var blazorClientId = configuration.KeycloakClientId;
-        var lookup = await FindClientAsync(client, baseUri, realm, blazorClientId, accessToken, cancellationToken);
+        var lookup = await FindClientAsync(api, realm, blazorClientId, accessToken, cancellationToken);
         if (!lookup.Success)
         {
             operations.Add(SyncOperation(
@@ -2186,7 +2207,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 return;
             }
 
-            var createResult = await CreateClientAsync(client, baseUri, realm, blazorClientId, accessToken, bearerOnly: false, cancellationToken);
+            var createResult = await CreateClientAsync(api, realm, blazorClientId, accessToken, bearerOnly: false, cancellationToken);
             if (!createResult.Success)
             {
                 operations.Add(SyncOperation(
@@ -2212,7 +2233,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 "The configured Blazor client was missing from the realm.",
                 ["Created confidential OIDC client"]));
 
-            lookup = await FindClientAsync(client, baseUri, realm, blazorClientId, accessToken, cancellationToken);
+            lookup = await FindClientAsync(api, realm, blazorClientId, accessToken, cancellationToken);
             if (!lookup.Success || string.IsNullOrWhiteSpace(lookup.ClientUuid))
             {
                 operations.Add(SyncOperation(
@@ -2228,8 +2249,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             }
         }
 
-        var clientUri = BuildUri(baseUri, "admin", "realms", realm, "clients", lookup.ClientUuid);
-        var representation = await GetClientRepresentationAsync(client, clientUri, accessToken, cancellationToken);
+        var representation = await GetClientRepresentationAsync(api, realm, lookup.ClientUuid, accessToken, cancellationToken);
         if (representation is null)
         {
             operations.Add(SyncOperation(
@@ -2280,7 +2300,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             return;
         }
 
-        var updated = await UpdateClientRepresentationAsync(client, clientUri, accessToken, representation, cancellationToken);
+        var updated = await UpdateClientRepresentationAsync(api, realm, lookup.ClientUuid, accessToken, representation, cancellationToken);
         operations.Add(SyncOperation(
             "keycloak-blazor-client-update",
             "client",
@@ -2296,18 +2316,17 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task ApplyOfflineAccessAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string blazorClientId,
         string accessToken,
         List<KeycloakRealmSyncOperationDto> operations,
         CancellationToken cancellationToken)
     {
-        var offlineRole = await GetRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        var offlineRole = await GetRealmRoleAsync(api, realm, "offline_access", accessToken, cancellationToken);
         if (offlineRole is null)
         {
-            var created = await CreateRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+            var created = await CreateRealmRoleAsync(api, realm, "offline_access", accessToken, cancellationToken);
             operations.Add(SyncOperation(
                 "keycloak-offline-access-role-add",
                 "role",
@@ -2318,12 +2337,12 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 created ? "Created the offline_access realm role." : "offline_access realm role could not be created.",
                 created ? "The role was missing and was added without deleting any existing role." : "Keycloak rejected the additive realm-role create."));
             offlineRole = created
-                ? await GetRealmRoleAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken)
+                ? await GetRealmRoleAsync(api, realm, "offline_access", accessToken, cancellationToken)
                 : null;
         }
 
         var defaultRoleName = $"default-roles-{realm.ToLowerInvariant()}";
-        var defaultRole = await GetRealmRoleAsync(client, baseUri, realm, defaultRoleName, accessToken, cancellationToken);
+        var defaultRole = await GetRealmRoleAsync(api, realm, defaultRoleName, accessToken, cancellationToken);
         var defaultRoleId = defaultRole?["id"]?.GetValue<string>();
         if (string.IsNullOrWhiteSpace(defaultRoleId))
         {
@@ -2339,15 +2358,15 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         }
         else if (offlineRole is not null)
         {
-            var composites = await GetRealmRoleCompositesAsync(client, baseUri, realm, defaultRoleId, accessToken, cancellationToken);
+            var composites = await GetRealmRoleCompositesAsync(api, realm, defaultRoleId, accessToken, cancellationToken);
             if (!composites.Any(role => string.Equals(role.Name, "offline_access", StringComparison.Ordinal)))
             {
-                using var request = CreateAdminRequest(
-                    HttpMethod.Post,
-                    BuildUri(baseUri, "admin", "realms", realm, "roles-by-id", defaultRoleId, "composites"),
-                    accessToken,
-                    new JsonArray(offlineRole.DeepClone()));
-                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                var response = await api.AddRealmRoleCompositesAsync(
+                    realm,
+                    defaultRoleId,
+                    AuthorizationHeader(accessToken),
+                    new JsonArray(offlineRole.DeepClone()),
+                    cancellationToken);
                 operations.Add(SyncOperation(
                     "keycloak-default-role-offline-access-add",
                     "role-composite",
@@ -2362,10 +2381,10 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             }
         }
 
-        var scopeId = await FindClientScopeIdAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+        var scopeId = await FindClientScopeIdAsync(api, realm, "offline_access", accessToken, cancellationToken);
         if (string.IsNullOrWhiteSpace(scopeId))
         {
-            var created = await CreateClientScopeAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken);
+            var created = await CreateClientScopeAsync(api, realm, "offline_access", accessToken, cancellationToken);
             operations.Add(SyncOperation(
                 "keycloak-offline-access-scope-add",
                 "client-scope",
@@ -2376,19 +2395,19 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
                 created ? "Created the offline_access client scope." : "offline_access client scope could not be created.",
                 created ? "The client scope was missing and was added." : "Keycloak rejected the additive client-scope create."));
             scopeId = created
-                ? await FindClientScopeIdAsync(client, baseUri, realm, "offline_access", accessToken, cancellationToken)
+                ? await FindClientScopeIdAsync(api, realm, "offline_access", accessToken, cancellationToken)
                 : null;
         }
 
-        var blazorLookup = await FindClientAsync(client, baseUri, realm, blazorClientId, accessToken, cancellationToken);
+        var blazorLookup = await FindClientAsync(api, realm, blazorClientId, accessToken, cancellationToken);
         if (blazorLookup.Success && !string.IsNullOrWhiteSpace(blazorLookup.ClientUuid) && !string.IsNullOrWhiteSpace(scopeId))
         {
-            var optionalScopes = await GetClientScopesAsync(client, baseUri, realm, blazorLookup.ClientUuid, "optional-client-scopes", accessToken, cancellationToken);
-            var defaultScopes = await GetClientScopesAsync(client, baseUri, realm, blazorLookup.ClientUuid, "default-client-scopes", accessToken, cancellationToken);
+            var optionalScopes = await GetClientScopesAsync(api, realm, blazorLookup.ClientUuid, "optional-client-scopes", accessToken, cancellationToken);
+            var defaultScopes = await GetClientScopesAsync(api, realm, blazorLookup.ClientUuid, "default-client-scopes", accessToken, cancellationToken);
             var hasOfflineScope = optionalScopes.Concat(defaultScopes).Any(scope => string.Equals(scope.Name, "offline_access", StringComparison.Ordinal));
             if (!hasOfflineScope)
             {
-                var result = await EnsureOfflineAccessScopeAsync(client, baseUri, realm, blazorLookup.ClientUuid, accessToken, cancellationToken);
+                var result = await EnsureOfflineAccessScopeAsync(api, realm, blazorLookup.ClientUuid, accessToken, cancellationToken);
                 operations.Add(SyncOperation(
                     "keycloak-blazor-offline-access-scope-add",
                     "client-scope",
@@ -2403,10 +2422,10 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
 
         if (!string.IsNullOrWhiteSpace(scopeId) && offlineRole is not null)
         {
-            var mappings = await GetClientScopeRealmMappingsAsync(client, baseUri, realm, scopeId, accessToken, cancellationToken);
+            var mappings = await GetClientScopeRealmMappingsAsync(api, realm, scopeId, accessToken, cancellationToken);
             if (!mappings.Any(role => string.Equals(role.Name, "offline_access", StringComparison.Ordinal)))
             {
-                var result = await EnsureOfflineAccessScopeMappingAsync(client, baseUri, realm, scopeId, accessToken, cancellationToken);
+                var result = await EnsureOfflineAccessScopeMappingAsync(api, realm, scopeId, accessToken, cancellationToken);
                 operations.Add(SyncOperation(
                     "keycloak-offline-access-scope-mapping-add",
                     "scope-mapping",
@@ -2421,8 +2440,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private async Task ApplyApiClientAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string? apiClientId,
         string accessToken,
@@ -2432,7 +2450,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         if (string.IsNullOrWhiteSpace(apiClientId))
             return;
 
-        var lookup = await FindClientAsync(client, baseUri, realm, apiClientId, accessToken, cancellationToken);
+        var lookup = await FindClientAsync(api, realm, apiClientId, accessToken, cancellationToken);
         if (!lookup.Success)
         {
             operations.Add(SyncOperation(
@@ -2449,7 +2467,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
 
         if (string.IsNullOrWhiteSpace(lookup.ClientUuid))
         {
-            var createResult = await CreateClientAsync(client, baseUri, realm, apiClientId, accessToken, bearerOnly: true, cancellationToken);
+            var createResult = await CreateClientAsync(api, realm, apiClientId, accessToken, bearerOnly: true, cancellationToken);
             operations.Add(SyncOperation(
                 "keycloak-api-client-add",
                 "client",
@@ -2475,52 +2493,53 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
     }
 
     private static async Task<bool> UpdateClientRepresentationAsync(
-        HttpClient client,
-        Uri clientUri,
+        IKeycloakAdminApi api,
+        string realm,
+        string clientUuid,
         string accessToken,
         JsonObject representation,
         CancellationToken cancellationToken)
     {
-        using var request = CreateAdminRequest(HttpMethod.Put, clientUri, accessToken, representation);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        var response = await api.UpdateClientRepresentationAsync(
+            realm,
+            clientUuid,
+            AuthorizationHeader(accessToken),
+            representation,
+            cancellationToken);
         return response.IsSuccessStatusCode;
     }
 
     private static async Task<bool> CreateRealmRoleAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string roleName,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        using var request = CreateAdminRequest(
-            HttpMethod.Post,
-            BuildUri(baseUri, "admin", "realms", realm, "roles"),
-            accessToken,
-            new JsonObject { ["name"] = roleName });
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        var response = await api.CreateRealmRoleAsync(
+            realm,
+            AuthorizationHeader(accessToken),
+            new JsonObject { ["name"] = roleName },
+            cancellationToken);
         return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict;
     }
 
     private static async Task<bool> CreateClientScopeAsync(
-        HttpClient client,
-        Uri baseUri,
+        IKeycloakAdminApi api,
         string realm,
         string scopeName,
         string accessToken,
         CancellationToken cancellationToken)
     {
-        using var request = CreateAdminRequest(
-            HttpMethod.Post,
-            BuildUri(baseUri, "admin", "realms", realm, "client-scopes"),
-            accessToken,
+        var response = await api.CreateClientScopeAsync(
+            realm,
+            AuthorizationHeader(accessToken),
             new JsonObject
             {
                 ["name"] = scopeName,
                 ["protocol"] = "openid-connect"
-            });
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            },
+            cancellationToken);
         return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict;
     }
 
@@ -2685,33 +2704,166 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
         };
     }
 
-    private sealed class KeycloakTokenResponse
+    internal interface IKeycloakAdminApi
+    {
+        [Post("/realms/master/protocol/openid-connect/token")]
+        Task<HttpResponseMessage> RequestAdminTokenAsync(
+            [Body(BodySerializationMethod.UrlEncoded)] Dictionary<string, object> request,
+            CancellationToken cancellationToken = default);
+
+        [Get("/realms/{realm}/.well-known/openid-configuration")]
+        Task<IApiResponse> GetDiscoveryAsync(string realm, CancellationToken cancellationToken = default);
+
+        [Get("/admin/realms/{realm}")]
+        Task<IApiResponse> GetRealmAsync(
+            string realm,
+            [Header("Authorization")] string authorization,
+            CancellationToken cancellationToken = default);
+
+        [Post("/admin/realms")]
+        Task<IApiResponse> CreateRealmAsync(
+            [Header("Authorization")] string authorization,
+            [Body] KeycloakRealmRepresentation request,
+            CancellationToken cancellationToken = default);
+
+        [Get("/admin/realms/{realm}/clients")]
+        Task<HttpResponseMessage> FindClientsAsync(
+            string realm,
+            [Query] string clientId,
+            [Header("Authorization")] string authorization,
+            CancellationToken cancellationToken = default);
+
+        [Post("/admin/realms/{realm}/clients")]
+        Task<IApiResponse> CreateClientAsync(
+            string realm,
+            [Header("Authorization")] string authorization,
+            [Body] KeycloakClientRepresentation request,
+            CancellationToken cancellationToken = default);
+
+        [Get("/admin/realms/{realm}/clients/{clientUuid}")]
+        Task<HttpResponseMessage> GetClientRepresentationAsync(
+            string realm,
+            string clientUuid,
+            [Header("Authorization")] string authorization,
+            CancellationToken cancellationToken = default);
+
+        [Put("/admin/realms/{realm}/clients/{clientUuid}")]
+        Task<IApiResponse> UpdateClientRepresentationAsync(
+            string realm,
+            string clientUuid,
+            [Header("Authorization")] string authorization,
+            [Body] JsonObject request,
+            CancellationToken cancellationToken = default);
+
+        [Get("/admin/realms/{realm}/clients/{clientUuid}/client-secret")]
+        Task<HttpResponseMessage> GetCurrentClientSecretAsync(
+            string realm,
+            string clientUuid,
+            [Header("Authorization")] string authorization,
+            CancellationToken cancellationToken = default);
+
+        [Put("/admin/realms/{realm}/clients/{clientUuid}/optional-client-scopes/{scopeId}")]
+        Task<IApiResponse> AssignOptionalClientScopeAsync(
+            string realm,
+            string clientUuid,
+            string scopeId,
+            [Header("Authorization")] string authorization,
+            CancellationToken cancellationToken = default);
+
+        [Get("/admin/realms/{realm}/roles/{roleName}")]
+        Task<HttpResponseMessage> GetRealmRoleAsync(
+            string realm,
+            string roleName,
+            [Header("Authorization")] string authorization,
+            CancellationToken cancellationToken = default);
+
+        [Post("/admin/realms/{realm}/roles")]
+        Task<IApiResponse> CreateRealmRoleAsync(
+            string realm,
+            [Header("Authorization")] string authorization,
+            [Body] JsonObject request,
+            CancellationToken cancellationToken = default);
+
+        [Get("/admin/realms/{realm}/roles-by-id/{roleId}/composites/realm")]
+        Task<HttpResponseMessage> GetRealmRoleCompositesAsync(
+            string realm,
+            string roleId,
+            [Header("Authorization")] string authorization,
+            CancellationToken cancellationToken = default);
+
+        [Post("/admin/realms/{realm}/roles-by-id/{roleId}/composites")]
+        Task<IApiResponse> AddRealmRoleCompositesAsync(
+            string realm,
+            string roleId,
+            [Header("Authorization")] string authorization,
+            [Body] JsonArray request,
+            CancellationToken cancellationToken = default);
+
+        [Get("/admin/realms/{realm}/client-scopes")]
+        Task<HttpResponseMessage> FindClientScopesAsync(
+            string realm,
+            [Query] string search,
+            [Header("Authorization")] string authorization,
+            CancellationToken cancellationToken = default);
+
+        [Post("/admin/realms/{realm}/client-scopes")]
+        Task<IApiResponse> CreateClientScopeAsync(
+            string realm,
+            [Header("Authorization")] string authorization,
+            [Body] JsonObject request,
+            CancellationToken cancellationToken = default);
+
+        [Get("/admin/realms/{realm}/clients/{clientUuid}/{scopeEndpoint}")]
+        Task<HttpResponseMessage> GetClientScopesAsync(
+            string realm,
+            string clientUuid,
+            string scopeEndpoint,
+            [Header("Authorization")] string authorization,
+            CancellationToken cancellationToken = default);
+
+        [Get("/admin/realms/{realm}/client-scopes/{scopeId}/scope-mappings/realm/composite")]
+        Task<HttpResponseMessage> GetClientScopeRealmMappingsAsync(
+            string realm,
+            string scopeId,
+            [Header("Authorization")] string authorization,
+            CancellationToken cancellationToken = default);
+
+        [Post("/admin/realms/{realm}/client-scopes/{scopeId}/scope-mappings/realm")]
+        Task<IApiResponse> AddClientScopeRealmMappingAsync(
+            string realm,
+            string scopeId,
+            [Header("Authorization")] string authorization,
+            [Body] JsonArray request,
+            CancellationToken cancellationToken = default);
+    }
+
+    internal sealed class KeycloakTokenResponse
     {
         [JsonPropertyName("access_token")]
         public string? AccessToken { get; set; }
     }
 
-    private sealed record KeycloakRealmRepresentation(string Realm, bool Enabled);
+    internal sealed record KeycloakRealmRepresentation(string Realm, bool Enabled);
 
-    private sealed class KeycloakClientLookupResult
+    internal sealed class KeycloakClientLookupResult
     {
         public string Id { get; set; } = string.Empty;
         public string ClientId { get; set; } = string.Empty;
     }
 
-    private sealed class KeycloakClientScopeLookupResult
+    internal sealed class KeycloakClientScopeLookupResult
     {
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
     }
 
-    private sealed class KeycloakRoleLookupResult
+    internal sealed class KeycloakRoleLookupResult
     {
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
     }
 
-    private sealed class KeycloakClientRepresentation
+    internal sealed class KeycloakClientRepresentation
     {
         public string ClientId { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;

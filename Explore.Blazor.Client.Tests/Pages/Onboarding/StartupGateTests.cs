@@ -65,6 +65,7 @@ public class StartupGateTests : IDisposable
         {
             IsCompleted = true,
             IsAuthenticated = true,
+            IsCurrentUserInstanceAdmin = true,
             SelectedDeploymentMode = "MultiTenant"
         });
 
@@ -78,6 +79,34 @@ public class StartupGateTests : IDisposable
             if (!UriEndsWith("/admin/instance/settings"))
             {
                 throw new InvalidOperationException($"Expected redirect to /admin/instance/settings, got '{_nav.Uri}'.");
+            }
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task StartupGate_WhenMultiTenantCompletedForNonAdmin_RedirectsToEvents()
+    {
+        // Arrange
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsCompleted = true,
+            IsAuthenticated = true,
+            IsCurrentUserInstanceAdmin = false,
+            SelectedDeploymentMode = "MultiTenant"
+        });
+
+        // Act
+        _nav.NavigateTo("/startup");
+        var cut = _ctx.RenderMudComponent<StartupGate>();
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (!UriEndsWith("/events"))
+            {
+                throw new InvalidOperationException($"Expected redirect to /events, got '{_nav.Uri}'.");
             }
         });
 

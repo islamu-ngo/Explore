@@ -1,10 +1,10 @@
 // ABOUTME: Keycloak container fixture for browser E2E BFF authentication tests.
 // ABOUTME: Imports the deterministic ISLAMU test realm used by real OIDC login flows.
 
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Containers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
 
 namespace Explore.Blazor.Client.E2ETests.Fixtures;
 

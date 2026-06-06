@@ -58,6 +58,7 @@
             }
 
             if (instanceStatus.IsAuthenticated &&
+                instanceStatus.IsCurrentUserInstanceAdmin &&
                 instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
             {
                 Navigation.NavigateTo("/admin/instance/settings");

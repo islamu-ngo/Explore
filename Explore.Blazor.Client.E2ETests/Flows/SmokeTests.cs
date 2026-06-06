@@ -28,9 +28,9 @@ public class SmokeTests(
             await Assert.That(response!.Status).IsEqualTo(200);
 
             await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions
-                {
-                    Name = "Explore Events"
-                })
+            {
+                Name = "Explore Events"
+            })
                 .WaitForAsync();
         }
         finally

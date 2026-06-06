@@ -1,8 +1,8 @@
 // ABOUTME: Browser E2E coverage for setup-time Keycloak bootstrap from the onboarding UI.
 // ABOUTME: Verifies the UI can submit one-time credentials through the setup-gated BFF path.
 
-using Explore.Blazor.Client.E2ETests.Fixtures;
 using System.Diagnostics;
+using Explore.Blazor.Client.E2ETests.Fixtures;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 
@@ -60,9 +60,9 @@ public sealed class KeycloakBootstrapBrowserFlowTests(
         });
 
         await page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions
-            {
-                Name = "Authentication Providers"
-            })
+        {
+            Name = "Authentication Providers"
+        })
             .WaitForAsync(new LocatorWaitForOptions { Timeout = BrowserTimeoutMilliseconds });
 
         var enableKeycloak = await TryGetVisibleLocatorAsync(
@@ -143,9 +143,9 @@ public sealed class KeycloakBootstrapBrowserFlowTests(
         await page.Keyboard.PressAsync("Tab");
 
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions
-            {
-                Name = "Save & Continue to Login"
-            })
+        {
+            Name = "Save & Continue to Login"
+        })
             .ClickAsync(new LocatorClickOptions { Timeout = BrowserTimeoutMilliseconds });
 
         await page.WaitForURLAsync(

@@ -390,6 +390,8 @@ public class InstanceOnboardingService : IInstanceOnboardingService
 
     public async Task<InstanceCommandResponseModel> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestModel request)
     {
+        ApplyKeycloakBootstrapBrowserDefaults(request);
+
         var result = await SendCommandAsync(ct => _api.BootstrapKeycloakRealmAsync(request, ct));
         if (result.Success)
         {
@@ -397,6 +399,18 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         }
 
         return result;
+    }
+
+    private void ApplyKeycloakBootstrapBrowserDefaults(KeycloakBootstrapRequestModel request)
+    {
+        if (!Uri.TryCreate(_navigation.BaseUri, UriKind.Absolute, out var baseUri))
+            return;
+
+        var origin = $"{baseUri.Scheme}://{baseUri.Host}{(baseUri.IsDefaultPort ? string.Empty : $":{baseUri.Port}")}";
+        var redirectUri = $"{origin.TrimEnd('/')}/*";
+
+        request.BlazorRedirectUris = MergeBootstrapValues(request.BlazorRedirectUris, redirectUri);
+        request.BlazorWebOrigins = MergeBootstrapValues(request.BlazorWebOrigins, "+");
     }
 
     public async Task<KeycloakRealmDoctorResultModel> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestModel request)
@@ -803,6 +817,20 @@ public class InstanceOnboardingService : IInstanceOnboardingService
             Message = "Request failed.",
             Errors = [error]
         };
+
+    private static IReadOnlyList<string> MergeBootstrapValues(
+        IReadOnlyList<string>? currentValues,
+        string requiredValue)
+    {
+        if (string.IsNullOrWhiteSpace(requiredValue))
+            return currentValues ?? [];
+
+        return (currentValues ?? [])
+            .Append(requiredValue)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
 }
 
 // ── Onboarding Models ────────────────────────────────────────────────────
@@ -1046,6 +1074,8 @@ public class KeycloakBootstrapRequestModel
     public string Realm { get; set; } = string.Empty;
     public string BlazorClientId { get; set; } = "islamu-event-blazor";
     public string BlazorClientSecret { get; set; } = string.Empty;
+    public IReadOnlyList<string> BlazorRedirectUris { get; set; } = [];
+    public IReadOnlyList<string> BlazorWebOrigins { get; set; } = [];
     public string? ApiClientId { get; set; } = "islamu-event-api";
     public string? ApiClientSecret { get; set; }
     public int Mode { get; set; }

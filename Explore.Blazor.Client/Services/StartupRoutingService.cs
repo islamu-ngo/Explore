@@ -31,6 +31,7 @@ public sealed class StartupRoutingService : IStartupRoutingService
         }
 
         if (instanceStatus.IsAuthenticated &&
+            instanceStatus.IsCurrentUserInstanceAdmin &&
             instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
         {
             return StartupRouteDecision.InstanceAdmin;

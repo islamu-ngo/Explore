@@ -47,6 +47,22 @@ public class KeycloakBootstrapRequestDtoValidator : AbstractValidator<KeycloakBo
             .Must(NotContainControlCharacters)
             .WithMessage("Blazor client secret must not contain control characters.");
 
+        RuleForEach(x => x.BlazorRedirectUris)
+            .MaximumLength(UrlMaxLength)
+            .WithMessage("Blazor redirect URI is too long.")
+            .Must(NotContainControlCharacters)
+            .WithMessage("Blazor redirect URI must not contain control characters.")
+            .Must(BeSafeRedirectUri)
+            .WithMessage("Blazor redirect URI must be an absolute HTTP or HTTPS URL, may end with /*, and must not include user info, query, or fragments.");
+
+        RuleForEach(x => x.BlazorWebOrigins)
+            .MaximumLength(UrlMaxLength)
+            .WithMessage("Blazor web origin is too long.")
+            .Must(NotContainControlCharacters)
+            .WithMessage("Blazor web origin must not contain control characters.")
+            .Must(BeSafeWebOrigin)
+            .WithMessage("Blazor web origin must be '+', or an absolute HTTP or HTTPS origin without path, user info, query, or fragments.");
+
         RuleFor(x => x.ApiClientId)
             .MaximumLength(IdentifierMaxLength)
             .WithMessage("API client ID is too long.")
@@ -91,6 +107,40 @@ public class KeycloakBootstrapRequestDtoValidator : AbstractValidator<KeycloakBo
                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
                && string.IsNullOrEmpty(uri.UserInfo)
                && string.IsNullOrEmpty(uri.Fragment);
+    }
+
+    private static bool BeSafeRedirectUri(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        var value = url.Trim();
+        if (value.EndsWith("/*", StringComparison.Ordinal))
+        {
+            value = value[..^1];
+        }
+
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri)
+               && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+               && string.IsNullOrEmpty(uri.UserInfo)
+               && string.IsNullOrEmpty(uri.Query)
+               && string.IsNullOrEmpty(uri.Fragment);
+    }
+
+    private static bool BeSafeWebOrigin(string? origin)
+    {
+        if (string.IsNullOrWhiteSpace(origin))
+            return false;
+
+        if (origin == "+")
+            return true;
+
+        return Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+               && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+               && string.IsNullOrEmpty(uri.UserInfo)
+               && string.IsNullOrEmpty(uri.Query)
+               && string.IsNullOrEmpty(uri.Fragment)
+               && uri.AbsolutePath == "/";
     }
 
     private static bool NotContainControlCharacters(string? value)

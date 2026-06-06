@@ -183,7 +183,8 @@ public sealed class KeycloakBootstrapServiceTests
                 "blazor-uuid",
                 "islamu-event-blazor",
                 "runtime-blazor-secret",
-                includeRefreshTokenSettings: true))),
+                includeRefreshTokenSettings: true,
+                includeAudienceMapper: true))),
             ExpectOfflineAccessRole(),
             ExpectDefaultRole(),
             ExpectDefaultRoleCompositeUpdate(),
@@ -199,6 +200,46 @@ public sealed class KeycloakBootstrapServiceTests
         await Assert.That(handler.Requests.Count).IsEqualTo(10);
         await Assert.That(handler.Requests.Any(x => x.Method == HttpMethod.Put)).IsFalse();
         await Assert.That(handler.Requests.Any(x => x.RequestUri?.AbsolutePath.Contains("optional-client-scopes", StringComparison.Ordinal) == true)).IsFalse();
+    }
+
+    [Test]
+    public async Task BootstrapAsync_PatchExistingRealmWhenBrowserUrisMissing_AddsLoginRepairSettings()
+    {
+        var request = CreateRequest(mode: KeycloakBootstrapMode.PatchExistingRealm);
+        request.ApiClientSecret = null;
+        request.BlazorRedirectUris = ["https://localhost:7177/*"];
+        request.BlazorWebOrigins = ["+"];
+        var handler = new OrderedMessageHandler(
+            Expect(HttpMethod.Post, "/auth/realms/master/protocol/openid-connect/token", _ => JsonResponse("""
+                { "access_token": "admin-token" }
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU", _ => new HttpResponseMessage(HttpStatusCode.OK)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients", _ => JsonResponse("""
+                [{ "id": "blazor-uuid", "clientId": "islamu-event-blazor" }]
+                """)),
+            Expect(HttpMethod.Get, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => JsonResponse(ClientRepresentationJson(
+                "blazor-uuid",
+                "islamu-event-blazor",
+                "runtime-blazor-secret",
+                includeRefreshTokenSettings: true))),
+            ExpectOfflineAccessRole(),
+            ExpectDefaultRole(),
+            ExpectDefaultRoleCompositeUpdate(),
+            ExpectOfflineAccessScopeLookup(),
+            ExpectOfflineAccessRole(),
+            ExpectOfflineAccessScopeMappingUpdate(),
+            Expect(HttpMethod.Put, "/auth/admin/realms/ISLAMU/clients/blazor-uuid", _ => new HttpResponseMessage(HttpStatusCode.NoContent)));
+        var service = CreateService(handler);
+
+        var result = await service.BootstrapAsync(request, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(11);
+        await Assert.That(handler.Requests[10].Body).Contains("https://localhost:7177/*");
+        await Assert.That(handler.Requests[10].Body).Contains("\"webOrigins\":[\"\\u002B\"]");
+        await Assert.That(handler.Requests[10].Body).Contains("\"post.logout.redirect.uris\":\"\\u002B\"");
+        await Assert.That(handler.Requests[10].Body).Contains("islamu-event-api-audience");
+        await Assert.That(handler.Requests[10].Body).Contains("\"included.client.audience\":\"islamu-event-api\"");
     }
 
     [Test]
@@ -649,7 +690,8 @@ public sealed class KeycloakBootstrapServiceTests
         string id,
         string clientId,
         string? secret = null,
-        bool includeRefreshTokenSettings = false)
+        bool includeRefreshTokenSettings = false,
+        bool includeAudienceMapper = false)
     {
         var secretJson = secret is null
             ? string.Empty
@@ -661,7 +703,26 @@ public sealed class KeycloakBootstrapServiceTests
                   "optionalClientScopes": ["offline_access"],
                   "attributes": {
                     "use.refresh.tokens": "true"
-                  }
+                }
+                """
+            : string.Empty;
+
+        var audienceMapperJson = includeAudienceMapper
+            ? """
+                ,
+                  "protocolMappers": [
+                    {
+                      "name": "islamu-event-api-audience",
+                      "protocol": "openid-connect",
+                      "protocolMapper": "oidc-audience-mapper",
+                      "consentRequired": false,
+                      "config": {
+                        "included.client.audience": "islamu-event-api",
+                        "id.token.claim": "false",
+                        "access.token.claim": "true"
+                      }
+                    }
+                  ]
                 """
             : string.Empty;
 
@@ -673,12 +734,13 @@ public sealed class KeycloakBootstrapServiceTests
               "protocol": "openid-connect",
               "publicClient": false,
               "standardFlowEnabled": true,
-              "defaultClientScopes": ["openid", "profile", "email", "web-origins", "acr"]{3}
+              "defaultClientScopes": ["openid", "profile", "email", "web-origins", "acr"]{3}{4}
             }
             """.Replace("{0}", id, StringComparison.Ordinal)
             .Replace("{1}", clientId, StringComparison.Ordinal)
             .Replace("{2}", secretJson, StringComparison.Ordinal)
-            .Replace("{3}", refreshTokenSettingsJson, StringComparison.Ordinal);
+            .Replace("{3}", refreshTokenSettingsJson, StringComparison.Ordinal)
+            .Replace("{4}", audienceMapperJson, StringComparison.Ordinal);
     }
 
     private sealed class StaticHttpClientFactory : IHttpClientFactory

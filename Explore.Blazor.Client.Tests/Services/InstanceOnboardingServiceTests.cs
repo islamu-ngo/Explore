@@ -230,13 +230,15 @@ public class InstanceOnboardingServiceTests
         // Arrange
         Uri? requestUri = null;
         HttpMethod? method = null;
+        string? requestBody = null;
         var refreshCalled = false;
         var commandResponse = new InstanceCommandResponseModel { Success = true, Message = "Bootstrapped" };
-        SetupBffClient(request =>
+        SetupBffClient(async request =>
         {
             requestUri = request.RequestUri;
             method = request.Method;
-            return Task.FromResult(CreateJsonResponse(commandResponse));
+            requestBody = await request.Content!.ReadAsStringAsync();
+            return CreateJsonResponse(commandResponse);
         });
         SetupBffSelfClient(request =>
         {
@@ -252,6 +254,8 @@ public class InstanceOnboardingServiceTests
         await Assert.That(requestUri).IsNotNull();
         await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/InstanceOnboarding/auth-provider-configuration/keycloak-bootstrap");
         await Assert.That(method).IsEqualTo(HttpMethod.Post);
+        await Assert.That(requestBody).Contains("\"blazorRedirectUris\":[\"https://localhost/*\"]");
+        await Assert.That(requestBody).Contains("\"blazorWebOrigins\":[\"\\u002B\"]");
         await Assert.That(refreshCalled).IsTrue();
     }
 

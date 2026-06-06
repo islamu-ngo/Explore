@@ -1,8 +1,8 @@
 // ABOUTME: Refit interface for instance onboarding and governance settings BFF endpoints.
 // ABOUTME: Covers onboarding flow, governance sub-resources, infrastructure settings, auth/authz providers, and analytics/footer governance.
 
-using Refit;
 using Explore.Blazor.Client.Clients;
+using Refit;
 
 namespace Explore.Blazor.Client.Services;
 

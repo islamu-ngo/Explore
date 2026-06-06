@@ -1,6 +1,7 @@
 // ABOUTME: Handles first-run instance onboarding completion, role assignment, and deployment mode persistence.
 // ABOUTME: Auto-creates the first user when not yet synced, then assigns instance admin and default tenant admin roles.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -15,7 +16,6 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
@@ -300,7 +300,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     {
         // Resolve the platform admin role using the canonical master code used by the repository.
         var platformAdminRole = await _roleRepository.GetByMasterCodeAsync("platform.admin");
-        
+
         // Fallback to ID if master code search fails (unlikely given seeds, but for robustness)
         if (platformAdminRole == null)
         {
@@ -551,10 +551,10 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         var tenantUser = await EnsureActiveTenantUserAsync(tenantId, user);
 
         var tenantUserRoleGrant = await _tenantUserRoleGrantRepository.GetByTenantAndUser(tenantId, userId);
-        
+
         // Resolve the tenant admin role using the canonical master code.
         var tenantAdminRole = await _roleRepository.GetByMasterCodeAsync("tenant.admin");
-        
+
         if (tenantAdminRole == null)
         {
             tenantAdminRole = await _roleRepository.GetByIdAsync((int)RoleEnum.TenantAdmin);
@@ -583,7 +583,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         }
 
         if (tenantUserRoleGrant.RoleId == tenantAdminRole.Id) return;
-        
+
         tenantUserRoleGrant.RoleId = tenantAdminRole.Id;
         await _tenantUserRoleGrantRepository.Update(tenantUserRoleGrant);
     }
