@@ -2,6 +2,7 @@
 // ABOUTME: Ensures the handler can read the current circuit cookie from the activity-scoped bridge.
 
 using Explore.Blazor.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Explore.Blazor.IntegrationTests.Handlers;
@@ -35,6 +36,31 @@ public class BffCookieForwardingHandlerTests
         await Assert.That(cookieValues).Contains("AuthCookie=test-value; XSRF-TOKEN=xsrf-value");
         await Assert.That(innerHandler.CapturedRequest.Headers.TryGetValues("X-CSRF-TOKEN", out var headerValues)).IsTrue();
         await Assert.That(headerValues).Contains("xsrf-value");
+    }
+
+    [Test]
+    public async Task SendAsync_DuringInitialHttpRequest_ForwardsCurrentRequestCookieWhenCircuitStoreIsEmpty()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers.Cookie = "AuthCookie=request-value; XSRF-TOKEN=request-xsrf";
+        var innerHandler = new CapturingHandler();
+        var handler = new BffCookieForwardingHandler(
+            new BffAuthCookieStore(),
+            new HttpContextAccessor { HttpContext = httpContext },
+            NullLogger<BffCookieForwardingHandler>.Instance)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://bff.example.com/api/TenantOnboarding/status");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.TryGetValues("Cookie", out var cookieValues)).IsTrue();
+        await Assert.That(cookieValues).Contains("AuthCookie=request-value; XSRF-TOKEN=request-xsrf");
+        await Assert.That(innerHandler.CapturedRequest.Headers.TryGetValues("X-CSRF-TOKEN", out var headerValues)).IsTrue();
+        await Assert.That(headerValues).Contains("request-xsrf");
     }
 
     private sealed class CapturingHandler : HttpMessageHandler

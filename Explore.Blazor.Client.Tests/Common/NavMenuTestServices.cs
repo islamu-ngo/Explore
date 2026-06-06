@@ -1,9 +1,9 @@
 // ABOUTME: Shared helper for registering NavMenu component dependencies in bUnit tests.
 // ABOUTME: Consolidates duplicated service setup from NavMenuAdminTests and AuthenticationFlowTests.
 
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
-using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Docking;
 using Explore.Blazor.Client.Tests.Common.Authentication;
@@ -16,7 +16,7 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// Eliminates duplication across test files that render NavMenu or full-page layouts.
 /// </summary>
 /// <remarks>
-    /// NavMenu injects: IUserService, IUserSettingsService, IPublicExperienceService, IInstanceOnboardingService,
+/// NavMenu injects: IUserService, IUserSettingsService, IPublicExperienceService, IInstanceOnboardingService,
 /// ITenantNavigationService, IEventCreationEligibilityService, IOrganizationService,
 /// IGroupService, SidebarState, NotificationService, ITranslationService, IHttpClientFactory.
 /// </remarks>

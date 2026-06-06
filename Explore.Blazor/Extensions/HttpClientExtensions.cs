@@ -5,8 +5,8 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
-using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Extensions;
+using Explore.Blazor.Client.Services;
 using Explore.Blazor.HealthChecks;
 using Explore.Blazor.Services;
 using Microsoft.Extensions.Http.Resilience;
@@ -64,8 +64,6 @@ public static class HttpClientExtensions
 
         // Typed services that need direct API access during InteractiveServer rendering
         services.AddTypedApiClient<ITenantNavigationService, TenantNavigationService>(apiBaseUrl, environment)
-            .AddInteractiveResilience();
-        services.AddTypedApiClient<IGroupService, GroupService>(apiBaseUrl, environment)
             .AddInteractiveResilience();
         services.AddTypedApiClient<IFooterAdminService, FooterAdminService>(apiBaseUrl, environment)
             .AddInteractiveResilience();

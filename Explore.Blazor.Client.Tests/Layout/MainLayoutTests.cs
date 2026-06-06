@@ -1,9 +1,11 @@
 // ABOUTME: Tests for MainLayout covering chrome visibility, user sync, accessibility landmarks, and settings-driven UI.
 // ABOUTME: Validates WCAG 2.4.1 skip link, ARIA live regions, sidebar brand name, and community guidelines conditional.
 
-using Explore.Blazor.Client.Layout;
 using Explore.Blazor.Client.Components.Shell;
+using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Layout;
+using Explore.Blazor.Client.Services.Ai;
 using Explore.Blazor.Client.Services.Docking;
 using MudBlazor;
 
@@ -31,10 +33,18 @@ public class MainLayoutTests : IDisposable
 
         // Explicit state registration for assertion control (not via AddShellStateMocks)
         _ctx.Services.AddScoped<AiAssistantState>();
+        _ctx.Services.AddScoped<AiAssistantConversationState>();
         _ctx.Services.AddScoped<MainContentAppearanceState>();
         _ctx.Services.AddScoped<TenantNavLinksState>();
         _ctx.Services.AddScoped<DockLayoutState>();
         _ctx.Services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
+        var aiClientService = Substitute.For<IAiAssistantClientService>();
+        aiClientService.GetConversationCollectionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalCollectionResourceOfAiConversationSummaryDto?>(new HalCollectionResourceOfAiConversationSummaryDto
+            {
+                _embedded = new HalCollectionEmbeddedOfAiConversationSummaryDto { Items = [] }
+            }));
+        _ctx.Services.AddSingleton(aiClientService);
 
         _dockLayoutPersistence = Substitute.For<IDockLayoutPersistence>();
         _dockLayoutPersistence.LoadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())

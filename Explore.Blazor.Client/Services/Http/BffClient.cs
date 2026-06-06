@@ -17,6 +17,7 @@ public interface IBffClient
     Task<HttpResponseMessage> DeleteAsync(string path, CancellationToken ct = default);
     Task<HttpResponseMessage> PostMultipartAsync(string path, MultipartFormDataContent content, CancellationToken ct = default);
     Task<TResponse?> SendAsync<TBody, TResponse>(HttpMethod method, string path, TBody body, CancellationToken ct = default);
+    Task<TResponse?> SendAsync<TResponse>(HttpMethod method, string path, CancellationToken ct = default);
 }
 
 public sealed class BffClient : IBffClient
@@ -64,6 +65,18 @@ public sealed class BffClient : IBffClient
         HttpMethod method, string path, TBody body, CancellationToken ct = default)
     {
         using var response = await SendMutatingAsync(method, path, JsonContent.Create(body), ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return default;
+        }
+
+        return await response.Content.ReadFromJsonAsync<TResponse>(ct);
+    }
+
+    public async Task<TResponse?> SendAsync<TResponse>(
+        HttpMethod method, string path, CancellationToken ct = default)
+    {
+        using var response = await SendMutatingAsync(method, path, content: null, ct);
         if (!response.IsSuccessStatusCode)
         {
             return default;

@@ -91,6 +91,9 @@ public sealed class TenantNavLinksState : IDisposable
 
     public void Dispose()
     {
-        _lock.Dispose();
+        // Intentionally no-op: this scoped Blazor UI state can still have async
+        // continuations completing during prerender/circuit teardown. Disposing
+        // SemaphoreSlim in that window can surface ObjectDisposedException to the
+        // global ErrorBoundary even though navigation links are best-effort UI.
     }
 }

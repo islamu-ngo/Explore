@@ -109,7 +109,7 @@ public sealed class AppSideNavTests : IDisposable
             {
                 ["TenantLinks"] = tenantLinks
             }));
-        
+
         var firstIndex = cut.Markup.IndexOf("First Link", StringComparison.Ordinal);
         var secondIndex = cut.Markup.IndexOf("Second Link", StringComparison.Ordinal);
 

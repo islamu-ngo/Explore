@@ -59,6 +59,10 @@ public sealed class NotificationRefreshStreamClient : INotificationRefreshStream
         {
             _logger.LogDebug(ex, "Notification refresh SSE startup failed; polling fallback remains active");
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogDebug(ex, "Notification refresh SSE startup was deferred because JavaScript interop is unavailable");
+        }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
@@ -77,6 +81,10 @@ public sealed class NotificationRefreshStreamClient : INotificationRefreshStream
         catch (JSException ex)
         {
             _logger.LogDebug(ex, "Notification refresh SSE stop failed during cleanup");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogDebug(ex, "Notification refresh SSE stop skipped because JavaScript interop is unavailable");
         }
         finally
         {

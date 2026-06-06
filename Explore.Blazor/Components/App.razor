@@ -1,3 +1,5 @@
+@* ABOUTME: Root Blazor host document that wires render mode, CSP, auth state, and routing.
+   ABOUTME: Provides global error-boundary fallback UI and logs unhandled component exceptions. *@
 @using Explore.Domain.Common.Localization
 @using Explore.Blazor.Client.Layout
 @using Explore.Blazor.Client.Services
@@ -64,6 +66,9 @@
 		            <Routes @rendermode="@_effectiveRenderMode" />
                 </ChildContent>
                 <ErrorContent Context="ex">
+                    @{
+                        LogBoundaryError(ex);
+                    }
                     <MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
                         <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
                             An unexpected error occurred. Please try refreshing the page.
@@ -128,6 +133,11 @@
             Logger.LogWarning(ex, "Falling back to default render policy for path {Path}", requestPath);
             _asyncResolvedMode = new InteractiveServerRenderMode(prerender: true);
         }
+    }
+
+    private void LogBoundaryError(Exception exception)
+    {
+        Logger.LogError(exception, "Global Blazor error boundary caught an unhandled component exception.");
     }
 
     private static bool IsOnboardingPath(string? path)

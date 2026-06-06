@@ -1,8 +1,6 @@
 // ABOUTME: Service for group creation, membership administration, and settings management in Blazor.
-// ABOUTME: Uses generated API client where possible and JSON parsing for Group detail HAL payloads.
+// ABOUTME: Uses Refit BFF reads and generated API client commands/member operations.
 
-using System.Net.Http.Json;
-using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 
@@ -28,14 +26,13 @@ public sealed record GroupMembersResult(ICollection<GroupMemberDto> Members, boo
 
 public class GroupService : IGroupService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IGroupApi _groupApi;
     private readonly IEventApiClient _apiClient;
     private readonly ILogger<GroupService> _logger;
-    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public GroupService(HttpClient httpClient, IEventApiClient apiClient, ILogger<GroupService> logger)
+    public GroupService(IGroupApi groupApi, IEventApiClient apiClient, ILogger<GroupService> logger)
     {
-        _httpClient = httpClient;
+        _groupApi = groupApi;
         _apiClient = apiClient;
         _logger = logger;
     }
@@ -74,32 +71,18 @@ public class GroupService : IGroupService
     {
         try
         {
-            var response = await _httpClient.GetAsync("api/Group/my?pageNumber=1&pageSize=100");
+            var response = await _groupApi.GetMyGroupsAsync(1, 100, CancellationToken.None);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("[GroupService.GetMyGroupsAsync] API error fetching groups. StatusCode: {StatusCode}", response.StatusCode);
                 return new List<GroupPublisherListDto>();
             }
 
-            var content = await response.Content.ReadAsStringAsync();
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                return new List<GroupPublisherListDto>();
-            }
-
-            using var doc = JsonDocument.Parse(content);
-            if (TryReadHalEmbeddedItems(doc.RootElement, out var items))
-            {
-                return items;
-            }
-
-            if (doc.RootElement.TryGetProperty("items", out var itemsProperty) && itemsProperty.ValueKind == JsonValueKind.Array)
-            {
-                var rawItems = JsonSerializer.Deserialize<List<GroupPublisherListDto>>(itemsProperty.GetRawText(), JsonOptions);
-                return rawItems ?? new List<GroupPublisherListDto>();
-            }
-
-            return new List<GroupPublisherListDto>();
+            return response.Content?._embedded?.Items?
+                .Select(MapGroupPublisher)
+                .Where(group => group is not null)
+                .Select(group => group!)
+                .ToList() ?? new List<GroupPublisherListDto>();
         }
         catch (Exception ex)
         {
@@ -112,34 +95,31 @@ public class GroupService : IGroupService
     {
         try
         {
-            var response = await _httpClient.GetAsync($"api/Group/{groupId}");
+            var response = await _groupApi.GetGroupDetailsAsync(groupId, CancellationToken.None);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("[GroupService.GetGroupDetailsAsync] API error fetching group. GroupId: {GroupId}, StatusCode: {StatusCode}", groupId, response.StatusCode);
                 return null;
             }
 
-            var content = await response.Content.ReadAsStringAsync();
-            if (string.IsNullOrWhiteSpace(content))
+            var group = response.Content;
+            if (group is null)
             {
                 return null;
             }
 
-            using var document = JsonDocument.Parse(content);
-            var root = document.RootElement;
-
             return new GroupAdminDetailsModel
             {
-                Id = ReadGuid(root, "id") ?? groupId,
-                FullName = ReadString(root, "fullName") ?? string.Empty,
-                Description = ReadString(root, "description"),
-                ActorId = ReadGuid(root, "actorId"),
-                ActorBackgroundColor = ReadString(root, "actorBackgroundColor"),
-                ActorBackgroundEffect = ReadString(root, "actorBackgroundEffect"),
-                ActorBannerColor = ReadString(root, "actorBannerColor"),
-                ActorBannerPictureUri = ReadString(root, "actorBannerPictureUri"),
-                ActorProfilePictureUri = ReadString(root, "actorProfilePictureUri"),
-                LinkRelations = ReadLinkRelations(root)
+                Id = group.Id ?? groupId,
+                FullName = group.FullName ?? string.Empty,
+                Description = group.Description,
+                ActorId = group.ActorId,
+                ActorBackgroundColor = group.ActorBackgroundColor,
+                ActorBackgroundEffect = group.ActorBackgroundEffect,
+                ActorBannerColor = group.ActorBannerColor,
+                ActorBannerPictureUri = group.ActorBannerPictureUri,
+                ActorProfilePictureUri = group.ActorProfilePictureUri,
+                LinkRelations = ReadLinkRelations(group)
             };
         }
         catch (Exception ex)
@@ -233,67 +213,29 @@ public class GroupService : IGroupService
         }
     }
 
-    private static bool TryReadHalEmbeddedItems(JsonElement root, out List<GroupPublisherListDto> items)
+    private static GroupPublisherListDto? MapGroupPublisher(HalResourceOfGroupListDto group)
     {
-        items = new List<GroupPublisherListDto>();
-
-        if (!root.TryGetProperty("_embedded", out var embedded) || embedded.ValueKind != JsonValueKind.Object)
-        {
-            return false;
-        }
-
-        foreach (var property in embedded.EnumerateObject())
-        {
-            if (property.Value.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            foreach (var item in property.Value.EnumerateArray())
-            {
-                var parsed = JsonSerializer.Deserialize<GroupPublisherListDto>(item.GetRawText(), JsonOptions);
-                if (parsed != null)
-                {
-                    items.Add(parsed);
-                }
-            }
-
-            return true;
-        }
-
-        return false;
-    }
-
-    private static string? ReadString(JsonElement root, string propertyName)
-    {
-        if (!root.TryGetProperty(propertyName, out var property))
+        if (group.Id is null)
         {
             return null;
         }
 
-        return property.ValueKind switch
+        return new GroupPublisherListDto
         {
-            JsonValueKind.String => property.GetString(),
-            JsonValueKind.Null => null,
-            _ => property.ToString()
+            Id = group.Id.Value,
+            FullName = group.FullName ?? string.Empty,
+            CurrentUserRole = group.CurrentUserRole
         };
     }
 
-    private static Guid? ReadGuid(JsonElement root, string propertyName)
+    private static IReadOnlySet<string> ReadLinkRelations(HalResourceOfGroupDto group)
     {
-        var raw = ReadString(root, propertyName);
-        return Guid.TryParse(raw, out var value) ? value : null;
-    }
-
-    private static IReadOnlySet<string> ReadLinkRelations(JsonElement root)
-    {
-        if (!root.TryGetProperty("_links", out var links) || links.ValueKind != JsonValueKind.Object)
+        if (group._links is null || group._links.Count == 0)
         {
             return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
 
-        return links.EnumerateObject()
-            .Select(link => link.Name)
+        return group._links.Keys
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 }

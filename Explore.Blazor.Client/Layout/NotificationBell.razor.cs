@@ -22,6 +22,9 @@ public partial class NotificationBell : IAsyncDisposable
     [Inject]
     private NavigationManager Nav { get; set; } = null!;
 
+    [Inject]
+    private ILogger<NotificationBell> Logger { get; set; } = null!;
+
     private int _unreadCount;
     private bool _panelOpen;
     private bool _isLoading;
@@ -38,7 +41,23 @@ public partial class NotificationBell : IAsyncDisposable
         await RefreshUnreadCountAsync();
         _pollTimer = new Timer(async _ => await PollUnreadCountAsync(), null, PollIntervalMs, PollIntervalMs);
         NotificationRefreshStreamClient.RefreshReceived += HandleNotificationRefreshAsync;
-        await NotificationRefreshStreamClient.StartAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            await NotificationRefreshStreamClient.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Notification refresh stream startup failed; polling fallback remains active.");
+        }
     }
 
     private async Task PollUnreadCountAsync()
@@ -186,7 +205,15 @@ public partial class NotificationBell : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         NotificationRefreshStreamClient.RefreshReceived -= HandleNotificationRefreshAsync;
-        await NotificationRefreshStreamClient.StopAsync();
+        try
+        {
+            await NotificationRefreshStreamClient.StopAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Notification refresh stream cleanup failed.");
+        }
+
         _pollTimer?.Dispose();
         GC.SuppressFinalize(this);
     }

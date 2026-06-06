@@ -12,8 +12,8 @@ using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Routing.Guards;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Http;
-using Explore.Blazor.Services.Preferences;
 using Explore.Blazor.Services;
+using Explore.Blazor.Services.Preferences;
 using Explore.Infrastructure.Services;
 using Explore.Persistence;
 using Explore.Persistence.Extensions;
@@ -31,8 +31,8 @@ public static class ServiceRegistrationExtensions
     /// <summary>
     /// Registers all application-level services by calling the shared registrations
     /// from the Client project, then adding server-specific overrides.
-    /// On the server, IGroupService and ITenantNavigationService are typed HttpClients
-    /// (registered in HttpClientExtensions), so they are NOT included here.
+    /// On the server, ITenantNavigationService remains a typed HttpClient registered in
+    /// HttpClientExtensions; IGroupService uses shared Refit BFF endpoints.
     /// </summary>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {

@@ -1,6 +1,8 @@
 // ABOUTME: HTTP message handler that forwards the captured auth cookie to BFF self-endpoints.
 // ABOUTME: Required because BffSelfClient uses UseCookies=false for handler pooling hygiene.
 
+using Microsoft.AspNetCore.Http;
+
 namespace Explore.Blazor.Services;
 
 public class BffCookieForwardingHandler : DelegatingHandler
@@ -8,14 +10,24 @@ public class BffCookieForwardingHandler : DelegatingHandler
     private const string AntiforgeryCookieName = "XSRF-TOKEN";
     private const string AntiforgeryHeaderName = "X-CSRF-TOKEN";
     private readonly IBffAuthCookieStore _bffAuthCookieStore;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<BffCookieForwardingHandler> _logger;
 
     public BffCookieForwardingHandler(
         IBffAuthCookieStore bffAuthCookieStore,
+        IHttpContextAccessor httpContextAccessor,
         ILogger<BffCookieForwardingHandler> logger)
     {
         _bffAuthCookieStore = bffAuthCookieStore;
+        _httpContextAccessor = httpContextAccessor;
         _logger = logger;
+    }
+
+    public BffCookieForwardingHandler(
+        IBffAuthCookieStore bffAuthCookieStore,
+        ILogger<BffCookieForwardingHandler> logger)
+        : this(bffAuthCookieStore, new HttpContextAccessor(), logger)
+    {
     }
 
     protected override Task<HttpResponseMessage> SendAsync(
@@ -23,6 +35,11 @@ public class BffCookieForwardingHandler : DelegatingHandler
         CancellationToken cancellationToken)
     {
         var cookie = _bffAuthCookieStore.CookieHeader;
+        if (string.IsNullOrWhiteSpace(cookie))
+        {
+            cookie = _httpContextAccessor.HttpContext?.Request.Headers.Cookie.ToString();
+        }
+
         if (!string.IsNullOrEmpty(cookie) && !request.Headers.Contains("Cookie"))
         {
             request.Headers.TryAddWithoutValidation("Cookie", cookie);
