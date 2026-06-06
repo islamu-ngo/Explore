@@ -26,7 +26,7 @@ public sealed class AtprotoRecordControllerTests
         var routeId = Guid.NewGuid();
         var bodyId = Guid.NewGuid();
         using var mediator = new AtprotoRecordMediatorStub(_ => throw new InvalidOperationException("Mediator should not run for ID mismatch."));
-        using var factory = CreateFactoryWithMediator(mediator);
+        await using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
         using var request = CreateAuthenticatedJsonRequest(
             HttpMethod.Put,
@@ -52,7 +52,7 @@ public sealed class AtprotoRecordControllerTests
             Message = "AtprotoRecord update failed.",
             Errors = ["Record key is required."]
         });
-        using var factory = CreateFactoryWithMediator(mediator);
+        await using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
         using var request = CreateAuthenticatedJsonRequest(
             HttpMethod.Put,

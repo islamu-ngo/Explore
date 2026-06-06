@@ -24,9 +24,15 @@ public sealed class AiReferencePickerTests : IDisposable
 
         await cut.Find("[data-testid='ai-rail-reference-search']").InputAsync(new ChangeEventArgs { Value = "if" });
 
-        await Task.Delay(TimeSpan.FromMilliseconds(600));
-
-        await Assert.That(searchedTerms).Contains("if");
+        await WaitForAsync(
+            () =>
+            {
+                if (!searchedTerms.Contains("if", StringComparer.Ordinal))
+                {
+                    throw new InvalidOperationException("Expected the debounced search callback to receive 'if'.");
+                }
+            },
+            TimeSpan.FromSeconds(3));
     }
 
     [Test]
@@ -46,5 +52,34 @@ public sealed class AiReferencePickerTests : IDisposable
         await cut.Find("[data-testid='ai-reference-chip']").KeyDownAsync(new KeyboardEventArgs { Key = "Delete" });
 
         await Assert.That(removedReferenceId).IsEqualTo(referenceId);
+    }
+
+    private static async Task WaitForAsync(Action assertion, TimeSpan? timeout = null)
+    {
+        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(3));
+        Exception? lastException = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            try
+            {
+                assertion();
+                return;
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                await Task.Delay(TimeSpan.FromMilliseconds(50));
+            }
+        }
+
+        try
+        {
+            assertion();
+        }
+        catch (Exception ex)
+        {
+            throw new TimeoutException("The expected assertion did not pass before the timeout.", lastException ?? ex);
+        }
     }
 }

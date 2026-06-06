@@ -251,6 +251,35 @@ public class EventListTests : IDisposable
         await cut.InvokeAsync(() => method.Invoke(cut.Instance, []));
     }
 
+    private static async Task WaitForAsync(Action assertion, TimeSpan? timeout = null)
+    {
+        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(3));
+        Exception? lastException = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            try
+            {
+                assertion();
+                return;
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                await Task.Delay(TimeSpan.FromMilliseconds(50));
+            }
+        }
+
+        try
+        {
+            assertion();
+        }
+        catch (Exception ex)
+        {
+            throw new TimeoutException("The expected assertion did not pass before the timeout.", lastException ?? ex);
+        }
+    }
+
     private static T GetPrivateField<T>(EventList instance, string fieldName)
     {
         var field = typeof(EventList)
@@ -414,11 +443,11 @@ public class EventListTests : IDisposable
             _dockLayoutPersistence.Received(1).LoadAsync("events", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
 
         await InvokePrivateVoidAsync(cut, "OpenCustomizationDrawer");
-        await Task.Delay(TimeSpan.FromMilliseconds(650));
 
-        await _dockLayoutPersistence.Received(1).SaveAsync(
-            Arg.Is<DockLayoutSnapshot>(snapshot => IsExpectedAutosaveSnapshot(snapshot)),
-            Arg.Any<CancellationToken>());
+        await WaitForAsync(() =>
+            _dockLayoutPersistence.Received(1).SaveAsync(
+                Arg.Is<DockLayoutSnapshot>(snapshot => IsExpectedAutosaveSnapshot(snapshot)),
+                Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
     }
 
     [Test]

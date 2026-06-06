@@ -26,7 +26,7 @@ public sealed class EventRegistrationControllerTests
         var routeId = Guid.NewGuid();
         var bodyId = Guid.NewGuid();
         using var mediator = new EventRegistrationMediatorStub(_ => throw new InvalidOperationException("Mediator should not run for ID mismatch."));
-        using var factory = CreateFactoryWithMediator(mediator);
+        await using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
         using var request = CreateAuthenticatedJsonRequest(
             HttpMethod.Put,
@@ -52,7 +52,7 @@ public sealed class EventRegistrationControllerTests
             Message = "Event Registration update failed.",
             Errors = ["UserId not found"]
         });
-        using var factory = CreateFactoryWithMediator(mediator);
+        await using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
         using var request = CreateAuthenticatedJsonRequest(
             HttpMethod.Put,
@@ -80,7 +80,7 @@ public sealed class EventRegistrationControllerTests
             Success = false,
             Message = "Event Registration not found."
         });
-        using var factory = CreateFactoryWithMediator(mediator);
+        await using var factory = CreateFactoryWithMediator(mediator);
         using var client = factory.CreateClient();
         using var request = CreateAuthenticatedJsonRequest(
             HttpMethod.Put,

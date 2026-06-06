@@ -78,6 +78,8 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
         // ensuring our auth scheme overrides the real Keycloak JWT registration.
         builder.ConfigureTestServices(services =>
         {
+            RemoveOpenFeatureHostedLifecycle(services);
+
             // Override ALL default schemes to use TestAuthHandler.
             // Must set DefaultScheme (not just Authenticate/Challenge) because
             // Program.cs sets DefaultScheme = "Bearer" via AddAuthentication("Bearer"),
@@ -108,6 +110,21 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
                 services.AddScoped(_ => AuthorizationProviderOverride);
             }
         });
+    }
+
+    private static void RemoveOpenFeatureHostedLifecycle(IServiceCollection services)
+    {
+        for (var index = services.Count - 1; index >= 0; index--)
+        {
+            var descriptor = services[index];
+            if (string.Equals(
+                descriptor.ImplementationType?.FullName,
+                "OpenFeature.Hosting.HostedFeatureLifecycleService",
+                StringComparison.Ordinal))
+            {
+                services.RemoveAt(index);
+            }
+        }
     }
 
     public override async ValueTask DisposeAsync()
