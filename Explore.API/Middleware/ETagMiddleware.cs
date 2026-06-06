@@ -43,7 +43,15 @@ public sealed class ETagMiddleware
         using var bufferStream = _streamManager.GetStream("etag-middleware");
         context.Response.Body = bufferStream;
 
-        await _next(context);
+        try
+        {
+            await _next(context);
+        }
+        catch
+        {
+            context.Response.Body = originalBodyStream;
+            throw;
+        }
 
         // Only process successful JSON responses
         if (context.Response.StatusCode is not (>= 200 and < 300))
