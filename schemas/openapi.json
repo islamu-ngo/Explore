@@ -763,17 +763,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -937,17 +937,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -3557,6 +3557,26 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
           }
         },
         "x-endpoint-class": "Authenticated"
@@ -5712,12 +5732,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6218,12 +6238,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6696,12 +6716,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6773,12 +6793,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -6841,12 +6861,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -7396,12 +7416,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -7657,12 +7677,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -11682,17 +11702,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -12633,6 +12653,26 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
           }
         },
         "x-endpoint-class": "Authenticated"
@@ -12764,6 +12804,26 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -16438,6 +16498,381 @@
         "x-endpoint-class": "Public"
       }
     },
+    "/api/eventteam/by-event/{eventId}": {
+      "get": {
+        "tags": [
+          "EventTeam"
+        ],
+        "summary": "Get Event Team",
+        "description": "List all team members for an event with their role assignments.",
+        "operationId": "GetEventTeam",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventTeamMemberDto"
+                  }
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventTeamMemberDto"
+                  }
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventteam/my-permissions/{eventId}": {
+      "get": {
+        "tags": [
+          "EventTeam"
+        ],
+        "summary": "Get My Event Permissions",
+        "description": "Get the current user's effective event permissions for HAL affordance gating.",
+        "operationId": "GetCurrentUserEventPermissions",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserEventPermissionsDto"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserEventPermissionsDto"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventteam/assignable-presets/{eventId}": {
+      "get": {
+        "tags": [
+          "EventTeam"
+        ],
+        "summary": "Get Assignable Event Role Presets",
+        "description": "Get the event role presets the current user is allowed to assign.",
+        "operationId": "GetEventTeamAssignablePresets",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventRolePresetDto"
+                  }
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventRolePresetDto"
+                  }
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventteam/by-event/{eventId}/assignments": {
+      "post": {
+        "tags": [
+          "EventTeam"
+        ],
+        "summary": "Assign Event Role",
+        "description": "Assign an event-scoped operational role to an existing user.",
+        "operationId": "AssignEventRole",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignEventTeamRoleRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignEventTeamRoleRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignEventTeamRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/eventteam/by-event/{eventId}/assignments/{assignmentId}": {
+      "delete": {
+        "tags": [
+          "EventTeam"
+        ],
+        "summary": "Revoke Event Role",
+        "description": "Revoke an event-scoped operational role assignment.",
+        "operationId": "RevokeEventRole",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/eventtemplate": {
       "get": {
         "tags": [
@@ -17596,17 +18031,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -17770,17 +18205,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -25943,12 +26378,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -26132,12 +26567,12 @@
             "content": {
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/hal+json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json": { },
@@ -35836,7 +36271,7 @@
         ],
         "summary": "Get User Appearance Profiles",
         "description": "Returns the current user's appearance profiles for the current tenant scope.",
-        "operationId": "getUserAppearanceProfiles",
+        "operationId": "GetUserAppearanceProfiles",
         "parameters": [
           {
             "name": "api-version",
@@ -35912,7 +36347,7 @@
         ],
         "summary": "Create Custom Appearance Profile",
         "description": "Creates a fully custom user appearance profile from natural + brand color inputs.",
-        "operationId": "createCustomAppearanceProfile",
+        "operationId": "CreateCustomAppearanceProfile",
         "parameters": [
           {
             "name": "api-version",
@@ -36021,7 +36456,7 @@
         ],
         "summary": "Clone Preset Into User Profile",
         "description": "Clones a theme preset into a user-owned appearance profile. If an existing clone exists, returns it instead.",
-        "operationId": "clonePresetToProfile",
+        "operationId": "ClonePresetToProfile",
         "parameters": [
           {
             "name": "presetId",
@@ -36159,7 +36594,7 @@
         ],
         "summary": "Update User Appearance Profile",
         "description": "Updates a user-owned appearance profile's palette or metadata.",
-        "operationId": "updateAppearanceProfile",
+        "operationId": "UpdateAppearanceProfile",
         "parameters": [
           {
             "name": "profileId",
@@ -36277,7 +36712,7 @@
         ],
         "summary": "Set Active Appearance Profile",
         "description": "Sets the active appearance profile for the current user/scope.",
-        "operationId": "setActiveAppearanceProfile",
+        "operationId": "SetActiveAppearanceProfile",
         "parameters": [
           {
             "name": "api-version",
@@ -36369,7 +36804,7 @@
         ],
         "summary": "Set Theme Mode",
         "description": "Sets the theme mode (light/dark/system/lighthighcontrast/darkhighcontrast/custom) without changing the active profile.",
-        "operationId": "setAppearanceThemeMode",
+        "operationId": "SetAppearanceThemeMode",
         "parameters": [
           {
             "name": "api-version",
@@ -36441,7 +36876,7 @@
         ],
         "summary": "Generate Palette From Colors",
         "description": "Generates a complete 18-token palette from natural and brand color inputs.",
-        "operationId": "generateAppearancePalette",
+        "operationId": "GenerateAppearancePalette",
         "parameters": [
           {
             "name": "naturalColor",
@@ -36532,7 +36967,7 @@
         ],
         "summary": "Archive User Appearance Profile",
         "description": "Archives a user-owned profile, hiding it from the quick switcher without deletion.",
-        "operationId": "archiveAppearanceProfile",
+        "operationId": "ArchiveAppearanceProfile",
         "parameters": [
           {
             "name": "profileId",
@@ -36613,7 +37048,7 @@
         ],
         "summary": "Duplicate User Appearance Profile",
         "description": "Duplicates a user-owned profile with an optional name override.",
-        "operationId": "duplicateAppearanceProfile",
+        "operationId": "DuplicateAppearanceProfile",
         "parameters": [
           {
             "name": "profileId",
@@ -36870,17 +37305,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -37044,17 +37479,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -37747,17 +38182,17 @@
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -39740,6 +40175,22 @@
           },
           "canDeleteProfile": {
             "type": "boolean"
+          }
+        }
+      },
+      "AssignEventTeamRoleRequest": {
+        "type": "object",
+        "properties": {
+          "userEmail": {
+            "type": "string"
+          },
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -43836,6 +44287,40 @@
           }
         }
       },
+      "CurrentUserEventPermissionsDto": {
+        "required": [
+          "roleCodes",
+          "permissionCodes"
+        ],
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "hasAnyRole": {
+            "type": "boolean"
+          },
+          "isOwner": {
+            "type": "boolean"
+          },
+          "isManager": {
+            "type": "boolean"
+          },
+          "roleCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "permissionCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "CustomPropertyDefinitionDto": {
         "required": [
           "namespace",
@@ -46978,6 +47463,45 @@
           }
         }
       },
+      "EventRoleAssignmentStatus": {
+        "type": "integer"
+      },
+      "EventRolePresetDto": {
+        "required": [
+          "masterCode",
+          "fullName",
+          "permissionCodes"
+        ],
+        "type": "object",
+        "properties": {
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "masterCode": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "permissionCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "EventSeriesDto": {
         "required": [
           "title"
@@ -49322,6 +49846,73 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "EventTeamMemberDto": {
+        "required": [
+          "userEmail",
+          "userFullName",
+          "roleName",
+          "roleMasterCode"
+        ],
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userEmail": {
+            "type": "string"
+          },
+          "userFullName": {
+            "type": "string"
+          },
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "roleMasterCode": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EventRoleAssignmentStatus"
+          },
+          "startsAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "isEffective": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -61517,6 +62108,18 @@
           "blazorClientSecret": {
             "type": "string"
           },
+          "blazorRedirectUris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blazorWebOrigins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "apiClientId": {
             "type": [
               "null",
@@ -66922,10 +67525,16 @@
           "aiAssistantEnabled": {
             "type": "boolean"
           },
+          "aiAssistantProvider": {
+            "type": "string"
+          },
           "aiAssistantEndpointUrl": {
             "type": "string"
           },
           "aiAssistantApiKey": {
+            "type": "string"
+          },
+          "aiAssistantModelId": {
             "type": "string"
           },
           "aiAssistantAllowAnonymousAccess": {
@@ -69877,10 +70486,16 @@
           "aiAssistantEnabled": {
             "type": "boolean"
           },
+          "aiAssistantProvider": {
+            "type": "string"
+          },
           "aiAssistantEndpointUrl": {
             "type": "string"
           },
           "aiAssistantApiKey": {
+            "type": "string"
+          },
+          "aiAssistantModelId": {
             "type": "string"
           },
           "aiAssistantAllowAnonymousAccess": {
@@ -70780,6 +71395,9 @@
     },
     {
       "name": "EventStatus"
+    },
+    {
+      "name": "EventTeam"
     },
     {
       "name": "EventTemplate"
