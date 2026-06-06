@@ -7,6 +7,7 @@ using Explore.API.BackgroundServices;
 using Explore.API.Configuration;
 using Explore.API.Extensions;
 using Explore.API.HealthChecks;
+using Explore.API.Mcp;
 using Explore.API.Middleware;
 using Explore.API.OpenApi;
 using Explore.API.Services.Calendar;
@@ -25,8 +26,10 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 using Microsoft.IO;
 using Microsoft.OpenApi;
+using ModelContextProtocol.AspNetCore;
 using OpenFeature;
 using OpenFeature.Hosting.Providers.Memory;
 using Scalar.AspNetCore;
@@ -112,6 +115,13 @@ builder.Services.ConfigureApplicationServices();
 builder.Services.ConfigureInfrastructureServices(builder.Configuration);
 builder.Services.Configure<CerbosPolicyBootSyncOptions>(
     builder.Configuration.GetSection(CerbosPolicyBootSyncOptions.SectionName));
+builder.Services.AddOptions<McpAdapterSettings>()
+    .Bind(builder.Configuration.GetSection(McpAdapterSettings.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<McpAdapterSettings>, McpAdapterSettingsValidator>();
+var mcpAdapterSettings = builder.Configuration
+    .GetSection(McpAdapterSettings.SectionName)
+    .Get<McpAdapterSettings>() ?? new McpAdapterSettings();
 var emailDispatchProcessorSettings = builder.Configuration
     .GetSection(EmailDispatchProcessorSettings.SectionName)
     .Get<EmailDispatchProcessorSettings>() ?? new EmailDispatchProcessorSettings();
@@ -232,6 +242,7 @@ if (!isOpenApiGeneration)
     if (!builder.Environment.IsEnvironment("Testing"))
     {
         builder.Services.AddHostedService<IdempotencyCleanupProcessor>();
+        builder.Services.AddHostedService<AiRetentionCleanupProcessor>();
         builder.Services.AddHostedService<StorageReconciliationProcessor>();
     }
 
@@ -317,6 +328,14 @@ builder.Services.AddHealthChecks()
         "idempotency-cleanup",
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready", "idempotency", "cleanup", "infrastructure"])
+    .AddCheck<AiRetentionCleanupHealthCheck>(
+        "ai-retention-cleanup",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "ai", "retention", "cleanup", "infrastructure"])
+    .AddCheck<McpAdapterHealthCheck>(
+        "mcp-adapter",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready", "ai", "mcp", "infrastructure"])
     .AddCheck<StorageReadinessHealthCheck>(
         "storage",
         failureStatus: HealthStatus.Unhealthy,
@@ -336,6 +355,17 @@ builder.Services.AddHealthChecks()
 
 // Request timeouts: default 30s, lookups 10s, complex 60s
 builder.Services.AddApiRequestTimeouts(builder.Configuration);
+
+if (mcpAdapterSettings.Enabled && !isOpenApiGeneration)
+{
+    builder.Services
+        .AddMcpServer()
+        .WithHttpTransport()
+        .WithTools<AiToolRegistryMcpTools>()
+        .WithTools<AiAssistantMcpTools>()
+        .WithResources<AiAssistantMcpResources>()
+        .WithPrompts<AiAssistantMcpPrompts>();
+}
 
 // Tiered rate limiting: global (IP), authenticated (user), write (stricter)
 // Supports X-Forwarded-For for reverse proxy deployments (ngrok, Cloudflare)
@@ -482,8 +512,8 @@ if (!string.IsNullOrWhiteSpace(setupSecretForStartupReminder))
 // integration tests (Event.API.IntegrationTests) can fetch /openapi/event-api.json.
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing") || isOpenApiGeneration)
 {
-app.MapOpenApi().DisableRequestTimeout();
-app.UseSwagger();
+    app.MapOpenApi().DisableRequestTimeout();
+    app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v0.1/swagger.json", "Explore API v0.1"));
     app.MapScalarApiReference();
 }
@@ -560,6 +590,12 @@ app.UseOutputCache();
 app.UseETag();
 
 app.MapControllers();
+
+if (mcpAdapterSettings.Enabled && !isOpenApiGeneration)
+{
+    app.MapMcp(mcpAdapterSettings.EndpointPath)
+        .RequireAuthorization();
+}
 
 // Map health check endpoints for Coolify/container orchestration
 app.MapDefaultEndpoints();
