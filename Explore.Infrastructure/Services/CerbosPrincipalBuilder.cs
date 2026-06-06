@@ -4,6 +4,7 @@
 using Cerbos.Sdk.Builder;
 using Explore.Application.Authentication;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Services;
 using Explore.Domain.Enums;
 
 namespace Explore.Infrastructure.Services;
@@ -16,16 +17,25 @@ namespace Explore.Infrastructure.Services;
 /// <item><description>Machine principals — resolved from <see cref="IMachinePrincipalAccessor"/> with attributes projected from the API key owner type, synthesising equivalent membership maps so existing Cerbos policies evaluate consistently.</description></item>
 /// </list>
 /// The builder is the single translation layer: authorization services always call <see cref="BuildPrincipalAsync(System.Nullable{System.Guid}, System.Threading.CancellationToken)"/> and let the builder decide which branch to take.
+/// <para>
+/// Event-scoped role assignments are hydrated on demand via <see cref="EnrichWithEventAssignmentsAsync"/>
+/// so Cerbos derived roles can evaluate event-team authority without a second round-trip.
+/// </para>
 /// </summary>
 public class CerbosPrincipalBuilder
 {
     private readonly IAdminContext _adminContext;
     private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
+    private readonly IEventAuthoritySnapshotService _eventAuthoritySnapshotService;
 
-    public CerbosPrincipalBuilder(IAdminContext adminContext, IMachinePrincipalAccessor machinePrincipalAccessor)
+    public CerbosPrincipalBuilder(
+        IAdminContext adminContext,
+        IMachinePrincipalAccessor machinePrincipalAccessor,
+        IEventAuthoritySnapshotService eventAuthoritySnapshotService)
     {
         _adminContext = adminContext;
         _machinePrincipalAccessor = machinePrincipalAccessor;
+        _eventAuthoritySnapshotService = eventAuthoritySnapshotService;
     }
 
     /// <summary>
@@ -155,5 +165,44 @@ public class CerbosPrincipalBuilder
                     context.OwnerType,
                     "Unknown ExternalApiKeyOwnerType — cannot project to Cerbos authority.");
         }
+    }
+
+    public async Task EnrichWithEventAssignmentsAsync(
+        Principal principal,
+        Guid userId,
+        Guid tenantId,
+        IReadOnlyCollection<Guid> eventIds,
+        CancellationToken ct)
+    {
+        if (eventIds.Count == 0)
+            return;
+
+        var snapshot = await _eventAuthoritySnapshotService.GetForUserAndEventsAsync(
+            tenantId, userId, eventIds, ct);
+
+        if (snapshot.Events.Count == 0)
+            return;
+
+        var eventAssignments = new Dictionary<string, AttributeValue>();
+        foreach (var (eventId, authority) in snapshot.Events)
+        {
+            var roles = authority.RoleCodes
+                .Select(code => AttributeValue.StringValue(code))
+                .ToArray();
+
+            var permissions = authority.PermissionCodes
+                .Select(code => AttributeValue.StringValue(code))
+                .ToArray();
+
+            eventAssignments[eventId.ToString()] = AttributeValue.MapValue(new Dictionary<string, AttributeValue>
+            {
+                ["tenantId"] = AttributeValue.StringValue(tenantId.ToString()),
+                ["roles"] = AttributeValue.ListValue(roles),
+                ["permissions"] = AttributeValue.ListValue(permissions)
+            });
+        }
+
+        principal.WithAttribute("eventAssignments", AttributeValue.MapValue(eventAssignments));
+        principal.WithAttribute("nowUtc", AttributeValue.StringValue(DateTime.UtcNow.ToString("o")));
     }
 }

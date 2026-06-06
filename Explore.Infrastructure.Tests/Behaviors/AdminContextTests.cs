@@ -3,6 +3,7 @@
 
 using System.Security.Claims;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -12,7 +13,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Explore.Application.Contracts.Services;
 
 namespace Explore.Infrastructure.Tests.Behaviors;
 
