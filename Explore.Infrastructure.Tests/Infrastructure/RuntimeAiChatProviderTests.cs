@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Telemetry;
 using Explore.Domain.Ai;
 using Explore.Infrastructure.Ai;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -115,9 +116,51 @@ public sealed class RuntimeAiChatProviderTests
         await Assert.That(handler.Calls).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task SendAsync_WhenOpenAiSdkConfigured_DelegatesToMicrosoftExtensionsAdapter()
+    {
+        var settings = new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderOpenAiSdk,
+            ApiKey = "test-key",
+            ModelId = "gpt-test"
+        };
+        var chatClient = new RecordingChatClient(new ChatResponse(new ChatMessage(ChatRole.Assistant, "SDK response"))
+        {
+            FinishReason = ChatFinishReason.Stop
+        });
+        var sdkProvider = CreateMicrosoftExtensionsProvider(settings, chatClient);
+        var provider = CreateProvider(settings, microsoftExtensionsProvider: sdkProvider);
+
+        var result = await provider.SendAsync(CreateRequest("Hello"));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Response!.AssistantMessage).IsEqualTo("SDK response");
+        await Assert.That(chatClient.Calls).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task SendAsync_WhenSdkProviderConfiguredButAdapterMissing_FailsClosed()
+    {
+        var provider = CreateProvider(new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderOpenAiSdk,
+            ApiKey = "test-key",
+            ModelId = "gpt-test"
+        });
+
+        var result = await provider.SendAsync(CreateRequest("Hello"));
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Error!.Code).IsEqualTo("provider_not_configured");
+    }
+
     private static RuntimeAiChatProvider CreateProvider(
         AiProviderSettings settings,
-        RecordingMessageHandler? handler = null)
+        RecordingMessageHandler? handler = null,
+        MicrosoftExtensionsAiChatProvider? microsoftExtensionsProvider = null)
     {
         handler ??= new RecordingMessageHandler(_ => throw new InvalidOperationException("HTTP should not be called."));
         var client = new HttpClient(handler);
@@ -136,7 +179,21 @@ public sealed class RuntimeAiChatProviderTests
             options,
             validator,
             new FakeAiChatProvider(),
-            openAiProvider);
+            openAiProvider,
+            microsoftExtensionsProvider);
+    }
+
+    private static MicrosoftExtensionsAiChatProvider CreateMicrosoftExtensionsProvider(
+        AiProviderSettings settings,
+        RecordingChatClient chatClient)
+    {
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+
+        return new MicrosoftExtensionsAiChatProvider(
+            chatClient,
+            Options.Create(settings),
+            new BusinessMetrics(meterFactory));
     }
 
     private static AiProviderSettings CreateOpenAiSettings() => new()
@@ -191,6 +248,42 @@ public sealed class RuntimeAiChatProviderTests
             Calls++;
             RequestUri = request.RequestUri;
             return Task.FromResult(_responseFactory(request));
+        }
+    }
+
+    private sealed class RecordingChatClient : IChatClient
+    {
+        private readonly ChatResponse _response;
+
+        public RecordingChatClient(ChatResponse response)
+        {
+            _response = response;
+        }
+
+        public int Calls { get; private set; }
+
+        public Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            return Task.FromResult(_response);
+        }
+
+        public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose()
+        {
         }
     }
 }

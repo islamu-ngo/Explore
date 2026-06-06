@@ -1,6 +1,7 @@
 // ABOUTME: Implements the OpenAI-compatible chat provider adapter using raw HTTP and platform contracts.
 // ABOUTME: Maps chat completions and tool calls into safe provider-neutral results without SDK leakage.
 
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -65,36 +66,54 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
     {
         cancellationToken.ThrowIfCancellationRequested();
         var settings = _options.Value;
+        var providerName = AiProviderSettings.ProviderOpenAiCompatible;
+        var startedAt = Stopwatch.GetTimestamp();
+        using var telemetryActivity = AiProviderTelemetry.StartRequest(providerName, request);
 
         if (!IsRunnableOpenAiCompatible(settings))
         {
-            return RecordFailure("provider_not_configured", "OpenAI-compatible provider is not enabled or configured.");
+            return CompleteFailure(
+                RecordFailure("provider_not_configured", "OpenAI-compatible provider is not enabled or configured."),
+                startedAt,
+                telemetryActivity);
         }
 
         var validation = ValidateSettings(settings);
         if (!validation.Succeeded)
         {
-            return RecordFailure("invalid_settings", "AI provider settings are invalid.");
+            return CompleteFailure(
+                RecordFailure("invalid_settings", "AI provider settings are invalid."),
+                startedAt,
+                telemetryActivity);
         }
 
         if (request.Options.StreamingEnabled)
         {
-            return RecordFailure("streaming_not_supported", "Streaming AI responses are not supported by this adapter yet.");
+            return CompleteFailure(
+                RecordFailure("streaming_not_supported", "Streaming AI responses are not supported by this adapter yet."),
+                startedAt,
+                telemetryActivity);
         }
 
         if (request.Messages.Count == 0)
         {
-            return RecordFailure("empty_messages", "At least one message is required.");
+            return CompleteFailure(
+                RecordFailure("empty_messages", "At least one message is required."),
+                startedAt,
+                telemetryActivity);
         }
 
         if (request.Messages.Any(message => message.Role == AiMessageRole.Tool))
         {
-            return RecordFailure("unsupported_message_role", "Tool result messages are not supported by this adapter yet.");
+            return CompleteFailure(
+                RecordFailure("unsupported_message_role", "Tool result messages are not supported by this adapter yet."),
+                startedAt,
+                telemetryActivity);
         }
 
         if (!TryCreatePayload(settings, request, out var payload, out var payloadFailure))
         {
-            return payloadFailure!;
+            return CompleteFailure(payloadFailure!, startedAt, telemetryActivity);
         }
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -108,7 +127,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
 
             if (!response.IsSuccessStatusCode)
             {
-                return RecordHttpFailure(response.StatusCode);
+                return CompleteFailure(RecordHttpFailure(response.StatusCode), startedAt, telemetryActivity);
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(timeoutCts.Token);
@@ -116,28 +135,49 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
 
             if (providerResponse is null || providerResponse.Choices.Count == 0)
             {
-                return RecordFailure("invalid_response", "AI provider returned an invalid response.");
+                return CompleteFailure(
+                    RecordFailure("invalid_response", "AI provider returned an invalid response."),
+                    startedAt,
+                    telemetryActivity);
             }
 
             if (!TryMapResponse(providerResponse, response, out var chatResponse, out var responseFailure))
             {
-                return responseFailure!;
+                return CompleteFailure(responseFailure!, startedAt, telemetryActivity);
             }
 
-            _metrics.RecordAiProviderRequest(AiProviderSettings.ProviderOpenAiCompatible, "succeeded");
+            RecordSuccess(chatResponse!, startedAt, telemetryActivity);
             return AiChatProviderResult.Success(chatResponse!);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _metrics.RecordAiProviderRequestDuration(
+                Stopwatch.GetElapsedTime(startedAt),
+                providerName,
+                "cancelled");
+            AiProviderTelemetry.MarkCancelled(telemetryActivity);
+            throw;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return RecordFailure("provider_timeout", "AI provider request timed out.", isTransient: true);
+            return CompleteFailure(
+                RecordFailure("provider_timeout", "AI provider request timed out.", isTransient: true),
+                startedAt,
+                telemetryActivity);
         }
         catch (HttpRequestException)
         {
-            return RecordFailure("provider_unreachable", "AI provider request failed before a response was received.", isTransient: true);
+            return CompleteFailure(
+                RecordFailure("provider_unreachable", "AI provider request failed before a response was received.", isTransient: true),
+                startedAt,
+                telemetryActivity);
         }
         catch (JsonException)
         {
-            return RecordFailure("invalid_response", "AI provider returned an invalid response.");
+            return CompleteFailure(
+                RecordFailure("invalid_response", "AI provider returned an invalid response."),
+                startedAt,
+                telemetryActivity);
         }
     }
 
@@ -278,6 +318,12 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         failure = null;
 
         var choice = providerResponse.Choices[0];
+        if (IsContentFiltered(choice.FinishReason))
+        {
+            failure = RecordFailure("content_filtered", "AI provider blocked the response because of content safety policy.");
+            return false;
+        }
+
         if (choice.Message is null)
         {
             failure = RecordFailure("invalid_response", "AI provider returned an invalid response.");
@@ -378,6 +424,10 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         _ => "user"
     };
 
+    private static bool IsContentFiltered(string? finishReason) =>
+        string.Equals(finishReason, "content_filter", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(finishReason, "content_filtered", StringComparison.OrdinalIgnoreCase);
+
     private static string? GetProviderRequestId(HttpResponseMessage response)
     {
         string[] headerNames = ["x-request-id", "openai-request-id", "request-id"];
@@ -410,6 +460,43 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         return AiChatProviderResult.Failure(code, message, isTransient);
     }
 
+    private void RecordSuccess(
+        AiChatResponse response,
+        long startedAt,
+        Activity? telemetryActivity)
+    {
+        _metrics.RecordAiProviderRequest(AiProviderSettings.ProviderOpenAiCompatible, "succeeded");
+        _metrics.RecordAiProviderRequestDuration(
+            Stopwatch.GetElapsedTime(startedAt),
+            AiProviderSettings.ProviderOpenAiCompatible,
+            "succeeded");
+        _metrics.RecordAiProviderTokenUsage(
+            AiProviderSettings.ProviderOpenAiCompatible,
+            response.Usage.InputTokens,
+            response.Usage.OutputTokens,
+            response.Usage.TotalTokens);
+        _metrics.RecordAiProviderProposedActions(
+            AiProviderSettings.ProviderOpenAiCompatible,
+            response.ProposedActions.Count,
+            "create_event_draft");
+        AiProviderTelemetry.MarkSuccess(telemetryActivity, response);
+    }
+
+    private AiChatProviderResult CompleteFailure(
+        AiChatProviderResult result,
+        long startedAt,
+        Activity? telemetryActivity)
+    {
+        var error = result.Error!;
+        _metrics.RecordAiProviderRequestDuration(
+            Stopwatch.GetElapsedTime(startedAt),
+            AiProviderSettings.ProviderOpenAiCompatible,
+            "failed",
+            error.Code);
+        AiProviderTelemetry.MarkFailure(telemetryActivity, error.Code, error.IsTransient);
+        return result;
+    }
+
     private sealed record OpenAiChatCompletionRequest
     {
         [JsonPropertyName("model")]
@@ -439,7 +526,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
     private sealed record OpenAiMessage(
         [property: JsonPropertyName("role")] string Role,
         [property: JsonPropertyName("content")] string Content,
-        [property: JsonPropertyName("name")] [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Name);
+        [property: JsonPropertyName("name")][property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Name);
 
     private sealed record OpenAiTool(
         [property: JsonPropertyName("type")] string Type,
@@ -448,7 +535,11 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
     private sealed record OpenAiFunctionTool(
         [property: JsonPropertyName("name")] string Name,
         [property: JsonPropertyName("description")] string Description,
-        [property: JsonPropertyName("parameters")] JsonElement Parameters);
+        [property: JsonPropertyName("parameters")] JsonElement Parameters)
+    {
+        [JsonPropertyName("strict")]
+        public bool Strict => true;
+    }
 
     private sealed record OpenAiChatCompletionResponse(
         [property: JsonPropertyName("choices")] IReadOnlyList<OpenAiChoice> Choices,

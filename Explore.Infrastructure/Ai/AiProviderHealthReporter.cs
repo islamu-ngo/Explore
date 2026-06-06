@@ -65,6 +65,17 @@ public sealed class AiProviderHealthReporter(AiProviderSettingsValidator validat
                 Data: data);
         }
 
+        if (settings.Provider.Equals(AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase)
+            || settings.Provider.Equals(AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase))
+        {
+            return new AiProviderHealth(
+                Enabled: true,
+                Healthy: true,
+                Status: "configured_no_probe",
+                Description: "SDK-backed AI provider settings are valid; network probing is deferred to the adapter.",
+                Data: data);
+        }
+
         data["reason"] = "provider_not_configured";
         return new AiProviderHealth(
             Enabled: true,

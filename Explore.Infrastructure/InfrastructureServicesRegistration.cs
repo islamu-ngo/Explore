@@ -1,19 +1,23 @@
 // ABOUTME: Registers Infrastructure services, providers, options, and validators for the platform.
 // ABOUTME: Keeps application contracts wired to concrete infrastructure implementations at composition time.
 
+using System.Net.Sockets;
 using Amazon;
 using Amazon.S3;
+using Azure;
+using Azure.AI.OpenAI;
+using Azure.Identity;
 using Cerbos.Sdk;
 using Cerbos.Sdk.Builder;
 using Explore.Application.Contracts.Identity;
-using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Strategies;
 using Explore.Application.Models;
 using Explore.Application.Utilities;
-using Explore.Infrastructure.Analytics;
 using Explore.Infrastructure.Ai;
+using Explore.Infrastructure.Analytics;
 using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Localization;
 using Explore.Infrastructure.Localization.Resilience;
@@ -26,6 +30,7 @@ using Explore.Infrastructure.Services.Keycloak;
 using Explore.Infrastructure.Storage;
 using Explore.Infrastructure.Strategies;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -97,8 +102,9 @@ public static class InfrastructureServicesRegistration
         services.Configure<KeycloakBootstrapOptions>(configuration.GetSection(KeycloakBootstrapOptions.SectionName));
         services.AddHttpClient(KeycloakBootstrapService.HttpClientName, client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
+            client.Timeout = TimeSpan.FromSeconds(45);
+        })
+        .ConfigurePrimaryHttpMessageHandler(CreateKeycloakBootstrapHttpHandler);
         services.AddScoped<IKeycloakBootstrapService, KeycloakBootstrapService>();
 
         // Authorization providers (runtime-switchable via SystemSetting "authorization.provider")
@@ -162,19 +168,19 @@ public static class InfrastructureServicesRegistration
             client.Timeout = TimeSpan.FromSeconds(5);
         });
         services.AddScoped<PostHogAnalyticsProvider>();
-        
+
         services.AddHttpClient("PlausibleClient", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(5);
         });
         services.AddScoped<PlausibleAnalyticsProvider>();
-        
+
         services.AddHttpClient("RybbitClient", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(5);
         });
         services.AddScoped<RybbitAnalyticsProvider>();
-        
+
         services.AddHttpClient("RudderStackClient", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(5);
@@ -198,9 +204,25 @@ public static class InfrastructureServicesRegistration
             client.Timeout = Timeout.InfiniteTimeSpan;
         });
         services.AddScoped<OpenAiCompatibleChatProvider>();
-        services.AddScoped<RuntimeAiChatProvider>();
+        if (IsSdkBackedAiProvider(configuration))
+        {
+            services.AddScoped<IChatClient>(sp => CreateSdkBackedChatClient(
+                sp.GetRequiredService<IOptions<AiProviderSettings>>().Value));
+            services.AddScoped<MicrosoftExtensionsAiChatProvider>();
+        }
+
+        services.AddScoped(sp => new RuntimeAiChatProvider(
+            sp.GetRequiredService<IOptions<AiProviderSettings>>(),
+            sp.GetRequiredService<AiProviderSettingsValidator>(),
+            sp.GetRequiredService<FakeAiChatProvider>(),
+            sp.GetRequiredService<OpenAiCompatibleChatProvider>(),
+            sp.GetService<MicrosoftExtensionsAiChatProvider>()));
         services.AddScoped<IAiChatProvider>(sp => sp.GetRequiredService<RuntimeAiChatProvider>());
         services.AddScoped<IAiModelCatalog>(sp => sp.GetRequiredService<RuntimeAiChatProvider>());
+        services.AddOptions<AiRetentionCleanupSettings>()
+            .Bind(configuration.GetSection(AiRetentionCleanupSettings.SectionName));
+        services.AddSingleton<IValidateOptions<AiRetentionCleanupSettings>, AiRetentionCleanupSettingsValidator>();
+        services.AddSingleton<IAiRetentionCleanupService, AiRetentionCleanupService>();
 
         // Translation Management System providers (runtime-switchable via GovernanceSettings "localization.tms_provider")
         // All concrete providers are always registered; RuntimeTranslationProvider delegates at runtime.
@@ -220,7 +242,7 @@ public static class InfrastructureServicesRegistration
                 return null;
             }));
         services.AddScoped<TolgeeTranslationProvider>();
-        
+
         services.AddHttpClient("WeblateClient", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
@@ -298,5 +320,81 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<ISetupSecretProvider, SetupSecretProvider>();
 
         return services;
+    }
+
+    private static bool IsSdkBackedAiProvider(IConfiguration configuration)
+    {
+        var provider = configuration[$"{AiProviderSettings.SectionName}:Provider"];
+        return string.Equals(provider, AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(provider, AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static SocketsHttpHandler CreateKeycloakBootstrapHttpHandler()
+    {
+        // Keep bootstrap aligned with runtime OIDC backchannels: this deployment's Keycloak
+        // host publishes AAAA records, but IPv6 is unreachable from some developer machines.
+        // Forcing IPv4 avoids a 60s API request timeout while requesting the admin token.
+        return new SocketsHttpHandler
+        {
+            ConnectTimeout = TimeSpan.FromSeconds(10),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
+            KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+            KeepAlivePingTimeout = TimeSpan.FromSeconds(5),
+            KeepAlivePingPolicy = HttpKeepAlivePingPolicy.WithActiveRequests,
+            ConnectCallback = async (context, cancellationToken) =>
+            {
+                var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                try
+                {
+                    await socket.ConnectAsync(context.DnsEndPoint, cancellationToken);
+                    return new NetworkStream(socket, ownsSocket: true);
+                }
+                catch
+                {
+                    socket.Dispose();
+                    throw;
+                }
+            }
+        };
+    }
+
+    private static IChatClient CreateSdkBackedChatClient(AiProviderSettings settings)
+    {
+        if (settings.Provider.Equals(AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase))
+        {
+            return new OpenAI.OpenAIClient(settings.ApiKey.Trim())
+                .GetChatClient(settings.ModelId.Trim())
+                .AsIChatClient();
+        }
+
+        if (settings.Provider.Equals(AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase))
+        {
+            var endpoint = new Uri(settings.EndpointUrl.Trim(), UriKind.Absolute);
+            var client = settings.AzureCredentialMode.Equals(
+                AiProviderSettings.AzureCredentialModeDefaultAzureCredential,
+                StringComparison.OrdinalIgnoreCase)
+                    ? new AzureOpenAIClient(endpoint, CreateDefaultAzureCredential(settings))
+                    : new AzureOpenAIClient(endpoint, new AzureKeyCredential(settings.ApiKey.Trim()));
+
+            return client
+                .GetChatClient(settings.ModelId.Trim())
+                .AsIChatClient();
+        }
+
+        throw new InvalidOperationException("Configured AI provider is not SDK-backed.");
+    }
+
+    private static DefaultAzureCredential CreateDefaultAzureCredential(AiProviderSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.AzureTenantId))
+        {
+            return new DefaultAzureCredential();
+        }
+
+        return new DefaultAzureCredential(new DefaultAzureCredentialOptions
+        {
+            TenantId = settings.AzureTenantId.Trim()
+        });
     }
 }

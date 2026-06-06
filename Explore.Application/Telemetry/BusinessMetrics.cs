@@ -37,8 +37,13 @@ public sealed class BusinessMetrics : IDisposable
     private readonly Counter<long> _customPropertyPurgeDecisions;
     private readonly Counter<long> _idempotencyCleanupRuns;
     private readonly Counter<long> _idempotencyCleanupRows;
+    private readonly Counter<long> _aiRetentionCleanupRuns;
+    private readonly Counter<long> _aiRetentionCleanupRows;
     private readonly Counter<long> _aiProviderHealthChecks;
     private readonly Counter<long> _aiProviderRequests;
+    private readonly Histogram<double> _aiProviderRequestDuration;
+    private readonly Histogram<long> _aiProviderTokenUsage;
+    private readonly Counter<long> _aiProviderProposedActions;
     private readonly Counter<long> _storageUploadSessions;
     private readonly Histogram<long> _storageUploadBytes;
     private readonly Counter<long> _storageReads;
@@ -155,6 +160,16 @@ public sealed class BusinessMetrics : IDisposable
             unit: "{row}",
             description: "Total idempotency rows selected or deleted by cleanup mode and outcome");
 
+        _aiRetentionCleanupRuns = meter.CreateCounter<long>(
+            "explore.ai.retention.cleanup_runs",
+            unit: "{run}",
+            description: "Total AI retention cleanup passes by mode and bounded outcome");
+
+        _aiRetentionCleanupRows = meter.CreateCounter<long>(
+            "explore.ai.retention.cleanup_rows",
+            unit: "{row}",
+            description: "Total AI retention rows selected or redacted by cleanup mode and bounded category");
+
         _aiProviderHealthChecks = meter.CreateCounter<long>(
             "explore.ai.provider.health_checks",
             unit: "{check}",
@@ -164,6 +179,21 @@ public sealed class BusinessMetrics : IDisposable
             "explore.ai.provider.requests",
             unit: "{request}",
             description: "Total AI provider requests by provider, outcome, and bounded failure category");
+
+        _aiProviderRequestDuration = meter.CreateHistogram<double>(
+            "explore.ai.provider.request_duration",
+            unit: "s",
+            description: "AI provider request duration by provider, outcome, and bounded failure category");
+
+        _aiProviderTokenUsage = meter.CreateHistogram<long>(
+            "explore.ai.provider.token_usage",
+            unit: "{token}",
+            description: "AI provider token usage by provider and bounded token type");
+
+        _aiProviderProposedActions = meter.CreateCounter<long>(
+            "explore.ai.provider.proposed_actions",
+            unit: "{action}",
+            description: "Total AI proposed actions returned by provider and bounded action kind");
 
         _storageUploadSessions = meter.CreateCounter<long>(
             "explore.storage.upload_sessions",
@@ -374,10 +404,29 @@ public sealed class BusinessMetrics : IDisposable
             new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
     }
 
+    public void RecordAiRetentionCleanupRun(string mode, string outcome)
+    {
+        _aiRetentionCleanupRuns.Add(1,
+            new KeyValuePair<string, object?>("mode", NormalizeTag(mode)),
+            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)));
+    }
+
+    public void RecordAiRetentionCleanupRows(long rowCount, string mode, string category)
+    {
+        if (rowCount <= 0)
+        {
+            return;
+        }
+
+        _aiRetentionCleanupRows.Add(rowCount,
+            new KeyValuePair<string, object?>("mode", NormalizeTag(mode)),
+            new KeyValuePair<string, object?>("category", NormalizeAiRetentionCleanupCategory(category)));
+    }
+
     public void RecordAiProviderHealthCheck(string? provider, string? status, string? reason)
     {
         _aiProviderHealthChecks.Add(1,
-            new KeyValuePair<string, object?>("provider", NormalizeTag(provider)),
+            new KeyValuePair<string, object?>("provider", NormalizeAiProvider(provider)),
             new KeyValuePair<string, object?>("status", NormalizeTag(status)),
             new KeyValuePair<string, object?>("reason", NormalizeTag(reason)));
     }
@@ -385,9 +434,49 @@ public sealed class BusinessMetrics : IDisposable
     public void RecordAiProviderRequest(string? provider, string? outcome, string? failureCategory = null)
     {
         _aiProviderRequests.Add(1,
-            new KeyValuePair<string, object?>("provider", NormalizeTag(provider)),
-            new KeyValuePair<string, object?>("outcome", NormalizeTag(outcome)),
-            new KeyValuePair<string, object?>("failure_category", NormalizeTag(failureCategory ?? "none")));
+            new KeyValuePair<string, object?>("provider", NormalizeAiProvider(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeAiProviderOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeAiProviderFailureCategory(failureCategory)));
+    }
+
+    public void RecordAiProviderRequestDuration(
+        TimeSpan duration,
+        string? provider,
+        string? outcome,
+        string? failureCategory = null)
+    {
+        if (duration < TimeSpan.Zero)
+        {
+            return;
+        }
+
+        _aiProviderRequestDuration.Record(duration.TotalSeconds,
+            new KeyValuePair<string, object?>("provider", NormalizeAiProvider(provider)),
+            new KeyValuePair<string, object?>("outcome", NormalizeAiProviderOutcome(outcome)),
+            new KeyValuePair<string, object?>("failure_category", NormalizeAiProviderFailureCategory(failureCategory)));
+    }
+
+    public void RecordAiProviderTokenUsage(
+        string? provider,
+        int? inputTokens,
+        int? outputTokens,
+        int? totalTokens)
+    {
+        RecordAiProviderTokenUsage(provider, "input", inputTokens);
+        RecordAiProviderTokenUsage(provider, "output", outputTokens);
+        RecordAiProviderTokenUsage(provider, "total", totalTokens);
+    }
+
+    public void RecordAiProviderProposedActions(string? provider, int count, string? actionKind)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        _aiProviderProposedActions.Add(count,
+            new KeyValuePair<string, object?>("provider", NormalizeAiProvider(provider)),
+            new KeyValuePair<string, object?>("action_kind", NormalizeAiProposedActionKind(actionKind)));
     }
 
     public void RecordStorageUploadSession(
@@ -539,6 +628,112 @@ public sealed class BusinessMetrics : IDisposable
             StorageProviders.Local => StorageProviders.Local,
             StorageProviders.S3Compatible => StorageProviders.S3Compatible,
             StorageProviders.LegacyExternal => StorageProviders.LegacyExternal,
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeAiRetentionCleanupCategory(string? category)
+    {
+        return NormalizeTag(category) switch
+        {
+            "eligible_conversations" => "eligible_conversations",
+            "redacted_conversations" => "redacted_conversations",
+            "redacted_messages" => "redacted_messages",
+            "redacted_runs" => "redacted_runs",
+            "redacted_references" => "redacted_references",
+            "redacted_proposed_actions" => "redacted_proposed_actions",
+            "redacted_tool_executions" => "redacted_tool_executions",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeAiProvider(string? provider)
+    {
+        return NormalizeTag(provider) switch
+        {
+            "none" => "none",
+            "fake" => "fake",
+            "openai-compatible" => "openai-compatible",
+            "openai-sdk" => "openai-sdk",
+            "azure-openai" => "azure-openai",
+            "microsoft-extensions-ai" => "microsoft-extensions-ai",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeAiProviderOutcome(string? outcome)
+    {
+        return NormalizeTag(outcome) switch
+        {
+            "succeeded" => "succeeded",
+            "failed" => "failed",
+            "cancelled" => "cancelled",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeAiProviderFailureCategory(string? failureCategory)
+    {
+        var normalized = NormalizeTag(failureCategory ?? "none");
+        if (normalized == "none")
+        {
+            return normalized;
+        }
+
+        if (normalized.StartsWith("http_", StringComparison.Ordinal)
+            && int.TryParse(normalized.AsSpan(5), out var statusCode)
+            && statusCode is >= 100 and <= 599)
+        {
+            return normalized;
+        }
+
+        return normalized switch
+        {
+            "provider_disabled" => "provider_disabled",
+            "provider_not_configured" => "provider_not_configured",
+            "invalid_settings" => "invalid_settings",
+            "streaming_not_supported" => "streaming_not_supported",
+            "empty_messages" => "empty_messages",
+            "unsupported_message_role" => "unsupported_message_role",
+            "invalid_action_schema" => "invalid_action_schema",
+            "provider_timeout" => "provider_timeout",
+            "provider_unreachable" => "provider_unreachable",
+            "invalid_response" => "invalid_response",
+            "provider_failure" => "provider_failure",
+            "content_filtered" => "content_filtered",
+            "invalid_tool_arguments" => "invalid_tool_arguments",
+            _ => "unknown"
+        };
+    }
+
+    private void RecordAiProviderTokenUsage(string? provider, string tokenType, int? tokenCount)
+    {
+        if (tokenCount is null or <= 0)
+        {
+            return;
+        }
+
+        _aiProviderTokenUsage.Record(tokenCount.Value,
+            new KeyValuePair<string, object?>("provider", NormalizeAiProvider(provider)),
+            new KeyValuePair<string, object?>("token_type", NormalizeAiProviderTokenType(tokenType)));
+    }
+
+    private static string NormalizeAiProviderTokenType(string? tokenType)
+    {
+        return NormalizeTag(tokenType) switch
+        {
+            "input" => "input",
+            "output" => "output",
+            "total" => "total",
+            _ => "unknown"
+        };
+    }
+
+    private static string NormalizeAiProposedActionKind(string? actionKind)
+    {
+        return NormalizeTag(actionKind) switch
+        {
+            "create_event_draft" => "create_event_draft",
             _ => "unknown"
         };
     }

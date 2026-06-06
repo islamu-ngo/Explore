@@ -98,7 +98,14 @@ public sealed class OpenAiCompatibleChatProviderTests
         var result = await provider.SendAsync(CreateRequest(
             "Create an event draft",
             toolProposalsEnabled: true,
-            actionSchema: "{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"}}}"));
+            actionSchema: """
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["title"],
+                  "properties": { "title": { "type": "string" } }
+                }
+                """));
 
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.Response!.ProposedActions.Count).IsEqualTo(1);
@@ -109,6 +116,9 @@ public sealed class OpenAiCompatibleChatProviderTests
         using var document = JsonDocument.Parse(handler.RequestBody!);
         var tool = document.RootElement.GetProperty("tools")[0];
         await Assert.That(tool.GetProperty("function").GetProperty("name").GetString()).IsEqualTo("create_event_draft");
+        await Assert.That(tool.GetProperty("function").GetProperty("strict").GetBoolean()).IsTrue();
+        await Assert.That(tool.GetProperty("function").GetProperty("parameters").GetProperty("additionalProperties").GetBoolean()).IsFalse();
+        await Assert.That(tool.GetProperty("function").GetProperty("parameters").GetProperty("required")[0].GetString()).IsEqualTo("title");
         await Assert.That(document.RootElement.GetProperty("tool_choice").GetString()).IsEqualTo("auto");
     }
 
@@ -126,6 +136,28 @@ public sealed class OpenAiCompatibleChatProviderTests
         await Assert.That(result.Error!.Code).IsEqualTo("http_429");
         await Assert.That(result.Error.IsTransient).IsTrue();
         await Assert.That(result.Error.Message).DoesNotContain("secret");
+        await Assert.That(result.Error.Message).DoesNotContain("Sensitive prompt body");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenProviderReturnsContentFilterFinishReason_ReturnsStableSafeFailureCode()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "choices": [
+                {
+                  "message": { "content": "" },
+                  "finish_reason": "content_filter"
+                }
+              ]
+            }
+            """));
+        var provider = CreateProvider(handler, CreateSettings());
+
+        var result = await provider.SendAsync(CreateRequest("Sensitive prompt body"));
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Error!.Code).IsEqualTo("content_filtered");
         await Assert.That(result.Error.Message).DoesNotContain("Sensitive prompt body");
     }
 

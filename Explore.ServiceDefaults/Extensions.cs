@@ -1,3 +1,6 @@
+// ABOUTME: Provides shared Aspire service defaults, health endpoints, and OpenTelemetry setup.
+// ABOUTME: Registers safe platform meters and activity sources used by API, workers, and infrastructure adapters.
+
 using System.Text.Json;
 using Explore.ServiceDefaults.HealthChecks;
 using Microsoft.AspNetCore.Builder;
@@ -72,6 +75,7 @@ public static class Extensions
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
                     .AddSource("Explore.Authorization")
+                    .AddSource("Explore.Ai.Provider")
                     .AddSource("Explore.Hateoas.Authorization")
                     .AddSource("MQContract")
                     .AddSource("TickerQ")

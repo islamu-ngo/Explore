@@ -12,17 +12,20 @@ public sealed class RuntimeAiChatProvider : IAiChatProvider, IAiModelCatalog
     private readonly AiProviderSettingsValidator _validator;
     private readonly FakeAiChatProvider _fakeProvider;
     private readonly OpenAiCompatibleChatProvider _openAiCompatibleProvider;
+    private readonly MicrosoftExtensionsAiChatProvider? _microsoftExtensionsProvider;
 
     public RuntimeAiChatProvider(
         IOptions<AiProviderSettings> options,
         AiProviderSettingsValidator validator,
         FakeAiChatProvider fakeProvider,
-        OpenAiCompatibleChatProvider openAiCompatibleProvider)
+        OpenAiCompatibleChatProvider openAiCompatibleProvider,
+        MicrosoftExtensionsAiChatProvider? microsoftExtensionsProvider = null)
     {
         _options = options;
         _validator = validator;
         _fakeProvider = fakeProvider;
         _openAiCompatibleProvider = openAiCompatibleProvider;
+        _microsoftExtensionsProvider = microsoftExtensionsProvider;
     }
 
     public Task<IReadOnlyList<AiModelDescriptor>> ListAvailableModelsAsync(CancellationToken cancellationToken = default)
@@ -82,6 +85,21 @@ public sealed class RuntimeAiChatProvider : IAiChatProvider, IAiModelCatalog
         if (settings.Provider.Equals(AiProviderSettings.ProviderOpenAiCompatible, StringComparison.OrdinalIgnoreCase))
         {
             provider = _openAiCompatibleProvider;
+            return true;
+        }
+
+        if (settings.Provider.Equals(AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase)
+            || settings.Provider.Equals(AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase))
+        {
+            if (_microsoftExtensionsProvider is null)
+            {
+                failure = AiChatProviderResult.Failure(
+                    "provider_not_configured",
+                    "SDK-backed AI provider is not registered.");
+                return false;
+            }
+
+            provider = _microsoftExtensionsProvider;
             return true;
         }
 

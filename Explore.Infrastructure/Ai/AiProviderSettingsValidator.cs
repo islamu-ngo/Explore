@@ -11,7 +11,15 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
     {
         AiProviderSettings.ProviderNone,
         AiProviderSettings.ProviderFake,
-        AiProviderSettings.ProviderOpenAiCompatible
+        AiProviderSettings.ProviderOpenAiCompatible,
+        AiProviderSettings.ProviderOpenAiSdk,
+        AiProviderSettings.ProviderAzureOpenAi
+    };
+
+    private static readonly HashSet<string> SupportedAzureCredentialModes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        AiProviderSettings.AzureCredentialModeApiKey,
+        AiProviderSettings.AzureCredentialModeDefaultAzureCredential
     };
 
     public ValidateOptionsResult Validate(string? name, AiProviderSettings options)
@@ -20,7 +28,7 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
 
         if (!SupportedProviders.Contains(options.Provider))
         {
-            failures.Add("AiProvider:Provider must be none, fake, or openai-compatible.");
+            failures.Add("AiProvider:Provider must be none, fake, openai-compatible, openai-sdk, or azure-openai.");
         }
 
         if (!string.IsNullOrWhiteSpace(options.EndpointUrl))
@@ -34,11 +42,65 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
             ValidateOpenAiCompatibleSettings(options, failures);
         }
 
+        if (options.Enabled
+            && options.Provider.Equals(AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase))
+        {
+            ValidateOpenAiSdkSettings(options, failures);
+        }
+
+        if (options.Enabled
+            && options.Provider.Equals(AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase))
+        {
+            ValidateAzureOpenAiSettings(options, failures);
+        }
+
         ValidateLimits(options, failures);
 
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);
+    }
+
+    private static void ValidateOpenAiSdkSettings(AiProviderSettings options, List<string> failures)
+    {
+        if (string.IsNullOrWhiteSpace(options.ApiKey))
+        {
+            failures.Add("AiProvider:ApiKey is required for openai-sdk providers.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.ModelId))
+        {
+            failures.Add("AiProvider:ModelId is required for openai-sdk providers.");
+        }
+    }
+
+    private static void ValidateAzureOpenAiSettings(AiProviderSettings options, List<string> failures)
+    {
+        if (string.IsNullOrWhiteSpace(options.EndpointUrl))
+        {
+            failures.Add("AiProvider:EndpointUrl is required for azure-openai providers.");
+        }
+        else if (Uri.TryCreate(options.EndpointUrl, UriKind.Absolute, out var endpoint)
+            && endpoint.Scheme != Uri.UriSchemeHttps)
+        {
+            failures.Add("AiProvider:EndpointUrl must use HTTPS for azure-openai providers.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.ModelId))
+        {
+            failures.Add("AiProvider:ModelId is required for azure-openai providers.");
+        }
+
+        if (!SupportedAzureCredentialModes.Contains(options.AzureCredentialMode))
+        {
+            failures.Add("AiProvider:AzureCredentialMode must be api-key or default-azure-credential.");
+        }
+
+        if (options.AzureCredentialMode.Equals(AiProviderSettings.AzureCredentialModeApiKey, StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(options.ApiKey))
+        {
+            failures.Add("AiProvider:ApiKey is required for azure-openai providers using api-key authentication.");
+        }
     }
 
     private static void ValidateOpenAiCompatibleSettings(AiProviderSettings options, List<string> failures)

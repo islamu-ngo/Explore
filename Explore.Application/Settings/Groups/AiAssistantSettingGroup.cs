@@ -26,10 +26,12 @@ public class AiAssistantSettingGroup : ISettingGroup
     public bool StreamingEnabled { get; private set; }
     public bool AllowAnonymousAccess { get; private set; }
 
+    public bool HasEndpointUrl => !string.IsNullOrWhiteSpace(EndpointUrl);
     public bool HasApiKey => !string.IsNullOrWhiteSpace(ApiKey);
     public bool HasModel => !string.IsNullOrWhiteSpace(ModelId);
     public bool IsFakeProvider => Provider.Equals("fake", StringComparison.OrdinalIgnoreCase);
-    public bool IsConfigured => IsFakeProvider || (HasApiKey && HasModel);
+    public bool IsOpenAiCompatibleProvider => Provider.Equals("openai-compatible", StringComparison.OrdinalIgnoreCase);
+    public bool IsConfigured => IsOpenAiCompatibleProvider && HasEndpointUrl && HasApiKey && HasModel;
     public bool IsAvailable => Enabled && IsConfigured;
 
     public static IEnumerable<string> SettingKeys =>

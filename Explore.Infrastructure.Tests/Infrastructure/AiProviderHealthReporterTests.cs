@@ -61,6 +61,28 @@ public sealed class AiProviderHealthReporterTests
     }
 
     [Test]
+    public async Task Check_WhenSdkBackedProviderConfigured_ReturnsConfiguredNoProbeWithoutSecrets()
+    {
+        var health = _reporter.Check(new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderAzureOpenAi,
+            EndpointUrl = "https://ai.example.openai.azure.com/",
+            ApiKey = "secret-key",
+            ModelId = "deployment-test"
+        });
+
+        await Assert.That(health.Healthy).IsTrue();
+        await Assert.That(health.Status).IsEqualTo("configured_no_probe");
+        await Assert.That(health.Data.Keys).DoesNotContain("endpointUrl");
+        await Assert.That(health.Data.Keys).DoesNotContain("apiKey");
+        await Assert.That(health.Data.Keys).DoesNotContain("modelId");
+        await Assert.That(health.Data["endpointConfigured"]).IsEqualTo(true);
+        await Assert.That(health.Data["apiKeyConfigured"]).IsEqualTo(true);
+        await Assert.That(health.Data["modelConfigured"]).IsEqualTo(true);
+    }
+
+    [Test]
     public async Task Check_WhenEndpointUnsafe_ReturnsInvalidSettingsWithoutLeakingEndpointOrKey()
     {
         var health = _reporter.Check(new AiProviderSettings

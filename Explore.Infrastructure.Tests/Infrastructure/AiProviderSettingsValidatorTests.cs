@@ -45,6 +45,77 @@ public sealed class AiProviderSettingsValidatorTests
     }
 
     [Test]
+    public async Task Validate_OpenAiSdkRequiresModelAndKeyButNotEndpoint()
+    {
+        var missing = _validator.Validate(null, new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderOpenAiSdk
+        });
+
+        await Assert.That(missing.Succeeded).IsFalse();
+        await Assert.That(missing.FailureMessage).Contains("ModelId");
+        await Assert.That(missing.FailureMessage).Contains("ApiKey");
+
+        var configured = _validator.Validate(null, new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderOpenAiSdk,
+            ModelId = "gpt-test",
+            ApiKey = "test-key"
+        });
+
+        await Assert.That(configured.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task Validate_AzureOpenAiSupportsDefaultAzureCredentialWithoutApiKey()
+    {
+        var result = _validator.Validate(null, new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderAzureOpenAi,
+            EndpointUrl = "https://ai.example.openai.azure.com/",
+            ModelId = "deployment-test",
+            AzureCredentialMode = AiProviderSettings.AzureCredentialModeDefaultAzureCredential
+        });
+
+        await Assert.That(result.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task Validate_AzureOpenAiApiKeyModeRequiresApiKey()
+    {
+        var result = _validator.Validate(null, new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderAzureOpenAi,
+            EndpointUrl = "https://ai.example.openai.azure.com/",
+            ModelId = "deployment-test",
+            AzureCredentialMode = AiProviderSettings.AzureCredentialModeApiKey
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("ApiKey");
+    }
+
+    [Test]
+    public async Task Validate_AzureOpenAiRequiresHttpsEndpoint()
+    {
+        var result = _validator.Validate(null, new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderAzureOpenAi,
+            EndpointUrl = "http://ai.example.openai.azure.com/",
+            ModelId = "deployment-test",
+            ApiKey = "test-key"
+        });
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureMessage).Contains("HTTPS");
+    }
+
+    [Test]
     public async Task Validate_OpenAiCompatibleAcceptsSafeHttpEndpoint()
     {
         var result = _validator.Validate(null, new AiProviderSettings
