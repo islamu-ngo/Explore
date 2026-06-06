@@ -24,12 +24,13 @@ public class AiAssistantSettingGroupTests
     }
 
     [Test]
-    public async Task Populate_OpenAiCompatibleRequiresApiKeyAndModel()
+    public async Task Populate_OpenAiCompatibleRequiresEndpointApiKeyAndModel()
     {
         var group = new AiAssistantSettingGroup();
         group.Populate(CreateSettings(
             (GovernanceSettingKeys.AiAssistant.Enabled, "true"),
             (GovernanceSettingKeys.AiAssistant.Provider, "\"openai-compatible\""),
+            (GovernanceSettingKeys.AiAssistant.EndpointUrl, "\"https://ai.example.test\""),
             (GovernanceSettingKeys.AiAssistant.ApiKey, "\"test-key\""),
             (GovernanceSettingKeys.AiAssistant.ModelId, "\"gpt-test\"")));
 
@@ -44,6 +45,7 @@ public class AiAssistantSettingGroupTests
         group.Populate(CreateSettings(
             (GovernanceSettingKeys.AiAssistant.Enabled, "true"),
             (GovernanceSettingKeys.AiAssistant.Provider, "\"openai-compatible\""),
+            (GovernanceSettingKeys.AiAssistant.EndpointUrl, "\"https://ai.example.test\""),
             (GovernanceSettingKeys.AiAssistant.ApiKey, "\"test-key\"")));
 
         await Assert.That(group.IsConfigured).IsFalse();
@@ -51,7 +53,7 @@ public class AiAssistantSettingGroupTests
     }
 
     [Test]
-    public async Task Populate_FakeProviderDoesNotRequireApiKeyOrModel()
+    public async Task Populate_FakeProviderIsNotPubliclyAvailableWithoutCredentials()
     {
         var group = new AiAssistantSettingGroup();
         group.Populate(CreateSettings(
@@ -59,7 +61,8 @@ public class AiAssistantSettingGroupTests
             (GovernanceSettingKeys.AiAssistant.Provider, "\"fake\"")));
 
         await Assert.That(group.IsFakeProvider).IsTrue();
-        await Assert.That(group.IsAvailable).IsTrue();
+        await Assert.That(group.IsConfigured).IsFalse();
+        await Assert.That(group.IsAvailable).IsFalse();
     }
 
     [Test]

@@ -4,9 +4,11 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.TenantPolicy;
+using Explore.Application.Exceptions;
 using Explore.Application.Notifications;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using FluentValidation.Results;
 
 namespace Explore.Application.Services;
 
@@ -246,28 +248,46 @@ public partial class TenantPolicySettingService
             actorUserId);
 
         var canOverrideAiAssistant = !isMultiTenant || !DeserializeBoolean(lockAiAssistantSetting?.Value, true);
+        var aiAssistantProvider = NormalizeAiAssistantProvider(settings.AiAssistantProvider, settings.AiAssistantEnabled);
+        var usesOpenAiCompatibleProvider = aiAssistantProvider == "openai-compatible";
 
-        var effectiveAiEnabled = settings.AiAssistantEnabled
-            && !string.IsNullOrWhiteSpace(settings.AiAssistantApiKey);
+        if (canOverrideAiAssistant)
+        {
+            ValidateAiAssistantSettings(settings, aiAssistantProvider);
+        }
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.AiAssistant.Enabled,
-            effectiveAiEnabled,
+            settings.AiAssistantEnabled,
+            canOverrideAiAssistant,
+            actorUserId);
+
+        await SetStringTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.AiAssistant.Provider,
+            aiAssistantProvider,
             canOverrideAiAssistant,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.AiAssistant.EndpointUrl,
-            settings.AiAssistantEndpointUrl,
+            usesOpenAiCompatibleProvider ? settings.AiAssistantEndpointUrl : string.Empty,
             canOverrideAiAssistant,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.AiAssistant.ApiKey,
-            settings.AiAssistantApiKey,
+            usesOpenAiCompatibleProvider ? settings.AiAssistantApiKey : string.Empty,
+            canOverrideAiAssistant,
+            actorUserId);
+
+        await SetStringTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.AiAssistant.ModelId,
+            usesOpenAiCompatibleProvider ? settings.AiAssistantModelId : string.Empty,
             canOverrideAiAssistant,
             actorUserId);
 
@@ -317,6 +337,74 @@ public partial class TenantPolicySettingService
             settingKey,
             JsonSerializer.Serialize(value.Trim()),
             actorUserId);
+    }
+
+    private static void ValidateAiAssistantSettings(UpdateTenantPolicyRequest settings, string provider)
+    {
+        if (!settings.AiAssistantEnabled)
+        {
+            return;
+        }
+
+        var failures = new List<ValidationFailure>();
+        if (provider is not "fake" and not "openai-compatible")
+        {
+            failures.Add(new ValidationFailure(
+                nameof(settings.AiAssistantProvider),
+                "AI Assistant provider must be OpenAI-compatible or Fake."));
+        }
+
+        if (provider == "openai-compatible")
+        {
+            if (!HasAbsoluteHttpUrl(settings.AiAssistantEndpointUrl))
+            {
+                failures.Add(new ValidationFailure(
+                    nameof(settings.AiAssistantEndpointUrl),
+                    "AI Assistant endpoint URL must be an absolute HTTP or HTTPS URL."));
+            }
+
+            if (string.IsNullOrWhiteSpace(settings.AiAssistantApiKey))
+            {
+                failures.Add(new ValidationFailure(
+                    nameof(settings.AiAssistantApiKey),
+                    "AI Assistant API key is required for OpenAI-compatible providers."));
+            }
+
+            if (string.IsNullOrWhiteSpace(settings.AiAssistantModelId))
+            {
+                failures.Add(new ValidationFailure(
+                    nameof(settings.AiAssistantModelId),
+                    "AI Assistant model ID is required for OpenAI-compatible providers."));
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            throw new ValidationException(new ValidationResult(failures));
+        }
+    }
+
+    private static string NormalizeAiAssistantProvider(string? provider, bool enabled)
+    {
+        var normalized = provider?.Trim().ToLowerInvariant() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(normalized) || (enabled && normalized == "none"))
+        {
+            return enabled ? "openai-compatible" : "none";
+        }
+
+        if (!enabled && normalized is not "none" and not "fake" and not "openai-compatible")
+        {
+            return "none";
+        }
+
+        return normalized;
+    }
+
+    private static bool HasAbsoluteHttpUrl(string? value)
+    {
+        return Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
 
     private async Task UpsertTenantOverrideAsync(

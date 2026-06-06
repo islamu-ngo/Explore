@@ -39,7 +39,9 @@ public class UpdateTenantPolicyRequest
 
     // AI assistant integration
     public bool AiAssistantEnabled { get; set; }
+    public string AiAssistantProvider { get; set; } = "none";
     public string AiAssistantEndpointUrl { get; set; } = string.Empty;
     public string AiAssistantApiKey { get; set; } = string.Empty;
+    public string AiAssistantModelId { get; set; } = string.Empty;
     public bool AiAssistantAllowAnonymousAccess { get; set; }
 }

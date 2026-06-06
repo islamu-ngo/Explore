@@ -141,8 +141,10 @@ public class TenantPublicExperienceAdminServiceTests
                 Settings =
                 [
                     Setting("ai_assistant.enabled", "true"),
+                    Setting("ai_assistant.provider", "\"openai-compatible\""),
                     Setting("ai_assistant.endpoint_url", "\"https://ai.example.test\""),
                     Setting("ai_assistant.api_key", "\"secret-ref\""),
+                    Setting("ai_assistant.model_id", "\"gpt-test\""),
                     Setting("ai_assistant.allow_anonymous_access", "true")
                 ]
             });
@@ -160,8 +162,10 @@ public class TenantPublicExperienceAdminServiceTests
         await Assert.That(model.AllowOrganizationSelfRegistration).IsFalse();
         await Assert.That(model.AllowGroupSelfRegistration).IsFalse();
         await Assert.That(model.AiAssistantEnabled).IsTrue();
+        await Assert.That(model.AiAssistantProvider).IsEqualTo("openai-compatible");
         await Assert.That(model.AiAssistantEndpointUrl).IsEqualTo("https://ai.example.test");
         await Assert.That(model.AiAssistantApiKey).IsEqualTo("secret-ref");
+        await Assert.That(model.AiAssistantModelId).IsEqualTo("gpt-test");
         await Assert.That(model.AiAssistantAllowAnonymousAccess).IsTrue();
         await Assert.That(model.CanTenantOmitVerification).IsTrue();
         await Assert.That(model.CanOverrideEventCardClickBehavior).IsTrue();
@@ -331,8 +335,10 @@ public class TenantPublicExperienceAdminServiceTests
             AllowGroupSelfRegistration = true,
             CanOverrideAiAssistant = false,
             AiAssistantEnabled = true,
+            AiAssistantProvider = "openai-compatible",
             AiAssistantEndpointUrl = "https://ai.example.test",
             AiAssistantApiKey = "secret-ref",
+            AiAssistantModelId = "gpt-test",
             AiAssistantAllowAnonymousAccess = false
         };
 
@@ -360,7 +366,64 @@ public class TenantPublicExperienceAdminServiceTests
         await Assert.That(batches[1].Values["organizations.verification_required"]).IsEqualTo("true");
         await Assert.That(batches[2].Values["groups.self_registration_enabled"]).IsEqualTo("true");
         await Assert.That(batches[3].Values["ai_assistant.enabled"]).IsEqualTo("true");
+        await Assert.That(batches[3].Values["ai_assistant.provider"]).IsEqualTo("openai-compatible");
         await Assert.That(batches[3].Values["ai_assistant.endpoint_url"]).IsEqualTo("https://ai.example.test");
+        await Assert.That(batches[3].Values["ai_assistant.model_id"]).IsEqualTo("gpt-test");
+    }
+
+    [Test]
+    public async Task SaveSingleTenantPolicySettingsAsync_ReturnsFailure_WhenOpenAiCompatibleConfigIsIncomplete()
+    {
+        // Arrange
+        var model = new TenantPolicySettingsModel
+        {
+            AiAssistantEnabled = true,
+            AiAssistantProvider = "openai-compatible",
+            AiAssistantEndpointUrl = "https://ai.example.test",
+            AiAssistantApiKey = "secret-ref",
+            AiAssistantModelId = string.Empty
+        };
+
+        // Act
+        PublicExperienceAdminSaveResult result = await _service.SaveSingleTenantPolicySettingsAsync(model);
+
+        // Assert
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("model ID");
+        await _apiClient.DidNotReceiveWithAnyArgs().UpdateTenantSettingsBatchAsync(
+            default!,
+            default!,
+            default,
+            default,
+            default);
+    }
+
+    [Test]
+    public async Task SaveSingleTenantPolicySettingsAsync_ReturnsFailure_WhenFakeProviderIsSubmitted()
+    {
+        // Arrange
+        var model = new TenantPolicySettingsModel
+        {
+            AiAssistantEnabled = true,
+            AiAssistantProvider = "fake",
+            AiAssistantEndpointUrl = "https://stale.example.test",
+            AiAssistantApiKey = "stale-secret",
+            AiAssistantModelId = "stale-model",
+            AiAssistantAllowAnonymousAccess = true
+        };
+
+        // Act
+        PublicExperienceAdminSaveResult result = await _service.SaveSingleTenantPolicySettingsAsync(model);
+
+        // Assert
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).Contains("OpenAI-compatible");
+        await _apiClient.DidNotReceiveWithAnyArgs().UpdateTenantSettingsBatchAsync(
+            default!,
+            default!,
+            default,
+            default,
+            default);
     }
 
     [Test]

@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for the typed public-experience shell query handler.
 // ABOUTME: Verifies tenant-local OrganizationCentric settings and primary organization safety states.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -19,7 +20,6 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 using NSubstitute;
-using System.Text.Json;
 
 namespace Event.Application.UnitTests.Features.PublicExperience.Queries;
 
@@ -212,7 +212,7 @@ public class GetPublicExperienceShellQueryHandlerTests
         await Assert.That(original.Revision).IsNotEqualTo(renamed.Revision);
     }
 
-    
+
     [Test]
     public async Task Handle_WhenPrimaryOrganizationBelongsToDifferentTenant_ReturnsCrossTenantInvalidWithoutLeakingDetails()
     {

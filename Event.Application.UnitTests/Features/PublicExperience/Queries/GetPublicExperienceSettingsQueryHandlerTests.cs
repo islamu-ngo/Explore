@@ -288,7 +288,10 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         aiSettings.Populate(new Dictionary<string, ResolvedSetting>
         {
             [GovernanceSettingKeys.AiAssistant.Enabled] = new() { Value = "true" },
-            [GovernanceSettingKeys.AiAssistant.Provider] = new() { Value = "\"fake\"" },
+            [GovernanceSettingKeys.AiAssistant.Provider] = new() { Value = "\"openai-compatible\"" },
+            [GovernanceSettingKeys.AiAssistant.EndpointUrl] = new() { Value = "\"https://ai.example.test\"" },
+            [GovernanceSettingKeys.AiAssistant.ApiKey] = new() { Value = "\"secret-ref\"" },
+            [GovernanceSettingKeys.AiAssistant.ModelId] = new() { Value = "\"gpt-test\"" },
             [GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess] = new() { Value = "true" }
         });
 

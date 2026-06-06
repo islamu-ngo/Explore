@@ -48,9 +48,13 @@ public sealed class TenantPublicExperienceAdminService(
     private const string OrganizationsSelfRegistrationEnabledKey = "organizations.self_registration_enabled";
     private const string GroupsSelfRegistrationEnabledKey = "groups.self_registration_enabled";
     private const string AiAssistantEnabledKey = "ai_assistant.enabled";
+    private const string AiAssistantProviderKey = "ai_assistant.provider";
     private const string AiAssistantEndpointUrlKey = "ai_assistant.endpoint_url";
     private const string AiAssistantApiKeyKey = "ai_assistant.api_key";
+    private const string AiAssistantModelIdKey = "ai_assistant.model_id";
     private const string AiAssistantAllowAnonymousAccessKey = "ai_assistant.allow_anonymous_access";
+    private const string AiProviderNone = "none";
+    private const string AiProviderOpenAiCompatible = "openai-compatible";
 
     private const string DefaultMode = "DiscoveryCentric";
     private const string DefaultEventCatalogLabel = "Events";
@@ -152,6 +156,10 @@ public sealed class TenantPublicExperienceAdminService(
                 aiAssistantSettings,
                 AiAssistantEnabledKey,
                 model.AiAssistantEnabled);
+            model.AiAssistantProvider = GetString(
+                aiAssistantSettings,
+                AiAssistantProviderKey,
+                model.AiAssistantProvider);
             model.AiAssistantEndpointUrl = GetString(
                 aiAssistantSettings,
                 AiAssistantEndpointUrlKey,
@@ -160,6 +168,10 @@ public sealed class TenantPublicExperienceAdminService(
                 aiAssistantSettings,
                 AiAssistantApiKeyKey,
                 model.AiAssistantApiKey);
+            model.AiAssistantModelId = GetString(
+                aiAssistantSettings,
+                AiAssistantModelIdKey,
+                model.AiAssistantModelId);
             model.AiAssistantAllowAnonymousAccess = GetBoolean(
                 aiAssistantSettings,
                 AiAssistantAllowAnonymousAccessKey,
@@ -258,6 +270,12 @@ public sealed class TenantPublicExperienceAdminService(
         TenantPolicySettingsModel model,
         CancellationToken cancellationToken = default)
     {
+        PublicExperienceAdminSaveResult? validationResult = ValidateAiAssistantSettings(model);
+        if (validationResult is not null)
+        {
+            return validationResult;
+        }
+
         try
         {
             PublicExperienceAdminSaveResult eventsResult = await SaveBatchAsync(
@@ -303,13 +321,7 @@ public sealed class TenantPublicExperienceAdminService(
 
             return await SaveBatchAsync(
                 AiAssistantCategory,
-                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    [AiAssistantEnabledKey] = FormatBoolean(model.AiAssistantEnabled),
-                    [AiAssistantEndpointUrlKey] = model.AiAssistantEndpointUrl?.Trim() ?? string.Empty,
-                    [AiAssistantApiKeyKey] = model.AiAssistantApiKey ?? string.Empty,
-                    [AiAssistantAllowAnonymousAccessKey] = FormatBoolean(model.AiAssistantAllowAnonymousAccess)
-                },
+                BuildAiAssistantValues(model),
                 cancellationToken);
         }
         catch (Exception ex)
@@ -423,6 +435,74 @@ public sealed class TenantPublicExperienceAdminService(
     }
 
     private static string FormatBoolean(bool value) => value ? "true" : "false";
+
+    private static PublicExperienceAdminSaveResult? ValidateAiAssistantSettings(TenantPolicySettingsModel model)
+    {
+        if (!model.AiAssistantEnabled)
+        {
+            return null;
+        }
+
+        var provider = NormalizeAiProvider(model.AiAssistantProvider, model.AiAssistantEnabled);
+        if (!IsSupportedAiProvider(provider))
+        {
+            return PublicExperienceAdminSaveResult.Failed("AI Assistant provider must be OpenAI-compatible.");
+        }
+
+        if (!HasAbsoluteHttpUrl(model.AiAssistantEndpointUrl))
+        {
+            return PublicExperienceAdminSaveResult.Failed("AI Assistant endpoint URL must be an absolute HTTP or HTTPS URL.");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.AiAssistantApiKey) || string.IsNullOrWhiteSpace(model.AiAssistantModelId))
+        {
+            return PublicExperienceAdminSaveResult.Failed("AI Assistant requires an endpoint URL, API key, and model ID before it can be enabled.");
+        }
+
+        return null;
+    }
+
+    private static Dictionary<string, string> BuildAiAssistantValues(TenantPolicySettingsModel model)
+    {
+        var provider = NormalizeAiProvider(model.AiAssistantProvider, model.AiAssistantEnabled);
+        var usesOpenAiCompatible = provider == AiProviderOpenAiCompatible;
+
+        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [AiAssistantEnabledKey] = FormatBoolean(model.AiAssistantEnabled),
+            [AiAssistantProviderKey] = provider,
+            [AiAssistantEndpointUrlKey] = usesOpenAiCompatible ? model.AiAssistantEndpointUrl?.Trim() ?? string.Empty : string.Empty,
+            [AiAssistantApiKeyKey] = usesOpenAiCompatible ? model.AiAssistantApiKey?.Trim() ?? string.Empty : string.Empty,
+            [AiAssistantModelIdKey] = usesOpenAiCompatible ? model.AiAssistantModelId?.Trim() ?? string.Empty : string.Empty,
+            [AiAssistantAllowAnonymousAccessKey] = FormatBoolean(model.AiAssistantAllowAnonymousAccess)
+        };
+    }
+
+    private static string NormalizeAiProvider(string? provider, bool enabled)
+    {
+        var normalized = provider?.Trim().ToLowerInvariant() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(normalized) || (enabled && normalized == AiProviderNone))
+        {
+            return enabled ? AiProviderOpenAiCompatible : AiProviderNone;
+        }
+
+        if (!enabled && !IsSupportedAiProvider(normalized))
+        {
+            return AiProviderNone;
+        }
+
+        return normalized;
+    }
+
+    private static bool IsSupportedAiProvider(string provider) =>
+        provider is AiProviderNone or AiProviderOpenAiCompatible;
+
+    private static bool HasAbsoluteHttpUrl(string? value)
+    {
+        return Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+    }
 
     private static string GetString(
         IReadOnlyDictionary<string, EffectiveSettingDto> settings,

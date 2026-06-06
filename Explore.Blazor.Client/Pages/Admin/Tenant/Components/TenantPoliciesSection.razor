@@ -82,7 +82,8 @@
         <MudText Typo="Typo.subtitle1" Style="font-weight:600;">AI Assistant (Beta)</MudText>
         
         <MudSwitch T="bool"
-                   @bind-Value="Model.AiAssistantEnabled"
+                   Value="Model.AiAssistantEnabled"
+                   ValueChanged="OnAiAssistantEnabledChanged"
                    Color="Color.Primary"
                    Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)">
             Enable AI Assistant capabilities
@@ -97,6 +98,15 @@
 
         @if (Model.AiAssistantEnabled)
         {
+            <MudSelect T="string"
+                       @bind-Value="Model.AiAssistantProvider"
+                       Label="AI Provider"
+                       Variant="Variant.Outlined"
+                       Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
+                       HelperText="Use an OpenAI-compatible provider endpoint.">
+                <MudSelectItem T="string" Value="@OpenAiCompatibleProvider">OpenAI-compatible</MudSelectItem>
+            </MudSelect>
+
             <MudSwitch T="bool"
                        @bind-Value="Model.AiAssistantAllowAnonymousAccess"
                        Color="Color.Primary"
@@ -104,28 +114,88 @@
                 Allow unauthenticated visitors to open AI Assistant
             </MudSwitch>
 
-            <MudTextField T="string"
-                          @bind-Value="Model.AiAssistantEndpointUrl"
-                          Label="API Endpoint URL"
-                          Variant="Variant.Outlined"
-                          Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
-                          HelperText="Full URL to the AI model endpoint (e.g., OpenAI or compatible)" />
-                          
-            <MudTextField T="string"
-                          @bind-Value="Model.AiAssistantApiKey"
-                          Label="API Key"
-                          InputType="InputType.Password"
-                          Variant="Variant.Outlined"
-                          Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
-                          HelperText="Required to enable AI Assistant features" />
+            @if (UsesOpenAiCompatibleProvider)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    The navbar AI button appears only after endpoint URL, API key, and model ID are saved.
+                </MudAlert>
+
+                <MudTextField T="string"
+                              @bind-Value="Model.AiAssistantEndpointUrl"
+                              Label="API Endpoint URL"
+                              InputType="InputType.Url"
+                              Variant="Variant.Outlined"
+                              Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
+                              HelperText="Full HTTP(S) URL to the OpenAI-compatible model endpoint." />
+
+                <MudTextField T="string"
+                              @bind-Value="Model.AiAssistantApiKey"
+                              Label="API Key"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
+                              HelperText="Required for OpenAI-compatible providers." />
+
+                <MudTextField T="string"
+                              @bind-Value="Model.AiAssistantModelId"
+                              Label="Model ID"
+                              Variant="Variant.Outlined"
+                              Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
+                              HelperText="Example: gpt-4o-mini, llama3.1, or the model name exposed by your compatible provider." />
+
+                @if (HasIncompleteOpenAiCompatibleConfiguration)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        Complete all OpenAI-compatible fields before saving, otherwise the AI Assistant cannot be enabled.
+                    </MudAlert>
+                }
+            }
         }
     </MudStack>
 </div>
 
 @code {
+    private const string OpenAiCompatibleProvider = "openai-compatible";
+    private const string NoneProvider = "none";
+
     [Parameter, EditorRequired]
     public TenantPolicySettingsModel Model { get; set; } = null!;
 
     [Parameter]
     public bool IsSingleTenant { get; set; }
+
+    private bool UsesOpenAiCompatibleProvider =>
+        string.Equals(Model.AiAssistantProvider, OpenAiCompatibleProvider, StringComparison.OrdinalIgnoreCase)
+        || string.IsNullOrWhiteSpace(Model.AiAssistantProvider)
+        || string.Equals(Model.AiAssistantProvider, NoneProvider, StringComparison.OrdinalIgnoreCase);
+
+    private bool HasIncompleteOpenAiCompatibleConfiguration =>
+        UsesOpenAiCompatibleProvider
+        && (string.IsNullOrWhiteSpace(Model.AiAssistantEndpointUrl)
+            || string.IsNullOrWhiteSpace(Model.AiAssistantApiKey)
+            || string.IsNullOrWhiteSpace(Model.AiAssistantModelId));
+
+    protected override void OnParametersSet()
+    {
+        EnsureAiProviderWhenEnabled();
+    }
+
+    private void OnAiAssistantEnabledChanged(bool enabled)
+    {
+        Model.AiAssistantEnabled = enabled;
+        EnsureAiProviderWhenEnabled();
+    }
+
+    private void EnsureAiProviderWhenEnabled()
+    {
+        if (!Model.AiAssistantEnabled)
+        {
+            return;
+        }
+
+        if (!string.Equals(Model.AiAssistantProvider, OpenAiCompatibleProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            Model.AiAssistantProvider = OpenAiCompatibleProvider;
+        }
+    }
 }

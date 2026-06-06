@@ -39,8 +39,10 @@ public partial class TenantPolicySettingService
         var systemLockAnalytics = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAnalytics);
         var systemLockAiAssistant = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
         var systemAiAssistantEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.Enabled);
+        var systemAiAssistantProvider = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.Provider);
         var systemAiAssistantEndpointUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.EndpointUrl);
         var systemAiAssistantApiKey = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.ApiKey);
+        var systemAiAssistantModelId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.ModelId);
         var systemAiAssistantAllowAnonymousAccess = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
         var systemCommunityGuidelines = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
         var systemRenderPreset = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Preset);
@@ -75,8 +77,10 @@ public partial class TenantPolicySettingService
         var tenantAnnouncementLinkUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarLinkUrl);
         var tenantAnnouncementRevision = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.PublicExperience.AnnouncementBarRevision);
         var tenantAiAssistantEnabled = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.Enabled);
+        var tenantAiAssistantProvider = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.Provider);
         var tenantAiAssistantEndpointUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.EndpointUrl);
         var tenantAiAssistantApiKey = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.ApiKey);
+        var tenantAiAssistantModelId = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.ModelId);
         var tenantAiAssistantAllowAnonymousAccess = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
         var tenantCommunityGuidelines = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
 
@@ -266,6 +270,11 @@ public partial class TenantPolicySettingService
                 systemAiAssistantEnabled?.Value,
                 false,
                 !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+            AiAssistantProvider = ResolveString(
+                tenantAiAssistantProvider?.Value,
+                systemAiAssistantProvider?.Value,
+                "none",
+                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
             AiAssistantEndpointUrl = ResolveString(
                 tenantAiAssistantEndpointUrl?.Value,
                 systemAiAssistantEndpointUrl?.Value,
@@ -274,6 +283,11 @@ public partial class TenantPolicySettingService
             AiAssistantApiKey = ResolveString(
                 tenantAiAssistantApiKey?.Value,
                 systemAiAssistantApiKey?.Value,
+                string.Empty,
+                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+            AiAssistantModelId = ResolveString(
+                tenantAiAssistantModelId?.Value,
+                systemAiAssistantModelId?.Value,
                 string.Empty,
                 !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
             AiAssistantAllowAnonymousAccess = ResolveBoolean(
