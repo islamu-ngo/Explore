@@ -385,11 +385,6 @@
         "resolved": "2.5.192",
         "contentHash": "jaJuwcgovWIZ8Zysdyf3b7b34/BrADw4v82GaEZymUhDd3ScMPrYd/cttekeDteJJPXseJxp04yTIcxiVUjTWg=="
       },
-      "Microsoft.Extensions.AI.Abstractions": {
-        "type": "Transitive",
-        "resolved": "10.3.0",
-        "contentHash": "hDjDvUERvUH3HBMs2MDusOcGJBjAHOG5pJIU2x/HZEa4e1UthNKt89cwMi3B+ogJo6skki1XFjfgGN3ksnVqvQ=="
-      },
       "Microsoft.Extensions.Caching.Abstractions": {
         "type": "Transitive",
         "resolved": "10.0.3",
@@ -716,6 +711,12 @@
         "type": "Transitive",
         "resolved": "8.0.0",
         "contentHash": "7mu9v0QDv66ar3DpGSZHg9NuNcxDaaAcnMULuZlaTpP9+hwXhrxNGsF5GmLkSHxFdb5bBc1TzeujsRgTrPWi+Q=="
+      },
+      "Microsoft.Extensions.AI.Abstractions": {
+        "type": "CentralTransitive",
+        "requested": "[10.4.0, )",
+        "resolved": "10.3.0",
+        "contentHash": "hDjDvUERvUH3HBMs2MDusOcGJBjAHOG5pJIU2x/HZEa4e1UthNKt89cwMi3B+ogJo6skki1XFjfgGN3ksnVqvQ=="
       },
       "Microsoft.Extensions.Configuration.Abstractions": {
         "type": "CentralTransitive",
