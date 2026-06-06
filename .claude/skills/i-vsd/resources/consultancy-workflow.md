@@ -43,9 +43,12 @@ Group recommendations into quick fixes, design/policy changes, architecture chan
 
 ## Output Modes
 
-- Short advisory memo: direct answer, basis, risks, caveat.
-- Executive report: summary, risks, prioritized recommendations.
-- Detailed audit: scope, method, evidence, findings, roadmap.
-- Compliance checklist: pass/concern/fail/not reviewed/requires scholarly review.
-- Design feedback: defaults, pricing, consent, accessibility, localization, anti-manipulation.
-- Implementation review: trace principle to code, architecture, policy, tests, and operations.
+All output modes below MUST be persisted to a Markdown file under `islamic-value-sensitive-design/` using the `i-vsd-*.md` naming pattern. Never deliver I-VSD findings, consultations, advisories, or recommendations only as inline conversation text. The conversation response should summarize what was written and point to the file path, not replace it. If no explicit action name maps to the request, derive a descriptive filename (e.g., `i-vsd-account-deletion-consultation.md`) and write the full output to that file.
+
+- Short advisory memo: direct answer, basis, risks, caveat. Written to `i-vsd-short-advisory.md` or a topic-specific filename.
+- Executive report: summary, risks, prioritized recommendations. Written to `i-vsd-executive-review.md`.
+- Detailed audit: scope, method, evidence, findings, roadmap. Written to `i-vsd-detailed-audit.md`.
+- Compliance checklist: pass/concern/fail/not reviewed/requires scholarly review. Written to `i-vsd-compliance-check.md`.
+- Design feedback: defaults, pricing, consent, accessibility, localization, anti-manipulation. Written to `i-vsd-design-ux-review.md` or a topic-specific filename.
+- Implementation review: trace principle to code, architecture, policy, tests, and operations. Written to `i-vsd-implementation-code-review.md` or `i-vsd-technical-review.md`.
+- Consultation: any I-VSD-framed advisory that does not match a named action above. Written to a descriptive filename such as `i-vsd-<topic>-consultation.md`.

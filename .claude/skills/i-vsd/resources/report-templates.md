@@ -5,6 +5,10 @@
 
 Every formal template must include a title, `Last Updated: xxxx-xx-xx`, scope, claim boundary, findings by severity, recommendations, stakeholders, principles/domains, validation gaps, escalation, evidence reviewed, missing evidence, and context inventory. Use [action-routing.md](action-routing.md) to decide which Markdown report file(s) to create for the requested action(s). For artifact-based reviews, use [context-discovery.md](context-discovery.md) before writing findings so project documentation, text artifacts, policies, plans, configs, tests, code, relevant project-context integrations, and user-provided paths inform the moral analysis without cluttering the user-facing intake. Generated files go under `islamic-value-sensitive-design/` relative to the current workspace or user-approved destination and must use `i-vsd-*.md` filenames.
 
+## File-First Rule
+
+Every I-VSD response — including short advisories, consultations, design feedback, compliance findings, and any other I-VSD-framed output — MUST be written to a Markdown file under `islamic-value-sensitive-design/`. Never deliver I-VSD findings or recommendations only as inline conversation text. The conversation response should briefly summarize what was written and point to the file path. If no explicit action name maps to the request, derive a descriptive filename (e.g., `i-vsd-account-deletion-consultation.md`) and write the full output to that file.
+
 ## Required Headings For Generated Reports
 
 ```text

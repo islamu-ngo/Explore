@@ -8,7 +8,7 @@ Use this resource after applying [scope-boundaries.md](scope-boundaries.md). It 
 ## Routing Rule
 
 1. If the request is totally unrelated to provider-mediated software, refuse using [scope-boundaries.md](scope-boundaries.md) and do not show the action menu or create reports.
-2. If the request is software-related but adjacent and not framed around provider-mediated product responsibility, refuse as not optimized for I-VSD; invite reframing around a concrete product, user-facing feature, deployment, governance policy, data practice, operational duty, or stakeholder impact.
+2. If the request is software-related but adjacent and not framed around provider-mediated product responsibility, refuse as not optimized for I-VSD; invite reframing around a concrete provider-mediated product, user-facing feature, deployment, governance policy, data practice, operational duty, or stakeholder impact.
 3. If the whole request asks for halal/haram/makrooh/wajib/Sharia-compliance judgment, refuse the ruling and refer to qualified scholarly authority.
 4. If a covered provider-mediated software request includes religious-legal subquestions, continue only with design reasoning and put the excluded ruling parts under `Escalation Needed`.
 5. If the user invokes `i-vsd` without product, artifact, repository, business, architecture, policy, incident, or report context, do not guess. Return the action menu in `Available Actions` and ask the user to choose one or more actions.
@@ -20,6 +20,7 @@ Use this resource after applying [scope-boundaries.md](scope-boundaries.md). It 
 11. If required evidence is missing for non-discovery actions, still produce the report when useful, but mark gaps as `Missing Evidence` or `Not Reviewed`; do not invent facts.
 12. If the action involves finance/riba, religious guidance, high-stakes AI, public harm, vulnerable users, contested moderation, or halal/haram/makrooh/wajib language, include a scholarly or expert escalation section.
 13. For artifact-based actions, run the context discovery protocol in [context-discovery.md](context-discovery.md) before writing findings so docs, text artifacts, policies, plans, relevant project-context integrations, user-provided paths, and implementation evidence are reviewed together.
+14. **Every I-VSD response MUST be persisted to a file.** Never deliver I-VSD findings, consultations, advisories, or recommendations only as inline conversation text. All I-VSD output — including short advisories, consultations, design feedback, compliance findings, and any other I-VSD-framed response — must be written to a Markdown file under `islamic-value-sensitive-design/` using the `i-vsd-*.md` naming pattern. The conversation response should summarize what was written and point to the file, not replace it. If no explicit action name maps to the request, infer the closest action from `Synonym Matching` or use `consultancy-report` as the default, derive a descriptive filename (e.g., `i-vsd-account-deletion-consultation.md`), and write the full output to that file.
 
 ## Default Output Location
 

@@ -51,7 +51,7 @@ Apply Islamic Value Sensitive Design (I-VSD) as a provider-responsibility design
 ## Top 5 Invariants
 1. Selected Sunni Islamic ethical principles set normative boundaries; compatible secular standards, laws, and industry practices only operationalize them when they do not conflict.
 2. Provider responsibility must be reviewed across strategic, design, technical, operational, governance, and evaluation domains, even when the prompt names only UI, code, or business strategy.
-3. Every routed action must first give a concise, relevant context gate that names only actionable workspace, repository, source-package, artifact, or project-context integrations before asking for agreement to update or create mapped `islamic-value-sensitive-design/i-vsd-*.md` files with `Last Updated: xxxx-xx-xx`, stakeholders, principles, domains, provider responsibilities, evidence level, and claim boundary.
+3. Every I-VSD response — including consultations, short advisories, design feedback, compliance findings, and any other I-VSD-framed output — MUST be persisted to a Markdown file under `islamic-value-sensitive-design/` using the `i-vsd-*.md` naming pattern. Never deliver I-VSD findings or recommendations only as inline conversation text. The conversation response should briefly summarize what was written and point to the file path. If no explicit action name maps to the request, derive a descriptive filename (e.g., `i-vsd-account-deletion-consultation.md`).
 4. Never answer unrelated, adjacent-but-out-of-framework, or religious-legal authority requests in the name of I-VSD; refuse or narrow the response using the scope boundary rules.
 5. Escalate contested religious-legal matters, finance/riba questions, religious-content guidance, public-harm uncertainty, and high-stakes AI/privacy cases to qualified scholars or other relevant experts.
 
@@ -62,15 +62,18 @@ Artifact-based reviews must search relevant product, policy, implementation, ope
 2. Giving generic ethics advice without I-VSD traceability to principles, domains, stakeholders, evidence, and rejected alternatives.
 3. Certifying a product, contract, business model, or implementation as Islamic, halal, haram, makrooh, wajib, Sharia-compliant, safe, or proven ethical.
 4. Ignoring business model, marketing, governance, operations, support, portability, or evaluation because the prompt only mentions UI or code.
-5. Recommending maximal privacy, automation, or security without analyzing recovery, support, threat model, tradeoffs, user burden, and uncertainty.
+5. Delivering I-VSD findings, consultations, or recommendations only as inline conversation text without persisting them to a Markdown file under `islamic-value-sensitive-design/`. Every I-VSD output must be written to a file for durability, auditability, and future reference.
 
 ## Minimal Examples
 ```text
 Short advisory response:
+Write the full advisory to islamic-value-sensitive-design/i-vsd-short-advisory.md (or a topic-specific filename).
+Then respond in conversation:
+"Written to islamic-value-sensitive-design/i-vsd-short-advisory.md.
 Recommendation: make cancellation as clear as signup and show renewal terms before commitment.
 Basis: Truthfulness, Gharar reduction, Promise-Keeping; Design and Operational domains.
 Evidence needed: pricing copy, cancellation flow, renewal notices, support logs.
-Boundary: design reasoning only, not certification.
+Boundary: design reasoning only, not certification."
 ```
 
 ```text
