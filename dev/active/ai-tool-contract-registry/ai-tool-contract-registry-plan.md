@@ -3,15 +3,15 @@
 
 # AI Tool Contract Registry — Implementation Plan
 
-Last Updated: 2026-06-01 Europe/Brussels
+Last Updated: 2026-06-06 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Request:** Replace the old AI integration implementation plan with a long-term internal AI Tool Contract Registry plan that makes MCP another adapter over the same governed capabilities.
 - **Task directory:** `dev/active/ai-tool-contract-registry/`
-- **Planning status:** Draft, awaiting user review.
+- **Planning status:** Re-baselined after implementation completion, official .NET AI docs review, and comparative AgentBlazor analysis; Phases 0-8 remain complete, Phase 9 is the next provider-hardening roadmap, and Phase 10 is the guarded AgentBlazor-inspired agent-experience roadmap.
 - **Matched intents:** `add-cqrs-handler`, `openapi-contract-change`, `blazor-component-affordance`, `update-repository-query`, `add-ef-migration`, `cerbos-policy-change` as later phases touch Application, API/HAL/OpenAPI, Blazor, Persistence, and authorization policy.
-- **Relevant skills:** `senior-cto-feedback`, `cto-consultation`, `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, `dotnet-efcore-guidelines`, `error-tracking`.
+- **Relevant skills:** `agentic-research`, `senior-cto-feedback`, `cto-consultation`, `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `auth-patterns`, `blazor-bff-patterns`, `blazor-ui-conventions`, `dotnet-efcore-guidelines`, `error-tracking`.
 - **Relevant rules:** `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, `docs/OPERATIONS.md`, `.claude/rules/application-layer.md`, `.claude/rules/api-controllers.md`, `.claude/rules/api-hateoas.md`, `.claude/rules/blazor-client.md`, `.claude/rules/efcore-persistence.md`, `.claude/rules/efcore-migrations.md`, `.claude/rules/tests.md`.
 - **Primary layers touched:** Domain, Application, Persistence, Infrastructure, API, Blazor, Docs, DevOps.
 - **Estimated complexity:** XL. This is a cross-layer architecture pivot for AI actions, confirmation, HAL/API contracts, Blazor UX, optional MCP transport, security, tenancy, audit, and self-hosting documentation.
@@ -24,7 +24,24 @@ This workstream creates an internal AI Tool Contract Registry as the canonical p
 
 Explicitly out of scope for the first registry slice: direct automatic mutation from model output, direct MCP mutation bypassing confirmation, broad Blazor chat enablement without HAL-gated action cards, replacing existing CQRS commands, or creating a second event persistence path.
 
+## Re-baseline — 2026-06-05 Europe/Brussels
+
+- **Reason:** The official `/docs/ai` .NET documentation review was completed after the AI Tool Contract Registry, Blazor assistant, retention, and MCP adapter slices were implemented and documented.
+- **What changed:** The registry workstream remains complete through Phases 0-8. The report adds a post-ATCR alignment roadmap for provider abstraction, telemetry, content-safety mapping, strict schema behavior, tokenizer budgeting, evaluation reporting, future vector/RAG work, and Azure identity posture.
+- **Plan impact:** Do not reopen completed registry/MCP phases. Treat Phase 9 as the next implementation plan for official `Microsoft.Extensions.AI` alignment while preserving the existing Application-owned `IAiChatProvider` boundary and proposal/confirmation-first tool policy.
+- **Remaining work:** Add non-blocking `Microsoft.Extensions.AI.Evaluation` reports and consider future tenant-safe `Microsoft.Extensions.VectorData`/`IEmbeddingGenerator` RAG. The Infrastructure-only adapter path, stable provider content-filter mapping, explicit SDK-backed provider modes, raw OpenAI-compatible fallback preservation, Azure OpenAI `DefaultAzureCredential` posture, redacted provider telemetry pipeline, strict schema validation, bounded self-correction workflow, and token-budgeted prompt/reference/tool packing are now implemented.
+
+## Re-baseline — AgentBlazor Comparative Analysis — 2026-06-05 Europe/Brussels
+
+- **Reason:** The user requested a full analysis of `/home/amir/dev/Github/AgentBlazor` to identify beneficial agent-in-.NET/Blazor patterns that can strengthen ISLAMU Event's ATCR implementation plan.
+- **AgentBlazor evidence:** AgentBlazor provides a Blazor agent chat surface, capability/action metadata, approval-gated deterministic actions, route/workflow-scoped registration, generated `.agentblazor/AGENT.md` inventories, install/readiness analyzers, schema-only EF context summaries, structured `CapabilityResult` recovery metadata, execution-plan/risk/approval contracts, metadata-only run telemetry, and Playwright-style usability/e2e harnesses.
+- **Plan impact:** Do not copy AgentBlazor implementation code or import its reflection/direct-method execution model. Treat its useful patterns as Phase 10 hardening ideas that must be reimplemented through ISLAMU's existing registry, CQRS/MediatR, API/HAL, tenant isolation, and proposal-confirmation boundaries.
+- **Rejected imports:** No reflection-based service/action execution, no Blazor-local authorization, no direct remote MCP tool import/execution, no arbitrary EF entity/query/SQL/LINQ exposure, no prompt/response/tool-payload tracing, and no real-provider e2e dependency in normal CI.
+- **Remaining work:** After or alongside Phase 9 schema/provider hardening, add richer registry metadata, structured safe tool recovery results, route/workflow-scoped registry catalogs, generated agent contract inventories, dev-only readiness/scaffold analyzers, safe schema-only data-context summaries, future multi-step proposed-action plan preview/validation, and fake/replay-provider usability scenarios.
+
 ## 2. Source-Grounded Current State Report
+
+This section preserves the original 2026-06-01 planning baseline used to justify the registry workstream. It is historical evidence, not the current implementation state after Phases 0-8. The 2026-06-05 re-baseline and `ai-tool-contract-registry-context.md` are authoritative for current completion and Phase 9 next work.
 
 ### 2.1 Evidence Log
 
@@ -476,12 +493,12 @@ The registry will define each tool once:
 - **Effort:** L
 - **Validation:** `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`.
 
-### Phase 7: Optional ISLAMU Event MCP Adapter
+### Phase 7: ISLAMU Event MCP Adapter
 
 - **Goal:** Expose selected registry tools/resources/prompts to trusted external agents through MCP without making MCP the authority.
 - **Depends on:** Registry and confirmation engine; API/HAL stability strongly preferred.
 - **Relevant files:** new optional MCP host/adapter files TBD; `docs/CONFIGURATION.md`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`, Aspire/Docker profile docs if touched.
-- **Acceptance criteria:** MCP is optional; disabled by default or profile-gated; authenticated; tenant-bound; rate-limited; audited; protocol conformance tests exist; mutating tools default to proposal creation or confirmation flow.
+- **Acceptance criteria:** MCP is optional; disabled by default or profile-gated; authenticated; tenant-bound; rate-limited; audited; protocol conformance tests exist; mutating tools default to proposal creation or confirmation flow. Phase 7.1 selected API-hosted stateless Streamable HTTP through the official C# MCP SDK; legacy SSE remains disabled.
 - **Verification:** MCP protocol conformance tests, API/Application tests, authz/tenant isolation tests, docs review.
 - **Rollback / failure handling:** MCP adapter can be disabled without affecting in-product AI.
 
@@ -492,6 +509,7 @@ The registry will define each tool once:
 - **Files:** plan update; optional ADR under docs if needed.
 - **Description:** Evaluate .NET MCP server libraries/transport, hosting inside API vs separate Aspire resource, OAuth/machine auth, and self-hosting impact.
 - **Acceptance Criteria:** Decision records required services, optional dependencies, auth mode, failure behavior, and operator docs impact.
+- **Decision:** Use `ModelContextProtocol.AspNetCore` inside `Explore.API`, disabled by default through `Mcp:Enabled=false`, with stateless Streamable HTTP at a configurable endpoint path. MCP is a registry-backed adapter only; mutating tools keep the proposal/confirmation path and must not write repositories directly.
 - **Dependencies:** Phase 1.
 - **Effort:** M
 - **Validation:** Source-backed decision in plan/context.
@@ -571,6 +589,221 @@ The registry will define each tool once:
 - **Effort:** L
 - **Validation:** Per-project builds/tests, architecture/context tests, docs lint if applicable.
 
+### Phase 9: Official .NET AI Alignment And Provider Hardening
+
+- **Goal:** Align the completed ATCR/provider surface with official .NET AI abstractions without weakening Clean Architecture, tenant isolation, proposal-first tool governance, or self-hosted OpenAI-compatible support.
+- **Depends on:** Completed Phases 0-8 and the official .NET AI docs review.
+- **Relevant files:** `Directory.Packages.props`, `Explore.Infrastructure/Ai/*`, `Explore.Infrastructure/InfrastructureServicesRegistration.cs`, `Explore.Application/Contracts/Infrastructure/Ai/*`, provider/health tests, docs/config/operations files, and optional future evaluation/vector test projects.
+- **Acceptance criteria:** `Explore.Application` remains free of provider SDK types; `IAiChatProvider` remains the Application boundary; provider adapters map SDK/raw responses into existing safe result/error contracts; telemetry/evaluation outputs exclude prompts, responses, selected references, raw tool payloads, provider endpoints, API keys, model secrets, tenant/user identifiers, and raw provider errors.
+- **Verification:** Targeted Infrastructure/Application tests for adapter mapping, content-filter errors, strict schema handling, token-budgeting, telemetry redaction, and docs checks. Evaluation reports are advisory/trend artifacts at first, not hard CI blockers.
+- **Rollback / failure handling:** Keep the current raw OpenAI-compatible adapter available until SDK-backed paths prove parity across self-hosted and hosted providers.
+
+#### Task 9.1: Add `Microsoft.Extensions.AI` Adapter Behind `IAiChatProvider`
+
+**Status:** Complete as of 2026-06-05. The adapter is implemented and tested in Infrastructure, but runtime SDK-backed provider selection remains Task 9.2.
+
+- **Type:** create/modify/test
+- **Layer:** Infrastructure/Application boundary
+- **Files:** `Directory.Packages.props`, `Explore.Infrastructure/Ai/*`, `Explore.Infrastructure/InfrastructureServicesRegistration.cs`, provider tests.
+- **Description:** Add an Infrastructure adapter that consumes official `IChatClient` internally and maps to/from existing `AiChatPayload`, `AiChatResponse`, `AiChatProviderError`, `AiTokenUsage`, and proposed-action candidates.
+- **Acceptance Criteria:** `Explore.Application` contracts do not reference `IChatClient` or provider packages; current send orchestration, quotas, idempotency, registry validation, and proposal persistence remain unchanged.
+- **Dependencies:** Phase 8.5.
+- **Effort:** L
+- **Validation:** Infrastructure adapter mapping tests plus existing send-handler/provider selector tests.
+
+#### Task 9.2: Add SDK-Backed Provider Modes And Azure Identity Posture
+
+- **Status:** Complete as of 2026-06-05.
+
+- **Type:** create/modify/docs/test
+- **Layer:** Infrastructure/Configuration/Operations
+- **Files:** AI provider settings/validator/runtime provider/DI/docs.
+- **Description:** Prefer SDK-backed clients for supported providers while preserving the raw OpenAI-compatible fallback for generic and self-hosted endpoints. Add an Azure OpenAI posture that can use Entra ID/managed identity/`DefaultAzureCredential` where appropriate.
+- **Acceptance Criteria:** Endpoint safety validation remains fail-closed; API-key support remains for generic providers; Azure deployment docs prefer managed identity over static keys.
+- **Dependencies:** 9.1.
+- **Effort:** L
+- **Validation:** Provider settings/validator/runtime selector tests and configuration docs review.
+
+#### Task 9.3: Add Redacted GenAI Telemetry Pipeline
+
+**Status:** Complete as of 2026-06-06. Implemented as platform-owned redacted metrics/spans rather than SDK GenAI middleware so provider/model/server metadata and content-bearing payloads cannot leak through telemetry configuration.
+
+- **Type:** create/modify/test/docs
+- **Layer:** Infrastructure/Operations
+- **Files:** provider adapter telemetry, logging/metrics configuration, operations docs.
+- **Description:** Add `Microsoft.Extensions.AI`/OpenTelemetry GenAI instrumentation where useful while enforcing the existing no-content telemetry policy.
+- **Acceptance Criteria:** Logs, traces, metrics, health, and support data never include prompts, assistant responses, selected-reference content, raw tool payloads, provider endpoints, API keys, model secrets, tenant/user identifiers, or raw provider exceptions.
+- **Dependencies:** 9.1.
+- **Effort:** M
+- **Validation:** `Event.Application.UnitTests` telemetry metric redaction tests passed; operations docs list the safe `Explore.Ai.Provider` trace source and provider metrics. Provider spans are implemented through the platform-owned activity source without SDK GenAI middleware; provider-span-specific redaction tests remain a future hardening gap before treating span redaction as a CI gate.
+
+#### Task 9.4: Harden Strict Schema, Self-Correction, And Content-Filter Mapping
+
+**Status:** Complete as of 2026-06-06. SDK schema declarations, SDK malformed-tool-argument failure mapping, SDK/raw content-filter mapping, strict registry schema validation, one-shot safe self-correction, and raw strict function-tool metadata are implemented. A follow-up maintainability refactor split schema-subset validation, safe correction wording, and provider response retry resolution into focused Application-layer types.
+
+- **Type:** modify/test/docs
+- **Layer:** Application/Infrastructure
+- **Files:** registry schema emission, provider adapters, safe failure-code mappings, tests.
+- **Description:** Emit strict JSON schema metadata where provider support exists, keep registry validation as source of truth, provide safe model-visible self-correction errors where appropriate, and map provider content-filter failures to stable `content_filtered`.
+- **Acceptance Criteria:** Invalid/malformed/unsafe tool arguments fail closed; production errors do not expose internals; Azure/OpenAI content-filter responses produce a stable user-safe failure code.
+- **Dependencies:** 9.1.
+- **Effort:** M
+- **Validation:** Strict schema emission tests, invalid tool input tests, content-filter response mapping tests, Application self-correction retry tests, and Architecture tests all passed. The follow-up refactor passed `Event.Application.UnitTests` 1255/1255 and `Event.Architecture.Tests` 190 total / 189 succeeded / 1 skipped.
+
+#### Task 9.5: Add Tokenizer-Backed Prompt And Tool Budgeting
+
+**Status:** Complete as of 2026-06-06. Application now owns a tokenizer/estimator seam and a shared prompt-token budget so provider messages, selected references, and registry-backed tool schemas can be bounded by token limits when a tokenizer-backed estimator is available, with deterministic approximate counting as the fallback.
+
+- **Type:** create/modify/test/docs
+- **Layer:** Application
+- **Files:** prompt context builder, reference prompt packer, provider settings/docs/tests.
+- **Description:** Add tokenizer-backed budgeting for messages, selected references, and tool schemas while keeping current message/character caps as conservative fallback.
+- **Acceptance Criteria:** Prompt packing respects configured model/token limits; reference/tool schema budgets are deterministic and testable; no prompt content is logged during budgeting.
+- **Dependencies:** 9.1 or provider tokenizer selection decision.
+- **Effort:** M
+- **Validation:** Added prompt/reference budget tests and reran existing prompt/reference packer coverage through `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` (1259/1259). `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` passed 190 total / 189 succeeded / 1 skipped. `dotnet build --configuration Release --verbosity quiet` passed 25 projects with 0 errors and existing warnings.
+
+#### Task 9.6: Add Structured Output For Non-Action Assistant Modes
+
+- **Type:** investigate/modify/test
+- **Layer:** Application/Infrastructure
+- **Files:** chat payload/options, provider adapters, prompt/response parsing tests.
+- **Description:** Use typed/schema-constrained responses for non-tool assistant modes where a plain text answer is too fragile.
+- **Acceptance Criteria:** Structured output is opt-in by mode, does not replace registry-governed tool proposals, and maps provider errors to safe failure codes.
+- **Dependencies:** 9.1.
+- **Effort:** M
+- **Validation:** Structured response parsing tests and provider fallback tests.
+
+#### Task 9.7: Add Advisory AI Evaluation Reports
+
+- **Type:** create/test/docs
+- **Layer:** Tests/Operations
+- **Files:** evaluation test/report harness TBD, docs/runbook updates.
+- **Description:** Add `Microsoft.Extensions.AI.Evaluation` reports for tool proposal correctness, refusal/safety behavior, prompt-injection resistance, groundedness against selected references, and event-draft regression.
+- **Acceptance Criteria:** Reports are reproducible enough for trend tracking, cached where appropriate, and not hard CI blockers until volatility and cost are understood.
+- **Dependencies:** 9.1, 9.4.
+- **Effort:** M
+- **Validation:** Evaluation report generation command documented; no real provider call required in normal unit test suites.
+
+#### Task 9.8: Plan Tenant-Safe Vector/RAG Foundation
+
+- **Type:** investigate/docs/prototype
+- **Layer:** Application/Persistence/Infrastructure
+- **Files:** future vector ingestion/query docs and optional prototype files.
+- **Description:** Consider `Microsoft.Extensions.VectorData` and `IEmbeddingGenerator` for future RAG over event-summary chunks with metadata/citations and tenant/public visibility filters.
+- **Acceptance Criteria:** First RAG design uses public/local tenant event summaries only, includes ingestion/update hooks, preserves tenant filters, and avoids private event content unless explicitly approved.
+- **Dependencies:** Phase 5 reference search and report-backed product approval.
+- **Effort:** L
+- **Validation:** Design review, tenant-isolation tests if prototyped, and no cross-tenant/vector-leak evidence.
+
+### Phase 10: AgentBlazor-Inspired Agent Experience Hardening
+
+- **Goal:** Bring the best AgentBlazor ideas into ISLAMU Event as registry-governed, API/HAL-authorized, tenant-safe platform capabilities rather than as reflection-driven Blazor actions.
+- **Depends on:** Completed Phases 0-8, Phase 9.4 strict schema/self-correction hardening for best results, and explicit review of any public-facing agent inventory location.
+- **Relevant files:** `Explore.Application/Features/AiAssistant/Tools/*`, `Explore.Application/Features/AiAssistant/Prompting/*`, `Explore.API/Hateoas/*`, `Explore.API/Mcp/*`, `Explore.Blazor.Client/Components/Shell/AiAssistant/*`, generated inventory/docs/test projects, and optional dev-only analyzer/scaffold tooling.
+- **Acceptance criteria:** Useful AgentBlazor patterns are re-expressed through ATCR metadata, CQRS/MediatR execution, HAL affordances, tenant-aware registry views, redacted telemetry, and fake/replay-provider tests. No implementation exposes arbitrary services, EF entities, local Blazor roles, direct MCP imports, raw prompts, raw responses, raw tool payloads, tenant IDs, secrets, or provider endpoints.
+- **Verification:** Registry metadata/schema/recovery tests, HAL/API authorization tests, generated-inventory drift tests, dev-only readiness analyzer checks, safe data-context allow-list tests, plan-preview validation tests, and Playwright-style fake-provider e2e/usability reports.
+- **Rollback / failure handling:** Keep Phase 10 features opt-in and additive. If generated inventories or scoped catalogs drift, fail docs/architecture checks before runtime exposure.
+
+#### Task 10.1: Enrich Registry Metadata For Agent UX
+
+- **Type:** modify/test/docs
+- **Layer:** Application/API/Blazor contract
+- **Files:** registry tool definition models/tests, prompt/schema emission, docs.
+- **Description:** Add route/workflow/context scopes, risk class, approval mode, availability reason, follow-up policy, safe action instructions, and result-presentation metadata to registry definitions.
+- **Acceptance Criteria:** Metadata is descriptive and advisory except where existing authorization/confirmation rules already enforce behavior; side effects still go through current CQRS commands and HAL-gated UI affordances.
+- **Dependencies:** Phase 9.4 preferred.
+- **Effort:** M
+- **Validation:** Registry metadata tests and schema snapshot/parity tests.
+
+#### Task 10.2: Add Structured Safe Tool Recovery Results
+
+- **Type:** modify/test/docs
+- **Layer:** Application/Infrastructure
+- **Files:** tool validation/result contracts, parser/provider adapter tests, Blazor result cards.
+- **Description:** Add a safe result contract inspired by AgentBlazor `CapabilityResult`: `requiresClarification`, `clarificationQuestion`, `warnings`, `nextActions`, stable failure codes, and bounded machine-readable outputs for model self-correction and UI display.
+- **Acceptance Criteria:** Binding/validation failures produce model-visible recovery hints without raw payload echo, stack traces, provider details, private data, or tenant/user identifiers.
+- **Dependencies:** 9.4.
+- **Effort:** M
+- **Validation:** Invalid argument shape, missing argument, unsupported field, clarification, warning, and self-correction tests.
+
+#### Task 10.3: Harden Schema Format And Argument-Shape Coverage
+
+- **Type:** modify/test
+- **Layer:** Application
+- **Files:** registry schema emission, payload guards, mapper parity tests.
+- **Description:** Extend strict schema coverage for scalar formats and shapes observed in AgentBlazor: `DateOnly`, `TimeOnly`, `DateTime`, `DateTimeOffset`, `Guid`, enums/allowed values, arrays/objects, nullable fields, hidden runtime-context parameters, and `additionalProperties=false`.
+- **Acceptance Criteria:** Provider/MCP-visible schemas and mappers cannot drift; hidden context values are never accepted from model input; invalid shapes fail closed with stable codes.
+- **Dependencies:** 9.4.
+- **Effort:** M
+- **Validation:** Schema/mapper parity tests, invalid shape tests, and provider fallback tests.
+
+#### Task 10.4: Add Route/Workflow-Scoped Registry Catalogs
+
+- **Type:** create/modify/test
+- **Layer:** Application/API/Blazor/MCP
+- **Files:** registry query APIs, HAL/API integration points, Blazor assistant state, MCP registry discovery.
+- **Description:** Expose context-scoped registry views so the assistant and MCP adapter only see tools relevant to the current route/resource/workflow, tenant, user/machine principal, and HAL/API affordances.
+- **Acceptance Criteria:** Catalog scoping never grants authority by itself; API authorization and HAL links remain the source of truth for executable affordances.
+- **Dependencies:** 10.1.
+- **Effort:** L
+- **Validation:** Authorized/unauthorized route catalog tests, HAL absence tests, and MCP discovery tests.
+
+#### Task 10.5: Generate An Agent Contract Inventory
+
+- **Type:** create/test/docs
+- **Layer:** Docs/Architecture tests/Developer tooling
+- **Files:** generated `.agent` or docs inventory path TBD, generator tests, architecture/docs tests.
+- **Description:** Generate a machine-readable and Markdown agent inventory from ATCR/API/HAL/OpenAPI rather than arbitrary reflection. Include route/resource/tool coverage, confirmed vs eligible tools, approval/risk labels, handler/service links, invariant instructions, and preserved manual sections.
+- **Acceptance Criteria:** Inventory regeneration is deterministic; manual sections are preserved; architecture/docs tests catch drift; generated content does not expose secrets, prompts, payloads, tenant IDs, private event content, or provider config.
+- **Dependencies:** 10.1, 10.4.
+- **Effort:** L
+- **Validation:** Snapshot/diff tests and docs link/path checks.
+
+#### Task 10.6: Add Dev-Only Readiness And Scaffold Analyzer
+
+- **Type:** create/test/docs
+- **Layer:** Developer tooling
+- **Files:** analyzer/scaffold project TBD, docs/runbook updates.
+- **Description:** Add an internal `doctor`-style analyzer for new AI tools and assistant surfaces. It should report missing registry schema, mapper, executor, HAL links, API endpoints, tests, docs, config, and OpenAPI/client regeneration, with manual-review paths for advanced host shapes.
+- **Acceptance Criteria:** Analyzer is dev-only, review-first, and never production runtime authority. Optional scaffold output creates tasks or draft files only when explicitly requested.
+- **Dependencies:** Phase 10.5 useful but not required.
+- **Effort:** L
+- **Validation:** Analyzer fixture tests for pass/warning/missing reports.
+
+#### Task 10.7: Add Safe Schema-Only Data Context Summaries
+
+- **Type:** investigate/create/test/docs
+- **Layer:** Application/Persistence boundary/Prompt grounding
+- **Files:** explicit allow-list metadata files TBD, prompt context tests, docs.
+- **Description:** Borrow AgentBlazor's schema-only EF idea in constrained form: expose explicit summaries of selected entity/DTO/reference projection fields for planning and prompt grounding, without queries or mutation capability.
+- **Acceptance Criteria:** No arbitrary EF entity exposure, no SQL/LINQ generation, no direct repository access, no private content, no bypass of tenant filters, and no model-selected fields outside the allow-list.
+- **Dependencies:** Phase 5 reference search and product/security approval.
+- **Effort:** M
+- **Validation:** Allow-list tests, tenant/public visibility tests, and prompt redaction checks.
+
+#### Task 10.8: Plan Multi-Step Proposed Action Preview And Validation
+
+- **Type:** investigate/design/prototype/test
+- **Layer:** Application/API/Blazor
+- **Files:** proposed plan DTO/status/contracts TBD, validator tests, Blazor preview components.
+- **Description:** Adapt AgentBlazor's execution-plan concepts into a future proposal-only plan preview: step statuses, risk class, approval mode, context freshness, warnings, next actions, and deterministic validation before user confirmation.
+- **Acceptance Criteria:** Multi-step plans do not execute directly. Confirmed side effects still dispatch existing MediatR commands, enforce idempotency, and require HAL/API affordances.
+- **Dependencies:** 10.1, 10.2, 10.4.
+- **Effort:** L
+- **Validation:** Plan validation tests for stale context, missing HAL affordances, unsupported tools, duplicate confirmation, clarification-required steps, and failure states.
+
+#### Task 10.9: Add Fake/Replay-Provider Usability And E2E Loop
+
+- **Type:** create/test/docs
+- **Layer:** Tests/Blazor/API/MCP operations
+- **Files:** Playwright or equivalent e2e harness TBD, runbook/report artifacts.
+- **Description:** Add AgentBlazor-style usability scenarios for assistant rail and MCP proposal-first flows using fake/replay providers in normal CI and optional manual/nightly live-provider runs.
+- **Acceptance Criteria:** CI does not require real provider credentials or live model calls; artifacts redact prompts/responses/reference content/tool payloads unless explicitly generated in a local secure manual run; reports capture pass rate, failure class, screenshots/console/network diagnostics, and DB side-effect checks.
+- **Dependencies:** Phase 6, Phase 7, 10.2.
+- **Effort:** L
+- **Validation:** Deterministic fake-provider e2e scenarios and documented manual live-provider runbook.
+
 ## 7. Testing Strategy
 
 - **Application unit tests:** registry contracts, payload guard, parser/schema registry behavior, `CreateEventDraft` schema/mapper parity, confirm/reject handlers, executor dispatch and failure handling. Command: `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` with targeted `--treenode-filter` during slices.
@@ -579,6 +812,9 @@ The registry will define each tool once:
 - **API integration tests:** confirm/reject endpoints, HAL links, ProblemDetails, idempotency, OpenAPI route shape, DB-backed create-draft flow. Command: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` targeted by class.
 - **Blazor tests:** client service/state/components/HAL-gated proposal buttons. Command: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`.
 - **Infrastructure tests:** MCP adapter hosting/config/health/rate/audit if implemented there. Command depends on selected host, likely `Explore.Infrastructure.Tests` and/or `Event.API.IntegrationTests`.
+- **Official .NET AI alignment tests:** Phase 9 requires adapter mapping tests for `IChatClient` paths, raw fallback parity tests, content-filter mapping tests, strict schema/self-correction tests, tokenizer budget tests, and telemetry redaction tests before any SDK-backed provider becomes the default.
+- **AI evaluation reports:** Phase 9 evaluation output is advisory/trend evidence at first. Do not make volatile model-scored checks hard CI blockers until provider cost, determinism, and cache/report stability are understood.
+- **Agent experience hardening tests:** Phase 10 requires registry metadata/schema/recovery tests, route/workflow-scoped catalog authorization tests, generated-inventory drift tests, dev-only readiness analyzer fixture tests, safe data-context allow-list tests, plan-preview validation tests, and fake/replay-provider e2e/usability reports.
 - **Architecture/context tests:** run when new files/rules/docs change or before PR. Command: `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`. If unrelated known HATEOAS parity failures remain, record them explicitly.
 - **Full final validation:** before closing the workstream, attempt the canonical build plus per-project test list from the tasks file, including Domain, Application, Infrastructure, Persistence, API integration, Blazor Client, Blazor Integration when UI flow changes require it, and Architecture tests. Document unrelated pre-existing failures instead of hiding them.
 
@@ -590,6 +826,8 @@ The registry will define each tool once:
 - Update `docs/CONFIGURATION.md` for any new `ai_assistant.*`, `AiProvider:*`, or MCP adapter keys.
 - Update `docs/SELF_HOSTING.md` when MCP/retention jobs add optional services, env vars, profiles, or recovery steps.
 - Update `docs/OPERATIONS.md` for runbooks, metrics, health, rate limits, retention cleanup, and MCP troubleshooting.
+- Update provider configuration and operations docs if Phase 9 adds `Microsoft.Extensions.AI` packages, SDK-backed provider modes, Azure OpenAI managed identity, tokenizer settings, telemetry options, evaluation commands, or vector/RAG settings.
+- Update developer/tooling docs if Phase 10 adds generated agent inventories, readiness/scaffold analyzers, scoped tool catalogs, plan-preview validation, or fake/replay-provider e2e usability reports.
 - Update `docs/BLAZOR.md`, `docs/DOCK_LAYOUT.md`, and `docs/ACCESSIBILITY.md` when the assistant rail becomes functional or keyboard/focus/dock behavior changes.
 - Update `README.md` or an appropriate AI/UI doc with Plane inspiration credit if the final UI materially uses the existing Plane analysis; credit inspiration only, and do not claim copied code unless code is actually ported.
 - Do not require MCP infrastructure for basic self-hosted AI chat unless user explicitly chooses that product posture.
@@ -602,6 +840,11 @@ The registry will define each tool once:
 - HAL links are the only UI affordance source; Blazor cannot inspect local roles for per-proposal buttons.
 - MCP authentication must distinguish user-delegated context from machine-to-machine context. Machine principals need explicit scopes, tenant binding, rate budgets, and audit.
 - Provider/MCP telemetry must exclude prompts, responses, selected reference content, provider endpoints, API keys, model raw errors, and credentials.
+- Phase 9 provider telemetry/evaluation/RAG support must preserve the same redaction boundary and must not export tenant/user identifiers, raw provider errors, prompt content, response content, selected-reference content, tool payloads, endpoint URLs, API keys, or model secrets.
+- Provider content-filter responses must map to stable safe failure codes such as `content_filtered` rather than leaking provider-specific error payloads.
+- Phase 10 AgentBlazor-inspired features must not import reflection-based method execution, Blazor-local authorization, direct remote MCP tool execution, arbitrary EF entity/query/schema exposure, SQL/LINQ generation, or content-bearing prompt traces.
+- Schema-only data context summaries must be explicit allow-lists of safe fields and must not grant query, repository, mutation, or tenant-filter bypass capability.
+- Generated agent inventories and readiness analyzer reports must not expose prompts, responses, selected-reference content, raw proposed-action payloads, tenant/user identifiers, provider endpoints, API keys, model secrets, private event content, or raw exceptions.
 - Quotas and API rate limits from Phase 3.9 remain in force before provider or tool side effects.
 - Retention cleanup must handle prompts/proposals/tool results according to `ai_assistant.retention_days` and avoid cross-tenant deletion.
 - ProblemDetails must use safe failure codes/messages and never echo raw payloads.
@@ -621,6 +864,8 @@ The registry will define each tool once:
 - Keep dimensions low-cardinality: tool kind, outcome, failure category, provider/adapter, not tenant/user IDs unless already allowed by metric policy.
 - Add health/readiness checks for optional MCP adapter only when enabled.
 - Add operator runbooks for disabled AI, invalid provider config, rate-limited sends, failed confirmations, stuck proposed actions, retention cleanup failures, and MCP disabled/misconfigured/auth failures.
+- Add Phase 9 runbook/metric coverage for SDK-backed provider selection, raw fallback use, content-filter outcomes, tokenizer budget rejections, telemetry redaction posture, evaluation report generation, and any future vector/RAG ingestion jobs.
+- Add Phase 10 metadata-only metrics for scoped catalog requests, generated inventory drift, readiness analyzer pass/warning/missing counts, tool recovery failure codes, plan-preview validation outcomes, and fake/replay e2e scenario results. Do not add prompt/response/tool-payload trace data.
 
 ## 12. Migration And Compatibility Plan
 
@@ -628,7 +873,10 @@ The registry will define each tool once:
 - Phase 1-2 should preserve current external behavior while changing internals. No data migration expected.
 - Phase 3 may require new proposed-action execution metadata or additional columns only if current `AiToolExecution` is insufficient; if so, add EF migration, indexes, schema docs, self-hoster notes, and rollback caveat.
 - Phase 4 changes public API/OpenAPI. Regenerate `schemas/openapi.json`, generated Blazor client, and changelog in the same slice.
-- Phase 7 MCP is optional and should be disabled/profile-gated by default. Self-hosters must be able to run without MCP services.
+- Phase 7 MCP implementation starts only after Phase 8 is complete and should be disabled/profile-gated by default. Self-hosters must be able to run without MCP services.
+- Phase 9 must preserve the existing raw OpenAI-compatible provider path until SDK-backed `IChatClient` adapters prove parity for hosted and self-hosted deployments.
+- Azure OpenAI support should prefer Entra ID/managed identity through `DefaultAzureCredential` where deployed, but generic/self-hosted providers may continue to use API keys.
+- Phase 10 features should be additive and opt-in. Generated inventories, scoped catalogs, readiness analyzers, schema-only context summaries, and plan previews must not change current assistant/MCP execution behavior until their drift/auth/redaction tests pass.
 - Old `dev/active/ai-integration` is documentation history only after archive; no runtime compatibility impact.
 
 ## 13. Risk Register
@@ -643,6 +891,15 @@ The registry will define each tool once:
 | Retention cleanup deletes cross-tenant data. | Low | Critical | Tenant-scoped repository queries and integration tests. | Cleanup test deletes another tenant’s conversation. | Phase 8 |
 | Optional MCP raises self-hosting floor. | Medium | Medium | Disabled/profile-gated default; no required new service for basic deployment. | Basic compose/Aspire profile needs MCP config. | Phase 7 |
 | Existing unrelated architecture failures obscure registry validation. | High | Medium | Record unrelated failures separately and run targeted tests. | Architecture tests fail in non-AI HATEOAS policies. | All phases |
+| SDK-backed provider work leaks SDK types into Application. | Medium | High | Keep `IChatClient` inside Infrastructure adapters; preserve `IAiChatProvider` as the Application contract. | Application project references `Microsoft.Extensions.AI` provider packages or `IChatClient` appears in Application contracts. | Phase 9.1 |
+| GenAI telemetry leaks prompt, response, reference, endpoint, tenant, or secret data. | Medium | Critical | Add explicit redaction tests and keep health/log/support payloads metadata-only. | Logs/traces/health contain content-bearing or identifying fields. | Phase 9.3 |
+| Model-scored evaluation becomes flaky or costly in CI. | High | Medium | Treat evaluation reports as advisory/trend artifacts first; cache and review before promoting gates. | CI failures vary by provider/model or evaluation spend spikes. | Phase 9.7 |
+| Future vector/RAG search leaks cross-tenant or private event content. | Medium | Critical | Start with public tenant event summaries, metadata/citations, tenant filters, and ingestion tests. | Vector results include another tenant/private event or uncited private content. | Phase 9.8 |
+| AgentBlazor reflection/action model is over-imported and bypasses CQRS/HAL. | Medium | Critical | Reimplement only concepts through ATCR definitions, MediatR commands, API authorization, and HAL affordances. | Runtime can invoke arbitrary services/components or Blazor-local roles control actions. | Phase 10.1-10.4 |
+| Generated agent inventory drifts from API/HAL/registry reality. | Medium | High | Generate from canonical contracts and fail docs/architecture checks on drift. | Inventory lists tools/routes that registry or HAL cannot expose. | Phase 10.5 |
+| Schema-only context leaks private fields or becomes query authority. | Medium | Critical | Explicit allow-list safe projection fields; no SQL/LINQ/repository access; tenant/public visibility tests. | Prompt context includes private fields or model-generated query instructions. | Phase 10.7 |
+| Multi-step plan preview becomes direct execution bypass. | Medium | Critical | Keep plan preview proposal-only; confirmation dispatches existing commands with idempotency and HAL checks. | Plan step runs before confirmation or without required HAL link. | Phase 10.8 |
+| Usability/e2e artifacts leak prompt, response, reference, or payload content. | Medium | High | Use fake/replay providers in CI and redact artifacts; live-provider runs require explicit manual/nightly posture. | CI artifact contains content-bearing AI data or requires live provider credentials. | Phase 10.9 |
 
 ## 14. Success Metrics And Definition Of Done
 
@@ -653,6 +910,8 @@ The registry will define each tool once:
 - Blazor proposal buttons render only from HAL links.
 - Optional MCP adapter, if implemented, uses the same registry and does not bypass CQRS/auth/tenant/audit boundaries.
 - Retention/redaction posture is implemented before broad history/UI enablement.
+- Official .NET AI alignment keeps `IAiChatProvider` as the boundary while using `IChatClient`, telemetry, evaluation, tokenizer, and future vector abstractions only where they improve safety and maintainability.
+- AgentBlazor-inspired hardening improves agent usability, inventories, readiness checks, schema/recovery behavior, scoped catalogs, and e2e confidence without importing reflection execution, Blazor-local authorization, direct remote MCP tool execution, or arbitrary EF/query exposure.
 - Required validation passes for changed slices, using project-level commands rather than solution-level `dotnet test`.
 - Dev docs stay current: this plan, context, and tasks reflect completed and remaining work before any handoff.
 
@@ -681,4 +940,4 @@ When an implementation agent finishes a slice, final response should use:
 
 ## 17. Potential Risks & Unknowns
 
-The hardest part is keeping the registry small enough to remain understandable while strong enough to prevent MCP and in-product AI from drifting apart. If Phase 1 over-engineers generic abstractions before `CreateEventDraft` is migrated, it will slow delivery. If Phase 7 builds MCP as a separate product surface rather than a registry adapter, the platform will split authorization, tenancy, confirmation, and audit semantics. The first implementation slice must therefore prove the registry with exactly one existing tool before expanding the tool catalog.
+The hardest part is keeping the registry small enough to remain understandable while strong enough to prevent MCP and in-product AI from drifting apart. If Phase 1 over-engineers generic abstractions before `CreateEventDraft` is migrated, it will slow delivery. If Phase 7 builds MCP as a separate product surface rather than a registry adapter, the platform will split authorization, tenancy, confirmation, and audit semantics. If Phase 10 copies AgentBlazor's reflection/runtime execution posture instead of only borrowing its contract, inventory, analyzer, recovery, and usability ideas, ISLAMU would bypass the CQRS/HAL/tenant boundaries that ATCR exists to protect. The first implementation slice must therefore prove the registry with exactly one existing tool before expanding the tool catalog, and every AgentBlazor-inspired feature must remain registry-derived and proposal-first.

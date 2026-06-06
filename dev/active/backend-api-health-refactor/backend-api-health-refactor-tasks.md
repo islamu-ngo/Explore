@@ -3,19 +3,19 @@
 
 # Backend API Health Refactor Tasks
 
-Last Updated: 2026-05-07 Europe/Brussels
+Last Updated: 2026-06-06 Europe/Brussels
 
 ## Phase 0A — Mandatory Inventory Only
 
 - [x] Create `dev/active/backend-api-health-refactor/endpoint-inventory.md`.
-- [x] Populate endpoint inventory columns: `Endpoint`, `Method`, `Route`, `RouteName`, `Current Auth`, `Target Classification`, `AuthClassification`, `TenantMode`, `RateLimitPolicy`, `CachePolicy`, `HAL Links`, `OpenAPI OperationId`, `Risk`, `Action`.
+- [x] Populate endpoint inventory columns: `Endpoint`, `Method`, `Route`, `RouteName`, `Current Auth`, `Target Classification`, `AuthClassification`, `TenantMode`, `RateLimitPolicy`, `CachePolicy`, `HAL Links`, `OpenAPI OperationId`, `Risk`, `Action`. Include the 10 AI Assistant, 12 Storage Object, 2 Tenant Storage Settings, and 5 Email Dispatch endpoints.
 - [x] Create `dev/active/backend-api-health-refactor/endpoint-classification.md`.
-- [ ] Classify each endpoint as Public, Authenticated, Admin, host-admin, setup/bootstrap, or system/background.
+- [ ] Classify each endpoint as Public, Authenticated, Admin, host-admin, setup/bootstrap, or system/background. Ensure background job trigger boundaries are explicitly cataloged.
 - [ ] Mark every anonymous endpoint as intentional, suspicious, or queued for hardening.
 - [x] Create `dev/active/backend-api-health-refactor/backend-contract-risk-register.md`.
 - [ ] Add a risk-register row for every known breaking API, auth, route, response, HAL, OpenAPI, pagination, and tenant-behavior change.
 - [x] Create `dev/active/backend-api-health-refactor/authorization-policy-matrix.md`.
-- [ ] Fill policy matrix columns: `Resource`, `Action`, `API Policy`, `Handler Attribute`, `Cerbos Resource`, `HAL Rel`, `Default Roles`.
+- [ ] Fill policy matrix columns: `Resource`, `Action`, `API Policy`, `Handler Attribute`, `Cerbos Resource`, `HAL Rel`, `Default Roles`. Expand to cover the new capability policies for AI conversations, upload sessions, storage overrides, and email outbox administration.
 - [x] Create `dev/active/backend-api-health-refactor/tenant-execution-model.md`.
 - [x] Define execution modes: `RuntimeTenantRequired`, `RuntimeTenantOptionalPublicRead`, `HostAdministration`, `BackgroundSystem`, `MigrationOrSeeding`, `DesignTime`.
 - [x] Define absent-tenant behavior for each endpoint category and execution mode.
@@ -24,7 +24,7 @@ Last Updated: 2026-05-07 Europe/Brussels
 
 ## Phase 0B — Non-Invasive Guardrails
 
-- [ ] Add/enable route-name coverage tests for `RouteNames` constants and named endpoints.
+- [x] Add/enable endpoint-to-`RouteNames` coverage for named endpoints (including the new AI, Storage, and Email dispatch routes); keep the reverse constant-to-endpoint test skipped until legacy orphaned constants are pruned or reattached.
 - [x] Add architecture test: controllers must not inject repositories directly.
 - [x] Add architecture test: API actions must not return Domain entities.
 - [x] Add architecture test: API controllers must not call raw tenant-filter bypass helpers.
@@ -34,17 +34,17 @@ Last Updated: 2026-05-07 Europe/Brussels
 - [x] Add architecture test: actions with existing response metadata must declare a 2xx success response.
 - [ ] Enable architecture test: every action declares baseline response metadata.
 - [ ] Add architecture test: every action declares relevant ProblemDetails error responses.
-- [x] Add architecture test: privileged API policies cannot be authentication-only unless intentionally named as authenticated-only.
-- [ ] Add architecture test: tenant filter bypass APIs require approved naming/attributes/tests.
+- [x] Add architecture test: privileged API policies cannot be authentication-only unless intentionally named as authenticated-only. Ensure AI, Storage, and Email admin controller endpoints are covered.
+- [x] Add architecture test: tenant filter bypass APIs require approved naming/attributes/tests.
 - [x] Add test inventory for current ProblemDetails shape and required extensions.
-- [ ] Add tenant-filter tests for present tenant, absent runtime tenant, explicit host-admin context, background system context, migration/seeding, and design-time context.
+- [ ] Add tenant-filter tests for present tenant, absent runtime tenant, explicit host-admin context, background system context (such as RabbitMQ consumers and TickerQ jobs), migration/seeding, and design-time context.
 - [x] If any guardrail initially fails or remains skipped, link the skip/failure reason to `backend-contract-risk-register.md` and an implementation task.
 
 ## Phase 1A — Tenant Execution Model
 
 - [ ] Implement explicit tenant execution mode representation in the appropriate Persistence/Infrastructure boundary.
 - [ ] Ensure `RuntimeTenantOptionalPublicRead` cannot query all tenant-scoped rows by default.
-- [ ] Define allowed call sites for `HostAdministration`, `BackgroundSystem`, `MigrationOrSeeding`, and `DesignTime`.
+- [ ] Define allowed call sites for `HostAdministration`, `BackgroundSystem` (RabbitMQ background consumer threads, TickerQ outbox drains, reminder triggers), `MigrationOrSeeding` (TickerQ DbContext migrations), and `DesignTime`.
 - [ ] Add structured logging fields for tenant execution mode, operation name, reason, actor user ID when available, tenant ID when available, and correlation ID.
 - [ ] Add tests for absent-tenant behavior: no rows, 400, 401, 403, startup/config failure, or explicit system path as appropriate.
 
@@ -52,7 +52,7 @@ Last Updated: 2026-05-07 Europe/Brussels
 
 - [ ] Replace permissive `TenantContext == null || ...` runtime query-filter semantics.
 - [ ] Preserve migration/seeding/design-time behavior through explicit execution modes rather than null checks.
-- [ ] Verify pooled `ExploreDbContext` custom state is reset or scoped safely.
+- [ ] Verify pooled `ExploreDbContext` and `ApiTickerQDbContext` custom state is reset or scoped safely.
 - [ ] Add persistence integration tests for tenant-scoped entities under present tenant, absent runtime tenant, host-admin, and background modes.
 
 ## Phase 1C — Filter Bypass Quarantine
@@ -70,6 +70,12 @@ Last Updated: 2026-05-07 Europe/Brussels
 - [ ] Replace `property_governance_admin` with `CustomProperties.Govern`.
 - [ ] Replace `platform_namespace_editor` with `PlatformNamespaces.Edit`.
 - [ ] Add policies for `Modules.Manage`, `StorageObjects.ReadPresigned`, and `TenantSettings.Manage` where inventory requires them.
+- [ ] Add new policies for:
+  - `AiAssistant.Interact` / `AiAssistant.Manage` on `AiAssistantController`
+  - `StorageObjects.Read` / `StorageObjects.Write` on `StorageObjectController`
+  - `TenantStorage.Manage` on `TenantStorageSettingsController`
+  - `Email.Dispatch` / `Email.Manage` on `EmailDispatchAdminController`
+  - `InstanceSettings.Manage` on storage and Keycloak sync configurations
 - [ ] Map every changed API policy to `[AuthorizeResource]`/`ISecureRequest`, Cerbos resource/action, HAL rel, and default roles in `authorization-policy-matrix.md`.
 - [ ] Audit `ModuleController`, template controllers, property governance endpoints, namespace endpoints, storage/presigned endpoints, and tenant settings endpoints for privileged requirements.
 - [ ] Add/extend authorization parity tests for changed resources.
@@ -78,6 +84,7 @@ Last Updated: 2026-05-07 Europe/Brussels
 
 - [ ] Define how the first platform/tenant admin is created in self-hosted deployments.
 - [ ] Decide whether setup secret, Keycloak group/role mapping, or both are authoritative during bootstrap.
+- [ ] Integrate Keycloak client secret rotation and backup-confirmed sync flows.
 - [ ] Define how bootstrap mode is disabled after completion.
 - [ ] Define audit events for bootstrap start, completion, failure, and disablement.
 - [ ] Define SingleTenant and MultiTenant differences.
@@ -87,14 +94,25 @@ Last Updated: 2026-05-07 Europe/Brussels
 ## Phase 2 — API Contract, Error Catalog, and Result Mapping
 
 - [ ] Introduce `ApiProblemCodes` with stable typed codes from `api-error-catalog.md`.
-- [ ] Introduce `ApiProblemFactory` with stable problem type/code/status mapping.
+- [ ] Introduce `ApiProblemFactory` with stable problem type/code/status mapping. Map AI Assistant, storage upload, and email outbox transition error states.
 - [ ] Introduce a shared ProblemDetails writer for middleware-generated errors.
 - [ ] Ensure every ProblemDetails response includes `traceId`, `timestamp`, and `correlationId` when available.
 - [ ] Introduce `CommandResponseResultMapper` for `BaseCommandResponse<T>`, bool deletes, conflicts, duplicate requests, not-found, validation failures, and concurrency conflicts.
-- [ ] Replace raw `BadRequest(string)` and ad hoc `Problem(...)` in high-risk controllers.
+- [ ] Replace raw `BadRequest(string)` and ad hoc `Problem(...)` in high-risk controllers (like `UserController`, `AiAssistantController`, `StorageObjectController`, `EmailDispatchAdminController`).
+- Progress 2026-06-05: normalized `EmailDispatchAdminController` pause/resume failure paths to the existing RFC7807 email-dispatch ProblemDetails helper; broader controller cleanup remains pending.
+- Progress 2026-06-05: normalized `ProgramValidationProblemDetails` helper responses to include standard `traceId`, `timestamp`, and optional `correlationId` extensions; broader controller/helper cleanup remains pending.
+- Progress 2026-06-05: normalized `NotificationController` archive/snooze not-found branches from anonymous `{ error }` JSON to RFC7807 ProblemDetails with `code`, `traceId`, `timestamp`, and optional `correlationId`; broader controller cleanup remains pending.
+- Progress 2026-06-05: normalized `CustomPropertyProjectionAdminController` event/session status-query failure paths from raw `BadRequest(result)` envelopes to RFC7807 `ValidationProblemDetails` with `code`, `traceId`, `timestamp`, and optional `correlationId`; broader projection command cleanup remains pending.
+- Progress 2026-06-05: normalized `ExternalApiKeyController` create/update validation and update not-found failure paths from raw command envelopes/anonymous objects to RFC7807 ProblemDetails with `code`, `traceId`, `timestamp`, and optional `correlationId`; broader controller cleanup remains pending.
+- Progress 2026-06-05: normalized `AtprotoRecordController` update validation failures from anonymous/raw 400 responses to RFC7807 `ValidationProblemDetails` with `code`, `traceId`, `timestamp`, and optional `correlationId`; broader ATProto controller cleanup remains pending.
+- Progress 2026-06-05: normalized `UserExternalLoginController` update validation and not-found failure paths from anonymous/raw command responses to RFC7807 ProblemDetails with `code`, `traceId`, `timestamp`, and optional `correlationId`; broader account-linking controller cleanup remains pending.
+- Progress 2026-06-05: normalized `EventRegistrationController` update validation and not-found failure paths from raw `Problem(...)`/`BadRequest(response)` branches to RFC7807 ProblemDetails with `code`, `traceId`, `timestamp`, and optional `correlationId`; broader registration create/delete cleanup remains pending.
+- Progress 2026-06-05: normalized `EventAgendaItemController`, `EventSessionAgendaItemController`, and `LocationRoomController` create/update validation failures from raw `BaseCommandResponse`/anonymous 400 payloads to RFC7807 `ValidationProblemDetails` with `validation_failed` fallback code, `traceId`, `timestamp`, and optional `correlationId`.
+- Progress 2026-06-05: normalized `ActorKeyStoreController` and `UserAuthenticationTokenController` create/update validation failures from raw command envelopes/anonymous or ad hoc `Problem(...)` 400 responses to RFC7807 `ValidationProblemDetails`; `ActorKeyStoreController` delete not-found now returns RFC7807 `ProblemDetails` with `resource_not_found` fallback code.
+- Progress 2026-06-06: replaced the temporary controller-scoped `CommandResponseProblemDetails` helper with API-layer error-contract components under `Explore.API/ExceptionHandling`: `ApiProblemCodes`, `ApiProblemTypes`, `ApiValidationProblemDescriptor`/`ApiNotFoundProblemDescriptor`, `ApiProblemFactory`, and `CommandResponseResultMapper`. This keeps controllers thin, centralizes RFC7807 standard extensions/content type/type URIs, and establishes the planned factory/mapper direction; broader mappings for conflicts, duplicate requests, concurrency, middleware errors, AI Assistant, storage upload, and email outbox states remain pending.
 - [ ] Normalize authorization failure responses for missing identity vs forbidden resource access.
-- [ ] Migrate hard-coded route names to `RouteNames.Xxx` constants.
-- [ ] Unskip route-name coverage tests after constants/controllers are aligned.
+- [x] Migrate hard-coded route names to `RouteNames.Xxx` constants.
+- [x] Unskip endpoint-to-`RouteNames` route-name coverage after constants/controllers are aligned (including new AI, storage, and outbox routes); keep reverse constant-to-endpoint cleanup as remaining Phase 2 route-catalog debt.
 - [ ] Normalize obvious action-word routes to resource-oriented route templates where inventory marks them risky.
 - [ ] Update OpenAPI response metadata for ProblemDetails, endpoint classifications, auth classifications, rate-limit policies, cache policies, and tenant modes.
 - [ ] Document preview/v1.0 contract stance: breaking changes allowed before v1.0, but documented and regenerated through OpenAPI/client workflows.
@@ -105,6 +123,7 @@ Last Updated: 2026-05-07 Europe/Brussels
 - [ ] Confirm Phase 0 and Phase 2 exit criteria before splitting major controllers.
 - [ ] Split by resource/use-case cohesion, not method count alone.
 - [ ] Evaluate event controller split candidates: `EventsController`, `MyEventsController`, `EventLifecycleController`, `EventPublishingController`, `EventCalendarController`, `EventAspectsController`.
+- [ ] Ensure `AiAssistantController`, `StorageObjectController`, and `EmailDispatchAdminController` remain thin dispatch boundaries with logic delegated to Application handlers.
 - [ ] Implement only controller splits justified by inventory/risk-register entries.
 - [ ] Extract event filter request mapping into API mapper/binder classes.
 - [ ] Move calendar filename/canonical URL/file descriptor construction out of the controller.
@@ -119,11 +138,13 @@ Last Updated: 2026-05-07 Europe/Brussels
 - [ ] Decompose `CreateEventCommandHandler` into narrow collaborators, not a single replacement god service.
 - [ ] Candidate collaborators: `EventDraftFactory`, `EventScheduleGraphWriter`, `EventTaxonomyAssignmentWriter`, `EventTemplateInstantiationService`, `EventCustomPropertyInitializer`, `EventProjectionRefreshCoordinator`, `EventCreationCacheInvalidator`, `EventCreationMetricsRecorder`.
 - [ ] Keep the create-event handler responsible for validation, authorization context, transaction orchestration, idempotency boundary, and response composition only.
+- [ ] Decompose/standardize AI assistant prompt and confirmation commands.
+- [ ] Decompose/standardize storage upload session creation, stream finalization, and quota reservation commands.
 - [ ] Define transaction boundary for aggregate creation.
 - [ ] Ensure extracted collaborators do not independently call `SaveChangesAsync` unless explicitly part of the unit-of-work design.
-- [ ] Define idempotency behavior for create, publish, update, registration, approval/cancellation, setup/bootstrap, and payment-adjacent actions.
+- [ ] Define idempotency behavior for create, publish, update, registration, approval/cancellation, setup/bootstrap, sending AI assistant messages, finalizing uploads, and payment-adjacent actions.
 - [ ] Add duplicate-submit protection for create-event browser submits.
-- [ ] Add optimistic concurrency behavior for event lifecycle/status/settings mutations.
+- [ ] Add optimistic concurrency behavior for event lifecycle/status/settings mutations and AI assistant run state changes.
 - [ ] Standardize `concurrency_conflict` and `duplicate_request` ProblemDetails outcomes.
 - [ ] Remove obsolete `IAuthorizedRequest` compatibility path if no longer needed.
 - [ ] Standardize authorization metadata on sensitive commands with `[AuthorizeResource]` and `ISecureRequest`.
@@ -132,14 +153,14 @@ Last Updated: 2026-05-07 Europe/Brussels
 - [ ] Centralize cache key/tag construction and mutation invalidation.
 - [ ] Extract repeated storage-object URL/presigned URL mapping into a cancellation-aware service.
 - [ ] Define audit event taxonomy for tenant/admin/security-sensitive operations.
-- [ ] Add audit logging for event publish/unpublish, auth-relevant data changes, presigned URL generation, custom-property governance, templates, modules, namespaces, and tenant settings changes.
+- [ ] Add audit logging for event publish/unpublish, auth-relevant data changes (Keycloak rotations), presigned URL generation, upload sessions, custom-property governance, templates, modules, namespaces, outbox paused/resumed/parked/replayed states, and tenant settings changes.
 - [ ] Ensure audit events include tenant ID, actor ID, resource ID, action, outcome, correlation ID, and reason where relevant.
 - [ ] Add unit tests for decomposed event creation, authorization metadata, idempotency, concurrency, cache invalidation, audit logging, and public shell composition.
 - [ ] Run Application unit and architecture tests.
 
 ## Phase 5A — Persistence Cancellation Tokens
 
-- [ ] Add `CancellationToken` parameters to repository contracts and implementations touched by this workstream.
+- [ ] Add `CancellationToken` parameters to repository contracts and implementations touched by this workstream (including AI conversations, storage query APIs, outbox transitions, and TickerQ db operations).
 - [ ] Pass cancellation tokens into EF async calls (`ToListAsync`, `FirstOrDefaultAsync`, `CountAsync`, `ExecuteDeleteAsync`, `SaveChangesAsync`).
 - [ ] Add architecture tests or targeted tests for cancellation-aware repository async methods.
 
@@ -159,7 +180,7 @@ Last Updated: 2026-05-07 Europe/Brussels
 ## Phase 5D — Cursor Pagination Contract
 
 - [ ] Define opaque versioned cursor format.
-- [ ] Bind cursors to tenant ID and filter/sort hash where needed to prevent unsafe cursor reuse.
+- [ ] Bind cursors to tenant ID and filter/sort hash where needed to prevent unsafe cursor reuse (particularly for AI conversation history and storage object lists).
 - [ ] Define sort direction, previous/next behavior, filter-change behavior, deletion/insertion stability, and total-count policy.
 - [ ] Define which endpoints remain offset-based and why.
 - [ ] Introduce cursor/keyset pagination for high-volume public event/session/list feeds.
@@ -171,12 +192,13 @@ Last Updated: 2026-05-07 Europe/Brussels
 - [ ] Review indexes for high-volume event/session/feed queries.
 - [ ] Ensure tenant-scoped high-volume queries have tenant ID in useful composite indexes.
 - [ ] Review public event listing indexes around `TenantId`, `Status`, `Visibility`, `StartDate`/`CreatedAt`, `Id`, and `DeletedAt`/`IsDeleted`.
+- [ ] Verify composite index coverage for AI assistant runs (`ConversationId`, `Status`, `CreatedAt`), storage objects (`TenantId`, `Id`, `CreatedAt`), and email outbox receipts.
 - [ ] Ensure soft-delete predicates remain index-friendly.
 - [ ] Add migration tests/model assertions for critical indexes.
 
 ## Phase 5F — Transaction Retry Strategy
 
-- [ ] Wrap manual transactions in EF execution strategies or route them through `IUnitOfWork`.
+- [ ] Wrap manual transactions in EF execution strategies or route them through `IUnitOfWork` (including RabbitMQ outbox updates and TickerQ operational state transitions).
 - [ ] Add persistence integration tests for transaction retry behavior.
 - [ ] Verify outbox/background dispatch remains idempotent where durable side effects are involved.
 - [ ] Run Persistence integration and architecture tests.

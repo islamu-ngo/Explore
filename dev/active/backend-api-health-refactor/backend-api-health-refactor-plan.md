@@ -7,21 +7,21 @@ Last Updated: 2026-05-07 Europe/Brussels
 
 ## 1. Goal
 
-Refactor the backend/API codebase toward an enterprise-grade, highly maintainable Clean Architecture implementation without preserving development-era compatibility mistakes. This workstream is backend/API-only: `Explore.API`, `Explore.Application`, `Explore.Persistence`, `Explore.Infrastructure`, `Explore.Domain`, backend tests, documentation, OpenAPI/HAL contracts, and authorization policy assets are in scope; Blazor UI behavior and styling are out of scope except where API/HAL contracts require documentation of downstream impact.
+Refactor the backend/API codebase toward an enterprise-grade, highly maintainable Clean Architecture implementation without preserving development-era compatibility mistakes. This workstream is backend/API-only: `Explore.API`, `Explore.Application`, `Explore.Persistence` (including `ApiTickerQDbContext`), `Explore.Infrastructure` (including storage and messaging implementations), `Explore.Domain`, backend tests, documentation, OpenAPI/HAL contracts, and authorization policy assets are in scope; Blazor UI behavior and styling are out of scope except where API/HAL contracts require documentation of downstream impact.
 
 ## 2. Success Criteria
 
 - Phase 0 produces mandatory implementation artifacts before behavior changes begin.
 - Runtime tenant isolation fails closed for normal request paths and cannot silently return cross-tenant data when tenant context is absent.
-- Tenant/system execution paths are explicit, named, logged, reason-coded, and test-covered; “system context” does not become a new `IgnoreAllFilters()` escape hatch.
-- API authorization policies express capabilities/resources/actions rather than role-sounding placeholders backed only by `RequireAuthenticatedUser()`.
-- First-admin/bootstrap behavior is documented and verified for self-hosted SingleTenant and MultiTenant deployments.
+- Tenant/system execution paths are explicit, named, logged, reason-coded, and test-covered; background workers (RabbitMQ consumers, TickerQ scheduled tasks) and storage reconciliation workers run safely under `BackgroundSystem` context without leaving permanent filter-bypass loopholes.
+- API authorization policies express capabilities/resources/actions rather than role-sounding placeholders backed only by `RequireAuthenticatedUser()`. This covers core entities as well as AI assistants, file storage, email admin, and scheduling subsystems.
+- First-admin/bootstrap behavior is documented and verified for self-hosted SingleTenant and MultiTenant deployments, including Keycloak integration and secret rotation.
 - Error responses use one RFC 7807 ProblemDetails factory/writer with typed problem codes and required `traceId`, `timestamp`, and `correlationId` extensions.
 - Route names, endpoint classifications, HAL affordances, OpenAPI operation IDs, rate-limit policies, cache policies, tenant modes, and authorization posture are inventory-backed and test-enforced.
-- Controllers become thin dispatch/representation boundaries only after contract/error/route stability is established.
-- CQRS handlers remain single-purpose, cancellation-aware, idempotency-aware where relevant, and do not bypass MediatR behaviors by directly invoking other handlers.
+- Controllers become thin dispatch/representation boundaries only after contract/error/route stability is established, ensuring controllers like `AiAssistantController`, `StorageObjectController`, and `EmailDispatchAdminController` remain thin HTTP adaptors.
+- CQRS handlers remain single-purpose, cancellation-aware, idempotency-aware where relevant (e.g., `Idempotency-Key` processing), and do not bypass MediatR behaviors by directly invoking other handlers.
 - Persistence repositories remain entity-first, tenant-safe, cancellation-aware, index-conscious, and projection/read-model exceptions are explicit.
-- Audit logging, duplicate-submit protection, optimistic concurrency, and transaction boundaries are treated as first-class backend reliability requirements.
+- Audit logging, duplicate-submit protection, optimistic concurrency, and transaction boundaries (e.g., RabbitMQ outbox states and TickerQ schedule triggers) are treated as first-class backend reliability requirements.
 
 ## 3. Constraints and Non-Goals
 
@@ -85,7 +85,7 @@ Tenant-bypass APIs must require a reason and operation name, for example:
 BeginSystemTenantScope(SystemTenantScopeReason reason, string operationName, Guid? actorUserId = null)
 ```
 
-Normal tenant-scoped absent-tenant behavior must be fail-closed: no rows, 400, 401, 403, startup/configuration failure, or explicit system path depending on context; never silent all-tenant reads.
+Normal tenant-scoped absent-tenant behavior must be fail-closed: no rows, 400, 401, 403, startup/configuration failure, or explicit system path depending on context; never silent all-tenant reads. Background processes (such as RabbitMQ messaging consumers and TickerQ scheduled jobs) must run in explicitly initialized, audited, and reason-coded `BackgroundSystem` scopes.
 
 ### 5.2 Capability/resource/action policy names
 
@@ -97,8 +97,11 @@ Replace role-sounding policies such as `template_admin`, `event_editor`, `proper
 - `CustomProperties.Govern`
 - `PlatformNamespaces.Edit`
 - `Modules.Manage`
-- `StorageObjects.ReadPresigned`
-- `TenantSettings.Manage`
+- `StorageObjects.Read` / `StorageObjects.Write` / `StorageObjects.ReadPresigned`
+- `TenantSettings.Manage` / `TenantStorage.Manage`
+- `AiAssistant.Interact` / `AiAssistant.Manage`
+- `Email.Dispatch` / `Email.Manage`
+- `InstanceSettings.Manage`
 
 Every privileged API policy must map to handler authorization metadata, Cerbos resource/action naming, HAL rels, and default roles in `authorization-policy-matrix.md`.
 
@@ -150,11 +153,11 @@ The main handler remains the use-case coordinator: validate request, authorize a
 
 ### 5.6 Idempotency, concurrency, audit, and pagination
 
-- High-risk POST/actions need idempotency behavior: create event, publish/unpublish, registration, approval/cancellation, setup/bootstrap, and payment-adjacent actions.
-- Event lifecycle/status/settings updates need optimistic concurrency and `concurrency_conflict` ProblemDetails.
+- High-risk POST/actions need idempotency behavior: create event, publish/unpublish, registration, approval/cancellation, setup/bootstrap, sending AI assistant prompts (`SendAiMessageCommand` via `Idempotency-Key` header), confirming AI proposed actions, storage upload session registration, outbox replay actions, and payment-adjacent actions.
+- Event lifecycle/status/settings updates and AI assistant run state transitions need optimistic concurrency and `concurrency_conflict` ProblemDetails.
 - Duplicate submissions need `duplicate_request` ProblemDetails or replay-safe cached responses.
-- Audit tenant/admin/security-sensitive operations: tenant settings, event lifecycle, auth-relevant data, presigned URL generation, tenant-filter bypass, cross-tenant admin views, custom-property governance, templates, modules, and namespaces.
-- Public high-volume feed pagination should use an opaque versioned cursor response. Do not expose raw `(CreatedAt, Id)` cursor tuples externally.
+- Audit tenant/admin/security-sensitive operations: tenant settings, tenant storage settings, event lifecycle, auth-relevant data (Keycloak realm updates, client secret rotations), presigned URL generation, upload sessions, tenant-filter bypass, cross-tenant admin views, custom-property governance, templates, modules, namespaces, outbox paused/resumed/parked/replayed states, and TickerQ scheduler mutations.
+- Public high-volume feed pagination and private AI assistant conversation history feeds should use an opaque versioned cursor response. Do not expose raw `(CreatedAt, Id)` cursor tuples externally.
 
 Preferred cursor shape:
 
@@ -171,6 +174,14 @@ Preferred cursor shape:
 
 Cursor design must answer versioning, sort direction, tenant/filter hash binding, filter-change behavior, deleted/inserted row stability, total-count policy, and which endpoints remain offset-based.
 
+### 5.7 Storage isolation and upload sessions
+
+Ensure instance and tenant storage admin actions cannot bypass configuration locks. Uploads from Blazor BFF to storage must flow through provider-neutral upload sessions (`/api/storageobject/upload-sessions`). Streaming file content must rely on metadata-backed IDs (`/api/storageobject/{id}/content`), and S3 provider health probes must be safely isolated in `/health` without exposing secrets or paths.
+
+### 5.8 Messaging outbox, RabbitMQ, and TickerQ scheduling
+
+Ensure background processing of outbox events (like `OutboxProcessor` and RabbitMQ consumer services) and scheduling triggers (like TickerQ jobs for email outbox drains, stale processing recovery, and event reminders) operate with transactional safety. Transitions of EmailDispatch outbox state (pending, sent, retry, dead-letter, paused, parked) must be idempotent, concurrency-safe, and run in a quarantined database context (`ApiTickerQDbContext`).
+
 ## 6. Evidence Base
 
 Repo evidence is captured in `backend-api-health-refactor-context.md`. The highest-risk confirmed hotspots are:
@@ -178,9 +189,12 @@ Repo evidence is captured in `backend-api-health-refactor-context.md`. The highe
 - `Explore.Persistence/ExploreDbContext.QueryFilters.cs`: many tenant filters include `TenantContext == null || ...`, which makes missing tenant context permissive.
 - `Explore.API/Extensions/AuthenticationExtensions.cs`: `template_admin`, `event_editor`, `property_governance_admin`, and `platform_namespace_editor` currently require only authentication.
 - `Explore.API/Controllers/EventController.cs`: combines discovery, my-events, calendar export, lifecycle mutations, publishing, deletion, and aspect CRUD.
+- `Explore.API/Controllers/AiAssistantController.cs`, `StorageObjectController.cs`, and `EmailDispatchAdminController.cs`: expose newly added complex surfaces (AI assistant run/proposed actions, provider-neutral upload sessions, outbox pause/park/replay controls) but only apply general class-level `[Authorize]` without capability-based policy checks.
+- `Explore.API/Scheduling/EmailDispatchTickerQJobs.cs` and `EventLifecycleTickerQJobs.cs`: background scheduler jobs executing state transitions and triggers via `ApiTickerQDbContext` and external messaging providers.
+- `Explore.Infrastructure/Messaging/EmailDispatchRabbitMqConsumerService.cs`: processes RabbitMQ messages in background threads where tenant isolation and scope setup must be strictly verified.
 - `Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs`: large create-graph handler with dozens of dependencies.
 - `Event.API.IntegrationTests/Features/RouteNameCoverageTests.cs`: the two route-name drift tests are skipped.
-- `Explore.Persistence/Repositories/EventRepository.cs` and related repositories: repeated offset pagination and missing `CancellationToken` forwarding.
+- `Explore.Persistence/Repositories/EventRepository.cs` and related repositories: repeated offset pagination and missing `CancellationToken` forwarding. This must also be checked for new AI assistant conversation history, storage object, and email outbox listings.
 
 External evidence used for the plan:
 
@@ -210,11 +224,11 @@ Exit criteria:
 Purpose: remove the highest-risk cross-tenant and privileged-action ambiguity without trying to solve every controller ownership issue at once.
 
 Subphases:
-- **1A Tenant execution model:** implement explicit execution modes and absent-tenant failure behavior.
-- **1B Query filter fail-closed implementation:** replace permissive `TenantContext == null || ...` runtime semantics.
+- **1A Tenant execution model:** implement explicit execution modes and absent-tenant failure behavior. Background worker threads (RabbitMQ outbox consumer, TickerQ jobs, storage reconciliation worker) must run safely under `BackgroundSystem` context.
+- **1B Query filter fail-closed implementation:** replace permissive `TenantContext == null || ...` runtime semantics. Ensure pooled state and `ApiTickerQDbContext` behave safely under fail-closed filters.
 - **1C Filter bypass quarantine:** remove or restrict `IgnoreAllFilters()` and require named reason-coded system/host-admin APIs.
-- **1D Authorization policy replacement:** replace placeholder policies with capability/resource/action policies.
-- **1E Self-host bootstrap/admin verification:** define first-admin, setup-secret/Keycloak role behavior, disablement, audit, and missing-auth-provider handling.
+- **1D Authorization policy replacement:** replace placeholder policies with capability/resource/action policies. This includes new policies for AI (`AiAssistant.Interact`/`AiAssistant.Manage`), Storage (`StorageObjects.Read`/`StorageObjects.Write`), Tenant Storage Settings (`TenantStorage.Manage`), and Email Admin (`Email.Dispatch`/`Email.Manage`).
+- **1E Self-host bootstrap/admin verification:** define first-admin, setup-secret/Keycloak role behavior, Keycloak client secret rotation and backup-confirmed sync, disablement, audit, and missing-auth-provider handling.
 
 Exit criteria:
 - Tenant-filter tests prove fail-closed runtime behavior and explicit system/background/design-time behavior.
@@ -227,10 +241,10 @@ Exit criteria:
 Purpose: make the API predictable before endpoints move across controllers.
 
 Actions:
-- Introduce `ApiProblemCodes`, `ApiProblemFactory`, and a shared ProblemDetails writer for controllers and middleware.
-- Replace raw `BadRequest(...)`, string `Forbid(...)`, ad hoc `Problem(...)`, and command-message branching with typed problem codes.
+- Introduce `ApiProblemCodes`, `ApiProblemFactory`, and a shared ProblemDetails writer for controllers and middleware. Ensure AI assistant run failures, S3 provider errors, and outbox transition errors map correctly.
+- Replace raw `BadRequest(...)`, string `Forbid(...)`, ad hoc `Problem(...)`, and command-message branching with typed problem codes (specifically on `UserController`, `AiAssistantController`, `StorageObjectController`, `EmailDispatchAdminController`).
 - Introduce a `CommandResponseResultMapper` for `BaseCommandResponse<T>`, bool deletes, conflicts, duplicate requests, not-found, validation failures, and concurrency conflicts.
-- Unskip/fix route-name coverage tests and migrate hard-coded endpoint names to `RouteNames.Xxx` constants.
+- Unskip/fix route-name coverage tests and migrate hard-coded endpoint names to `RouteNames.Xxx` constants (including the new AI assistant, storage upload, and email outbox routes).
 - Normalize OpenAPI operation IDs, response metadata, endpoint classification extensions, HAL link references, rate-limit policy metadata, and cache policy metadata.
 - Define the preview contract stance: breaking changes allowed before v1.0, but documented and regenerated through OpenAPI/client workflows.
 
@@ -247,6 +261,7 @@ Purpose: reduce transport-layer complexity after contract/error/route stability 
 Actions:
 - Split by resource/use-case cohesion, not method count alone.
 - Candidate event boundaries: `EventsController`, `MyEventsController`, `EventLifecycleController`, `EventPublishingController`, `EventCalendarController`, and `EventAspectsController`; implement only splits justified by route inventory and risk.
+- Ensure `AiAssistantController`, `StorageObjectController`, and `EmailDispatchAdminController` remain thin dispatch boundaries with logic delegated to Application handlers.
 - Split large settings/admin controllers only after Phase 2 establishes response and route-name stability.
 - Extract API request-to-query mappers for large filter request types instead of inline controller mapping.
 - Move file-response details such as calendar filename/canonical URL construction into API representation services or Application file descriptor results.
@@ -261,14 +276,15 @@ Purpose: restore cohesive use cases and predictable MediatR behavior.
 
 Actions:
 - Decompose `CreateEventCommandHandler` into the narrow collaborators listed in section 5.5.
+- Decompose/standardize AI assistant prompt/confirmation and storage upload session commands/handlers.
 - Define aggregate-creation transaction boundaries; extracted collaborators must not independently call `SaveChangesAsync` unless explicitly part of the unit-of-work design.
-- Add idempotency behavior for create/publish/update and duplicate browser submits.
-- Add optimistic concurrency for event lifecycle/status/settings mutations.
+- Add idempotency behavior for create/publish/update, sending AI messages, finalizing uploads, outbox replays, and duplicate browser submits.
+- Add optimistic concurrency for event lifecycle/status/settings mutations and AI assistant run state changes.
 - Remove obsolete `IAuthorizedRequest` compatibility path and use `[AuthorizeResource]` plus `ISecureRequest` consistently.
 - Replace direct handler-to-handler calls with MediatR dispatch or Application query services that do not bypass behaviors accidentally.
 - Normalize query handlers to return DTOs or `PaginatedResult<TDto>`, not command response envelopes.
 - Centralize cache keys/tags and invalidation policy.
-- Add audit events for event lifecycle and security-sensitive use cases.
+- Add audit events for event lifecycle, Keycloak configurations, upload sessions, outbox pause/park/replay controls, and security-sensitive use cases.
 
 Exit criteria:
 - Handler constructor counts and responsibilities are reduced.
@@ -280,12 +296,12 @@ Exit criteria:
 Purpose: make data access efficient, cancellation-aware, tenant-safe, and contract-conscious.
 
 Subphases:
-- **5A Cancellation tokens:** add `CancellationToken` parameters to repository contracts and pass tokens into EF async calls.
+- **5A Cancellation tokens:** add `CancellationToken` parameters to repository contracts and pass tokens into EF async calls (including AI assistant history, storage queries, outbox transitions, and TickerQ db operations).
 - **5B Tenant-safe repository/query contracts:** preserve entity-first repositories; make cross-tenant read models explicit.
 - **5C Query shape cleanup:** remove broad includes only on confirmed hotspots and replace with projection-specific read models/detail queries.
-- **5D Cursor pagination:** introduce opaque versioned cursor pagination for public high-volume feeds and define remaining offset-based endpoints.
-- **5E Index and migration review:** review high-volume event/session/feed indexes, tenant composite indexes, soft-delete predicates, and model assertions/migration tests.
-- **5F Transaction retry strategy:** route manual transactions through `IUnitOfWork` or EF execution strategies.
+- **5D Cursor pagination:** introduce opaque versioned cursor pagination for public high-volume feeds, AI assistant conversations, and storage object listings, and define remaining offset-based endpoints.
+- **5E Index and migration review:** review high-volume event/session/feed indexes, tenant composite indexes, soft-delete predicates, and model assertions/migration tests. Review index coverage for AI run states, storage metadata, and outbox tables.
+- **5F Transaction retry strategy:** route manual transactions through `IUnitOfWork` or EF execution strategies (specifically for outbox updates and TickerQ operational state transitions).
 
 Exit criteria:
 - Repository APIs preserve entity-first boundaries except for explicitly named read-model ports.

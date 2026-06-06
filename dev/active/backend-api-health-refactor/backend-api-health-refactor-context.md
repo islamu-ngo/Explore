@@ -3,7 +3,7 @@
 
 # Backend API Health Refactor Context
 
-Last Updated: 2026-05-07 Europe/Brussels
+Last Updated: 2026-06-06 Europe/Brussels
 
 ## 1. Request Summary
 
@@ -14,11 +14,11 @@ CTO feedback approved the plan direction but required stricter scope control, ma
 ## 2. Scope
 
 In scope:
-- `Explore.API`
-- `Explore.Application`
-- `Explore.Persistence`
-- `Explore.Infrastructure`
-- `Explore.Domain`
+- `Explore.API` (including `AiAssistantController`, `StorageObjectController`, `EmailDispatchAdminController`, and `TenantStorageSettingsController`)
+- `Explore.Application` (including CQRS requests and handlers for AI conversations, upload sessions, and outbox/replay actions)
+- `Explore.Persistence` (including repositories, entity configurations, and the `ApiTickerQDbContext` operational scheduler store)
+- `Explore.Infrastructure` (including local-first and S3-compatible storage providers, RabbitMQ consumer/dead-letter services, and outbox drain services)
+- `Explore.Domain` (including storage metadata, email dispatch receipts, and messaging settings)
 - backend test projects
 - API/HAL/OpenAPI/security/operations docs
 - authorization policy assets, Cerbos mappings, and HAL authorization metadata
@@ -87,6 +87,8 @@ public enum TenantExecutionMode
 
 Tenant bypass must be explicit, reason-coded, logged, tested, and unavailable from controllers as raw LINQ helpers. Preferred APIs are use-case-shaped, such as `crossTenantEventReadStore.GetTenantSummariesAsync(reason, cancellationToken)` or a scoped runner such as `tenantScope.RunAsHostAdministratorAsync(...)`.
 
+Background workers, including the `OutboxProcessor` (RabbitMQ consumer/replay service), storage reconciliation workers, and TickerQ scheduler jobs (outbox drains, reminders), must execute explicitly in `BackgroundSystem` or `MigrationOrSeeding` mode, ensuring they do not bypass tenant logic without audited logging and reason-coded scopes.
+
 ### Authorization policy naming
 
 Role-sounding policies should be replaced by capability/resource/action policies:
@@ -97,14 +99,17 @@ Role-sounding policies should be replaced by capability/resource/action policies
 - `CustomProperties.Govern`
 - `PlatformNamespaces.Edit`
 - `Modules.Manage`
-- `StorageObjects.ReadPresigned`
-- `TenantSettings.Manage`
+- `StorageObjects.Read` / `StorageObjects.Write` / `StorageObjects.ReadPresigned`
+- `TenantSettings.Manage` / `TenantStorage.Manage`
+- `AiAssistant.Interact` / `AiAssistant.Manage`
+- `Email.Dispatch` / `Email.Manage`
+- `InstanceSettings.Manage`
 
 The policy matrix must map API policy, handler attribute, Cerbos resource/action, HAL rel, and default roles.
 
 ### Bootstrap/admin story
 
-Self-hosted deployments need a first-admin/bootstrap story covering setup secret, Keycloak group/role mapping, bootstrap disablement, auditability, SingleTenant/MultiTenant behavior, and missing auth-provider configuration behavior.
+Self-hosted deployments need a first-admin/bootstrap story covering setup secret, Keycloak group/role mapping, Keycloak client secret rotation workflow, backup-confirmed sync apply flows, bootstrap disablement, auditability, SingleTenant/MultiTenant behavior, and missing auth-provider configuration behavior.
 
 ### Controller decomposition order
 
@@ -112,7 +117,7 @@ Controller splitting must happen after inventory, tenant/auth hardening, error/r
 
 ### Enterprise reliability additions
 
-The implementation must treat audit logging, idempotency, optimistic concurrency, transaction boundaries, rate-limit/cache posture, cursor contract design, and database/index review as first-class concerns.
+The implementation must treat audit logging, idempotency (e.g., `Idempotency-Key` headers for AI assistant prompts and storage upload session registration), optimistic concurrency, transaction boundaries (e.g., RabbitMQ outbox transition and TickerQ operational state), rate-limit/cache posture, cursor contract design, and database/index review as first-class concerns.
 
 ## 6. Verified Codebase Hotspots
 
@@ -153,6 +158,12 @@ The names imply privilege, but the implementation only checks authentication. Re
 
 `Explore.API/Controllers/UserController.cs` contains a TODO for admin checks when viewing another user's organizations and returns ad hoc `BadRequest`/`Forbid` responses.
 
+`Explore.API/Controllers/AiAssistantController.cs` exposes 10 endpoints for conversations, prompts, status, and confirmations, relying only on generic `[Authorize]` attributes without explicit capability policies. It integrates custom idempotency key validation and custom ProblemDetails mapping (`AiAssistantProblemDetails`).
+
+`Explore.API/Controllers/StorageObjectController.cs` contains 12 endpoints. It streams bytes directly, serves public image URLs with cache-headers, manages upload sessions, and implements custom ProblemDetails (`StorageUploadProblemDetails`), relying entirely on permissive `[Authorize]` or `[AllowAnonymous]` attributes.
+
+`Explore.API/Controllers/EmailDispatchAdminController.cs` handles operator actions for pausing/resuming email delivery and replaying outbox items. It uses a custom status mapping helper that returns ProblemDetails but relies on broad class-level `[Authorize]`.
+
 ### Route-name guardrails currently skipped
 
 `Event.API.IntegrationTests/Features/RouteNameCoverageTests.cs` has two important skipped tests:
@@ -160,7 +171,7 @@ The names imply privilege, but the implementation only checks authentication. Re
 - `RouteNames_EveryConstantResolvesToExactlyOneEndpoint`
 - `EndpointRouteNames_EveryNamedEndpointHasMatchingConstant`
 
-These should become non-skipped once route-name cleanup is part of the implementation slice.
+These should become non-skipped once route-name cleanup is part of the implementation slice, ensuring the new AI, Storage, and Email dispatch routes are fully validated.
 
 ### CQRS handler size and behavior bypass risk
 
@@ -168,9 +179,15 @@ These should become non-skipped once route-name cleanup is part of the implement
 
 Prior research also identified direct handler invocation in public experience shell query handling, which risks bypassing MediatR behaviors if confirmed during implementation.
 
+### New Subsystem Infrastructure & Scheduling Hotspots
+
+- `Explore.API/Scheduling/EmailDispatchTickerQJobs.cs` and `EventLifecycleTickerQJobs.cs`: cron/trigger-based outbox drains and reminder dispatches. They reference Postgres storage (`ApiTickerQDbContext`) for scheduling state.
+- `Explore.Infrastructure/Messaging/EmailDispatchRabbitMqConsumerService.cs`: consumes messages from RabbitMQ and runs in a background thread context where tenant resolution requires careful quarantine.
+- `Explore.Infrastructure/EmailDispatchDrainService.cs` and `EmailDispatchRabbitMqDeadLetterReplayService.cs`: manage state changes and retries on PostgreSQL tables (`EmailDispatchReceipt`), requiring strict database transaction boundaries and concurrency checks.
+
 ### Persistence health
 
-`Explore.Persistence/Repositories/EventRepository.cs`, `OrganizationRepository.cs`, and related repositories use repeated offset pagination (`Skip((pageNumber - 1) * pageSize)`), broad include graphs, and many EF async calls without cancellation tokens. High-volume public feeds should move toward opaque cursor/keyset pagination; remaining offset paths need stable ordering and validation.
+`Explore.Persistence/Repositories/EventRepository.cs`, `OrganizationRepository.cs`, and related repositories use repeated offset pagination (`Skip((pageNumber - 1) * pageSize)`), broad include graphs, and many EF async calls without cancellation tokens. High-volume public feeds should move toward opaque cursor/keyset pagination; remaining offset paths need stable ordering and validation. The new AI conversation message histories and storage object list feeds also require cursor-pagination evaluations and index coverage.
 
 ## 7. External Documentation Findings
 
@@ -197,6 +214,12 @@ Prior research also identified direct handler invocation in public experience sh
 ### Tavily research synthesis
 
 The external research reinforced the same priorities as the repo: thin API boundary, RFC 7807 error consistency, resource/policy authorization, tenant-safe EF filters, cancellation-token propagation, keyset pagination for large datasets, OpenTelemetry-style observability, auditability, idempotency, optimistic concurrency, and layered architecture test guardrails.
+
+## 7A. Implementation Notes
+
+- 2026-06-05: `EventAgendaItemController`, `EventSessionAgendaItemController`, and `LocationRoomController` create/update failures no longer return raw command envelopes or anonymous `{ error }` objects for 400 responses. They now return RFC7807 `ValidationProblemDetails` with `application/problem+json`, `code`, `traceId`, `timestamp`, and optional `correlationId` without changing Application handlers.
+- 2026-06-05: `ActorKeyStoreController` and `UserAuthenticationTokenController` create/update validation failures now return RFC7807 `ValidationProblemDetails`. `ActorKeyStoreController` delete not-found returns RFC7807 `ProblemDetails` with a `resource_not_found` fallback code instead of an ad hoc `Problem(...)` branch.
+- 2026-06-06: the temporary `Explore.API/Controllers/CommandResponseProblemDetails.cs` helper was removed as technical debt. The durable pattern now lives in `Explore.API/ExceptionHandling`: `ApiProblemCodes` centralizes fallback codes, `ApiProblemTypes` centralizes RFC9110 type URIs, `ApiValidationProblemDescriptor`/`ApiNotFoundProblemDescriptor` give controllers named resource-specific contracts, `ApiProblemFactory` owns RFC7807 payload creation and standard extensions, and `CommandResponseResultMapper` maps Application `BaseCommandResponse<T>`/simple bool outcomes into API `ActionResult`s. Controllers should add typed descriptors and call the mapper rather than building `ProblemDetails`, duplicating strings, or returning raw command envelopes.
 
 ## 8. Implementation Risks
 
