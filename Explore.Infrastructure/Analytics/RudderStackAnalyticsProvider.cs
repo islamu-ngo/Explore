@@ -118,8 +118,8 @@ public class RudderStackAnalyticsProvider : IAnalyticsProvider
     }
 }
 
-    internal interface IRudderStackApi
-    {
-        [Post("/{path}")]
-        Task<IApiResponse> SendAsync(string path, [Header("Authorization")] string authorization, [Body] object request, CancellationToken cancellationToken = default);
-    }
+internal interface IRudderStackApi
+{
+    [Post("/{path}")]
+    Task<IApiResponse> SendAsync(string path, [Header("Authorization")] string authorization, [Body] object request, CancellationToken cancellationToken = default);
+}

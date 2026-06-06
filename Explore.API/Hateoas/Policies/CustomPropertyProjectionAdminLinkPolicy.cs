@@ -1,8 +1,8 @@
 // ABOUTME: HATEOAS link policies for custom-property projection admin endpoints.
 // ABOUTME: Provides discovery links between status, rebuild, drain, and dirty-scope inspection.
 
-using System.Security.Claims;
 using System.Globalization;
+using System.Security.Claims;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.Contracts.Services;

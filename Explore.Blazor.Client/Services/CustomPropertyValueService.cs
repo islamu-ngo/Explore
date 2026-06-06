@@ -41,7 +41,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                 DateTimeValue = model.DateTimeValue,
                 OptionId = model.OptionId
             };
-            
+
             var response = await _apiClient.SetEventCustomPropertyValueAsync(body, cancellationToken: cancellationToken);
             return ToClientResponse(response);
         }
@@ -77,7 +77,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                     OptionId = m.OptionId
                 }).ToList()
             };
-            
+
             var response = await _apiClient.SetEventCustomPropertyMultiValuesAsync(body, cancellationToken: cancellationToken);
             return ToClientResponse(response);
         }
@@ -114,7 +114,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                 DateTimeValue = model.DateTimeValue,
                 OptionId = model.OptionId
             };
-            
+
             var response = await _apiClient.SetEventSessionCustomPropertyValueAsync(body, cancellationToken: cancellationToken);
             return ToClientResponse(response);
         }
@@ -150,7 +150,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                     OptionId = m.OptionId
                 }).ToList()
             };
-            
+
             var response = await _apiClient.SetEventSessionCustomPropertyMultiValuesAsync(body, cancellationToken: cancellationToken);
             return ToClientResponse(response);
         }

@@ -194,7 +194,7 @@ public class PostHogAnalyticsProvider : IAnalyticsProvider, IAnalyticsFeatureFla
 
             var api = CreateApi(config);
             var response = await api.CaptureAsync(payload, cancellationToken);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogDebug("PostHog capture returned status {StatusCode}", response.StatusCode);

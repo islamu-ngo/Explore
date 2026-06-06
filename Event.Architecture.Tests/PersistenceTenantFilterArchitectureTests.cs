@@ -3,8 +3,14 @@
 
 namespace Event.Architecture.Tests;
 
+using System.Text.RegularExpressions;
+
 public class PersistenceTenantFilterArchitectureTests
 {
+    private static readonly Regex RawBypassReasonRegex = new(
+        @"\.(IgnoreTenantFilter|IgnoreAllFilters|EnableTenantFilterBypass)\s*\(\s*(?:reason\s*:\s*)?[@$]*""{1,3}",
+        RegexOptions.Compiled);
+
     [Test]
     [DisplayName("Tenant query filters must fail closed when tenant context is missing")]
     public async Task TenantQueryFilters_ShouldFailClosed_WhenTenantContextIsMissing()
@@ -48,11 +54,60 @@ public class PersistenceTenantFilterArchitectureTests
             .Because("runtime code must use named filters or QueryFilterExtensions with an explicit bypass reason; full EF filter bypasses are reserved for seeding/tests.");
     }
 
+    [Test]
+    [DisplayName("Runtime tenant-filter bypasses must use approved reason constants")]
+    public async Task RuntimeTenantFilterBypasses_ShouldUse_ApprovedReasonConstants()
+    {
+        var runtimeRoots = new[]
+        {
+            ContextSystemHelpers.RepoPath("Explore.API"),
+            ContextSystemHelpers.RepoPath("Explore.Persistence"),
+        };
+
+        var violations = new List<string>();
+        foreach (var runtimeRoot in runtimeRoots)
+        {
+            foreach (var sourceFile in Directory.GetFiles(runtimeRoot, "*.cs", SearchOption.AllDirectories))
+            {
+                var relativePath = Path.GetRelativePath(ContextSystemHelpers.RepoRoot, sourceFile);
+                if (IsGeneratedOrNonRuntime(relativePath) || IsTenantBypassInfrastructure(relativePath))
+                {
+                    continue;
+                }
+
+                var source = await File.ReadAllTextAsync(sourceFile);
+                if (RawBypassReasonRegex.IsMatch(source))
+                {
+                    violations.Add(relativePath);
+                }
+            }
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("runtime tenant-filter bypasses must reference TenantFilterBypassReasons constants so cross-tenant access remains named, reviewable, and auditable.");
+    }
+
     private static bool IsGeneratedOrNonRuntime(string relativePath)
     {
         return relativePath.Contains($"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
             || relativePath.Contains($"{Path.DirectorySeparatorChar}Seed{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
             || relativePath.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
             || relativePath.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+    }
+
+    private static bool IsTenantBypassInfrastructure(string relativePath)
+    {
+        return string.Equals(
+                relativePath,
+                Path.Combine("Explore.Persistence", "ExploreDbContext.cs"),
+                StringComparison.Ordinal)
+            || string.Equals(
+                relativePath,
+                Path.Combine("Explore.Persistence", "QueryFilters", "QueryFilterExtensions.cs"),
+                StringComparison.Ordinal)
+            || string.Equals(
+                relativePath,
+                Path.Combine("Explore.Persistence", "QueryFilters", "TenantFilterBypassReasons.cs"),
+                StringComparison.Ordinal);
     }
 }

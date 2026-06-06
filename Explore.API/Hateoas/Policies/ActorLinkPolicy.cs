@@ -8,8 +8,8 @@ using Explore.API.Hateoas;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Actor;
-using Explore.Domain.Enums;
 using Explore.Application.Hateoas;
+using Explore.Domain.Enums;
 
 /// <summary>
 /// Link policy for ActorDto (detail view).

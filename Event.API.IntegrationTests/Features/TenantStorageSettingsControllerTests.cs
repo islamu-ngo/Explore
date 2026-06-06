@@ -1,6 +1,7 @@
 // ABOUTME: API controller tests for tenant storage settings routes.
 // ABOUTME: Verifies CQRS dispatch and HTTP result mapping for tenant storage administration.
 
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Identity;
@@ -10,7 +11,6 @@ using Explore.Application.Features.TenantStorageSettings.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using Explore.Domain;
-using Event.Api.IntegrationTests.Fixtures;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

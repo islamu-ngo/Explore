@@ -145,8 +145,10 @@ public class TenantPolicySettingsModel
     public bool CanOverrideStorage { get; set; }
     public bool CanOverrideAnalytics { get; set; }
     public bool AiAssistantEnabled { get; set; }
+    public string AiAssistantProvider { get; set; } = "none";
     public string AiAssistantEndpointUrl { get; set; } = string.Empty;
     public string AiAssistantApiKey { get; set; } = string.Empty;
+    public string AiAssistantModelId { get; set; } = string.Empty;
     public bool AiAssistantAllowAnonymousAccess { get; set; }
     public bool CanOverrideAiAssistant { get; set; }
 }

@@ -172,7 +172,9 @@ public class TranslationService : ITranslationService, IDisposable
 
     public void Dispose()
     {
-        _translationLock.Dispose();
-        _languagesLock.Dispose();
+        // Intentionally no-op. Blazor can dispose scoped services while first-render
+        // async localization work is unwinding during navigation or circuit teardown;
+        // disposing these SemaphoreSlim instances can turn a benign teardown race into
+        // an ObjectDisposedException rendered by the global ErrorBoundary.
     }
 }

@@ -1,11 +1,11 @@
 // ABOUTME: Registers the Blazor BFF distributed cache with Redis-first, memory-fallback behavior.
 // ABOUTME: Keeps startup resilient when Redis is absent while still using Redis when available.
 
+using Explore.ServiceDefaults.HealthChecks;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Explore.ServiceDefaults.HealthChecks;
 
 namespace Explore.Blazor.Extensions;
 

@@ -1,10 +1,10 @@
 // ABOUTME: Mailpit Testcontainers fixture for E2E SMTP capture assertions.
 // ABOUTME: Provides SMTP endpoint wiring and safe message inspection through Mailpit's HTTP API.
 
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Containers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
 
 namespace Explore.Blazor.Client.E2ETests.Fixtures;
 

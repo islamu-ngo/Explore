@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.Analytics;
 using Explore.Application.Features.PublicExperience.Requests.Commands;
 using MediatR;
@@ -25,7 +26,7 @@ public class AnalyticsRelayController : ExploreControllerBase
         _mediator = mediator;
     }
 
-    [HttpPost(Name = "RelayAnalyticsEvent")]
+    [HttpPost(Name = RouteNames.RelayAnalyticsEvent)]
     [AllowAnonymous]
     [EnableRateLimiting(Extensions.RateLimitingExtensions.AnalyticsRelayPolicy)]
     [EndpointSummary("Relay Browser Analytics Event")]

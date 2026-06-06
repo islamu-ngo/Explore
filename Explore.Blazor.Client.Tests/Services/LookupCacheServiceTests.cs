@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for LookupCacheService cache behavior and synchronization.
-// Verifies cache hit/miss, invalidation, concurrent access, and error propagation.
+// ABOUTME: Verifies cache hit/miss, invalidation, concurrent access, and safe teardown.
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -124,6 +124,40 @@ public class LookupCacheServiceTests
         await Assert.That(fetchCount).IsEqualTo(1);
         await Assert.That(task1.Result.First().FullName).IsEqualTo("Concurrent");
         await Assert.That(task2.Result.First().FullName).IsEqualTo("Concurrent");
+    }
+
+    [Test]
+    public async Task GetCategoriesAsync_WhenDisposedDuringInFlightFetch_CompletesWithoutDisposedSemaphoreError()
+    {
+        // Arrange
+        var fetchStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fetchResult = new TaskCompletionSource<ICollection<CategoryListDto>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _categoryService.GetCategoriesAsync().Returns(_ =>
+        {
+            fetchStarted.SetResult();
+            return fetchResult.Task;
+        });
+
+        var loadTask = _service.GetCategoriesAsync();
+
+        // Act
+        await fetchStarted.Task;
+        _service.Dispose();
+        fetchResult.SetResult([
+            new CategoryListDto
+            {
+                Id = Guid.NewGuid(),
+                FullName = "Safe Teardown",
+                MasterCode = "SAFE"
+            }
+        ]);
+
+        var result = await loadTask;
+
+        // Assert
+        await Assert.That(result.First().FullName).IsEqualTo("Safe Teardown");
     }
 
     #endregion

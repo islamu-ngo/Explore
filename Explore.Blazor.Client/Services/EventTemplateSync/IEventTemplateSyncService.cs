@@ -1,9 +1,9 @@
 // ABOUTME: Interface for fetching diffs and applying template sync operations for an Event.
 // ABOUTME: Manual implementation to be replaced by NSwag generated client if possible.
 
-using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.EventTemplateSync;
+using Explore.Blazor.Client.Models.Responses;
 
 namespace Explore.Blazor.Client.Services.EventTemplateSync;
 

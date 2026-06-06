@@ -1,8 +1,8 @@
 // ABOUTME: Shared integration-test helper for replacing production EF Core registrations.
 // ABOUTME: Removes pooled factory services before tests add an in-memory ExploreDbContext.
 
-using Explore.Persistence;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;

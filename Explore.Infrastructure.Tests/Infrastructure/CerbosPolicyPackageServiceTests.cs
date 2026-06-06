@@ -1,6 +1,11 @@
 // ABOUTME: Unit tests for building provider-neutral manifests from bundled Cerbos policy artifacts.
 // ABOUTME: Verifies namespaced package validation and stable manifest hashing before Admin API upload is added.
 
+using System.IO.Compression;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
@@ -8,11 +13,6 @@ using Explore.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using System.IO.Compression;
-using System.Net;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
 
 namespace Explore.Infrastructure.Tests.Infrastructure;
 

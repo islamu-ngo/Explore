@@ -1,6 +1,7 @@
 // ABOUTME: Aspire AppHost fixture for E2E tests starting the full application stack.
 // ABOUTME: Provides the Blazor frontend URL to Playwright tests.
 
+using System.Globalization;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
@@ -9,7 +10,6 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.Extensions.DependencyInjection;
-using System.Globalization;
 
 namespace Explore.Blazor.Client.E2ETests.Fixtures;
 

@@ -1,5 +1,5 @@
-// ABOUTME: Enforces bidirectional coverage between the Explore.API.Hateoas.RouteNames constant
-// ABOUTME: registry and the ASP.NET endpoint data source so HATEOAS LinkGenerator calls never 404.
+// ABOUTME: Enforces endpoint route-name coverage against the Explore.API.Hateoas.RouteNames registry.
+// ABOUTME: Keeps controller route names catalog-backed while legacy orphaned constants are pruned separately.
 
 using System.Reflection;
 
@@ -13,17 +13,17 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Event.Api.IntegrationTests.Features;
 
 /// <summary>
-/// Phase 1.4 of the api-contract-stabilization plan: catch RouteNames drift at test time instead of at
-/// runtime. Every constant on <see cref="RouteNames"/> must resolve to exactly one endpoint, and every
-/// endpoint that carries a <see cref="RouteNameMetadata"/> must have a matching constant. Either side
-/// of that coverage break produces HATEOAS 404s or orphaned constants that silently rot.
+/// Catches RouteNames drift at test time instead of at runtime. Every endpoint that carries a
+/// <see cref="RouteNameMetadata"/> must have a matching <see cref="RouteNames"/> constant so controllers
+/// cannot invent names outside the HATEOAS single source of truth. The reverse constant-to-endpoint
+/// coverage test remains documented as Phase 2 cleanup until legacy orphaned constants are pruned.
 /// </summary>
 [ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
 public sealed class RouteNameCoverageTests(ContractApiFixture fixture)
 {
     private readonly ContractApiFixture _fixture = fixture;
 
-    [Skip("Category: API contract. Removal: enable after write actions are decorated with [HttpXxx(Name = RouteNames.X)] in dev/active/api-contract-stabilization Phase 3.")]
+    [Skip("Category: API contract. Removal: enable after legacy orphaned RouteNames constants are pruned or reattached; tracked by dev/active/backend-api-health-refactor Phase 2 route-name cleanup.")]
     [Test]
     public async Task RouteNames_EveryConstantResolvesToExactlyOneEndpoint()
     {
@@ -53,7 +53,6 @@ public sealed class RouteNameCoverageTests(ContractApiFixture fixture)
             .Because("A RouteNames constant matching multiple endpoints is an ambiguity LinkGenerator cannot resolve deterministically.");
     }
 
-    [Skip("Category: API contract. Removal: enable after RouteNames constants are added for all endpoint route names in dev/active/api-contract-stabilization Phase 3.")]
     [Test]
     public async Task EndpointRouteNames_EveryNamedEndpointHasMatchingConstant()
     {

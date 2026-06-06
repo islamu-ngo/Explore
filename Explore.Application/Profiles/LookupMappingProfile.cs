@@ -18,8 +18,8 @@ using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.TagType;
 using Explore.Application.DTOs.TagTypeTags;
 using Explore.Application.DTOs.VisibilityType;
-using Explore.Domain;
 using Explore.Application.Lookups;
+using Explore.Domain;
 
 namespace Explore.Application.Profiles;
 

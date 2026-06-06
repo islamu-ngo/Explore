@@ -79,7 +79,7 @@ public class PlausibleAnalyticsProvider : IAnalyticsProvider
 
             var api = CreateApi(config);
             var response = await api.SendEventAsync(requestPayload, cancellationToken);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogDebug("Plausible call returned status {StatusCode}", response.StatusCode);

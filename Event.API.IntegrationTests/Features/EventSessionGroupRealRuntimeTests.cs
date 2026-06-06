@@ -138,6 +138,12 @@ public class EventSessionGroupRealRuntimeTests(RealRuntimeApiFixture fixture)
         using var json = await JsonDocument.ParseAsync(bodyStream);
         var root = json.RootElement;
         await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("Program validation failed");
+        await Assert.That(root.TryGetProperty("traceId", out var traceId)).IsTrue();
+        await Assert.That(traceId.GetString()).IsNotNull();
+        await Assert.That(root.TryGetProperty("timestamp", out var timestamp)).IsTrue();
+        await Assert.That(timestamp.GetString()).IsNotNull();
+        await Assert.That(root.TryGetProperty("correlationId", out var correlationId)).IsTrue();
+        await Assert.That(correlationId.GetString()).IsNotNull();
         await Assert.That(root.GetProperty("errors").GetProperty("program")[0].GetString())
             .IsEqualTo("Slug must be unique within the event.");
     }

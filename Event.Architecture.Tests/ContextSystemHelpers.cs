@@ -96,7 +96,7 @@ internal static class ContextSystemHelpers
             var raw = lines[i];
             // A top-level key must start at column 0 (no leading whitespace).
             var match = Regex.Match(raw, "^([A-Za-z_][A-Za-z0-9_-]*):\\s*(.*)$");
-            if (match.Success && !raw.StartsWith(" ", StringComparison.Ordinal) && !raw.StartsWith("\t", StringComparison.Ordinal))
+            if (match.Success && !raw.StartsWith(' ') && !raw.StartsWith('\t'))
             {
                 Flush();
                 currentKey = match.Groups[1].Value;
@@ -147,7 +147,7 @@ internal static class ContextSystemHelpers
                 if (target.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                     target.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
                     target.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase) ||
-                    target.StartsWith("#", StringComparison.Ordinal))
+                    target.StartsWith('#'))
                 {
                     continue;
                 }

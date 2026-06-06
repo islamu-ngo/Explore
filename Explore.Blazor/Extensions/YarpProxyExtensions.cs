@@ -50,7 +50,7 @@ public static class YarpProxyExtensions
                 },
                 HttpRequest = new ForwarderRequestConfig
                 {
-                    ActivityTimeout = TimeSpan.FromSeconds(30)
+                    ActivityTimeout = TimeSpan.FromSeconds(65)
                 }
             }
         };

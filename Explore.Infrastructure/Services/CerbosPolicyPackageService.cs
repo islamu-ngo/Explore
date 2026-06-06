@@ -1,12 +1,12 @@
 // ABOUTME: Builds provider-neutral manifests from the bundled Cerbos policy and schema artifacts.
 // ABOUTME: Validates namespaced package content before later Admin API upload or manual fallback packaging.
 
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using System.IO.Compression;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
@@ -549,11 +549,11 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
     {
         var api = CreateAdminApi(target.PrimaryEndpoint);
         var auth = GetBasicAuthHeader(target);
-        
+
         using var response = await SendAdminRequestAsync(
             async () => await api.PushSchemasAsync(auth, new CerbosSchemaBatchRequest { Schemas = schemas }, cancellationToken),
             "schema", target.PrimaryEndpoint, cancellationToken);
-            
+
         await EnsureSuccessAsync(response, "schema", target.PrimaryEndpoint, cancellationToken);
     }
 
@@ -564,11 +564,11 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
     {
         var api = CreateAdminApi(target.PrimaryEndpoint);
         var auth = GetBasicAuthHeader(target);
-        
+
         using var response = await SendAdminRequestAsync(
             async () => await api.PushPoliciesAsync(auth, new CerbosPolicyBatchRequest { Policies = policies }, cancellationToken),
             "policy", target.PrimaryEndpoint, cancellationToken);
-            
+
         await EnsureSuccessAsync(response, "policy", target.PrimaryEndpoint, cancellationToken);
     }
 
@@ -583,7 +583,7 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
     {
         var api = CreateAdminApi(endpoint);
         var auth = GetBasicAuthHeader(target);
-        
+
         IApiResponse response;
         try
         {
@@ -674,13 +674,13 @@ public sealed class CerbosPolicyPackageService : IPolicyPackageService
         var issueCode = response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden
             ? PolicyPackageIssueCode.AdminApiAuthenticationFailed
             : PolicyPackageIssueCode.AdminApiUnavailable;
-            
+
         _logger.LogError(
             "Cerbos Admin API {ArtifactKind} upload failed at {Endpoint}: {StatusCode}",
             artifactKind,
             CerbosAdminEndpointValidator.ToSafeEndpoint(endpoint),
             response.StatusCode);
-            
+
         throw new CerbosAdminApiException(
             issueCode,
             $"Cerbos Admin API {artifactKind} upload failed: {response.StatusCode}");

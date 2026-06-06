@@ -1,8 +1,8 @@
 // ABOUTME: Singleton source of JWKS/OIDC metadata for the API's JwtBearer handler.
 // ABOUTME: Swaps its ConfigurationManager + ValidIssuer when onboarding/save-config handlers call ReloadAsync.
 
-using System.Net.Http;
 using System.Net;
+using System.Net.Http;
 using System.Net.Security;
 using System.Net.Sockets;
 using Explore.Application.Contracts.Services;

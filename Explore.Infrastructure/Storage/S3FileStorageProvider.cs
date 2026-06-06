@@ -246,7 +246,7 @@ public sealed class S3FileStorageProvider : IFileStorageProvider
         }
 
         var trimmed = extension.Trim();
-        if (!trimmed.StartsWith(".", StringComparison.Ordinal))
+        if (!trimmed.StartsWith('.'))
         {
             trimmed = "." + trimmed;
         }

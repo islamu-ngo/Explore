@@ -174,6 +174,8 @@ public class LookupCacheService : ILookupCacheService, IDisposable
 
     public void Dispose()
     {
-        throw new NotImplementedException();
+        // Intentionally no-op. The service owns only managed in-memory cache state and
+        // a SemaphoreSlim used to serialize fetches. Disposing the semaphore during
+        // Blazor scoped-service teardown can race with in-flight lookup loads.
     }
 }

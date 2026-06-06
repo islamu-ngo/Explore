@@ -1,11 +1,11 @@
 // ABOUTME: Centralizes runtime custom-property value validation against definition metadata.
 // ABOUTME: Shared by event and session value handlers so typed-value rules stay consistent.
 
+using System.Text.RegularExpressions;
 using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Domain;
 using Explore.Domain.Enums;
-using System.Text.RegularExpressions;
 
 namespace Explore.Application.Features.CustomProperties;
 

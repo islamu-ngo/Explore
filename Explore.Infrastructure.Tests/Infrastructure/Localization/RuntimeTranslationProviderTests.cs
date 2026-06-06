@@ -122,7 +122,7 @@ public class RuntimeTranslationProviderTests
 
         var tolgeeFactory = Substitute.For<IHttpClientFactory>();
         tolgeeFactory.CreateClient(Arg.Any<string>()).Returns(tolgeeClient);
-        
+
         var weblateFactory = Substitute.For<IHttpClientFactory>();
         weblateFactory.CreateClient(Arg.Any<string>()).Returns(weblateClient);
 

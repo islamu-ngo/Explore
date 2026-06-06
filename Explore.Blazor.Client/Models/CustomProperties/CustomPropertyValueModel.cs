@@ -12,7 +12,7 @@ public class CustomPropertyValueModel
     public Guid DefinitionId { get; set; }
     public Guid ParentId { get; set; }
     public int Ordinal { get; set; }
-    
+
     public string? TextValue { get; set; }
     public double? NumberValue { get; set; }
     public bool? BooleanValue { get; set; }

@@ -1,6 +1,8 @@
 // ABOUTME: Builds the typed public-experience shell from tenant-local settings and referenced content.
 // ABOUTME: Keeps OrganizationCentric behavior in Application read models without changing tenant resolution.
 
+using System.Globalization;
+using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Onboarding;
@@ -15,8 +17,6 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
-using System.Globalization;
-using System.Text.Json;
 
 namespace Explore.Application.Features.PublicExperience.Handlers.Queries;
 

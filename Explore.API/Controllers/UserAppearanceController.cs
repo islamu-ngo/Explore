@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Appearance;
 using Explore.Application.Features.Appearance.Requests.Queries;
@@ -28,7 +29,7 @@ public class UserAppearanceController : ControllerBase
         _resolutionService = resolutionService;
     }
 
-    [HttpGet(Name = Hateoas.RouteNames.GetCurrentUserAppearancePreferences)]
+    [HttpGet(Name = RouteNames.GetCurrentUserAppearancePreferences)]
     [EndpointSummary("Get Resolved Appearance")]
     [EndpointDescription("Returns the fully resolved appearance state for the authenticated user, including provenance, capabilities, and effective theme data.")]
     [ProducesResponseType(typeof(ResolvedAppearanceDto), StatusCodes.Status200OK)]
@@ -39,7 +40,7 @@ public class UserAppearanceController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("presets", Name = Hateoas.RouteNames.GetAvailableThemes)]
+    [HttpGet("presets", Name = RouteNames.GetAvailableThemes)]
     [EndpointSummary("Get Available Presets")]
     [EndpointDescription("Returns available platform and tenant theme presets for the current tenant.")]
     [ProducesResponseType(typeof(IReadOnlyList<AvailablePresetDto>), StatusCodes.Status200OK)]
@@ -50,7 +51,7 @@ public class UserAppearanceController : ControllerBase
         return Ok(presets);
     }
 
-    [HttpGet("profiles", Name = "getUserAppearanceProfiles")]
+    [HttpGet("profiles", Name = RouteNames.GetUserAppearanceProfiles)]
     [EndpointSummary("Get User Appearance Profiles")]
     [EndpointDescription("Returns the current user's appearance profiles for the current tenant scope.")]
     [ProducesResponseType(typeof(IReadOnlyList<UserAppearanceProfileDto>), StatusCodes.Status200OK)]
@@ -61,7 +62,7 @@ public class UserAppearanceController : ControllerBase
         return Ok(profiles);
     }
 
-    [HttpPost("profiles/from-preset/{presetId:guid}", Name = "clonePresetToProfile")]
+    [HttpPost("profiles/from-preset/{presetId:guid}", Name = RouteNames.ClonePresetToProfile)]
     [EndpointSummary("Clone Preset Into User Profile")]
     [EndpointDescription("Clones a theme preset into a user-owned appearance profile. If an existing clone exists, returns it instead.")]
     [ProducesResponseType(typeof(UserAppearanceProfileDto), StatusCodes.Status200OK)]
@@ -76,7 +77,7 @@ public class UserAppearanceController : ControllerBase
         return Ok(profile);
     }
 
-    [HttpPost("profiles", Name = "createCustomAppearanceProfile")]
+    [HttpPost("profiles", Name = RouteNames.CreateCustomAppearanceProfile)]
     [EndpointSummary("Create Custom Appearance Profile")]
     [EndpointDescription("Creates a fully custom user appearance profile from natural + brand color inputs.")]
     [ProducesResponseType(typeof(UserAppearanceProfileDto), StatusCodes.Status200OK)]
@@ -90,7 +91,7 @@ public class UserAppearanceController : ControllerBase
         return Ok(profile);
     }
 
-    [HttpPut("profiles/{profileId:guid}", Name = "updateAppearanceProfile")]
+    [HttpPut("profiles/{profileId:guid}", Name = RouteNames.UpdateAppearanceProfile)]
     [EndpointSummary("Update User Appearance Profile")]
     [EndpointDescription("Updates a user-owned appearance profile's palette or metadata.")]
     [ProducesResponseType(typeof(UserAppearanceProfileDto), StatusCodes.Status200OK)]
@@ -105,7 +106,7 @@ public class UserAppearanceController : ControllerBase
         return Ok(profile);
     }
 
-    [HttpPut("active-profile", Name = "setActiveAppearanceProfile")]
+    [HttpPut("active-profile", Name = RouteNames.SetActiveAppearanceProfile)]
     [EndpointSummary("Set Active Appearance Profile")]
     [EndpointDescription("Sets the active appearance profile for the current user/scope.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -119,7 +120,7 @@ public class UserAppearanceController : ControllerBase
         return Ok();
     }
 
-    [HttpPut("mode", Name = "setAppearanceThemeMode")]
+    [HttpPut("mode", Name = RouteNames.SetAppearanceThemeMode)]
     [EndpointSummary("Set Theme Mode")]
     [EndpointDescription("Sets the theme mode (light/dark/system/lighthighcontrast/darkhighcontrast/custom) without changing the active profile.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -132,7 +133,7 @@ public class UserAppearanceController : ControllerBase
         return Ok();
     }
 
-    [HttpGet("generate-palette", Name = "generateAppearancePalette")]
+    [HttpGet("generate-palette", Name = RouteNames.GenerateAppearancePalette)]
     [EndpointSummary("Generate Palette From Colors")]
     [EndpointDescription("Generates a complete 18-token palette from natural and brand color inputs.")]
     [ProducesResponseType(typeof(UiThemePaletteDto), StatusCodes.Status200OK)]
@@ -146,7 +147,7 @@ public class UserAppearanceController : ControllerBase
         return Ok(palette);
     }
 
-    [HttpPut("profiles/{profileId:guid}/archive", Name = "archiveAppearanceProfile")]
+    [HttpPut("profiles/{profileId:guid}/archive", Name = RouteNames.ArchiveAppearanceProfile)]
     [EndpointSummary("Archive User Appearance Profile")]
     [EndpointDescription("Archives a user-owned profile, hiding it from the quick switcher without deletion.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -158,7 +159,7 @@ public class UserAppearanceController : ControllerBase
         return Ok();
     }
 
-    [HttpPost("profiles/{profileId:guid}/duplicate", Name = "duplicateAppearanceProfile")]
+    [HttpPost("profiles/{profileId:guid}/duplicate", Name = RouteNames.DuplicateAppearanceProfile)]
     [EndpointSummary("Duplicate User Appearance Profile")]
     [EndpointDescription("Duplicates a user-owned profile with an optional name override.")]
     [ProducesResponseType(typeof(UserAppearanceProfileDto), StatusCodes.Status200OK)]

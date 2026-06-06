@@ -1,6 +1,7 @@
 // ABOUTME: AutoMapper profile for EventSession, EventSessionAgendaItem, EventSessionSpeaker, and EventSessionLanguage entities.
 // ABOUTME: Split from monolithic MappingProfile.cs for domain-cohesion.
 
+using System.Linq;
 using AutoMapper;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
@@ -8,7 +9,6 @@ using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.DTOs.EventSessionSpeaker;
 using Explore.Domain;
-using System.Linq;
 
 namespace Explore.Application.Profiles;
 

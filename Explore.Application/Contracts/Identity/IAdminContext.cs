@@ -15,7 +15,7 @@ public interface IAdminContext
     /// Gets the current authenticated user's ID.
     /// </summary>
     Guid? UserId { get; }
-    
+
     /// <summary>
     /// Resolves the current user's internal ID.
     /// If the token has a GUID sub/internal_user_id, it returns that.

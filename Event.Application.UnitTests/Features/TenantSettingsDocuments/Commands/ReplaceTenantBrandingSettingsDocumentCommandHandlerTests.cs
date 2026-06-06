@@ -221,21 +221,21 @@ public sealed class ReplaceTenantBrandingSettingsDocumentCommandHandlerTests
         Guid tenantId,
         Guid expectedStamp,
         TenantBrandingSettingsPayloadDto? payload = null) => new()
-    {
-        TenantId = tenantId,
-        IsLockedByInstance = false,
-        Document = new ReplaceTenantBrandingSettingsDocumentDto
         {
-            ExpectedConcurrencyStamp = expectedStamp,
-            Payload = payload ?? new TenantBrandingSettingsPayloadDto
+            TenantId = tenantId,
+            IsLockedByInstance = false,
+            Document = new ReplaceTenantBrandingSettingsDocumentDto
             {
-                DisplayName = "Brand",
-                LogoUrl = "https://cdn.example.test/logo.svg",
-                FaviconUrl = "https://cdn.example.test/favicon.ico",
-                CustomCssUrl = "https://cdn.example.test/tenant.css"
+                ExpectedConcurrencyStamp = expectedStamp,
+                Payload = payload ?? new TenantBrandingSettingsPayloadDto
+                {
+                    DisplayName = "Brand",
+                    LogoUrl = "https://cdn.example.test/logo.svg",
+                    FaviconUrl = "https://cdn.example.test/favicon.ico",
+                    CustomCssUrl = "https://cdn.example.test/tenant.css"
+                }
             }
-        }
-    };
+        };
 
     private static TenantSettingsDocument CreateDocument(
         Guid tenantId,

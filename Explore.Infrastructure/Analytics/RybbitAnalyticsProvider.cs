@@ -78,7 +78,7 @@ public class RybbitAnalyticsProvider : IAnalyticsProvider
 
             var api = CreateApi(config);
             var response = await api.SendTrackAsync(payload, cancellationToken);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogDebug("Rybbit call returned status {StatusCode}", response.StatusCode);

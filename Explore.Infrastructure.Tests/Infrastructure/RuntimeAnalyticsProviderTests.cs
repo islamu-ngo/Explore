@@ -84,13 +84,13 @@ public class RuntimeAnalyticsProviderTests
 
         var postHogFactory = Substitute.For<IHttpClientFactory>();
         postHogFactory.CreateClient(Arg.Any<string>()).Returns(postHogClient);
-        
+
         var plausibleFactory = Substitute.For<IHttpClientFactory>();
         plausibleFactory.CreateClient(Arg.Any<string>()).Returns(plausibleClient);
-        
+
         var rybbitFactory = Substitute.For<IHttpClientFactory>();
         rybbitFactory.CreateClient(Arg.Any<string>()).Returns(rybbitClient);
-        
+
         var rudderFactory = Substitute.For<IHttpClientFactory>();
         rudderFactory.CreateClient(Arg.Any<string>()).Returns(rudderClient);
 

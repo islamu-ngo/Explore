@@ -1,8 +1,8 @@
 // ABOUTME: Unit tests for GetOrganizationSharedContactsQueryHandler — org validation and pagination.
 // ABOUTME: Verifies non-org actors and unapproved orgs return empty results.
 
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ContactShareConsent;
 using Explore.Application.Features.ContactShareConsents.Handlers.Queries;
 using Explore.Application.Features.ContactShareConsents.Requests.Queries;

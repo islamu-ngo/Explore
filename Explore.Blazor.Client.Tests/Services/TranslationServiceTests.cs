@@ -1,8 +1,8 @@
 // ABOUTME: Unit tests for the Blazor client TranslationService cache and fallback behavior.
 // ABOUTME: Verifies registry validation, API fetch boundaries, language-change events, and hot-path lookup safety.
 
-using Microsoft.Extensions.Logging.Abstractions;
 using System.Reflection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -136,6 +136,31 @@ public sealed class TranslationServiceTests : IDisposable
         await Assert.That(results[0]["ui.concurrent"]).IsEqualTo("Loaded");
         await Assert.That(results[1]["ui.concurrent"]).IsEqualTo("Loaded");
         await Assert.That(fetchCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task GetTranslationsAsync_WhenDisposedDuringInFlightFetch_CompletesWithoutDisposedSemaphoreError()
+    {
+        var fetchStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fetchResult = new TaskCompletionSource<IDictionary<string, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _apiClient.GetTranslationByLanguageAsync("en", null, null, Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                fetchStarted.SetResult();
+                return fetchResult.Task;
+            });
+
+        var loadTask = _service.GetTranslationsAsync("en");
+
+        await fetchStarted.Task;
+        _service.Dispose();
+        fetchResult.SetResult(new Dictionary<string, string> { ["ui.ready"] = "Ready" });
+
+        var result = await loadTask;
+
+        await Assert.That(result["ui.ready"]).IsEqualTo("Ready");
     }
 
     [Test]

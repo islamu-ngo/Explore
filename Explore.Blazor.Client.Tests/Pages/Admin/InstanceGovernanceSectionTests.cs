@@ -119,10 +119,10 @@ public class InstanceGovernanceSectionTests : IDisposable
              {
                  ["Delegation"] = delegation ?? new TenantDelegationModel(),
                  ["EventPolicy"] = eventPolicy ?? new EventPolicyModel(),
-                  ["OrganizationPolicy"] = orgPolicy ?? new OrganizationPolicyModel(),
-                  ["RenderPolicy"] = renderPolicy ?? new RenderPolicyModel(),
-                  ["DeploymentMode"] = deploymentMode,
-                  ["DisplayMode"] = displayMode
-              }));
+                 ["OrganizationPolicy"] = orgPolicy ?? new OrganizationPolicyModel(),
+                 ["RenderPolicy"] = renderPolicy ?? new RenderPolicyModel(),
+                 ["DeploymentMode"] = deploymentMode,
+                 ["DisplayMode"] = displayMode
+             }));
     }
 }

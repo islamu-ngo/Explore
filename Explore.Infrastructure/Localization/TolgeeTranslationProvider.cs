@@ -83,7 +83,7 @@ public class TolgeeTranslationProvider : ITranslationManagementProvider
 
         var api = CreateApi(config);
         var response = await api.ImportKeysAsync(config.ProjectId, payload, ct);
-        
+
         if (!response.IsSuccessStatusCode)
         {
             var body = response.Error?.Content;
@@ -103,7 +103,7 @@ public class TolgeeTranslationProvider : ITranslationManagementProvider
 
         var api = CreateApi(config);
         var response = await api.ExportTranslationsAsync(config.ProjectId, languageCode, ct);
-        
+
         if (!response.IsSuccessStatusCode || response.Content == null)
         {
             _logger.LogWarning("Tolgee export failed for {Language}: {StatusCode}", languageCode, response.StatusCode);
@@ -149,7 +149,7 @@ public class TolgeeTranslationProvider : ITranslationManagementProvider
         [property: JsonPropertyName("_embedded")] TolgeeTranslationsEmbedded? _embedded);
     internal sealed record TolgeeTranslationsEmbedded(List<TolgeeKeyWithTranslation>? Keys);
     internal sealed record TolgeeKeyWithTranslation(
-        [property: JsonPropertyName("name")] string KeyName, 
+        [property: JsonPropertyName("name")] string KeyName,
         Dictionary<string, TolgeeTranslationValue> Translations);
     internal sealed record TolgeeTranslationValue(string? Text);
     internal sealed record TolgeeLanguagesResponse(

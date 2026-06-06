@@ -1,13 +1,13 @@
 // ABOUTME: Unit-style DelegatingHandler tests for access token forwarding from the current authenticated context.
 // ABOUTME: Verifies Bearer authorization behavior for present token, absent token, and pre-existing Authorization headers.
 
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 
 namespace Explore.Blazor.IntegrationTests.Handlers;
 

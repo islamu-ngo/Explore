@@ -203,15 +203,15 @@ public sealed class TenantBrandingSettingsAdminModel
     public static TenantBrandingSettingsAdminModel FromDocument(
         TenantBrandingSettingsDocumentResponse document,
         bool canReplace) => new()
-    {
-        Exists = true,
-        CanReplace = canReplace,
-        ConcurrencyStamp = document.ConcurrencyStamp,
-        DisplayName = document.Payload?.DisplayName,
-        LogoUrl = document.Payload?.LogoUrl,
-        FaviconUrl = document.Payload?.FaviconUrl,
-        CustomCssUrl = document.Payload?.CustomCssUrl
-    };
+        {
+            Exists = true,
+            CanReplace = canReplace,
+            ConcurrencyStamp = document.ConcurrencyStamp,
+            DisplayName = document.Payload?.DisplayName,
+            LogoUrl = document.Payload?.LogoUrl,
+            FaviconUrl = document.Payload?.FaviconUrl,
+            CustomCssUrl = document.Payload?.CustomCssUrl
+        };
 }
 
 public sealed class TenantBrandingSettingsSaveResult

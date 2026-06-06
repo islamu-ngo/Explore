@@ -4,12 +4,12 @@
 using System.Security.Claims;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using Explore.Application.Contracts.Services;
 
 namespace Explore.Infrastructure.Identity;
 
@@ -108,7 +108,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-            
+
             var provider = user.FindFirst("idp")?.Value ?? "keycloak";
             var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider.ToLowerInvariant(), sub);
             if (externalLogin != null) return externalLogin.UserId;
@@ -192,7 +192,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         {
             entry.SlidingExpiration = CacheExpiration;
             var isAdmin = await _tenantAdminRepo.IsTenantAdmin(tenantId, uid.Value);
-            
+
             if (isAdmin)
             {
                 _logger.LogInformation("AdminContext: User {UserId} IsTenantAdmin=true for Tenant {TenantId}", uid, tenantId);
@@ -201,7 +201,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             {
                 _logger.LogDebug("AdminContext: User {UserId} IsTenantAdmin=false for Tenant {TenantId}", uid, tenantId);
             }
-            
+
             return isAdmin;
         });
     }
@@ -243,8 +243,8 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
                 .ToList();
 
             // Single-Tenant optimization: Instance admins are automatically tenant admins for the default tenant.
-            if (!adminTenantIds.Contains(PlatformDefaults.DefaultTenantId) && 
-                await _deploymentModeProvider.IsSingleTenantAsync(cancellationToken) && 
+            if (!adminTenantIds.Contains(PlatformDefaults.DefaultTenantId) &&
+                await _deploymentModeProvider.IsSingleTenantAsync(cancellationToken) &&
                 await IsInstanceAdminAsync(userId, cancellationToken))
             {
                 adminTenantIds.Add(PlatformDefaults.DefaultTenantId);

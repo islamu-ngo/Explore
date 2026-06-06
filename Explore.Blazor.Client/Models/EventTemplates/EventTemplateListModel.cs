@@ -19,6 +19,6 @@ public class EventTemplateListModel
     public int DefinitionsCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    
+
     public IReadOnlyDictionary<string, HalLinkDto>? Links { get; set; }
 }

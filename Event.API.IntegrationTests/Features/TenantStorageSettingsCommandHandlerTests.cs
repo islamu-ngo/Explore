@@ -1,6 +1,7 @@
 // ABOUTME: Unit-style API feature tests for tenant storage settings command behavior.
 // ABOUTME: Verifies lock, upload ceiling, and cross-tenant authority failures before persistence.
 
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -9,7 +10,6 @@ using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.TenantStorageSettings.Handlers.Commands;
 using Explore.Application.Features.TenantStorageSettings.Requests.Commands;
 using Explore.Domain;
-using Event.Api.IntegrationTests.Fixtures;
 using NSubstitute;
 
 namespace Event.Api.IntegrationTests.Features;

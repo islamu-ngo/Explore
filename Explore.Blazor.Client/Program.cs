@@ -109,7 +109,6 @@ builder.Services.AddSharedApplicationServices((_, client) =>
 });
 
 // WASM-specific services (different from server-side registrations)
-builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<ITenantNavigationService, TenantNavigationService>();
 builder.Services.AddScoped<IAnalyticsInterop, AnalyticsInterop>();
 builder.Services.AddScoped<ICookieConsentInterop, CookieConsentInterop>();

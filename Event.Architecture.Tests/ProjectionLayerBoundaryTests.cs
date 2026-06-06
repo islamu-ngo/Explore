@@ -3,9 +3,9 @@
 
 namespace Event.Architecture.Tests;
 
+using System.Reflection;
 using Explore.Application.Specifications.Events;
 using Explore.Application.Specifications.EventSessions;
-using System.Reflection;
 using NetArchTest.Rules;
 
 public class ProjectionLayerBoundaryTests

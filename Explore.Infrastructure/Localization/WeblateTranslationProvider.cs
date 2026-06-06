@@ -88,7 +88,7 @@ public class WeblateTranslationProvider : ITranslationManagementProvider
 
                 var api = CreateApi(config);
                 var response = await api.CreateTranslationUnitAsync(config.ProjectId, config.Component, lang, payload, ct);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var body = response.Error?.Content;
@@ -108,7 +108,7 @@ public class WeblateTranslationProvider : ITranslationManagementProvider
 
         var api = CreateApi(config);
         var response = await api.ExportTranslationsAsync(config.ProjectId, config.Component, languageCode, ct);
-        
+
         if (!response.IsSuccessStatusCode || response.Content == null)
         {
             _logger.LogWarning("Weblate export failed for {Language}: {StatusCode}", languageCode, response.StatusCode);

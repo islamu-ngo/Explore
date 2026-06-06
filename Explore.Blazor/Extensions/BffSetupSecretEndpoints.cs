@@ -1,10 +1,10 @@
 // ABOUTME: Setup-secret BFF endpoints: set, sync, and delete setup secrets.
 // ABOUTME: Includes validation against the API, cookie management, and session persistence.
 
-using Explore.Blazor.Services;
-using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using System.Text.Json;
+using Explore.Blazor.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.Blazor.Extensions;
 

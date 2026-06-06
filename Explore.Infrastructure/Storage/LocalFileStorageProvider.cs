@@ -310,7 +310,7 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
         }
 
         var normalizedKey = objectKey.Replace('\\', '/');
-        if (normalizedKey.StartsWith("/", StringComparison.Ordinal) ||
+        if (normalizedKey.StartsWith('/') ||
             normalizedKey.Contains("//", StringComparison.Ordinal))
         {
             throw new ArgumentException("Storage object key must be a relative path.", nameof(objectKey));
@@ -387,7 +387,7 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
         }
 
         var trimmed = extension.Trim();
-        if (!trimmed.StartsWith(".", StringComparison.Ordinal))
+        if (!trimmed.StartsWith('.'))
         {
             trimmed = "." + trimmed;
         }

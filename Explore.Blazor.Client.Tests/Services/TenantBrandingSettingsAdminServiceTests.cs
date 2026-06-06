@@ -21,7 +21,7 @@ public sealed class TenantBrandingSettingsAdminServiceTests
         _httpClientFactory = Substitute.For<IHttpClientFactory>();
         _logger = Substitute.For<ILogger<TenantBrandingSettingsAdminService>>();
         // _service initialization is deferred to SetupBffClient where we have the mocked client
-        _service = null!; 
+        _service = null!;
     }
 
     [Test]

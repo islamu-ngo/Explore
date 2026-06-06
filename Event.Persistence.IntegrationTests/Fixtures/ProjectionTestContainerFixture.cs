@@ -1,8 +1,8 @@
 // ABOUTME: Minimal PostgreSQL container fixture for projection updater tests.
 // ABOUTME: Uses EnsureCreatedAsync so tests run against the current EF model without depending on migration-file drift.
 
-using Explore.Domain;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Domain;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;

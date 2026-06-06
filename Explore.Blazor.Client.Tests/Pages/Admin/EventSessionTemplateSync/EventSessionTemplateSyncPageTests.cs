@@ -4,12 +4,12 @@
 using System.Net;
 using Explore.Blazor.Client.Components.EventTemplateSync;
 using Explore.Blazor.Client.Models.EventSessionTemplateSync;
-using EventSessionTemplateSyncApplyRequest = Explore.Blazor.Client.Models.EventSessionTemplateSync.EventSessionTemplateSyncApplyRequest;
 using Explore.Blazor.Client.Pages.Admin.EventSessionTemplateSync;
 using Explore.Blazor.Client.Services.EventSessionTemplateSync;
 using MudBlazor;
 using AddedDefinitionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.AddedDefinitionDto;
 using AddedOptionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.AddedOptionDto;
+using EventSessionTemplateSyncApplyRequest = Explore.Blazor.Client.Models.EventSessionTemplateSync.EventSessionTemplateSyncApplyRequest;
 using FieldChangeDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.FieldChangeDto;
 using ModifiedDefinitionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.ModifiedDefinitionDto;
 using ModifiedOptionDto = Explore.Blazor.Client.Models.EventSessionTemplateSync.ModifiedOptionDto;

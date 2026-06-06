@@ -2,9 +2,9 @@
 // ABOUTME: Manual implementation to be replaced by NSwag generated client if possible.
 
 using System.Net.Http.Json;
-using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.EventSessionTemplateSync;
+using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Services.Http;
 
 namespace Explore.Blazor.Client.Services.EventSessionTemplateSync;

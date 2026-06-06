@@ -1,7 +1,7 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
-using System.Diagnostics;
 using Bunit.TestDoubles;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Tests.Common;

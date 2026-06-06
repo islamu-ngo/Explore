@@ -220,14 +220,14 @@ public sealed class UpdateGroupMemberRoleCommandHandlerTests
         Guid memberId,
         RoleEnum role,
         Guid requesterUserId) => new()
-    {
-        UpdateGroupMemberRoleDto = new UpdateGroupMemberRoleDto
         {
-            Id = memberId,
-            Role = role
-        },
-        RequesterUserId = requesterUserId.ToString()
-    };
+            UpdateGroupMemberRoleDto = new UpdateGroupMemberRoleDto
+            {
+                Id = memberId,
+                Role = role
+            },
+            RequesterUserId = requesterUserId.ToString()
+        };
 
     private static GroupMember CreateGroupMember(int roleId) =>
         CreateGroupMember(Guid.NewGuid(), Guid.NewGuid(), roleId);

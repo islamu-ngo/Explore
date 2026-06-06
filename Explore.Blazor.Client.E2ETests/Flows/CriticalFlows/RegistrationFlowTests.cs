@@ -1,11 +1,11 @@
 // ABOUTME: Playwright critical-flow scaffold for the attendee registration journey.
 // ABOUTME: Documents the browser path from event discovery through My Registrations.
 
+using System.Text.Json;
 using Explore.Blazor.Client.E2ETests.Fixtures;
 using Explore.Blazor.Client.E2ETests.Seeds;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace Explore.Blazor.Client.E2ETests.Flows.CriticalFlows;
 

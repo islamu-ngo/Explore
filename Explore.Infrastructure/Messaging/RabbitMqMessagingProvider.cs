@@ -34,7 +34,7 @@ public sealed class RabbitMqMessagingProvider : IMessagingProvider, IDisposable
     public async Task PublishAsync<T>(T message, string channel, CancellationToken cancellationToken = default) where T : class
     {
         var connection = await GetConnectionAsync(cancellationToken);
-        await connection.PublishAsync(message, channel: channel);
+        await connection.PublishAsync(message, channel: channel, cancellationToken: cancellationToken);
         _logger.LogDebug("Published message of type {MessageType} to channel {Channel}", typeof(T).Name, channel);
     }
 
@@ -42,7 +42,7 @@ public sealed class RabbitMqMessagingProvider : IMessagingProvider, IDisposable
     {
         var connection = await GetConnectionAsync(cancellationToken);
         var messageList = messages.ToList();
-        await connection.BulkPublishAsync(messageList.Select(m => (m, (MQContract.Messages.MessageHeader?)null)), channel: channel);
+        await connection.BulkPublishAsync(messageList.Select(m => (m, (MQContract.Messages.MessageHeader?)null)), channel: channel, cancellationToken: cancellationToken);
         _logger.LogDebug("Bulk published {Count} messages of type {MessageType} to channel {Channel}", messageList.Count, typeof(T).Name, channel);
     }
 

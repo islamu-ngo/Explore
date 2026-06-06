@@ -1,11 +1,11 @@
 // ABOUTME: WebApplicationFactory that wires TestAuthHandler as the default authentication scheme.
 // Also replaces IAuthorizationProvider with an allow-all mock for endpoint-level auth tests.
 
+using System.Threading.Channels;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Constants;
 using Explore.Persistence;
 using Explore.Persistence.Seed;
-using System.Threading.Channels;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;

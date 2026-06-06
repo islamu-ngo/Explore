@@ -244,12 +244,12 @@ public sealed class AddGroupMemberCommandHandlerTests
     private static AddGroupMemberDto CreateValidDto(
         int? groupPositionId = 7,
         RoleEnum role = RoleEnum.GroupMember) => new()
-    {
-        GroupId = Guid.NewGuid(),
-        Email = TargetEmail,
-        Role = role,
-        GroupPositionId = groupPositionId
-    };
+        {
+            GroupId = Guid.NewGuid(),
+            Email = TargetEmail,
+            Role = role,
+            GroupPositionId = groupPositionId
+        };
 
     private static Group CreateGroup(Guid groupId) => new()
     {

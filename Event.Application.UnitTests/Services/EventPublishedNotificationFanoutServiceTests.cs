@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for event-published notification fanout service idempotency and inbox creation.
 // ABOUTME: Verifies subscriber scans create deterministic notification rows and durable fanout progress.
 
+using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
@@ -8,7 +9,6 @@ using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics.Metrics;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Services;

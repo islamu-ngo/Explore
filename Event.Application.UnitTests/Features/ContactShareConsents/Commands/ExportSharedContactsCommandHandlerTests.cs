@@ -1,8 +1,8 @@
 // ABOUTME: Unit tests for ExportSharedContactsCommandHandler — CSV/TSV generation and audit trail.
 // ABOUTME: Covers format validation, org approval checks, file generation, and audit record creation.
 
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ContactShareConsent;
 using Explore.Application.Features.ContactShareConsents.Handlers.Commands;
 using Explore.Application.Features.ContactShareConsents.Requests.Commands;
