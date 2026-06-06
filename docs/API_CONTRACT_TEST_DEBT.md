@@ -18,7 +18,6 @@ Do not add new skipped API contract tests without updating this file in the same
 | Test | File | Category | Owner | Removal condition | Why still skipped | Promotion path |
 |---|---|---|---|---|---|---|
 | `RouteNames_EveryConstantResolvesToExactlyOneEndpoint` | `Event.API.IntegrationTests/Features/RouteNameCoverageTests.cs` | API contract / HATEOAS route-name coverage | Platform/Ops + API contract stabilization owner | Enable after write actions are decorated with `[HttpXxx(Name = RouteNames.X)]` in `dev/active/api-contract-stabilization` Phase 3. | The current generated inventory still marks many `RouteName` values as `(Phase 1.4)`, so enabling this now would mix route-name stabilization work into CI/CD hardening. | Finish route-name decoration, remove the `Skip` attribute, and delete this row in the same PR. |
-| `EndpointRouteNames_EveryNamedEndpointHasMatchingConstant` | `Event.API.IntegrationTests/Features/RouteNameCoverageTests.cs` | API contract / HATEOAS route-name coverage | Platform/Ops + API contract stabilization owner | Enable after `RouteNames` constants are added for all endpoint route names in `dev/active/api-contract-stabilization` Phase 3. | The route-name registry is not yet the single source of truth for every named endpoint. Enabling this before the stabilization pass would create broad API/HATEOAS churn outside this CI/CD workstream. | Finish route-name constant coverage, remove the `Skip` attribute, and delete this row in the same PR. |
 
 ## Removal Rules
 

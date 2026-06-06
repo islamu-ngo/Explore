@@ -117,7 +117,7 @@ jobs:
         if: ${{ steps.changes.outputs.run-policies == 'true' }}
         uses: cerbos/cerbos-setup-action@6d88cfd96db5af84489633c6a2db42bf2522933b # v1
         with:
-          version: "0.53.0"
+          version: "v0.53.0"
 
       - name: Compile Cerbos Policies
         if: ${{ steps.changes.outputs.run-policies == 'true' }}

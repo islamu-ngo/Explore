@@ -137,7 +137,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/security-tests
-          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*[Category=Security]" --report-trx --report-trx-filename security-integration-tests.trx 2>&1 | tee artifacts/security-tests/security-integration-tests.log
+          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "////[Category=Security]" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename security-integration-tests.trx 2>&1 | tee artifacts/security-tests/security-integration-tests.log
 
       - name: Cerbos Policy Contract Tests
         if: ${{ steps.changes.outputs.run-tests == 'true' }}
@@ -146,7 +146,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/security-tests
-          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "/*/*[Category=PolicyContract]" --report-trx --report-trx-filename cerbos-policy-contract-tests.trx 2>&1 | tee artifacts/security-tests/cerbos-policy-contract-tests.log
+          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal -- --treenode-filter "////[Category=PolicyContract]" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename cerbos-policy-contract-tests.trx 2>&1 | tee artifacts/security-tests/cerbos-policy-contract-tests.log
 
       - name: Upload Security Test Evidence
         if: ${{ always() && steps.changes.outputs.run-tests == 'true' }}
