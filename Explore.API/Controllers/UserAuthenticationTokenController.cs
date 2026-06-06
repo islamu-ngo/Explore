@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.Features.UserAuthenticationTokens.Requests.Commands;
@@ -24,6 +25,16 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class UserAuthenticationTokenController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "userAuthenticationToken",
+        "User authentication token validation failed",
+        "User authentication token creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "userAuthenticationToken",
+        "User authentication token validation failed",
+        "User authentication token update failed.");
+
     private readonly IMediator _mediator;
 
     public UserAuthenticationTokenController(IMediator mediator)
@@ -65,7 +76,7 @@ public class UserAuthenticationTokenController : ControllerBase
     [EndpointDescription("Create a new user authentication token")]
     [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateUserAuthenticationTokenDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateUserAuthenticationTokenCommand { UserAuthenticationTokenDto = dto };
@@ -73,7 +84,7 @@ public class UserAuthenticationTokenController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return Ok(response);
@@ -85,13 +96,13 @@ public class UserAuthenticationTokenController : ControllerBase
     [EndpointDescription("Update an existing user authentication token")]
     [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateUserAuthenticationTokenDto dto, CancellationToken cancellationToken = default)
     {
         if (id != dto.Id)
         {
-            return BadRequest(new { error = "User Authentication Token ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "User authentication token ID mismatch.");
         }
 
         var command = new UpdateUserAuthenticationTokenCommand { UserAuthenticationTokenDto = dto };
@@ -99,7 +110,7 @@ public class UserAuthenticationTokenController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);

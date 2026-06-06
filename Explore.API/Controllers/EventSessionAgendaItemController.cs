@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.EventSessionAgendaItem;
@@ -24,6 +25,16 @@ namespace Explore.API.Controllers;
 [ApiController]
 public class EventSessionAgendaItemController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "eventSessionAgendaItem",
+        "Event session agenda item validation failed",
+        "Event session agenda item creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "eventSessionAgendaItem",
+        "Event session agenda item validation failed",
+        "Event session agenda item update failed.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<EventSessionAgendaItemController> _logger;
 
@@ -87,6 +98,8 @@ public class EventSessionAgendaItemController : ControllerBase
     [HttpPost(Name = RouteNames.CreateEventSessionAgendaItem)]
     [EndpointSummary("Create Agenda Item")]
     [EndpointDescription("Create a new agenda item for an event session")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionAgendaItemDto agendaItem, CancellationToken cancellationToken = default)
     {
         var command = new CreateEventSessionAgendaItemCommand { AgendaItemDto = agendaItem };
@@ -94,7 +107,7 @@ public class EventSessionAgendaItemController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return Ok(response);
@@ -106,11 +119,13 @@ public class EventSessionAgendaItemController : ControllerBase
     [HttpPut("{id}", Name = RouteNames.UpdateEventSessionAgendaItem)]
     [EndpointSummary("Update Agenda Item")]
     [EndpointDescription("Update an existing agenda item")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSessionAgendaItemDto agendaItem, CancellationToken cancellationToken = default)
     {
         if (id != agendaItem.Id)
         {
-            return BadRequest(new { error = "Agenda item ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Agenda item ID mismatch.");
         }
 
         var command = new UpdateEventSessionAgendaItemCommand { AgendaItemDto = agendaItem };
@@ -118,7 +133,7 @@ public class EventSessionAgendaItemController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);

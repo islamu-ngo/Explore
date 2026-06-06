@@ -7,8 +7,8 @@ using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.API.Models;
-using Explore.Application.DTOs.CustomPropertyGovernance;
 using Explore.Application.Contracts.Hateoas;
+using Explore.Application.DTOs.CustomPropertyGovernance;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.Features.CustomPropertyGovernance.Requests.Queries;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Commands;
@@ -56,7 +56,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(HalCollectionResource<ProjectionStatusDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<HalCollectionResource<ProjectionStatusDto>>> GetProjectionStatus(
         [FromQuery] Guid tenantId,
         CancellationToken cancellationToken = default)
@@ -67,7 +67,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
 
         if (!result.Success)
         {
-            return BadRequest(result);
+            return ToProjectionValidationProblem(result, "Projection status lookup failed.");
         }
 
         var halResource = await _statusAssembler.ToCollectionResource(
@@ -201,7 +201,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(HalCollectionResource<ProjectionStatusDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<HalCollectionResource<ProjectionStatusDto>>> GetSessionProjectionStatus(
         [FromQuery] Guid tenantId,
         CancellationToken cancellationToken = default)
@@ -212,7 +212,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
 
         if (!result.Success)
         {
-            return BadRequest(result);
+            return ToProjectionValidationProblem(result, "Session projection status lookup failed.");
         }
 
         var halResource = await _statusAssembler.ToCollectionResource(
@@ -285,5 +285,41 @@ public class CustomPropertyProjectionAdminController : ControllerBase
             cancellationToken);
 
         return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    private ActionResult ToProjectionValidationProblem<TValue>(
+        BaseCommandResponse<TValue> response,
+        string fallbackDetail)
+    {
+        var errors = response.Errors?.Count > 0
+            ? response.Errors.ToArray()
+            : [response.Message ?? fallbackDetail];
+
+        var problemDetails = new ValidationProblemDetails(new Dictionary<string, string[]>
+        {
+            ["projection"] = errors
+        })
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Projection validation failed",
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+            Detail = response.Message ?? fallbackDetail,
+            Instance = HttpContext.Request.Path
+        };
+
+        if (!string.IsNullOrWhiteSpace(response.FailureCode))
+        {
+            problemDetails.Extensions["code"] = response.FailureCode;
+        }
+
+        problemDetails.Extensions["traceId"] = HttpContext.TraceIdentifier;
+        problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
+        problemDetails.Extensions["correlationId"] = HttpContext.Items["CorrelationId"] as string;
+
+        return new ObjectResult(problemDetails)
+        {
+            StatusCode = StatusCodes.Status400BadRequest,
+            ContentTypes = { "application/problem+json" }
+        };
     }
 }

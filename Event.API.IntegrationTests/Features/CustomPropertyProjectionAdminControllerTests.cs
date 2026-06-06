@@ -4,6 +4,7 @@
 using System.Net;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Event.Api.IntegrationTests.Helpers;
 using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.Features.EventCustomPropertyProjections.Requests.Queries;
 using Explore.Application.Features.EventSessionCustomPropertyProjections.Requests.Queries;
@@ -85,6 +86,38 @@ public sealed class CustomPropertyProjectionAdminControllerTests
         await Assert.That(rows[0].GetProperty("normalizedValue").GetString()).IsEqualTo("session-safe-public");
     }
 
+    [Test]
+    public async Task GetProjectionStatus_WhenMediatorReportsFailure_ReturnsValidationProblemDetails()
+    {
+        const string failureMessage = "Tenant projection status cannot be loaded.";
+        var tenantId = Guid.NewGuid();
+        using var factory = CreateFactoryWithMediator(new ExposureFilteringMediator(
+            projectionStatusFailure: ProjectionStatusFailure(failureMessage)));
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest($"/api/admin/custom-property-projections/status?tenantId={tenantId}");
+
+        var response = await client.SendAsync(request);
+
+        using var problem = await AssertProjectionValidationProblemAsync(response, failureMessage);
+        await Assert.That(problem.RootElement.GetProperty("detail").GetString()).IsEqualTo(failureMessage);
+    }
+
+    [Test]
+    public async Task GetSessionProjectionStatus_WhenMediatorReportsFailure_ReturnsValidationProblemDetails()
+    {
+        const string failureMessage = "Session projection status cannot be loaded.";
+        var tenantId = Guid.NewGuid();
+        using var factory = CreateFactoryWithMediator(new ExposureFilteringMediator(
+            sessionProjectionStatusFailure: ProjectionStatusFailure(failureMessage)));
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest($"/api/admin/custom-property-projections/sessions/status?tenantId={tenantId}");
+
+        var response = await client.SendAsync(request);
+
+        using var problem = await AssertProjectionValidationProblemAsync(response, failureMessage);
+        await Assert.That(problem.RootElement.GetProperty("detail").GetString()).IsEqualTo(failureMessage);
+    }
+
     private static WebApplicationFactory<Program> CreateFactoryWithMediator(IMediator mediator)
     {
         var factory = new AuthenticatedWebApplicationFactory();
@@ -106,9 +139,41 @@ public sealed class CustomPropertyProjectionAdminControllerTests
         return request;
     }
 
+    private static BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>> ProjectionStatusFailure(string message)
+        => new()
+        {
+            Success = false,
+            Message = message,
+            FailureCode = "custom_property_projection_validation_failed",
+            Errors = [message],
+            Id = []
+        };
+
+    private static async Task<JsonDocument> AssertProjectionValidationProblemAsync(
+        HttpResponseMessage response,
+        string expectedError)
+    {
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Projection validation failed");
+
+        var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("custom_property_projection_validation_failed");
+        var errors = root.GetProperty("errors").GetProperty("projection").EnumerateArray().ToArray();
+        await Assert.That(errors.Length).IsEqualTo(1);
+        await Assert.That(errors[0].GetString()).IsEqualTo(expectedError);
+
+        return document;
+    }
+
     private sealed class ExposureFilteringMediator(
         Guid? eventId = null,
-        Guid? eventSessionId = null) : IMediator
+        Guid? eventSessionId = null,
+        BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>? projectionStatusFailure = null,
+        BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>? sessionProjectionStatusFailure = null) : IMediator
     {
         public Task Publish(object notification, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
@@ -121,7 +186,9 @@ public sealed class CustomPropertyProjectionAdminControllerTests
         {
             object response = request switch
             {
+                GetEventCustomPropertyProjectionStatusQuery => projectionStatusFailure ?? ProjectionStatusSuccess(),
                 GetEventCustomPropertyProjectionsForEventQuery query => CreateEventResponse(query),
+                GetEventSessionCustomPropertyProjectionStatusQuery => sessionProjectionStatusFailure ?? ProjectionStatusSuccess(),
                 GetEventSessionCustomPropertyProjectionsForSessionQuery query => CreateSessionResponse(query),
                 _ => throw new InvalidOperationException($"Unexpected request type {request.GetType().Name}.")
             };
@@ -136,7 +203,9 @@ public sealed class CustomPropertyProjectionAdminControllerTests
         public Task<object?> Send(object request, CancellationToken cancellationToken = default)
             => request switch
             {
+                GetEventCustomPropertyProjectionStatusQuery => Task.FromResult<object?>(projectionStatusFailure ?? ProjectionStatusSuccess()),
                 GetEventCustomPropertyProjectionsForEventQuery query => Task.FromResult<object?>(CreateEventResponse(query)),
+                GetEventSessionCustomPropertyProjectionStatusQuery => Task.FromResult<object?>(sessionProjectionStatusFailure ?? ProjectionStatusSuccess()),
                 GetEventSessionCustomPropertyProjectionsForSessionQuery query => Task.FromResult<object?>(CreateSessionResponse(query)),
                 _ => throw new InvalidOperationException($"Unexpected request type {request.GetType().Name}.")
             };
@@ -248,6 +317,14 @@ public sealed class CustomPropertyProjectionAdminControllerTests
                 Id = ApplyCeiling(rows, query.ExposureCeiling)
             };
         }
+
+        private static BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>> ProjectionStatusSuccess()
+            => new()
+            {
+                Success = true,
+                Message = "Projection status loaded.",
+                Id = []
+            };
 
         private static IReadOnlyList<TProjection> ApplyCeiling<TProjection>(
             IEnumerable<TProjection> rows,

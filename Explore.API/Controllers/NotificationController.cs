@@ -144,13 +144,13 @@ public class NotificationController : ControllerBase
     [EndpointDescription("Archives or unarchives a notification. Pass archive=true (default) to archive, archive=false to unarchive. Idempotent.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Archive(
         Guid id, [FromQuery] bool archive = true, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new ArchiveNotificationCommand { Id = id, Archive = archive }, cancellationToken);
         if (!response.Success)
-            return NotFound(new { error = response.Message });
+            return ToNotificationNotFoundProblem(response);
 
         return Ok(response);
     }
@@ -161,13 +161,13 @@ public class NotificationController : ControllerBase
     [EndpointDescription("Snoozes a notification until the specified time. Pass snoozedUntil as ISO 8601 datetime. Omit to unsnooze.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Snooze(
         Guid id, [FromQuery] DateTime? snoozedUntil = null, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new SnoozeNotificationCommand { Id = id, SnoozedUntil = snoozedUntil }, cancellationToken);
         if (!response.Success)
-            return NotFound(new { error = response.Message });
+            return ToNotificationNotFoundProblem(response);
 
         return Ok(response);
     }
@@ -184,6 +184,29 @@ public class NotificationController : ControllerBase
         await _mediator.Send(new DeleteNotificationCommand { Id = id }, cancellationToken);
 
         return NoContent();
+    }
+
+    private ActionResult ToNotificationNotFoundProblem(BaseCommandResponse<Guid> response)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status404NotFound,
+            Title = "Notification not found",
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+            Detail = response.Message ?? "Notification was not found.",
+            Instance = HttpContext.Request.Path
+        };
+
+        problemDetails.Extensions["code"] = "notification_not_found";
+        problemDetails.Extensions["traceId"] = HttpContext.TraceIdentifier;
+        problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
+        problemDetails.Extensions["correlationId"] = HttpContext.Items["CorrelationId"] as string;
+
+        return new ObjectResult(problemDetails)
+        {
+            StatusCode = StatusCodes.Status404NotFound,
+            ContentTypes = { "application/problem+json" }
+        };
     }
 
     private static async IAsyncEnumerable<SseItem<NotificationRefreshHintDto>> ToSseItems(

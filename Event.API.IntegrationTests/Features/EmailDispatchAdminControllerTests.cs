@@ -5,13 +5,14 @@ using System.Net;
 using System.Reflection;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Event.Api.IntegrationTests.Helpers;
 using Explore.API.Controllers;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EmailDispatch;
-using Explore.Application.Hateoas;
 using Explore.Application.Features.EmailDispatch;
 using Explore.Application.Features.EmailDispatch.Requests.Commands;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -119,6 +120,46 @@ public sealed class EmailDispatchAdminControllerTests
     }
 
     [Test]
+    public async Task PauseTenant_WhenValidationFails_ReturnsValidationProblemDetails()
+    {
+        var tenantId = Guid.NewGuid();
+        using var mediator = new EmailDispatchMediatorStub(_ => Failure(
+            "Pause reason is required.",
+            EmailDispatchFailureCodes.ValidationFailed));
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Put,
+            $"/api/admin/email-dispatch/tenants/{tenantId}/pause");
+
+        var response = await client.SendAsync(request);
+
+        using var document = await AssertEmailDispatchValidationProblemAsync(response);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo(EmailDispatchFailureCodes.ValidationFailed);
+    }
+
+    [Test]
+    public async Task ResumeTenant_WhenValidationFails_ReturnsValidationProblemDetails()
+    {
+        var tenantId = Guid.NewGuid();
+        using var mediator = new EmailDispatchMediatorStub(_ => Failure(
+            "Tenant dispatch state cannot be changed.",
+            EmailDispatchFailureCodes.ValidationFailed));
+        using var factory = CreateFactoryWithMediator(mediator);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Delete,
+            $"/api/admin/email-dispatch/tenants/{tenantId}/pause");
+
+        var response = await client.SendAsync(request);
+
+        using var document = await AssertEmailDispatchValidationProblemAsync(response);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo(EmailDispatchFailureCodes.ValidationFailed);
+    }
+
+    [Test]
     public async Task ReplayAndParkRoutes_UseStableRouteNamesAndWritePolicy()
     {
         MethodInfo park = typeof(EmailDispatchAdminController).GetMethod(nameof(EmailDispatchAdminController.ParkDispatch))!;
@@ -173,6 +214,16 @@ public sealed class EmailDispatchAdminControllerTests
 
     private static string? GetRateLimitPolicy(MethodInfo method)
         => method.GetCustomAttribute<EnableRateLimitingAttribute>()?.PolicyName;
+
+    private static async Task<JsonDocument> AssertEmailDispatchValidationProblemAsync(HttpResponseMessage response)
+    {
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Email dispatch validation failed");
+
+        return await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+    }
 
     private static BaseCommandResponse<Guid> Success(Guid id) => new()
     {

@@ -1,15 +1,20 @@
 // ABOUTME: Controller helper for program/session command validation failures.
 // ABOUTME: Converts existing command responses into RFC 7807 validation payloads without changing handlers.
 
-using Explore.Application.Responses;
-using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Explore.Application.Responses;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Controllers;
 
 internal static class ProgramValidationProblemDetails
 {
+    private static readonly JsonSerializerOptions ProblemJsonSerializerOptions = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
     public static ActionResult ToProgramValidationProblem<TKey>(
         this ControllerBase controller,
         BaseCommandResponse<TKey> response,
@@ -36,17 +41,15 @@ internal static class ProgramValidationProblemDetails
             problemDetails.Extensions["code"] = response.FailureCode;
         }
 
+        problemDetails.Extensions["traceId"] = controller.HttpContext.TraceIdentifier;
+        problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
+        problemDetails.Extensions["correlationId"] = controller.HttpContext.Items["CorrelationId"] as string;
+
         return new ContentResult
         {
             StatusCode = StatusCodes.Status400BadRequest,
             ContentType = "application/problem+json",
-            Content = JsonSerializer.Serialize(
-                problemDetails,
-                new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                })
+            Content = JsonSerializer.Serialize(problemDetails, ProblemJsonSerializerOptions)
         };
     }
 }

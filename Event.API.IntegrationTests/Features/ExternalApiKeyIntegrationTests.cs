@@ -4,6 +4,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Event.Api.IntegrationTests.Helpers;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Responses;
 using Explore.Domain.Enums;
@@ -99,6 +100,77 @@ public class ExternalApiKeyIntegrationTests
     }
 
     [Test]
+    public async Task CreateExternalApiKey_WithValidationFailure_ShouldReturnValidationProblemDetails()
+    {
+        var userId = Guid.NewGuid();
+        var payload = new CreateExternalApiKeyDto
+        {
+            Name = "Invalid Key",
+            Scopes = [],
+            ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User
+        };
+
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Post, "/api/externalapikey", userId);
+        request.Content = JsonContent.Create(payload);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await AssertExternalApiKeyValidationProblemAsync(
+            response,
+            "External API key creation failed.",
+            "At least one scope is required.");
+    }
+
+    [Test]
+    public async Task UpdateExternalApiKeyPolicy_WithMismatchedRouteId_ShouldReturnValidationProblemDetails()
+    {
+        var userId = Guid.NewGuid();
+        var apiKeyId = await CreateExternalApiKeyAsync(userId, "Mismatch Source", ["events:read"]);
+        var routeId = Guid.NewGuid();
+        var payload = new UpdateExternalApiKeyPolicyDto
+        {
+            Id = apiKeyId,
+            Name = "Mismatch Target",
+            Scopes = ["events:read"],
+            ExpiresAt = DateTime.UtcNow.AddDays(14)
+        };
+
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/externalapikey/{routeId}", userId);
+        request.Content = JsonContent.Create(payload);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await AssertExternalApiKeyValidationProblemAsync(
+            response,
+            "External API key ID mismatch.",
+            "External API key ID mismatch.");
+    }
+
+    [Test]
+    public async Task UpdateExternalApiKeyPolicy_WithValidationFailure_ShouldReturnValidationProblemDetails()
+    {
+        var userId = Guid.NewGuid();
+        var apiKeyId = await CreateExternalApiKeyAsync(userId, "Validation Source", ["events:read"]);
+        var payload = new UpdateExternalApiKeyPolicyDto
+        {
+            Id = apiKeyId,
+            Name = "Validation Target",
+            Scopes = [],
+            ExpiresAt = DateTime.UtcNow.AddDays(14)
+        };
+
+        using var request = _fixture.CreateAuthenticatedRequest(HttpMethod.Put, $"/api/externalapikey/{apiKeyId}", userId);
+        request.Content = JsonContent.Create(payload);
+
+        var response = await _fixture.Client.SendAsync(request);
+
+        await AssertExternalApiKeyValidationProblemAsync(
+            response,
+            "External API key update failed.",
+            "At least one scope is required.");
+    }
+
+    [Test]
     public async Task UpdateExternalApiKeyPolicy_WithDifferentUser_ShouldReturnNotFoundAndLeaveKeyUnchanged()
     {
         var ownerUserId = Guid.NewGuid();
@@ -118,7 +190,7 @@ public class ExternalApiKeyIntegrationTests
 
         var response = await _fixture.Client.SendAsync(request);
 
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+        await AssertExternalApiKeyNotFoundProblemAsync(response);
 
         using var scope = _fixture.Factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
@@ -128,6 +200,41 @@ public class ExternalApiKeyIntegrationTests
         await Assert.That(stored.Scopes).IsEqualTo("events:read");
         await Assert.That(stored.ExpiresAt).IsNull();
         await Assert.That(stored.OwnerId).IsEqualTo(ownerUserId);
+    }
+
+    private static async Task AssertExternalApiKeyValidationProblemAsync(
+        HttpResponseMessage response,
+        string expectedDetail,
+        string expectedError)
+    {
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "External API key validation failed");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo(expectedDetail);
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("validation_failed");
+
+        var errors = root.GetProperty("errors").GetProperty("externalApiKey");
+        await Assert.That(errors.GetArrayLength()).IsEqualTo(1);
+        await Assert.That(errors[0].GetString()).IsEqualTo(expectedError);
+    }
+
+    private static async Task AssertExternalApiKeyNotFoundProblemAsync(HttpResponseMessage response)
+    {
+        await ProblemDetailsAssertions.AssertProblemDetailsAsync(
+            response,
+            HttpStatusCode.NotFound,
+            "External API key not found");
+
+        using var document = await ProblemDetailsAssertions.ReadAsJsonAsync(response);
+        var root = document.RootElement;
+
+        await Assert.That(root.GetProperty("detail").GetString()).IsEqualTo("External API key not found.");
+        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("resource_not_found");
     }
 
     [Test]

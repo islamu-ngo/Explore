@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.ActorKeyStore;
 using Explore.Application.Features.ActorKeyStores.Requests.Commands;
@@ -24,6 +25,20 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class ActorKeyStoreController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "actorKeyStore",
+        "Actor key store validation failed",
+        "Actor key store creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "actorKeyStore",
+        "Actor key store validation failed",
+        "Actor key store update failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor KeyStoreNotFoundProblem = new(
+        "Actor key store not found",
+        "Actor key store not found.");
+
     private readonly IMediator _mediator;
 
     public ActorKeyStoreController(IMediator mediator)
@@ -65,7 +80,7 @@ public class ActorKeyStoreController : ControllerBase
     [EndpointDescription("Create a new actor key store")]
     [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateActorKeyStoreDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateActorKeyStoreCommand { ActorKeyStoreDto = dto };
@@ -73,7 +88,7 @@ public class ActorKeyStoreController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return Ok(response);
@@ -85,13 +100,13 @@ public class ActorKeyStoreController : ControllerBase
     [EndpointDescription("Update an existing actor key store")]
     [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateActorKeyStoreDto dto, CancellationToken cancellationToken = default)
     {
         if (id != dto.Id)
         {
-            return Problem(detail: "Actor Key Store ID mismatch", statusCode: StatusCodes.Status400BadRequest, title: "Bad request");
+            return this.ToValidationProblem(UpdateValidationProblem, "Actor key store ID mismatch.");
         }
 
         var command = new UpdateActorKeyStoreCommand { ActorKeyStoreDto = dto };
@@ -99,7 +114,7 @@ public class ActorKeyStoreController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
@@ -111,7 +126,7 @@ public class ActorKeyStoreController : ControllerBase
     [EndpointDescription("Delete an actor key store")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteActorKeyStoreCommand { Id = id };
@@ -119,7 +134,7 @@ public class ActorKeyStoreController : ControllerBase
 
         if (!result)
         {
-            return Problem(detail: "Actor Key Store not found", statusCode: StatusCodes.Status404NotFound, title: "Resource not found");
+            return this.ToNotFoundProblem(KeyStoreNotFoundProblem);
         }
 
         return NoContent();

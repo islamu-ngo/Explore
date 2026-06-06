@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Agenda;
 using Explore.Application.DTOs.EventAgendaItem;
@@ -31,6 +32,16 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class EventAgendaItemController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "eventAgendaItem",
+        "Event agenda item validation failed",
+        "Event agenda item creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "eventAgendaItem",
+        "Event agenda item validation failed",
+        "Event agenda item update failed.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<EventAgendaItemController> _logger;
     private readonly IResourceAssembler<EventAgendaItemDto, EventAgendaItemListDto> _resourceAssembler;
@@ -120,7 +131,7 @@ public class EventAgendaItemController : ControllerBase
     [EndpointDescription("Create a new event agenda item. Must be associated with an existing event.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventAgendaItemDto agendaItem, CancellationToken cancellationToken = default)
     {
@@ -129,7 +140,7 @@ public class EventAgendaItemController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -148,14 +159,14 @@ public class EventAgendaItemController : ControllerBase
     [EndpointDescription("Update an existing event agenda item.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventAgendaItemDto agendaItem, CancellationToken cancellationToken = default)
     {
         if (id != agendaItem.Id)
         {
-            return BadRequest(new { error = "Agenda item ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Agenda item ID mismatch.");
         }
 
         var command = new UpdateEventAgendaItemCommand { EventAgendaItemDto = agendaItem };
@@ -163,7 +174,7 @@ public class EventAgendaItemController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);

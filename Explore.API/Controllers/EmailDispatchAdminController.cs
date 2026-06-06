@@ -1,6 +1,8 @@
 // ABOUTME: Admin API controller for operator-safe Basic Dispatch Mode email dispatch status.
 // ABOUTME: Exposes sanitized lifecycle fields without email recipient, body, subject, or raw provider errors.
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Extensions;
@@ -17,8 +19,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Explore.API.Controllers;
 
@@ -53,7 +53,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(HalCollectionResource<EmailDispatchStatusDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<HalCollectionResource<EmailDispatchStatusDto>>> GetStatus(
         [FromQuery] Guid tenantId,
         [FromQuery] int limit = 50,
@@ -86,7 +86,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> PauseTenant(
         Guid tenantId,
         [FromQuery] string? reason = null,
@@ -102,7 +102,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             },
             cancellationToken);
 
-        return result.Success ? Ok(result) : BadRequest(result);
+        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>
@@ -112,7 +112,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
     [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> ResumeTenant(
         Guid tenantId,
         CancellationToken cancellationToken = default)
@@ -126,7 +126,7 @@ public sealed class EmailDispatchAdminController : ExploreControllerBase
             },
             cancellationToken);
 
-        return result.Success ? Ok(result) : BadRequest(result);
+        return result.Success ? Ok(result) : this.ToEmailDispatchProblem(result);
     }
 
     /// <summary>

@@ -21,6 +21,9 @@ namespace Explore.API.Controllers;
 [ApiController]
 public class EventRegistrationController : ExploreControllerBase
 {
+    private const string ValidationFailedCode = "validation_failed";
+    private const string ResourceNotFoundCode = "resource_not_found";
+
     private readonly IMediator _mediator;
     private readonly ILogger<EventRegistrationController> _logger;
 
@@ -136,14 +139,22 @@ public class EventRegistrationController : ExploreControllerBase
     [EndpointSummary("Update Event Registration")]
     [EndpointDescription("Update an existing event registration (e.g., change approval status)")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventRegistrationDto dto, CancellationToken cancellationToken = default)
     {
         if (id != dto.Id)
         {
-            return Problem(detail: "Event Registration ID mismatch", statusCode: StatusCodes.Status400BadRequest, title: "Bad request");
+            return ToValidationProblem(
+                new BaseCommandResponse<Guid>
+                {
+                    Success = false,
+                    Message = "Event registration ID mismatch.",
+                    FailureCode = ValidationFailedCode,
+                    Errors = ["Event registration ID mismatch."]
+                },
+                "Event registration ID mismatch.");
         }
 
         var command = new UpdateEventRegistrationCommand { EventRegistrationDto = dto };
@@ -151,7 +162,9 @@ public class EventRegistrationController : ExploreControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return string.Equals(response.Message, "Event Registration not found.", StringComparison.Ordinal)
+                ? ToNotFoundProblem(response, "Event registration not found.")
+                : ToValidationProblem(response, "Event registration update failed.");
         }
 
         return Ok(response);
@@ -177,5 +190,69 @@ public class EventRegistrationController : ExploreControllerBase
         }
 
         return NoContent();
+    }
+
+    private ActionResult ToValidationProblem<TKey>(BaseCommandResponse<TKey> response, string fallbackDetail)
+    {
+        var errors = response.Errors is { Count: > 0 }
+            ? response.Errors.ToArray()
+            : [response.Message ?? fallbackDetail];
+
+        var problemDetails = new ValidationProblemDetails(new Dictionary<string, string[]>
+        {
+            ["eventRegistration"] = errors
+        })
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Event registration validation failed",
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+            Detail = response.Message ?? fallbackDetail,
+            Instance = HttpContext.Request.Path
+        };
+
+        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(response.FailureCode)
+            ? ValidationFailedCode
+            : response.FailureCode;
+        AddProblemDetailsExtensions(problemDetails);
+
+        return new ObjectResult(problemDetails)
+        {
+            StatusCode = StatusCodes.Status400BadRequest,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
+    private ActionResult ToNotFoundProblem<TKey>(BaseCommandResponse<TKey> response, string fallbackDetail)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status404NotFound,
+            Title = "Event registration not found",
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+            Detail = response.Message ?? fallbackDetail,
+            Instance = HttpContext.Request.Path
+        };
+
+        problemDetails.Extensions["code"] = string.IsNullOrWhiteSpace(response.FailureCode)
+            ? ResourceNotFoundCode
+            : response.FailureCode;
+        AddProblemDetailsExtensions(problemDetails);
+
+        return new ObjectResult(problemDetails)
+        {
+            StatusCode = StatusCodes.Status404NotFound,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
+    private void AddProblemDetailsExtensions(ProblemDetails problemDetails)
+    {
+        problemDetails.Extensions["traceId"] = HttpContext.TraceIdentifier;
+        problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
+
+        if (HttpContext.Items["CorrelationId"] is string correlationId)
+        {
+            problemDetails.Extensions["correlationId"] = correlationId;
+        }
     }
 }

@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.Features.LocationRooms.Requests.Commands;
@@ -28,6 +29,16 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public class LocationRoomController : ControllerBase
 {
+    private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
+        "locationRoom",
+        "Location room validation failed",
+        "Location room creation failed.");
+
+    private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
+        "locationRoom",
+        "Location room validation failed",
+        "Location room update failed.");
+
     private readonly IMediator _mediator;
     private readonly ILogger<LocationRoomController> _logger;
     private readonly IResourceAssembler<LocationRoomDto, LocationRoomListDto> _resourceAssembler;
@@ -96,7 +107,7 @@ public class LocationRoomController : ControllerBase
     [EndpointDescription("Create a new room within a location.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateLocationRoomDto room, CancellationToken cancellationToken = default)
     {
@@ -105,7 +116,7 @@ public class LocationRoomController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, CreateValidationProblem);
         }
 
         return CreatedAtRoute(
@@ -124,14 +135,14 @@ public class LocationRoomController : ControllerBase
     [EndpointDescription("Update an existing location room.")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateLocationRoomDto room, CancellationToken cancellationToken = default)
     {
         if (id != room.Id)
         {
-            return BadRequest(new { error = "Room ID mismatch" });
+            return this.ToValidationProblem(UpdateValidationProblem, "Room ID mismatch.");
         }
 
         var command = new UpdateLocationRoomCommand { LocationRoomDto = room };
@@ -139,7 +150,7 @@ public class LocationRoomController : ControllerBase
 
         if (!response.Success)
         {
-            return BadRequest(response);
+            return this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
 
         return Ok(response);
