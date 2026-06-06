@@ -17,8 +17,8 @@ namespace Explore.Persistence.Seed;
 ///
 /// Seeding order matters due to FK constraints and circular dependencies (User/Org ↔ Actor):
 /// 1. Tenant → 2. Users (no ActorId) → 3. Organizations (no ActorId) → 4. Actors →
-    /// 5. Update Users/Orgs with ActorId → 6. TenantUsers, role grants, OrgMembers, Storage →
-    /// 7. Settings, Capabilities → 8. Categories, Tags, Location → 9. Islamic event catalog
+/// 5. Update Users/Orgs with ActorId → 6. TenantUsers, role grants, OrgMembers, Storage →
+/// 7. Settings, Capabilities → 8. Categories, Tags, Location → 9. Islamic event catalog
 /// </summary>
 public static class SeedData
 {

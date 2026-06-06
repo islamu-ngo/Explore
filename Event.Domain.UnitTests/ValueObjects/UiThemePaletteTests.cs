@@ -167,25 +167,47 @@ public class UiThemePaletteTests
 
     private static UiThemePalette CreateWhitePalette() => new()
     {
-        Primary = "#18181B", PrimaryContrastText = "#FFFFFF",
-        Secondary = "#52525B", SecondaryContrastText = "#FFFFFF",
-        Background = "#F5F5F7", Surface = "#FFFFFF",
-        AppbarBackground = "#FFFFFF", AppbarText = "#18181B",
-        DrawerBackground = "#FFFFFF", DrawerText = "#18181B", DrawerIcon = "#52525B",
-        TextPrimary = "#18181B", TextSecondary = "#404040",
-        Info = "#52525B", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
-        LinesDefault = "#A1A1AA", Divider = "#E4E4E7"
+        Primary = "#18181B",
+        PrimaryContrastText = "#FFFFFF",
+        Secondary = "#52525B",
+        SecondaryContrastText = "#FFFFFF",
+        Background = "#F5F5F7",
+        Surface = "#FFFFFF",
+        AppbarBackground = "#FFFFFF",
+        AppbarText = "#18181B",
+        DrawerBackground = "#FFFFFF",
+        DrawerText = "#18181B",
+        DrawerIcon = "#52525B",
+        TextPrimary = "#18181B",
+        TextSecondary = "#404040",
+        Info = "#52525B",
+        Success = "#16A34A",
+        Warning = "#D97706",
+        Error = "#DC2626",
+        LinesDefault = "#A1A1AA",
+        Divider = "#E4E4E7"
     };
 
     private static UiThemePalette CreateBlackPalette() => new()
     {
-        Primary = "#FAFAFA", PrimaryContrastText = "#1A1A1A",
-        Secondary = "#A1A1AA", SecondaryContrastText = "#1A1A1A",
-        Background = "#1A1A1A", Surface = "#242424",
-        AppbarBackground = "rgba(18,18,18,0.92)", AppbarText = "#FAFAFA",
-        DrawerBackground = "#1A1A1A", DrawerText = "#FAFAFA", DrawerIcon = "#A1A1AA",
-        TextPrimary = "#FAFAFA", TextSecondary = "#A1A1AA",
-        Info = "#A1A1AA", Success = "#34D399", Warning = "#FBBF24", Error = "#F87171",
-        LinesDefault = "#3F3F46", Divider = "#2E2E2E"
+        Primary = "#FAFAFA",
+        PrimaryContrastText = "#1A1A1A",
+        Secondary = "#A1A1AA",
+        SecondaryContrastText = "#1A1A1A",
+        Background = "#1A1A1A",
+        Surface = "#242424",
+        AppbarBackground = "rgba(18,18,18,0.92)",
+        AppbarText = "#FAFAFA",
+        DrawerBackground = "#1A1A1A",
+        DrawerText = "#FAFAFA",
+        DrawerIcon = "#A1A1AA",
+        TextPrimary = "#FAFAFA",
+        TextSecondary = "#A1A1AA",
+        Info = "#A1A1AA",
+        Success = "#34D399",
+        Warning = "#FBBF24",
+        Error = "#F87171",
+        LinesDefault = "#3F3F46",
+        Divider = "#2E2E2E"
     };
 }
