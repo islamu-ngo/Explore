@@ -82,10 +82,10 @@ public sealed class ParkEmailDispatchCommandHandler : IRequestHandler<ParkEmailD
         string message,
         string? failureCode,
         IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        FailureCode = failureCode,
-        Errors = errors.ToList()
-    };
+        {
+            Success = false,
+            Message = message,
+            FailureCode = failureCode,
+            Errors = errors.ToList()
+        };
 }

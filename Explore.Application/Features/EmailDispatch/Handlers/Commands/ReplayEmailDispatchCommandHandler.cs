@@ -105,10 +105,10 @@ public sealed class ReplayEmailDispatchCommandHandler : IRequestHandler<ReplayEm
         string message,
         string? failureCode,
         IEnumerable<string> errors) => new()
-    {
-        Success = false,
-        Message = message,
-        FailureCode = failureCode,
-        Errors = errors.ToList()
-    };
+        {
+            Success = false,
+            Message = message,
+            FailureCode = failureCode,
+            Errors = errors.ToList()
+        };
 }

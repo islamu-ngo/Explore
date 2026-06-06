@@ -1,8 +1,8 @@
 // ABOUTME: Unit-style tests for the API EmailDispatchHealthCheck.
 // ABOUTME: Verifies Basic Dispatch Mode health reports enabled and intentionally disabled states safely.
 
-using Explore.API.HealthChecks;
 using Explore.API.Configuration;
+using Explore.API.HealthChecks;
 using Explore.Infrastructure;
 using FluentAssertions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;

@@ -1,8 +1,8 @@
 // ABOUTME: TickerQ job functions for scheduling durable email dispatch drains.
 // ABOUTME: Delegates execution to Application contracts so TickerQ never owns email delivery state.
 
-using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Scheduling;
+using Explore.Application.Contracts.Services;
 using TickerQ.Utilities.Base;
 
 namespace Explore.API.Scheduling;

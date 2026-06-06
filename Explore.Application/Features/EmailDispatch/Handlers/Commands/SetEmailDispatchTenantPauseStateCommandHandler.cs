@@ -30,6 +30,7 @@ public sealed class SetEmailDispatchTenantPauseStateCommandHandler : IRequestHan
             {
                 Success = false,
                 Message = "Email dispatch tenant control update failed validation.",
+                FailureCode = EmailDispatchFailureCodes.ValidationFailed,
                 Errors = validationResult.Errors.Select(error => error.ErrorMessage).ToList()
             };
         }
