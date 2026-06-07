@@ -369,6 +369,7 @@ Non-interactive callers (direct API consumers, integrations, automation) authent
 - Each key holds an explicit `Scopes` set (e.g., `events:read`, `admin:tenant`, `admin:instance`).
 - Scopes are bounded by the owner type (`ExternalApiKeyScopeCeiling`): a `User`-owned key cannot hold `admin:tenant`, a `Tenant`-owned key cannot hold `admin:instance`. Attempts to create or update a key with out-of-ceiling scopes are rejected at validator level.
 - Authorization evaluators apply scope gates before any owner-authority check (see `MachineScopeMapping.ScopesPermit`). A key with `events:read` alone cannot perform mutations regardless of owner authority.
+- MCP scopes are deliberately narrow: `mcp:read` permits MCP AI-conversation/read discovery only, while `mcp:propose` is required for MCP proposal tools/prompts and permits proposal creation without granting event write, event confirmation, or arbitrary user-write authority. SDK authorization filters hide proposal tools from API keys that lack `mcp:propose`, and MediatR authorization still fail-closes the call path.
 
 ### Machine Principal
 

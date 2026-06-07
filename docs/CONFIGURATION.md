@@ -6,7 +6,7 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-05-23
+> **Last Verified:** 2026-06-07
 > **Source Anchors:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Explore.Blazor/Extensions/YarpProxyExtensions.cs`, `Explore.Infrastructure/Services/HierarchicalSettingsResolver.cs`, `Explore.Infrastructure/Storage/LocalFileStorageProvider.cs`, `Explore.Infrastructure/Storage/S3ConfigResolver.cs`, `Explore.Infrastructure/StorageReconciliationSettings.cs`, `Explore.Infrastructure/Mail/SmtpConfigResolver.cs`, `Explore.Infrastructure/Services/SetupSecretProvider.cs`, `Explore.Domain/Constants/GovernanceSettingKeys.cs`, `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`, `Explore.Domain/Secrets/SecretDefinitionRegistry.cs`, `docs/SECRETS.md`
 
 ## Runtime Configuration Sources
@@ -127,23 +127,38 @@ Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback
 
 ### MCP Adapter Static Configuration
 
-The Model Context Protocol adapter is optional and disabled by default. It is hosted by the API only when explicitly enabled, and it remains an adapter over the AI Tool Contract Registry rather than a second tool authority. The implementation wires configuration, health, endpoint registration, read-only registry discovery, safe AI conversation resources, a confirmation prompt, and proposal-first tool mutation through the normal MediatR/API confirmation path.
+The Model Context Protocol adapter is optional and disabled by default. The API composes the official MCP SDK services, but maps the Streamable HTTP endpoint only when explicitly enabled. Use [MCP_DEBUGGING.md](MCP_DEBUGGING.md) for redacted local client templates and smoke guidance. It remains an adapter over the AI Tool Contract Registry rather than a second tool authority. The implementation wires configuration, health, endpoint registration, read-only registry discovery, first-class registry-projected proposal tools, safe AI conversation resources, a confirmation prompt, and proposal-first tool mutation through the normal MediatR/API confirmation path.
 
 | Key | Default | Description |
 |---|---:|---|
 | `Mcp:Enabled` | `false` | Enables the API-hosted MCP endpoint. Keep disabled unless an operator intentionally exposes MCP. |
-| `Mcp:EndpointPath` | `/mcp` | Route prefix for the Streamable HTTP MCP endpoint. |
-| `Mcp:Stateless` | `true` | Uses stateless Streamable HTTP so API replicas do not require MCP session affinity. |
-| `Mcp:EnableLegacySse` | `false` | Reserved for a future trusted-isolated deployment decision. Legacy SSE is not part of the default MCP posture. |
+| `Mcp:EndpointPath` | `/mcp` | Route prefix for the Streamable HTTP MCP endpoint. Bare values such as `mcp` are normalized to `/mcp` before validation and endpoint mapping. |
+| `Mcp:Stateless` | `true` | Uses stateless Streamable HTTP so API replicas do not require MCP session affinity. Startup validation rejects `false`. |
+| `Mcp:EnableLegacySse` | `false` | Startup ceiling for future legacy-SSE governance only. Runtime legacy SSE remains unavailable and the health check reports `legacySseRuntimeEnabled=false`. |
+
+Runtime MCP governance is stored in the hierarchical settings cascade. These values can disable an already mapped startup endpoint without restarting the API, but they cannot map a new endpoint when `Mcp:Enabled=false` at startup and cannot make endpoint path/stateless mode runtime-editable.
+
+| Setting key | Default | Scope | Description |
+|---|---:|---|---|
+| `mcp.enabled` | `true` | Instance/Tenant | Runtime adapter switch. Effective MCP exposure is `Mcp:Enabled && resolved(mcp.enabled)`. Instance administrators can disable the adapter without changing route shape. |
+| `mcp.enable_legacy_sse` | `false` | Instance/Tenant | Records legacy-SSE governance intent only. Current runtime keeps `legacySseRuntimeEnabled=false` even when startup and DB values are true. |
+| `governance.lock_tenant_mcp` | `true` | Instance | Prevents tenant administrators in multi-tenant mode from overriding `mcp.enabled`. |
+| `governance.lock_tenant_mcp_legacy_sse` | `true` | Instance | Prevents tenant administrators in multi-tenant mode from overriding `mcp.enable_legacy_sse`. |
 
 MCP must not expose provider credentials, endpoint URLs, model IDs, prompts, provider responses, tool payloads, tenant IDs, or raw provider errors in configuration diagnostics, health data, logs, metrics, or browser responses. Mutating MCP tools must keep using the proposal/confirmation workflow and must never write repositories directly.
 
 Operational expectations:
 
-- Keep `Mcp:Enabled=false` unless an operator intentionally exposes the authenticated API-hosted endpoint to trusted MCP clients.
-- Keep `Mcp:Stateless=true`; the initial adapter is designed for stateless Streamable HTTP and API replicas without MCP session affinity.
-- Keep `Mcp:EnableLegacySse=false`; legacy SSE is not supported by this implementation.
-- Verify `/health/ready` includes `mcp-adapter` before exposing MCP. Disabled MCP reports intentional degraded readiness posture; enabled MCP reports healthy configuration posture.
+- Keep `Mcp:Enabled=false` unless an operator intentionally exposes the API-hosted endpoint to trusted MCP clients. Once the endpoint is mapped at startup, use `mcp.enabled=false` for runtime rollback without restart.
+- Keep `Mcp:EndpointPath` and `Mcp:Stateless` startup-only. Runtime/admin settings must not change route shape or session posture after startup.
+- Keep `Mcp:Stateless=true`; the initial adapter is designed for stateless Streamable HTTP and API replicas without MCP session affinity. Startup validation rejects `false`.
+- Keep `Mcp:EnableLegacySse=false` in normal deployments. A true value is accepted only as a startup ceiling for future governance; the current runtime does not enable legacy SSE because the SDK's legacy mode requires stateful in-memory sessions and weaker backpressure than Streamable HTTP.
+- Do not add a product `stdio` MCP host to the API deployment. `stdio` remains deferred by [ADR-011](adr/ADR-011-local-mcp-stdio-diagnostic-host.md) unless a future local-only diagnostic host is separately approved and verified.
+- Treat MCP as API-key-first for external clients. The endpoint is mapped anonymously so SDK authorization filters can expose explicitly anonymous-safe registry discovery, while scope-aware MCP authorization policies and normal MediatR authorization still gate scoped operations. Valid `X-API-Key` requests with `mcp:read` can use MCP read resources, `mcp:propose` is required to discover/call proposal tools or proposal prompts, and no key, invalid keys, or revoked keys can use only anonymous-safe capabilities.
+- Keep SDK registration explicit. The API host uses `WithTools<T>()`, `WithResources<T>()`, `WithPrompts<T>()`, and registry-projected tool options instead of assembly-wide discovery so transport/startup behavior remains reviewable and avoids avoidable reflection pressure. Native AOT compatibility is not promised until a dedicated publish profile is added and tested.
+- Treat projected `propose_*` MCP tools as ergonomic wrappers only. Their payload fields come from ATCR JSON schemas, SDK annotations are hints, and execution still persists a proposed action for API/HAL confirmation.
+- Treat MCP protocol evolution as ADR-gated. There is no configuration-only switch for stateful sessions, resource subscriptions, sampling, elicitation, roots, progress notifications, list-changed notifications, or client-specific compatibility shims.
+- Verify `/health/ready` includes `mcp-adapter` before exposing MCP. Disabled MCP reports intentional degraded readiness posture; enabled MCP reports healthy configuration posture with `enabled`, `startupEnabled`, `runtimeEnabled`, `legacySseStartupCeiling`, `legacySseRuntimeRequested`, and `legacySseRuntimeEnabled` safe booleans, not tenant IDs or secrets.
 
 The `ai-provider` readiness check reports safe booleans such as `endpointConfigured`, `apiKeyConfigured`, and `modelConfigured`; it never reports raw endpoint URLs, API keys, prompts, responses, model IDs, provider request IDs, or provider exception bodies.
 
@@ -296,6 +311,7 @@ Important safety behavior:
 `Explore.API.Extensions.ConfigurationExtensions` maps compatibility names into canonical .NET keys. Most mappings use `TrySet`, so existing canonical keys are not overwritten; `CERBOS_GRPC_ENDPOINT` explicitly assigns `Cerbos:GrpcEndpoint` when present.
 
 - `DEPLOYMENT_MODE` (Infisical `/api`) -> `Deployment:Mode` (`single_tenant`/`multi_tenant` normalized to `SingleTenant`/`MultiTenant`)
+- `MCP_ENABLED`, `MCP_ENDPOINT_PATH`, `MCP_STATELESS`, `MCP_ENABLE_LEGACY_SSE` (Infisical `/api` or `/mcp`) -> `Mcp:Enabled`, `Mcp:EndpointPath`, `Mcp:Stateless`, `Mcp:EnableLegacySse`; bare endpoint paths such as `mcp` normalize to `/mcp`, and `MCP_ENABLE_LEGACY_SSE` is a startup ceiling only
 - `KEYCLOAK_ENDPOINT` + `KEYCLOAK_REALM` (Infisical `/keycloak`) -> `Keycloak:Authority`, `Keycloak:MetadataAddress`, `Keycloak:AuthorizationUrl`
 - Keycloak mapper defaults -> `Keycloak:Audience=islamu-event-api`, `Keycloak:RequireHttpsMetadata=true`
 - `CERBOS_GRPC_ENDPOINT` (Infisical `/cerbos`) -> `Cerbos:GrpcEndpoint`

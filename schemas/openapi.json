@@ -1871,6 +1871,146 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/ai/assistant/models": {
+      "post": {
+        "tags": [
+          "AiAssistant"
+        ],
+        "summary": "Discover AI assistant models",
+        "description": "Returns OpenAI-compatible model IDs exposed by the supplied provider endpoint without exposing credentials.",
+        "operationId": "GetAiAssistantModels",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AiAssistantModelDiscoveryRequestDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AiAssistantModelDiscoveryRequestDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AiAssistantModelDiscoveryRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AiAssistantModelDto"
+                  }
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AiAssistantModelDto"
+                  }
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal+json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": { },
+              "application/hal+json": { }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/ai/assistant/conversations": {
       "get": {
         "tags": [
@@ -22782,6 +22922,182 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/instance/settings/mcp": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get MCP Governance Settings",
+        "description": "Returns instance MCP runtime enablement and tenant override lock settings. Startup endpoint path and stateless mode are not runtime-editable.",
+        "operationId": "GetInstanceMcpGovernanceSettings",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpGovernanceSettingsDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpGovernanceSettingsDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpGovernanceSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update MCP Governance Settings",
+        "description": "Updates instance MCP runtime enablement and tenant override locks. Requires instance administrator.",
+        "operationId": "UpdateInstanceMcpGovernanceSettings",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/McpGovernanceSettingsDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/McpGovernanceSettingsDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/McpGovernanceSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
     "/api/instance/settings/render-policy": {
       "get": {
         "tags": [
@@ -39662,6 +39978,55 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "AiAssistantModelDiscoveryRequestDto": {
+        "type": "object",
+        "properties": {
+          "endpointUrl": {
+            "type": "string"
+          },
+          "apiKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AiAssistantModelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "maxInputTokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxOutputTokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "supportsToolProposals": {
+            "type": "boolean"
+          },
+          "supportsStreaming": {
+            "type": "boolean"
           }
         }
       },
@@ -63180,6 +63545,23 @@
       "ManagedProviderOrganizerKindDto": {
         "type": "integer"
       },
+      "McpGovernanceSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "enableLegacySse": {
+            "type": "boolean"
+          },
+          "lockTenantMcp": {
+            "type": "boolean"
+          },
+          "lockTenantMcpLegacySse": {
+            "type": "boolean"
+          }
+        }
+      },
       "ModifiedDefinitionDto": {
         "required": [
           "namespace",
@@ -67522,6 +67904,12 @@
           "canOverrideAiAssistant": {
             "type": "boolean"
           },
+          "canOverrideMcp": {
+            "type": "boolean"
+          },
+          "canOverrideMcpLegacySse": {
+            "type": "boolean"
+          },
           "aiAssistantEnabled": {
             "type": "boolean"
           },
@@ -67538,6 +67926,12 @@
             "type": "string"
           },
           "aiAssistantAllowAnonymousAccess": {
+            "type": "boolean"
+          },
+          "mcpEnabled": {
+            "type": "boolean"
+          },
+          "mcpEnableLegacySse": {
             "type": "boolean"
           }
         }
@@ -70499,6 +70893,12 @@
             "type": "string"
           },
           "aiAssistantAllowAnonymousAccess": {
+            "type": "boolean"
+          },
+          "mcpEnabled": {
+            "type": "boolean"
+          },
+          "mcpEnableLegacySse": {
             "type": "boolean"
           }
         }

@@ -6,7 +6,7 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API
-> **Last Verified:** 2026-05-27
+> **Last Verified:** 2026-06-07
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.API/Controllers/`, `Explore.API/Middleware/`, `Explore.API/Hateoas/`, `Explore.API/Authentication/`, `Explore.API/Extensions/`, `Explore.API/OpenApi/`, `Explore.API/Explore.API.csproj`, `Explore.Blazor.Client/Explore.Blazor.Client.csproj`, `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs`, `Event.API.IntegrationTests/Features/OpenApiParityTests.cs`
 
 ## Scope
@@ -29,6 +29,8 @@ For task-first integration guidance, use [API_COOKBOOK.md](API_COOKBOOK.md). Gen
 
 `/alive`, `/health`, and `/metrics` are runtime operational endpoints, not generated OpenAPI controller operations. Storage local-first readiness is reported through the `storage` health check, and the dry-run-first reconciliation worker posture is reported through `storage-reconciliation`. These health payloads use bounded status/failure fields and must not expose filesystem paths, object keys, bucket names, endpoints, access keys, or secrets.
 
+The optional MCP adapter is not an OpenAPI controller group. It is mapped at the startup `Mcp:EndpointPath` only when `Mcp:Enabled=true`, then gated at runtime by hierarchical `mcp.enabled` settings after tenant/auth resolution. The endpoint is mapped anonymously so MCP SDK authorization filters can expose anonymous-safe registry discovery, while scoped tools/resources/prompts still require a valid bearer or API-key principal. Runtime MCP governance never changes endpoint path or stateless transport mode.
+
 ---
 
 ## Middleware Pipeline (Exact Order)
@@ -44,17 +46,18 @@ The middleware pipeline in `Program.cs` is ordered precisely. Changing order wil
 7. **HTTPS Redirection** — `UseHttpsRedirection()`.
 8. **HATEOAS Prefer Header** — `UseHateoas()`. RFC 7240 `Prefer` header processing (`return=minimal` strips `_links`).
 9. **Routing** — `UseRouting()`.
-10. **Tenant Resolution (pre-auth)** — `UseMiddleware<ApiTenantResolutionMiddleware>()`. Resolves `X-Tenant-Slug` and normalized host hints for `/api` requests; API-key requests may defer binding until after authentication.
+10. **Tenant Resolution (pre-auth)** — `UseMiddleware<ApiTenantResolutionMiddleware>()`. Resolves `X-Tenant-Slug` and normalized host hints for `/api` and `/mcp` requests; API-key requests may defer binding until after authentication.
 11. **Request Timeouts** — `UseRequestTimeouts()`. Three configurable tiers (see below).
 12. **Auth Conflict Guard** — `UseMiddleware<ApiAuthenticationConflictMiddleware>()`. Rejects conflicting auth inputs before standard authentication runs.
 13. **Authentication** — `UseAuthentication()`. JWT Bearer via Keycloak.
 14. **Tenant Resolution (post-auth)** — `UseMiddleware<ApiTenantPostAuthenticationMiddleware>()`. Finalizes API-key tenant binding, mismatch handling, and fail-closed auth behavior.
-15. **Request Localization** — `UseRequestLocalization()`.
-16. **Idempotency** — `UseMiddleware<IdempotencyMiddleware>()`. Implements `Idempotency-Key` header for write operations (POST/PUT/PATCH/DELETE). Caches responses by (Key, TenantId) and replays on duplicate requests within 24-hour window.
-17. **Rate Limiter** — `UseRateLimiter()`. Five tiered policies (see below).
-18. **Authorization** — `UseAuthorization()`.
-19. **Output Cache** — `UseOutputCache()`. Eight cache policies (see below).
-20. **ETag** — `UseETag()`. SHA256-based weak ETags, 304 Not Modified support.
+15. **MCP Runtime Gate** — `UseMiddleware<McpRuntimeGateMiddleware>()`. Applies only to the configured MCP path after tenant/auth context exists. Returns `404` when startup mapping is enabled but runtime `mcp.enabled` resolves false.
+16. **Request Localization** — `UseRequestLocalization()`.
+17. **Idempotency** — `UseMiddleware<IdempotencyMiddleware>()`. Implements `Idempotency-Key` header for write operations (POST/PUT/PATCH/DELETE). Caches responses by (Key, TenantId) and replays on duplicate requests within 24-hour window.
+18. **Rate Limiter** — `UseRateLimiter()`. Five tiered policies (see below).
+19. **Authorization** — `UseAuthorization()`.
+20. **Output Cache** — `UseOutputCache()`. Eight cache policies (see below).
+21. **ETag** — `UseETag()`. SHA256-based weak ETags, 304 Not Modified support.
 
 ---
 
@@ -233,7 +236,7 @@ Non-interactive callers authenticate with long-lived `X-API-Key` credentials in 
 | `4` | `TENANT` | Tenant | Required | Acts as tenant admin for the bound tenant |
 | `5` | `INSTANCE_ADMIN` | Instance Admin | **Nullable** | Cross-tenant operator; bypasses tenant isolation |
 
-**Scope Model** (`ExternalApiKeyScopes`): `events:read`, `events:write`, `organizations:read`, `organizations:write`, `groups:read`, `groups:write`, `users:read`, `users:write`, `lookups:read`, `registrations:write`, `api-keys:manage`, `admin:tenant`, `admin:instance`. Effective permissions are the intersection of (a) the scopes on the key and (b) the owner's authority ceiling (`ExternalApiKeyScopeCeiling`). Keys cannot hold scopes above their owner type.
+**Scope Model** (`ExternalApiKeyScopes`): `events:read`, `events:write`, `organizations:read`, `organizations:write`, `groups:read`, `groups:write`, `users:read`, `users:write`, `lookups:read`, `mcp:read`, `registrations:write`, `mcp:propose`, `api-keys:manage`, `admin:tenant`, `admin:instance`. Effective permissions are the intersection of (a) the scopes on the key and (b) the owner's authority ceiling (`ExternalApiKeyScopeCeiling`). Keys cannot hold scopes above their owner type. MCP-specific scopes are least-privilege AI-conversation scopes: `mcp:read` allows MCP conversation/read discovery only, and `mcp:propose` is required to discover/call MCP proposal tools and prompts without granting event writes or confirmation authority.
 
 **Authentication Flow**:
 1. `ApiKeyAuthenticationHandler` parses the `X-API-Key` header, splits `{keyId}.{secret}`.
@@ -685,6 +688,10 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `PUT /api/footer/settings` — update footer settings
 9. Actor appearance:
    - Actor entities include appearance fields (BackgroundColor, BackgroundEffect, BannerColor, BannerPictureId, BackgroundImageId) managed via actor update endpoints.
+10. Instance MCP governance:
+   - `GET /api/instance/settings/mcp` — instance MCP runtime enablement and tenant override lock state.
+   - `PUT /api/instance/settings/mcp` — update `mcp.enabled`, `mcp.enable_legacy_sse`, `governance.lock_tenant_mcp`, and `governance.lock_tenant_mcp_legacy_sse`.
+   - Endpoint path and stateless mode remain startup-only and are not exposed as runtime-editable fields.
 
 ---
 

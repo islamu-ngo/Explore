@@ -252,6 +252,17 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Discover AI assistant models
+        /// </summary>
+        /// <remarks>
+        /// Returns OpenAI-compatible model IDs exposed by the supplied provider endpoint without exposing credentials.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<AiAssistantModelDto>> GetAiAssistantModelsAsync(AiAssistantModelDiscoveryRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get AI conversations
         /// </summary>
         /// <remarks>
@@ -2436,6 +2447,28 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get MCP Governance Settings
+        /// </summary>
+        /// <remarks>
+        /// Returns instance MCP runtime enablement and tenant override lock settings. Startup endpoint path and stateless mode are not runtime-editable.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<McpGovernanceSettingsDto> GetInstanceMcpGovernanceSettingsAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update MCP Governance Settings
+        /// </summary>
+        /// <remarks>
+        /// Updates instance MCP runtime enablement and tenant override locks. Requires instance administrator.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateInstanceMcpGovernanceSettingsAsync(McpGovernanceSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get Render Policy Settings
         /// </summary>
         /// <remarks>
@@ -4472,7 +4505,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor"
                     urlBuilder_.Append("api/actor");
                     urlBuilder_.Append('?');
@@ -4583,7 +4616,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor"
                     urlBuilder_.Append("api/actor");
                     urlBuilder_.Append('?');
@@ -4692,7 +4725,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor/{id}"
                     urlBuilder_.Append("api/actor/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4799,7 +4832,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor/{id}"
                     urlBuilder_.Append("api/actor/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -4919,7 +4952,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor/{id}"
                     urlBuilder_.Append("api/actor/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5034,7 +5067,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor/by-did/{did}"
                     urlBuilder_.Append("api/actor/by-did/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5134,7 +5167,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor/by-tenant/{tenantId}"
                     urlBuilder_.Append("api/actor/by-tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5239,7 +5272,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actorkeystore"
                     urlBuilder_.Append("api/actorkeystore");
                     urlBuilder_.Append('?');
@@ -5332,7 +5365,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actorkeystore"
                     urlBuilder_.Append("api/actorkeystore");
                     urlBuilder_.Append('?');
@@ -5431,7 +5464,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actorkeystore/{id}"
                     urlBuilder_.Append("api/actorkeystore/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5538,7 +5571,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actorkeystore/{id}"
                     urlBuilder_.Append("api/actorkeystore/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5647,7 +5680,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actorkeystore/{id}"
                     urlBuilder_.Append("api/actorkeystore/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -5739,7 +5772,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor-subscriptions"
                     urlBuilder_.Append("api/actor-subscriptions");
                     urlBuilder_.Append('?');
@@ -5860,7 +5893,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor-subscriptions"
                     urlBuilder_.Append("api/actor-subscriptions");
                     urlBuilder_.Append('?');
@@ -5979,7 +6012,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor-subscriptions/actors/{targetActorId}"
                     urlBuilder_.Append("api/actor-subscriptions/actors/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(targetActorId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6106,7 +6139,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor-subscriptions/actors/{targetActorId}"
                     urlBuilder_.Append("api/actor-subscriptions/actors/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(targetActorId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6243,7 +6276,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actor-subscriptions/actors/{targetActorId}/notification-level"
                     urlBuilder_.Append("api/actor-subscriptions/actors/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(targetActorId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6371,7 +6404,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actortype"
                     urlBuilder_.Append("api/actortype");
                     urlBuilder_.Append('?');
@@ -6460,7 +6493,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/actortype/{id}"
                     urlBuilder_.Append("api/actortype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -6557,7 +6590,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ai/assistant/bootstrap"
                     urlBuilder_.Append("api/ai/assistant/bootstrap");
                     urlBuilder_.Append('?');
@@ -6651,6 +6684,139 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Discover AI assistant models
+        /// </summary>
+        /// <remarks>
+        /// Returns OpenAI-compatible model IDs exposed by the supplied provider endpoint without exposing credentials.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<AiAssistantModelDto>> GetAiAssistantModelsAsync(AiAssistantModelDiscoveryRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/ai/assistant/models"
+                    urlBuilder_.Append("api/ai/assistant/models");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<AiAssistantModelDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 502)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Gateway", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get AI conversations
         /// </summary>
         /// <remarks>
@@ -6673,7 +6839,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ai/assistant/conversations"
                     urlBuilder_.Append("api/ai/assistant/conversations");
                     urlBuilder_.Append('?');
@@ -6800,7 +6966,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ai/assistant/conversations"
                     urlBuilder_.Append("api/ai/assistant/conversations");
                     urlBuilder_.Append('?');
@@ -6919,7 +7085,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ai/assistant/conversations/{conversationId}"
                     urlBuilder_.Append("api/ai/assistant/conversations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(conversationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7036,7 +7202,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ai/assistant/references"
                     urlBuilder_.Append("api/ai/assistant/references");
                     urlBuilder_.Append('?');
@@ -7183,7 +7349,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ai/assistant/conversations/{conversationId}/messages"
                     urlBuilder_.Append("api/ai/assistant/conversations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(conversationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7361,7 +7527,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ai/assistant/conversations/{conversationId}/proposed-actions/{proposedActionId}/confirm"
                     urlBuilder_.Append("api/ai/assistant/conversations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(conversationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7528,7 +7694,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ai/assistant/conversations/{conversationId}/proposed-actions/{proposedActionId}/reject"
                     urlBuilder_.Append("api/ai/assistant/conversations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(conversationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7684,7 +7850,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ai/assistant/conversations/{conversationId}/runs/{runId}"
                     urlBuilder_.Append("api/ai/assistant/conversations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(conversationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7810,7 +7976,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/ai/assistant/conversations/{conversationId}/runs/{runId}/cancel"
                     urlBuilder_.Append("api/ai/assistant/conversations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(conversationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -7966,7 +8132,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("POST");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/a/t"
                     urlBuilder_.Append("api/a/t");
                     urlBuilder_.Append('?');
@@ -8057,7 +8223,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/approvalstatus"
                     urlBuilder_.Append("api/approvalstatus");
                     urlBuilder_.Append('?');
@@ -8137,7 +8303,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/atprotorecord"
                     urlBuilder_.Append("api/atprotorecord");
                     urlBuilder_.Append('?');
@@ -8224,7 +8390,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/atprotorecord"
                     urlBuilder_.Append("api/atprotorecord");
                     urlBuilder_.Append('?');
@@ -8307,7 +8473,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/atprotorecord/{id}"
                     urlBuilder_.Append("api/atprotorecord/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8398,7 +8564,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/atprotorecord/{id}"
                     urlBuilder_.Append("api/atprotorecord/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8491,7 +8657,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/atprotorecord/{id}"
                     urlBuilder_.Append("api/atprotorecord/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8573,7 +8739,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/audienceage"
                     urlBuilder_.Append("api/audienceage");
                     urlBuilder_.Append('?');
@@ -8662,7 +8828,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/audienceage/{id}"
                     urlBuilder_.Append("api/audienceage/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8759,7 +8925,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/audiencegender"
                     urlBuilder_.Append("api/audiencegender");
                     urlBuilder_.Append('?');
@@ -8848,7 +9014,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/audiencegender/{id}"
                     urlBuilder_.Append("api/audiencegender/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -8945,7 +9111,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/category"
                     urlBuilder_.Append("api/category");
                     urlBuilder_.Append('?');
@@ -9056,7 +9222,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/category"
                     urlBuilder_.Append("api/category");
                     urlBuilder_.Append('?');
@@ -9165,7 +9331,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/category/{id}"
                     urlBuilder_.Append("api/category/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9272,7 +9438,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/category/{id}"
                     urlBuilder_.Append("api/category/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9392,7 +9558,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/category/{id}"
                     urlBuilder_.Append("api/category/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9488,7 +9654,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/categorytype"
                     urlBuilder_.Append("api/categorytype");
                     urlBuilder_.Append('?');
@@ -9571,7 +9737,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/categorytype/{id}"
                     urlBuilder_.Append("api/categorytype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9658,7 +9824,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/categorytype/with-categories"
                     urlBuilder_.Append("api/categorytype/with-categories");
                     urlBuilder_.Append('?');
@@ -9744,7 +9910,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/contactshareconsent/my"
                     urlBuilder_.Append("api/contactshareconsent/my");
                     urlBuilder_.Append('?');
@@ -9833,7 +9999,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/contactshareconsent/check/{recipientActorId}"
                     urlBuilder_.Append("api/contactshareconsent/check/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(recipientActorId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -9924,7 +10090,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/contactshareconsent/withdraw/{id}"
                     urlBuilder_.Append("api/contactshareconsent/withdraw/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10024,7 +10190,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/contactshareconsent/organization/{recipientActorId}"
                     urlBuilder_.Append("api/contactshareconsent/organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(recipientActorId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10141,7 +10307,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/contactshareconsent/organization/{recipientActorId}/export"
                     urlBuilder_.Append("api/contactshareconsent/organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(recipientActorId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10247,7 +10413,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/custompropertydefinition"
                     urlBuilder_.Append("api/custompropertydefinition");
                     urlBuilder_.Append('?');
@@ -10362,7 +10528,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/custompropertydefinition"
                     urlBuilder_.Append("api/custompropertydefinition");
                     urlBuilder_.Append('?');
@@ -10481,7 +10647,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/custompropertydefinition/{id}"
                     urlBuilder_.Append("api/custompropertydefinition/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10588,7 +10754,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/custompropertydefinition/{id}"
                     urlBuilder_.Append("api/custompropertydefinition/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10722,7 +10888,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/custompropertydefinition/{id}"
                     urlBuilder_.Append("api/custompropertydefinition/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10828,7 +10994,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/custompropertydefinition/{id}/purge"
                     urlBuilder_.Append("api/custompropertydefinition/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -10950,7 +11116,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-definitions/governance-report"
                     urlBuilder_.Append("api/admin/custom-property-definitions/governance-report");
                     urlBuilder_.Append('?');
@@ -11060,7 +11226,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-projections/status"
                     urlBuilder_.Append("api/admin/custom-property-projections/status");
                     urlBuilder_.Append('?');
@@ -11161,7 +11327,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-projections/rebuild"
                     urlBuilder_.Append("api/admin/custom-property-projections/rebuild");
                     urlBuilder_.Append('?');
@@ -11268,7 +11434,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-projections/rebuild-single-event"
                     urlBuilder_.Append("api/admin/custom-property-projections/rebuild-single-event");
                     urlBuilder_.Append('?');
@@ -11365,7 +11531,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-projections/drain-dirty-scopes"
                     urlBuilder_.Append("api/admin/custom-property-projections/drain-dirty-scopes");
                     urlBuilder_.Append('?');
@@ -11455,7 +11621,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-projections/dirty-scopes"
                     urlBuilder_.Append("api/admin/custom-property-projections/dirty-scopes");
                     urlBuilder_.Append('?');
@@ -11564,7 +11730,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-projections/events/{eventId}"
                     urlBuilder_.Append("api/admin/custom-property-projections/events/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -11659,7 +11825,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-projections/sessions/status"
                     urlBuilder_.Append("api/admin/custom-property-projections/sessions/status");
                     urlBuilder_.Append('?');
@@ -11760,7 +11926,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-projections/sessions/rebuild"
                     urlBuilder_.Append("api/admin/custom-property-projections/sessions/rebuild");
                     urlBuilder_.Append('?');
@@ -11867,7 +12033,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-projections/sessions/rebuild-single"
                     urlBuilder_.Append("api/admin/custom-property-projections/sessions/rebuild-single");
                     urlBuilder_.Append('?');
@@ -11960,7 +12126,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/custom-property-projections/sessions/{eventSessionId}"
                     urlBuilder_.Append("api/admin/custom-property-projections/sessions/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventSessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12061,7 +12227,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/didcustodytype"
                     urlBuilder_.Append("api/didcustodytype");
                     urlBuilder_.Append('?');
@@ -12150,7 +12316,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/didcustodytype/{id}"
                     urlBuilder_.Append("api/didcustodytype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12241,7 +12407,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/email-dispatch/status"
                     urlBuilder_.Append("api/admin/email-dispatch/status");
                     urlBuilder_.Append('?');
@@ -12343,7 +12509,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/email-dispatch/tenants/{tenantId}/pause"
                     urlBuilder_.Append("api/admin/email-dispatch/tenants/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12442,7 +12608,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/email-dispatch/tenants/{tenantId}/pause"
                     urlBuilder_.Append("api/admin/email-dispatch/tenants/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12541,7 +12707,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/park"
                     urlBuilder_.Append("api/admin/email-dispatch/tenants/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12666,7 +12832,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/email-dispatch/tenants/{tenantId}/outbox/{outboxId}/replay"
                     urlBuilder_.Append("api/admin/email-dispatch/tenants/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -12786,7 +12952,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/email/unsubscribe"
                     urlBuilder_.Append("api/email/unsubscribe");
                     urlBuilder_.Append('?');
@@ -12877,7 +13043,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/email/unsubscribe"
                     urlBuilder_.Append("api/email/unsubscribe");
                     urlBuilder_.Append('?');
@@ -12970,7 +13136,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventagendaitem/by-event/{eventId}"
                     urlBuilder_.Append("api/eventagendaitem/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -13060,7 +13226,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventagendaitem/{id}"
                     urlBuilder_.Append("api/eventagendaitem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -13167,7 +13333,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventagendaitem/{id}"
                     urlBuilder_.Append("api/eventagendaitem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -13287,7 +13453,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventagendaitem/{id}"
                     urlBuilder_.Append("api/eventagendaitem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -13392,7 +13558,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventagendaitem/agenda-projection/{eventId}"
                     urlBuilder_.Append("api/eventagendaitem/agenda-projection/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -13496,7 +13662,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventagendaitem"
                     urlBuilder_.Append("api/eventagendaitem");
                     urlBuilder_.Append('?');
@@ -13602,7 +13768,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event"
                     urlBuilder_.Append("api/event");
                     urlBuilder_.Append('?');
@@ -13869,7 +14035,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event"
                     urlBuilder_.Append("api/event");
                     urlBuilder_.Append('?');
@@ -13975,7 +14141,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/my"
                     urlBuilder_.Append("api/event/my");
                     urlBuilder_.Append('?');
@@ -14089,7 +14255,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/creation-context"
                     urlBuilder_.Append("api/event/creation-context");
                     urlBuilder_.Append('?');
@@ -14188,7 +14354,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/session-create-context"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14299,7 +14465,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/program-summary"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14400,7 +14566,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14507,7 +14673,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14637,7 +14803,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14752,7 +14918,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/calendar"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14853,7 +15019,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/publish-readiness"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -14971,7 +15137,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/publish"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15099,7 +15265,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/status"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15220,7 +15386,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/aspects/islamic"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15328,7 +15494,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/aspects/islamic"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15449,7 +15615,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/aspects/islamic"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15555,7 +15721,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/aspects/tech"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15663,7 +15829,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/aspects/tech"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15784,7 +15950,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event/{id}/aspects/tech"
                     urlBuilder_.Append("api/event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -15887,7 +16053,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventcustomproperty"
                     urlBuilder_.Append("api/eventcustomproperty");
                     urlBuilder_.Append('?');
@@ -16002,7 +16168,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventcustomproperty"
                     urlBuilder_.Append("api/eventcustomproperty");
                     urlBuilder_.Append('?');
@@ -16121,7 +16287,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventcustomproperty/{id}"
                     urlBuilder_.Append("api/eventcustomproperty/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -16228,7 +16394,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventcustomproperty/{id}"
                     urlBuilder_.Append("api/eventcustomproperty/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -16362,7 +16528,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventcustomproperty/{id}"
                     urlBuilder_.Append("api/eventcustomproperty/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -16468,7 +16634,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventcustomproperty/{id}/purge"
                     urlBuilder_.Append("api/eventcustomproperty/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -16596,7 +16762,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventcustomproperty/values"
                     urlBuilder_.Append("api/eventcustomproperty/values");
                     urlBuilder_.Append('?');
@@ -16693,7 +16859,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventcustomproperty/values"
                     urlBuilder_.Append("api/eventcustomproperty/values");
                     urlBuilder_.Append('?');
@@ -16816,7 +16982,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventcustomproperty/value"
                     urlBuilder_.Append("api/eventcustomproperty/value");
                     urlBuilder_.Append('?');
@@ -16935,7 +17101,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventday/by-event/{eventId}"
                     urlBuilder_.Append("api/eventday/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17025,7 +17191,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventday/{id}"
                     urlBuilder_.Append("api/eventday/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17132,7 +17298,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventday/{id}"
                     urlBuilder_.Append("api/eventday/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17252,7 +17418,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventday/{id}"
                     urlBuilder_.Append("api/eventday/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17361,7 +17527,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventday"
                     urlBuilder_.Append("api/eventday");
                     urlBuilder_.Append('?');
@@ -17467,7 +17633,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventformat"
                     urlBuilder_.Append("api/eventformat");
                     urlBuilder_.Append('?');
@@ -17556,7 +17722,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventformat/{id}"
                     urlBuilder_.Append("api/eventformat/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17653,7 +17819,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventregistration"
                     urlBuilder_.Append("api/eventregistration");
                     urlBuilder_.Append('?');
@@ -17761,7 +17927,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventregistration"
                     urlBuilder_.Append("api/eventregistration");
                     urlBuilder_.Append('?');
@@ -17870,7 +18036,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventregistration/{id}"
                     urlBuilder_.Append("api/eventregistration/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -17977,7 +18143,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventregistration/{id}"
                     urlBuilder_.Append("api/eventregistration/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18096,7 +18262,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventregistration/{id}"
                     urlBuilder_.Append("api/eventregistration/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18201,7 +18367,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventregistration/by-session/{eventSessionId}"
                     urlBuilder_.Append("api/eventregistration/by-session/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventSessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18291,7 +18457,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventregistration/by-user/{userId}"
                     urlBuilder_.Append("api/eventregistration/by-user/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18378,7 +18544,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventregistrationpolicy"
                     urlBuilder_.Append("api/eventregistrationpolicy");
                     urlBuilder_.Append('?');
@@ -18458,7 +18624,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventseries"
                     urlBuilder_.Append("api/eventseries");
                     urlBuilder_.Append('?');
@@ -18567,7 +18733,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventseries"
                     urlBuilder_.Append("api/eventseries");
                     urlBuilder_.Append('?');
@@ -18660,7 +18826,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventseries/{id}"
                     urlBuilder_.Append("api/eventseries/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18761,7 +18927,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventseries/{id}"
                     urlBuilder_.Append("api/eventseries/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18865,7 +19031,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventseries/{id}"
                     urlBuilder_.Append("api/eventseries/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -18956,7 +19122,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventseries/top"
                     urlBuilder_.Append("api/eventseries/top");
                     urlBuilder_.Append('?');
@@ -19048,7 +19214,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessionagendaitem"
                     urlBuilder_.Append("api/eventsessionagendaitem");
                     urlBuilder_.Append('?');
@@ -19159,7 +19325,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessionagendaitem"
                     urlBuilder_.Append("api/eventsessionagendaitem");
                     urlBuilder_.Append('?');
@@ -19258,7 +19424,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessionagendaitem/{id}"
                     urlBuilder_.Append("api/eventsessionagendaitem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19355,7 +19521,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessionagendaitem/{id}"
                     urlBuilder_.Append("api/eventsessionagendaitem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19454,7 +19620,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessionagendaitem/{id}"
                     urlBuilder_.Append("api/eventsessionagendaitem/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19539,7 +19705,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessionagendaitem/by-session/{sessionId}"
                     urlBuilder_.Append("api/eventsessionagendaitem/by-session/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19626,7 +19792,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsession"
                     urlBuilder_.Append("api/eventsession");
                     urlBuilder_.Append('?');
@@ -19745,7 +19911,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsession"
                     urlBuilder_.Append("api/eventsession");
                     urlBuilder_.Append('?');
@@ -19854,7 +20020,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsession/{id}"
                     urlBuilder_.Append("api/eventsession/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -19961,7 +20127,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsession/{id}"
                     urlBuilder_.Append("api/eventsession/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20081,7 +20247,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsession/{id}"
                     urlBuilder_.Append("api/eventsession/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20186,7 +20352,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsession/by-event/{eventId}"
                     urlBuilder_.Append("api/eventsession/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20273,7 +20439,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessioncustomproperty"
                     urlBuilder_.Append("api/eventsessioncustomproperty");
                     urlBuilder_.Append('?');
@@ -20388,7 +20554,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessioncustomproperty"
                     urlBuilder_.Append("api/eventsessioncustomproperty");
                     urlBuilder_.Append('?');
@@ -20507,7 +20673,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessioncustomproperty/{id}"
                     urlBuilder_.Append("api/eventsessioncustomproperty/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20614,7 +20780,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessioncustomproperty/{id}"
                     urlBuilder_.Append("api/eventsessioncustomproperty/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20748,7 +20914,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessioncustomproperty/{id}"
                     urlBuilder_.Append("api/eventsessioncustomproperty/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20854,7 +21020,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessioncustomproperty/{id}/purge"
                     urlBuilder_.Append("api/eventsessioncustomproperty/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -20982,7 +21148,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessioncustomproperty/values"
                     urlBuilder_.Append("api/eventsessioncustomproperty/values");
                     urlBuilder_.Append('?');
@@ -21079,7 +21245,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessioncustomproperty/values"
                     urlBuilder_.Append("api/eventsessioncustomproperty/values");
                     urlBuilder_.Append('?');
@@ -21202,7 +21368,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessioncustomproperty/value"
                     urlBuilder_.Append("api/eventsessioncustomproperty/value");
                     urlBuilder_.Append('?');
@@ -21321,7 +21487,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiongroup/by-event/{eventId}"
                     urlBuilder_.Append("api/eventsessiongroup/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -21411,7 +21577,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiongroup/{id}"
                     urlBuilder_.Append("api/eventsessiongroup/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -21518,7 +21684,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiongroup/{id}"
                     urlBuilder_.Append("api/eventsessiongroup/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -21638,7 +21804,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiongroup/{id}"
                     urlBuilder_.Append("api/eventsessiongroup/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -21757,7 +21923,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiongroup/{id}/sessions"
                     urlBuilder_.Append("api/eventsessiongroup/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -21855,7 +22021,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiongroup/{id}/sessions"
                     urlBuilder_.Append("api/eventsessiongroup/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -21980,7 +22146,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiongroup"
                     urlBuilder_.Append("api/eventsessiongroup");
                     urlBuilder_.Append('?');
@@ -22092,7 +22258,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiongroup/{id}/sessions/{sessionId}"
                     urlBuilder_.Append("api/eventsessiongroup/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -22210,7 +22376,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessionkind"
                     urlBuilder_.Append("api/eventsessionkind");
                     urlBuilder_.Append('?');
@@ -22299,7 +22465,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessionlanguage/by-session/{eventSessionId}"
                     urlBuilder_.Append("api/eventsessionlanguage/by-session/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventSessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -22393,7 +22559,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessionlanguage"
                     urlBuilder_.Append("api/eventsessionlanguage");
                     urlBuilder_.Append('?');
@@ -22501,7 +22667,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessionlanguage/{id}"
                     urlBuilder_.Append("api/eventsessionlanguage/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -22603,7 +22769,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiontemplate"
                     urlBuilder_.Append("api/eventsessiontemplate");
                     urlBuilder_.Append('?');
@@ -22718,7 +22884,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiontemplate"
                     urlBuilder_.Append("api/eventsessiontemplate");
                     urlBuilder_.Append('?');
@@ -22827,7 +22993,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiontemplate/{id}"
                     urlBuilder_.Append("api/eventsessiontemplate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -22934,7 +23100,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiontemplate/{id}"
                     urlBuilder_.Append("api/eventsessiontemplate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -23048,7 +23214,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventsessiontemplate/{id}"
                     urlBuilder_.Append("api/eventsessiontemplate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -23147,7 +23313,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event-sessions/{sessionId}/template-sync/diff"
                     urlBuilder_.Append("api/event-sessions/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -23293,7 +23459,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event-sessions/{sessionId}/template-sync/apply"
                     urlBuilder_.Append("api/event-sessions/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -23438,7 +23604,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/event-sessions/{sessionId}/template-sync/history"
                     urlBuilder_.Append("api/event-sessions/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -23584,7 +23750,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventstatus"
                     urlBuilder_.Append("api/eventstatus");
                     urlBuilder_.Append('?');
@@ -23673,7 +23839,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventstatus/{id}"
                     urlBuilder_.Append("api/eventstatus/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -23773,7 +23939,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventteam/by-event/{eventId}"
                     urlBuilder_.Append("api/eventteam/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -23867,7 +24033,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventteam/my-permissions/{eventId}"
                     urlBuilder_.Append("api/eventteam/my-permissions/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -23957,7 +24123,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventteam/assignable-presets/{eventId}"
                     urlBuilder_.Append("api/eventteam/assignable-presets/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -24054,7 +24220,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventteam/by-event/{eventId}/assignments"
                     urlBuilder_.Append("api/eventteam/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -24168,7 +24334,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventteam/by-event/{eventId}/assignments/{assignmentId}"
                     urlBuilder_.Append("api/eventteam/by-event/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -24267,7 +24433,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventtemplate"
                     urlBuilder_.Append("api/eventtemplate");
                     urlBuilder_.Append('?');
@@ -24382,7 +24548,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventtemplate"
                     urlBuilder_.Append("api/eventtemplate");
                     urlBuilder_.Append('?');
@@ -24501,7 +24667,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventtemplate/{id}"
                     urlBuilder_.Append("api/eventtemplate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -24608,7 +24774,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventtemplate/{id}"
                     urlBuilder_.Append("api/eventtemplate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -24732,7 +24898,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventtemplate/{id}"
                     urlBuilder_.Append("api/eventtemplate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -24831,7 +24997,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/events/{eventId}/template-sync/diff"
                     urlBuilder_.Append("api/events/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -24977,7 +25143,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/events/{eventId}/template-sync/apply"
                     urlBuilder_.Append("api/events/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -25122,7 +25288,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/events/{eventId}/template-sync/history"
                     urlBuilder_.Append("api/events/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(eventId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -25268,7 +25434,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/eventtype"
                     urlBuilder_.Append("api/eventtype");
                     urlBuilder_.Append('?');
@@ -25354,7 +25520,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/externalapikey"
                     urlBuilder_.Append("api/externalapikey");
                     urlBuilder_.Append('?');
@@ -25447,7 +25613,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/externalapikey"
                     urlBuilder_.Append("api/externalapikey");
                     urlBuilder_.Append('?');
@@ -25546,7 +25712,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/externalapikey/{id}"
                     urlBuilder_.Append("api/externalapikey/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -25653,7 +25819,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/externalapikey/{id}"
                     urlBuilder_.Append("api/externalapikey/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -25762,7 +25928,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/externalapikey/{id}"
                     urlBuilder_.Append("api/externalapikey/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -25854,7 +26020,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/externalapikey/usage-report"
                     urlBuilder_.Append("api/externalapikey/usage-report");
                     urlBuilder_.Append('?');
@@ -25946,7 +26112,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/features/my-flags"
                     urlBuilder_.Append("api/features/my-flags");
                     urlBuilder_.Append('?');
@@ -26032,7 +26198,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/filetype"
                     urlBuilder_.Append("api/filetype");
                     urlBuilder_.Append('?');
@@ -26121,7 +26287,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/filetype/{id}"
                     urlBuilder_.Append("api/filetype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -26212,7 +26378,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/config"
                     urlBuilder_.Append("api/footer/config");
                     urlBuilder_.Append('?');
@@ -26292,7 +26458,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/link-groups"
                     urlBuilder_.Append("api/footer/link-groups");
                     urlBuilder_.Append('?');
@@ -26379,7 +26545,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/link-groups"
                     urlBuilder_.Append("api/footer/link-groups");
                     urlBuilder_.Append('?');
@@ -26472,7 +26638,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/link-groups/{id}"
                     urlBuilder_.Append("api/footer/link-groups/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -26573,7 +26739,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/link-groups/{id}"
                     urlBuilder_.Append("api/footer/link-groups/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -26677,7 +26843,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/link-groups/{id}"
                     urlBuilder_.Append("api/footer/link-groups/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -26775,7 +26941,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/link-groups/reorder"
                     urlBuilder_.Append("api/footer/link-groups/reorder");
                     urlBuilder_.Append('?');
@@ -26875,7 +27041,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/link-groups/{groupId}/links"
                     urlBuilder_.Append("api/footer/link-groups/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(groupId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -26977,7 +27143,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/links/{id}"
                     urlBuilder_.Append("api/footer/links/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -27081,7 +27247,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/links/{id}"
                     urlBuilder_.Append("api/footer/links/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -27179,7 +27345,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/footer/settings"
                     urlBuilder_.Append("api/footer/settings");
                     urlBuilder_.Append('?');
@@ -27275,7 +27441,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/group"
                     urlBuilder_.Append("api/group");
                     urlBuilder_.Append('?');
@@ -27386,7 +27552,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/group"
                     urlBuilder_.Append("api/group");
                     urlBuilder_.Append('?');
@@ -27492,7 +27658,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/group/my"
                     urlBuilder_.Append("api/group/my");
                     urlBuilder_.Append('?');
@@ -27609,7 +27775,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/group/{id}"
                     urlBuilder_.Append("api/group/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -27716,7 +27882,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/group/{id}"
                     urlBuilder_.Append("api/group/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -27826,7 +27992,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/group/{id}"
                     urlBuilder_.Append("api/group/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -27933,7 +28099,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/group/updatestatustype/{id}"
                     urlBuilder_.Append("api/group/updatestatustype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -28057,7 +28223,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/groupmember/{groupId}"
                     urlBuilder_.Append("api/groupmember/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(groupId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -28141,7 +28307,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/groupmember/member/{id}"
                     urlBuilder_.Append("api/groupmember/member/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -28239,7 +28405,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/groupmember"
                     urlBuilder_.Append("api/groupmember");
                     urlBuilder_.Append('?');
@@ -28336,7 +28502,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/groupmember/role"
                     urlBuilder_.Append("api/groupmember/role");
                     urlBuilder_.Append('?');
@@ -28429,7 +28595,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/groupmember/{id}"
                     urlBuilder_.Append("api/groupmember/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -28526,7 +28692,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/groupposition"
                     urlBuilder_.Append("api/groupposition");
                     urlBuilder_.Append('?');
@@ -28615,7 +28781,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/groupposition/{id}"
                     urlBuilder_.Append("api/groupposition/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -28706,7 +28872,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/indexeddid"
                     urlBuilder_.Append("api/indexeddid");
                     urlBuilder_.Append('?');
@@ -28793,7 +28959,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/indexeddid"
                     urlBuilder_.Append("api/indexeddid");
                     urlBuilder_.Append('?');
@@ -28876,7 +29042,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/indexeddid/{did}"
                     urlBuilder_.Append("api/indexeddid/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
@@ -28967,7 +29133,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/indexeddid/{did}"
                     urlBuilder_.Append("api/indexeddid/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
@@ -29051,7 +29217,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/indexeddid/{did}"
                     urlBuilder_.Append("api/indexeddid/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(did, System.Globalization.CultureInfo.InvariantCulture)));
@@ -29133,7 +29299,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/status"
                     urlBuilder_.Append("api/instanceonboarding/status");
                     urlBuilder_.Append('?');
@@ -29226,7 +29392,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/complete"
                     urlBuilder_.Append("api/instanceonboarding/complete");
                     urlBuilder_.Append('?');
@@ -29329,7 +29495,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/validate-secret"
                     urlBuilder_.Append("api/instanceonboarding/validate-secret");
                     urlBuilder_.Append('?');
@@ -29435,7 +29601,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/auth-provider-configuration"
                     urlBuilder_.Append("api/instanceonboarding/auth-provider-configuration");
                     urlBuilder_.Append('?');
@@ -29528,7 +29694,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/auth-provider-configuration"
                     urlBuilder_.Append("api/instanceonboarding/auth-provider-configuration");
                     urlBuilder_.Append('?');
@@ -29624,7 +29790,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/auth-provider-configuration/internal"
                     urlBuilder_.Append("api/instanceonboarding/auth-provider-configuration/internal");
                     urlBuilder_.Append('?');
@@ -29717,7 +29883,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/auth-provider-configuration/keycloak-bootstrap"
                     urlBuilder_.Append("api/instanceonboarding/auth-provider-configuration/keycloak-bootstrap");
                     urlBuilder_.Append('?');
@@ -29833,7 +29999,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/authz-provider-configuration/internal"
                     urlBuilder_.Append("api/instanceonboarding/authz-provider-configuration/internal");
                     urlBuilder_.Append('?');
@@ -29926,7 +30092,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/authz-provider-configuration"
                     urlBuilder_.Append("api/instanceonboarding/authz-provider-configuration");
                     urlBuilder_.Append('?');
@@ -30023,7 +30189,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/authz-provider-configuration/sync"
                     urlBuilder_.Append("api/instanceonboarding/authz-provider-configuration/sync");
                     urlBuilder_.Append('?');
@@ -30119,7 +30285,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/zip"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/authz-provider-configuration/package"
                     urlBuilder_.Append("api/instanceonboarding/authz-provider-configuration/package");
                     urlBuilder_.Append('?');
@@ -30204,7 +30370,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instanceonboarding/authz-provider-configuration/verify"
                     urlBuilder_.Append("api/instanceonboarding/authz-provider-configuration/verify");
                     urlBuilder_.Append('?');
@@ -30300,7 +30466,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/modules"
                     urlBuilder_.Append("api/instance/settings/modules");
                     urlBuilder_.Append('?');
@@ -30403,7 +30569,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/modules"
                     urlBuilder_.Append("api/instance/settings/modules");
                     urlBuilder_.Append('?');
@@ -30509,7 +30675,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/events"
                     urlBuilder_.Append("api/instance/settings/events");
                     urlBuilder_.Append('?');
@@ -30612,7 +30778,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/events"
                     urlBuilder_.Append("api/instance/settings/events");
                     urlBuilder_.Append('?');
@@ -30718,7 +30884,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/organizations"
                     urlBuilder_.Append("api/instance/settings/organizations");
                     urlBuilder_.Append('?');
@@ -30821,7 +30987,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/organizations"
                     urlBuilder_.Append("api/instance/settings/organizations");
                     urlBuilder_.Append('?');
@@ -30927,7 +31093,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/branding"
                     urlBuilder_.Append("api/instance/settings/branding");
                     urlBuilder_.Append('?');
@@ -31030,7 +31196,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/branding"
                     urlBuilder_.Append("api/instance/settings/branding");
                     urlBuilder_.Append('?');
@@ -31136,7 +31302,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/domains"
                     urlBuilder_.Append("api/instance/settings/domains");
                     urlBuilder_.Append('?');
@@ -31239,7 +31405,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/domains"
                     urlBuilder_.Append("api/instance/settings/domains");
                     urlBuilder_.Append('?');
@@ -31345,7 +31511,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/tenant-delegation"
                     urlBuilder_.Append("api/instance/settings/tenant-delegation");
                     urlBuilder_.Append('?');
@@ -31448,9 +31614,218 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/tenant-delegation"
                     urlBuilder_.Append("api/instance/settings/tenant-delegation");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<BaseCommandResponseOfGuid>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get MCP Governance Settings
+        /// </summary>
+        /// <remarks>
+        /// Returns instance MCP runtime enablement and tenant override lock settings. Startup endpoint path and stateless mode are not runtime-editable.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<McpGovernanceSettingsDto> GetInstanceMcpGovernanceSettingsAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/instance/settings/mcp"
+                    urlBuilder_.Append("api/instance/settings/mcp");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<McpGovernanceSettingsDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update MCP Governance Settings
+        /// </summary>
+        /// <remarks>
+        /// Updates instance MCP runtime enablement and tenant override locks. Requires instance administrator.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateInstanceMcpGovernanceSettingsAsync(McpGovernanceSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/instance/settings/mcp"
+                    urlBuilder_.Append("api/instance/settings/mcp");
                     urlBuilder_.Append('?');
                     if (api_version != null)
                     {
@@ -31554,7 +31929,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/render-policy"
                     urlBuilder_.Append("api/instance/settings/render-policy");
                     urlBuilder_.Append('?');
@@ -31657,7 +32032,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/render-policy"
                     urlBuilder_.Append("api/instance/settings/render-policy");
                     urlBuilder_.Append('?');
@@ -31763,7 +32138,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/deployment-mode"
                     urlBuilder_.Append("api/instance/settings/deployment-mode");
                     urlBuilder_.Append('?');
@@ -31866,7 +32241,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/deployment-mode"
                     urlBuilder_.Append("api/instance/settings/deployment-mode");
                     urlBuilder_.Append('?');
@@ -31972,7 +32347,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/storage"
                     urlBuilder_.Append("api/instance/settings/storage");
                     urlBuilder_.Append('?');
@@ -32075,7 +32450,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/storage"
                     urlBuilder_.Append("api/instance/settings/storage");
                     urlBuilder_.Append('?');
@@ -32182,7 +32557,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/storage/test"
                     urlBuilder_.Append("api/instance/settings/storage/test");
                     urlBuilder_.Append('?');
@@ -32279,7 +32654,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/storage/usage/recalculate"
                     urlBuilder_.Append("api/instance/settings/storage/usage/recalculate");
                     urlBuilder_.Append('?');
@@ -32375,7 +32750,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/smtp"
                     urlBuilder_.Append("api/instance/settings/smtp");
                     urlBuilder_.Append('?');
@@ -32478,7 +32853,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/smtp"
                     urlBuilder_.Append("api/instance/settings/smtp");
                     urlBuilder_.Append('?');
@@ -32585,7 +32960,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/smtp/test"
                     urlBuilder_.Append("api/instance/settings/smtp/test");
                     urlBuilder_.Append('?');
@@ -32681,7 +33056,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/resolver-config"
                     urlBuilder_.Append("api/instance/settings/resolver-config");
                     urlBuilder_.Append('?');
@@ -32784,7 +33159,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/resolver-config"
                     urlBuilder_.Append("api/instance/settings/resolver-config");
                     urlBuilder_.Append('?');
@@ -32890,7 +33265,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/analytics-governance"
                     urlBuilder_.Append("api/instance/settings/analytics-governance");
                     urlBuilder_.Append('?');
@@ -32993,7 +33368,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/analytics-governance"
                     urlBuilder_.Append("api/instance/settings/analytics-governance");
                     urlBuilder_.Append('?');
@@ -33099,7 +33474,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/footer-governance"
                     urlBuilder_.Append("api/instance/settings/footer-governance");
                     urlBuilder_.Append('?');
@@ -33202,7 +33577,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/footer-governance"
                     urlBuilder_.Append("api/instance/settings/footer-governance");
                     urlBuilder_.Append('?');
@@ -33308,7 +33683,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/auth-provider"
                     urlBuilder_.Append("api/instance/settings/auth-provider");
                     urlBuilder_.Append('?');
@@ -33411,7 +33786,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/auth-provider"
                     urlBuilder_.Append("api/instance/settings/auth-provider");
                     urlBuilder_.Append('?');
@@ -33524,7 +33899,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/auth-provider/keycloak/doctor"
                     urlBuilder_.Append("api/instance/settings/auth-provider/keycloak/doctor");
                     urlBuilder_.Append('?');
@@ -33627,7 +34002,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/auth-provider/keycloak/sync-preview"
                     urlBuilder_.Append("api/instance/settings/auth-provider/keycloak/sync-preview");
                     urlBuilder_.Append('?');
@@ -33730,7 +34105,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/auth-provider/keycloak/sync-apply"
                     urlBuilder_.Append("api/instance/settings/auth-provider/keycloak/sync-apply");
                     urlBuilder_.Append('?');
@@ -33833,7 +34208,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/auth-provider/keycloak/client-secret/rotate"
                     urlBuilder_.Append("api/instance/settings/auth-provider/keycloak/client-secret/rotate");
                     urlBuilder_.Append('?');
@@ -33939,7 +34314,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/auth-provider/status"
                     urlBuilder_.Append("api/instance/settings/auth-provider/status");
                     urlBuilder_.Append('?');
@@ -34025,7 +34400,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/authz-provider"
                     urlBuilder_.Append("api/instance/settings/authz-provider");
                     urlBuilder_.Append('?');
@@ -34128,7 +34503,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/authz-provider"
                     urlBuilder_.Append("api/instance/settings/authz-provider");
                     urlBuilder_.Append('?');
@@ -34235,7 +34610,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/authz-provider/sync"
                     urlBuilder_.Append("api/instance/settings/authz-provider/sync");
                     urlBuilder_.Append('?');
@@ -34341,7 +34716,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/zip"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/authz-provider/package"
                     urlBuilder_.Append("api/instance/settings/authz-provider/package");
                     urlBuilder_.Append('?');
@@ -34432,7 +34807,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/instance/settings/authz-provider/status"
                     urlBuilder_.Append("api/instance/settings/authz-provider/status");
                     urlBuilder_.Append('?');
@@ -34518,7 +34893,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/language"
                     urlBuilder_.Append("api/language");
                     urlBuilder_.Append('?');
@@ -34607,7 +34982,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/language/{id}"
                     urlBuilder_.Append("api/language/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -34694,7 +35069,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("POST");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/localization/test-connection"
                     urlBuilder_.Append("api/admin/localization/test-connection");
                     urlBuilder_.Append('?');
@@ -34795,7 +35170,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/localization/configuration"
                     urlBuilder_.Append("api/admin/localization/configuration");
                     urlBuilder_.Append('?');
@@ -34891,7 +35266,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/localization/bundle-health"
                     urlBuilder_.Append("api/admin/localization/bundle-health");
                     urlBuilder_.Append('?');
@@ -34994,7 +35369,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/localization/governance"
                     urlBuilder_.Append("api/admin/localization/governance");
                     urlBuilder_.Append('?');
@@ -35100,7 +35475,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("POST");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/localization/export-from-tms"
                     urlBuilder_.Append("api/admin/localization/export-from-tms");
                     urlBuilder_.Append('?');
@@ -35205,7 +35580,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/location"
                     urlBuilder_.Append("api/location");
                     urlBuilder_.Append('?');
@@ -35316,7 +35691,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/location"
                     urlBuilder_.Append("api/location");
                     urlBuilder_.Append('?');
@@ -35425,7 +35800,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/location/{id}"
                     urlBuilder_.Append("api/location/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -35532,7 +35907,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/location/{id}"
                     urlBuilder_.Append("api/location/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -35652,7 +36027,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/location/{id}"
                     urlBuilder_.Append("api/location/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -35757,7 +36132,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/location/by-city/{city}"
                     urlBuilder_.Append("api/location/by-city/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(city, System.Globalization.CultureInfo.InvariantCulture)));
@@ -35847,7 +36222,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/location/by-country/{country}"
                     urlBuilder_.Append("api/location/by-country/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(country, System.Globalization.CultureInfo.InvariantCulture)));
@@ -35937,7 +36312,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/locationroom/by-location/{locationId}"
                     urlBuilder_.Append("api/locationroom/by-location/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(locationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -36027,7 +36402,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/locationroom/{id}"
                     urlBuilder_.Append("api/locationroom/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -36134,7 +36509,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/locationroom/{id}"
                     urlBuilder_.Append("api/locationroom/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -36254,7 +36629,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/locationroom/{id}"
                     urlBuilder_.Append("api/locationroom/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -36363,7 +36738,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/locationroom"
                     urlBuilder_.Append("api/locationroom");
                     urlBuilder_.Append('?');
@@ -36469,7 +36844,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/madhab"
                     urlBuilder_.Append("api/madhab");
                     urlBuilder_.Append('?');
@@ -36558,7 +36933,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/madhab/{id}"
                     urlBuilder_.Append("api/madhab/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -36662,7 +37037,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/managed-provider-provisioning/clients:ensure"
                     urlBuilder_.Append("api/managed-provider-provisioning/clients:ensure");
                     urlBuilder_.Append('?');
@@ -36768,7 +37143,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/module/available"
                     urlBuilder_.Append("api/module/available");
                     urlBuilder_.Append('?');
@@ -36854,7 +37229,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/module/enabled"
                     urlBuilder_.Append("api/module/enabled");
                     urlBuilder_.Append('?');
@@ -36943,7 +37318,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/module/{moduleKey}/enabled"
                     urlBuilder_.Append("api/module/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
@@ -37034,7 +37409,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/module/{moduleKey}/schema"
                     urlBuilder_.Append("api/module/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
@@ -37136,7 +37511,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/module/{moduleKey}/enable"
                     urlBuilder_.Append("api/module/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
@@ -37258,7 +37633,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/module/{moduleKey}/disable"
                     urlBuilder_.Append("api/module/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(moduleKey, System.Globalization.CultureInfo.InvariantCulture)));
@@ -37376,7 +37751,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/notification"
                     urlBuilder_.Append("api/notification");
                     urlBuilder_.Append('?');
@@ -37517,7 +37892,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/notification/{id}"
                     urlBuilder_.Append("api/notification/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -37626,7 +38001,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/notification/{id}"
                     urlBuilder_.Append("api/notification/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -37728,7 +38103,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/notification/unread-count"
                     urlBuilder_.Append("api/notification/unread-count");
                     urlBuilder_.Append('?');
@@ -37828,7 +38203,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/event-stream"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/notification/stream"
                     urlBuilder_.Append("api/notification/stream");
                     urlBuilder_.Append('?');
@@ -37923,7 +38298,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/notification/{id}/read"
                     urlBuilder_.Append("api/notification/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -38032,7 +38407,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/notification/read-all"
                     urlBuilder_.Append("api/notification/read-all");
                     urlBuilder_.Append('?');
@@ -38132,7 +38507,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/notification/{id}/archive"
                     urlBuilder_.Append("api/notification/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -38248,7 +38623,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/notification/{id}/snooze"
                     urlBuilder_.Append("api/notification/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -38360,7 +38735,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organization"
                     urlBuilder_.Append("api/organization");
                     urlBuilder_.Append('?');
@@ -38471,7 +38846,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organization"
                     urlBuilder_.Append("api/organization");
                     urlBuilder_.Append('?');
@@ -38577,7 +38952,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organization/my"
                     urlBuilder_.Append("api/organization/my");
                     urlBuilder_.Append('?');
@@ -38694,7 +39069,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organization/{id}"
                     urlBuilder_.Append("api/organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -38801,7 +39176,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organization/{id}"
                     urlBuilder_.Append("api/organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -38921,7 +39296,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organization/{id}"
                     urlBuilder_.Append("api/organization/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -39043,7 +39418,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organization/updatestatustype/{id}"
                     urlBuilder_.Append("api/organization/updatestatustype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -39152,7 +39527,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationmember/{organizationId}"
                     urlBuilder_.Append("api/organizationmember/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(organizationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -39236,7 +39611,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationmember/member/{id}"
                     urlBuilder_.Append("api/organizationmember/member/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -39334,7 +39709,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationmember"
                     urlBuilder_.Append("api/organizationmember");
                     urlBuilder_.Append('?');
@@ -39421,7 +39796,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationmember/role"
                     urlBuilder_.Append("api/organizationmember/role");
                     urlBuilder_.Append('?');
@@ -39501,7 +39876,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationmember/invitations"
                     urlBuilder_.Append("api/organizationmember/invitations");
                     urlBuilder_.Append('?');
@@ -39585,7 +39960,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationmember/invitations/{id}/accept"
                     urlBuilder_.Append("api/organizationmember/invitations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -39671,7 +40046,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationmember/invitations/{id}/decline"
                     urlBuilder_.Append("api/organizationmember/invitations/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -39756,7 +40131,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationmember/{id}"
                     urlBuilder_.Append("api/organizationmember/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -39843,7 +40218,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationposition"
                     urlBuilder_.Append("api/organizationposition");
                     urlBuilder_.Append('?');
@@ -39932,7 +40307,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationposition/{id}"
                     urlBuilder_.Append("api/organizationposition/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -40023,7 +40398,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationreview"
                     urlBuilder_.Append("api/organizationreview");
                     urlBuilder_.Append('?');
@@ -40110,7 +40485,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationreview"
                     urlBuilder_.Append("api/organizationreview");
                     urlBuilder_.Append('?');
@@ -40193,7 +40568,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationreview/{organizationId}"
                     urlBuilder_.Append("api/organizationreview/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(organizationId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -40277,7 +40652,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/organizationreview/user/{userId}"
                     urlBuilder_.Append("api/organizationreview/user/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -40364,7 +40739,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/publicexperience/settings"
                     urlBuilder_.Append("api/publicexperience/settings");
                     urlBuilder_.Append('?');
@@ -40450,7 +40825,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/publicexperience/shell"
                     urlBuilder_.Append("api/publicexperience/shell");
                     urlBuilder_.Append('?');
@@ -40536,7 +40911,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/registrationmode"
                     urlBuilder_.Append("api/registrationmode");
                     urlBuilder_.Append('?');
@@ -40625,7 +41000,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/registrationmode/{id}"
                     urlBuilder_.Append("api/registrationmode/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -40722,7 +41097,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/registrationscope"
                     urlBuilder_.Append("api/registrationscope");
                     urlBuilder_.Append('?');
@@ -40808,7 +41183,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/role"
                     urlBuilder_.Append("api/role");
                     urlBuilder_.Append('?');
@@ -40901,7 +41276,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/role/{id}"
                     urlBuilder_.Append("api/role/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -40998,7 +41373,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/scheduleitemkind"
                     urlBuilder_.Append("api/scheduleitemkind");
                     urlBuilder_.Append('?');
@@ -41087,7 +41462,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/settings/user/{category}"
                     urlBuilder_.Append("api/settings/user/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(category, System.Globalization.CultureInfo.InvariantCulture)));
@@ -41194,7 +41569,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/settings/user/{category}"
                     urlBuilder_.Append("api/settings/user/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(category, System.Globalization.CultureInfo.InvariantCulture)));
@@ -41311,7 +41686,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/settings/user/keys/{key}"
                     urlBuilder_.Append("api/settings/user/keys/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(key, System.Globalization.CultureInfo.InvariantCulture)));
@@ -41421,7 +41796,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/settings/user/keys/{key}"
                     urlBuilder_.Append("api/settings/user/keys/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(key, System.Globalization.CultureInfo.InvariantCulture)));
@@ -41531,7 +41906,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/settings/tenant/{category}"
                     urlBuilder_.Append("api/settings/tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(category, System.Globalization.CultureInfo.InvariantCulture)));
@@ -41648,7 +42023,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/settings/tenant/{category}"
                     urlBuilder_.Append("api/settings/tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(category, System.Globalization.CultureInfo.InvariantCulture)));
@@ -41775,7 +42150,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/settings/tenant/keys/{key}"
                     urlBuilder_.Append("api/settings/tenant/keys/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(key, System.Globalization.CultureInfo.InvariantCulture)));
@@ -41896,7 +42271,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/settings/tenant/keys/{key}/lock"
                     urlBuilder_.Append("api/settings/tenant/keys/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(key, System.Globalization.CultureInfo.InvariantCulture)));
@@ -42017,7 +42392,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/settings/tenant/keys/{key}/lock"
                     urlBuilder_.Append("api/settings/tenant/keys/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(key, System.Globalization.CultureInfo.InvariantCulture)));
@@ -42135,7 +42510,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/xml"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "sitemap.xml"
                     urlBuilder_.Append("sitemap.xml");
                     urlBuilder_.Append('?');
@@ -42216,7 +42591,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject"
                     urlBuilder_.Append("api/storageobject");
                     urlBuilder_.Append('?');
@@ -42327,7 +42702,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject"
                     urlBuilder_.Append("api/storageobject");
                     urlBuilder_.Append('?');
@@ -42436,7 +42811,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject/{id}"
                     urlBuilder_.Append("api/storageobject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -42543,7 +42918,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject/{id}"
                     urlBuilder_.Append("api/storageobject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -42663,7 +43038,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject/{id}"
                     urlBuilder_.Append("api/storageobject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -42768,7 +43143,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject/{id}/content"
                     urlBuilder_.Append("api/storageobject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -42864,7 +43239,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject/{id}/public"
                     urlBuilder_.Append("api/storageobject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -42960,7 +43335,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject/{id}/presigned-url"
                     urlBuilder_.Append("api/storageobject/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -43069,7 +43444,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject/generate-upload-url"
                     urlBuilder_.Append("api/storageobject/generate-upload-url");
                     urlBuilder_.Append('?');
@@ -43182,7 +43557,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject/upload-sessions"
                     urlBuilder_.Append("api/storageobject/upload-sessions");
                     urlBuilder_.Append('?');
@@ -43312,7 +43687,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject/upload-sessions/{uploadSessionId}/content"
                     urlBuilder_.Append("api/storageobject/upload-sessions/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(uploadSessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -43463,7 +43838,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/storageobject/upload-sessions/{uploadSessionId}"
                     urlBuilder_.Append("api/storageobject/upload-sessions/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(uploadSessionId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -43584,7 +43959,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/syncstate"
                     urlBuilder_.Append("api/syncstate");
                     urlBuilder_.Append('?');
@@ -43671,7 +44046,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/syncstate"
                     urlBuilder_.Append("api/syncstate");
                     urlBuilder_.Append('?');
@@ -43754,7 +44129,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/syncstate/{id}"
                     urlBuilder_.Append("api/syncstate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -43845,7 +44220,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/syncstate/{id}"
                     urlBuilder_.Append("api/syncstate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -43928,7 +44303,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/syncstate/{id}"
                     urlBuilder_.Append("api/syncstate/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -44010,7 +44385,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/system/onboarding-status"
                     urlBuilder_.Append("api/system/onboarding-status");
                     urlBuilder_.Append('?');
@@ -44096,7 +44471,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/system/onboarding-preflight"
                     urlBuilder_.Append("api/system/onboarding-preflight");
                     urlBuilder_.Append('?');
@@ -44182,7 +44557,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tag"
                     urlBuilder_.Append("api/tag");
                     urlBuilder_.Append('?');
@@ -44293,7 +44668,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tag"
                     urlBuilder_.Append("api/tag");
                     urlBuilder_.Append('?');
@@ -44402,7 +44777,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tag/{id}"
                     urlBuilder_.Append("api/tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -44509,7 +44884,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tag/{id}"
                     urlBuilder_.Append("api/tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -44629,7 +45004,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tag/{id}"
                     urlBuilder_.Append("api/tag/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -44725,7 +45100,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tagtype"
                     urlBuilder_.Append("api/tagtype");
                     urlBuilder_.Append('?');
@@ -44808,7 +45183,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tagtype/{id}"
                     urlBuilder_.Append("api/tagtype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -44895,7 +45270,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tagtype/with-tags"
                     urlBuilder_.Append("api/tagtype/with-tags");
                     urlBuilder_.Append('?');
@@ -44981,7 +45356,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant"
                     urlBuilder_.Append("api/tenant");
                     urlBuilder_.Append('?');
@@ -45074,7 +45449,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant"
                     urlBuilder_.Append("api/tenant");
                     urlBuilder_.Append('?');
@@ -45170,7 +45545,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/count"
                     urlBuilder_.Append("api/tenant/count");
                     urlBuilder_.Append('?');
@@ -45259,7 +45634,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/{id}"
                     urlBuilder_.Append("api/tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -45366,7 +45741,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/{id}"
                     urlBuilder_.Append("api/tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -45475,7 +45850,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/{id}"
                     urlBuilder_.Append("api/tenant/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -45567,7 +45942,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/navigation"
                     urlBuilder_.Append("api/tenant/navigation");
                     urlBuilder_.Append('?');
@@ -45660,7 +46035,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/navigation"
                     urlBuilder_.Append("api/tenant/navigation");
                     urlBuilder_.Append('?');
@@ -45766,7 +46141,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/navigation/{id}"
                     urlBuilder_.Append("api/tenant/navigation/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -45876,7 +46251,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/navigation/{id}"
                     urlBuilder_.Append("api/tenant/navigation/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -45980,7 +46355,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/navigation/reorder"
                     urlBuilder_.Append("api/tenant/navigation/reorder");
                     urlBuilder_.Append('?');
@@ -46076,7 +46451,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenantonboarding/status"
                     urlBuilder_.Append("api/tenantonboarding/status");
                     urlBuilder_.Append('?');
@@ -46162,7 +46537,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenantonboarding/settings"
                     urlBuilder_.Append("api/tenantonboarding/settings");
                     urlBuilder_.Append('?');
@@ -46255,7 +46630,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenantonboarding/settings"
                     urlBuilder_.Append("api/tenantonboarding/settings");
                     urlBuilder_.Append('?');
@@ -46368,7 +46743,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenantonboarding/complete"
                     urlBuilder_.Append("api/tenantonboarding/complete");
                     urlBuilder_.Append('?');
@@ -46481,7 +46856,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenantonboarding/steps"
                     urlBuilder_.Append("api/tenantonboarding/steps");
                     urlBuilder_.Append('?');
@@ -46577,7 +46952,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/settings/documents/branding"
                     urlBuilder_.Append("api/tenant/settings/documents/branding");
                     urlBuilder_.Append('?');
@@ -46690,7 +47065,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/settings/documents/branding"
                     urlBuilder_.Append("api/tenant/settings/documents/branding");
                     urlBuilder_.Append('?');
@@ -46826,7 +47201,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/settings/storage"
                     urlBuilder_.Append("api/tenant/settings/storage");
                     urlBuilder_.Append('?');
@@ -46939,7 +47314,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant/settings/storage"
                     urlBuilder_.Append("api/tenant/settings/storage");
                     urlBuilder_.Append('?');
@@ -47055,7 +47430,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant-user-role-grants"
                     urlBuilder_.Append("api/tenant-user-role-grants");
                     urlBuilder_.Append('?');
@@ -47148,7 +47523,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant-user-role-grants"
                     urlBuilder_.Append("api/tenant-user-role-grants");
                     urlBuilder_.Append('?');
@@ -47247,7 +47622,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant-user-role-grants/{id}"
                     urlBuilder_.Append("api/tenant-user-role-grants/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -47347,7 +47722,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/tenant-user-role-grants/{id}"
                     urlBuilder_.Append("api/tenant-user-role-grants/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -47442,7 +47817,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/translation/{languageCode}"
                     urlBuilder_.Append("api/translation/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(languageCode, System.Globalization.CultureInfo.InvariantCulture)));
@@ -47529,7 +47904,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/translation/languages"
                     urlBuilder_.Append("api/translation/languages");
                     urlBuilder_.Append('?');
@@ -47615,7 +47990,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/ui-themes"
                     urlBuilder_.Append("api/admin/ui-themes");
                     urlBuilder_.Append('?');
@@ -47726,7 +48101,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/ui-themes"
                     urlBuilder_.Append("api/admin/ui-themes");
                     urlBuilder_.Append('?');
@@ -47835,7 +48210,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/ui-themes/{id}"
                     urlBuilder_.Append("api/admin/ui-themes/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -47952,7 +48327,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/ui-themes/{id}"
                     urlBuilder_.Append("api/admin/ui-themes/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -48071,7 +48446,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/admin/ui-themes/{id}"
                     urlBuilder_.Append("api/admin/ui-themes/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -48193,7 +48568,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance"
                     urlBuilder_.Append("api/user/appearance");
                     urlBuilder_.Append('?');
@@ -48289,7 +48664,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance/presets"
                     urlBuilder_.Append("api/user/appearance/presets");
                     urlBuilder_.Append('?');
@@ -48385,7 +48760,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance/profiles"
                     urlBuilder_.Append("api/user/appearance/profiles");
                     urlBuilder_.Append('?');
@@ -48488,7 +48863,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance/profiles"
                     urlBuilder_.Append("api/user/appearance/profiles");
                     urlBuilder_.Append('?');
@@ -48601,7 +48976,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance/profiles/from-preset/{presetId}"
                     urlBuilder_.Append("api/user/appearance/profiles/from-preset/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(presetId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -48718,7 +49093,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance/profiles/{profileId}"
                     urlBuilder_.Append("api/user/appearance/profiles/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(profileId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -48831,7 +49206,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance/active-profile"
                     urlBuilder_.Append("api/user/appearance/active-profile");
                     urlBuilder_.Append('?');
@@ -48938,7 +49313,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance/mode"
                     urlBuilder_.Append("api/user/appearance/mode");
                     urlBuilder_.Append('?');
@@ -49029,7 +49404,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance/generate-palette"
                     urlBuilder_.Append("api/user/appearance/generate-palette");
                     urlBuilder_.Append('?');
@@ -49140,7 +49515,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance/profiles/{profileId}/archive"
                     urlBuilder_.Append("api/user/appearance/profiles/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(profileId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -49250,7 +49625,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/appearance/profiles/{profileId}/duplicate"
                     urlBuilder_.Append("api/user/appearance/profiles/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(profileId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -49358,7 +49733,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/userauthenticationtoken"
                     urlBuilder_.Append("api/userauthenticationtoken");
                     urlBuilder_.Append('?');
@@ -49451,7 +49826,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/userauthenticationtoken"
                     urlBuilder_.Append("api/userauthenticationtoken");
                     urlBuilder_.Append('?');
@@ -49550,7 +49925,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/userauthenticationtoken/{id}"
                     urlBuilder_.Append("api/userauthenticationtoken/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -49657,7 +50032,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/userauthenticationtoken/{id}"
                     urlBuilder_.Append("api/userauthenticationtoken/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -49766,7 +50141,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/userauthenticationtoken/{id}"
                     urlBuilder_.Append("api/userauthenticationtoken/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -49859,7 +50234,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/sync"
                     urlBuilder_.Append("api/user/sync");
                     urlBuilder_.Append('?');
@@ -49939,7 +50314,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user"
                     urlBuilder_.Append("api/user");
                     urlBuilder_.Append('?');
@@ -50026,7 +50401,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user"
                     urlBuilder_.Append("api/user");
                     urlBuilder_.Append('?');
@@ -50105,7 +50480,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user"
                     urlBuilder_.Append("api/user");
                     urlBuilder_.Append('?');
@@ -50186,7 +50561,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/admin-authority"
                     urlBuilder_.Append("api/user/admin-authority");
                     urlBuilder_.Append('?');
@@ -50275,7 +50650,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/user/{userId}/organizations"
                     urlBuilder_.Append("api/user/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
@@ -50363,7 +50738,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/userexternallogin"
                     urlBuilder_.Append("api/userexternallogin");
                     urlBuilder_.Append('?');
@@ -50456,7 +50831,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/userexternallogin"
                     urlBuilder_.Append("api/userexternallogin");
                     urlBuilder_.Append('?');
@@ -50555,7 +50930,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/userexternallogin/{id}"
                     urlBuilder_.Append("api/userexternallogin/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -50662,7 +51037,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/userexternallogin/{id}"
                     urlBuilder_.Append("api/userexternallogin/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -50771,7 +51146,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/userexternallogin/{id}"
                     urlBuilder_.Append("api/userexternallogin/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -50863,7 +51238,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/visibilitytype"
                     urlBuilder_.Append("api/visibilitytype");
                     urlBuilder_.Append('?');
@@ -50952,7 +51327,7 @@ namespace Explore.Blazor.Client.Clients
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
-                
+
                     // Operation Path: "api/visibilitytype/{id}"
                     urlBuilder_.Append("api/visibilitytype/");
                     urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(id, System.Globalization.CultureInfo.InvariantCulture)));
@@ -51114,7 +51489,7 @@ namespace Explore.Blazor.Client.Clients
                     var field_ = System.Reflection.IntrospectionExtensions.GetTypeInfo(value.GetType()).GetDeclaredField(name);
                     if (field_ != null)
                     {
-                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field_, typeof(System.Runtime.Serialization.EnumMemberAttribute)) 
+                        var attribute = System.Reflection.CustomAttributeExtensions.GetCustomAttribute(field_, typeof(System.Runtime.Serialization.EnumMemberAttribute))
                             as System.Runtime.Serialization.EnumMemberAttribute;
                         if (attribute != null)
                         {
@@ -51126,7 +51501,7 @@ namespace Explore.Blazor.Client.Clients
                     return converted == null ? string.Empty : converted;
                 }
             }
-            else if (value is bool) 
+            else if (value is bool)
             {
                 return System.Convert.ToString((bool)value, cultureInfo).ToLowerInvariant();
             }
@@ -52015,6 +52390,62 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("retentionDays")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? RetentionDays { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AiAssistantModelDiscoveryRequestDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpointUrl")]
+        public string? EndpointUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("apiKey")]
+        public string? ApiKey { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AiAssistantModelDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public string? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayName")]
+        public string? DisplayName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxInputTokens")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxInputTokens { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxOutputTokens")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxOutputTokens { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("supportsToolProposals")]
+        public bool? SupportsToolProposals { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("supportsStreaming")]
+        public bool? SupportsStreaming { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -68253,6 +68684,33 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class McpGovernanceSettingsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("enabled")]
+        public bool? Enabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enableLegacySse")]
+        public bool? EnableLegacySse { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockTenantMcp")]
+        public bool? LockTenantMcp { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockTenantMcpLegacySse")]
+        public bool? LockTenantMcpLegacySse { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ModifiedDefinitionDto
     {
 
@@ -72324,6 +72782,12 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("canOverrideAiAssistant")]
         public bool? CanOverrideAiAssistant { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("canOverrideMcp")]
+        public bool? CanOverrideMcp { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canOverrideMcpLegacySse")]
+        public bool? CanOverrideMcpLegacySse { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("aiAssistantEnabled")]
         public bool? AiAssistantEnabled { get; set; } = default!;
 
@@ -72341,6 +72805,12 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("aiAssistantAllowAnonymousAccess")]
         public bool? AiAssistantAllowAnonymousAccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mcpEnabled")]
+        public bool? McpEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mcpEnableLegacySse")]
+        public bool? McpEnableLegacySse { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -74872,6 +75342,12 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("aiAssistantAllowAnonymousAccess")]
         public bool? AiAssistantAllowAnonymousAccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mcpEnabled")]
+        public bool? McpEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mcpEnableLegacySse")]
+        public bool? McpEnableLegacySse { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

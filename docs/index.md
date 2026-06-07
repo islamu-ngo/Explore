@@ -78,6 +78,10 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [TESTING.md](TESTING.md) - TUnit framework, test projects, TDD workflow.
 - [TEST_RELIABILITY.md](TEST_RELIABILITY.md) - flaky/deferred runtime, stress, E2E, and visual-test tracking.
 - [BENCHMARKS.md](BENCHMARKS.md) - BenchmarkDotNet runtime benchmarks, API pipeline benchmarks, PostgreSQL/Testcontainers benchmark runs, and cold-start agent benchmark boundaries.
+- [AI_RAG_FOUNDATION.md](AI_RAG_FOUNDATION.md) - tenant-safe summary-only boundary for future AI vector/RAG support.
+- [AI_AGENT_CONTRACT_INVENTORY.md](AI_AGENT_CONTRACT_INVENTORY.md) - generated inventory of registry-governed AI agent tool contracts.
+- [AI_AGENT_EXPERIENCE_HARDENING.md](AI_AGENT_EXPERIENCE_HARDENING.md) - guarded context summaries, proposal-only plan previews, and fake/replay AI usability reports.
+- [MCP_DEBUGGING.md](MCP_DEBUGGING.md) - redacted local MCP debugging, Inspector/Copilot smoke, JSON-RPC tests, and compatibility gates.
 - [SELF_HOSTING.md](SELF_HOSTING.md) - Docker Compose, Keycloak, local storage volume, optional MinIO, reverse proxy.
 - [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) - backup, restore, upgrade, and rollback runbook.
 - [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) - release readiness and documentation contract.
@@ -123,3 +127,4 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [adr/ADR-008-email-dispatch-state-machine.md](adr/ADR-008-email-dispatch-state-machine.md) - email dispatch state machine and optional RabbitMQ dispatch profiles.
 - [adr/ADR-009-postgresql-partitioning-deferral.md](adr/ADR-009-postgresql-partitioning-deferral.md) - PostgreSQL partitioning deferral, activation gates, and runbook requirements.
 - [adr/ADR-010-mcp-adapter-hosting-strategy.md](adr/ADR-010-mcp-adapter-hosting-strategy.md) - MCP adapter hosting, transport, auth, tenancy, and disable posture.
+- [adr/ADR-011-local-mcp-stdio-diagnostic-host.md](adr/ADR-011-local-mcp-stdio-diagnostic-host.md) - local-only stdio diagnostic-host decision and deferral.
