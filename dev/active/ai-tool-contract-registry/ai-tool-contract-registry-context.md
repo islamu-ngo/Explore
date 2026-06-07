@@ -3,40 +3,41 @@
 
 # AI Tool Contract Registry — Context
 
-Last Updated: 2026-06-06 Europe/Brussels
+Last Updated: 2026-06-07 Europe/Brussels
 
-## SESSION PROGRESS (2026-06-06 Europe/Brussels)
+## SESSION PROGRESS (2026-06-07 Europe/Brussels)
 
 ### ✅ COMPLETED
 
-- Integrated the completed official .NET AI documentation report into the ATCR dev docs.
-- Re-baselined the plan to preserve completed Phases 0-8 and add Phase 9 as the post-ATCR official .NET AI alignment roadmap.
-- Captured report-backed recommendations for `Microsoft.Extensions.AI.IChatClient`, SDK-backed providers with raw fallback, redacted OpenTelemetry/GenAI telemetry, strict schema/self-correction, stable `content_filtered` mapping, tokenizer budgets, structured output, advisory `Microsoft.Extensions.AI.Evaluation` reports, future tenant-safe `Microsoft.Extensions.VectorData`/`IEmbeddingGenerator` RAG, and Azure managed identity through `DefaultAzureCredential`.
-- Fully analyzed `/home/amir/dev/Github/AgentBlazor` as a comparative .NET/Blazor agent implementation and integrated beneficial patterns as Phase 10 of the ATCR roadmap.
-- Captured AgentBlazor-inspired future work for richer registry metadata, structured safe tool recovery results, schema/argument-shape hardening, route/workflow-scoped catalogs, generated agent contract inventories, dev-only readiness/scaffold analyzers, safe schema-only context summaries, multi-step proposal preview/validation, and fake/replay-provider usability loops.
-- Recorded explicit non-transferable patterns: no reflection-based arbitrary service/action execution, no Blazor-local authorization, no direct remote MCP tool import/execution, no arbitrary EF entity/query/SQL/LINQ exposure, no content-bearing prompt traces, and no real-provider dependency in normal CI.
-- Implemented Phase 9.1 provider alignment: added `Microsoft.Extensions.AI.Abstractions`, kept `IChatClient` inside `Explore.Infrastructure`, added `MicrosoftExtensionsAiChatProvider` behind the existing Application-owned `IAiChatProvider` contract, and covered provider-neutral message/options/response/token/tool-call mapping with Infrastructure tests.
-- Implemented Phase 9.2 provider-mode wiring: added explicit `openai-sdk` and `azure-openai` modes, SDK-backed `IChatClient` factory registration only when those modes are configured, Azure OpenAI `api-key`/`default-azure-credential` posture, runtime selector delegation to the SDK adapter, and operator/self-hosting docs.
-- Implemented Phase 9.3 redacted provider telemetry: added platform-owned `Explore.Ai.Provider` spans, bounded `Explore.Business` metrics for request duration/token usage/proposed actions, SDK/raw provider adapter telemetry, and BusinessMetrics redaction tests proving metric tags do not include prompts, responses, tool payloads, provider endpoints, model IDs, provider request IDs, tenant/user IDs, API keys, or raw errors.
-- Implemented Phase 9.4 strict schema and self-correction hardening: registry-backed JSON schema tool declarations for the SDK adapter, raw OpenAI-compatible `strict: true` function-tool metadata, strict Application schema-subset validation, safe parser correction messages, one-shot bounded self-correction retry in `SendAiMessageCommandHandler`, fail-closed `invalid_tool_arguments` for malformed SDK tool calls, SDK `ChatFinishReason.ContentFilter` mapping to stable `content_filtered`, and raw OpenAI-compatible `finish_reason: "content_filter"`/`"content_filtered"` mapping to the same safe failure code.
-- Refactored the Phase 9.4 implementation for maintainability without behavior drift: schema-subset checks now live in `AiToolJsonSchemaPayloadValidator`, shared safe retry wording lives in `AiToolCorrectionMessages`, and provider send/parse/retry resolution now lives in `AiProviderResponseResolver` so `SendAiMessageCommandHandler` remains focused on CQRS orchestration, persistence, quota/idempotency, and domain state transitions.
-- Implemented Phase 9.5 token-budgeted prompt/reference/tool packing: added an Application-owned `IAiTokenEstimator` seam, deterministic fallback estimator, shared `AiPromptTokenBudget`, token-aware provider message selection/truncation, over-budget tool-schema omission, and optional selected-reference token caps while preserving existing count/character fallback limits.
+- Restored the active ATCR dev docs from the tracked baseline after the current worktree showed them deleted, then re-baselined them to the actual Phases 9/10 implementation state.
+- Read and applied the requested `.claude/skills/technology-selection/SKILL.md` and `.claude/skills/mcp-csharp-create/SKILL.md` instructions.
+- Used Context7 for official `ModelContextProtocol` C# SDK docs. Confirmed current official patterns: `ModelContextProtocol.AspNetCore`, `AddMcpServer()`, `WithHttpTransport(options => options.Stateless = true)`, `MapMcp()`, explicit tool/resource/prompt type registration, method/parameter `[Description]`, cancellation tokens, optional `.AddAuthorizationFilters()` for method-level authorization, and SDK annotation hints.
+- Added Phase 11 to the plan/tasks as "Official .NET MCP SDK Alignment And Enterprise Hardening" with tasks for SDK contract conformance, auth-filter reconciliation, first-class registry-to-MCP projection, transport/AOT posture, MCP Inspector/redacted runbooks, and protocol evolution review.
+- Implemented the first Phase 11.1 code slice: `Explore.API/Program.cs` now passes the configured stateless posture into `WithHttpTransport(...)`; `AiAssistantMcpTools` and `AiAssistantMcpResources` now describe schema-visible MCP parameters; `McpSdkContractTests` enforces official SDK type/description hygiene.
+- Implemented Phase 11.2 authorization-filter reconciliation: `AddAuthorizationFilters()` is registered, all MCP tool/resource/prompt methods carry `[Authorize]`, endpoint mapping remains `RequireAuthorization()`, and focused tests prove anonymous MCP requests fail closed while authenticated requests reach the MCP protocol boundary.
+- Implemented Phase 11.3 first-class registry-to-MCP projection: `ExposeToMcp` ATCR definitions now project `propose_*` MCP tools with registry payload fields plus a minimal proposal envelope, SDK annotations/meta hints, and MediatR `ProposeAiToolActionCommand` dispatch.
+- Implemented Phase 11.4 transport/AOT posture hardening: startup/source tests now lock the product MCP host to API-hosted stateless Streamable HTTP, reject product stdio/legacy-SSE wiring, and keep explicit SDK registration/AOT tradeoffs documented without promising Native AOT support.
+- Implemented Phase 11.5 MCP Inspector/redacted runbook hardening: deterministic replay now includes an Inspector discovery checklist scenario, and docs define authenticated/redacted manual Inspector smoke steps for tools/resources/prompts plus proposal-only calls.
+- Implemented Phase 11.6 client compatibility/protocol evolution review: ADR/architecture/configuration/operations/self-hosting docs now require a new ADR/task before stateful sessions, server-to-client features, resource subscriptions, progress/list-changed notifications, client shims, or protocol-version changes alter the current stateless proposal-first surface.
+- Read the requested `mcp-csharp-debug` and `mcp-csharp-test` skills plus their reference files, used Context7 MCP SDK/Inspector evidence, and added Phase 12 for MCP debug/test hardening without changing runtime behavior.
+- Preserved the existing Clean Architecture decision: MCP remains an API presentation adapter over ATCR/MediatR, disabled by default, authenticated, stateless Streamable HTTP, proposal-first for mutations, and free of `ModelContextProtocol` references in Domain/Application.
+- Implemented the Phase 13 runtime-governance slice: `mcp.enabled`/`mcp.enable_legacy_sse` are hierarchical settings with instance/tenant lock controls, `/mcp` has a runtime gate after tenant/auth resolution, health reports safe startup/runtime booleans, and instance/tenant admin UI can govern runtime MCP posture without changing endpoint path/stateless startup settings.
+- Implemented the Phase 13 scope-hardening slice: MCP now uses API-key scope-aware read/propose policies, revoked keys fall back only to anonymous-safe discovery, tenant mismatches fail closed, unknown MCP-like scopes are rejected on create/update, and read-only MCP keys cannot discover or call proposal tools.
 
-### 🟡 IN PROGRESS
+### 🟢 COMPLETE
 
-- Phase 9 is in progress. Phase 9.1, 9.2, 9.3, 9.4, and 9.5 are implemented and verified. The next provider-hardening slice is Phase 9.6 structured output or Phase 9.7 advisory evaluation reports.
+- Phase 12 is implemented. It added redacted MCP debugging docs/templates, JSON-RPC/WebApplicationFactory contract tests, protocol redaction tests, bounded `Explore.Mcp` telemetry, projected-tool binding/cancellation tests, deterministic replay/evaluation scenarios, compatibility evidence, a review-first doctor check, and ADR-011 stdio deferral.
+- Phase 13.1, 13.2, the safe-unavailable 13.7 legacy-SSE posture, and the Phase 13 API-key scope/read-propose hardening slice are implemented. Future SDK upgrades or compatibility requests must still repeat the Phase 11.6/12.8 review before behavior changes.
 
 ### ⏭️ NEXT
 
-1. Start Phase 9.6 structured output for non-action assistant modes if provider hardening continues.
-2. Keep SDK-backed providers opt-in until operator rollout evidence is settled, and preserve the raw OpenAI-compatible fallback for generic/self-hosted providers.
-3. Keep Phase 9 evaluation reports advisory until cost, volatility, caching, and report stability are understood.
-4. Treat Phase 10 as a future guarded roadmap over the existing registry/HAL/MediatR foundation, not as permission to expose Blazor services, EF entities, or remote MCP tools directly.
+1. Finish remaining Phase 13 MCP rate-limit/audit assertions and decide whether Phase 13.5 adds anonymous-safe MCP resources beyond registry discovery.
+2. Keep architecture/context validation green if future skill or agent files change.
+3. Do not enable legacy SSE, stateful MCP sessions, stdio product hosting, Native AOT support claims, sampling, elicitation, roots, progress/list-changed notifications, resource subscriptions, direct MCP mutation, raw protocol artifact retention, live-client CI, or remote MCP tool import without a new ADR/user approval and targeted verification.
 
 ### ⚠️ BLOCKERS
 
-- No blocker for the Phase 9.1/9.2/9.3/9.4/9.5 provider-hardening slices.
-- Full Release build now passes for 25 projects with 0 errors. Broader integration/Blazor test suites were not rerun in the Phase 9.5 slice.
+- No blocker for the Phase 13 runtime-governance slice. Tavily MCP is unavailable in this tool context; use Context7 plus repository/docs until the connector is installed.
 
 ## SESSION PROGRESS (2026-06-01 Europe/Brussels)
 
@@ -94,9 +95,10 @@ Last Updated: 2026-06-06 Europe/Brussels
 2. Read `dev/active/ai-tool-contract-registry/ai-tool-contract-registry-tasks.md`.
 3. Do not continue old `dev/active/ai-integration` tasks directly; use `dev/pause/ai-integration/README.md` as the archive pointer.
 4. If continuing this workstream for the official .NET AI report, start Phase 9 rather than reopening Phases 0-8.
-5. If continuing the AgentBlazor-inspired roadmap, start Phase 10 tasks from registry metadata/recovery/schema hardening before generated inventories or multi-step plan previews.
-6. Keep all future MCP tools registry-backed and proposal/confirmation-first for mutations.
-7. Keep all three dev docs updated after every meaningful implementation slice.
+5. Phases 9 and 10 are implemented in the current worktree; do not reopen them unless verification evidence contradicts completion.
+6. Phase 11 MCP hardening is complete for the current SDK posture; future MCP compatibility work starts with a new ADR/task review.
+7. Keep all future MCP tools registry-backed and proposal/confirmation-first for mutations.
+8. Keep all three dev docs updated after every meaningful implementation slice.
 
 ## Official .NET AI Report Integration — 2026-06-05 Europe/Brussels
 
@@ -120,6 +122,14 @@ Last Updated: 2026-06-06 Europe/Brussels
 - **Transferable concept 6 — schema-only data context:** AgentBlazor's EF package is explicit opt-in and schema-only. ISLAMU can use explicit safe DTO/reference-projection summaries for prompt grounding, but must not expose repositories, arbitrary EF entities, SQL/LINQ, private content, or direct data access.
 - **Transferable concept 7 — plan preview and usability:** AgentBlazor has execution-plan/risk/approval/freshness contracts and Playwright-style real usability runners. ISLAMU should adapt this as proposal-only plan preview/validation plus fake/replay-provider e2e scenarios and optional manual live-provider runbooks.
 - **Non-transferable:** Reflection-based invocation, arbitrary service-method discovery as runtime authority, direct UI/component execution, Blazor-local auth decisions, direct imported MCP tool execution, content-bearing prompt traces, and live provider calls in normal CI conflict with ISLAMU's ATCR/CQRS/HAL/privacy rules.
+
+## Official C# MCP SDK Alignment — 2026-06-07 Europe/Brussels
+
+- **Skills used:** `technology-selection` classifies MCP as an agent/tooling workflow requiring guarded tool dispatch, DI, observability, explicit cost/safety controls, and no ad-hoc provider/business logic in tool methods. `mcp-csharp-create` requires the official C# SDK, .NET 10+, explicit transport selection, SDK attributes, descriptions, cancellation tokens, DI services, `MapMcp()` for HTTP, and AOT/reflection awareness.
+- **Context7 evidence:** Official SDK docs show ASP.NET Core Streamable HTTP setup with `AddMcpServer()`, `WithHttpTransport(options => options.Stateless = true)`, explicit `.WithTools<T>()`, `.WithResources<T>()`, `.WithPrompts<T>()`, and `app.MapMcp()`. SDK docs also confirm `.AddAuthorizationFilters()` supports MCP method-level `[Authorize]` filtering on tools, prompts, and resources, and that read-only/destructive/idempotent/open-world annotations are hints, not trusted authorization.
+- **Technology decision:** Keep product MCP hosted inside `Explore.API` through `ModelContextProtocol.AspNetCore` and Streamable HTTP. Keep stdio as a possible future local diagnostic/developer host only, not the product platform transport. Keep custom MCP protocol code rejected.
+- **Implementation impact in this slice:** `Program.cs` now passes `Mcp:Stateless` into `WithHttpTransport`, registers SDK authorization filters, maps the endpoint from effective options only when `Mcp:Enabled=true`, and keeps endpoint `RequireAuthorization()` as the first boundary. MCP tool/resource schema-visible parameters have `[Description]`, all MCP callable methods carry `[Authorize]`, and registry definitions exposed to MCP project first-class `propose_*` tools that still persist proposed actions only. Phase 11.4 locks transport/source posture with startup tests and docs: product MCP is API-hosted stateless Streamable HTTP, stdio is local/deferred, legacy SSE/stateful sessions are rejected, and Native AOT is unpromised until publish verification exists. Phase 11.5 adds deterministic replay coverage for the MCP Inspector discovery checklist and redacted manual smoke runbooks. Phase 11.6 gates future stateful/server-to-client/client-shim protocol changes behind ADR/task review.
+- **Future Phase 11 impact:** Treat Phase 11 as complete for the current SDK posture. Reopen protocol review only for SDK upgrades, client compatibility pressure, or new MCP capabilities.
 
 ## Key Files And Responsibilities
 
@@ -179,6 +189,7 @@ Last Updated: 2026-06-06 Europe/Brussels
 | `Explore.API/HealthChecks/AiRetentionCleanupHealthCheck.cs` | New | API | AI retention cleanup readiness check. | Reports bounded scheduler posture only; no tenant IDs, prompts, payloads, provider data, or secrets. |
 | `docs/adr/ADR-010-mcp-adapter-hosting-strategy.md` | New | Docs | Phase 7.1 MCP hosting, transport, auth, tenancy, and disable-path decision. | Selects API-hosted, disabled-by-default, stateless Streamable HTTP via official `ModelContextProtocol.AspNetCore`; no legacy SSE for first implementation. |
 | `Explore.API/Mcp/AiToolRegistryMcpTools.cs` | New | API/MCP | Read-only registry discovery tool for the API-hosted MCP adapter. | Exposes safe tool contract metadata from `IAiToolContractRegistry`; does not execute mutations or expose prompt/provider/tool payload content. |
+| `Explore.API/Mcp/AiMcpProjectedToolFactory.cs` | New | API/MCP | First-class MCP proposal tool projection from ATCR definitions. | Projects `ExposeToMcp` definitions into `propose_*` SDK tools with registry payload schema fields, non-authoritative SDK hints, `[Authorize]` metadata, and MediatR proposal dispatch. |
 | `Explore.API/Mcp/AiAssistantMcpTools.cs` | New | API/MCP | Proposal-first mutating MCP tool surface. | Delegates to `ProposeAiToolActionCommand` through MediatR so MCP persists proposed actions only and never writes repositories directly. |
 | `Explore.API/Mcp/AiAssistantMcpResources.cs` | New | API/MCP | Safe AI conversation MCP resources. | Uses MediatR queries and omits raw proposed-action payloads and message content from MCP resource output. |
 | `Explore.API/Mcp/AiAssistantMcpPrompts.cs` | New | API/MCP | MCP prompt guidance for confirmation-first event drafts. | Guides external agents to use registry contracts and `propose_ai_tool_action`, then wait for product/API confirmation. |
@@ -207,6 +218,9 @@ Last Updated: 2026-06-06 Europe/Brussels
 15. AgentBlazor-inspired metadata, inventories, analyzers, recovery results, schema summaries, and plan previews must be generated from or validated against ATCR/API/HAL/OpenAPI authority.
 16. Reflection-based execution, direct Blazor component/service invocation, direct remote MCP tool import/execution, and arbitrary EF/query exposure are rejected for this workstream.
 17. Real usability/e2e loops should use fake or replay providers in normal CI; live-provider runs are manual/nightly only and must redact artifacts.
+18. Phase 11 uses official `ModelContextProtocol.AspNetCore` SDK guidance but does not let SDK annotations become authorization authority.
+19. Product MCP transport stays API-hosted stateless Streamable HTTP; stdio is local/deferred and legacy SSE remains rejected unless a new ADR is approved.
+20. First-class registry-to-MCP projection may improve client ergonomics, but mutating projected tools must still create proposed actions and wait for product/API confirmation.
 
 ## Constraints And Rules To Remember
 
@@ -233,26 +247,34 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 
 API/Blazor/Persistence/MCP phases add their own project-level verification from the plan and tasks file.
 
+Phase 11 MCP SDK slices should also run:
+
+```bash
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --filter Mcp
+dotnet build --configuration Release --verbosity quiet --no-restore
+```
+
 ## Current Known Risks / Unknowns
 
 - Registry can become too abstract. Keep Phase 1 minimal and prove it with `CreateEventDraft` only.
-- MCP hosting and authentication strategy require current .NET/MCP research in Phase 7, after Phase 8 is complete.
+- MCP hosting and authentication strategy are decided and implemented through Phase 7; Phase 11 now focuses on official SDK conformance, auth-filter defense-in-depth, registry-to-MCP projection, and protocol evolution.
 - Confirm/reject idempotency, event creation dispatch, execution audit row persistence, HAL proposed-action links, duplicate-confirm HTTP flow, and Phase 5 event reference tenant filtering are covered through tests.
 - Phase 6 Blazor service/state/component behavior is covered by focused service/state/component/full-panel tests, plus build and architecture checks.
-- Phase 8.1 cleanup is a callable Application/Persistence primitive, not a scheduled operator job yet. Scheduling, runbook, and metrics polish remain Phase 8 follow-up.
+- Phase 8 retention cleanup is scheduled and observable; cross-request provider abort orchestration and streaming remain deferred.
 - Phase 8.2 cancellation persists run cancellation state and exposes HAL/API affordances. It does not yet implement cross-request provider HTTP abort orchestration for provider calls already in progress; send-message still honors its request `CancellationToken`.
 - Architecture verification for Phase 8.2 currently fails on unrelated `Explore.Blazor.Client/Pages/User/Components/Dialogs/DeleteAccountDialog.razor.cs` direct `DialogOptions` construction, outside the AI cancellation slice.
 - Existing unrelated architecture parity failures may obscure registry validation; record separately.
 - Old mixed AI migration history may need self-hoster notes or later migration cleanup.
 - Old AI task mapping after audit: old Phase 4 reference search maps to new Phase 5; old Phase 5 confirm/create-draft maps to new Phases 2-4; old Phase 6 Blazor panel maps to new Phase 6; old Phase 7 cancellation/streaming/retention/dashboards maps to new Phase 8; old Phase 8 docs/credit/final validation maps to new Phase 8.5 and verification checklist.
-- Phase 9 SDK-backed provider work can accidentally leak provider abstractions into Application; detect by searching for `IChatClient` or provider packages outside Infrastructure/tests.
-- Phase 9 telemetry/evaluation work can accidentally emit content-bearing AI data; require explicit redaction tests before enabling production telemetry.
-- Phase 9 vector/RAG work has cross-tenant/private-content risk; require tenant-filtered ingestion/query tests and start with public event summaries only.
-- Phase 10 AgentBlazor-inspired work can accidentally bypass ATCR by exposing services/components directly; reject reflection execution and require registry/HAL/MediatR tests.
+- Phase 9 SDK-backed provider work is implemented but can still accidentally leak provider abstractions in future edits; detect by searching for `IChatClient` or provider packages outside Infrastructure/tests.
+- Phase 9 telemetry/evaluation/RAG work is implemented as metadata-only/advisory/foundation, but future production expansion can accidentally emit content-bearing AI data; require explicit redaction tests before enabling new telemetry or ingestion.
+- Phase 10 AgentBlazor-inspired work is implemented through ATCR contracts, but future edits can accidentally bypass ATCR by exposing services/components directly; reject reflection execution and require registry/HAL/MediatR tests.
 - Generated agent inventories can drift from registry/API/HAL reality; generation must be deterministic and covered by docs/architecture checks.
 - Schema-only context can leak private fields if the allow-list is too broad; start with selected DTO/reference projection summaries and tenant/public visibility tests.
 - Multi-step plan previews can become direct execution if not constrained; keep them proposal-only until user confirmation dispatches existing commands.
 - Usability/e2e artifacts can leak prompt/response/reference/tool content; use fake/replay providers in CI and redact artifacts.
+- Phase 11 registry-to-MCP projection can accidentally make SDK-visible tools appear executable as committed mutations; projected mutating tools must still create proposed actions and require product confirmation.
+- Phase 11 method-level MCP authorization filters can create a false sense of authority; endpoint auth, tenant middleware, MediatR authorization, and HAL confirmation remain authoritative.
 
 ## Handoff Notes
 
@@ -452,19 +474,21 @@ API/Blazor/Persistence/MCP phases add their own project-level verification from 
 - **Docs covered:** `Mcp:*` settings, disabled-by-default posture, authenticated API-hosted stateless Streamable HTTP endpoint, `mcp-adapter` readiness check, disable/recovery path, proposal-first mutation behavior, and support-data restrictions.
 - **Safety notes:** MCP remains optional. Operators can disable it with `Mcp:Enabled=false` and an API restart. Support tickets/logs must not include prompts, tool payloads, provider responses, tenant IDs, endpoint URLs, API keys, model secrets, or raw MCP request/response bodies.
 - **Validation:** Scoped diagnostics and diff checks passed for the Phase 7.3 docs. Runtime Phase 7.2 API build and Application proposal tests passed; focused MCP API tests remain blocked by an unrelated API integration test project compile error.
-- **Remaining:** No planned AI Tool Contract Registry implementation phase remains. Resolve unrelated repository verification blockers before merge/release if a fully green gate is required.
+- **Remaining at that time:** No planned AI Tool Contract Registry implementation phase remained before later Phase 9-11 re-baselines. Resolve unrelated repository verification blockers before merge/release if a fully green gate is required.
 
 ### Handoff — 2026-06-06 Europe/Brussels
+
+> Superseded by the 2026-06-07 Phase 11 handoff below; retained for historical Phase 9.1-9.5 evidence.
 
 #### Current State
 
 - What is completed: ATCR Phases 0-8 remain complete. Phase 9.1 is implemented with an Infrastructure-only `Microsoft.Extensions.AI.IChatClient` adapter behind the existing `IAiChatProvider` boundary. Phase 9.2 is implemented with explicit `openai-sdk` and `azure-openai` provider modes, conditional SDK client registration, and Azure OpenAI `api-key`/`default-azure-credential` configuration posture. Phase 9.3 is implemented with redacted provider metrics/spans and BusinessMetrics redaction tests. Phase 9.4 is implemented and refactored with strict Application schema validation, safe self-correction retry, SDK/raw schema parity, and stable content-filter mapping. Phase 9.5 is implemented with token-budgeted provider messages, selected references, and registry-backed tool schemas.
-- What is in progress: Phase 9 remains active only for future slices. Phase 9.6 structured output or Phase 9.7 advisory evaluation reports are the next recommended provider-hardening tasks.
+- What was in progress at that handoff: Phase 9 remained active only for future slices. Phase 9.6 structured output or Phase 9.7 advisory evaluation reports were the next recommended provider-hardening tasks.
 - What changed since the last handoff: Prompt budgeting now uses an Application-owned token estimator seam and shared prompt-token budget. `AiPromptContextBuilder` spends `MaxInputTokens` across the system prompt, optional action schema, and newest-first provider messages; `AiSystemPromptFactory` omits over-budget action schemas; `AiReferencePromptPacker` adds optional selected-reference token caps while preserving existing count/character caps.
 
 #### Next Action
 
-1. Continue to Phase 9.6 structured output or Phase 9.7 advisory evaluation reports if the user wants provider hardening to continue.
+1. At that time, continue to Phase 9.6 structured output or Phase 9.7 advisory evaluation reports if the user wants provider hardening to continue.
 2. Keep SDK-backed provider defaulting deferred until operator rollout evidence is settled.
 3. Keep Phase 9.7 evaluation reports advisory until volatility, cost, caching, and false-positive behavior are understood.
 
@@ -528,3 +552,180 @@ API/Blazor/Persistence/MCP phases add their own project-level verification from 
 - Required docs/rules to read: `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/OPERATIONS.md`, this plan/context/tasks set, and relevant Infrastructure/Application rules for Phase 9.
 - Assumptions made: the official .NET AI report recommendations are planning inputs, not permission to remove self-hosted raw OpenAI-compatible support.
 - Do not touch unrelated dirty files while implementing Phase 9 unless the user explicitly asks.
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — Phase 11.1 Planning And SDK Contract Hygiene
+
+- **Current state:** Phase 11 has been added as the official .NET/C# MCP SDK alignment roadmap. The existing Phase 7 MCP adapter remains API-hosted, disabled by default, authenticated, registry-backed, and proposal-first; Phase 11 tightens SDK conformance rather than changing execution authority.
+- **Skills/docs used:** Read `technology-selection` and `mcp-csharp-create`; used Context7 for official `ModelContextProtocol` C# SDK docs covering `AddMcpServer`, `WithHttpTransport`, stateless Streamable HTTP, `MapMcp`, explicit type registration, descriptions, cancellation tokens, authorization filters, and SDK tool annotations.
+- **Files changed:** `Explore.API/Program.cs`, `Explore.API/Mcp/AiAssistantMcpTools.cs`, `Explore.API/Mcp/AiAssistantMcpResources.cs`, `Event.API.IntegrationTests/Features/McpSdkContractTests.cs`, and the three active ATCR dev docs.
+- **Control flow:** MCP server registration now passes `Mcp:Stateless` into `WithHttpTransport(...)` instead of relying on SDK defaults. Existing `MapMcp(mcpAdapterSettings.EndpointPath).RequireAuthorization()` remains the HTTP endpoint boundary.
+- **Contract hygiene:** Schema-visible MCP parameters now carry `[Description]` attributes so LLM clients receive explicit parameter semantics. `McpSdkContractTests` reflect over MCP surface types to prove tool/resource/prompt type attributes and method/parameter descriptions remain in place.
+- **Safety notes:** SDK annotations and descriptions are discovery hints only. Authorization still flows through endpoint auth, tenant middleware, MediatR authorization, ATCR validation, HAL confirmation, and CQRS command execution; MCP must not write repositories directly.
+- **Validation:** Focused MCP/API integration tests passed: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*Mcp*/*" --no-progress --maximum-parallel-tests 1` completed 14/14. Release build passed: `dotnet build --configuration Release --verbosity quiet --no-restore` completed 25 projects, 0 errors, existing warnings.
+- **Remaining:** Follow-up slices completed Phase 11.2 authorization-filter reconciliation and Phase 11.3 first-class projection; continue Phase 11.4 transport/AOT posture.
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — Phase 11.2 MCP Authorization Filters
+
+- **Current state:** Phase 11.2 is implemented. MCP remains disabled by default and proposal-first for mutations, but the official SDK authorization filter layer is now active when the adapter is enabled.
+- **Files changed:** `Explore.API/Program.cs`, `Explore.API/Mcp/AiToolRegistryMcpTools.cs`, `Explore.API/Mcp/AiAssistantMcpTools.cs`, `Explore.API/Mcp/AiAssistantMcpResources.cs`, `Explore.API/Mcp/AiAssistantMcpPrompts.cs`, `Event.API.IntegrationTests/Fixtures/AuthenticatedWebApplicationFactory.cs`, `Event.API.IntegrationTests/Features/McpSdkContractTests.cs`, `Event.API.IntegrationTests/Features/McpAuthorizationTests.cs`, MCP docs, and active workstream docs.
+- **Control flow:** `Explore.API` now registers the MCP SDK server services outside the `Mcp:Enabled` endpoint gate so test/runtime options can deterministically enable endpoint mapping, while `app.MapMcp(...).RequireAuthorization()` still occurs only when effective `Mcp:Enabled=true`. This preserves the disabled-by-default product posture and makes endpoint auth testable.
+- **Authorization posture:** `AddAuthorizationFilters()` is chained into `AddMcpServer()`, and every MCP callable tool/resource/prompt method now has `[Authorize]`. This is defense-in-depth for SDK list/call/read/get operations; it does not replace API authentication, tenant resolution, ATCR validation, MediatR authorization, HAL confirmation, or CQRS command execution.
+- **Tests:** `McpSdkContractTests` now proves MCP callable methods require `[Authorize]` and do not opt into `[AllowAnonymous]`. `McpAuthorizationTests` enables the MCP endpoint in the test host, proves anonymous POSTs to `/mcp` return `401`, and proves authenticated principals reach the MCP protocol boundary rather than failing at endpoint authorization.
+- **Validation:** Focused MCP/API integration tests passed: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*Mcp*/*" --no-progress --maximum-parallel-tests 1` completed 18/18. Release build passed: `dotnet build --configuration Release --verbosity quiet --no-restore` completed 25 projects, 0 errors, existing warnings.
+- **Remaining:** Phase 11.3 projection follows in the next slice. Do not add direct MCP mutations or rely on SDK annotations as authorization.
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — Phase 11.3 Registry-To-MCP Projection
+
+- **Current state:** Phase 11.3 is implemented. The generic `propose_ai_tool_action` tool remains available as a fallback, and each `ExposeToMcp` ATCR definition now projects a first-class `propose_*` MCP proposal tool.
+- **Files changed:** `Explore.API/Mcp/AiMcpProjectedToolFactory.cs`, `Explore.API/Mcp/AiToolRegistryMcpTools.cs`, `Explore.API/Mcp/AiAssistantMcpPrompts.cs`, `Explore.API/Program.cs`, `Event.API.IntegrationTests/Features/McpProjectedToolTests.cs`, `Event.API.IntegrationTests/Features/McpAiToolRegistryTests.cs`, MCP docs, and active workstream docs.
+- **Projection model:** `AiMcpProjectedToolFactory` creates SDK `McpServerTool` instances from `IAiToolContractRegistry`. The projected input schema preserves registry payload fields and adds only `conversationId` plus optional `summary`; hidden/forbidden fields such as `tenantId` remain absent and are rejected before MediatR dispatch.
+- **Execution model:** `AiMcpProjectedProposalTool` maps MCP arguments to `ProposeAiToolActionCommand`, resolves `IMediator` from the MCP request scope, and returns the same safe command-result descriptor as the generic tool. It does not depend on repositories and does not execute domain mutations directly.
+- **SDK metadata:** Projected tools carry `[Authorize]` metadata for SDK authorization filters, SDK tool annotations for read-only/destructive/idempotent/open-world hints, and bounded `Tool.Meta` values for registry name, risk, approval mode, and safe action instructions. These values are descriptive only and do not replace endpoint auth, tenant middleware, MediatR authorization, ATCR validation, or HAL confirmation.
+- **Validation:** Focused MCP/API integration tests passed: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*Mcp*/*" --no-progress --maximum-parallel-tests 1` completed 25/25. Full Release build passed: `dotnet build --configuration Release --verbosity quiet --no-restore` completed 25 projects, 0 errors, existing warnings. API project Release build passed: `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet --no-restore` completed 7 projects, 0 errors, existing warnings. Architecture tests were attempted and failed on pre-existing untracked `.claude/skills/*` schema/line-count issues unrelated to MCP adapter code.
+- **Remaining:** Continue Phase 11.4 transport/AOT posture. Do not promise AOT compatibility beyond explicit registration tests, and do not enable legacy SSE, stateful sessions, stdio product hosting, direct MCP mutation, or remote MCP tool import without a new ADR/user approval.
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — Phase 11.4 Transport/AOT Posture
+
+- **Current state:** Phase 11.4 is implemented. The product MCP host remains `Explore.API` using the official `ModelContextProtocol.AspNetCore` Streamable HTTP transport, disabled by default and authenticated when enabled.
+- **Context7/SDK evidence:** Official SDK docs recommend `WithHttpTransport(options => options.Stateless = true)` plus `MapMcp()` for ASP.NET Core Streamable HTTP. They also document legacy SSE as requiring stateful mode and warn about weaker request backpressure. Package XML documents `WithToolsFromAssembly()` as runtime reflection that may not work in Native AOT, recommending generic registration for Native AOT scenarios.
+- **Files changed:** `Event.API.IntegrationTests/Features/McpSdkContractTests.cs`, `docs/adr/ADR-010-mcp-adapter-hosting-strategy.md`, `docs/CONFIGURATION.md`, `docs/OPERATIONS.md`, `docs/SELF_HOSTING.md`, and the active workstream docs.
+- **Control flow:** A new startup test enables MCP in the integration-test host and verifies the SDK `HttpServerTransportOptions` resolve as `Stateless=true` and `EnableLegacySse=false`. Source posture tests assert `Program.cs` uses `WithHttpTransport(...)`, maps `MapMcp(effectiveMcpAdapterSettings.EndpointPath).RequireAuthorization()`, avoids `WithStdioServerTransport()`/legacy-SSE wiring, and keeps explicit `WithTools<T>()`/`WithResources<T>()`/`WithPrompts<T>()` registration plus registry-projected tool options instead of assembly scanning.
+- **Docs posture:** ADR/configuration/operations/self-hosting docs now state that product MCP is API-hosted stateless Streamable HTTP only; stdio is local/developer diagnostic and deferred; legacy SSE/stateful sessions are rejected unless a new ADR approves an isolated deployment; and Native AOT is not promised until a dedicated publish profile verifies the SDK registrations, projected tools, schema metadata, and auth metadata survive trimming/AOT.
+- **Validation:** Focused MCP/API integration tests passed: `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*Mcp*/*" --no-progress --maximum-parallel-tests 1` completed 28/28. Full Release build passed: `dotnet build --configuration Release --verbosity quiet --no-restore` completed 25 projects, 0 errors, existing warnings. Architecture tests were attempted and still fail on pre-existing untracked `.claude/skills/*` schema/line-count issues unrelated to MCP adapter code.
+- **Remaining:** Continue Phase 11.5 MCP Inspector/redacted runbook work. Do not enable legacy SSE, stateful sessions, stdio product hosting, Native AOT support, direct MCP mutation, or remote MCP tool import without a new ADR/user approval and targeted verification.
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — Phase 11.5 MCP Inspector/Redacted Runbook
+
+- **Current state:** Phase 11.5 is implemented. The deterministic fake/replay report now includes an MCP Inspector discovery checklist scenario, and manual Inspector smoke guidance is documented as authenticated, proposal-only, and redacted.
+- **Context7/skill evidence:** Local `mcp-csharp-test` guidance recommends unit/integration MCP checks and client-visible tool listing/invocation tests. Context7 MCP docs show `ListToolsAsync`/`CallToolAsync`, JSON-RPC `tools/list`, and Inspector startup through `npx -y @modelcontextprotocol/inspector`; MCP remote-server docs show custom HTTP headers and bearer tokens as client auth inputs.
+- **Files changed:** `Explore.Diagnostic/AiReplay/AiReplayScenarioCodes.cs`, `Explore.Diagnostic/AiReplay/AiReplayReportGenerator.cs`, `Explore.Diagnostic.UnitTests/AiReplay/AiReplayReportGeneratorTests.cs`, `docs/OPERATIONS.md`, `docs/AI_AGENT_EXPERIENCE_HARDENING.md`, and active workstream docs.
+- **Replay behavior:** Added `ai.replay.mcp.inspector-contract`, which records the expected manual discovery scope (`tools/list`, `resources/list`, `prompts/list`, `list_ai_tool_contracts`, projected `propose_create_event_draft`, safe conversation resources, and `create_event_draft_with_confirmation`) without running live MCP clients, provider calls, database writes, or content-bearing artifacts.
+- **Runbook posture:** Operations and AI agent hardening docs now require the deterministic replay report before manual Inspector work, one authenticated context per smoke run, tenant binding through the same trusted API edge posture, listing tools/resources/prompts before calls, optional `propose_create_event_draft` only against disposable test conversations, and no confirm/reject or repository mutation from Inspector. Retained artifacts are limited to scenario codes, pass/fail status, redacted endpoint path/auth mode, and bounded failure categories.
+- **Validation:** `dotnet test --project Explore.Diagnostic.UnitTests/Explore.Diagnostic.UnitTests.csproj --configuration Release --verbosity quiet --no-restore` passed 30/30. `dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release --no-restore -- ai-replay-report --output /tmp/explore-ai-replay-mcp-inspector` generated 5 PASS, 0 WARN, 0 FAIL with no live provider credentials, content-bearing artifacts, or database side effects. Focused MCP/API integration tests still pass 28/28, and `dotnet build Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release --verbosity quiet --no-restore` passed.
+- **Remaining at that point:** Phase 11.6 client compatibility/protocol-evolution review followed and is now complete. Do not automate live Inspector/client runs in normal CI until artifact redaction, fake data, auth, tenant binding, and side-effect guarantees are explicitly modeled and tested.
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — Phase 11.6 Client Compatibility/Protocol Evolution Review
+
+- **Current state:** Phase 11.6 is implemented as the initial protocol-evolution review gate. No runtime MCP behavior changed in this slice.
+- **Context7 evidence:** Official SDK docs say stateless Streamable HTTP is recommended for servers that do not need server-to-client requests. In stateless mode, `Mcp-Session-Id` is not used, GET/DELETE MCP endpoints are unavailable, legacy SSE is disabled, and server-to-client requests such as sampling, elicitation, roots, plus unsolicited notifications are disabled. SDK docs also show list-changed/progress notifications and resource subscriptions as client-visible capabilities that require explicit handling, and `ToolAnnotations` as non-binding hints only.
+- **Files changed:** `docs/adr/ADR-010-mcp-adapter-hosting-strategy.md`, `docs/ARCHITECTURE.md`, `docs/CONFIGURATION.md`, `docs/OPERATIONS.md`, `docs/SELF_HOSTING.md`, and active workstream docs.
+- **Review gate:** Future stateful sessions, `Mcp-Session-Id`, session migration/resumability, legacy SSE, sampling, elicitation, roots, completions, progress notifications, tool/resource/prompt list-changed notifications, resource subscriptions, dynamic non-registry tools, client-specific compatibility shims, protocol-version/header changes, or annotation-authority changes now require a new ADR/task review before implementation.
+- **Operational posture:** The default compatibility answer remains `Mcp:Enabled=false` or the current minimal stateless/proposal-first surface until review evidence, targeted MCP tests, replay report, redacted Inspector smoke, docs, self-hosting impact, and rollback are complete.
+- **Validation:** Documentation/protocol review completed with Context7 evidence. `dotnet build --configuration Release --verbosity quiet --no-restore` passed 25 projects, 0 errors, existing warnings. `git diff --check` passed. Architecture tests were reattempted and still fail on pre-existing untracked `.claude/skills/*` frontmatter/section/line-count schema violations unrelated to MCP adapter code.
+- **Remaining:** No Phase 11 implementation task remains. Future SDK upgrades or compatibility requests should start from this review gate rather than changing transport or client-visible behavior directly.
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — Phase 12 Planning From MCP Debug/Test Skills
+
+- **Current state:** Phase 12 is now added as the MCP debuggability, automated contract-test, and client-smoke hardening roadmap. No runtime MCP behavior changed in this slice.
+- **Skills used:** Read `mcp-csharp-debug` plus `references/ide-config.md` and `references/mcp-inspector.md`; read `mcp-csharp-test` plus `references/test-patterns.md` and `references/evaluations.md`.
+- **Context7 evidence:** Official C# SDK docs confirm ASP.NET Core Streamable HTTP hosting through `AddMcpServer().WithHttpTransport(options => options.Stateless = true)` and `MapMcp()`, `.AddAuthorizationFilters()` for `[Authorize]` MCP methods, `McpClient.CreateAsync(...)` with `ListToolsAsync()`/`CallToolAsync()` for client-visible tests, in-memory pipe transports for tests, stderr-only logging for stdio, and MCP Inspector startup through `npx -y @modelcontextprotocol/inspector` with custom HTTP auth headers.
+- **Files changed:** `dev/active/ai-tool-contract-registry/ai-tool-contract-registry-plan.md`, `dev/active/ai-tool-contract-registry/ai-tool-contract-registry-tasks.md`, and this context file.
+- **Plan changes:** Added a new Phase 12 with tasks for local debug profiles, redacted client config templates, an official-SDK-or-compatible MCP client contract harness, protocol error/redaction tests, debug logging/metrics, Inspector/Copilot smoke runbooks, projected-tool binding/cancellation tests, deterministic MCP evaluations, a compatibility matrix/upgrade gate, a review-first doctor check, and a separate ADR-gated stdio diagnostic-host decision.
+- **Safety notes:** Phase 12 is explicitly no-new-authority. It must not enable direct mutation, live-provider CI, stateful sessions, legacy SSE, product stdio hosting, raw protocol artifact retention, or committed MCP client secrets.
+- **Validation:** Docs-only planning update. `git diff --check -- dev/active/ai-tool-contract-registry/ai-tool-contract-registry-plan.md dev/active/ai-tool-contract-registry/ai-tool-contract-registry-tasks.md dev/active/ai-tool-contract-registry/ai-tool-contract-registry-context.md` passed.
+- **Remaining:** Superseded by the Phase 12 implementation slice below; no Phase 12 task remains.
+
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — Phase 12 MCP Debug/Test Hardening
+
+- **Current state:** Phase 12.1-12.10 are implemented. MCP remains an optional API-hosted, authenticated, tenant-resolved, stateless Streamable HTTP adapter over ATCR/MediatR; the slice added debug/test/diagnostic confidence only and did not add direct mutation, product stdio, legacy SSE, stateful sessions, live-provider CI, or server-to-client MCP features.
+- **Research evidence:** Context7 OpenTelemetry docs confirmed custom ActivitySource/Meter registration through `.AddSource("...")` and `.AddMeter("...")`; Context7 MCP SDK evidence from the planning slice remains the basis for stateless `MapMcp()`/authorization-filter/test posture. Tavily MCP research was used only for official MCP/C# SDK context and retained no secrets or raw outputs in docs.
+- **Files changed:** Added `docs/MCP_DEBUGGING.md`, `docs/adr/ADR-011-local-mcp-stdio-diagnostic-host.md`, `Event.API.IntegrationTests/Features/McpProtocolContractTests.cs`, `Explore.API/Mcp/McpAdapterTelemetry.cs`, and `Explore.Diagnostic/Doctor/Checks/McpDebugReadinessDoctorCheck.cs`; updated MCP/API integration tests, ServiceDefaults OpenTelemetry registration, Diagnostic replay/evaluation/doctor tests, Operations/Configuration/Self-hosting/AI hardening/index docs, and active workstream docs.
+- **Protocol contract model:** `McpProtocolContractTests` drives the API test host through stateless JSON-RPC (`initialize`, `tools/list`, `resources/list`, `resources/templates/list`, `prompts/list`, and `tools/call`) with authenticated test principals. It verifies registry discovery, generic/projected proposal tools, disabled endpoint behavior, malformed/unknown/hidden-field redaction, and proposal-only behavior by asserting events are not created.
+- **Diagnostics model:** `McpAdapterTelemetry` uses `Explore.Mcp` ActivitySource/Meter and records only allow-listed tool names, projected flag, bounded outcome, bounded failure code, and duration. Tool calls are instrumented without logging prompts, payload JSON, tenant/user identifiers, endpoint URLs, bearer/API-key values, provider/model data, or raw exceptions.
+- **Evaluation/doctor model:** Diagnostic replay now has seven scenarios, including projected-tool selection and confirmation-required MCP guidance. Advisory AI evaluation now has six dimensions, including `McpProposalFlow`. `McpDebugReadinessDoctorCheck` verifies docs/tests/replay/evaluation/ignore-rule/ADR presence without starting servers, clients, migrations, token generation, endpoint calls, or secret printing. ADR-011 defers local stdio diagnostic hosting and keeps product MCP API-hosted Streamable HTTP only.
+- **Validation:** `dotnet test --project Explore.Diagnostic.UnitTests/Explore.Diagnostic.UnitTests.csproj --configuration Release --verbosity quiet --no-restore` passed 35/35. `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*McpProjectedToolTests/*|/*/*/*McpSdkContractTests/*|/*/*/*McpProtocolContractTests/*" --no-progress --maximum-parallel-tests 1` ran the API suite and passed 1279/1283 with 4 intentional skips. `ai-replay-report` generated 7 PASS, 0 WARN, 0 FAIL; `ai-eval-report` generated 6 PASS, 0 WARN, 0 FAIL; doctor generated 8 PASS, 0 WARN, 0 FAIL. `dotnet build --configuration Release --verbosity quiet --no-restore` passed 25 projects, 0 errors, existing warnings. `git diff --check` passed. Focused `McpProjectedToolTests` passed 9/9 after the final null-safety patch.
+- **Remaining:** No Phase 12 task remains. Architecture tests now pass for this workspace (190 total, 189 succeeded, 1 intentional skip).
+
+### Handoff — 2026-06-07 Europe/Brussels
+
+#### Current State
+
+- What is completed: Phases 0-12 are implemented in the current worktree. Phase 12 adds redacted MCP debugging docs/templates, JSON-RPC protocol contract tests, bounded `Explore.Mcp` telemetry, projected-tool binding/cancellation tests, deterministic MCP replay/evaluation scenarios, a review-first doctor check, and ADR-011 stdio deferral.
+- What is in progress: No Phase 12 implementation task remains. Any next slice should be user-approved follow-up work or cleanup of unrelated context-system blockers.
+- What changed since the last handoff: The active plan/tasks/context now reflect Phase 12 completion and verification. MCP remains API-hosted, stateless, authenticated, registry-backed, and proposal-first.
+
+#### Next Action
+
+1. Review and commit the Phase 12 implementation or start a separately approved follow-up slice.
+2. Keep architecture/context validation green if future skill or agent files change.
+3. Keep legacy SSE, stateful sessions, stdio product hosting, Native AOT support claims, server-to-client MCP capabilities, direct mutation, raw protocol artifact retention, live-client CI, and remote MCP tool import rejected unless a new ADR, user approval, and targeted verification allow them.
+
+#### Blockers
+
+- No blocker for Phase 12 implementation work.
+- Full architecture/context validation now passes for this workspace; one existing API-contract metadata test remains intentionally skipped.
+
+#### Modified Files
+
+- `dev/active/ai-tool-contract-registry/ai-tool-contract-registry-plan.md` — re-baselined with MCP debug/test skill evidence and new Phase 12 roadmap.
+- `dev/active/ai-tool-contract-registry/ai-tool-contract-registry-tasks.md` — marked Phase 11 complete, added Phase 12 checklist, and refreshed verification/remaining-work notes.
+- `dev/active/ai-tool-contract-registry/ai-tool-contract-registry-context.md` — refreshed session progress and handoff state for `/dev-docs-update`.
+
+#### Validation
+
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*Mcp*/*" --no-progress --maximum-parallel-tests 1` — passed, 28/28.
+- `dotnet test --project Explore.Diagnostic.UnitTests/Explore.Diagnostic.UnitTests.csproj --configuration Release --verbosity quiet --no-restore` — passed, 30/30.
+- `dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release --no-restore -- ai-replay-report --output /tmp/explore-ai-replay-mcp-inspector` — generated 5 PASS, 0 WARN, 0 FAIL with no live credentials/content artifacts/database side effects.
+- `dotnet build Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release --verbosity quiet --no-restore` — passed, 3 projects, 0 errors, existing warnings.
+- `dotnet build --configuration Release --verbosity quiet --no-restore` — passed, 25 projects, 0 errors, existing warnings.
+- `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet --no-restore` — passed, 7 projects, 0 errors, existing warnings.
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --no-restore -- --no-progress --maximum-parallel-tests 1` — passed, 190 total, 189 succeeded, 1 intentional skip.
+- `git diff --check` — passed.
+- `git diff --check -- dev/active/ai-tool-contract-registry/ai-tool-contract-registry-plan.md dev/active/ai-tool-contract-registry/ai-tool-contract-registry-tasks.md dev/active/ai-tool-contract-registry/ai-tool-contract-registry-context.md` — passed after `/dev-docs-update`.
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --no-restore -- --no-progress --maximum-parallel-tests 1` — passed, 190 total, 189 succeeded, 1 intentional skip.
+- Commands completed for Phase 12: Diagnostic unit tests, API integration tests, replay/eval reports, doctor, Release build, architecture tests, and `git diff --check`.
+
+#### Documentation Impact
+
+- `ai-tool-contract-registry-plan.md` now includes Phase 12 and the MCP debug/test skill re-baseline.
+- `ai-tool-contract-registry-tasks.md` marks Phase 11 complete and adds the Phase 12 planned task checklist.
+- `ai-tool-contract-registry-context.md` records the debug/test skill evidence, Context7 evidence, planned tasks, safety boundaries, and next action.
+- Journal entry: not added; this was a workstream planning/handoff refresh, not a durable reusable finding beyond the active docs.
+
+#### Risks
+
+- Do not let SDK annotations replace product authorization; they are hints only.
+- Do not leak `ModelContextProtocol` types into Domain/Application.
+- First-class MCP projection must not execute domain mutations directly; it must persist proposed actions and wait for HAL/API confirmation.
+- Do not let debug tooling commit raw MCP request/response bodies, Inspector screenshots, Copilot transcripts, bearer/API-key values, tenant/user identifiers, prompts, provider responses, endpoint URLs, or raw exceptions.
+
+#### Notes For Next Contributor Or Agent
+
+- Required docs/rules to read: `AGENTS.md`, `docs/QUICK_REFERENCE.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`, `.claude/skills/mcp-csharp-debug/SKILL.md`, `.claude/skills/mcp-csharp-test/SKILL.md`, and the three active ATCR docs.
+- Assumptions made: Phase 12 improves debug/test confidence only; it does not approve transport, authority, mutation, or self-hosting behavior changes.
+- Do not touch unrelated dirty files: current `git status --short` includes many pre-existing modified/untracked files outside this `/dev-docs-update` refresh, including `.github/**`, package lock files, Blazor files, provider files, docs, untracked MCP skill folders, and other active workstream docs such as `dev/active/full-input-validation-sanitization/full-input-validation-sanitization-tasks.md`. Preserve them unless the user explicitly asks to work on that scope.
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — MCP Infisical Mapping And Phase 13 Planning
+
+- **Current state:** Added startup compatibility mapping for the new Infisical `/api` MCP secrets and recorded Phase 13 as planned work. Runtime DB governance, API-key scopes, anonymous-safe MCP reads, invalid-key fallback, and legacy-SSE effective-state handling are not implemented yet.
+- **Context7 evidence:** ASP.NET Core documentation confirms double-underscore environment variables map to colon-separated configuration keys and options bind from configuration sections. The compatibility mapping follows that convention by mapping raw Infisical `MCP_*` keys into canonical `Mcp:*` settings.
+- **Files changed:** `Explore.API/Extensions/ConfigurationExtensions.cs`, `docs/CONFIGURATION.md`, `dev/active/ai-tool-contract-registry/ai-tool-contract-registry-plan.md`, `dev/active/ai-tool-contract-registry/ai-tool-contract-registry-tasks.md`, and this context file.
+- **Configuration behavior:** `/api/MCP_ENABLED` maps to `Mcp:Enabled`; `/api/MCP_ENDPOINT_PATH` maps to `Mcp:EndpointPath` and normalizes a bare value like `mcp` to `/mcp`; `/api/MCP_STATELESS` maps to `Mcp:Stateless`; `/api/MCP_ENABLE_LEGACY_SSE` maps to `Mcp:EnableLegacySse`. Canonical `Mcp:*` keys still win because mapping uses the existing `TrySet` guard.
+- **Phase 13 scope:** The next slice must treat `MCP_ENABLED` as a startup ceiling before runtime DB settings can enable MCP. `mcp.enabled` and `mcp.enable_legacy_sse` should be runtime-governed at instance and tenant levels with instance locks. Endpoint path and stateless mode remain startup-only and must not be editable at runtime.
+- **Auth posture:** Phase 13 should make external MCP API-key-first, not bearer-token-first. MCP must also support anonymous-safe operations when no key or an invalid key is supplied, while valid API keys unlock only scoped authorized MCP capabilities.
+- **Compatibility note:** Superseded by the following Phase 13 implementation slice: endpoint-wide MCP authorization has now been replaced by per-operation SDK authorization, and `MCP_ENABLE_LEGACY_SSE=true` is treated as a startup ceiling while runtime legacy SSE remains disabled.
+- **Validation:** `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet --no-restore` passed for 7 projects with existing warnings; `git diff --check` passed for the modified files.
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — Phase 13 Startup, API-Key, And Anonymous-Safe MCP Posture
+
+- **Current state:** Phase 13.1 is implemented. Phase 13.3, 13.4, 13.6, 13.7, and 13.8 are partially implemented. Runtime DB governance/locks/admin UX (13.2), public-event anonymous MCP read tools/resources (13.5), rate-limit partitions, revoked-key/tenant-mismatch coverage, unknown-scope API-key validation assertions, and legacy-SSE runtime governance remain pending.
+- **Context7 evidence:** Official ModelContextProtocol C# SDK docs confirm ASP.NET Core servers use `AddMcpServer().WithHttpTransport(options => options.Stateless = true).MapMcp()`, stateless mode is recommended when server-to-client features are unnecessary, and `.AddAuthorizationFilters()` enables standard `[Authorize]`/`[AllowAnonymous]` metadata on MCP tools. ASP.NET Core docs confirm normal configuration binding and environment-variable hierarchy mapping; the Infisical `/api/MCP_*` mapping keeps canonical `Mcp:*` as the effective options surface.
+- **Tavily note:** Tavily MCP was requested but is not available in the current tool/plugin context after tool discovery and install-candidate checks. This slice used Context7 and repository source/docs for research instead.
+- **Files changed:** API startup/auth/tenant middleware, MCP registry tool, API-key handler, MCP settings validator/health check, External API Key scopes/ceilings/machine-scope mapping, MCP/API/infrastructure/application tests, MCP/configuration/operations/self-hosting/security/API/ADR docs, and active workstream plan/tasks/context.
+- **Auth/control flow:** `app.MapMcp(...).AllowAnonymous()` removes endpoint-wide auth so SDK authorization filters can make `list_ai_tool_contracts` explicitly `[AllowAnonymous]`. Private MCP tools/resources/prompts keep `[Authorize]` and still delegate to MediatR/CQRS proposal flows; mutating MCP calls continue to create proposed actions only. `/mcp` now participates in the API auth-conflict middleware and tenant pre/post-auth middleware, so `Authorization` plus `X-API-Key` fails with a redacted bad request and valid API keys can bind tenant context while invalid/no-key traffic can reach only anonymous-safe discovery when tenant context is otherwise resolved.
+- **Scope model:** Added `mcp:read` and `mcp:propose`, included them in user/tenant ceilings, and mapped them narrowly to AI conversation view/proposal actions. Unit tests prove these scopes do not grant event writes, event reads, send-message, confirmation, or generic user-write authority.
+- **Legacy SSE model:** `MCP_ENABLE_LEGACY_SSE=true` no longer fails startup validation. It is only a startup ceiling; `Program.cs` still does not set SDK legacy SSE options, and the readiness payload now reports `legacySseStartupCeiling` plus `legacySseRuntimeEnabled=false`.
+- **Validation:** `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet --no-restore` passed after repairing a pre-existing OpenAI-compatible model-discovery compile gap. `dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*ExternalApiKeyScopeCeilingTests/*|/*/*/*MachineScopeMappingTests/*" --no-progress --maximum-parallel-tests 1` passed the full Application unit suite (1300/1300). `dotnet test Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*OpenAiCompatibleChatProviderTests/*|/*/*/*AiProviderSettingsValidatorTests/*" --no-progress --maximum-parallel-tests 1` passed the full Infrastructure suite (437/437) after adding model-discovery endpoint coverage. `dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*McpAuthorizationTests/*|/*/*/*McpSdkContractTests/*|/*/*/*McpAdapterSettingsValidatorTests/*|/*/*/*McpAdapterHealthCheckTests/*|/*/*/*McpProtocolContractTests/*" --no-progress --maximum-parallel-tests 1` passed the full API integration suite (1282 succeeded, 4 intentional skips). `dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --no-restore -- --no-progress --maximum-parallel-tests 1` passed (189 succeeded, 1 intentional skip). `dotnet build --configuration Release --verbosity quiet --no-restore` passed 25 projects with existing warnings. `git diff --check` passed.
+- **Compatibility note:** Superseded by the following runtime-governance slice for `mcp.enabled`/`mcp.enable_legacy_sse` settings and locks. Remaining Phase 13 work is now public anonymous MCP read-resource decisions, revoked-key/tenant-mismatch coverage, missing-scope forbidden-shape tests, unknown-scope validation assertions, and rate-limit/audit partitioning.
+
+### Implementation Slice — 2026-06-07 Europe/Brussels — Phase 13 Runtime MCP Governance And Safe Legacy-SSE State
+
+- **Current state:** Phase 13.2 is implemented and Phase 13.7 now resolves to the safe-unavailable outcome. Runtime DB governance/locks/admin UX are no longer pending. Remaining Phase 13 work is focused on rate-limit/audit assertions, any additional anonymous-safe read resources, revoked-key/tenant-mismatch coverage, and call-level scope failure-shape tests.
+- **Context7 evidence:** Official ModelContextProtocol C# SDK docs confirm ASP.NET Core MCP servers use `AddMcpServer().WithHttpTransport(...).MapMcp()`, recommend stateless mode when sessions/server-to-client requests are unnecessary, and document legacy SSE as requiring stateful mode plus explicit `EnableLegacySse`. ASP.NET Core docs confirm middleware must run after routing/authentication and before endpoint mapping/authorization where context-dependent gates are needed.
+- **Tavily note:** Tavily MCP remains unavailable in the current tool/plugin context after tool discovery and install-candidate checks; no Tavily connector/plugin is available to install in this session.
+- **Files changed:** `GovernanceSettingKeys`, MCP setting definitions/registry, `McpSettingGroup`, tenant-delegation setting group, governance DTOs, instance governance service and commands, tenant policy read/apply/validation paths, `McpRuntimeStateService`, `McpRuntimeGateMiddleware`, MCP health check, instance settings controller routes, Blazor instance/tenant admin settings UI/services, MCP runtime/health/application tests, and MCP configuration/operations/debugging/self-hosting/API docs.
+- **Architecture/control flow:** Startup `Mcp:Enabled` is the operator ceiling and maps the endpoint only at application startup. `McpRuntimeGateMiddleware` then runs after tenant/auth resolution and computes effective runtime state from instance `mcp.enabled`, tenant override values, and `governance.lock_tenant_mcp`. If startup is true but runtime resolves false, `/mcp` returns `404` without leaking tenant IDs, endpoint URLs, credentials, prompts, or raw protocol data.
+- **Legacy SSE:** `mcp.enable_legacy_sse` and `governance.lock_tenant_mcp_legacy_sse` now exist and resolve through the same instance/tenant policy path, but `LegacySseRuntimeEnabled` remains `false`. This records governance intent without exposing stateful/session-affinity transport behavior.
+- **Admin UX/API:** Instance admins can read/update MCP governance via `GET/PUT /api/instance/settings/mcp`; the Blazor instance advanced settings surface exposes runtime enablement, legacy-SSE intent, and tenant locks. Tenant admins see MCP override controls only when the instance locks allow it. Endpoint path and stateless mode are intentionally absent from runtime-editable models.
+- **Validation:** `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet --no-restore` passed. `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --verbosity quiet --no-restore` passed. `dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*McpSettingGroupTests/*|/*/*/*InstanceGovernanceSettingServiceTests/*|/*/*/*TenantPolicySettingServiceTests/*|/*/*/*UpdateTenantPolicySettingsCommandHandlerTests/*" --no-progress --maximum-parallel-tests 1` passed the full Application unit suite (1308/1308). `dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet --no-restore -- --treenode-filter "/*/*/*McpAuthorizationTests/*|/*/*/*McpRuntimeStateServiceTests/*|/*/*/*McpAdapterHealthCheckTests/*|/*/*/*McpProtocolContractTests/*|/*/*/*McpSdkContractTests/*" --no-progress --maximum-parallel-tests 1` passed the full API integration suite (1289 succeeded, 4 intentional skips). `dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet --no-restore -- --no-progress --maximum-parallel-tests 1` passed (1326 succeeded, 1 intentional skip). `dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --no-restore -- --no-progress --maximum-parallel-tests 1` passed (189 succeeded, 1 intentional skip). `dotnet build --configuration Release --verbosity quiet --no-restore` passed 25 projects with existing warnings. `git diff --check` passed after stripping generated-client trailing whitespace.

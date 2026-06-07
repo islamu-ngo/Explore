@@ -247,16 +247,9 @@ Matrix must include:
 - [ ] Default user-authored text to plain text.
 - [ ] If user-authored rich HTML is required, create a sanitizer decision record with threat model, allowlist, server-side implementation, and update policy.
 - [ ] Add sanitizer regression tests for dangerous tags, attributes, protocols, SVG/math payloads, markdown/raw HTML transforms, and modified sanitized content.
+- [ ] Tell the user to regenerate the apiclient on his own
 
-## Slice 9 — OpenAPI and Generated Client Regeneration
-
-- [ ] Regenerate `schemas/openapi.json` after API contract changes.
-- [ ] Regenerate `Explore.Blazor.Client/Clients/EventApiClient.g.cs` in a discrete step.
-- [ ] Review OpenAPI/generated-client diffs for every breaking DTO change.
-- [ ] Update Blazor services to map new generated DTOs without leaking generated clients into Razor components.
-- [ ] Update `docs/API_CHANGELOG.md` with breaking validation/DTO changes.
-
-## Slice 10 — CI Gates and Observability Safety
+## Slice 9 — CI Gates and Observability Safety
 
 - [ ] Audit validation failure logging for raw user input and sensitive fields.
 - [ ] Replace unsafe log values with field names, validator codes, length buckets, categories, tenant/resource identifiers, endpoints, statuses, trace IDs, and correlation IDs.
