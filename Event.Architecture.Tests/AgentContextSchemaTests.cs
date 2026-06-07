@@ -30,7 +30,8 @@ public class AgentContextSchemaTests
         "accessibility", "agentic-research", "aspire",
         "blazor-bff-patterns", "blazor-css-isolation", "conventional-commit",
         "design-system", "error-tracking", "footer-management", "gitkraken-cli",
-        "outbox-pattern", "prd",
+        "mcp-csharp-create", "mcp-csharp-debug", "mcp-csharp-publish", "mcp-csharp-test",
+        "outbox-pattern", "prd", "technology-selection",
     };
 
     private static readonly string[] RequiredAgentFrontmatterKeys =
