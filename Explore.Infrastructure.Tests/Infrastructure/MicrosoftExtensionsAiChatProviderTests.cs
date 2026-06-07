@@ -74,6 +74,67 @@ public sealed class MicrosoftExtensionsAiChatProviderTests
     }
 
     [Test]
+    public async Task SendAsync_WhenStructuredOutputEnabled_SetsResponseFormatAndParsesAssistantMessage()
+    {
+        var chatClient = new RecordingChatClient(new ChatResponse(new ChatMessage(
+            ChatRole.Assistant,
+            "{\"message\":\"Structured assistant response\"}"))
+        {
+            FinishReason = ChatFinishReason.Stop
+        });
+        var provider = CreateProvider(chatClient);
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Summarize the plan",
+            structuredOutputEnabled: true,
+            structuredOutputSchema: AiStructuredOutputSchemas.AssistantMessage));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Response!.AssistantMessage).IsEqualTo("Structured assistant response");
+
+        var responseFormat = (ChatResponseFormatJson)chatClient.Options!.ResponseFormat!;
+        await Assert.That(responseFormat.SchemaName).IsEqualTo("assistant_message");
+        await Assert.That(responseFormat.SchemaDescription).Contains("non-action assistant reply");
+        await Assert.That(responseFormat.Schema!.Value.GetProperty("additionalProperties").GetBoolean()).IsFalse();
+        await Assert.That(chatClient.Options.Tools).IsNull();
+        await Assert.That(chatClient.Options.ToolMode).IsEqualTo(ChatToolMode.None);
+    }
+
+    [Test]
+    public async Task SendAsync_WhenStructuredOutputDoesNotMatchSchema_ReturnsSafeFailure()
+    {
+        var chatClient = new RecordingChatClient(new ChatResponse(new ChatMessage(ChatRole.Assistant, "{\"summary\":\"wrong shape\"}")));
+        var provider = CreateProvider(chatClient);
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Summarize the plan",
+            structuredOutputEnabled: true,
+            structuredOutputSchema: AiStructuredOutputSchemas.AssistantMessage));
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Error!.Code).IsEqualTo("invalid_structured_output");
+        await Assert.That(result.Error.Message).DoesNotContain("wrong shape");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenStructuredOutputCombinesWithToolProposals_FailsBeforeProviderCall()
+    {
+        var chatClient = new RecordingChatClient(new ChatResponse(new ChatMessage(ChatRole.Assistant, "unused")));
+        var provider = CreateProvider(chatClient);
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Create an event draft",
+            toolProposalsEnabled: true,
+            actionSchema: "{\"type\":\"object\"}",
+            structuredOutputEnabled: true,
+            structuredOutputSchema: AiStructuredOutputSchemas.AssistantMessage));
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Error!.Code).IsEqualTo("structured_output_conflict");
+        await Assert.That(chatClient.Calls).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task SendAsync_WhenToolProposalsEnabled_UsesRegistryBackedJsonSchema()
     {
         var chatClient = new RecordingChatClient(new ChatResponse(new ChatMessage(ChatRole.Assistant, "Assistant response")));
@@ -164,14 +225,24 @@ public sealed class MicrosoftExtensionsAiChatProviderTests
     private static AiChatPayload CreateRequest(
         string userMessage,
         bool toolProposalsEnabled = false,
-        string? actionSchema = null) => new(
+        string? actionSchema = null,
+        bool structuredOutputEnabled = false,
+        AiStructuredOutputSchema? structuredOutputSchema = null) => new(
             "gpt-test",
             [new AiChatMessage(AiMessageRole.User, userMessage)],
             "You are a safe assistant.",
-            new AiChatOptions(8000, 1024, 0.2m, 30, toolProposalsEnabled, StreamingEnabled: false),
+            new AiChatOptions(
+                8000,
+                1024,
+                0.2m,
+                30,
+                toolProposalsEnabled,
+                StreamingEnabled: false,
+                StructuredOutputEnabled: structuredOutputEnabled),
             actionSchema is null
                 ? null
-                : new AiStructuredActionSchema([AiProposedActionKind.CreateEventDraft], actionSchema));
+                : new AiStructuredActionSchema([AiProposedActionKind.CreateEventDraft], actionSchema),
+            structuredOutputSchema);
 
     private sealed class RecordingChatClient : IChatClient
     {
@@ -186,11 +257,14 @@ public sealed class MicrosoftExtensionsAiChatProviderTests
 
         public ChatOptions? Options { get; private set; }
 
+        public int Calls { get; private set; }
+
         public Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
             CancellationToken cancellationToken = default)
         {
+            Calls++;
             Messages = messages.ToList();
             Options = options;
             return Task.FromResult(_response);

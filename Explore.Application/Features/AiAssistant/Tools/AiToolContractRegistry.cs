@@ -14,8 +14,20 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
 
     public AiToolContractRegistry(IEnumerable<AiToolDefinition> definitions)
     {
-        Definitions = definitions.ToList();
-        _definitionsByKind = Definitions.ToDictionary(definition => definition.Kind);
+        ArgumentNullException.ThrowIfNull(definitions);
+
+        var definitionList = definitions.ToArray();
+        var duplicateKind = definitionList
+            .GroupBy(definition => definition.Kind)
+            .FirstOrDefault(group => group.Count() > 1)
+            ?.Key;
+        if (duplicateKind is not null)
+        {
+            throw new ArgumentException("AI tool definitions must be unique by proposed-action kind.", nameof(definitions));
+        }
+
+        Definitions = definitionList;
+        _definitionsByKind = definitionList.ToDictionary(definition => definition.Kind);
     }
 
     public IReadOnlyList<AiToolDefinition> Definitions { get; }
@@ -30,7 +42,8 @@ public sealed class AiToolContractRegistry : IAiToolContractRegistry
         {
             return AiToolValidationResult.Failure(
                 "unknown_action_kind",
-                "AI provider returned an unsupported proposed action kind.");
+                "AI provider returned an unsupported proposed action kind.",
+                AiToolCorrectionMessages.SchemaExactRetry);
         }
 
         return AiToolPayloadGuard.ValidateJsonObject(

@@ -51,6 +51,14 @@ public static class AiAssistantSettingDefinitions
         Description: "Default model identifier used for assistant requests",
         MaxScope: SettingScope.Tenant);
 
+    public static readonly SettingDefinition AllowedModelIds = new(
+        Key: GovernanceSettingKeys.AiAssistant.AllowedModelIds,
+        ValueType: SettingValueType.Json,
+        DefaultValue: "[]",
+        Category: "AiAssistant",
+        Description: "Model identifiers that may be selected in the AI assistant model picker",
+        MaxScope: SettingScope.Tenant);
+
     public static readonly SettingDefinition MaxInputTokens = new(
         Key: GovernanceSettingKeys.AiAssistant.MaxInputTokens,
         ValueType: SettingValueType.Integer,
@@ -149,7 +157,7 @@ public static class AiAssistantSettingDefinitions
 
     public static IReadOnlyList<SettingDefinition> All =>
     [
-        Enabled, Provider, EndpointUrl, ApiKey, ModelId, MaxInputTokens, MaxOutputTokens,
+        Enabled, Provider, EndpointUrl, ApiKey, ModelId, AllowedModelIds, MaxInputTokens, MaxOutputTokens,
         Temperature, TimeoutSeconds, RetentionDays, DailyMessageLimit, DailyTenantMessageLimit,
         ConcurrentRunLimit, SelectedReferenceLimit,
         ToolProposalsEnabled, StreamingEnabled, AllowAnonymousAccess

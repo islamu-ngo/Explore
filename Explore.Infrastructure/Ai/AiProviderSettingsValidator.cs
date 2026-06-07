@@ -105,11 +105,6 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
 
     private static void ValidateOpenAiCompatibleSettings(AiProviderSettings options, List<string> failures)
     {
-        if (string.IsNullOrWhiteSpace(options.ApiKey))
-        {
-            failures.Add("AiProvider:ApiKey is required for openai-compatible providers.");
-        }
-
         if (string.IsNullOrWhiteSpace(options.ModelId))
         {
             failures.Add("AiProvider:ModelId is required for openai-compatible providers.");

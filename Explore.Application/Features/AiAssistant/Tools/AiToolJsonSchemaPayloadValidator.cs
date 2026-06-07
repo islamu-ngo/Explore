@@ -2,6 +2,7 @@
 // ABOUTME: Enforces required fields, primitive types, UUID formats, numeric bounds, string lengths, and array items.
 
 using System.Text.Json;
+using System.Globalization;
 
 namespace Explore.Application.Features.AiAssistant.Tools;
 
@@ -74,7 +75,11 @@ internal static class AiToolJsonSchemaPayloadValidator
             var requiredName = required.GetString();
             if (!string.IsNullOrWhiteSpace(requiredName) && !presentFields.Contains(requiredName))
             {
-                return Failure("missing_tool_argument", "AI tool payload is missing a required field.");
+                return AiToolValidationResult.ClarificationFailure(
+                    "missing_tool_argument",
+                    "AI tool payload is missing a required field.",
+                    "Please provide the required event draft details before this action can be proposed.",
+                    AiToolCorrectionMessages.SchemaExactRetry);
             }
         }
 
@@ -83,10 +88,34 @@ internal static class AiToolJsonSchemaPayloadValidator
 
     private static AiToolValidationResult ValidateValue(JsonElement value, JsonElement schema)
     {
-        var type = GetStringProperty(schema, "type");
+        if (GetBooleanProperty(schema, "x-islamu-hiddenRuntimeContext") == true)
+        {
+            return Failure("forbidden_tool_argument", "AI tool payload contains a field that is not allowed.");
+        }
+
+        var allowedTypes = GetAllowedTypes(schema);
+        if (allowedTypes.Count == 0)
+        {
+            return AiToolValidationResult.Success();
+        }
+
+        if (value.ValueKind == JsonValueKind.Null)
+        {
+            return allowedTypes.Contains("null", StringComparer.OrdinalIgnoreCase)
+                ? AiToolValidationResult.Success()
+                : Failure("invalid_tool_argument_type", "AI tool payload contains a value with the wrong type.");
+        }
+
+        var type = allowedTypes.FirstOrDefault(candidate => !string.Equals(candidate, "null", StringComparison.OrdinalIgnoreCase));
         if (string.IsNullOrWhiteSpace(type))
         {
             return AiToolValidationResult.Success();
+        }
+
+        var enumResult = ValidateEnumValue(value, schema);
+        if (!enumResult.Succeeded)
+        {
+            return enumResult;
         }
 
         return type switch
@@ -96,9 +125,7 @@ internal static class AiToolJsonSchemaPayloadValidator
             "number" => ValidateNumberValue(value, schema),
             "boolean" => ValidateBooleanValue(value),
             "array" => ValidateArrayValue(value, schema),
-            "object" => value.ValueKind == JsonValueKind.Object
-                ? AiToolValidationResult.Success()
-                : Failure("invalid_tool_argument_type", "AI tool payload contains a value with the wrong type."),
+            "object" => ValidateObjectValue(value, schema),
             _ => AiToolValidationResult.Success()
         };
     }
@@ -117,9 +144,52 @@ internal static class AiToolJsonSchemaPayloadValidator
         }
 
         var format = GetStringProperty(schema, "format");
-        if (string.Equals(format, "uuid", StringComparison.OrdinalIgnoreCase) && !Guid.TryParse(text, out _))
+        if (!ValidateStringFormat(text, format))
         {
             return Failure("invalid_tool_argument_format", "AI tool payload contains a value with an invalid format.");
+        }
+
+        return AiToolValidationResult.Success();
+    }
+
+    private static AiToolValidationResult ValidateObjectValue(JsonElement value, JsonElement schema)
+    {
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            return Failure("invalid_tool_argument_type", "AI tool payload contains a value with the wrong type.");
+        }
+
+        var requiredResult = ValidateRequiredFields(value, schema);
+        if (!requiredResult.Succeeded)
+        {
+            return requiredResult;
+        }
+
+        if (!schema.TryGetProperty("properties", out var properties) || properties.ValueKind != JsonValueKind.Object)
+        {
+            return AiToolValidationResult.Success();
+        }
+
+        var disallowAdditionalProperties = schema.TryGetProperty("additionalProperties", out var additionalProperties)
+            && additionalProperties.ValueKind is JsonValueKind.False;
+
+        foreach (var property in value.EnumerateObject())
+        {
+            if (!properties.TryGetProperty(property.Name, out var propertySchema))
+            {
+                if (disallowAdditionalProperties)
+                {
+                    return Failure("unsupported_tool_argument", "AI tool payload contains an unsupported field.");
+                }
+
+                continue;
+            }
+
+            var result = ValidateValue(property.Value, propertySchema);
+            if (!result.Succeeded)
+            {
+                return result;
+            }
         }
 
         return AiToolValidationResult.Success();
@@ -143,6 +213,87 @@ internal static class AiToolJsonSchemaPayloadValidator
         }
 
         return AiToolValidationResult.Success();
+    }
+
+    private static AiToolValidationResult ValidateEnumValue(JsonElement value, JsonElement schema)
+    {
+        if (!schema.TryGetProperty("enum", out var enumElement) || enumElement.ValueKind != JsonValueKind.Array)
+        {
+            return AiToolValidationResult.Success();
+        }
+
+        foreach (var allowed in enumElement.EnumerateArray())
+        {
+            if (JsonElementsEqual(value, allowed))
+            {
+                return AiToolValidationResult.Success();
+            }
+        }
+
+        return Failure("invalid_tool_argument_value", "AI tool payload contains a value outside the allowed bounds.");
+    }
+
+    private static bool JsonElementsEqual(JsonElement first, JsonElement second)
+    {
+        if (first.ValueKind != second.ValueKind)
+        {
+            return false;
+        }
+
+        return first.ValueKind switch
+        {
+            JsonValueKind.String => string.Equals(first.GetString(), second.GetString(), StringComparison.Ordinal),
+            JsonValueKind.Number => first.TryGetDecimal(out var firstNumber)
+                && second.TryGetDecimal(out var secondNumber)
+                && firstNumber == secondNumber,
+            JsonValueKind.True or JsonValueKind.False => first.GetBoolean() == second.GetBoolean(),
+            JsonValueKind.Null => true,
+            _ => string.Equals(first.GetRawText(), second.GetRawText(), StringComparison.Ordinal)
+        };
+    }
+
+    private static IReadOnlyList<string> GetAllowedTypes(JsonElement schema)
+    {
+        if (!schema.TryGetProperty("type", out var typeElement))
+        {
+            return [];
+        }
+
+        if (typeElement.ValueKind == JsonValueKind.String)
+        {
+            var type = typeElement.GetString();
+            return string.IsNullOrWhiteSpace(type) ? [] : [type];
+        }
+
+        if (typeElement.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return typeElement
+            .EnumerateArray()
+            .Where(type => type.ValueKind == JsonValueKind.String)
+            .Select(type => type.GetString())
+            .Where(type => !string.IsNullOrWhiteSpace(type))
+            .Select(type => type!)
+            .ToList();
+    }
+
+    private static bool ValidateStringFormat(string text, string? format)
+    {
+        if (string.IsNullOrWhiteSpace(format))
+        {
+            return true;
+        }
+
+        return format.ToLowerInvariant() switch
+        {
+            "uuid" => Guid.TryParse(text, out _),
+            "date" => DateOnly.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
+            "time" => TimeOnly.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
+            "date-time" => DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _),
+            _ => true
+        };
     }
 
     private static AiToolValidationResult ValidateBooleanValue(JsonElement value)
@@ -177,6 +328,11 @@ internal static class AiToolJsonSchemaPayloadValidator
     private static string? GetStringProperty(JsonElement element, string propertyName)
         => element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
+            : null;
+
+    private static bool? GetBooleanProperty(JsonElement element, string propertyName)
+        => element.TryGetProperty(propertyName, out var property) && property.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? property.GetBoolean()
             : null;
 
     private static bool TryGetInt32Property(JsonElement element, string propertyName, out int value)

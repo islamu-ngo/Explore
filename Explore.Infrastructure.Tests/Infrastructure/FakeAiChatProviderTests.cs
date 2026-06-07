@@ -59,6 +59,28 @@ public sealed class FakeAiChatProviderTests
         await Assert.That(result.Response.ProposedActions[0].PayloadJson).Contains("Fake AI event draft");
     }
 
+    [Test]
+    public async Task SendAsync_WhenStructuredOutputCombinesWithToolProposals_ReturnsSafeFailure()
+    {
+        var result = await _provider.SendAsync(new AiChatPayload(
+            FakeAiChatProvider.ModelId,
+            [new AiChatMessage(AiMessageRole.User, "Create an event draft")],
+            "You are a test assistant.",
+            new AiChatOptions(
+                8000,
+                1024,
+                0.2m,
+                30,
+                ToolProposalsEnabled: true,
+                StreamingEnabled: false,
+                StructuredOutputEnabled: true),
+            new AiStructuredActionSchema([AiProposedActionKind.CreateEventDraft], "{}"),
+            AiStructuredOutputSchemas.AssistantMessage));
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Error!.Code).IsEqualTo("structured_output_conflict");
+    }
+
     private static AiChatPayload CreateRequest(
         string userMessage,
         bool toolProposalsEnabled = false,

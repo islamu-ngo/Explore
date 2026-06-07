@@ -89,6 +89,7 @@ public sealed class AiAssistantClientService(
     public async Task<AiAssistantCommandResult> SendMessageAsync(
         Guid conversationId,
         string content,
+        string? modelId = null,
         string? idempotencyKey = null,
         CancellationToken cancellationToken = default)
     {
@@ -97,7 +98,8 @@ public sealed class AiAssistantClientService(
             var request = new SendAiMessageRequestDto
             {
                 Content = content,
-                IdempotencyKey = idempotencyKey
+                IdempotencyKey = idempotencyKey,
+                ModelId = modelId
             };
 
             var response = await apiClient.SendAiMessageAsync(

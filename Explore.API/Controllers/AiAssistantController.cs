@@ -1,6 +1,7 @@
 // ABOUTME: Authenticated API surface for AI assistant bootstrap and future conversation workflows.
 // ABOUTME: Exposes safe HAL bootstrap metadata while keeping provider secrets and history private.
 
+using System.Text.Json;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Extensions;
@@ -9,12 +10,15 @@ using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Queries;
+using Explore.Application.Features.TenantOnboarding.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
+using Explore.Infrastructure.Ai;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace Explore.API.Controllers;
 
@@ -63,6 +67,98 @@ public sealed class AiAssistantController : ControllerBase
         }
 
         return Ok(resource);
+    }
+
+    [HttpPost("models", Name = RouteNames.GetAiAssistantModels)]
+    [EndpointSummary("Discover AI assistant models")]
+    [EndpointDescription("Returns OpenAI-compatible model IDs exposed by the supplied provider endpoint without exposing credentials.")]
+    [ProducesResponseType(typeof(IReadOnlyList<AiAssistantModelDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
+    public async Task<ActionResult<IReadOnlyList<AiAssistantModelDto>>> GetModels(
+        [FromBody] AiAssistantModelDiscoveryRequestDto request,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        [FromServices] AiProviderSettingsValidator settingsValidator,
+        [FromServices] IOptions<AiProviderSettings> providerOptions,
+        CancellationToken cancellationToken = default)
+    {
+        var status = await _mediator.Send(new GetTenantOnboardingStatusQuery(), cancellationToken);
+        if (!status.IsCurrentUserTenantAdministrator && !status.IsCurrentUserPlatformAdministrator)
+        {
+            return Forbid();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.EndpointUrl))
+        {
+            return BadRequest(CreateProblem("Missing endpoint URL", "Enter an OpenAI-compatible endpoint URL before fetching models."));
+        }
+
+        var settings = new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderOpenAiCompatible,
+            EndpointUrl = request.EndpointUrl.Trim(),
+            ApiKey = request.ApiKey?.Trim() ?? string.Empty,
+            ModelId = "model-discovery",
+            MaxInputTokens = providerOptions.Value.MaxInputTokens,
+            MaxOutputTokens = providerOptions.Value.MaxOutputTokens,
+            Temperature = providerOptions.Value.Temperature,
+            TimeoutSeconds = providerOptions.Value.TimeoutSeconds,
+            RetentionDays = providerOptions.Value.RetentionDays,
+            DailyMessageLimit = providerOptions.Value.DailyMessageLimit,
+            AllowLocalProviderEndpoints = providerOptions.Value.AllowLocalProviderEndpoints
+        };
+
+        var validation = settingsValidator.Validate(null, settings);
+        if (!validation.Succeeded)
+        {
+            return BadRequest(CreateProblem("Invalid provider endpoint", string.Join(" ", validation.Failures)));
+        }
+
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(settings.TimeoutSeconds, 1, 30)));
+
+            var client = httpClientFactory.CreateClient(OpenAiCompatibleChatProvider.HttpClientName);
+            var models = await OpenAiCompatibleChatProvider.DiscoverModelsAsync(
+                client,
+                settings.EndpointUrl,
+                settings.ApiKey,
+                timeout.Token);
+
+            IReadOnlyList<AiAssistantModelDto> response = models
+                .Select(model => new AiAssistantModelDto
+                {
+                    Id = model.Id,
+                    DisplayName = model.DisplayName,
+                    MaxInputTokens = model.MaxInputTokens,
+                    MaxOutputTokens = model.MaxOutputTokens,
+                    SupportsToolProposals = model.SupportsToolProposals,
+                    SupportsStreaming = model.SupportsStreaming
+                })
+                .ToList();
+
+            return Ok(response);
+        }
+        catch (UriFormatException)
+        {
+            return BadRequest(CreateProblem("Invalid provider endpoint", "The endpoint URL must be an absolute HTTP or HTTPS URL."));
+        }
+        catch (JsonException)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, CreateProblem("Invalid model response", "The provider did not return a valid OpenAI-compatible models response."));
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, CreateProblem("Model discovery failed", ex.Message));
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, CreateProblem("Model discovery timed out", "The provider did not respond before the request timed out."));
+        }
     }
 
     [HttpGet("conversations", Name = RouteNames.GetAiConversations)]
@@ -362,6 +458,13 @@ public sealed class AiAssistantController : ControllerBase
             links[rel] = method is null ? HalLink.Create(path) : HalLink.CreateAction(path, method);
         }
     }
+
+    private static ProblemDetails CreateProblem(string title, string detail) =>
+        new()
+        {
+            Title = title,
+            Detail = detail
+        };
 
     private static int NormalizeReferenceLimit(int limit)
     {

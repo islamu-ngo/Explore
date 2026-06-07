@@ -18,7 +18,36 @@ public static class CreateEventDraftAiToolDefinition
             AllowedPayloadFields,
             ForbiddenPayloadFields,
             typeof(CreateEventDraftAiActionMapper),
-            new AiToolAuthorizationRequirement(ResourceKinds.Event, AuthorizationActions.Create));
+            new AiToolAuthorizationRequirement(ResourceKinds.Event, AuthorizationActions.Create),
+            AgentMetadata: new AiToolAgentMetadata(
+                new AiToolScopeMetadata(
+                    new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        "/events",
+                        "/events/new",
+                        "/calendar"
+                    },
+                    new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        "event-drafting",
+                        "event-planning"
+                    },
+                    new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        "event",
+                        "selected-references"
+                    }),
+                AiToolRiskClass.Medium,
+                AiToolApprovalMode.HumanConfirmationRequired,
+                "Available only when AI tool proposals are enabled and the current API/HAL context allows event creation.",
+                AiToolFollowUpPolicy.AskClarifyingQuestionBeforeProposal,
+                "Create a draft proposal only. Do not publish, schedule, invite attendees, assign roles, or claim the event exists before the user confirms the proposal.",
+                new AiToolResultPresentationMetadata(
+                    "event-draft-proposal-card",
+                    "Review event draft proposal",
+                    "Event draft created",
+                    "Event draft was not created"),
+                "create-event"));
 
     public static IReadOnlySet<string> AllowedPayloadFields { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {

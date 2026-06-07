@@ -325,6 +325,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             Branding = new BrandingSettingsDto(),
             Domains = new DomainSettingsDto(),
             TenantDelegation = new TenantDelegationSettingsDto(),
+            Mcp = new McpGovernanceSettingsDto(),
             RenderPolicy = new RenderPolicySettingsDto
             {
                 RenderPolicyVersion = 4,
@@ -447,6 +448,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             Branding = new BrandingSettingsDto(),
             Domains = new DomainSettingsDto(),
             TenantDelegation = new TenantDelegationSettingsDto(),
+            Mcp = new McpGovernanceSettingsDto(),
             RenderPolicy = new RenderPolicySettingsDto()
         };
     }

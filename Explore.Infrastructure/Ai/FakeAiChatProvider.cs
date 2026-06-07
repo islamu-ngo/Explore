@@ -37,6 +37,14 @@ public sealed class FakeAiChatProvider : IAiChatProvider, IAiModelCatalog
                 "At least one message is required."));
         }
 
+        var structuredOutputFailure = AiStructuredOutputResponseMapper.ValidateRequest(request);
+        if (structuredOutputFailure is not null)
+        {
+            return Task.FromResult(AiChatProviderResult.Failure(
+                structuredOutputFailure.Code,
+                structuredOutputFailure.Message));
+        }
+
         var lastUserMessage = request.Messages.LastOrDefault(m => m.Role == AiMessageRole.User)?.Content
             ?? request.Messages[^1].Content;
         var boundedMessage = lastUserMessage.Length <= 240 ? lastUserMessage : lastUserMessage[..240];

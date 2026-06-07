@@ -16,5 +16,9 @@ public sealed class SendAiMessageRequestDtoValidator : AbstractValidator<SendAiM
         RuleFor(request => request.IdempotencyKey)
             .NotEmpty()
             .MaximumLength(128);
+
+        RuleFor(request => request.ModelId)
+            .MaximumLength(256)
+            .When(request => !string.IsNullOrWhiteSpace(request.ModelId));
     }
 }

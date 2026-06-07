@@ -39,6 +39,41 @@ public sealed class AiToolPayloadGuardTests
         "eventStatusId"
     };
 
+    private static readonly HashSet<string> ShapeFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "startsOn",
+        "startsAt",
+        "timezone",
+        "visibility",
+        "optionalNote",
+        "metadata",
+        "runtimeTenantId"
+    };
+
+    private const string ShapeSchemaJson = """
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["startsOn", "startsAt", "visibility", "metadata"],
+          "properties": {
+            "startsOn": { "type": "string", "format": "date" },
+            "startsAt": { "type": "string", "format": "date-time" },
+            "timezone": { "type": "string", "enum": ["Europe/Brussels", "UTC"] },
+            "visibility": { "type": "integer", "enum": [1, 2] },
+            "optionalNote": { "type": ["string", "null"], "maxLength": 20 },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["source"],
+              "properties": {
+                "source": { "type": "string", "enum": ["assistant"] }
+              }
+            },
+            "runtimeTenantId": { "type": "string", "format": "uuid", "x-islamu-hiddenRuntimeContext": true }
+          }
+        }
+        """;
+
     [Test]
     public async Task ValidateJsonObject_WhenPayloadIsAllowedObject_ReturnsSuccess()
     {
@@ -110,6 +145,9 @@ public sealed class AiToolPayloadGuardTests
         await Assert.That(result.FailureCode).IsEqualTo("missing_tool_argument");
         await Assert.That(result.FailureMessage).DoesNotContain("title");
         await Assert.That(result.CorrectionMessage).Contains("matches the registered schema exactly");
+        await Assert.That(result.EffectiveRecovery.RequiresClarification).IsTrue();
+        await Assert.That(result.EffectiveRecovery.ClarificationQuestion).Contains("required event draft details");
+        await Assert.That(result.EffectiveRecovery.StableFailureCode).IsEqualTo("missing_tool_argument");
     }
 
     [Test]
@@ -205,5 +243,128 @@ public sealed class AiToolPayloadGuardTests
 
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("unknown_action_kind");
+        await Assert.That(string.Join(" ", result.EffectiveRecovery.NextActions)).Contains("Regenerate the tool call arguments");
+    }
+
+    [Test]
+    public async Task ValidateJsonObject_WhenSchemaUsesFormatsEnumsObjectsAndNullability_ReturnsSuccess()
+    {
+        var result = AiToolPayloadGuard.ValidateJsonObject(
+            """
+            {
+              "startsOn": "2026-06-07",
+              "startsAt": "2026-06-07T12:30:00Z",
+              "timezone": "Europe/Brussels",
+              "visibility": 1,
+              "optionalNote": null,
+              "metadata": { "source": "assistant" }
+            }
+            """,
+            ShapeFields,
+            schemaJson: ShapeSchemaJson);
+
+        await Assert.That(result.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task ValidateJsonObject_WhenDateFormatIsInvalid_ReturnsSafeFormatFailure()
+    {
+        var result = AiToolPayloadGuard.ValidateJsonObject(
+            """
+            {
+              "startsOn": "not-a-date",
+              "startsAt": "2026-06-07T12:30:00Z",
+              "visibility": 1,
+              "metadata": { "source": "assistant" }
+            }
+            """,
+            ShapeFields,
+            schemaJson: ShapeSchemaJson);
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("invalid_tool_argument_format");
+        await Assert.That(result.FailureMessage).DoesNotContain("not-a-date");
+    }
+
+    [Test]
+    public async Task ValidateJsonObject_WhenEnumValueIsUnsupported_ReturnsSafeValueFailure()
+    {
+        var result = AiToolPayloadGuard.ValidateJsonObject(
+            """
+            {
+              "startsOn": "2026-06-07",
+              "startsAt": "2026-06-07T12:30:00Z",
+              "visibility": 9,
+              "metadata": { "source": "assistant" }
+            }
+            """,
+            ShapeFields,
+            schemaJson: ShapeSchemaJson);
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("invalid_tool_argument_value");
+        await Assert.That(result.FailureMessage).DoesNotContain("9");
+    }
+
+    [Test]
+    public async Task ValidateJsonObject_WhenNestedAdditionalPropertyExists_ReturnsUnsupportedField()
+    {
+        var result = AiToolPayloadGuard.ValidateJsonObject(
+            """
+            {
+              "startsOn": "2026-06-07",
+              "startsAt": "2026-06-07T12:30:00Z",
+              "visibility": 1,
+              "metadata": { "source": "assistant", "rawSql": "select * from events" }
+            }
+            """,
+            ShapeFields,
+            schemaJson: ShapeSchemaJson);
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("unsupported_tool_argument");
+        await Assert.That(result.FailureMessage).DoesNotContain("rawSql");
+    }
+
+    [Test]
+    public async Task ValidateJsonObject_WhenHiddenRuntimeContextParameterIsProvided_ReturnsForbiddenField()
+    {
+        var result = AiToolPayloadGuard.ValidateJsonObject(
+            $$"""
+            {
+              "startsOn": "2026-06-07",
+              "startsAt": "2026-06-07T12:30:00Z",
+              "visibility": 1,
+              "metadata": { "source": "assistant" },
+              "runtimeTenantId": "{{Guid.CreateVersion7()}}"
+            }
+            """,
+            ShapeFields,
+            schemaJson: ShapeSchemaJson);
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("forbidden_tool_argument");
+        await Assert.That(result.FailureMessage).DoesNotContain("runtimeTenantId");
+    }
+
+    [Test]
+    public async Task RecoveryResult_WhenMachineOutputIsTooLong_DropsMachineOutput()
+    {
+        var recovery = AiToolRecoveryResult.ForFailure(
+            "invalid_tool_arguments",
+            machineOutputJson: new string('x', AiToolRecoveryResult.MaxMachineOutputJsonLength + 1));
+
+        await Assert.That(recovery.MachineOutputJson).IsNull();
+    }
+
+    [Test]
+    public async Task RecoveryResult_WithWarnings_KeepsBoundedWarningsAndNextActions()
+    {
+        var recovery = AiToolRecoveryResult.WithWarnings(
+            ["  Review timezone before confirmation.  ", new string('x', 241)],
+            ["  Open the proposal card.  "]);
+
+        await Assert.That(recovery.Warnings).IsEquivalentTo(["Review timezone before confirmation."]);
+        await Assert.That(recovery.NextActions).IsEquivalentTo(["Open the proposal card."]);
     }
 }

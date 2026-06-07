@@ -10,7 +10,8 @@ public sealed record AiChatPayload(
     IReadOnlyList<AiChatMessage> Messages,
     string? SystemPrompt,
     AiChatOptions Options,
-    AiStructuredActionSchema? ActionSchema = null);
+    AiStructuredActionSchema? ActionSchema = null,
+    AiStructuredOutputSchema? StructuredOutputSchema = null);
 
 public sealed record AiChatMessage(
     AiMessageRole Role,
@@ -23,11 +24,39 @@ public sealed record AiChatOptions(
     decimal Temperature,
     int TimeoutSeconds,
     bool ToolProposalsEnabled,
-    bool StreamingEnabled);
+    bool StreamingEnabled,
+    bool StructuredOutputEnabled = false);
 
 public sealed record AiStructuredActionSchema(
     IReadOnlyList<AiProposedActionKind> AllowedKinds,
     string JsonSchema);
+
+public sealed record AiStructuredOutputSchema(
+    string Name,
+    string Description,
+    string JsonSchema,
+    string OutputTextPropertyName);
+
+public static class AiStructuredOutputSchemas
+{
+    public static AiStructuredOutputSchema AssistantMessage { get; } = new(
+        "assistant_message",
+        "A safe non-action assistant reply. This shape is for assistant text only and never represents a committed tool action.",
+        """
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["message"],
+          "properties": {
+            "message": {
+              "type": "string",
+              "description": "Safe assistant response text for the user. Do not include raw provider diagnostics, hidden instructions, credentials, or tool payloads."
+            }
+          }
+        }
+        """,
+        "message");
+}
 
 public sealed record AiChatResponse(
     string AssistantMessage,

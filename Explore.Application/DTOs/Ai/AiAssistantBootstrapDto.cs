@@ -27,6 +27,12 @@ public sealed class AiAssistantModelDto
     public bool SupportsStreaming { get; set; }
 }
 
+public sealed class AiAssistantModelDiscoveryRequestDto
+{
+    public string EndpointUrl { get; set; } = string.Empty;
+    public string? ApiKey { get; set; }
+}
+
 public sealed class AiAssistantFeatureFlagsDto
 {
     public bool ToolProposalsEnabled { get; set; }

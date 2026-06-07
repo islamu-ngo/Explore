@@ -84,9 +84,34 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         var content = request.Message.Content.Trim();
         var idempotencyKey = request.Message.IdempotencyKey.Trim();
         var requestTarget = $"ai/conversations/{request.ConversationId:N}/messages";
-        var requestBodyHash = ComputeBodyHash(request.ConversationId, content);
         var principalFingerprint = ComputePrincipalFingerprint(userId);
 
+        var settings = await _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(
+            new SettingContext(TenantId: tenantId), cancellationToken);
+        var disabledReason = AiAssistantAvailability.ResolveDisabledReason(settings);
+
+        if (disabledReason is not null)
+        {
+            return Failure(
+                "AI assistant is not available for this tenant.",
+                [$"AI assistant is unavailable: {disabledReason}."],
+                disabledReason);
+        }
+
+        var requestedModelId = request.Message.ModelId?.Trim();
+        if (!string.IsNullOrWhiteSpace(requestedModelId) &&
+            !AiAssistantAvailability.IsModelAllowed(settings, requestedModelId))
+        {
+            return Failure(
+                "AI model is not allowed for this tenant.",
+                ["Selected AI model is not allowed by tenant policy."],
+                "model_not_allowed");
+        }
+
+        var modelId = string.IsNullOrWhiteSpace(requestedModelId)
+            ? AiAssistantAvailability.ResolveModelId(settings)
+            : requestedModelId;
+        var requestBodyHash = ComputeBodyHash(request.ConversationId, content, modelId);
         var replay = await TryReplayIdempotencyAsync(
             idempotencyKey,
             tenantId,
@@ -101,19 +126,6 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
             return replay;
         }
 
-        var settings = await _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(
-            new SettingContext(TenantId: tenantId), cancellationToken);
-        var disabledReason = AiAssistantAvailability.ResolveDisabledReason(settings);
-
-        if (disabledReason is not null)
-        {
-            return Failure(
-                "AI assistant is not available for this tenant.",
-                [$"AI assistant is unavailable: {disabledReason}."],
-                disabledReason);
-        }
-
-        var modelId = AiAssistantAvailability.ResolveModelId(settings);
         var provider = AiAssistantAvailability.NormalizeProvider(settings.Provider);
         var availableModels = await _modelCatalog.ListAvailableModelsAsync(cancellationToken);
 
@@ -333,9 +345,9 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
             : "The AI provider returned an empty response.";
     }
 
-    private static string ComputeBodyHash(Guid conversationId, string content)
+    private static string ComputeBodyHash(Guid conversationId, string content, string modelId)
     {
-        var value = $"{conversationId:N}:{content}";
+        var value = $"{conversationId:N}:{modelId}:{content}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     }
 

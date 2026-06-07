@@ -38,28 +38,79 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         _metrics = metrics;
     }
 
-    public Task<IReadOnlyList<AiModelDescriptor>> ListAvailableModelsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<AiModelDescriptor>> ListAvailableModelsAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var settings = _options.Value;
 
         if (!IsRunnableOpenAiCompatible(settings) || !ValidateSettings(settings).Succeeded)
         {
-            return Task.FromResult<IReadOnlyList<AiModelDescriptor>>([]);
+            return [];
         }
 
-        IReadOnlyList<AiModelDescriptor> models =
-        [
-            new AiModelDescriptor(
-                settings.ModelId.Trim(),
-                settings.ModelId.Trim(),
-                settings.MaxInputTokens,
-                settings.MaxOutputTokens,
-                SupportsToolProposals: true,
-                SupportsStreaming: false)
-        ];
+        try
+        {
+            var httpClient = _httpClientFactory.CreateClient(HttpClientName);
+            var models = await DiscoverModelsAsync(httpClient, settings.EndpointUrl, settings.ApiKey, cancellationToken);
+            if (models.Count > 0)
+            {
+                return models;
+            }
+        }
+        catch (HttpRequestException)
+        {
+            // Bootstrap should remain usable even if the provider omits the optional models endpoint.
+        }
+        catch (JsonException)
+        {
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (UriFormatException)
+        {
+        }
 
-        return Task.FromResult(models);
+        return [CreateConfiguredModelDescriptor(settings)];
+    }
+
+    public static async Task<IReadOnlyList<AiModelDescriptor>> DiscoverModelsAsync(
+        HttpClient httpClient,
+        string endpointUrl,
+        string? apiKey,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrWhiteSpace(endpointUrl))
+        {
+            return [];
+        }
+
+        var modelsUri = BuildModelsUri(endpointUrl);
+        using var request = new HttpRequestMessage(HttpMethod.Get, modelsUri);
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        }
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var modelsResponse = JsonSerializer.Deserialize<OpenAiModelsListResponse>(json, JsonOptions);
+
+        if (modelsResponse?.Data is null || modelsResponse.Data.Count == 0)
+        {
+            return [];
+        }
+
+        return modelsResponse.Data
+            .Where(m => !string.IsNullOrWhiteSpace(m.Id))
+            .Select(m => new AiModelDescriptor(m.Id!, m.Id!))
+            .OrderBy(m => m.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     public async Task<AiChatProviderResult> SendAsync(AiChatPayload request, CancellationToken cancellationToken = default)
@@ -111,6 +162,15 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
                 telemetryActivity);
         }
 
+        var structuredOutputFailure = AiStructuredOutputResponseMapper.ValidateRequest(request);
+        if (structuredOutputFailure is not null)
+        {
+            return CompleteFailure(
+                RecordFailure(structuredOutputFailure.Code, structuredOutputFailure.Message),
+                startedAt,
+                telemetryActivity);
+        }
+
         if (!TryCreatePayload(settings, request, out var payload, out var payloadFailure))
         {
             return CompleteFailure(payloadFailure!, startedAt, telemetryActivity);
@@ -141,7 +201,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
                     telemetryActivity);
             }
 
-            if (!TryMapResponse(providerResponse, response, out var chatResponse, out var responseFailure))
+            if (!TryMapResponse(providerResponse, response, request, out var chatResponse, out var responseFailure))
             {
                 return CompleteFailure(responseFailure!, startedAt, telemetryActivity);
             }
@@ -198,7 +258,10 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
     private static HttpRequestMessage CreateHttpRequest(AiProviderSettings settings, OpenAiChatCompletionRequest payload)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, BuildChatCompletionsUri(settings.EndpointUrl));
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
+        if (!string.IsNullOrWhiteSpace(settings.ApiKey))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
+        }
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         var json = JsonSerializer.Serialize(payload, JsonOptions);
@@ -221,6 +284,42 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
             Path = string.IsNullOrEmpty(path)
                 ? "chat/completions"
                 : $"{path}/chat/completions"
+        };
+
+        return builder.Uri;
+    }
+
+    private static AiModelDescriptor CreateConfiguredModelDescriptor(AiProviderSettings settings) =>
+        new(
+            settings.ModelId.Trim(),
+            settings.ModelId.Trim(),
+            settings.MaxInputTokens,
+            settings.MaxOutputTokens,
+            SupportsToolProposals: true,
+            SupportsStreaming: false);
+
+    private static Uri BuildModelsUri(string endpointUrl)
+    {
+        var endpoint = new Uri(endpointUrl, UriKind.Absolute);
+        var path = endpoint.AbsolutePath.TrimEnd('/');
+
+        if (path.EndsWith("/models", StringComparison.OrdinalIgnoreCase))
+        {
+            return endpoint;
+        }
+
+        const string chatCompletionsSuffix = "/chat/completions";
+        if (path.EndsWith(chatCompletionsSuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            path = path[..^chatCompletionsSuffix.Length].TrimEnd('/');
+        }
+
+        var builder = new UriBuilder(endpoint)
+        {
+            Path = string.IsNullOrEmpty(path)
+                ? "models"
+                : $"{path}/models",
+            Query = string.Empty
         };
 
         return builder.Uri;
@@ -259,6 +358,27 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
             }
         }
 
+        OpenAiResponseFormat? responseFormat = null;
+        if (request.Options.StructuredOutputEnabled && request.StructuredOutputSchema is not null)
+        {
+            if (!TryCreateJsonSchema(
+                    request.StructuredOutputSchema.JsonSchema,
+                    "invalid_structured_output_schema",
+                    "AI structured output schema must be a valid JSON object.",
+                    out var structuredSchema,
+                    out failure))
+            {
+                return false;
+            }
+
+            responseFormat = new OpenAiResponseFormat(
+                "json_schema",
+                new OpenAiResponseJsonSchema(
+                    request.StructuredOutputSchema.Name.Trim(),
+                    request.StructuredOutputSchema.Description.Trim(),
+                    structuredSchema!.Value));
+        }
+
         var messages = new List<OpenAiMessage>();
         if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
         {
@@ -278,13 +398,30 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
             MaxTokens = request.Options.MaxOutputTokens,
             Stream = false,
             Tools = tools.Count == 0 ? null : tools,
-            ToolChoice = tools.Count == 0 ? null : "auto"
+            ToolChoice = tools.Count == 0 ? null : "auto",
+            ResponseFormat = responseFormat
         };
 
         return true;
     }
 
-    private bool TryCreateJsonSchema(string schemaJson, out JsonElement? schema, out AiChatProviderResult? failure)
+    private bool TryCreateJsonSchema(
+        string schemaJson,
+        out JsonElement? schema,
+        out AiChatProviderResult? failure)
+        => TryCreateJsonSchema(
+            schemaJson,
+            "invalid_action_schema",
+            "AI action schema must be a valid JSON object.",
+            out schema,
+            out failure);
+
+    private bool TryCreateJsonSchema(
+        string schemaJson,
+        string failureCode,
+        string failureMessage,
+        out JsonElement? schema,
+        out AiChatProviderResult? failure)
     {
         schema = null;
         failure = null;
@@ -294,7 +431,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
             using var document = JsonDocument.Parse(schemaJson);
             if (document.RootElement.ValueKind != JsonValueKind.Object)
             {
-                failure = RecordFailure("invalid_action_schema", "AI action schema must be a JSON object.");
+                failure = RecordFailure(failureCode, failureMessage);
                 return false;
             }
 
@@ -303,7 +440,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         }
         catch (JsonException)
         {
-            failure = RecordFailure("invalid_action_schema", "AI action schema must be valid JSON.");
+            failure = RecordFailure(failureCode, failureMessage);
             return false;
         }
     }
@@ -311,6 +448,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
     private bool TryMapResponse(
         OpenAiChatCompletionResponse providerResponse,
         HttpResponseMessage response,
+        AiChatPayload request,
         out AiChatResponse? chatResponse,
         out AiChatProviderResult? failure)
     {
@@ -335,8 +473,18 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
             return false;
         }
 
+        if (!AiStructuredOutputResponseMapper.TryMapAssistantMessage(
+                request,
+                choice.Message.Content,
+                out var assistantMessage,
+                out var structuredOutputFailure))
+        {
+            failure = RecordFailure(structuredOutputFailure!.Code, structuredOutputFailure.Message);
+            return false;
+        }
+
         chatResponse = new AiChatResponse(
-            choice.Message.Content ?? string.Empty,
+            assistantMessage,
             proposedActions,
             new AiTokenUsage(
                 providerResponse.Usage?.PromptTokens,
@@ -521,6 +669,10 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         [JsonPropertyName("tool_choice")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ToolChoice { get; init; }
+
+        [JsonPropertyName("response_format")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public OpenAiResponseFormat? ResponseFormat { get; init; }
     }
 
     private sealed record OpenAiMessage(
@@ -541,9 +693,28 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         public bool Strict => true;
     }
 
+    private sealed record OpenAiResponseFormat(
+        [property: JsonPropertyName("type")] string Type,
+        [property: JsonPropertyName("json_schema")] OpenAiResponseJsonSchema JsonSchema);
+
+    private sealed record OpenAiResponseJsonSchema(
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("description")] string Description,
+        [property: JsonPropertyName("schema")] JsonElement Schema)
+    {
+        [JsonPropertyName("strict")]
+        public bool Strict => true;
+    }
+
     private sealed record OpenAiChatCompletionResponse(
         [property: JsonPropertyName("choices")] IReadOnlyList<OpenAiChoice> Choices,
         [property: JsonPropertyName("usage")] OpenAiUsage? Usage);
+
+    private sealed record OpenAiModelsListResponse(
+        [property: JsonPropertyName("data")] IReadOnlyList<OpenAiModelDescriptor>? Data);
+
+    private sealed record OpenAiModelDescriptor(
+        [property: JsonPropertyName("id")] string? Id);
 
     private sealed record OpenAiChoice(
         [property: JsonPropertyName("message")] OpenAiResponseMessage? Message,
@@ -565,4 +736,5 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         [property: JsonPropertyName("prompt_tokens")] int? PromptTokens,
         [property: JsonPropertyName("completion_tokens")] int? CompletionTokens,
         [property: JsonPropertyName("total_tokens")] int? TotalTokens);
+
 }

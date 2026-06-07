@@ -17,4 +17,8 @@ public sealed record AiToolDefinition(
     AiToolAuthorizationRequirement? RequiredAuthorization = null,
     AiToolConfirmationMode ConfirmationMode = AiToolConfirmationMode.Required,
     bool ExposeToProvider = true,
-    bool ExposeToMcp = true);
+    bool ExposeToMcp = true,
+    AiToolAgentMetadata? AgentMetadata = null)
+{
+    public AiToolAgentMetadata EffectiveAgentMetadata => AgentMetadata ?? AiToolAgentMetadata.Default;
+}

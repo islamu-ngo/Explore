@@ -90,12 +90,14 @@
     <Exec Command="dotnet nswag run nswag.json" WorkingDirectory="$(ProjectDir)" ConsoleToMSBuild="true" />
     <!-- Fix NSwag bug: 'return default(void)!;' is invalid C# for void methods (204 No Content responses) -->
     <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
+    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="[ \t]+(\r?\n)" ReplacementText="$1" />
     <Message Importance="high" Text="NSwag: API client regenerated and patched successfully." />
   </Target>
 
   <!-- Fix NSwag void return bug - ALWAYS runs before compilation (no Inputs/Outputs skip) -->
   <Target Name="FixNSwagVoidReturns" BeforeTargets="CoreCompile">
     <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
+    <ReplaceFileText InputFilename="$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs" MatchExpression="[ \t]+(\r?\n)" ReplacementText="$1" />
   </Target>
 
   <!-- Exclude generated file from source analysis (it's auto-generated) -->

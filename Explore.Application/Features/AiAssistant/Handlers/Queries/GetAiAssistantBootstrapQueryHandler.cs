@@ -35,6 +35,7 @@ public sealed class GetAiAssistantBootstrapQueryHandler : IRequestHandler<GetAiA
         var provider = NormalizeProvider(settings.Provider);
         var models = BuildModels(provider, settings);
         var disabledReason = ResolveDisabledReason(provider, settings, models);
+        var defaultModelId = ResolveDefaultModelId(settings, models);
 
         return new AiAssistantBootstrapDto
         {
@@ -43,7 +44,7 @@ public sealed class GetAiAssistantBootstrapQueryHandler : IRequestHandler<GetAiA
             Available = disabledReason is null,
             DisabledReason = disabledReason,
             Provider = provider,
-            DefaultModelId = models.Count > 0 ? models[0].Id : null,
+            DefaultModelId = defaultModelId,
             Models = models,
             Features = new AiAssistantFeatureFlagsDto
             {
@@ -89,10 +90,8 @@ public sealed class GetAiAssistantBootstrapQueryHandler : IRequestHandler<GetAiA
 
         if (provider == AiProviderDefaults.ProviderOpenAiCompatible && !string.IsNullOrWhiteSpace(settings.ModelId))
         {
-            var modelId = settings.ModelId.Trim();
-            return
-            [
-                new AiAssistantModelDto
+            return AiAssistantAvailability.ResolveAllowedModelIds(settings)
+                .Select(modelId => new AiAssistantModelDto
                 {
                     Id = modelId,
                     DisplayName = modelId,
@@ -100,8 +99,8 @@ public sealed class GetAiAssistantBootstrapQueryHandler : IRequestHandler<GetAiA
                     MaxOutputTokens = settings.MaxOutputTokens,
                     SupportsToolProposals = settings.ToolProposalsEnabled,
                     SupportsStreaming = settings.StreamingEnabled
-                }
-            ];
+                })
+                .ToList();
         }
 
         return [];
@@ -126,13 +125,27 @@ public sealed class GetAiAssistantBootstrapQueryHandler : IRequestHandler<GetAiA
             if (string.IsNullOrWhiteSpace(settings.EndpointUrl))
                 return "endpoint_not_configured";
 
-            if (!settings.HasApiKey)
-                return "api_key_not_configured";
-
             if (!settings.HasModel)
                 return "model_not_configured";
         }
 
         return models.Count == 0 ? "model_not_configured" : null;
+    }
+
+    private static string? ResolveDefaultModelId(
+        AiAssistantSettingGroup settings,
+        IReadOnlyList<AiAssistantModelDto> models)
+    {
+        if (models.Count == 0)
+        {
+            return null;
+        }
+
+        var configuredModelId = AiAssistantAvailability.ResolveModelId(settings);
+        return models.FirstOrDefault(model => string.Equals(
+                model.Id,
+                configuredModelId,
+                StringComparison.OrdinalIgnoreCase))?.Id
+            ?? models[0].Id;
     }
 }

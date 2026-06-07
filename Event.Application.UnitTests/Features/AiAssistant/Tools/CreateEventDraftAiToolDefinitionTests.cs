@@ -25,6 +25,38 @@ public sealed class CreateEventDraftAiToolDefinitionTests
         await Assert.That(definition.RequiredAuthorization.Action).IsEqualTo(AuthorizationActions.Create);
         await Assert.That(definition.ExposeToProvider).IsTrue();
         await Assert.That(definition.ExposeToMcp).IsTrue();
+        await Assert.That(definition.EffectiveAgentMetadata.RiskClass).IsEqualTo(AiToolRiskClass.Medium);
+        await Assert.That(definition.EffectiveAgentMetadata.ApprovalMode).IsEqualTo(AiToolApprovalMode.HumanConfirmationRequired);
+    }
+
+    [Test]
+    public async Task Create_ReturnsAgentUxMetadataWithoutExecutionAuthority()
+    {
+        var metadata = CreateEventDraftAiToolDefinition.Create().EffectiveAgentMetadata;
+
+        await Assert.That(metadata.Scopes.RouteScopes).Contains("/events");
+        await Assert.That(metadata.Scopes.WorkflowScopes).Contains("event-drafting");
+        await Assert.That(metadata.Scopes.ContextScopes).Contains("selected-references");
+        await Assert.That(metadata.AvailabilityReason).Contains("API/HAL");
+        await Assert.That(metadata.FollowUpPolicy).IsEqualTo(AiToolFollowUpPolicy.AskClarifyingQuestionBeforeProposal);
+        await Assert.That(metadata.SafeActionInstructions).Contains("draft proposal only");
+        await Assert.That(metadata.ResultPresentation.CardKind).IsEqualTo("event-draft-proposal-card");
+        await Assert.That(metadata.RequiredHalLinkRel).IsEqualTo("create-event");
+    }
+
+    [Test]
+    public async Task EffectiveAgentMetadata_WhenDefinitionOmitsMetadata_ReturnsSafeDefault()
+    {
+        var definition = new AiToolDefinition(
+            AiProposedActionKind.CreateEventDraft,
+            "CreateEventDraft",
+            "Create event draft",
+            "{}",
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+        await Assert.That(definition.EffectiveAgentMetadata.ApprovalMode).IsEqualTo(AiToolApprovalMode.HumanConfirmationRequired);
+        await Assert.That(definition.EffectiveAgentMetadata.AvailabilityReason).Contains("API/HAL");
     }
 
     [Test]

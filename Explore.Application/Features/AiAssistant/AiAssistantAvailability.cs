@@ -31,9 +31,6 @@ internal static class AiAssistantAvailability
             if (string.IsNullOrWhiteSpace(settings.EndpointUrl))
                 return "endpoint_not_configured";
 
-            if (!settings.HasApiKey)
-                return "api_key_not_configured";
-
             if (!settings.HasModel)
                 return "model_not_configured";
         }
@@ -45,4 +42,40 @@ internal static class AiAssistantAvailability
         => NormalizeProvider(settings.Provider) == AiProviderDefaults.ProviderFake
             ? AiProviderDefaults.FakeModelId
             : settings.ModelId.Trim();
+
+    public static IReadOnlyList<string> ResolveAllowedModelIds(AiAssistantSettingGroup settings)
+    {
+        if (NormalizeProvider(settings.Provider) == AiProviderDefaults.ProviderFake)
+        {
+            return [AiProviderDefaults.FakeModelId];
+        }
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var modelIds = new List<string>();
+
+        AddModelId(settings.ModelId);
+        foreach (var modelId in settings.AllowedModelIds)
+        {
+            AddModelId(modelId);
+        }
+
+        return modelIds;
+
+        void AddModelId(string? modelId)
+        {
+            var trimmed = modelId?.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed) || !seen.Add(trimmed))
+            {
+                return;
+            }
+
+            modelIds.Add(trimmed);
+        }
+    }
+
+    public static bool IsModelAllowed(AiAssistantSettingGroup settings, string modelId)
+        => ResolveAllowedModelIds(settings).Any(allowedModelId => string.Equals(
+            allowedModelId,
+            modelId,
+            StringComparison.OrdinalIgnoreCase));
 }

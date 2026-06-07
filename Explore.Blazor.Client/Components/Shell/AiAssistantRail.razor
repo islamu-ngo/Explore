@@ -1,5 +1,5 @@
 @* ABOUTME: Shell-level AI assistant rail hosted in MainLayout, outside page content. *@
-@* ABOUTME: Slides in from the right; persists across page navigations. *@
+@* ABOUTME: Slides in from the right; persists across page navigations. Plane-style chat UI. *@
 @using Explore.Blazor.Client.Contracts.Services.Ai
 @using Explore.Blazor.Client.Components.Shell.AiAssistant
 @using Explore.Blazor.Client.Services.Ai
@@ -17,18 +17,68 @@
            data-testid="shell-ai-rail"
            aria-label="AI Assistant"
            role="complementary">
+
+        @* ── Header bar ── *@
         <div class="ai-rail__header">
-            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Class="ai-rail__header-icon" />
-            <MudText Typo="Typo.subtitle1" Class="ai-rail__header-title">AI Assistant</MudText>
-            <MudSpacer />
-            <MudIconButton Icon="@Icons.Material.Filled.Close"
-                           Color="Color.Inherit"
-                           Size="Size.Small"
-                           OnClick="AiAssistantState.Close"
-                           Title="Close AI Assistant"
-                           aria-label="Close AI Assistant" />
+            <div class="ai-rail__header-brand">
+                <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Class="ai-rail__header-icon" />
+                <MudMenu AnchorOrigin="Origin.BottomLeft"
+                         TransformOrigin="Origin.TopLeft"
+                         Dense="true"
+                         Class="ai-rail__model-menu">
+                    <ActivatorContent>
+                        <button type="button" class="ai-rail__model-picker-btn">
+                            <span class="ai-rail__header-title">ISLAMU AI (@_selectedModel)</span>
+                            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Class="ai-rail__model-arrow" />
+                        </button>
+                    </ActivatorContent>
+                    <ChildContent>
+                        @foreach (var model in _models)
+                        {
+                            <MudMenuItem OnClick="() => SelectModel(model)"
+                                         Class="@GetModelItemClass(model)">
+                                @model
+                            </MudMenuItem>
+                        }
+                    </ChildContent>
+                </MudMenu>
+            </div>
+            <div class="ai-rail__header-actions">
+                @if (ConversationState.CanCreateConversation)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.EditNote"
+                                   Color="Color.Inherit"
+                                   Size="Size.Small"
+                                   OnClick="CreateConversationAsync"
+                                   Disabled="@_isCommandRunning"
+                                   Title="New conversation"
+                                   aria-label="New conversation"
+                                   data-testid="ai-rail-new-conversation" />
+                }
+                <MudIconButton Icon="@Icons.Material.Filled.History"
+                               Color="@(_showConversations ? Color.Primary : Color.Inherit)"
+                               Size="Size.Small"
+                               OnClick="ToggleConversations"
+                               Title="Conversation history"
+                               aria-label="Conversation history" />
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                         Color="Color.Inherit"
+                         Size="Size.Small"
+                         AnchorOrigin="Origin.BottomRight"
+                         TransformOrigin="Origin.TopRight"
+                         Title="Close AI Assistant"
+                         aria-label="Close AI Assistant"
+                         data-testid="ai-rail-options-menu">
+                    <MudMenuItem OnClick="DeleteCurrentChatAsync" Disabled="@(ConversationState.SelectedConversation is null)">
+                        Delete chat
+                    </MudMenuItem>
+                </MudMenu>
+            </div>
         </div>
 
+        @* Drawer removed in favor of history sidebar overlay *@
+
+        @* ── Chat body ── *@
         <div class="ai-rail__body">
             @if (ConversationState.IsLoading)
             {
@@ -39,136 +89,179 @@
                     </MudText>
                 </div>
             }
-            else
+            else if (ConversationState.SelectedConversation is not null)
             {
-                <section class="ai-rail__section" aria-labelledby="ai-rail-conversations-title">
-                    <div class="ai-rail__section-heading">
-                        <MudText Typo="Typo.subtitle2" Class="ai-rail__section-title" id="ai-rail-conversations-title">
-                            Conversations
-                        </MudText>
-                        @if (ConversationState.CanCreateConversation)
+                @if (ConversationState.SelectedConversation.Messages?.Count > 0)
+                {
+                    <div class="ai-rail__message-list" role="log" aria-live="polite" aria-label="AI conversation messages">
+                        @foreach (var message in ConversationState.SelectedConversation.Messages.OrderBy(message => message.Sequence))
                         {
-                            <MudButton Variant="Variant.Text"
-                                       Size="Size.Small"
-                                       StartIcon="@Icons.Material.Filled.Add"
-                                       OnClick="CreateConversationAsync"
-                                       Disabled="@_isCommandRunning"
-                                       data-testid="ai-rail-new-conversation">
-                                New
-                            </MudButton>
+                            <article class="@GetMessageClass(message.Role)" data-testid="ai-rail-message">
+                                <span class="ai-rail__message-role">@message.Role</span>
+                                <p>@message.Content</p>
+                            </article>
                         }
                     </div>
-
-                    @if (ConversationState.Conversations.Count == 0)
-                    {
-                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ai-rail__empty">
-                            @(ConversationState.CanCreateConversation
-                                ? "Start a conversation to ask for event planning help."
-                                : "Conversation creation is not available for your account.")
-                        </MudText>
-                    }
-                    else
-                    {
-                        <div class="ai-rail__conversation-list" role="list" aria-label="AI conversations">
-                            @foreach (var conversation in ConversationState.Conversations)
-                            {
-                                <button type="button"
-                                        class="@GetConversationButtonClass(conversation.Id)"
-                                        role="listitem"
-                                        @onclick="() => SelectConversationAsync(conversation.Id)"
-                                        data-testid="ai-rail-conversation">
-                                    <span class="ai-rail__conversation-title">@GetConversationTitle(conversation)</span>
-                                    <span class="ai-rail__conversation-status">@conversation.Status</span>
-                                </button>
-                            }
-                        </div>
-                    }
-                </section>
-
-                @if (ConversationState.SelectedConversation is not null)
+                }
+                else
                 {
-                    <section class="ai-rail__section" aria-labelledby="ai-rail-messages-title">
-                        <MudText Typo="Typo.subtitle2" Class="ai-rail__section-title" id="ai-rail-messages-title">
-                            Messages
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ai-rail__empty-hint">
+                        No messages yet.
+                    </MudText>
+                }
+
+                @if (ConversationState.SelectedConversation.ProposedActions?.Count > 0)
+                {
+                    <section class="ai-rail__actions-group" aria-labelledby="ai-rail-actions-title">
+                        <MudText Typo="Typo.caption" Class="ai-rail__inline-label" id="ai-rail-actions-title">
+                            Proposed actions
                         </MudText>
-
-                        @if (ConversationState.SelectedConversation.Messages?.Count > 0)
+                        @foreach (var action in ConversationState.SelectedConversation.ProposedActions)
                         {
-                            <div class="ai-rail__message-list" role="log" aria-live="polite" aria-label="AI conversation messages">
-                                @foreach (var message in ConversationState.SelectedConversation.Messages.OrderBy(message => message.Sequence))
-                                {
-                                    <article class="@GetMessageClass(message.Role)" data-testid="ai-rail-message">
-                                        <span class="ai-rail__message-role">@message.Role</span>
-                                        <p>@message.Content</p>
-                                    </article>
-                                }
-                            </div>
+                            <AiProposedActionCard Action="action"
+                                                  IsBusy="@IsActionBusy(action.Id)"
+                                                  OnConfirm="ConfirmActionAsync"
+                                                  OnReject="RejectActionAsync" />
                         }
-                        else
-                        {
-                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ai-rail__empty">
-                                No messages yet.
-                            </MudText>
-                        }
-
-                        <div class="ai-rail__composer" role="form" aria-label="Send an AI assistant message">
-                            <label class="ai-rail__label" for="ai-rail-prompt">Prompt</label>
-                            <textarea id="ai-rail-prompt"
-                                      class="ai-rail__textarea"
-                                      rows="3"
-                                      @bind="_promptText"
-                                      placeholder="Ask the assistant to draft or plan an event..."
-                                      data-testid="ai-rail-prompt"></textarea>
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       Disabled="@IsSendDisabled"
-                                       OnClick="SendMessageAsync"
-                                       data-testid="ai-rail-send">
-                                Send
-                            </MudButton>
-                        </div>
                     </section>
-
-                    <section class="ai-rail__section" aria-labelledby="ai-rail-references-title">
-                        <MudText Typo="Typo.subtitle2" Class="ai-rail__section-title" id="ai-rail-references-title">
-                            References
-                        </MudText>
-                        <AiReferencePicker SearchTerm="@_referenceSearchTerm"
-                                           SearchTermChanged="OnReferenceSearchTermChanged"
-                                           Results="ConversationState.ReferenceResults"
-                                           SelectedReferences="ConversationState.SelectedReferences"
-                                           IsSearching="@_isReferenceSearchRunning"
-                                           HasSearched="@_hasSearchedReferences"
-                                           OnSearch="SearchReferencesAsync"
-                                           OnSelect="SelectReference"
-                                           OnRemove="RemoveReference" />
-                    </section>
-
-                    @if (ConversationState.SelectedConversation.ProposedActions?.Count > 0)
-                    {
-                        <section class="ai-rail__section" aria-labelledby="ai-rail-actions-title">
-                            <MudText Typo="Typo.subtitle2" Class="ai-rail__section-title" id="ai-rail-actions-title">
-                                Proposed actions
-                            </MudText>
-
-                            @foreach (var action in ConversationState.SelectedConversation.ProposedActions)
-                            {
-                                <AiProposedActionCard Action="action"
-                                                      IsBusy="@IsActionBusy(action.Id)"
-                                                      OnConfirm="ConfirmActionAsync"
-                                                      OnReject="RejectActionAsync" />
-                            }
-                        </section>
-                    }
                 }
             }
+        </div>
 
-            @if (!string.IsNullOrWhiteSpace(ConversationState.ErrorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Dense="true" Class="ai-rail__alert" data-testid="ai-rail-error">
-                    @ConversationState.ErrorMessage
-                </MudAlert>
-            }
+        @* ── Error ── *@
+        @if (!string.IsNullOrWhiteSpace(ConversationState.ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="ai-rail__alert" data-testid="ai-rail-error">
+                @ConversationState.ErrorMessage
+            </MudAlert>
+        }
+
+        @* ── Composer (bottom-pinned) ── *@
+        @if (ConversationState.SelectedConversation is not null)
+        {
+            <div class="ai-rail__composer" role="form" aria-label="Send an AI assistant message">
+                @* References panel (toggled inline) *@
+                <div class="@ReferencesClass">
+                    <AiReferencePicker SearchTerm="@_referenceSearchTerm"
+                                       SearchTermChanged="OnReferenceSearchTermChanged"
+                                       Results="ConversationState.ReferenceResults"
+                                       SelectedReferences="ConversationState.SelectedReferences"
+                                       IsSearching="@_isReferenceSearchRunning"
+                                       HasSearched="@_hasSearchedReferences"
+                                       OnSearch="SearchReferencesAsync"
+                                       OnSelect="SelectReference"
+                                       OnRemove="RemoveReference" />
+                </div>
+
+                <div class="ai-rail__composer-card">
+                    <div class="ai-rail__composer-context">
+                        <span class="ai-rail__context-badge">
+                            🕌 ISLAMU Event
+                        </span>
+                    </div>
+                    <InputFile id="ai-file-picker" OnChange="OnFilesSelected" Multiple="true" style="display: none;" />
+                    <textarea id="ai-rail-prompt"
+                              class="ai-rail__textarea"
+                              rows="1"
+                              value="@_promptText"
+                              @oninput="OnPromptInput"
+                              @onchange="OnPromptChange"
+                              placeholder="How can I help you today?"
+                              data-testid="ai-rail-prompt"></textarea>
+                    <div class="ai-rail__composer-toolbar">
+                        <MudMenu Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                            <ActivatorContent>
+                                <button type="button"
+                                        class="ai-rail__toolbar-btn @(_showReferences ? "ai-rail__toolbar-btn--active" : "")"
+                                        title="Add references"
+                                        aria-label="Add references">
+                                    <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                                </button>
+                            </ActivatorContent>
+                            <ChildContent>
+                                <MudMenuItem OnClick="ToggleReferences">Search event references</MudMenuItem>
+                                <MudMenuItem OnClick="OpenFilePickerAsync">Add files of photos</MudMenuItem>
+                            </ChildContent>
+                        </MudMenu>
+                        <MudMenu Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                            <ActivatorContent>
+                                <button type="button" class="ai-rail__capability-picker-btn" title="AI capabilities" aria-label="AI capabilities">
+                                    <MudIcon Icon="@GetCapabilityIcon(_selectedCapability)" Size="Size.Small" />
+                                    <span>@_selectedCapability</span>
+                                    <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Class="ai-rail__capability-arrow" />
+                                </button>
+                            </ActivatorContent>
+                            <ChildContent>
+                                <MudMenuItem OnClick='() => SelectCapability("Build")'>Build</MudMenuItem>
+                                <MudMenuItem OnClick='() => SelectCapability("Ask")'>Ask</MudMenuItem>
+                            </ChildContent>
+                        </MudMenu>
+                        <div class="ai-rail__toolbar-spacer"></div>
+                        <button type="button"
+                                class="ai-rail__send-btn"
+                                disabled="@IsSendDisabled"
+                                @onclick="SendMessageAsync"
+                                data-testid="ai-rail-send"
+                                aria-label="Send message"
+                                title="Send message">
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" />
+                        </button>
+                    </div>
+                </div>
+                <span class="ai-rail__disclaimer">ISLAMU AI can make mistakes, please double-check responses.</span>
+            </div>
+        }
+
+        @* ── History Overlay (Plane-style right sidebar overlay) ── *@
+        <div class="@HistoryOverlayClass" aria-label="AI conversations history">
+            <div class="ai-rail__history-header">
+                <span class="ai-rail__history-title">Chat history</span>
+                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                               Color="Color.Inherit"
+                               Size="Size.Small"
+                               OnClick="ToggleConversations"
+                               Title="Close history"
+                               aria-label="Close history" />
+            </div>
+
+            <div class="ai-rail__history-search-row">
+                <button type="button" class="ai-rail__history-new-chat" @onclick="CreateConversationAsync" disabled="@_isCommandRunning">
+                    <MudIcon Icon="@Icons.Material.Filled.EditNote" Size="Size.Small" />
+                    <span>New chat</span>
+                </button>
+                <div class="ai-rail__history-search-btn">
+                    <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" />
+                </div>
+            </div>
+
+            <div class="ai-rail__history-section-title">Recents</div>
+
+            <div class="ai-rail__history-body">
+                @if (ConversationState.Conversations.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ai-rail__empty-hint">
+                        @(ConversationState.CanCreateConversation
+                            ? "Start a conversation to ask for event planning help."
+                            : "Conversation creation is not available for your account.")
+                    </MudText>
+                }
+                else
+                {
+                    <div class="ai-rail__history-list" role="list">
+                        @foreach (var conversation in ConversationState.Conversations)
+                        {
+                            <button type="button"
+                                    class="@GetConversationButtonClass(conversation.Id)"
+                                    role="listitem"
+                                    @onclick="() => SelectConversationAndCloseHistoryAsync(conversation.Id)"
+                                    data-testid="ai-rail-conversation">
+                                <span class="ai-rail__conversation-title">@GetConversationTitle(conversation)</span>
+                                <span class="ai-rail__conversation-status">@conversation.Status</span>
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
         </div>
     </aside>
 }
@@ -184,6 +277,12 @@
     [Inject]
     protected IAiAssistantClientService ClientService { get; set; } = null!;
 
+    [Inject]
+    protected IJSRuntime JS { get; set; } = null!;
+
+    [Inject]
+    protected ISnackbar Snackbar { get; set; } = null!;
+
     [Parameter]
     public bool HostedInDock { get; set; }
 
@@ -192,14 +291,32 @@
     private bool _hasSearchedReferences;
     private bool _isCommandRunning;
     private bool _isReferenceSearchRunning;
+    private bool _showConversations;
+    private bool _showReferences;
     private string _promptText = string.Empty;
     private string _referenceSearchTerm = string.Empty;
+
+    private readonly List<string> _models = ["GPT-5.4", "GPT-5.2", "Claude Sonnet 4.5", "Claude Sonnet 4.6"];
+    private string _selectedModel = "GPT-5.4";
+    private string _selectedCapability = "Build";
 
     private string RootClass => string.Join(' ', new[]
     {
         "ai-rail",
         AiAssistantState.IsOpen ? "ai-rail--open" : null,
         HostedInDock ? "ai-rail--docked" : null
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private string HistoryOverlayClass => string.Join(' ', new[]
+    {
+        "ai-rail__history-overlay",
+        _showConversations ? "ai-rail__history-overlay--open" : null
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private string ReferencesClass => string.Join(' ', new[]
+    {
+        "ai-rail__references-panel",
+        _showReferences ? "ai-rail__references-panel--open" : null
     }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
     private bool IsSendDisabled =>
@@ -221,6 +338,10 @@
             await LoadConversationsAsync();
         }
     }
+
+    private void ToggleConversations() => _showConversations = !_showConversations;
+
+    private void ToggleReferences() => _showReferences = !_showReferences;
 
     private async Task LoadConversationsAsync()
     {
@@ -459,6 +580,70 @@
         string.Equals(role, "User", StringComparison.OrdinalIgnoreCase) ? "ai-rail__message--user" : null,
         string.Equals(role, "Assistant", StringComparison.OrdinalIgnoreCase) ? "ai-rail__message--assistant" : null
     }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private void SelectModel(string model)
+    {
+        _selectedModel = model;
+    }
+
+    private string GetModelItemClass(string model) =>
+        string.Equals(_selectedModel, model, StringComparison.OrdinalIgnoreCase)
+            ? "ai-rail__model-item--selected"
+            : "";
+
+    private void SelectCapability(string capability)
+    {
+        _selectedCapability = capability;
+    }
+
+    private string GetCapabilityIcon(string capability) =>
+        string.Equals(capability, "Build", StringComparison.OrdinalIgnoreCase)
+            ? Icons.Material.Filled.AutoFixHigh
+            : Icons.Material.Filled.HelpOutline;
+
+    private async Task OpenFilePickerAsync()
+    {
+        await JS.InvokeVoidAsync("eval", "document.getElementById('ai-file-picker')?.click()");
+    }
+
+    private void OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        Snackbar.Add($"{e.FileCount} file(s) selected successfully.", Severity.Info);
+    }
+
+    private async Task DeleteCurrentChatAsync()
+    {
+        if (ConversationState.SelectedConversation?.Id is Guid conversationId)
+        {
+            ConversationState.RemoveConversation(conversationId);
+            var nextId = ConversationState.Conversations.FirstOrDefault()?.Id;
+            if (nextId is Guid id)
+            {
+                await SelectConversationAsync(id);
+            }
+            else
+            {
+                ConversationState.SelectConversation(null);
+            }
+            Snackbar.Add("Conversation deleted.", Severity.Success);
+        }
+    }
+
+    private async Task SelectConversationAndCloseHistoryAsync(Guid? conversationId)
+    {
+        await SelectConversationAsync(conversationId);
+        _showConversations = false;
+    }
+
+    private void OnPromptInput(ChangeEventArgs e)
+    {
+        _promptText = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnPromptChange(ChangeEventArgs e)
+    {
+        _promptText = e.Value?.ToString() ?? string.Empty;
+    }
 
     public void Dispose()
     {

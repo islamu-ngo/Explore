@@ -28,6 +28,7 @@ public interface IAiAssistantClientService
     Task<AiAssistantCommandResult> SendMessageAsync(
         Guid conversationId,
         string content,
+        string? modelId = null,
         string? idempotencyKey = null,
         CancellationToken cancellationToken = default);
 

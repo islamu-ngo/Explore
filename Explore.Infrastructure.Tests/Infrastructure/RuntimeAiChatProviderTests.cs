@@ -84,16 +84,23 @@ public sealed class RuntimeAiChatProviderTests
     }
 
     [Test]
-    public async Task ListAvailableModels_WhenOpenAiCompatibleConfigured_ReturnsConfiguredModel()
+    public async Task ListAvailableModels_WhenOpenAiCompatibleConfigured_ReturnsDiscoveredModels()
     {
-        var handler = new RecordingMessageHandler(_ => throw new InvalidOperationException("HTTP should not be called."));
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "data": [
+                { "id": "gpt-z" },
+                { "id": "gpt-a" }
+              ]
+            }
+            """));
         var provider = CreateProvider(CreateOpenAiSettings(), handler);
 
         var models = await provider.ListAvailableModelsAsync();
 
-        await Assert.That(models.Count).IsEqualTo(1);
-        await Assert.That(models[0].Id).IsEqualTo("gpt-test");
-        await Assert.That(handler.Calls).IsEqualTo(0);
+        await Assert.That(models.Select(model => model.Id).ToArray()).IsEquivalentTo(["gpt-a", "gpt-z"]);
+        await Assert.That(handler.RequestUri).IsEqualTo(new Uri("https://ai.example.test/v1/models"));
+        await Assert.That(handler.Calls).IsEqualTo(1);
     }
 
     [Test]

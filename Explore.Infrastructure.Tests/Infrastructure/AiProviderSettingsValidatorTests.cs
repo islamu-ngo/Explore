@@ -30,7 +30,7 @@ public sealed class AiProviderSettingsValidatorTests
     }
 
     [Test]
-    public async Task Validate_OpenAiCompatibleRequiresEndpointModelAndKey()
+    public async Task Validate_OpenAiCompatibleRequiresEndpointAndModel()
     {
         var result = _validator.Validate(null, new AiProviderSettings
         {
@@ -41,7 +41,16 @@ public sealed class AiProviderSettingsValidatorTests
         await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailureMessage).Contains("EndpointUrl");
         await Assert.That(result.FailureMessage).Contains("ModelId");
-        await Assert.That(result.FailureMessage).Contains("ApiKey");
+
+        var configured = _validator.Validate(null, new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderOpenAiCompatible,
+            EndpointUrl = "https://ai.example.test/v1",
+            ModelId = "gpt-test"
+        });
+
+        await Assert.That(configured.Succeeded).IsTrue();
     }
 
     [Test]

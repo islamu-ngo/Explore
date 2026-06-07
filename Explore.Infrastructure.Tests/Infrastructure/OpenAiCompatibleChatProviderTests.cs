@@ -18,9 +18,29 @@ namespace Explore.Infrastructure.Tests.Infrastructure;
 public sealed class OpenAiCompatibleChatProviderTests
 {
     [Test]
-    public async Task ListAvailableModels_WhenConfigured_ReturnsConfiguredModelWithoutHttpCall()
+    public async Task ListAvailableModels_WhenModelsEndpointResponds_ReturnsDiscoveredModels()
     {
-        var handler = new RecordingMessageHandler(_ => throw new InvalidOperationException("HTTP should not be called."));
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "data": [
+                { "id": "gpt-z" },
+                { "id": "gpt-a" }
+              ]
+            }
+            """));
+        var provider = CreateProvider(handler, CreateSettings());
+
+        var models = await provider.ListAvailableModelsAsync();
+
+        await Assert.That(models.Select(model => model.Id).ToArray()).IsEquivalentTo(["gpt-a", "gpt-z"]);
+        await Assert.That(handler.RequestUri).IsEqualTo(new Uri("https://ai.example.test/v1/models"));
+        await Assert.That(handler.Calls).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task ListAvailableModels_WhenModelsEndpointFails_ReturnsConfiguredModel()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("{}", statusCode: HttpStatusCode.NotFound));
         var provider = CreateProvider(handler, CreateSettings());
 
         var models = await provider.ListAvailableModelsAsync();
@@ -29,7 +49,31 @@ public sealed class OpenAiCompatibleChatProviderTests
         await Assert.That(models[0].Id).IsEqualTo("gpt-test");
         await Assert.That(models[0].SupportsToolProposals).IsTrue();
         await Assert.That(models[0].SupportsStreaming).IsFalse();
-        await Assert.That(handler.Calls).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task DiscoverModelsAsync_WhenEndpointIsChatCompletionsUrl_UsesModelsEndpointAndBearerToken()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "data": [
+                { "id": "gpt-z" },
+                { "id": "gpt-a" },
+                { "id": "" }
+              ]
+            }
+            """));
+        using var client = new HttpClient(handler);
+
+        var models = await OpenAiCompatibleChatProvider.DiscoverModelsAsync(
+            client,
+            "https://ai.example.test/v1/chat/completions",
+            "secret-key");
+
+        await Assert.That(handler.RequestUri).IsEqualTo(new Uri("https://ai.example.test/v1/models"));
+        await Assert.That(handler.Authorization?.Scheme).IsEqualTo("Bearer");
+        await Assert.That(handler.Authorization?.Parameter).IsEqualTo("secret-key");
+        await Assert.That(models.Select(model => model.Id).ToArray()).IsEquivalentTo(["gpt-a", "gpt-z"]);
     }
 
     [Test]
@@ -120,6 +164,82 @@ public sealed class OpenAiCompatibleChatProviderTests
         await Assert.That(tool.GetProperty("function").GetProperty("parameters").GetProperty("additionalProperties").GetBoolean()).IsFalse();
         await Assert.That(tool.GetProperty("function").GetProperty("parameters").GetProperty("required")[0].GetString()).IsEqualTo("title");
         await Assert.That(document.RootElement.GetProperty("tool_choice").GetString()).IsEqualTo("auto");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenStructuredOutputEnabled_SendsResponseFormatAndParsesAssistantMessage()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "choices": [
+                {
+                  "message": { "content": "{\"message\":\"Structured assistant response\"}" },
+                  "finish_reason": "stop"
+                }
+              ],
+              "usage": { "prompt_tokens": 12, "completion_tokens": 4, "total_tokens": 16 }
+            }
+            """));
+        var provider = CreateProvider(handler, CreateSettings());
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Summarize the plan",
+            structuredOutputEnabled: true,
+            structuredOutputSchema: AiStructuredOutputSchemas.AssistantMessage));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Response!.AssistantMessage).IsEqualTo("Structured assistant response");
+
+        using var document = JsonDocument.Parse(handler.RequestBody!);
+        var responseFormat = document.RootElement.GetProperty("response_format");
+        await Assert.That(responseFormat.GetProperty("type").GetString()).IsEqualTo("json_schema");
+        await Assert.That(responseFormat.GetProperty("json_schema").GetProperty("name").GetString()).IsEqualTo("assistant_message");
+        await Assert.That(responseFormat.GetProperty("json_schema").GetProperty("strict").GetBoolean()).IsTrue();
+        await Assert.That(responseFormat.GetProperty("json_schema").GetProperty("schema").GetProperty("additionalProperties").GetBoolean()).IsFalse();
+        await Assert.That(document.RootElement.TryGetProperty("tools", out _)).IsFalse();
+    }
+
+    [Test]
+    public async Task SendAsync_WhenStructuredOutputDoesNotMatchSchema_ReturnsSafeFailure()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "choices": [
+                {
+                  "message": { "content": "{\"summary\":\"wrong shape\"}" },
+                  "finish_reason": "stop"
+                }
+              ]
+            }
+            """));
+        var provider = CreateProvider(handler, CreateSettings());
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Summarize the plan",
+            structuredOutputEnabled: true,
+            structuredOutputSchema: AiStructuredOutputSchemas.AssistantMessage));
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Error!.Code).IsEqualTo("invalid_structured_output");
+        await Assert.That(result.Error.Message).DoesNotContain("wrong shape");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenStructuredOutputCombinesWithToolProposals_FailsBeforeHttpCall()
+    {
+        var handler = new RecordingMessageHandler(_ => throw new InvalidOperationException("HTTP should not be called."));
+        var provider = CreateProvider(handler, CreateSettings());
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Create an event draft",
+            toolProposalsEnabled: true,
+            actionSchema: "{\"type\":\"object\"}",
+            structuredOutputEnabled: true,
+            structuredOutputSchema: AiStructuredOutputSchemas.AssistantMessage));
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Error!.Code).IsEqualTo("structured_output_conflict");
+        await Assert.That(handler.Calls).IsEqualTo(0);
     }
 
     [Test]
@@ -218,14 +338,24 @@ public sealed class OpenAiCompatibleChatProviderTests
     private static AiChatPayload CreateRequest(
         string userMessage,
         bool toolProposalsEnabled = false,
-        string? actionSchema = null) => new(
+        string? actionSchema = null,
+        bool structuredOutputEnabled = false,
+        AiStructuredOutputSchema? structuredOutputSchema = null) => new(
             "gpt-test",
             [new AiChatMessage(AiMessageRole.User, userMessage)],
             "You are a safe assistant.",
-            new AiChatOptions(8000, 1024, 0.2m, 30, toolProposalsEnabled, StreamingEnabled: false),
+            new AiChatOptions(
+                8000,
+                1024,
+                0.2m,
+                30,
+                toolProposalsEnabled,
+                StreamingEnabled: false,
+                StructuredOutputEnabled: structuredOutputEnabled),
             actionSchema is null
                 ? null
-                : new AiStructuredActionSchema([AiProposedActionKind.CreateEventDraft], actionSchema));
+                : new AiStructuredActionSchema([AiProposedActionKind.CreateEventDraft], actionSchema),
+            structuredOutputSchema);
 
     private static HttpResponseMessage JsonResponse(
         string json,

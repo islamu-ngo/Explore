@@ -102,6 +102,16 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
                 telemetryActivity);
         }
 
+        var structuredOutputFailure = AiStructuredOutputResponseMapper.ValidateRequest(request);
+        if (structuredOutputFailure is not null)
+        {
+            return CompleteFailure(
+                RecordFailure(providerName, structuredOutputFailure.Code, structuredOutputFailure.Message),
+                providerName,
+                startedAt,
+                telemetryActivity);
+        }
+
         if (!TryCreateChatOptions(request, providerName, out var chatOptions, out var optionsFailure))
         {
             return CompleteFailure(optionsFailure!, providerName, startedAt, telemetryActivity);
@@ -117,7 +127,7 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
                 chatOptions,
                 timeoutCts.Token);
 
-            if (!TryMapResponse(response, providerName, out var mappedResponse, out var responseFailure))
+            if (!TryMapResponse(response, request, providerName, out var mappedResponse, out var responseFailure))
             {
                 return CompleteFailure(responseFailure!, providerName, startedAt, telemetryActivity);
             }
@@ -218,10 +228,35 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
 
         if (!request.Options.ToolProposalsEnabled || request.ActionSchema is null)
         {
+            if (request.Options.StructuredOutputEnabled && request.StructuredOutputSchema is not null)
+            {
+                if (!TryCreateJsonSchema(
+                        request.StructuredOutputSchema.JsonSchema,
+                        providerName,
+                        "invalid_structured_output_schema",
+                        "AI structured output schema must be a valid JSON object.",
+                        out var responseSchema,
+                        out failure))
+                {
+                    return false;
+                }
+
+                chatOptions.ResponseFormat = ChatResponseFormat.ForJsonSchema(
+                    responseSchema!.Value,
+                    request.StructuredOutputSchema.Name.Trim(),
+                    request.StructuredOutputSchema.Description.Trim());
+            }
+
             return true;
         }
 
-        if (!TryCreateJsonSchema(request.ActionSchema.JsonSchema, providerName, out var schema, out failure))
+        if (!TryCreateJsonSchema(
+                request.ActionSchema.JsonSchema,
+                providerName,
+                "invalid_action_schema",
+                "AI action schema must be a valid JSON object.",
+                out var schema,
+                out failure))
         {
             return false;
         }
@@ -254,6 +289,8 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
     private bool TryCreateJsonSchema(
         string schemaJson,
         string providerName,
+        string failureCode,
+        string failureMessage,
         out JsonElement? schema,
         out AiChatProviderResult? failure)
     {
@@ -265,7 +302,7 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
             using var document = JsonDocument.Parse(schemaJson);
             if (document.RootElement.ValueKind != JsonValueKind.Object)
             {
-                failure = RecordFailure(providerName, "invalid_action_schema", "AI action schema must be a JSON object.");
+                failure = RecordFailure(providerName, failureCode, failureMessage);
                 return false;
             }
 
@@ -274,13 +311,14 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
         }
         catch (JsonException)
         {
-            failure = RecordFailure(providerName, "invalid_action_schema", "AI action schema must be valid JSON.");
+            failure = RecordFailure(providerName, failureCode, failureMessage);
             return false;
         }
     }
 
     private bool TryMapResponse(
         ChatResponse providerResponse,
+        AiChatPayload request,
         string providerName,
         out AiChatResponse? chatResponse,
         out AiChatProviderResult? failure)
@@ -299,8 +337,18 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
             return false;
         }
 
+        if (!AiStructuredOutputResponseMapper.TryMapAssistantMessage(
+                request,
+                providerResponse.Text,
+                out var assistantMessage,
+                out var structuredOutputFailure))
+        {
+            failure = RecordFailure(providerName, structuredOutputFailure!.Code, structuredOutputFailure.Message);
+            return false;
+        }
+
         chatResponse = new AiChatResponse(
-            providerResponse.Text,
+            assistantMessage,
             proposedActions,
             new AiTokenUsage(
                 ToIntTokenCount(providerResponse.Usage?.InputTokenCount),
