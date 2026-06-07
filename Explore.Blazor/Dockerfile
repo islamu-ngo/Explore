@@ -14,7 +14,7 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # Copy restore inputs and project graph first for deterministic locked restore caching
-COPY ["global.json", "Directory.Build.props", "Directory.Packages.props", "./"]
+COPY ["global.json", "Directory.Build.props", "Directory.Packages.props", "dotnet-tools.json", "./"]
 COPY ["Explore.Blazor/Explore.Blazor.csproj", "Explore.Blazor/packages.lock.json", "Explore.Blazor/"]
 COPY ["Explore.Blazor.Client/Explore.Blazor.Client.csproj", "Explore.Blazor.Client/packages.lock.json", "Explore.Blazor.Client/"]
 COPY ["Explore.Application/Explore.Application.csproj", "Explore.Application/packages.lock.json", "Explore.Application/"]
@@ -25,6 +25,7 @@ COPY ["Explore.Secrets/Explore.Secrets.csproj", "Explore.Secrets/packages.lock.j
 COPY ["Explore.ServiceDefaults/Explore.ServiceDefaults.csproj", "Explore.ServiceDefaults/packages.lock.json", "Explore.ServiceDefaults/"]
 
 RUN dotnet restore "./Explore.Blazor/Explore.Blazor.csproj" --locked-mode
+RUN dotnet tool restore
 COPY . .
 WORKDIR "/src/Explore.Blazor"
 RUN dotnet build "./Explore.Blazor.csproj" -c $BUILD_CONFIGURATION -o /app/build

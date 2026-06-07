@@ -37,7 +37,8 @@ Current checks cover:
 - Aspire CLI availability;
 - Compose service topology and BFF `API_ENDPOINT` alignment;
 - discrete PostgreSQL bootstrap variables expected by `BootstrapSecretLoader`;
-- presence of operator remediation docs.
+- presence of operator remediation docs;
+- review-first AI tool readiness artifacts, generated inventories, registry tests, and agent hardening docs.
 
 Non-negotiable safety boundary: doctor does **not** repair configuration, generate secrets, start containers, start Aspire, run migrations, seed data, call setup write endpoints, or persist setup state. Use it before running Compose/Aspire or when diagnosing a self-hosting setup, then follow the linked remediation docs for corrective action.
 
@@ -130,7 +131,7 @@ Operational rules:
 
 ## Deployment Protection and Evidence
 
-GitHub Actions deploys use the `staging` and `production` environments. Configure environment rules in GitHub repository settings, not in application runtime configuration:
+GitHub Actions deploys use the `staging` and `production` environments. Configure environment rules in GitHub repository settings, not in application runtime configuration. Code scanning is owned by the `CodeQL Advanced` workflow; keep GitHub CodeQL default setup disabled so advanced SARIF uploads are accepted:
 
 - `production` should require reviewer approval and restrict deployments to `main` and version tags.
 - `staging` should use environment-scoped secrets and can deploy automatically from `develop` unless the release process requires review.
@@ -200,17 +201,61 @@ AI assistant send requests have layered abuse controls:
 - 429 and quota ProblemDetails must not include prompts, model responses, selected reference content, provider request IDs, endpoint URLs, API keys, or raw provider errors.
 
 MCP adapter operations are opt-in:
-- The MCP adapter is disabled by default through `Mcp:Enabled=false` and must be explicitly enabled by self-hosters/operators.
-- The adapter exposes a bounded readiness check named `mcp-adapter`, read-only registry discovery, safe AI conversation resources, and a confirmation prompt. Mutating MCP tools persist proposed actions through MediatR and require the normal product/API confirmation path before side effects occur.
-- The selected transport is API-hosted stateless Streamable HTTP. Legacy SSE remains disabled unless a separate trusted-isolated deployment decision is made.
+- The MCP adapter endpoint is disabled by default through the startup ceiling `Mcp:Enabled=false` and must be explicitly enabled by self-hosters/operators before `/mcp` is mapped.
+- Runtime governance then resolves `mcp.enabled` through the instance/tenant settings cascade. Effective exposure is `Mcp:Enabled && resolved(mcp.enabled)`, so instance administrators can turn the adapter off without changing endpoint path/stateless startup posture.
+- The adapter exposes a bounded readiness check named `mcp-adapter`, read-only registry discovery, first-class registry-projected `propose_*` tools, safe AI conversation resources, and a confirmation prompt. Mutating MCP tools persist proposed actions through MediatR and require the normal product/API confirmation path before side effects occur.
+- The selected product transport is API-hosted stateless Streamable HTTP. Keep `Mcp:Stateless=true`; no MCP session affinity should be required for API replicas.
+- Do not add `WithStdioServerTransport()` to the product API host. `stdio` remains a local/developer diagnostic transport and needs a separate host/runbook decision before use.
+- Keep `Mcp:EnableLegacySse=false` in normal deployments. The value is now a startup ceiling for future governance only; `mcp.enable_legacy_sse` records runtime intent, but current runtime legacy SSE remains unavailable because the official SDK legacy mode requires stateful in-memory sessions and weaker request backpressure than Streamable HTTP.
+- Instance administrators can lock tenant MCP overrides with `governance.lock_tenant_mcp` and `governance.lock_tenant_mcp_legacy_sse`. Multi-tenant tenant administrators can override only unlocked values; single-tenant deployments use the existing single-tenant bypass semantics.
+- Keep MCP SDK registration explicit. The API host uses explicit `WithTools<T>()`, `WithResources<T>()`, `WithPrompts<T>()`, and registry-projected tool options instead of assembly scanning. This keeps startup behavior reviewable and avoids avoidable Native AOT/reflection risk; Native AOT publication is not supported until a dedicated publish profile and verification gate exist.
+- MCP is API-key-first for external clients. The endpoint is mapped anonymously so SDK authorization filters can expose only explicitly anonymous-safe registry discovery without credentials; scoped tools/resources/prompts carry scope-aware policies and require a valid bearer session or `X-API-Key` principal. API keys need `mcp:read` for MCP read resources and `mcp:propose` for proposal tools/prompts; no key, invalid keys, or revoked keys can see only anonymous-safe capabilities, and requests that send both `Authorization` and `X-API-Key` return a redacted bad-request response.
 - MCP tools must be registry-backed and mutating tools must use the proposal/confirmation path; MCP must not mutate repositories directly.
-- MCP health, logs, metrics, and errors must not include prompts, selected reference content, tool payloads, provider responses, provider endpoint URLs, API keys, tenant IDs, or raw provider exceptions.
+- MCP health, logs, metrics, traces, and errors must not include prompts, selected reference content, tool payloads, provider responses, provider endpoint URLs, API keys, tenant IDs, user IDs, or raw provider exceptions. Health reports only safe effective-state booleans such as `startupEnabled`, `runtimeEnabled`, and legacy-SSE requested/enabled state. Bounded MCP telemetry uses `Explore.Mcp` as both ActivitySource and Meter name with allow-listed tool/outcome/failure-code tags only.
 
 MCP recovery and operator actions:
 - If `mcp-adapter` is degraded because MCP is disabled, no recovery is required; this is the default safe posture.
-- If MCP is enabled but readiness fails, disable `Mcp:Enabled`, restart the API, and inspect bounded startup/configuration errors. Do not capture prompts, payloads, provider responses, API keys, endpoint URLs, tenant IDs, or raw MCP request bodies in support tickets.
-- If external agents report mutation failures, inspect the returned failure code from `propose_ai_tool_action` and the normal AI conversation/proposed-action API state. Do not bypass the confirmation flow or write repositories directly.
-- If a client requires legacy SSE, treat that as a new architecture decision. The current adapter intentionally supports stateless Streamable HTTP only.
+- If MCP was enabled at startup but must be rolled back immediately, set runtime `mcp.enabled=false` from instance governance. Requests to the mapped MCP path return `404` while the rest of the API remains available.
+- If MCP must be unmapped entirely, set `Mcp:Enabled=false` and restart the API. Inspect only bounded startup/configuration errors. Do not capture prompts, payloads, provider responses, API keys, endpoint URLs, tenant IDs, or raw MCP request bodies in support tickets.
+- If external agents report mutation failures, inspect the returned failure code from the projected `propose_*` tool or generic `propose_ai_tool_action`, then inspect the normal AI conversation/proposed-action API state. Do not bypass the confirmation flow or write repositories directly.
+- If a client requires legacy SSE, treat that as a new architecture decision. Startup and runtime governance can record intent, but the current adapter intentionally supports stateless Streamable HTTP only and reports `legacySseRuntimeEnabled=false`.
+- If a deployment requests Native AOT for the API host, treat MCP as unverified until a dedicated `dotnet publish` profile proves the SDK, explicit static registrations, and registry-projected dynamic tools all survive trimming/AOT without losing schema metadata.
+
+MCP local debugging, Inspector, and redacted contract smoke:
+- The full local debug and client-smoke runbook is [MCP_DEBUGGING.md](MCP_DEBUGGING.md). It includes Debug-build startup, redacted `.vscode/mcp.json`/`.mcp.json` templates, Inspector, GitHub Copilot Agent Mode, JSON-RPC fallback, and compatibility gates.
+- First run the deterministic replay report. This is the CI-safe contract check and uses no live provider credentials:
+  `dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release --no-restore -- ai-replay-report --output /tmp/explore-ai-replay-mcp-inspector`
+- Use MCP Inspector only for manual local/staging smoke against fake or disposable data. Current MCP docs start Inspector with `npx -y @modelcontextprotocol/inspector`; connect it to the API's Streamable HTTP URL, for example `https://<redacted-host>/mcp`.
+- Configure `X-API-Key: <redacted-api-key>` for normal scoped machine smoke, leave credentials blank for anonymous-safe discovery, or use `Authorization: Bearer <redacted-token>` only for user-delegated local smoke. For multi-tenant routing, use the same trusted tenant binding as normal API traffic, such as host/subdomain routing or `X-Tenant-Slug: <redacted-tenant-slug>`. Do not mix bearer and API-key credentials in one request.
+- Discovery checklist: initialize the connection, then list tools, resources, resource templates, and prompts. Anonymous or invalid-key surface is `list_ai_tool_contracts` only; a valid scoped key can also expose `propose_ai_tool_action`, projected `propose_create_event_draft`, resource `ai_conversations`, resource template `ai_conversation_detail`, and prompt `create_event_draft_with_confirmation`.
+- Safe call checklist: call `list_ai_tool_contracts`; optionally call `propose_create_event_draft` only against a disposable test conversation with fixture data. Stop after a proposed action is returned. Do not call confirm/reject API endpoints from Inspector, do not write repositories, and do not assert that an event was created.
+- Redaction checklist: retain only scenario codes, pass/fail status, redacted endpoint path, redacted auth mode, and bounded failure categories. Do not retain Inspector screenshots, browser storage, exports, proxy logs, prompts, selected-reference content, raw tool payloads, provider responses, tenant/user identifiers, bearer/API-key values, model IDs, raw MCP request/response bodies, or raw exceptions.
+- If a command-line HTTP smoke is needed instead of Inspector, use the same redaction rules and send JSON-RPC methods such as `tools/list`, `resources/list`, `resources/templates/list`, and `prompts/list` with `ProtocolVersion: 2025-06-18`, `Accept: application/json, text/event-stream`, and `Content-Type: application/json`. Do not paste real credentials or response bodies into tickets.
+- Automated MCP protocol coverage lives in `McpProtocolContractTests`: it exercises `initialize`, discovery lists, registry discovery calls, generic/projected proposal calls, disabled endpoint behavior, and redaction failure paths through `WebApplicationFactory` without Inspector, Copilot, live providers, product confirmation calls, or database side effects beyond disposable proposed-action fixtures.
+- Review-first MCP debug readiness is covered by `McpDebugReadinessDoctorCheck`. The doctor only checks docs/tests/ignore-rule presence and redacted content markers; it does not start servers, call live endpoints, generate tokens, persist config, run migrations, or print secrets.
+
+MCP protocol/client compatibility reviews:
+- Run this review before upgrading `ModelContextProtocol.AspNetCore`, changing MCP headers/protocol versions, or supporting a client that requests behavior outside the current stateless Streamable HTTP surface.
+- Current allowed capability posture is intentionally small: anonymous-safe registry discovery, valid-scoped-principal tools/resources/prompts, registry-projected proposal tools, and no server-to-client requests. Stateless mode means no `Mcp-Session-Id`, no API session affinity, no legacy SSE runtime transport, no resource subscriptions, and no sampling/elicitation/roots/server-initiated notifications.
+- Treat these as ADR-gated changes: stateful sessions, session migration/resumability, GET/DELETE MCP endpoints, legacy SSE, sampling, elicitation, roots, completions, progress notifications, tool/resource/prompt list-changed notifications, dynamic non-registry tool changes, client-specific compatibility shims, or any use of SDK annotations as authorization authority.
+- Review checklist: read the SDK/protocol release notes, compare generated MCP tool/resource/prompt surface, rerun focused MCP API tests including `McpProtocolContractTests`, rerun `ai-replay-report`, repeat the redacted Inspector checklist when endpoint behavior changes, and verify docs/configuration still say disabled-by-default/stateless/API-key-first/proposal-first.
+- Compatibility evidence matrix: Inspector and VS Code/Copilot smoke are manual and redacted; WebApplicationFactory JSON-RPC tests are CI-safe; official C# SDK client transport remains a future upgrade target when it fits the in-memory test host; curl is a local fallback only.
+- Evidence may include package version, protocol version, scenario codes, pass/fail status, and bounded failure categories only. Do not preserve raw MCP request/response bodies, prompts, payload JSON, provider data, tenant/user identifiers, endpoint URLs, bearer/API-key values, model IDs, or raw exceptions.
+- Rollback posture: if a client requires unsupported stateful/SSE/server-to-client behavior, keep `Mcp:Enabled=false` for that deployment or keep the current minimal surface unchanged until the ADR, implementation, tests, self-hosting docs, and redaction runbook are complete.
+
+Advisory AI evaluation reports:
+- Generate deterministic ATCR evaluation evidence with:
+  `dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release -- ai-eval-report --output artifacts/ai-evaluation`
+- The report is intentionally advisory and non-gating. It covers tool proposal correctness, refusal/safety behavior, prompt-injection resistance, selected-reference groundedness metadata, MCP proposal-flow posture, and event-draft regression using local fake/deterministic checks, so normal CI and operator smoke tests do not require live AI provider credentials or model calls.
+- JSON and Markdown artifacts must stay redacted. They may include scenario codes, dimensions, status, summaries, and recommendations, but not prompts, provider responses, selected-reference content beyond deterministic fixture labels, raw tool payloads, tenant/user identifiers, endpoint URLs, API keys, model secrets, or raw exceptions.
+- Treat report drift as trend evidence first. Do not promote model-scored or live-provider evaluation checks to hard CI gates until cost, cache stability, false-positive behavior, and provider volatility are reviewed.
+
+Fake/replay AI usability reports:
+- Generate deterministic assistant/MCP proposal-flow evidence with:
+  `dotnet run --project Explore.Diagnostic/Explore.Diagnostic.csproj --configuration Release -- ai-replay-report --output artifacts/ai-replay`
+- The report is suitable for normal CI because it uses local fake/replay checks only. It validates assistant rail catalog + plan-preview readiness, MCP Inspector discovery checklist posture, projected MCP tool selection, MCP proposal-first/confirmation-required behavior, missing-HAL blocking, and safe recovery metadata without live provider credentials, screenshots with user content, or database writes.
+- The command exits non-zero if a replay scenario fails, a live-provider credential path is used, content-bearing artifacts are detected, or database side effects are detected.
+- JSON and Markdown artifacts may include scenario codes, failure classes, pass rates, redacted diagnostics, and artifact paths. They must not include prompts, provider responses, selected-reference content, raw tool payloads, tenant/user identifiers, endpoint URLs, API keys, model secrets, or raw exception bodies.
 
 ### Request Timeouts (`RequestTimeouts` config section)
 

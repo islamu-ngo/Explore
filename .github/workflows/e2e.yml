@@ -36,6 +36,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore --locked-mode
 
+      - name: Restore .NET Tools
+        run: dotnet tool restore
+
       - name: Build E2E test project
         run: >-
           dotnet build Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj

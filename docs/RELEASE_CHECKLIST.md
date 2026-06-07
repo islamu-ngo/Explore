@@ -68,7 +68,7 @@ Use `Not applicable` only when the change has no release-impact category. If the
 
 - [ ] Infrastructure-dependent tests are either passed in the release lane or explicitly marked as deferred with the reason.
 - [ ] E2E/manual visual checks are completed when the release changes auth, routing, onboarding, or core browser flows.
-- [ ] Required GitHub checks match [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md): fast build/test, OpenAPI drift, CodeQL, dependency review, and any path-relevant security/Cerbos checks.
+- [ ] Required GitHub checks match [CI_CD_GOVERNANCE.md](CI_CD_GOVERNANCE.md): fast build/test, OpenAPI drift, CodeQL, dependency review, and any path-relevant security/Cerbos checks. If `CodeQL Advanced` owns uploads, confirm GitHub CodeQL default setup is `not-configured`.
 - [ ] Advisory/nightly failures are triaged or explicitly deferred with owner and reason.
 
 ## Migration And Data Contract

@@ -172,6 +172,7 @@ jobs:
         shell: bash
         run: |
           dotnet restore --locked-mode
+          dotnet tool restore
           dotnet build --configuration Release --no-restore --verbosity minimal
 
       - name: Perform CodeQL Analysis

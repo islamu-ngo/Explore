@@ -1,5 +1,6 @@
 // ABOUTME: Validates deployable Dockerfiles use explicit tag-plus-digest base image pins.
 // ABOUTME: Prevents floating container base images from bypassing CI/CD supply-chain evidence.
+#:property RestorePackagesWithLockFile=false
 
 using System.Text.RegularExpressions;
 

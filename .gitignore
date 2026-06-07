@@ -18,6 +18,12 @@ tmp/
 temp/
 *.tmp
 
+# automaker
+.automaker
+
+# archive schema
+schemas/archive/
+
 # Database
 *.sqlite
 *.db

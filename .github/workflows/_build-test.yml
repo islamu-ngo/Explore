@@ -59,6 +59,10 @@ jobs:
         if: ${{ inputs.run-fast-tests }}
         run: dotnet restore --locked-mode
 
+      - name: Restore .NET Tools
+        if: ${{ inputs.run-fast-tests }}
+        run: dotnet tool restore
+
       - name: NuGet Security Audit
         if: ${{ inputs.run-fast-tests }}
         env:
@@ -203,6 +207,9 @@ jobs:
 
       - name: Restore
         run: dotnet restore --locked-mode
+
+      - name: Restore .NET Tools
+        run: dotnet tool restore
 
       - name: Build
         run: |
