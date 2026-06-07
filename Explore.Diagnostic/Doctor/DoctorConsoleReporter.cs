@@ -11,6 +11,7 @@ public static class DoctorConsoleReporter
         writer.WriteLine();
         writer.WriteLine("Usage:");
         writer.WriteLine("  dotnet run --project Explore.Diagnostic -- [--root <path>] [--timeout-seconds <seconds>]");
+        writer.WriteLine("  dotnet run --project Explore.Diagnostic -- ai-eval-report [--root <path>] [--output <path>]");
         writer.WriteLine();
         writer.WriteLine("The doctor does not migrate, seed, bootstrap, repair, or write secrets.");
     }

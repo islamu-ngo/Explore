@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
+    <ProjectReference Include="..\Explore.Domain\Explore.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
 
     <PackageReference Include="OpenTelemetry.Exporter.Console" />
