@@ -1,3 +1,6 @@
+// ABOUTME: Unit tests for external API-key command observability and scope validation.
+// ABOUTME: Protects metrics, MCP scope catalog checks, and immutable owner policy behavior.
+
 using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -7,6 +10,7 @@ using Explore.Application.Features.ExternalApiKeys.Handlers.Commands;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
 using Explore.Application.Telemetry;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -76,6 +80,119 @@ public class ExternalApiKeyObservabilityTests
         var measurement = await metricsCapture.SingleAsync("explore.external_api_keys.created");
         await Assert.That(measurement.Tags["tenant_id"]?.ToString()).IsEqualTo(tenantId.ToString());
         await Assert.That(measurement.Tags["owner_type"]?.ToString()).IsEqualTo(ExternalApiKeyOwnerType.User.ToString());
+    }
+
+    [Test]
+    public async Task CreateExternalApiKeyCommandHandler_WithUnknownMcpScope_ReturnsValidationError()
+    {
+        var metrics = CreateMetrics();
+
+        var externalApiKeyRepository = Substitute.For<IExternalApiKeyRepository>();
+        var organizationRepository = Substitute.For<IOrganizationRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var groupRepository = Substitute.For<IGroupRepository>();
+        var adminContext = Substitute.For<IAdminContext>();
+        var userContext = Substitute.For<IUserContext>();
+        var tenantContext = Substitute.For<ITenantContext>();
+        var logger = Substitute.For<ILogger<CreateExternalApiKeyCommandHandler>>();
+
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+
+        userContext.GetRequiredUserId().Returns(userId);
+        tenantContext.TenantId.Returns(tenantId);
+        externalApiKeyRepository.ExistsByOwnerAndName(ExternalApiKeyOwnerType.User, userId, "MCP Bot")
+            .Returns(false);
+
+        var handler = new CreateExternalApiKeyCommandHandler(
+            externalApiKeyRepository,
+            organizationRepository,
+            organizationMemberRepository,
+            groupMemberRepository,
+            groupRepository,
+            adminContext,
+            userContext,
+            tenantContext,
+            metrics,
+            logger);
+
+        var response = await handler.Handle(
+            new CreateExternalApiKeyCommand
+            {
+                ExternalApiKeyDto = new CreateExternalApiKeyDto
+                {
+                    Name = "MCP Bot",
+                    ExternalApiKeyOwnerTypeId = (int)ExternalApiKeyOwnerType.User,
+                    Scopes = [ExternalApiKeyScopes.McpRead, "mcp:teleport"]
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.Errors).Contains(error => error.Contains("Invalid scopes", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(response.Errors).Contains(error => error.Contains("mcp:teleport", StringComparison.OrdinalIgnoreCase));
+        await externalApiKeyRepository.DidNotReceive().Create(Arg.Any<ExternalApiKey>());
+    }
+
+    [Test]
+    public async Task UpdateExternalApiKeyPolicyCommandHandler_WithUnknownMcpScope_ReturnsValidationError()
+    {
+        var metrics = CreateMetrics();
+
+        var externalApiKeyRepository = Substitute.For<IExternalApiKeyRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var adminContext = Substitute.For<IAdminContext>();
+        var userContext = Substitute.For<IUserContext>();
+        var logger = Substitute.For<ILogger<UpdateExternalApiKeyPolicyCommandHandler>>();
+
+        var userId = Guid.NewGuid();
+        var externalApiKey = new ExternalApiKey
+        {
+            Id = Guid.NewGuid(),
+            TenantId = Guid.NewGuid(),
+            Tenant = null!,
+            Name = "MCP Bot",
+            KeyId = "key-mcp-validation",
+            SecretHash = "hash",
+            Scopes = ExternalApiKeyScopes.McpRead,
+            OwnerType = ExternalApiKeyOwnerType.User,
+            OwnerId = userId,
+            ExternalApiKeyStatusId = (int)ExternalApiKeyStatusEnum.Active,
+            ExternalApiKeyStatus = null!,
+            ExternalApiKeyCreditPeriodId = (int)ExternalApiKeyCreditPeriodEnum.None,
+            ExternalApiKeyCreditPeriod = null!
+        };
+
+        userContext.GetRequiredUserId().Returns(userId);
+        externalApiKeyRepository.GetByIdIgnoringTenantFilter(externalApiKey.Id).Returns(externalApiKey);
+
+        var handler = new UpdateExternalApiKeyPolicyCommandHandler(
+            externalApiKeyRepository,
+            organizationMemberRepository,
+            groupMemberRepository,
+            adminContext,
+            userContext,
+            metrics,
+            logger);
+
+        var response = await handler.Handle(
+            new UpdateExternalApiKeyPolicyCommand
+            {
+                ExternalApiKeyPolicyDto = new UpdateExternalApiKeyPolicyDto
+                {
+                    Id = externalApiKey.Id,
+                    Name = "MCP Bot",
+                    Scopes = [ExternalApiKeyScopes.McpRead, "mcp:teleport"]
+                }
+            },
+            CancellationToken.None);
+
+        await Assert.That(response.Success).IsFalse();
+        await Assert.That(response.Errors).Contains(error => error.Contains("Invalid scopes", StringComparison.OrdinalIgnoreCase));
+        await Assert.That(response.Errors).Contains(error => error.Contains("mcp:teleport", StringComparison.OrdinalIgnoreCase));
+        await externalApiKeyRepository.DidNotReceive().Update(Arg.Any<ExternalApiKey>());
     }
 
     [Test]

@@ -24,6 +24,7 @@ public sealed class McpAiToolRegistryTests
 
         var createEventDraft = tools[0];
         createEventDraft.GetProperty("Name").GetString().Should().Be("CreateEventDraft");
+        createEventDraft.GetProperty("McpToolName").GetString().Should().Be("propose_create_event_draft");
         createEventDraft.GetProperty("ConfirmationMode").GetString().Should().Be("Required");
         createEventDraft.GetProperty("AllowedPayloadFields")
             .EnumerateArray()

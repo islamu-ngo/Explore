@@ -6,6 +6,7 @@ using System.Text.Json;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.Features.AiAssistant.Requests.Queries;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using ModelContextProtocol.Server;
 
 namespace Explore.API.Mcp;
@@ -18,6 +19,7 @@ public sealed class AiAssistantMcpResources(IMediator mediator)
         Title = "AI conversations",
         UriTemplate = "islamu-event://ai/conversations",
         MimeType = "application/json")]
+    [Authorize(Policy = McpAuthorizationPolicies.Read)]
     [Description("List recent authenticated AI assistant conversation summaries visible to the current principal.")]
     public async Task<string> ListConversationsAsync(CancellationToken cancellationToken = default)
     {
@@ -35,8 +37,12 @@ public sealed class AiAssistantMcpResources(IMediator mediator)
         Title = "AI conversation detail",
         UriTemplate = "islamu-event://ai/conversations/{conversationId}",
         MimeType = "application/json")]
+    [Authorize(Policy = McpAuthorizationPolicies.Read)]
     [Description("Read safe AI assistant conversation metadata without raw proposed-action payloads.")]
-    public async Task<string> GetConversationAsync(Guid conversationId, CancellationToken cancellationToken = default)
+    public async Task<string> GetConversationAsync(
+        [Description("AI conversation identifier to read.")]
+        Guid conversationId,
+        CancellationToken cancellationToken = default)
     {
         var conversation = await mediator.Send(
             new GetAiConversationDetailQuery { ConversationId = conversationId },

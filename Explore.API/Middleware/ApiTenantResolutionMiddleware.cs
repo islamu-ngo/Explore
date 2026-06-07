@@ -4,6 +4,7 @@
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.API.Configuration;
 using Explore.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -24,9 +25,17 @@ public sealed class ApiTenantResolutionMiddleware
         _deploymentSettings = deploymentSettings.Value;
     }
 
-    public async Task InvokeAsync(HttpContext context, IResolverConfigService resolverConfigService, ITenantSlugCache tenantSlugCache, ITenantContextAccessor tenantContextAccessor, IProblemDetailsService problemDetailsService, IDeploymentModeProvider deploymentModeProvider)
+    public async Task InvokeAsync(
+        HttpContext context,
+        IResolverConfigService resolverConfigService,
+        ITenantSlugCache tenantSlugCache,
+        ITenantContextAccessor tenantContextAccessor,
+        IProblemDetailsService problemDetailsService,
+        IDeploymentModeProvider deploymentModeProvider,
+        IOptions<McpAdapterSettings> mcpAdapterOptions)
     {
-        if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+        var isMcpPath = IsEnabledMcpPath(context, mcpAdapterOptions.Value);
+        if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) && !isMcpPath)
         {
             await _next(context);
             return;
@@ -60,7 +69,8 @@ public sealed class ApiTenantResolutionMiddleware
         var resolvedTenantId = await ResolveFromSlugHeaderAsync(context, tenantSlugCache);
         resolvedTenantId ??= await ResolveFromHostAsync(context, configuration, tenantSlugCache);
 
-        if (context.Request.Headers.ContainsKey(ApiAuthenticationHeaderNames.ApiKey))
+        var hasApiKeyHeader = context.Request.Headers.ContainsKey(ApiAuthenticationHeaderNames.ApiKey);
+        if (hasApiKeyHeader && !isMcpPath)
         {
             if (resolvedTenantId is Guid requestedTenantId && requestedTenantId != Guid.Empty)
             {
@@ -74,6 +84,17 @@ public sealed class ApiTenantResolutionMiddleware
         if (resolvedTenantId is Guid tenantId && tenantId != Guid.Empty)
         {
             tenantContextAccessor.SetTenant(tenantId);
+            if (hasApiKeyHeader)
+            {
+                context.Items[RequestedTenantIdItemKey] = tenantId;
+            }
+
+            await _next(context);
+            return;
+        }
+
+        if (hasApiKeyHeader && isMcpPath)
+        {
             await _next(context);
             return;
         }
@@ -146,6 +167,15 @@ public sealed class ApiTenantResolutionMiddleware
     {
         return path.StartsWithSegments("/api/InstanceOnboarding", StringComparison.OrdinalIgnoreCase)
             || path.StartsWithSegments("/api/System", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsEnabledMcpPath(HttpContext context, McpAdapterSettings settings)
+    {
+        return settings.Enabled &&
+               !string.IsNullOrWhiteSpace(settings.EndpointPath) &&
+               context.Request.Path.StartsWithSegments(
+                   settings.EndpointPath,
+                   StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? NormalizeHost(string? host)

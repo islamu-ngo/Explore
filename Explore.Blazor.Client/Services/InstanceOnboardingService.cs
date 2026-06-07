@@ -27,6 +27,7 @@ public interface IInstanceOnboardingService
     Task<DomainSettingsModel> GetDomainSettingsAsync();
     Task<TenantDelegationModel> GetTenantDelegationAsync();
     Task<RenderPolicyModel> GetRenderPolicyAsync();
+    Task<McpGovernanceModel> GetMcpGovernanceSettingsAsync();
 
     Task<InstanceCommandResponseModel> UpdateDeploymentModeAsync(string deploymentMode);
     Task<InstanceCommandResponseModel> UpdateModuleSettingsAsync(ModuleSettingsModel settings);
@@ -36,6 +37,7 @@ public interface IInstanceOnboardingService
     Task<InstanceCommandResponseModel> UpdateDomainSettingsAsync(DomainSettingsModel settings);
     Task<InstanceCommandResponseModel> UpdateTenantDelegationAsync(TenantDelegationModel settings);
     Task<InstanceCommandResponseModel> UpdateRenderPolicyAsync(RenderPolicyModel settings);
+    Task<InstanceCommandResponseModel> UpdateMcpGovernanceSettingsAsync(McpGovernanceModel settings);
 
     Task<InstanceStorageSettingsModel> GetStorageSettingsAsync();
     Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings);
@@ -225,6 +227,9 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     public async Task<RenderPolicyModel> GetRenderPolicyAsync() =>
         await GetSettingsAsync(_api.GetRenderPolicyAsync, () => new RenderPolicyModel());
 
+    public async Task<McpGovernanceModel> GetMcpGovernanceSettingsAsync() =>
+        await GetSettingsAsync(_api.GetMcpGovernanceSettingsAsync, () => new McpGovernanceModel());
+
     // ── Governance Sub-Resource Writes ────────────────────────────────────
 
     public Task<InstanceCommandResponseModel> UpdateDeploymentModeAsync(string deploymentMode) =>
@@ -251,6 +256,9 @@ public class InstanceOnboardingService : IInstanceOnboardingService
 
     public Task<InstanceCommandResponseModel> UpdateRenderPolicyAsync(RenderPolicyModel settings) =>
         SendCommandAsync(ct => _api.UpdateRenderPolicyAsync(settings, ct));
+
+    public Task<InstanceCommandResponseModel> UpdateMcpGovernanceSettingsAsync(McpGovernanceModel settings) =>
+        SendCommandAsync(ct => _api.UpdateMcpGovernanceSettingsAsync(settings, ct));
 
     // ── Infrastructure Settings ──────────────────────────────────────────
 
@@ -967,6 +975,14 @@ public class TenantDelegationModel
     public bool LockDecentralizationEnabled { get; set; }
     public string AuthorizationProvider { get; set; } = "local";
     public bool LockTenantAiAssistant { get; set; }
+}
+
+public class McpGovernanceModel
+{
+    public bool Enabled { get; set; }
+    public bool EnableLegacySse { get; set; }
+    public bool LockTenantMcp { get; set; } = true;
+    public bool LockTenantMcpLegacySse { get; set; } = true;
 }
 
 public class RenderPolicyModel

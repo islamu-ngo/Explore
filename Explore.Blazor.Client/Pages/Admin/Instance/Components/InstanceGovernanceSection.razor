@@ -119,6 +119,45 @@
         }
         }
 
+        @if (ShowMcpGovernance)
+        {
+            <MudDivider Class="my-4" />
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudText Typo="Typo.h6" Style="font-weight:600;">MCP Adapter</MudText>
+                    <MudTooltip Text="Endpoint path and stateless transport stay startup-only. Runtime settings can only enable MCP when the MCP startup ceiling is enabled.">
+                        <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                    </MudTooltip>
+                </MudStack>
+
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Controls the API-hosted MCP adapter at runtime. The endpoint path and stateless mode are configured by operators and are not editable here.
+                </MudText>
+
+                <MudSwitch T="bool" @bind-Value="Mcp.Enabled" Color="Color.Primary">
+                    Enable MCP adapter at runtime
+                </MudSwitch>
+
+                <MudSwitch T="bool" @bind-Value="Mcp.EnableLegacySse" Color="Color.Warning">
+                    Request legacy SSE transport
+                </MudSwitch>
+
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    Legacy SSE remains unavailable at runtime until a separate SDK/session-affinity review enables it. This setting records governance intent only.
+                </MudAlert>
+
+                @if (!IsSingleTenant)
+                {
+                    <MudSwitch T="bool" @bind-Value="Mcp.LockTenantMcp" Color="Color.Primary">
+                        Lock tenant MCP enablement override
+                    </MudSwitch>
+                    <MudSwitch T="bool" @bind-Value="Mcp.LockTenantMcpLegacySse" Color="Color.Primary">
+                        Lock tenant legacy SSE override
+                    </MudSwitch>
+                }
+            </MudStack>
+        }
+
         @if (ShowRenderPolicies)
         {
         @if (ShowGeneralGovernance)
@@ -327,6 +366,9 @@
     public RenderPolicyModel RenderPolicy { get; set; } = null!;
 
     [Parameter]
+    public McpGovernanceModel Mcp { get; set; } = new();
+
+    [Parameter]
     public string DeploymentMode { get; set; } = "SingleTenant";
 
     /// <summary>
@@ -338,6 +380,7 @@
     private bool ShowDeploymentMode => DisplayMode is "full" or "advanced";
     private bool ShowGeneralGovernance => DisplayMode is "full" or "general";
     private bool ShowRenderPolicies => DisplayMode is "full" or "advanced";
+    private bool ShowMcpGovernance => DisplayMode is "full" or "advanced";
     private bool ShowHomePage => DisplayMode is "full" or "general";
 
     private string SectionTitle => DisplayMode switch

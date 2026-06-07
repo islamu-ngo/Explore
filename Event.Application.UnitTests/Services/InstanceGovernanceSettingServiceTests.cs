@@ -216,6 +216,55 @@ public class InstanceGovernanceSettingServiceTests
         await Assert.That(result.RenderPolicy.LockTenantAdminRenderPolicy).IsFalse();
     }
 
+
+    [Test]
+    public async Task ReadSettingsAsync_ReadsMcpGovernanceSettings()
+    {
+        var resolved = new List<ResolvedSetting>
+        {
+            CreateResolvedSetting(GovernanceSettingKeys.Mcp.Enabled, "true"),
+            CreateResolvedSetting(GovernanceSettingKeys.Mcp.EnableLegacySse, "true"),
+            CreateResolvedSetting(GovernanceSettingKeys.TenantDelegation.LockMcp, "false"),
+            CreateResolvedSetting(GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse, "true")
+        };
+        _resolver.ResolveBatchAsync(
+            Arg.Any<IEnumerable<string>>(),
+            Arg.Any<SettingContext>(),
+            Arg.Any<CancellationToken>())
+            .Returns(resolved);
+
+        var result = await _service.ReadSettingsAsync();
+
+        await Assert.That(result.Mcp.Enabled).IsTrue();
+        await Assert.That(result.Mcp.EnableLegacySse).IsTrue();
+        await Assert.That(result.Mcp.LockTenantMcp).IsFalse();
+        await Assert.That(result.Mcp.LockTenantMcpLegacySse).IsTrue();
+    }
+
+    [Test]
+    public async Task ApplyMcpGovernanceSettingsAsync_UpsertsRuntimeValuesAndLocks()
+    {
+        _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
+        var actorId = Guid.NewGuid();
+
+        await _service.ApplyMcpGovernanceSettingsAsync(new McpGovernanceSettingsDto
+        {
+            Enabled = true,
+            EnableLegacySse = true,
+            LockTenantMcp = true,
+            LockTenantMcpLegacySse = false
+        }, actorId);
+
+        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.Mcp.Enabled && s.Value == "true" && s.IsLocked));
+        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.Mcp.EnableLegacySse && s.Value == "true" && !s.IsLocked));
+        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.TenantDelegation.LockMcp && s.Value == "true"));
+        await _systemSettingRepository.Received().Create(Arg.Is<SystemSetting>(s =>
+            s.SettingKey == GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse && s.Value == "false"));
+    }
+
     [Test]
     public async Task ApplyModuleSettingsAsync_DelegatesCapabilitySync_ToModuleCapabilityService()
     {
@@ -277,6 +326,7 @@ public class InstanceGovernanceSettingServiceTests
             OrganizationPolicy = new OrganizationPolicyDto(),
             Branding = new BrandingSettingsDto(),
             Domains = new DomainSettingsDto(),
+            Mcp = new McpGovernanceSettingsDto(),
             TenantDelegation = new TenantDelegationSettingsDto
             {
                 DefaultPublicHomePage = "EventList"

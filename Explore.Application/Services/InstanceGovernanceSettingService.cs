@@ -46,6 +46,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         var branding = PopulateGroup<BrandingSettingGroup>(resolved);
         var domains = PopulateGroup<DomainSettingGroup>(resolved);
         var delegation = PopulateGroup<TenantDelegationSettingGroup>(resolved);
+        var mcp = PopulateGroup<McpSettingGroup>(resolved);
         var renderPolicy = PopulateGroup<RenderPolicySettingGroup>(resolved);
         var routing = PopulateGroup<RoutingSettingGroup>(resolved);
 
@@ -100,6 +101,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
                 LockTenantCustomDomain = IsLocked(resolved, GovernanceSettingKeys.Domains.TenantCustomDomain)
             },
             TenantDelegation = MapTenantDelegationDto(delegation, routing, resolved, isMultiTenant),
+            Mcp = MapMcpDto(mcp, delegation),
             RenderPolicy = rpDto
         };
     }
@@ -158,6 +160,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             isLocked: true, actorUserId);
 
         await ApplyTenantDelegationSettingsInternalAsync(settings.TenantDelegation, isMultiTenant, actorUserId);
+        await ApplyMcpGovernanceSettingsAsync(settings.Mcp, actorUserId);
         await ApplyRenderPolicySettingsInternalAsync(settings.RenderPolicy, actorUserId);
         await ApplyModuleSettingsAsync(defaultTenantId, settings.Modules, actorUserId);
         await ApplyEventPolicyAsync(settings.EventPolicy, actorUserId);
@@ -274,6 +277,27 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     public async Task ApplyTenantDelegationSettingsAsync(TenantDelegationSettingsDto delegation, Guid? actorUserId)
         => await ApplyTenantDelegationSettingsInternalAsync(delegation, false, actorUserId);
 
+    public async Task ApplyMcpGovernanceSettingsAsync(McpGovernanceSettingsDto mcp, Guid? actorUserId)
+    {
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Mcp.Enabled,
+            SettingValueSerializer.Serialize(mcp.Enabled),
+            isLocked: mcp.LockTenantMcp, actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Mcp.EnableLegacySse,
+            SettingValueSerializer.Serialize(mcp.EnableLegacySse),
+            isLocked: mcp.LockTenantMcpLegacySse, actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.TenantDelegation.LockMcp,
+            SettingValueSerializer.Serialize(mcp.LockTenantMcp), actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse,
+            SettingValueSerializer.Serialize(mcp.LockTenantMcpLegacySse), actorUserId);
+    }
+
     public async Task ApplyRenderPolicySettingsAsync(RenderPolicySettingsDto renderPolicy, Guid? actorUserId)
         => await ApplyRenderPolicySettingsInternalAsync(renderPolicy, actorUserId);
 
@@ -296,6 +320,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             .Concat(BrandingSettingGroup.SettingKeys)
             .Concat(DomainSettingGroup.SettingKeys)
             .Concat(TenantDelegationSettingGroup.SettingKeys)
+            .Concat(McpSettingGroup.SettingKeys)
             .Concat(RenderPolicySettingGroup.SettingKeys)
             .Concat(RoutingSettingGroup.SettingKeys)
             .Concat(
@@ -351,6 +376,19 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             DecentralizationEnabled = decentralization,
             LockDecentralizationEnabled = IsLocked(resolved, GovernanceSettingKeys.Federation.DecentralizationEnabled),
             AuthorizationProvider = authProvider
+        };
+    }
+
+    private static McpGovernanceSettingsDto MapMcpDto(
+        McpSettingGroup mcp,
+        TenantDelegationSettingGroup delegation)
+    {
+        return new McpGovernanceSettingsDto
+        {
+            Enabled = mcp.Enabled,
+            EnableLegacySse = mcp.EnableLegacySse,
+            LockTenantMcp = delegation.LockMcp,
+            LockTenantMcpLegacySse = delegation.LockMcpLegacySse
         };
     }
 

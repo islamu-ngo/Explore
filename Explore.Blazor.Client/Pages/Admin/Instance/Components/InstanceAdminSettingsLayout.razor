@@ -84,7 +84,7 @@
                         </div>
                         @if (_currentSection == "governance")
                         {
-                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" DisplayMode="general" />
+                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" Mcp="_mcp" DeploymentMode="@_deploymentMode" DisplayMode="general" />
                             @if (IsSingleTenantMode)
                             {
                                 <MudDivider Class="my-6" />
@@ -173,7 +173,7 @@
                         }
                         else if (_currentSection == "advanced")
                         {
-                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" DisplayMode="advanced" />
+                            <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" Mcp="_mcp" DeploymentMode="@_deploymentMode" DisplayMode="advanced" />
                         }
                         else if (_currentSection == "access-tokens")
                         {
@@ -270,6 +270,7 @@
     private DomainSettingsModel _domain = new();
     private TenantDelegationModel _delegation = new();
     private RenderPolicyModel _renderPolicy = new();
+    private McpGovernanceModel _mcp = new();
 
     // Infrastructure models
     private InstanceStorageSettingsModel _storageModel = new();
@@ -323,6 +324,7 @@
         var domainTask = InstanceOnboardingService.GetDomainSettingsAsync();
         var delegationTask = InstanceOnboardingService.GetTenantDelegationAsync();
         var renderTask = InstanceOnboardingService.GetRenderPolicyAsync();
+        var mcpTask = InstanceOnboardingService.GetMcpGovernanceSettingsAsync();
         var storageTask = InstanceOnboardingService.GetStorageSettingsAsync();
         var smtpTask = InstanceOnboardingService.GetSmtpSettingsAsync();
         var authTask = InstanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync();
@@ -332,7 +334,7 @@
         var tenantCountTask = InstanceOnboardingService.GetActiveTenantCountAsync();
 
         await Task.WhenAll(deploymentTask, modulesTask, eventTask, orgTask, brandingTask,
-            domainTask, delegationTask, renderTask, storageTask, smtpTask, authTask,
+            domainTask, delegationTask, renderTask, mcpTask, storageTask, smtpTask, authTask,
             authorizationTask, analyticsTask, footerGovTask, tenantCountTask);
 
         _deploymentMode = deploymentTask.Result.Mode;
@@ -343,6 +345,7 @@
         _domain = domainTask.Result;
         _delegation = delegationTask.Result;
         _renderPolicy = renderTask.Result;
+        _mcp = mcpTask.Result;
         _storageModel = storageTask.Result;
         _smtpModel = smtpTask.Result;
         _authProviderModel = authTask.Result;
@@ -471,6 +474,7 @@
                 break;
             case "advanced":
                 tasks.Add(InstanceOnboardingService.UpdateRenderPolicyAsync(_renderPolicy));
+                tasks.Add(InstanceOnboardingService.UpdateMcpGovernanceSettingsAsync(_mcp));
                 break;
         }
 

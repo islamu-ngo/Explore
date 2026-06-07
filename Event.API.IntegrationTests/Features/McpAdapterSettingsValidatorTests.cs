@@ -1,5 +1,5 @@
-// ABOUTME: Unit-style tests for validating optional MCP adapter static settings.
-// ABOUTME: Locks the initial stateless Streamable HTTP posture and legacy-SSE disable path.
+// ABOUTME: Unit-style tests for validating optional MCP adapter startup settings.
+// ABOUTME: Locks endpoint/stateless constraints while allowing legacy SSE only as a startup ceiling.
 
 using Explore.API.Configuration;
 using FluentAssertions;
@@ -36,10 +36,10 @@ public sealed class McpAdapterSettingsValidatorTests
     }
 
     [Test]
-    public void Validate_WhenLegacySseIsRequested_Fails()
+    public void Validate_WhenLegacySseCeilingIsRequested_Succeeds()
     {
         var result = _validator.Validate(null, new McpAdapterSettings { EnableLegacySse = true });
 
-        result.Failed.Should().BeTrue();
+        result.Succeeded.Should().BeTrue();
     }
 }

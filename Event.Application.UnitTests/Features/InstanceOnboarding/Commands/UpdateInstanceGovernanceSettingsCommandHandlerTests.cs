@@ -234,6 +234,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
             OrganizationPolicy = new OrganizationPolicyDto(),
             Branding = new BrandingSettingsDto(),
             Domains = new DomainSettingsDto(),
+            Mcp = new McpGovernanceSettingsDto(),
             TenantDelegation = new TenantDelegationSettingsDto
             {
                 DefaultPublicHomePage = "EventList"
@@ -272,6 +273,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
             OrganizationPolicy = new OrganizationPolicyDto(),
             Branding = new BrandingSettingsDto(),
             Domains = new DomainSettingsDto(),
+            Mcp = new McpGovernanceSettingsDto(),
             TenantDelegation = new TenantDelegationSettingsDto
             {
                 DefaultPublicHomePage = "EventList"

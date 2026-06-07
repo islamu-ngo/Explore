@@ -51,6 +51,9 @@ public interface IInstanceOnboardingApi
     [Get("/api/instance/settings/render-policy")]
     Task<IApiResponse<RenderPolicyModel>> GetRenderPolicyAsync(CancellationToken cancellationToken);
 
+    [Get("/api/instance/settings/mcp")]
+    Task<IApiResponse<McpGovernanceModel>> GetMcpGovernanceSettingsAsync(CancellationToken cancellationToken);
+
     // ── Governance Sub-Resource Writes ────────────────────────────────────
 
     [Post("/api/instance/settings/deployment-mode")]
@@ -76,6 +79,9 @@ public interface IInstanceOnboardingApi
 
     [Put("/api/instance/settings/render-policy")]
     Task<IApiResponse<InstanceCommandResponseModel>> UpdateRenderPolicyAsync([Body] RenderPolicyModel settings, CancellationToken cancellationToken);
+
+    [Put("/api/instance/settings/mcp")]
+    Task<IApiResponse<InstanceCommandResponseModel>> UpdateMcpGovernanceSettingsAsync([Body] McpGovernanceModel settings, CancellationToken cancellationToken);
 
     // ── Infrastructure Settings ──────────────────────────────────────────
 

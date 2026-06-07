@@ -231,6 +231,34 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
+    [HttpGet("mcp", Name = RouteNames.GetInstanceMcpGovernanceSettings)]
+    [EndpointSummary("Get MCP Governance Settings")]
+    [EndpointDescription("Returns instance MCP runtime enablement and tenant override lock settings. Startup endpoint path and stateless mode are not runtime-editable.")]
+    [ProducesResponseType(typeof(McpGovernanceSettingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<McpGovernanceSettingsDto>> GetMcpGovernanceSettings(CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
+        var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
+        return Ok(settings.Mcp);
+    }
+
+    [HttpPut("mcp", Name = RouteNames.UpdateInstanceMcpGovernanceSettings)]
+    [EndpointSummary("Update MCP Governance Settings")]
+    [EndpointDescription("Updates instance MCP runtime enablement and tenant override locks. Requires instance administrator.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateMcpGovernanceSettings(
+        [FromBody] McpGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
+    {
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
+
+        var response = await _mediator.Send(new UpdateMcpGovernanceSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        return HandleCommandResponse(response);
+    }
+
     [HttpGet("render-policy", Name = RouteNames.GetInstanceRenderPolicySettings)]
     [EndpointSummary("Get Render Policy Settings")]
     [EndpointDescription("Returns instance render policy and UI mode settings.")]

@@ -1,5 +1,5 @@
-// ABOUTME: Validates optional MCP adapter settings before endpoint registration.
-// ABOUTME: Enforces the Phase 7 decision to avoid legacy SSE in the initial adapter.
+// ABOUTME: Validates optional MCP adapter startup settings before endpoint registration.
+// ABOUTME: Keeps path/stateless startup-only while treating legacy SSE as a disabled runtime-governed ceiling.
 
 using Microsoft.Extensions.Options;
 
@@ -23,11 +23,6 @@ public sealed class McpAdapterSettingsValidator : IValidateOptions<McpAdapterSet
         if (!options.Stateless)
         {
             failures.Add("Mcp:Stateless must remain true for the initial API-hosted adapter.");
-        }
-
-        if (options.EnableLegacySse)
-        {
-            failures.Add("Mcp:EnableLegacySse is not supported by the initial MCP adapter.");
         }
 
         return failures.Count == 0

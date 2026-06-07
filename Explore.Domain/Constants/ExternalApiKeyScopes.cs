@@ -15,6 +15,7 @@ public static class ExternalApiKeyScopes
     public const string GroupsRead = "groups:read";
     public const string UsersRead = "users:read";
     public const string LookupsRead = "lookups:read";
+    public const string McpRead = "mcp:read";
 
     // ===== Write Scopes =====
     public const string EventsWrite = "events:write";
@@ -22,6 +23,7 @@ public static class ExternalApiKeyScopes
     public const string GroupsWrite = "groups:write";
     public const string UsersWrite = "users:write";
     public const string RegistrationsWrite = "registrations:write";
+    public const string McpPropose = "mcp:propose";
 
     // ===== Management Scopes =====
     public const string ApiKeysManage = "api-keys:manage";
@@ -40,11 +42,13 @@ public static class ExternalApiKeyScopes
         GroupsRead,
         UsersRead,
         LookupsRead,
+        McpRead,
         EventsWrite,
         OrganizationsWrite,
         GroupsWrite,
         UsersWrite,
         RegistrationsWrite,
+        McpPropose,
         ApiKeysManage,
         AdminTenant,
         AdminInstance

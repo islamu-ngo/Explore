@@ -202,6 +202,7 @@ public static class RouteNames
     public const string GetTagTypesWithTags = "GetTagTypesWithTags";
     public const string GetMyFeatureFlags = "GetMyFeatureFlags";
     public const string GetAiAssistantBootstrap = "GetAiAssistantBootstrap";
+    public const string GetAiAssistantModels = "GetAiAssistantModels";
     public const string GetAiConversations = "GetAiConversations";
     public const string CreateAiConversation = "CreateAiConversation";
     public const string GetAiConversation = "GetAiConversation";
@@ -699,6 +700,8 @@ public static class RouteNames
     public const string UpdateInstanceDomainSettings = "UpdateInstanceDomainSettings";
     public const string GetInstanceTenantDelegationSettings = "GetInstanceTenantDelegationSettings";
     public const string UpdateInstanceTenantDelegationSettings = "UpdateInstanceTenantDelegationSettings";
+    public const string GetInstanceMcpGovernanceSettings = "GetInstanceMcpGovernanceSettings";
+    public const string UpdateInstanceMcpGovernanceSettings = "UpdateInstanceMcpGovernanceSettings";
     public const string GetInstanceRenderPolicySettings = "GetInstanceRenderPolicySettings";
     public const string UpdateInstanceRenderPolicySettings = "UpdateInstanceRenderPolicySettings";
     public const string GetInstanceDeploymentMode = "GetInstanceDeploymentMode";

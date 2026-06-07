@@ -4,11 +4,14 @@
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Claims;
 using Explore.API.Authentication;
 using Explore.API.Configuration;
+using Explore.API.Mcp;
 using Explore.Application.Authorization;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
+using Explore.Domain.Constants;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -196,11 +199,41 @@ public static class AuthenticationExtensions
             .AddPolicy("event_editor", policy => policy.RequireAuthenticatedUser())
             .AddPolicy("property_governance_admin", policy => policy.RequireAuthenticatedUser())
             .AddPolicy("platform_namespace_editor", policy => policy.RequireAuthenticatedUser())
+            .AddPolicy(McpAuthorizationPolicies.Read, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireAssertion(context => ApiKeyCallerHasAnyScopeOrIsUser(
+                    context.User,
+                    ExternalApiKeyScopes.McpRead,
+                    ExternalApiKeyScopes.McpPropose)))
+            .AddPolicy(McpAuthorizationPolicies.Propose, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireAssertion(context => ApiKeyCallerHasAnyScopeOrIsUser(
+                    context.User,
+                    ExternalApiKeyScopes.McpPropose)))
             .AddPolicy(TickerQSchedulerOptions.InstanceAdminPolicyName, policy => policy
                 .RequireAuthenticatedUser()
                 .RequireClaim(AdminClaimTypes.InstanceAdmin, "true"));
 
         return services;
+    }
+
+    private static bool ApiKeyCallerHasAnyScopeOrIsUser(ClaimsPrincipal principal, params string[] scopes)
+    {
+        if (principal.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        var apiKeyId = principal.FindFirst(ApiAuthenticationClaimTypes.ApiKeyId)?.Value;
+        if (string.IsNullOrWhiteSpace(apiKeyId))
+        {
+            return true;
+        }
+
+        var scopeSet = new HashSet<string>(scopes, StringComparer.OrdinalIgnoreCase);
+        return principal
+            .FindAll(ApiAuthenticationClaimTypes.Scope)
+            .Any(claim => scopeSet.Contains(claim.Value));
     }
 
     private static bool IsAllowedDevelopmentCertificate(object? sender, SslPolicyErrors errors, IWebHostEnvironment environment)

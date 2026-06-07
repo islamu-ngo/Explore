@@ -19,6 +19,8 @@ public static class ExternalApiKeyScopeCeiling
         ExternalApiKeyScopes.UsersRead,
         ExternalApiKeyScopes.UsersWrite,
         ExternalApiKeyScopes.LookupsRead,
+        ExternalApiKeyScopes.McpRead,
+        ExternalApiKeyScopes.McpPropose,
         ExternalApiKeyScopes.RegistrationsWrite,
         ExternalApiKeyScopes.ApiKeysManage
     };
@@ -43,6 +45,8 @@ public static class ExternalApiKeyScopeCeiling
         ExternalApiKeyScopes.UsersRead,
         ExternalApiKeyScopes.UsersWrite,
         ExternalApiKeyScopes.LookupsRead,
+        ExternalApiKeyScopes.McpRead,
+        ExternalApiKeyScopes.McpPropose,
         ExternalApiKeyScopes.RegistrationsWrite,
         ExternalApiKeyScopes.ApiKeysManage,
         ExternalApiKeyScopes.OrganizationsRead,

@@ -72,6 +72,16 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
 
     public IReadOnlyList<PersistedApiKeySeed> PersistedApiKeys { get; init; } = [];
 
+    public bool McpEnabled { get; init; }
+
+    public bool McpRuntimeEnabled { get; init; } = true;
+
+    public bool McpRuntimeLegacySseRequested { get; init; }
+
+    public bool McpRuntimeLockTenantMcp { get; init; } = true;
+
+    public bool McpRuntimeLockTenantLegacySse { get; init; } = true;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -97,7 +107,11 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
                 ["Diagnostics:EnableAuthContextProbe"] = EnableAuthContextProbe.ToString(),
                 ["ForwardedHeadersTrust:TrustLoopbackProxy"] = TrustLoopbackProxy.ToString(),
                 ["ForwardedHeadersTrust:ForwardLimit"] = "1",
-                ["RateLimiting:DisableInTesting"] = DisableRateLimitingInTesting.ToString()
+                ["RateLimiting:DisableInTesting"] = DisableRateLimitingInTesting.ToString(),
+                ["Mcp:Enabled"] = McpEnabled.ToString(),
+                ["Mcp:EndpointPath"] = "/mcp",
+                ["Mcp:Stateless"] = "true",
+                ["Mcp:EnableLegacySse"] = "false"
             };
 
             if (GlobalRateLimitTokenLimit.HasValue)
@@ -159,6 +173,13 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
                 CompletedAt = DateTime.UtcNow,
                 SelectedDeploymentMode = DeploymentMode.ToString()
             });
+            dbContext.SaveChanges();
+
+            dbContext.SystemSettings.AddRange(
+                CreateSystemSetting(GovernanceSettingKeys.Mcp.Enabled, McpRuntimeEnabled, isLocked: McpRuntimeLockTenantMcp),
+                CreateSystemSetting(GovernanceSettingKeys.Mcp.EnableLegacySse, McpRuntimeLegacySseRequested, isLocked: McpRuntimeLockTenantLegacySse),
+                CreateSystemSetting(GovernanceSettingKeys.TenantDelegation.LockMcp, McpRuntimeLockTenantMcp),
+                CreateSystemSetting(GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse, McpRuntimeLockTenantLegacySse));
             dbContext.SaveChanges();
 
             if (PersistedApiKeys.Count > 0)
@@ -313,6 +334,20 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
             // Some providers (like OpenFeature) may already be disposed or in the process of disposing.
             Console.WriteLine($"Ignoring WebApplicationFactory teardown ObjectDisposedException: {ex.Message}");
         }
+    }
+
+    private static SystemSetting CreateSystemSetting(string key, bool value, bool isLocked = false)
+    {
+        return new SystemSetting
+        {
+            Id = Guid.NewGuid(),
+            SettingKey = key,
+            Value = value ? "true" : "false",
+            ValueType = SettingValueType.Boolean,
+            IsLocked = isLocked,
+            Category = "Mcp",
+            CreatedAt = DateTime.UtcNow
+        };
     }
 
     private sealed class TestResolverConfigService : IResolverConfigService

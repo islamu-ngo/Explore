@@ -30,6 +30,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IO;
 using Microsoft.OpenApi;
 using ModelContextProtocol.AspNetCore;
+using ModelContextProtocol.Server;
 using OpenFeature;
 using OpenFeature.Hosting.Providers.Memory;
 using Scalar.AspNetCore;
@@ -115,10 +116,23 @@ builder.Services.ConfigureApplicationServices();
 builder.Services.ConfigureInfrastructureServices(builder.Configuration);
 builder.Services.Configure<CerbosPolicyBootSyncOptions>(
     builder.Configuration.GetSection(CerbosPolicyBootSyncOptions.SectionName));
+builder.Services.PostConfigure<McpAdapterSettings>(settings =>
+{
+    if (string.IsNullOrWhiteSpace(settings.EndpointPath))
+    {
+        return;
+    }
+
+    var endpointPath = settings.EndpointPath.Trim();
+    settings.EndpointPath = endpointPath.StartsWith("/", StringComparison.Ordinal)
+        ? endpointPath
+        : $"/{endpointPath}";
+});
 builder.Services.AddOptions<McpAdapterSettings>()
     .Bind(builder.Configuration.GetSection(McpAdapterSettings.SectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<McpAdapterSettings>, McpAdapterSettingsValidator>();
+builder.Services.AddScoped<IMcpRuntimeStateService, McpRuntimeStateService>();
 var mcpAdapterSettings = builder.Configuration
     .GetSection(McpAdapterSettings.SectionName)
     .Get<McpAdapterSettings>() ?? new McpAdapterSettings();
@@ -356,15 +370,21 @@ builder.Services.AddHealthChecks()
 // Request timeouts: default 30s, lookups 10s, complex 60s
 builder.Services.AddApiRequestTimeouts(builder.Configuration);
 
-if (mcpAdapterSettings.Enabled && !isOpenApiGeneration)
+if (!isOpenApiGeneration)
 {
     builder.Services
         .AddMcpServer()
-        .WithHttpTransport()
+        .WithHttpTransport(options =>
+        {
+            options.Stateless = mcpAdapterSettings.Stateless;
+        })
+        .AddAuthorizationFilters()
         .WithTools<AiToolRegistryMcpTools>()
         .WithTools<AiAssistantMcpTools>()
         .WithResources<AiAssistantMcpResources>()
         .WithPrompts<AiAssistantMcpPrompts>();
+
+    builder.Services.AddSingleton<IConfigureOptions<McpServerOptions>, AiMcpProjectedToolOptionsSetup>();
 }
 
 // Tiered rate limiting: global (IP), authenticated (user), write (stricter)
@@ -574,6 +594,7 @@ app.UseRequestTimeouts();
 app.UseMiddleware<ApiAuthenticationConflictMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<ApiTenantPostAuthenticationMiddleware>();
+app.UseMiddleware<McpRuntimeGateMiddleware>();
 app.UseRequestLocalization();
 app.UseMiddleware<IdempotencyMiddleware>();
 app.UseRateLimiter();
@@ -591,10 +612,11 @@ app.UseETag();
 
 app.MapControllers();
 
-if (mcpAdapterSettings.Enabled && !isOpenApiGeneration)
+var effectiveMcpAdapterSettings = app.Services.GetRequiredService<IOptions<McpAdapterSettings>>().Value;
+if (effectiveMcpAdapterSettings.Enabled && !isOpenApiGeneration)
 {
-    app.MapMcp(mcpAdapterSettings.EndpointPath)
-        .RequireAuthorization();
+    app.MapMcp(effectiveMcpAdapterSettings.EndpointPath)
+        .AllowAnonymous();
 }
 
 // Map health check endpoints for Coolify/container orchestration

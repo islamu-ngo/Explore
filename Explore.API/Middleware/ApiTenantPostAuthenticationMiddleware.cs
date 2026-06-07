@@ -5,8 +5,10 @@ using Explore.Application.Authentication;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Telemetry;
+using Explore.API.Configuration;
 using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Explore.API.Middleware;
 
@@ -21,9 +23,15 @@ public sealed class ApiTenantPostAuthenticationMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context, ITenantContextAccessor tenantContextAccessor, IProblemDetailsService problemDetailsService, BusinessMetrics metrics)
+    public async Task InvokeAsync(
+        HttpContext context,
+        ITenantContextAccessor tenantContextAccessor,
+        IProblemDetailsService problemDetailsService,
+        BusinessMetrics metrics,
+        IOptions<McpAdapterSettings> mcpAdapterOptions)
     {
-        if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+        var isMcpPath = IsEnabledMcpPath(context, mcpAdapterOptions.Value);
+        if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) && !isMcpPath)
         {
             await _next(context);
             return;
@@ -76,7 +84,7 @@ public sealed class ApiTenantPostAuthenticationMiddleware
                 return;
             }
 
-            if (hasApiKeyHeader)
+            if (hasApiKeyHeader && !isMcpPath)
             {
                 // InstanceAdmin keys operate cross-tenant without a bound tenant context.
                 if (apiKeyPrincipal?.OwnerType == ExternalApiKeyOwnerType.InstanceAdmin)
@@ -96,6 +104,31 @@ public sealed class ApiTenantPostAuthenticationMiddleware
                         Title = "API key authentication failed",
                         Type = "https://tools.ietf.org/html/rfc9110#section-15.5.2",
                         Detail = "The API key could not be authenticated for this request.",
+                        Instance = context.Request.Path
+                    }
+                });
+                return;
+            }
+
+            if (hasApiKeyHeader && isMcpPath)
+            {
+                if (apiKeyPrincipal?.OwnerType == ExternalApiKeyOwnerType.InstanceAdmin)
+                {
+                    await _next(context);
+                    return;
+                }
+
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+
+                await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+                {
+                    HttpContext = context,
+                    ProblemDetails = new ProblemDetails
+                    {
+                        Status = StatusCodes.Status404NotFound,
+                        Title = "Tenant not resolved",
+                        Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+                        Detail = "The tenant could not be resolved for this request.",
                         Instance = context.Request.Path
                     }
                 });
@@ -148,5 +181,14 @@ public sealed class ApiTenantPostAuthenticationMiddleware
                tenantId != Guid.Empty
             ? tenantId
             : null;
+    }
+
+    private static bool IsEnabledMcpPath(HttpContext context, McpAdapterSettings settings)
+    {
+        return settings.Enabled &&
+               !string.IsNullOrWhiteSpace(settings.EndpointPath) &&
+               context.Request.Path.StartsWithSegments(
+                   settings.EndpointPath,
+                   StringComparison.OrdinalIgnoreCase);
     }
 }

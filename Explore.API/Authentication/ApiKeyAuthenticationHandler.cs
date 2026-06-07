@@ -170,6 +170,13 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
             claims.Add(new Claim(ApiAuthenticationClaimTypes.TenantId, tenantId.Value.ToString()));
         }
 
+        if (Enum.TryParse<ExternalApiKeyOwnerType>(ownerType, ignoreCase: true, out var parsedOwnerType) &&
+            parsedOwnerType == ExternalApiKeyOwnerType.User &&
+            Guid.TryParse(ownerId, out var ownerUserId))
+        {
+            claims.Add(new Claim("internal_user_id", ownerUserId.ToString()));
+        }
+
         claims.AddRange(scopes
             .Where(scope => !string.IsNullOrWhiteSpace(scope))
             .Select(scope => new Claim(ApiAuthenticationClaimTypes.Scope, scope)));

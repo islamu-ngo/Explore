@@ -62,10 +62,29 @@ public static class MachineScopeMapping
 
             case ResourceKinds.User:
             case ResourceKinds.ActorSubscription:
-            case ResourceKinds.AiConversation:
                 return isWrite
                     ? HasAny(scopeSet, ExternalApiKeyScopes.UsersWrite, ExternalApiKeyScopes.AdminTenant)
                     : HasAny(scopeSet, ExternalApiKeyScopes.UsersRead, ExternalApiKeyScopes.UsersWrite, ExternalApiKeyScopes.AdminTenant);
+
+            case ResourceKinds.AiConversation:
+                return action switch
+                {
+                    AuthorizationActions.ProposeAction => HasAny(
+                        scopeSet,
+                        ExternalApiKeyScopes.McpPropose,
+                        ExternalApiKeyScopes.UsersWrite,
+                        ExternalApiKeyScopes.AdminTenant),
+                    AuthorizationActions.View => HasAny(
+                        scopeSet,
+                        ExternalApiKeyScopes.McpRead,
+                        ExternalApiKeyScopes.McpPropose,
+                        ExternalApiKeyScopes.UsersRead,
+                        ExternalApiKeyScopes.UsersWrite,
+                        ExternalApiKeyScopes.AdminTenant),
+                    _ => isWrite
+                        ? HasAny(scopeSet, ExternalApiKeyScopes.UsersWrite, ExternalApiKeyScopes.AdminTenant)
+                        : HasAny(scopeSet, ExternalApiKeyScopes.UsersRead, ExternalApiKeyScopes.UsersWrite, ExternalApiKeyScopes.AdminTenant)
+                };
 
             case ResourceKinds.Category:
             case ResourceKinds.Tag:

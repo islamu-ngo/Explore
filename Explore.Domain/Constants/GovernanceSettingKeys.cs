@@ -217,6 +217,12 @@ public static class GovernanceSettingKeys
         public const string PosthogToolbar = "analytics.posthog_toolbar";
     }
 
+    public static class Mcp
+    {
+        public const string Enabled = "mcp.enabled";
+        public const string EnableLegacySse = "mcp.enable_legacy_sse";
+    }
+
     public static class AiAssistant
     {
         public const string Enabled = "ai_assistant.enabled";
@@ -224,6 +230,7 @@ public static class GovernanceSettingKeys
         public const string EndpointUrl = "ai_assistant.endpoint_url";
         public const string ApiKey = "ai_assistant.api_key";
         public const string ModelId = "ai_assistant.model_id";
+        public const string AllowedModelIds = "ai_assistant.allowed_model_ids";
         public const string MaxInputTokens = "ai_assistant.max_input_tokens";
         public const string MaxOutputTokens = "ai_assistant.max_output_tokens";
         public const string Temperature = "ai_assistant.temperature";
@@ -249,6 +256,8 @@ public static class GovernanceSettingKeys
         public const string LockStorage = "governance.lock_tenant_storage";
         public const string LockAnalytics = "governance.lock_tenant_analytics";
         public const string LockAiAssistant = "governance.lock_tenant_ai_assistant";
+        public const string LockMcp = "governance.lock_tenant_mcp";
+        public const string LockMcpLegacySse = "governance.lock_tenant_mcp_legacy_sse";
         public const string LockMessaging = "governance.lock_tenant_messaging";
     }
 

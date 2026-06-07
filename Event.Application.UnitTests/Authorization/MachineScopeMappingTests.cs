@@ -145,6 +145,23 @@ public class MachineScopeMappingTests
     }
 
     [Test]
+    public async Task ScopesPermit_WithMcpScopes_AllowsOnlyMcpConversationReadAndProposal()
+    {
+        var readScopes = new[] { ExternalApiKeyScopes.McpRead };
+        var proposeScopes = new[] { ExternalApiKeyScopes.McpPropose };
+
+        await Assert.That(MachineScopeMapping.ScopesPermit(readScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.View)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(readScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.ProposeAction)).IsFalse();
+        await Assert.That(MachineScopeMapping.ScopesPermit(readScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.SendMessage)).IsFalse();
+        await Assert.That(MachineScopeMapping.ScopesPermit(readScopes, ResourceKinds.Event, AuthorizationActions.View)).IsFalse();
+
+        await Assert.That(MachineScopeMapping.ScopesPermit(proposeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.View)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(proposeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.ProposeAction)).IsTrue();
+        await Assert.That(MachineScopeMapping.ScopesPermit(proposeScopes, ResourceKinds.AiConversation, AuthorizationActions.AiConversations.ConfirmAction)).IsFalse();
+        await Assert.That(MachineScopeMapping.ScopesPermit(proposeScopes, ResourceKinds.Event, AuthorizationActions.Create)).IsFalse();
+    }
+
+    [Test]
     public async Task ScopesPermit_WithLookupsRead_AllowsLookupReadsButDeniesWrites()
     {
         var scopes = new[] { ExternalApiKeyScopes.LookupsRead };

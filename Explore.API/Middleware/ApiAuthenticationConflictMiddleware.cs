@@ -2,7 +2,9 @@
 // ABOUTME: Keeps auth dispatch deterministic and fail-closed before authentication handlers run.
 
 using Explore.Application.Constants;
+using Explore.API.Configuration;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Explore.API.Middleware;
 
@@ -15,9 +17,12 @@ public sealed class ApiAuthenticationConflictMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, IProblemDetailsService problemDetailsService)
+    public async Task InvokeAsync(
+        HttpContext context,
+        IProblemDetailsService problemDetailsService,
+        IOptions<McpAdapterSettings> mcpAdapterOptions)
     {
-        if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+        if (!IsApiOrMcpPath(context, mcpAdapterOptions.Value))
         {
             await _next(context);
             return;
@@ -46,5 +51,19 @@ public sealed class ApiAuthenticationConflictMiddleware
         }
 
         await _next(context);
+    }
+
+    private static bool IsApiOrMcpPath(HttpContext context, McpAdapterSettings mcpAdapterSettings)
+    {
+        if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return mcpAdapterSettings.Enabled &&
+               !string.IsNullOrWhiteSpace(mcpAdapterSettings.EndpointPath) &&
+               context.Request.Path.StartsWithSegments(
+                   mcpAdapterSettings.EndpointPath,
+                   StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -33,6 +33,11 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
     /// </summary>
     public IAuthorizationProvider? AuthorizationProviderOverride { get; set; }
 
+    /// <summary>
+    /// Additional in-memory configuration applied after the default test host configuration.
+    /// </summary>
+    public Dictionary<string, string?> AdditionalConfiguration { get; } = [];
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -57,6 +62,12 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
                 {"Deployment:DefaultTenantId", PlatformDefaults.DefaultTenantId.ToString()},
                 {"PublicBaseUrl", "https://integration.test"}
             };
+
+            foreach (var pair in AdditionalConfiguration)
+            {
+                inMemoryConfig[pair.Key] = pair.Value;
+            }
+
             config.AddInMemoryCollection(inMemoryConfig);
         });
 

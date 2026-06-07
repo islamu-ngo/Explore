@@ -1,36 +1,54 @@
 // ABOUTME: Readiness health check for the optional API-hosted MCP adapter posture.
-// ABOUTME: Reports bounded configuration only without tenant, prompt, payload, or provider data.
+// ABOUTME: Reports startup and runtime effective state without tenant, prompt, payload, endpoint URL, or secret data.
 
 using Explore.API.Configuration;
+using Explore.API.Mcp;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
 namespace Explore.API.HealthChecks;
 
-public sealed class McpAdapterHealthCheck(IOptions<McpAdapterSettings> options) : IHealthCheck
+public sealed class McpAdapterHealthCheck(
+    IOptions<McpAdapterSettings> options,
+    IServiceScopeFactory scopeFactory) : IHealthCheck
 {
-    public Task<HealthCheckResult> CheckHealthAsync(
+    public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
         var settings = options.Value;
+        using var scope = scopeFactory.CreateScope();
+        var runtimeStateService = scope.ServiceProvider.GetRequiredService<IMcpRuntimeStateService>();
+        var state = await runtimeStateService.GetAsync(cancellationToken: cancellationToken);
+
         var data = new Dictionary<string, object>
         {
-            ["enabled"] = settings.Enabled,
+            ["enabled"] = state.EffectiveEnabled,
+            ["startupEnabled"] = state.StartupEnabled,
+            ["runtimeEnabled"] = state.RuntimeEnabled,
             ["endpointPath"] = settings.EndpointPath,
             ["stateless"] = settings.Stateless,
-            ["legacySseEnabled"] = settings.EnableLegacySse
+            ["legacySseStartupCeiling"] = state.StartupLegacySseCeiling,
+            ["legacySseRuntimeRequested"] = state.RuntimeLegacySseRequested,
+            ["legacySseRuntimeEnabled"] = state.LegacySseRuntimeEnabled
         };
 
-        if (!settings.Enabled)
+        if (!state.StartupEnabled)
         {
-            return Task.FromResult(HealthCheckResult.Degraded(
-                "MCP adapter is intentionally disabled.",
-                data: data));
+            return HealthCheckResult.Degraded(
+                "MCP adapter is disabled by startup configuration.",
+                data: data);
         }
 
-        return Task.FromResult(HealthCheckResult.Healthy(
+        if (!state.RuntimeEnabled)
+        {
+            return HealthCheckResult.Degraded(
+                "MCP adapter is disabled by runtime governance.",
+                data: data);
+        }
+
+        return HealthCheckResult.Healthy(
             "MCP adapter is enabled with stateless Streamable HTTP transport.",
-            data));
+            data);
     }
 }

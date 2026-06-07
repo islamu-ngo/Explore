@@ -19,6 +19,8 @@ public class ExternalApiKeyScopeCeilingTests
         await Assert.That(ceiling).Contains(ExternalApiKeyScopes.UsersRead);
         await Assert.That(ceiling).Contains(ExternalApiKeyScopes.UsersWrite);
         await Assert.That(ceiling).Contains(ExternalApiKeyScopes.LookupsRead);
+        await Assert.That(ceiling).Contains(ExternalApiKeyScopes.McpRead);
+        await Assert.That(ceiling).Contains(ExternalApiKeyScopes.McpPropose);
         await Assert.That(ceiling).Contains(ExternalApiKeyScopes.RegistrationsWrite);
         await Assert.That(ceiling).Contains(ExternalApiKeyScopes.ApiKeysManage);
 
@@ -72,6 +74,8 @@ public class ExternalApiKeyScopeCeilingTests
         await Assert.That(ceiling).Contains(ExternalApiKeyScopes.UsersWrite);
         await Assert.That(ceiling).Contains(ExternalApiKeyScopes.RegistrationsWrite);
         await Assert.That(ceiling).Contains(ExternalApiKeyScopes.LookupsRead);
+        await Assert.That(ceiling).Contains(ExternalApiKeyScopes.McpRead);
+        await Assert.That(ceiling).Contains(ExternalApiKeyScopes.McpPropose);
         await Assert.That(ceiling).Contains(ExternalApiKeyScopes.ApiKeysManage);
 
         await Assert.That(ceiling).DoesNotContain(ExternalApiKeyScopes.AdminInstance);

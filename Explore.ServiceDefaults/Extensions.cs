@@ -67,6 +67,7 @@ public static class Extensions
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddMeter("Explore.Business")
+                    .AddMeter("Explore.Mcp")
                     .AddMeter("Explore.Translation")
                     .AddMeter("Explore.Projections")
                     .AddPrometheusExporter();
@@ -77,6 +78,7 @@ public static class Extensions
                     .AddSource("Explore.Authorization")
                     .AddSource("Explore.Ai.Provider")
                     .AddSource("Explore.Hateoas.Authorization")
+                    .AddSource("Explore.Mcp")
                     .AddSource("MQContract")
                     .AddSource("TickerQ")
                     .AddAspNetCoreInstrumentation(tracing =>
