@@ -12,13 +12,17 @@ public class TenantDelegationSettingGroup : ISettingGroup
     public bool LockStorage { get; private set; } = true;
     public bool LockAnalytics { get; private set; } = true;
     public bool LockAiAssistant { get; private set; } = true;
+    public bool LockMcp { get; private set; } = true;
+    public bool LockMcpLegacySse { get; private set; } = true;
 
     public static IEnumerable<string> SettingKeys =>
     [
         GovernanceSettingKeys.TenantDelegation.LockSmtp,
         GovernanceSettingKeys.TenantDelegation.LockStorage,
         GovernanceSettingKeys.TenantDelegation.LockAnalytics,
-        GovernanceSettingKeys.TenantDelegation.LockAiAssistant
+        GovernanceSettingKeys.TenantDelegation.LockAiAssistant,
+        GovernanceSettingKeys.TenantDelegation.LockMcp,
+        GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse
     ];
 
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
@@ -31,5 +35,9 @@ public class TenantDelegationSettingGroup : ISettingGroup
             LockAnalytics = SettingValueSerializer.Deserialize(analytics.Value, true);
         if (settings.TryGetValue(GovernanceSettingKeys.TenantDelegation.LockAiAssistant, out var aiAssistant))
             LockAiAssistant = SettingValueSerializer.Deserialize(aiAssistant.Value, true);
+        if (settings.TryGetValue(GovernanceSettingKeys.TenantDelegation.LockMcp, out var mcp))
+            LockMcp = SettingValueSerializer.Deserialize(mcp.Value, true);
+        if (settings.TryGetValue(GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse, out var legacySse))
+            LockMcpLegacySse = SettingValueSerializer.Deserialize(legacySse.Value, true);
     }
 }

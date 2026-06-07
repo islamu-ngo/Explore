@@ -36,6 +36,8 @@ public partial class TenantPolicySettingService
         var lockOperationalSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational);
         var lockAdminSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantAdmin);
         var lockAiAssistantSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
+        var lockMcpSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockMcp);
+        var lockMcpLegacySseSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse);
         var tenant = await _tenantRepository.GetById(tenantId);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
         var isMultiTenant = DeserializeString(deploymentModeSetting?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
@@ -297,6 +299,23 @@ public partial class TenantPolicySettingService
             settings.AiAssistantAllowAnonymousAccess,
             canOverrideAiAssistant,
             actorUserId);
+
+        var canOverrideMcp = !isMultiTenant || !DeserializeBoolean(lockMcpSetting?.Value, true);
+        var canOverrideMcpLegacySse = !isMultiTenant || !DeserializeBoolean(lockMcpLegacySseSetting?.Value, true);
+
+        await SetBooleanTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.Mcp.Enabled,
+            settings.McpEnabled,
+            canOverrideMcp,
+            actorUserId);
+
+        await SetBooleanTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.Mcp.EnableLegacySse,
+            settings.McpEnableLegacySse,
+            canOverrideMcpLegacySse,
+            actorUserId);
     }
 
     private async Task SetBooleanTenantOverrideAsync(
@@ -361,13 +380,6 @@ public partial class TenantPolicySettingService
                 failures.Add(new ValidationFailure(
                     nameof(settings.AiAssistantEndpointUrl),
                     "AI Assistant endpoint URL must be an absolute HTTP or HTTPS URL."));
-            }
-
-            if (string.IsNullOrWhiteSpace(settings.AiAssistantApiKey))
-            {
-                failures.Add(new ValidationFailure(
-                    nameof(settings.AiAssistantApiKey),
-                    "AI Assistant API key is required for OpenAI-compatible providers."));
             }
 
             if (string.IsNullOrWhiteSpace(settings.AiAssistantModelId))

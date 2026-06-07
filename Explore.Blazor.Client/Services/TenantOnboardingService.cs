@@ -10,6 +10,7 @@ public interface ITenantOnboardingService
     Task<TenantPolicySettingsModel> GetSettingsAsync();
     Task<InstanceCommandResponseModel> CompleteAsync(TenantPolicySettingsModel settings);
     Task<InstanceCommandResponseModel> UpdateSettingsAsync(TenantPolicySettingsModel settings);
+    Task<IReadOnlyList<AiAssistantModelOptionModel>> GetAiModelsAsync(string endpointUrl, string? apiKey);
 }
 
 public class TenantOnboardingService : ITenantOnboardingService
@@ -59,6 +60,27 @@ public class TenantOnboardingService : ITenantOnboardingService
     public Task<InstanceCommandResponseModel> UpdateSettingsAsync(TenantPolicySettingsModel settings) =>
         SendCommandAsync(() => _api.UpdateSettingsAsync(settings, CancellationToken.None));
 
+    public async Task<IReadOnlyList<AiAssistantModelOptionModel>> GetAiModelsAsync(string endpointUrl, string? apiKey)
+    {
+        try
+        {
+            var response = await _api.GetAiModelsAsync(new AiAssistantModelDiscoveryRequestModel
+            {
+                EndpointUrl = endpointUrl,
+                ApiKey = apiKey
+            }, CancellationToken.None);
+
+            return response.IsSuccessStatusCode && response.Content is not null
+                ? response.Content
+                : [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to discover AI assistant models.");
+            return [];
+        }
+    }
+
     private async Task<InstanceCommandResponseModel> SendCommandAsync(
         Func<Task<IApiResponse<InstanceCommandResponseModel>>> sendFunc)
     {
@@ -89,6 +111,22 @@ public class TenantOnboardingService : ITenantOnboardingService
             };
         }
     }
+}
+
+public class AiAssistantModelDiscoveryRequestModel
+{
+    public string EndpointUrl { get; set; } = string.Empty;
+    public string? ApiKey { get; set; }
+}
+
+public class AiAssistantModelOptionModel
+{
+    public string Id { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public int? MaxInputTokens { get; set; }
+    public int? MaxOutputTokens { get; set; }
+    public bool SupportsToolProposals { get; set; }
+    public bool SupportsStreaming { get; set; }
 }
 
 public class TenantOnboardingStatusModel
@@ -151,4 +189,8 @@ public class TenantPolicySettingsModel
     public string AiAssistantModelId { get; set; } = string.Empty;
     public bool AiAssistantAllowAnonymousAccess { get; set; }
     public bool CanOverrideAiAssistant { get; set; }
+    public bool CanOverrideMcp { get; set; }
+    public bool CanOverrideMcpLegacySse { get; set; }
+    public bool McpEnabled { get; set; }
+    public bool McpEnableLegacySse { get; set; }
 }

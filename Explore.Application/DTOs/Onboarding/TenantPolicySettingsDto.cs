@@ -62,6 +62,8 @@ public class TenantPolicySettingsDto
     public bool CanOverrideStorage { get; set; }
     public bool CanOverrideAnalytics { get; set; }
     public bool CanOverrideAiAssistant { get; set; }
+    public bool CanOverrideMcp { get; set; }
+    public bool CanOverrideMcpLegacySse { get; set; }
 
     // AI assistant integration
     public bool AiAssistantEnabled { get; set; }
@@ -70,4 +72,8 @@ public class TenantPolicySettingsDto
     public string AiAssistantApiKey { get; set; } = string.Empty;
     public string AiAssistantModelId { get; set; } = string.Empty;
     public bool AiAssistantAllowAnonymousAccess { get; set; }
+
+    // API-hosted MCP adapter runtime governance
+    public bool McpEnabled { get; set; }
+    public bool McpEnableLegacySse { get; set; }
 }

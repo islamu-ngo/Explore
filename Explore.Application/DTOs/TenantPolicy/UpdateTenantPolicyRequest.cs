@@ -1,8 +1,11 @@
 // ABOUTME: Write model for tenant policy updates — writable fields only.
 // ABOUTME: CanOverride* flags are NOT included; they are read-only and set by instance governance.
 
+using System.Text.Json.Serialization;
+
 namespace Explore.Application.DTOs.TenantPolicy;
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Skip)]
 public class UpdateTenantPolicyRequest
 {
     public bool AllowUserSubmittedEvents { get; set; } = true;
@@ -44,4 +47,8 @@ public class UpdateTenantPolicyRequest
     public string AiAssistantApiKey { get; set; } = string.Empty;
     public string AiAssistantModelId { get; set; } = string.Empty;
     public bool AiAssistantAllowAnonymousAccess { get; set; }
+
+    // API-hosted MCP adapter runtime governance
+    public bool McpEnabled { get; set; }
+    public bool McpEnableLegacySse { get; set; }
 }

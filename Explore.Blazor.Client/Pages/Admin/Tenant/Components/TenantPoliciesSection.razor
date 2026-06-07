@@ -4,6 +4,8 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 
+@inject ITenantOnboardingService TenantOnboardingService
+
 <div class="settings-section">
     <div class="settings-section-header">
         <MudText Typo="Typo.h5" Style="font-weight: 700;">Event & Organization Policies</MudText>
@@ -117,11 +119,12 @@
             @if (UsesOpenAiCompatibleProvider)
             {
                 <MudAlert Severity="Severity.Info" Dense="true">
-                    The navbar AI button appears only after endpoint URL, API key, and model ID are saved.
+                    The navbar AI button appears only after an endpoint URL and model ID are saved. API keys are optional for local providers.
                 </MudAlert>
 
                 <MudTextField T="string"
-                              @bind-Value="Model.AiAssistantEndpointUrl"
+                              Value="Model.AiAssistantEndpointUrl"
+                              ValueChanged="OnAiEndpointUrlChanged"
                               Label="API Endpoint URL"
                               InputType="InputType.Url"
                               Variant="Variant.Outlined"
@@ -129,24 +132,62 @@
                               HelperText="Full HTTP(S) URL to the OpenAI-compatible model endpoint." />
 
                 <MudTextField T="string"
-                              @bind-Value="Model.AiAssistantApiKey"
+                              Value="Model.AiAssistantApiKey"
+                              ValueChanged="OnAiApiKeyChanged"
                               Label="API Key"
                               InputType="InputType.Password"
                               Variant="Variant.Outlined"
                               Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
-                              HelperText="Required for OpenAI-compatible providers." />
+                              HelperText="Optional bearer token. Leave blank for local providers that do not require authentication." />
 
-                <MudTextField T="string"
-                              @bind-Value="Model.AiAssistantModelId"
-                              Label="Model ID"
-                              Variant="Variant.Outlined"
-                              Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
-                              HelperText="Example: gpt-4o-mini, llama3.1, or the model name exposed by your compatible provider." />
+                <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2" Class="flex-wrap">
+                    @if (HasDiscoveredAiModels)
+                    {
+                        <MudSelect T="string"
+                                   @bind-Value="Model.AiAssistantModelId"
+                                   Label="Model ID"
+                                   Variant="Variant.Outlined"
+                                   Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
+                                   HelperText="Select a model returned by the provider."
+                                   Class="flex-grow-1">
+                            @foreach (var model in AiModelOptions)
+                            {
+                                <MudSelectItem T="string" Value="@model.Id">@FormatAiModelOption(model)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudTextField T="string"
+                                      @bind-Value="Model.AiAssistantModelId"
+                                      Label="Model ID"
+                                      Variant="Variant.Outlined"
+                                      Disabled="@(!IsSingleTenant && !Model.CanOverrideAiAssistant)"
+                                      HelperText="Example: gpt-4o-mini, llama3.1, or the model name exposed by your compatible provider."
+                                      Class="flex-grow-1" />
+                    }
+
+                    <MudButton Elevation="0"
+                               Color="Color.Primary"
+                               Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="LoadAiModelsAsync"
+                               Disabled="@(!CanLoadAiModels)">
+                        @(_isLoadingAiModels ? "Loading..." : "Load models")
+                    </MudButton>
+                </MudStack>
+
+                @if (!string.IsNullOrWhiteSpace(_aiModelLoadMessage))
+                {
+                    <MudText Typo="Typo.caption" Color="@_aiModelLoadMessageColor">
+                        @_aiModelLoadMessage
+                    </MudText>
+                }
 
                 @if (HasIncompleteOpenAiCompatibleConfiguration)
                 {
                     <MudAlert Severity="Severity.Warning" Dense="true">
-                        Complete all OpenAI-compatible fields before saving, otherwise the AI Assistant cannot be enabled.
+                        Enter an endpoint URL and model ID before saving, otherwise the AI Assistant cannot be enabled.
                     </MudAlert>
                 }
             }
@@ -157,6 +198,11 @@
 @code {
     private const string OpenAiCompatibleProvider = "openai-compatible";
     private const string NoneProvider = "none";
+
+    private IReadOnlyList<AiAssistantModelOptionModel> _aiModels = [];
+    private bool _isLoadingAiModels;
+    private string? _aiModelLoadMessage;
+    private Color _aiModelLoadMessageColor = Color.Secondary;
 
     [Parameter, EditorRequired]
     public TenantPolicySettingsModel Model { get; set; } = null!;
@@ -172,8 +218,36 @@
     private bool HasIncompleteOpenAiCompatibleConfiguration =>
         UsesOpenAiCompatibleProvider
         && (string.IsNullOrWhiteSpace(Model.AiAssistantEndpointUrl)
-            || string.IsNullOrWhiteSpace(Model.AiAssistantApiKey)
             || string.IsNullOrWhiteSpace(Model.AiAssistantModelId));
+
+    private bool HasDiscoveredAiModels => _aiModels.Count > 0;
+
+    private bool CanLoadAiModels =>
+        UsesOpenAiCompatibleProvider
+        && !_isLoadingAiModels
+        && (IsSingleTenant || Model.CanOverrideAiAssistant)
+        && !string.IsNullOrWhiteSpace(Model.AiAssistantEndpointUrl);
+
+    private IEnumerable<AiAssistantModelOptionModel> AiModelOptions
+    {
+        get
+        {
+            foreach (var model in _aiModels)
+            {
+                yield return model;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Model.AiAssistantModelId)
+                && !_aiModels.Any(model => string.Equals(model.Id, Model.AiAssistantModelId, StringComparison.OrdinalIgnoreCase)))
+            {
+                yield return new AiAssistantModelOptionModel
+                {
+                    Id = Model.AiAssistantModelId,
+                    DisplayName = $"{Model.AiAssistantModelId} (current)"
+                };
+            }
+        }
+    }
 
     protected override void OnParametersSet()
     {
@@ -184,6 +258,77 @@
     {
         Model.AiAssistantEnabled = enabled;
         EnsureAiProviderWhenEnabled();
+    }
+
+    private void OnAiEndpointUrlChanged(string endpointUrl)
+    {
+        Model.AiAssistantEndpointUrl = endpointUrl;
+        ClearDiscoveredAiModels();
+    }
+
+    private void OnAiApiKeyChanged(string apiKey)
+    {
+        Model.AiAssistantApiKey = apiKey;
+        ClearDiscoveredAiModels();
+    }
+
+    private async Task LoadAiModelsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Model.AiAssistantEndpointUrl))
+        {
+            SetAiModelLoadMessage("Enter an endpoint URL before loading models.", Color.Warning);
+            return;
+        }
+
+        _isLoadingAiModels = true;
+        SetAiModelLoadMessage(null, Color.Secondary);
+
+        try
+        {
+            var models = await TenantOnboardingService.GetAiModelsAsync(Model.AiAssistantEndpointUrl, Model.AiAssistantApiKey);
+            _aiModels = models
+                .Where(model => !string.IsNullOrWhiteSpace(model.Id))
+                .GroupBy(model => model.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .OrderBy(model => model.Id, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            if (_aiModels.Count == 0)
+            {
+                SetAiModelLoadMessage("No models were returned. Enter the model ID manually.", Color.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(Model.AiAssistantModelId))
+            {
+                Model.AiAssistantModelId = _aiModels[0].Id;
+            }
+
+            SetAiModelLoadMessage($"Loaded {_aiModels.Count} model{(_aiModels.Count == 1 ? string.Empty : "s")} from the provider.", Color.Secondary);
+        }
+        finally
+        {
+            _isLoadingAiModels = false;
+        }
+    }
+
+    private void ClearDiscoveredAiModels()
+    {
+        _aiModels = [];
+        SetAiModelLoadMessage(null, Color.Secondary);
+    }
+
+    private void SetAiModelLoadMessage(string? message, Color color)
+    {
+        _aiModelLoadMessage = message;
+        _aiModelLoadMessageColor = color;
+    }
+
+    private static string FormatAiModelOption(AiAssistantModelOptionModel model)
+    {
+        return string.IsNullOrWhiteSpace(model.DisplayName) || string.Equals(model.DisplayName, model.Id, StringComparison.OrdinalIgnoreCase)
+            ? model.Id
+            : model.DisplayName;
     }
 
     private void EnsureAiProviderWhenEnabled()

@@ -168,6 +168,22 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
             requestSettings.AdminRenderMode,
             "Admin render policy is locked by instance policy.");
 
+        AddLockedValueChangeFailure(
+            failures,
+            nameof(requestSettings.McpEnabled),
+            effectiveSettings.CanOverrideMcp,
+            effectiveSettings.McpEnabled,
+            requestSettings.McpEnabled,
+            "MCP runtime enablement is locked by instance policy.");
+
+        AddLockedValueChangeFailure(
+            failures,
+            nameof(requestSettings.McpEnableLegacySse),
+            effectiveSettings.CanOverrideMcpLegacySse,
+            effectiveSettings.McpEnableLegacySse,
+            requestSettings.McpEnableLegacySse,
+            "MCP legacy SSE runtime request is locked by instance policy.");
+
         if (failures.Count > 0)
         {
             throw new ValidationException(new ValidationResult(failures));

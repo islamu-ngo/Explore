@@ -13,6 +13,11 @@ public interface ITenantOnboardingApi
     [Get("/api/TenantOnboarding/settings")]
     Task<IApiResponse<TenantPolicySettingsModel>> GetSettingsAsync(CancellationToken cancellationToken);
 
+    [Post("/api/ai/assistant/models")]
+    Task<IApiResponse<IReadOnlyList<Explore.Blazor.Client.Services.AiAssistantModelOptionModel>>> GetAiModelsAsync(
+        [Body] Explore.Blazor.Client.Services.AiAssistantModelDiscoveryRequestModel request,
+        CancellationToken cancellationToken);
+
     [Post("/api/TenantOnboarding/complete")]
     Task<IApiResponse<InstanceCommandResponseModel>> CompleteAsync([Body] TenantPolicySettingsModel settings, CancellationToken cancellationToken);
 

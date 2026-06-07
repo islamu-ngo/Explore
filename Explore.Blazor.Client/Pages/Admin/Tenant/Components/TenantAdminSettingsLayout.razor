@@ -133,6 +133,13 @@
                                              Class="@GetNavItemClass("analytics")"
                                              OnClick="@(() => SelectSection("analytics"))" />
                             }
+                            @if (_model.CanOverrideMcp || _model.CanOverrideMcpLegacySse)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Extension"
+                                             Text="MCP Adapter"
+                                             Class="@GetNavItemClass("mcp")"
+                                             OnClick="@(() => SelectSection("mcp"))" />
+                            }
                             <MudListItem Icon="@Icons.Material.Filled.Key"
                                          Text="API Keys"
                                          Class="@GetNavItemClass("api-keys")"
@@ -232,6 +239,28 @@
                                     Tenant-specific analytics configuration is enabled by your platform administrator. Per-tenant override controls will be available in a future update.
                                     Currently, analytics settings are inherited from the platform configuration.
                                 </MudAlert>
+                            </div>
+                        }
+                        else if (_currentSection == "mcp" && (_model.CanOverrideMcp || _model.CanOverrideMcpLegacySse))
+                        {
+                            <div class="settings-section">
+                                <div class="settings-section-header">
+                                    <MudText Typo="Typo.h5" Style="font-weight: 700;">MCP Adapter</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                        Tenant runtime overrides for the API-hosted MCP adapter. Startup operator settings still cap whether MCP and legacy SSE can be exposed.
+                                    </MudText>
+                                </div>
+                                <MudStack Spacing="2" Class="mt-4">
+                                    <MudSwitch T="bool" @bind-Value="_model.McpEnabled" Color="Color.Primary" Disabled="!_model.CanOverrideMcp">
+                                        Enable MCP adapter for this tenant
+                                    </MudSwitch>
+                                    <MudSwitch T="bool" @bind-Value="_model.McpEnableLegacySse" Color="Color.Warning" Disabled="!_model.CanOverrideMcpLegacySse">
+                                        Request legacy SSE transport for this tenant
+                                    </MudSwitch>
+                                    <MudAlert Severity="Severity.Info" Dense="true">
+                                        Endpoint path and stateless transport are startup-only. Legacy SSE remains unavailable until a separate protocol/session review enables it.
+                                    </MudAlert>
+                                </MudStack>
                             </div>
                         }
                         else if (_currentSection == "api-keys")

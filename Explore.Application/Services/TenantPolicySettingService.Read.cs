@@ -38,12 +38,16 @@ public partial class TenantPolicySettingService
         var systemLockStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockStorage);
         var systemLockAnalytics = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAnalytics);
         var systemLockAiAssistant = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
+        var systemLockMcp = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockMcp);
+        var systemLockMcpLegacySse = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockMcpLegacySse);
         var systemAiAssistantEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.Enabled);
         var systemAiAssistantProvider = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.Provider);
         var systemAiAssistantEndpointUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.EndpointUrl);
         var systemAiAssistantApiKey = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.ApiKey);
         var systemAiAssistantModelId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.ModelId);
         var systemAiAssistantAllowAnonymousAccess = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
+        var systemMcpEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Mcp.Enabled);
+        var systemMcpEnableLegacySse = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Mcp.EnableLegacySse);
         var systemCommunityGuidelines = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
         var systemRenderPreset = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Preset);
         var systemRenderAdvanced = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled);
@@ -82,6 +86,8 @@ public partial class TenantPolicySettingService
         var tenantAiAssistantApiKey = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.ApiKey);
         var tenantAiAssistantModelId = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.ModelId);
         var tenantAiAssistantAllowAnonymousAccess = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
+        var tenantMcpEnabled = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Mcp.Enabled);
+        var tenantMcpEnableLegacySse = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Mcp.EnableLegacySse);
         var tenantCommunityGuidelines = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
 
         var isMultiTenant = DeserializeString(systemDeploymentMode?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
@@ -265,6 +271,8 @@ public partial class TenantPolicySettingService
             CanOverrideStorage = !isMultiTenant || !DeserializeBoolean(systemLockStorage?.Value, true),
             CanOverrideAnalytics = !isMultiTenant || !DeserializeBoolean(systemLockAnalytics?.Value, true),
             CanOverrideAiAssistant = !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true),
+            CanOverrideMcp = !isMultiTenant || !DeserializeBoolean(systemLockMcp?.Value, true),
+            CanOverrideMcpLegacySse = !isMultiTenant || !DeserializeBoolean(systemLockMcpLegacySse?.Value, true),
             AiAssistantEnabled = ResolveBoolean(
                 tenantAiAssistantEnabled?.Value,
                 systemAiAssistantEnabled?.Value,
@@ -295,6 +303,16 @@ public partial class TenantPolicySettingService
                 systemAiAssistantAllowAnonymousAccess?.Value,
                 false,
                 !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+            McpEnabled = ResolveBoolean(
+                tenantMcpEnabled?.Value,
+                systemMcpEnabled?.Value,
+                true,
+                !isMultiTenant || !DeserializeBoolean(systemLockMcp?.Value, true)),
+            McpEnableLegacySse = ResolveBoolean(
+                tenantMcpEnableLegacySse?.Value,
+                systemMcpEnableLegacySse?.Value,
+                false,
+                !isMultiTenant || !DeserializeBoolean(systemLockMcpLegacySse?.Value, true)),
             CommunityGuidelinesContent = ResolveString(
                 tenantCommunityGuidelines?.Value,
                 systemCommunityGuidelines?.Value,
