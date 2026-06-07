@@ -1,8 +1,0 @@
-workspace: islamu
-project:
-  key: EVENT
-  uuid: 284d0bcc-083a-4af0-a909-6b1480dec7e2
-  name: ISLAMU Event
-defaults:
-  type: task
-  workflow: standard
