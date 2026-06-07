@@ -1,7 +1,6 @@
 // ABOUTME: Test host factory for the Phase 0 external API access seam.
 // ABOUTME: Provides deterministic JWT validation, API-key config, and tenant lookup stubs for split-phase tenant tests.
 
-using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -216,18 +215,6 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
 
                 services.PostConfigure<RateLimiterOptions>(options =>
                 {
-                    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-                    options.OnRejected = async (context, token) =>
-                    {
-                        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-
-                        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
-                        {
-                            context.HttpContext.Response.Headers.RetryAfter =
-                                ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
-                        }
-                    };
-
                     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                     {
                         var apiKeyId = httpContext.User.GetApiKeyId();
@@ -246,7 +233,18 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
                                 });
                         }
 
-                        return RateLimitPartition.GetNoLimiter("test");
+                        var remoteIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                        return RateLimitPartition.GetTokenBucketLimiter(
+                            $"anonymous:{remoteIp}",
+                            _ => new TokenBucketRateLimiterOptions
+                            {
+                                TokenLimit = tokenLimit,
+                                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                                QueueLimit = 0,
+                                ReplenishmentPeriod = TimeSpan.FromSeconds(replenishPeriodSeconds),
+                                TokensPerPeriod = tokensPerPeriod,
+                                AutoReplenishment = true
+                            });
                     });
                 });
             }
