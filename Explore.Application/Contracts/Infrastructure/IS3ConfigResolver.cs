@@ -31,6 +31,11 @@ public interface IS3ConfigResolver
     Task<S3Configuration?> ResolveAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns true when the effective S3 configuration has all required fields.
+    /// </summary>
+    Task<bool> IsConfiguredAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Invalidates the cached S3 configuration.
     /// Call after S3 settings are changed in the admin UI.
     /// </summary>

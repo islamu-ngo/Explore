@@ -65,15 +65,14 @@ public class FinalizeStorageUploadSessionCommandHandler
         }
 
         var tenantId = _tenantContext.TenantId;
-        var policy = await _storagePolicyResolver.ResolveAsync(tenantId, cancellationToken);
 
         var sessionResponse = await _unitOfWork.ExecuteInTransactionAsync(
-            async ct => await MarkUploadingAsync(request, tenantId, policy, ct),
+            async ct => await MarkUploadingAsync(request, tenantId, ct),
             cancellationToken);
 
         if (!sessionResponse.Success || sessionResponse.Id is null)
         {
-            RecordFinalizeFailure(sessionResponse, policy.Provider);
+            RecordFinalizeFailure(sessionResponse, null);
             return sessionResponse;
         }
 
@@ -90,7 +89,7 @@ public class FinalizeStorageUploadSessionCommandHandler
                 "Upload session was not found.",
                 ["Upload session was not found."],
                 FailureCodes.StorageUploadSessionNotFound);
-            _metrics.RecordStorageUploadSession(policy.Provider, "finalize", "failed", failure.FailureCode);
+            _metrics.RecordStorageUploadSession(null, "finalize", "failed", failure.FailureCode);
             return failure;
         }
 
@@ -109,7 +108,7 @@ public class FinalizeStorageUploadSessionCommandHandler
                 cancellationToken);
 
             var response = await _unitOfWork.ExecuteInTransactionAsync(
-                async ct => await FinalizeAsync(session.Id, tenantId, policy, writeResult, ct),
+                async ct => await FinalizeAsync(session.Id, tenantId, writeResult, ct),
                 cancellationToken);
 
             if (response.Success)
@@ -132,7 +131,6 @@ public class FinalizeStorageUploadSessionCommandHandler
                 async ct => await FailSessionAsync(
                     session.Id,
                     tenantId,
-                    policy,
                     FailureCodes.StorageUploadWriteFailed,
                     "Storage provider could not accept the upload.",
                     ct),
@@ -149,7 +147,7 @@ public class FinalizeStorageUploadSessionCommandHandler
 
     private void RecordFinalizeFailure(
         BaseCommandResponse<StorageUploadSessionDto> response,
-        string fallbackProvider)
+        string? fallbackProvider)
     {
         var provider = response.Id?.Provider ?? fallbackProvider;
         _metrics.RecordStorageUploadSession(provider, "finalize", "failed", response.FailureCode);
@@ -164,7 +162,6 @@ public class FinalizeStorageUploadSessionCommandHandler
     private async Task<BaseCommandResponse<StorageUploadSessionDto>> MarkUploadingAsync(
         FinalizeStorageUploadSessionCommand request,
         Guid tenantId,
-        ResolvedStoragePolicy policy,
         CancellationToken cancellationToken)
     {
         var session = await _uploadSessionRepository.GetByIdForUpdateAsync(request.UploadSessionId, cancellationToken);
@@ -183,7 +180,7 @@ public class FinalizeStorageUploadSessionCommandHandler
 
         if (session.Status == StorageUploadSessionStates.Finalized)
         {
-            return Success(session, policy, counter, "Upload session is already finalized.");
+            return Success(session, counter, "Upload session is already finalized.");
         }
 
         if (session.Status != StorageUploadSessionStates.Reserved)
@@ -232,13 +229,12 @@ public class FinalizeStorageUploadSessionCommandHandler
         session.MarkUploading(utcNow);
         await _uploadSessionRepository.Update(session);
 
-        return Success(session, policy, counter, "Upload session is ready to accept bytes.");
+        return Success(session, counter, "Upload session is ready to accept bytes.");
     }
 
     private async Task<BaseCommandResponse<StorageUploadSessionDto>> FinalizeAsync(
         Guid uploadSessionId,
         Guid tenantId,
-        ResolvedStoragePolicy policy,
         FileStorageWriteResult writeResult,
         CancellationToken cancellationToken)
     {
@@ -254,7 +250,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         var counter = await _usageCounterRepository.GetOrCreateAsync(tenantId, writeResult.Provider, cancellationToken);
         if (session.Status == StorageUploadSessionStates.Finalized)
         {
-            return Success(session, policy, counter, "Upload session is already finalized.");
+            return Success(session, counter, "Upload session is already finalized.");
         }
 
         if (session.Status != StorageUploadSessionStates.Uploading)
@@ -296,13 +292,12 @@ public class FinalizeStorageUploadSessionCommandHandler
         session.StorageObject = storageObject;
         await _uploadSessionRepository.Update(session);
 
-        return Success(session, policy, counter, "Upload session finalized successfully.");
+        return Success(session, counter, "Upload session finalized successfully.");
     }
 
     private async Task<BaseCommandResponse<StorageUploadSessionDto>> FailSessionAsync(
         Guid uploadSessionId,
         Guid tenantId,
-        ResolvedStoragePolicy policy,
         string failureCode,
         string failureMessage,
         CancellationToken cancellationToken)
@@ -333,7 +328,7 @@ public class FinalizeStorageUploadSessionCommandHandler
         return new BaseCommandResponse<StorageUploadSessionDto>
         {
             Success = false,
-            Id = CreateStorageUploadSessionCommandHandler.Map(session, policy, counter),
+            Id = CreateStorageUploadSessionCommandHandler.Map(session, CreatePolicyFromSession(session), counter),
             Message = failureMessage,
             Errors = [failureMessage],
             FailureCode = failureCode
@@ -342,15 +337,46 @@ public class FinalizeStorageUploadSessionCommandHandler
 
     private static BaseCommandResponse<StorageUploadSessionDto> Success(
         StorageUploadSession session,
-        ResolvedStoragePolicy policy,
         StorageUsageCounter? usageCounter,
         string message)
         => new()
         {
             Success = true,
-            Id = CreateStorageUploadSessionCommandHandler.Map(session, policy, usageCounter),
+            Id = CreateStorageUploadSessionCommandHandler.Map(session, CreatePolicyFromSession(session), usageCounter),
             Message = message
         };
+
+    private static ResolvedStoragePolicy CreatePolicyFromSession(StorageUploadSession session)
+    {
+        var maxUploadBytes = session.PolicyMaxUploadBytes > 0
+            ? session.PolicyMaxUploadBytes
+            : session.ExpectedSizeBytes;
+        var routeKey = string.IsNullOrWhiteSpace(session.RouteKey) ? StorageRouteKeys.General : session.RouteKey;
+        var route = new ResolvedStorageRoutePolicy(
+            routeKey,
+            session.Provider,
+            maxUploadBytes,
+            SettingSource.SystemDefault,
+            SettingSource.SystemDefault);
+
+        _ = int.TryParse(session.PolicyVersion, out var policyVersion);
+
+        return new ResolvedStoragePolicy(
+            session.TenantId,
+            session.Provider,
+            maxUploadBytes,
+            0,
+            maxUploadBytes,
+            TenantOverridesAllowed: false,
+            TenantStorageLocked: true,
+            ProviderSource: SettingSource.SystemDefault,
+            MaxUploadSource: SettingSource.SystemDefault,
+            QuotaSource: SettingSource.SystemDefault,
+            routeKey,
+            policyVersion <= 0 ? 1 : policyVersion,
+            [route],
+            route);
+    }
 
     private static BaseCommandResponse<StorageUploadSessionDto> Failure(
         string message,

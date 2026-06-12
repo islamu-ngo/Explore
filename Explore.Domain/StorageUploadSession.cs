@@ -14,6 +14,9 @@ public class StorageUploadSession : ITenantEntity, IAuditableEntity, IConcurrenc
     public User? User { get; set; }
 
     public required string Provider { get; set; }
+    public string RouteKey { get; set; } = StorageRouteKeys.General;
+    public long PolicyMaxUploadBytes { get; set; }
+    public string? PolicyVersion { get; set; }
     public long ExpectedSizeBytes { get; set; }
     public long ReservedBytes { get; set; }
     public required string ContentType { get; set; }

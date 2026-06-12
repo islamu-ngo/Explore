@@ -14,6 +14,9 @@ public class StorageUploadSessionConfiguration : IEntityTypeConfiguration<Storag
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
         builder.Property(e => e.Provider).HasMaxLength(50).IsRequired();
+        builder.Property(e => e.RouteKey).HasColumnName("route_key").HasMaxLength(50).IsRequired();
+        builder.Property(e => e.PolicyMaxUploadBytes).HasColumnName("policy_max_upload_bytes");
+        builder.Property(e => e.PolicyVersion).HasColumnName("policy_version").HasMaxLength(64);
         builder.Property(e => e.ContentType).HasMaxLength(255).IsRequired();
         builder.Property(e => e.OriginalFileName).HasMaxLength(500);
         builder.Property(e => e.SafeDisplayName).HasMaxLength(500).IsRequired();
@@ -59,7 +62,9 @@ public class StorageUploadSessionConfiguration : IEntityTypeConfiguration<Storag
         {
             t.HasCheckConstraint("ck_storage_upload_sessions_expected_size_nonnegative", "expected_size_bytes >= 0");
             t.HasCheckConstraint("ck_storage_upload_sessions_reserved_bytes_nonnegative", "reserved_bytes >= 0");
+            t.HasCheckConstraint("ck_storage_upload_sessions_policy_max_upload_bytes_nonnegative", "policy_max_upload_bytes >= 0");
             t.HasCheckConstraint("ck_storage_upload_sessions_provider", "provider IN ('local', 's3_compatible', 'legacy_external')");
+            t.HasCheckConstraint("ck_storage_upload_sessions_route_key", "route_key IN ('images', 'documents', 'general')");
             t.HasCheckConstraint("ck_storage_upload_sessions_visibility", "visibility IN ('public_image', 'authenticated_tenant', 'private_owner')");
             t.HasCheckConstraint("ck_storage_upload_sessions_purpose", "purpose IN ('legacy_image', 'profile_image', 'event_image', 'attachment', 'document', 'system_asset')");
             t.HasCheckConstraint("ck_storage_upload_sessions_status", "status IN ('reserved', 'uploading', 'finalized', 'canceled', 'failed', 'expired')");

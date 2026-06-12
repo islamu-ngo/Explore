@@ -1,14 +1,22 @@
 // ABOUTME: Link-policy contract tests for storage object and storage admin HAL affordances.
 // ABOUTME: Protects storage UI action gates from drifting away from server authorization metadata.
 
+using System.Security.Claims;
+using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Hateoas;
+using Explore.API.Hateoas.Assemblers;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Hateoas;
 using Explore.Domain;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -132,6 +140,74 @@ public sealed class StorageAdminHateoasTests
             .IsEqualTo(AuthorizationActions.TenantSettings.View);
     }
 
+    [Test]
+    public async Task InstanceStorageSettingsResource_WhenInstanceSettingUpdateAllowed_MaterializesAdminAffordances()
+    {
+        var assembler = CreateInstanceAssembler(check =>
+            check.ResourceKind == ResourceKinds.InstanceSetting &&
+            check.ResourceId == "storage" &&
+            check.Action is AuthorizationActions.InstanceSettings.View or AuthorizationActions.InstanceSettings.Update);
+        var context = CreateHttpContext(authenticated: true, assembler.Evaluator);
+
+        var resource = await assembler.Assembler.ToResource(new InstanceStorageSettingsDto(), context);
+
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Self)).IsTrue();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Edit)).IsTrue();
+        await Assert.That(resource.Links.ContainsKey("provider-test")).IsTrue();
+        await Assert.That(resource.Links.ContainsKey("recalculate-usage")).IsTrue();
+    }
+
+    [Test]
+    public async Task InstanceStorageSettingsResource_WhenInstanceSettingUpdateDenied_HidesAdminAffordances()
+    {
+        var assembler = CreateInstanceAssembler(check =>
+            check.ResourceKind == ResourceKinds.InstanceSetting &&
+            check.Action == AuthorizationActions.InstanceSettings.View);
+        var context = CreateHttpContext(authenticated: true, assembler.Evaluator);
+
+        var resource = await assembler.Assembler.ToResource(new InstanceStorageSettingsDto(), context);
+
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Self)).IsTrue();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Edit)).IsFalse();
+        await Assert.That(resource.Links.ContainsKey("provider-test")).IsFalse();
+        await Assert.That(resource.Links.ContainsKey("recalculate-usage")).IsFalse();
+    }
+
+    [Test]
+    public async Task TenantStorageSettingsResource_WhenTenantSettingUpdateAllowed_MaterializesEditAffordance()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var assembler = CreateTenantAssembler(check =>
+            check.ResourceKind == ResourceKinds.TenantSetting &&
+            check.ResourceId == $"{tenantId}:storage" &&
+            check.Action is AuthorizationActions.TenantSettings.View or AuthorizationActions.TenantSettings.Update);
+        var context = CreateHttpContext(authenticated: true, assembler.Evaluator);
+
+        var resource = await assembler.Assembler.ToResource(CreateEditableTenantSettings(tenantId), context);
+
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Self)).IsTrue();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Edit)).IsTrue();
+    }
+
+    [Test]
+    public async Task TenantStorageSettingsResource_WhenDelegationLocked_HidesEditBeforeAuthorization()
+    {
+        var tenantId = Guid.CreateVersion7();
+        var assembler = CreateTenantAssembler(_ => true);
+        var context = CreateHttpContext(authenticated: true, assembler.Evaluator);
+
+        var resource = await assembler.Assembler.ToResource(new TenantStorageSettingsDto
+        {
+            TenantId = tenantId,
+            TenantOverridesAllowed = false,
+            TenantStorageLocked = true,
+            IsReadOnly = true
+        }, context);
+
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Self)).IsTrue();
+        await Assert.That(resource.Links.ContainsKey(LinkRelations.Edit)).IsFalse();
+    }
+
     private static StorageObjectDto CreateStorageObject(Guid tenantId) =>
         new()
         {
@@ -149,6 +225,74 @@ public sealed class StorageAdminHateoasTests
             TenantId = tenantId
         };
 
+    private static TenantStorageSettingsDto CreateEditableTenantSettings(Guid tenantId) =>
+        new()
+        {
+            TenantId = tenantId,
+            TenantOverridesAllowed = true,
+            TenantStorageLocked = false,
+            IsReadOnly = false
+        };
+
+    private static InstanceAssemblerHarness CreateInstanceAssembler(Func<AuthorizationCheck, bool> predicate)
+    {
+        var evaluator = CreateEvaluator(predicate);
+        var linkGenerator = CreateLinkGenerator();
+        var assembler = new InstanceStorageSettingsResourceAssembler(
+            linkGenerator,
+            new InstanceStorageSettingsLinkPolicy(),
+            new InstanceStorageSettingsCollectionLinkPolicy());
+
+        return new InstanceAssemblerHarness(assembler, evaluator);
+    }
+
+    private static TenantAssemblerHarness CreateTenantAssembler(Func<AuthorizationCheck, bool> predicate)
+    {
+        var evaluator = CreateEvaluator(predicate);
+        var linkGenerator = CreateLinkGenerator();
+        var assembler = new TenantStorageSettingsResourceAssembler(
+            linkGenerator,
+            new TenantStorageSettingsLinkPolicy(),
+            new TenantStorageSettingsCollectionLinkPolicy());
+
+        return new TenantAssemblerHarness(assembler, evaluator);
+    }
+
+    private static IHateoasAuthorizationEvaluator CreateEvaluator(Func<AuthorizationCheck, bool> predicate)
+    {
+        var authorizationProvider = new StubAuthorizationProvider { CheckPredicate = predicate };
+        return new HateoasAuthorizationEvaluator(
+            authorizationProvider,
+            Substitute.For<ILogger<HateoasAuthorizationEvaluator>>());
+    }
+
+    private static IHateoasLinkGenerator CreateLinkGenerator()
+    {
+        var linkGenerator = Substitute.For<IHateoasLinkGenerator>();
+        linkGenerator.GenerateLink(Arg.Any<LinkDefinition>(), Arg.Any<HttpContext>())
+            .Returns(call => new HalLink
+            {
+                Href = $"/{call.Arg<LinkDefinition>().Rel}",
+                Method = call.Arg<LinkDefinition>().Method,
+                Title = call.Arg<LinkDefinition>().Title
+            });
+
+        return linkGenerator;
+    }
+
+    private static DefaultHttpContext CreateHttpContext(bool authenticated, IHateoasAuthorizationEvaluator evaluator)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(evaluator);
+
+        var context = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+        context.User = authenticated
+            ? new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "Test"))
+            : new ClaimsPrincipal(new ClaimsIdentity());
+
+        return context;
+    }
+
     private static T? GetAttribute<T>(LinkDefinition link, string name)
     {
         if (link.PermissionResourceAttributes is null ||
@@ -159,4 +303,12 @@ public sealed class StorageAdminHateoasTests
 
         return value is T typed ? typed : default;
     }
+
+    private sealed record InstanceAssemblerHarness(
+        InstanceStorageSettingsResourceAssembler Assembler,
+        IHateoasAuthorizationEvaluator Evaluator);
+
+    private sealed record TenantAssemblerHarness(
+        TenantStorageSettingsResourceAssembler Assembler,
+        IHateoasAuthorizationEvaluator Evaluator);
 }

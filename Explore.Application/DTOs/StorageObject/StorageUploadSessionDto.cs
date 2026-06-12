@@ -9,6 +9,9 @@ public class StorageUploadSessionDto
     public Guid TenantId { get; set; }
     public Guid? UserId { get; set; }
     public required string Provider { get; set; }
+    public string RouteKey { get; set; } = "general";
+    public long PolicyMaxUploadBytes { get; set; }
+    public string? PolicyVersion { get; set; }
     public long ExpectedSizeBytes { get; set; }
     public long ReservedBytes { get; set; }
     public required string ContentType { get; set; }

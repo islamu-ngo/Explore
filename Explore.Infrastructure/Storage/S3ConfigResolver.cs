@@ -69,6 +69,9 @@ public class S3ConfigResolver : IS3ConfigResolver
         return config;
     }
 
+    public async Task<bool> IsConfiguredAsync(CancellationToken cancellationToken = default)
+        => await ResolveAsync(cancellationToken) is not null;
+
     public void InvalidateCache(Guid? tenantId = null)
     {
         if (tenantId.HasValue)
@@ -92,28 +95,60 @@ public class S3ConfigResolver : IS3ConfigResolver
         // 2. IConfiguration fallback (Infisical / env vars) — secret manager values
         // This means DB-configured values always take precedence over secret manager values.
 
-        var endpoint = await ResolveStringAsync(GovernanceSettingKeys.Storage.Endpoint, "S3Settings:Endpoint", tenantId, cancellationToken);
+        var endpoint = await ResolveStringAsync(
+            GovernanceSettingKeys.Storage.Endpoint,
+            tenantId,
+            cancellationToken,
+            "S3Settings:Endpoint",
+            "Storage:S3Endpoint",
+            "Storage:S3:Endpoint",
+            "storage.s3.endpoint",
+            "STORAGE_S3_ENDPOINT");
         if (string.IsNullOrWhiteSpace(endpoint))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: endpoint is empty", tenantId);
             return null;
         }
 
-        var bucketName = await ResolveStringAsync(GovernanceSettingKeys.Storage.BucketName, "S3Settings:BucketName", tenantId, cancellationToken);
+        var bucketName = await ResolveStringAsync(
+            GovernanceSettingKeys.Storage.BucketName,
+            tenantId,
+            cancellationToken,
+            "S3Settings:BucketName",
+            "Storage:S3BucketName",
+            "Storage:S3:BucketName",
+            "storage.s3.bucket_name",
+            "STORAGE_S3_BUCKET_NAME");
         if (string.IsNullOrWhiteSpace(bucketName))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: bucket_name is empty", tenantId);
             return null;
         }
 
-        var accessKeyId = await ResolveStringAsync(InfrastructureSecretSettingKeys.Storage.AccessKeyId, "S3Settings:AccessKeyId", tenantId, cancellationToken);
+        var accessKeyId = await ResolveStringAsync(
+            InfrastructureSecretSettingKeys.Storage.AccessKeyId,
+            tenantId,
+            cancellationToken,
+            "S3Settings:AccessKeyId",
+            "Storage:S3AccessKeyId",
+            "Storage:S3:AccessKeyId",
+            "storage.s3.access_key_id",
+            "STORAGE_S3_ACCESS_KEY_ID");
         if (string.IsNullOrWhiteSpace(accessKeyId))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: access_key_id is empty", tenantId);
             return null;
         }
 
-        var secretAccessKey = await ResolveStringAsync(InfrastructureSecretSettingKeys.Storage.SecretAccessKey, "S3Settings:SecretAccessKey", tenantId, cancellationToken);
+        var secretAccessKey = await ResolveStringAsync(
+            InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
+            tenantId,
+            cancellationToken,
+            "S3Settings:SecretAccessKey",
+            "Storage:S3SecretAccessKey",
+            "Storage:S3:SecretAccessKey",
+            "storage.s3.secret_access_key",
+            "STORAGE_S3_SECRET_ACCESS_KEY");
         if (string.IsNullOrWhiteSpace(secretAccessKey))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: secret_access_key is empty", tenantId);
@@ -123,8 +158,24 @@ public class S3ConfigResolver : IS3ConfigResolver
         var uploadExpiration = await _resolver.ResolveAsync<int>(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes, new SettingContext(TenantId: tenantId), cancellationToken);
         var forcePathStyle = await _resolver.ResolveAsync<bool>(GovernanceSettingKeys.Storage.ForcePathStyle, new SettingContext(TenantId: tenantId), cancellationToken);
 
-        var region = await ResolveStringAsync(GovernanceSettingKeys.Storage.Region, "S3Settings:Region", tenantId, cancellationToken);
-        var publicEndpoint = await ResolveStringAsync(GovernanceSettingKeys.Storage.PublicEndpoint, "S3Settings:PublicEndpoint", tenantId, cancellationToken);
+        var region = await ResolveStringAsync(
+            GovernanceSettingKeys.Storage.Region,
+            tenantId,
+            cancellationToken,
+            "S3Settings:Region",
+            "Storage:S3Region",
+            "Storage:S3:Region",
+            "storage.s3.region",
+            "STORAGE_S3_REGION");
+        var publicEndpoint = await ResolveStringAsync(
+            GovernanceSettingKeys.Storage.PublicEndpoint,
+            tenantId,
+            cancellationToken,
+            "S3Settings:PublicEndpoint",
+            "Storage:S3PublicEndpoint",
+            "Storage:S3:PublicEndpoint",
+            "storage.s3.public_endpoint",
+            "STORAGE_S3_PUBLIC_ENDPOINT");
 
         return new S3Configuration
         {
@@ -145,7 +196,10 @@ public class S3ConfigResolver : IS3ConfigResolver
     /// First tries the cascading settings engine (DB), then falls back to IConfiguration (secret manager).
     /// </summary>
     private async Task<string?> ResolveStringAsync(
-        string settingKey, string configKey, Guid tenantId, CancellationToken cancellationToken)
+        string settingKey,
+        Guid tenantId,
+        CancellationToken cancellationToken,
+        params string[] configKeys)
     {
         var dbValue = await _resolver.ResolveAsync<string>(settingKey, new SettingContext(TenantId: tenantId), cancellationToken);
         if (!string.IsNullOrWhiteSpace(dbValue))
@@ -153,7 +207,18 @@ public class S3ConfigResolver : IS3ConfigResolver
             return dbValue;
         }
 
-        // Fallback to IConfiguration (Infisical / environment variables)
-        return _configuration[configKey];
+        // Fallback to IConfiguration (Infisical / environment variables). Keep DB settings authoritative,
+        // but accept all platform-supported secret shapes: legacy S3Settings, Infisical /storage mapping,
+        // canonical lower-dot keys, and raw environment variable names.
+        foreach (var configKey in configKeys)
+        {
+            var configValue = _configuration[configKey];
+            if (!string.IsNullOrWhiteSpace(configValue))
+            {
+                return configValue;
+            }
+        }
+
+        return null;
     }
 }

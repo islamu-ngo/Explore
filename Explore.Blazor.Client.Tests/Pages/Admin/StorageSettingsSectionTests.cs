@@ -42,6 +42,36 @@ public sealed class StorageSettingsSectionTests : IDisposable
     }
 
     [Test]
+    public async Task InstanceStorageSection_WithRoutes_RendersHybridRouteMatrix()
+    {
+        // Arrange
+        var model = new InstanceStorageSettingsModel
+        {
+            CanUpdate = true,
+            Provider = StorageProviderOptions.Local,
+            Routes =
+            [
+                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Images, Provider = StorageProviderOptions.Local, MaxUploadBytes = 8L * 1024 * 1024 },
+                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Documents, Provider = StorageProviderOptions.S3Compatible, MaxUploadBytes = 64L * 1024 * 1024 },
+                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.General, Provider = StorageProviderOptions.Local, MaxUploadBytes = 16L * 1024 * 1024 }
+            ]
+        };
+
+        // Act
+        var cut = RenderComponent("InstanceStorageSection", new Dictionary<string, object>
+        {
+            ["Model"] = model,
+            ["IsSingleTenant"] = true
+        });
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("Hybrid storage routes", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("Images", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("Documents", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("General uploads", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
     public async Task InstanceStorageSection_WithoutEditHalLink_RendersReadOnlyState()
     {
         // Arrange
@@ -120,6 +150,67 @@ public sealed class StorageSettingsSectionTests : IDisposable
         await Assert.That(cut.Markup).Contains("Tenant Storage Provider", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).Contains("Max upload", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).Contains("Tenant quota", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task TenantStorageSection_WhenLocked_RendersRouteMatrixAsInheritedPolicy()
+    {
+        // Arrange
+        var model = new TenantStorageSettingsModel
+        {
+            TenantOverridesAllowed = false,
+            TenantStorageLocked = true,
+            IsReadOnly = true,
+            CanUpdate = false,
+            Provider = StorageProviderOptions.Local,
+            Routes =
+            [
+                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Images, Provider = StorageProviderOptions.Local, MaxUploadBytes = 8L * 1024 * 1024, IsReadOnly = true },
+                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Documents, Provider = StorageProviderOptions.S3Compatible, MaxUploadBytes = 64L * 1024 * 1024, IsReadOnly = true },
+                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.General, Provider = StorageProviderOptions.Local, MaxUploadBytes = 16L * 1024 * 1024, IsReadOnly = true }
+            ],
+            EffectivePolicy = new StorageEffectivePolicyModel
+            {
+                Provider = StorageProviderOptions.Local,
+                InstanceMaxUploadBytes = 100L * 1024 * 1024,
+                MaxUploadBytes = 10L * 1024 * 1024,
+                TenantQuotaBytes = 1024L * 1024 * 1024
+            }
+        };
+
+        // Act
+        var cut = RenderComponent("TenantStorageSection", new Dictionary<string, object>
+        {
+            ["Model"] = model
+        });
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("Hybrid storage routes", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("Tenant overrides stay bounded", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("Documents", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task StorageSettingsModels_ToDto_SerializesTypedRouteMatrix()
+    {
+        // Arrange
+        var model = new InstanceStorageSettingsModel
+        {
+            Routes =
+            [
+                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Images, Provider = StorageProviderOptions.Local, MaxUploadBytes = 8L * 1024 * 1024 },
+                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.Documents, Provider = StorageProviderOptions.S3Compatible, MaxUploadBytes = 64L * 1024 * 1024 },
+                new StorageRouteSettingsModel { RouteKey = StorageRouteOptions.General, Provider = StorageProviderOptions.Local, MaxUploadBytes = 16L * 1024 * 1024 }
+            ]
+        };
+
+        // Act
+        var dto = model.ToDto();
+
+        // Assert
+        await Assert.That(dto.Routes).IsNotNull();
+        await Assert.That(dto.Routes!.Count).IsEqualTo(3);
+        await Assert.That(dto.Routes!.Any(route => route.RouteKey == StorageRouteOptions.Documents && route.Provider == StorageProviderOptions.S3Compatible)).IsTrue();
     }
 
     private IRenderedComponent<DynamicComponent> RenderComponent(string componentName, IDictionary<string, object> parameters)

@@ -361,6 +361,15 @@ public class SettingRegistryTests
     }
 
     [Test]
+    public async Task Registry_AiAssistantProviderAllowedValuesIncludeAnthropicCompatible()
+    {
+        var definition = SettingRegistry.Get(GovernanceSettingKeys.AiAssistant.Provider);
+
+        await Assert.That(definition).IsNotNull();
+        await Assert.That(definition!.AllowedValues).Contains("anthropic-compatible");
+    }
+
+    [Test]
     public async Task Registry_PublicExperienceJsonDefaultsAreVersionedEmptyConfigs()
     {
         var expectedArrayPropertiesByKey = new Dictionary<string, string>

@@ -37,6 +37,12 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
         _storagePolicyResolver
             .ResolveAsync(_tenantId, Arg.Any<CancellationToken>())
             .Returns(CreatePolicy(maxUploadBytes: 100, quotaBytes: 1_000));
+        _storagePolicyResolver
+            .ResolveAsync(_tenantId, Arg.Any<StoragePolicyIntent>(), Arg.Any<CancellationToken>())
+            .Returns(CreatePolicy(maxUploadBytes: 100, quotaBytes: 1_000));
+        _usageCounterRepository
+            .GetByTenantAsync(_tenantId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<StorageUsageCounter>());
         _providerResolver.GetRequired(StorageProviders.Local).Returns(_provider);
 
         _unitOfWork
@@ -107,6 +113,54 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     }
 
     [Test]
+    public async Task CreateHandle_ForDocumentPurpose_StoresSelectedRoutePolicyOnSession()
+    {
+        var policy = CreatePolicy(
+            maxUploadBytes: 80,
+            quotaBytes: 1_000,
+            provider: StorageProviders.S3Compatible,
+            routeKey: StorageRouteKeys.Documents,
+            policyVersion: 7);
+        _storagePolicyResolver
+            .ResolveAsync(_tenantId, Arg.Is<StoragePolicyIntent>(request =>
+                request.Purpose == StorageObjectPurposes.Document &&
+                request.ContentType == "application/pdf"), Arg.Any<CancellationToken>())
+            .Returns(policy);
+        var counter = new StorageUsageCounter { TenantId = _tenantId, Provider = StorageProviders.S3Compatible, UsedBytes = 100 };
+        _usageCounterRepository.GetOrCreateAsync(_tenantId, StorageProviders.S3Compatible, Arg.Any<CancellationToken>()).Returns(counter);
+        _uploadSessionRepository.Create(Arg.Any<StorageUploadSession>()).Returns(call =>
+        {
+            var session = call.Arg<StorageUploadSession>();
+            session.Id = Guid.CreateVersion7();
+            return session;
+        });
+
+        var result = await CreateCreateHandler().Handle(
+            new CreateStorageUploadSessionCommand
+            {
+                UploadSessionDto = CreateUploadDto(
+                    expectedSizeBytes: 42,
+                    originalFileName: "Policy.PDF",
+                    purpose: StorageObjectPurposes.Document,
+                    contentType: "application/pdf")
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id!.Provider).IsEqualTo(StorageProviders.S3Compatible);
+        await Assert.That(result.Id.RouteKey).IsEqualTo(StorageRouteKeys.Documents);
+        await Assert.That(result.Id.PolicyMaxUploadBytes).IsEqualTo(80);
+        await Assert.That(result.Id.PolicyVersion).IsEqualTo("7");
+        await Assert.That(result.Id.MaxUploadBytes).IsEqualTo(80);
+
+        await _uploadSessionRepository.Received(1).Create(Arg.Is<StorageUploadSession>(session =>
+            session.Provider == StorageProviders.S3Compatible &&
+            session.RouteKey == StorageRouteKeys.Documents &&
+            session.PolicyMaxUploadBytes == 80 &&
+            session.PolicyVersion == "7"));
+    }
+
+    [Test]
     public async Task FinalizeHandle_WithReservedSession_WritesProviderCreatesMetadataAndFinalizesUsage()
     {
         var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 11);
@@ -147,6 +201,43 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             storageObject.ObjectKey == "tenant/object.txt" &&
             storageObject.Size == 11 &&
             storageObject.ContentType == "text/plain"));
+    }
+
+    [Test]
+    public async Task FinalizeHandle_UsesPersistedSessionPolicyAfterSettingsChange()
+    {
+        var session = CreateSession(status: StorageUploadSessionStates.Reserved, reservedBytes: 11);
+        session.Provider = StorageProviders.S3Compatible;
+        session.RouteKey = StorageRouteKeys.Documents;
+        session.PolicyMaxUploadBytes = 80;
+        session.PolicyVersion = "7";
+        var counter = new StorageUsageCounter { TenantId = _tenantId, Provider = StorageProviders.S3Compatible, ReservedBytes = 11 };
+        var writeResult = new FileStorageWriteResult(StorageProviders.S3Compatible, "tenant/document.txt", 11, "text/plain", "hash");
+        _providerResolver.GetRequired(StorageProviders.S3Compatible).Returns(_provider);
+        _uploadSessionRepository.GetByIdForUpdateAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+        _usageCounterRepository.GetByTenantAndProviderAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
+        _usageCounterRepository.GetOrCreateAsync(_tenantId, session.Provider, Arg.Any<CancellationToken>()).Returns(counter);
+        _provider.WriteAsync(Arg.Any<FileStorageWriteInput>(), Arg.Any<CancellationToken>()).Returns(writeResult);
+        _storageObjectRepository.Create(Arg.Any<StorageObject>()).Returns(call => call.Arg<StorageObject>());
+
+        var result = await CreateFinalizeHandler().Handle(
+            new FinalizeStorageUploadSessionCommand
+            {
+                UploadSessionId = session.Id,
+                Content = new MemoryStream(new byte[11]),
+                ContentType = "text/plain",
+                ContentLength = 11
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id!.Provider).IsEqualTo(StorageProviders.S3Compatible);
+        await Assert.That(result.Id.RouteKey).IsEqualTo(StorageRouteKeys.Documents);
+        await Assert.That(result.Id.PolicyMaxUploadBytes).IsEqualTo(80);
+        await Assert.That(result.Id.PolicyVersion).IsEqualTo("7");
+        await Assert.That(result.Id.MaxUploadBytes).IsEqualTo(80);
+        await _storagePolicyResolver.DidNotReceive().ResolveAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        await _storagePolicyResolver.DidNotReceive().ResolveAsync(Arg.Any<Guid?>(), Arg.Any<StoragePolicyIntent>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -219,6 +310,46 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             new CreateStorageUploadSessionCommand
             {
                 UploadSessionDto = CreateUploadDto(expectedSizeBytes: 20)
+            },
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo(FailureCodes.QuotaExceeded);
+        await _uploadSessionRepository.DidNotReceive().Create(Arg.Any<StorageUploadSession>());
+        await _usageCounterRepository.DidNotReceive().Update(Arg.Any<StorageUsageCounter>());
+    }
+
+    [Test]
+    public async Task CreateHandle_WhenAggregateQuotaAcrossProvidersWouldBeExceeded_ReturnsQuotaFailure()
+    {
+        var policy = CreatePolicy(
+            maxUploadBytes: 100,
+            quotaBytes: 1_000,
+            provider: StorageProviders.S3Compatible,
+            routeKey: StorageRouteKeys.Documents);
+        _storagePolicyResolver
+            .ResolveAsync(_tenantId, Arg.Any<StoragePolicyIntent>(), Arg.Any<CancellationToken>())
+            .Returns(policy);
+        var s3Counter = new StorageUsageCounter
+        {
+            TenantId = _tenantId,
+            Provider = StorageProviders.S3Compatible,
+            UsedBytes = 100
+        };
+        var localCounter = new StorageUsageCounter
+        {
+            TenantId = _tenantId,
+            Provider = StorageProviders.Local,
+            UsedBytes = 850,
+            ReservedBytes = 40
+        };
+        _usageCounterRepository.GetOrCreateAsync(_tenantId, StorageProviders.S3Compatible, Arg.Any<CancellationToken>()).Returns(s3Counter);
+        _usageCounterRepository.GetByTenantAsync(_tenantId, Arg.Any<CancellationToken>()).Returns([localCounter]);
+
+        var result = await CreateCreateHandler().Handle(
+            new CreateStorageUploadSessionCommand
+            {
+                UploadSessionDto = CreateUploadDto(expectedSizeBytes: 20, purpose: StorageObjectPurposes.Document, contentType: "application/pdf")
             },
             CancellationToken.None);
 
@@ -379,14 +510,18 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
     private static CreateStorageUploadSessionDto CreateUploadDto(
         long expectedSizeBytes = 10,
         string idempotencyKey = "upload-1",
-        string originalFileName = "file.txt")
+        string originalFileName = "file.txt",
+        string purpose = StorageObjectPurposes.Attachment,
+        string visibility = StorageObjectVisibilities.PrivateOwner,
+        string? contentType = null)
         => new()
         {
             ExpectedSizeBytes = expectedSizeBytes,
-            ContentType = originalFileName.EndsWith(".PDF", StringComparison.Ordinal) ? "Application/PDF" : "text/plain",
+            ContentType = contentType
+                ?? (originalFileName.EndsWith(".PDF", StringComparison.Ordinal) ? "Application/PDF" : "text/plain"),
             OriginalFileName = originalFileName,
-            Purpose = StorageObjectPurposes.Attachment,
-            Visibility = StorageObjectVisibilities.PrivateOwner,
+            Purpose = purpose,
+            Visibility = visibility,
             IdempotencyKey = idempotencyKey
         };
 
@@ -400,6 +535,9 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             TenantId = _tenantId,
             UserId = _userId,
             Provider = StorageProviders.Local,
+            RouteKey = StorageRouteKeys.General,
+            PolicyMaxUploadBytes = reservedBytes,
+            PolicyVersion = "1",
             ExpectedSizeBytes = reservedBytes,
             ReservedBytes = reservedBytes,
             ContentType = "text/plain",
@@ -413,10 +551,23 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             ExpiresAt = expiresAt ?? DateTime.UtcNow.AddMinutes(10)
         };
 
-    private ResolvedStoragePolicy CreatePolicy(long maxUploadBytes, long quotaBytes)
-        => new(
+    private ResolvedStoragePolicy CreatePolicy(
+        long maxUploadBytes,
+        long quotaBytes,
+        string provider = StorageProviders.Local,
+        string routeKey = StorageRouteKeys.General,
+        int policyVersion = 1)
+    {
+        var route = new ResolvedStorageRoutePolicy(
+            routeKey,
+            provider,
+            maxUploadBytes,
+            SettingSource.TenantOverride,
+            SettingSource.TenantOverride);
+
+        return new ResolvedStoragePolicy(
             _tenantId,
-            StorageProviders.Local,
+            provider,
             maxUploadBytes,
             quotaBytes,
             maxUploadBytes,
@@ -424,7 +575,12 @@ public sealed class StorageUploadSessionCommandHandlerTests : IDisposable
             TenantStorageLocked: false,
             ProviderSource: SettingSource.TenantOverride,
             MaxUploadSource: SettingSource.TenantOverride,
-            QuotaSource: SettingSource.TenantOverride);
+            QuotaSource: SettingSource.TenantOverride,
+            routeKey,
+            policyVersion,
+            [route],
+            route);
+    }
 
     private static BusinessMetrics CreateMetrics()
     {

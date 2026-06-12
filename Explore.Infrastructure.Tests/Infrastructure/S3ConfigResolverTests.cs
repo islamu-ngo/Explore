@@ -255,6 +255,80 @@ public class S3ConfigResolverTests : IDisposable
         await Assert.That(result.PublicEndpoint).IsEqualTo("https://infisical-public.com");
     }
 
+
+    [Test]
+    public async Task ResolveAsync_DbEmpty_FallsBackToStorageS3EnvironmentVariables()
+    {
+        SetupEmptyDatabaseSettings();
+        var configValues = new Dictionary<string, string?>
+        {
+            ["STORAGE_S3_ENDPOINT"] = "https://env-storage.example.com",
+            ["STORAGE_S3_BUCKET_NAME"] = "env-bucket",
+            ["STORAGE_S3_ACCESS_KEY_ID"] = "ENV_ACCESS_KEY",
+            ["STORAGE_S3_SECRET_ACCESS_KEY"] = "ENV_SECRET_KEY",
+            ["STORAGE_S3_REGION"] = "eu-central-1",
+            ["STORAGE_S3_PUBLIC_ENDPOINT"] = "https://env-public.example.com"
+        };
+        var config = new ConfigurationBuilder().AddInMemoryCollection(configValues).Build();
+        var resolver = new S3ConfigResolver(_settingsResolver, _tenantContext, new MemoryCache(new MemoryCacheOptions()), config, _logger);
+
+        var result = await resolver.ResolveAsync();
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Endpoint).IsEqualTo("https://env-storage.example.com");
+        await Assert.That(result.BucketName).IsEqualTo("env-bucket");
+        await Assert.That(result.AccessKeyId).IsEqualTo("ENV_ACCESS_KEY");
+        await Assert.That(result.SecretAccessKey).IsEqualTo("ENV_SECRET_KEY");
+        await Assert.That(result.Region).IsEqualTo("eu-central-1");
+        await Assert.That(result.PublicEndpoint).IsEqualTo("https://env-public.example.com");
+    }
+
+    [Test]
+    public async Task ResolveAsync_DbEmpty_FallsBackToInfisicalStorageSectionKeys()
+    {
+        SetupEmptyDatabaseSettings();
+        var configValues = new Dictionary<string, string?>
+        {
+            ["Storage:S3Endpoint"] = "https://infisical-storage.example.com",
+            ["Storage:S3BucketName"] = "infisical-bucket",
+            ["Storage:S3AccessKeyId"] = "INFISICAL_ACCESS_KEY",
+            ["Storage:S3SecretAccessKey"] = "INFISICAL_SECRET_KEY",
+            ["Storage:S3Region"] = "fsn1",
+            ["Storage:S3PublicEndpoint"] = "https://infisical-public.example.com"
+        };
+        var config = new ConfigurationBuilder().AddInMemoryCollection(configValues).Build();
+        var resolver = new S3ConfigResolver(_settingsResolver, _tenantContext, new MemoryCache(new MemoryCacheOptions()), config, _logger);
+
+        var result = await resolver.ResolveAsync();
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Endpoint).IsEqualTo("https://infisical-storage.example.com");
+        await Assert.That(result.BucketName).IsEqualTo("infisical-bucket");
+        await Assert.That(result.AccessKeyId).IsEqualTo("INFISICAL_ACCESS_KEY");
+        await Assert.That(result.SecretAccessKey).IsEqualTo("INFISICAL_SECRET_KEY");
+        await Assert.That(result.Region).IsEqualTo("fsn1");
+        await Assert.That(result.PublicEndpoint).IsEqualTo("https://infisical-public.example.com");
+    }
+
+    [Test]
+    public async Task IsConfiguredAsync_WhenRequiredStorageS3EnvironmentVariablesExist_ReturnsTrue()
+    {
+        SetupEmptyDatabaseSettings();
+        var configValues = new Dictionary<string, string?>
+        {
+            ["STORAGE_S3_ENDPOINT"] = "https://env-storage.example.com",
+            ["STORAGE_S3_BUCKET_NAME"] = "env-bucket",
+            ["STORAGE_S3_ACCESS_KEY_ID"] = "ENV_ACCESS_KEY",
+            ["STORAGE_S3_SECRET_ACCESS_KEY"] = "ENV_SECRET_KEY"
+        };
+        var config = new ConfigurationBuilder().AddInMemoryCollection(configValues).Build();
+        var resolver = new S3ConfigResolver(_settingsResolver, _tenantContext, new MemoryCache(new MemoryCacheOptions()), config, _logger);
+
+        var result = await resolver.IsConfiguredAsync();
+
+        await Assert.That(result).IsTrue();
+    }
+
     [Test]
     public async Task ResolveAsync_DbHasValues_OverridesIConfiguration()
     {
@@ -276,6 +350,17 @@ public class S3ConfigResolverTests : IDisposable
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Endpoint).IsEqualTo("https://fsn1.your-objectstorage.com");
         await Assert.That(result.BucketName).IsEqualTo("my-bucket");
+    }
+
+
+    private void SetupEmptyDatabaseSettings()
+    {
+        _settingsResolver.ResolveAsync<string>(Arg.Any<string>(), Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns("");
+        _settingsResolver.ResolveAsync<bool>(Arg.Any<string>(), Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _settingsResolver.ResolveAsync<int>(Arg.Any<string>(), Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(60);
     }
 
     private void SetupValidS3Settings(

@@ -17,7 +17,7 @@ public static class ConfigurationExtensions
         configBuilder.AddInfisical(bootstrapConfig, source =>
         {
             source.Paths.Clear();
-            source.Paths.AddRange(["/keycloak", "/postgresql", "/api", "/blazor", "/cerbos", "/mcp", "/ai"]);
+            source.Paths.AddRange(["/keycloak", "/postgresql", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage"]);
             source.ThrowOnFirstLoadFailure = false;
         });
 
@@ -33,9 +33,10 @@ public static class ConfigurationExtensions
     ///   /api:      DEPLOYMENT_MODE (single_tenant or multi_tenant)
     ///   /keycloak: KEYCLOAK_ENDPOINT, KEYCLOAK_REALM
     ///   /cerbos:   CERBOS_GRPC_ENDPOINT
-    ///   /api:      MCP_ENABLED, MCP_ENDPOINT_PATH, MCP_STATELESS, MCP_ENABLE_LEGACY_SSE
-    ///   /ai:       AI_ENDPOINT, AI_MODEL_ID, AI_API_KEY
-    ///   S3 keys:   ISLAMU_EVENT_S3_ENDPOINT, ISLAMU_EVENT_REGION, etc.
+    ///   /api|/mcp: MCP_ENABLED, MCP_ENDPOINT_PATH, MCP_STATELESS, MCP_ENABLE_LEGACY_SSE
+    ///   /ai:       AI_ENDPOINT, AI_MODEL_ID, AI_API_KEY, AI_PROVIDER
+    ///   /storage:  STORAGE_S3_ENDPOINT, STORAGE_S3_BUCKET_NAME, STORAGE_S3_ACCESS_KEY_ID, etc.
+    ///   S3 legacy: ISLAMU_EVENT_S3_ENDPOINT, ISLAMU_EVENT_REGION, etc.
     /// Postgres is handled by BootstrapSecretLoader from discrete POSTGRESQL_* secrets.
     /// </remarks>
     private static void ApplyMapping(IConfigurationBuilder configBuilder, IConfiguration config)
@@ -67,31 +68,33 @@ public static class ConfigurationExtensions
                 "MCP_ENABLED",
                 "MCP__ENABLED",
                 "Api:McpEnabled",
-                "Api:Mcp:Enabled"));
+                "Api:Mcp:Enabled")) ?? "true";
         var mcpEndpointPath = NormalizeMcpEndpointPath(
             ReadFirst(
                 config,
                 "MCP_ENDPOINT_PATH",
                 "MCP__ENDPOINT_PATH",
                 "Api:McpEndpointPath",
-                "Api:Mcp:EndpointPath"));
+                "Api:Mcp:EndpointPath")) ?? "/mcp";
         var mcpStateless = NormalizeBoolean(
             ReadFirst(
                 config,
                 "MCP_STATELESS",
                 "MCP__STATELESS",
                 "Api:McpStateless",
-                "Api:Mcp:Stateless"));
+                "Api:Mcp:Stateless")) ?? "true";
         var mcpEnableLegacySse = NormalizeBoolean(
             ReadFirst(
                 config,
                 "MCP_ENABLE_LEGACY_SSE",
                 "MCP__ENABLE_LEGACY_SSE",
                 "Api:McpEnableLegacySse",
-                "Api:Mcp:EnableLegacySse"));
+                "Api:Mcp:EnableLegacySse")) ?? "true";
         var aiEndpointUrl = ReadFirst(config, "AI_ENDPOINT", "AI__ENDPOINT", "AiProvider:EndpointUrl");
         var aiModelId = ReadFirst(config, "AI_MODEL_ID", "AI__MODEL_ID", "AiProvider:ModelId");
         var aiApiKey = ReadFirst(config, "AI_API_KEY", "AI__API_KEY", "AiProvider:ApiKey");
+        var aiProviderMasterCode = ReadFirst(config, "AI_PROVIDER", "AI__PROVIDER", "AiProvider:Provider")?.Trim().ToUpperInvariant().Replace('-', '_');
+        var aiProviderId = MapProviderMasterCodeToId(aiProviderMasterCode);
         var aiProviderDefaultsAvailable = !string.IsNullOrWhiteSpace(aiEndpointUrl) && !string.IsNullOrWhiteSpace(aiModelId);
 
         var mappedConfig = new Dictionary<string, string?>();
@@ -111,12 +114,12 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Keycloak:RequireHttpsMetadata", "true");
 
         // S3
-        TrySet(mappedConfig, config, "S3Settings:Region", config["ISLAMU_EVENT_REGION"]);
-        TrySet(mappedConfig, config, "S3Settings:BucketName", config["ISLAMU_EVENT_PRIVATE_BUCKET_NAME"]);
-        TrySet(mappedConfig, config, "S3Settings:AccessKeyId", config["ISLAMU_EVENT_PRIVATE_ACCESS_KEY_ID"]);
-        TrySet(mappedConfig, config, "S3Settings:SecretAccessKey", config["ISLAMU_EVENT_PRIVATE_SECRET_ACCESS_KEY_ID"]);
-        TrySet(mappedConfig, config, "S3Settings:Endpoint", config["ISLAMU_EVENT_S3_ENDPOINT"]);
-        TrySet(mappedConfig, config, "S3Settings:PublicEndpoint", config["ISLAMU_EVENT_S3_PUBLIC_ENDPOINT"]);
+        TrySet(mappedConfig, config, "S3Settings:Region", ReadFirst(config, "STORAGE_S3_REGION", "Storage:S3Region", "Storage:S3:Region", "ISLAMU_EVENT_REGION"));
+        TrySet(mappedConfig, config, "S3Settings:BucketName", ReadFirst(config, "STORAGE_S3_BUCKET_NAME", "Storage:S3BucketName", "Storage:S3:BucketName", "ISLAMU_EVENT_PRIVATE_BUCKET_NAME"));
+        TrySet(mappedConfig, config, "S3Settings:AccessKeyId", ReadFirst(config, "STORAGE_S3_ACCESS_KEY_ID", "Storage:S3AccessKeyId", "Storage:S3:AccessKeyId", "ISLAMU_EVENT_PRIVATE_ACCESS_KEY_ID"));
+        TrySet(mappedConfig, config, "S3Settings:SecretAccessKey", ReadFirst(config, "STORAGE_S3_SECRET_ACCESS_KEY", "Storage:S3SecretAccessKey", "Storage:S3:SecretAccessKey", "ISLAMU_EVENT_PRIVATE_SECRET_ACCESS_KEY_ID"));
+        TrySet(mappedConfig, config, "S3Settings:Endpoint", ReadFirst(config, "STORAGE_S3_ENDPOINT", "Storage:S3Endpoint", "Storage:S3:Endpoint", "ISLAMU_EVENT_S3_ENDPOINT"));
+        TrySet(mappedConfig, config, "S3Settings:PublicEndpoint", ReadFirst(config, "STORAGE_S3_PUBLIC_ENDPOINT", "Storage:S3PublicEndpoint", "Storage:S3:PublicEndpoint", "ISLAMU_EVENT_S3_PUBLIC_ENDPOINT"));
 
         // Cerbos
         if (!string.IsNullOrWhiteSpace(cerbosGrpcEndpoint))
@@ -141,7 +144,7 @@ public static class ConfigurationExtensions
         if (aiProviderDefaultsAvailable)
         {
             TrySet(mappedConfig, config, "AiProvider:Enabled", "true");
-            TrySet(mappedConfig, config, "AiProvider:Provider", "openai-compatible");
+            TrySet(mappedConfig, config, "AiProvider:Provider", aiProviderId ?? "3");
         }
 
         configBuilder.AddInMemoryCollection(
@@ -204,6 +207,17 @@ public static class ConfigurationExtensions
         };
     }
 
+    private static string? MapProviderMasterCodeToId(string? masterCode) => masterCode switch
+    {
+        "NONE" => "1",
+        "FAKE" => "2",
+        "OPENAI_COMPATIBLE" => "3",
+        "ANTHROPIC_COMPATIBLE" => "4",
+        "OPENAI_SDK" => "5",
+        "AZURE_OPENAI" => "6",
+        _ => null
+    };
+
     private static string? NormalizeMcpEndpointPath(string? rawValue)
     {
         if (string.IsNullOrWhiteSpace(rawValue))
@@ -213,7 +227,7 @@ public static class ConfigurationExtensions
 
         var path = rawValue.Trim();
 
-        return path.StartsWith("/", StringComparison.Ordinal)
+        return path.StartsWith('/')
             ? path
             : $"/{path}";
     }

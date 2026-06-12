@@ -41,6 +41,14 @@ public static class StorageSettingDefinitions
         Description: "Instance-wide upload ceiling in bytes; tenant overrides cannot exceed this value.",
         MaxScope: SettingScope.Instance);
 
+    public static readonly SettingDefinition RouteMatrix = new(
+        Key: GovernanceSettingKeys.Storage.RouteMatrix,
+        ValueType: SettingValueType.Json,
+        DefaultValue: "{\"version\":1,\"routes\":[]}",
+        Category: "ObjectStorage",
+        Description: "Versioned route matrix for server-side provider selection by upload purpose and content type.",
+        MaxScope: SettingScope.Tenant);
+
     public static readonly SettingDefinition Endpoint = new(
         Key: "s3.endpoint",
         ValueType: SettingValueType.String,
@@ -109,7 +117,7 @@ public static class StorageSettingDefinitions
 
     public static IReadOnlyList<SettingDefinition> All =>
     [
-        Provider, DefaultMaxUploadBytes, DefaultTenantQuotaBytes, InstanceMaxUploadBytes,
+        Provider, DefaultMaxUploadBytes, DefaultTenantQuotaBytes, InstanceMaxUploadBytes, RouteMatrix,
         Endpoint, PublicEndpoint, BucketName, AccessKeyId, SecretAccessKey,
         Region, ForcePathStyle, UploadUrlExpirationMinutes
     ];

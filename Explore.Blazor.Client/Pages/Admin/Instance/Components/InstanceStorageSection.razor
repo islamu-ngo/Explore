@@ -91,6 +91,50 @@
             </MudItem>
         </MudGrid>
 
+        <MudPaper Class="storage-section__route-matrix pa-4" Elevation="0" Outlined="true">
+            <MudStack Spacing="2">
+                <div>
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Hybrid storage routes</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Choose where each upload class is stored. The browser still receives only provider-neutral upload sessions.
+                    </MudText>
+                </div>
+
+                @foreach (var route in Model.Routes)
+                {
+                    <MudGrid Spacing="3" Class="storage-section__route-row" aria-label="@($"{route.RouteLabel} storage route")">
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.subtitle2">@route.RouteLabel</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@route.RouteDescription</MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="string"
+                                       Label="@($"{route.RouteLabel} provider")"
+                                       Variant="Variant.Outlined"
+                                       Dense="true"
+                                       @bind-Value="route.Provider"
+                                       Disabled="@(ControlsDisabled || route.IsReadOnly)">
+                                <MudSelectItem T="string" Value="@StorageProviderOptions.Local">Local file storage</MudSelectItem>
+                                <MudSelectItem T="string" Value="@StorageProviderOptions.S3Compatible">S3-compatible object storage</MudSelectItem>
+                            </MudSelect>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Source: @route.ProviderSource</MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudNumericField T="long"
+                                             Label="@($"{route.RouteLabel} max upload (MB)")"
+                                             Variant="Variant.Outlined"
+                                             Dense="true"
+                                             @bind-Value="route.MaxUploadMiB"
+                                             Min="1L"
+                                             Max="@Model.InstanceMaxUploadMiB"
+                                             Disabled="@(ControlsDisabled || route.IsReadOnly)" />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Source: @route.MaxUploadSource</MudText>
+                        </MudItem>
+                    </MudGrid>
+                }
+            </MudStack>
+        </MudPaper>
+
         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
             Effective provider: @StorageProviderOptions.Label(Model.EffectivePolicy.Provider);
             max upload @FormatBytes(Model.EffectivePolicy.MaxUploadBytes);

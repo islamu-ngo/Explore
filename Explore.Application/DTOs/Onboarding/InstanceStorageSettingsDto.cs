@@ -1,6 +1,7 @@
 // ABOUTME: Provider-neutral DTOs for instance-level storage administration.
 // ABOUTME: Redacts secrets while exposing provider policy, quotas, usage, and health for admin UI.
 
+using Explore.Application.DTOs.Storage;
 using Explore.Domain;
 
 namespace Explore.Application.DTOs.Onboarding;
@@ -12,6 +13,7 @@ public class InstanceStorageSettingsDto
     public long DefaultTenantQuotaBytes { get; set; } = 1024L * 1024 * 1024;
     public long InstanceMaxUploadBytes { get; set; } = 100L * 1024 * 1024;
     public bool LockTenantStorage { get; set; } = true;
+    public List<StorageRouteSettingsDto> Routes { get; set; } = [];
 
     public string S3Endpoint { get; set; } = string.Empty;
     public string S3PublicEndpoint { get; set; } = string.Empty;
@@ -40,6 +42,7 @@ public class InstanceStorageEffectivePolicyDto
     public string ProviderSource { get; set; } = "SystemDefault";
     public string MaxUploadSource { get; set; } = "SystemDefault";
     public string QuotaSource { get; set; } = "SystemDefault";
+    public List<StorageRouteSettingsDto> Routes { get; set; } = [];
 }
 
 public class InstanceStorageUsageDto

@@ -153,6 +153,7 @@ public static class GovernanceSettingKeys
         public const string DefaultMaxUploadBytes = "storage.default_max_upload_bytes";
         public const string DefaultTenantQuotaBytes = "storage.default_tenant_quota_bytes";
         public const string InstanceMaxUploadBytes = "storage.instance_max_upload_bytes";
+        public const string RouteMatrix = "storage.route_matrix";
         public const string Endpoint = "s3.endpoint";
         public const string PublicEndpoint = "s3.public_endpoint";
         public const string BucketName = "s3.bucket_name";

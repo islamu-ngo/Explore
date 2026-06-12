@@ -1,11 +1,13 @@
 // ABOUTME: Handler for reserving tenant storage quota before bytes are uploaded.
-// ABOUTME: Resolves storage policy, enforces byte limits, creates idempotent sessions, and persists counters atomically.
+// ABOUTME: Resolves route-aware storage policy, enforces aggregate quota, creates idempotent sessions, and persists counters atomically.
 
+using System.Globalization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.StorageObject.Validators;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
+using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain;
@@ -63,7 +65,10 @@ public class CreateStorageUploadSessionCommandHandler
         }
 
         var tenantId = _tenantContext.TenantId;
-        var policy = await _storagePolicyResolver.ResolveAsync(tenantId, cancellationToken);
+        var policy = await _storagePolicyResolver.ResolveAsync(
+            tenantId,
+            CreatePolicyRequest(request.UploadSessionDto),
+            cancellationToken);
 
         if (request.UploadSessionDto.ExpectedSizeBytes > policy.MaxUploadBytes)
         {
@@ -118,7 +123,7 @@ public class CreateStorageUploadSessionCommandHandler
     private async Task<BaseCommandResponse<StorageUploadSessionDto>> ReserveSessionAsync(
         CreateStorageUploadSessionDto dto,
         Guid tenantId,
-        Models.Storage.ResolvedStoragePolicy policy,
+        ResolvedStoragePolicy policy,
         CancellationToken cancellationToken)
     {
         var idempotencyKey = dto.IdempotencyKey.Trim();
@@ -145,13 +150,14 @@ public class CreateStorageUploadSessionCommandHandler
             tenantId,
             policy.Provider,
             cancellationToken);
+        var usageBeforeReserve = await GetTenantUsageSnapshotAsync(tenantId, usageCounter, cancellationToken);
 
-        if (!usageCounter.CanReserve(dto.ExpectedSizeBytes, policy.TenantQuotaBytes))
+        if (!CanReserve(usageBeforeReserve, dto.ExpectedSizeBytes, policy.TenantQuotaBytes))
         {
             return Failure(
                 "Upload would exceed the tenant storage quota.",
                 [
-                    $"Tenant storage quota is {policy.TenantQuotaBytes} bytes; used={usageCounter.UsedBytes}, reserved={usageCounter.ReservedBytes}, attempted={dto.ExpectedSizeBytes}."
+                    $"Tenant storage quota is {policy.TenantQuotaBytes} bytes; used={usageBeforeReserve.UsedBytes}, reserved={usageBeforeReserve.ReservedBytes}, attempted={dto.ExpectedSizeBytes}."
                 ],
                 FailureCodes.QuotaExceeded);
         }
@@ -159,12 +165,20 @@ public class CreateStorageUploadSessionCommandHandler
         usageCounter.Reserve(dto.ExpectedSizeBytes, policy.TenantQuotaBytes);
         await _usageCounterRepository.Update(usageCounter);
 
+        var usageAfterReserve = usageBeforeReserve with
+        {
+            ReservedBytes = usageBeforeReserve.ReservedBytes + dto.ExpectedSizeBytes
+        };
+
         var utcNow = DateTime.UtcNow;
         var session = new StorageUploadSession
         {
             TenantId = tenantId,
             UserId = _currentUserService.UserId,
             Provider = policy.Provider,
+            RouteKey = policy.RouteKey,
+            PolicyMaxUploadBytes = policy.MaxUploadBytes,
+            PolicyVersion = policy.PolicyVersion.ToString(CultureInfo.InvariantCulture),
             ExpectedSizeBytes = dto.ExpectedSizeBytes,
             ReservedBytes = dto.ExpectedSizeBytes,
             ContentType = NormalizeContentType(dto.ContentType),
@@ -180,18 +194,40 @@ public class CreateStorageUploadSessionCommandHandler
 
         session = await _uploadSessionRepository.Create(session);
 
-        return Success(session, policy, usageCounter, "Upload session reserved successfully.");
+        return Success(session, policy, usageCounter, "Upload session reserved successfully.", usageAfterReserve);
     }
+
+    private async Task<(long UsedBytes, long ReservedBytes)> GetTenantUsageSnapshotAsync(
+        Guid tenantId,
+        StorageUsageCounter selectedCounter,
+        CancellationToken cancellationToken)
+    {
+        var counters = await _usageCounterRepository.GetByTenantAsync(tenantId, cancellationToken);
+        var usedBytes = selectedCounter.UsedBytes;
+        var reservedBytes = selectedCounter.ReservedBytes;
+
+        foreach (var counter in counters.Where(counter => counter.Provider != selectedCounter.Provider))
+        {
+            usedBytes += counter.UsedBytes;
+            reservedBytes += counter.ReservedBytes;
+        }
+
+        return (usedBytes, reservedBytes);
+    }
+
+    private static bool CanReserve((long UsedBytes, long ReservedBytes) usage, long attemptedBytes, long quotaBytes)
+        => usage.UsedBytes + usage.ReservedBytes + attemptedBytes <= quotaBytes;
 
     private static BaseCommandResponse<StorageUploadSessionDto> Success(
         StorageUploadSession session,
-        Models.Storage.ResolvedStoragePolicy policy,
+        ResolvedStoragePolicy policy,
         StorageUsageCounter? usageCounter,
-        string message)
+        string message,
+        (long UsedBytes, long ReservedBytes)? usageSnapshot = null)
         => new()
         {
             Success = true,
-            Id = Map(session, policy, usageCounter),
+            Id = Map(session, policy, usageCounter, usageSnapshot),
             Message = message
         };
 
@@ -209,14 +245,23 @@ public class CreateStorageUploadSessionCommandHandler
 
     internal static StorageUploadSessionDto Map(
         StorageUploadSession session,
-        Models.Storage.ResolvedStoragePolicy policy,
-        StorageUsageCounter? usageCounter)
-        => new()
+        ResolvedStoragePolicy policy,
+        StorageUsageCounter? usageCounter,
+        (long UsedBytes, long ReservedBytes)? usageSnapshot = null)
+    {
+        var maxUploadBytes = session.PolicyMaxUploadBytes > 0
+            ? session.PolicyMaxUploadBytes
+            : policy.MaxUploadBytes;
+
+        return new StorageUploadSessionDto
         {
             Id = session.Id,
             TenantId = session.TenantId,
             UserId = session.UserId,
             Provider = session.Provider,
+            RouteKey = session.RouteKey,
+            PolicyMaxUploadBytes = maxUploadBytes,
+            PolicyVersion = session.PolicyVersion,
             ExpectedSizeBytes = session.ExpectedSizeBytes,
             ReservedBytes = session.ReservedBytes,
             ContentType = session.ContentType,
@@ -235,11 +280,21 @@ public class CreateStorageUploadSessionCommandHandler
             FinalizedAt = session.FinalizedAt,
             CanceledAt = session.CanceledAt,
             FailedAt = session.FailedAt,
-            MaxUploadBytes = policy.MaxUploadBytes,
+            MaxUploadBytes = maxUploadBytes,
             TenantQuotaBytes = policy.TenantQuotaBytes,
-            UsedBytes = usageCounter?.UsedBytes ?? 0,
-            TotalReservedBytes = usageCounter?.ReservedBytes ?? 0
+            UsedBytes = usageSnapshot?.UsedBytes ?? usageCounter?.UsedBytes ?? 0,
+            TotalReservedBytes = usageSnapshot?.ReservedBytes ?? usageCounter?.ReservedBytes ?? 0
         };
+    }
+
+    private static StoragePolicyIntent CreatePolicyRequest(CreateStorageUploadSessionDto dto)
+        => new(
+            dto.Purpose,
+            dto.Visibility,
+            dto.ContentType,
+            dto.OwningResourceKind,
+            dto.OwningResourceId,
+            dto.ExpectedSizeBytes);
 
     private static string NormalizeContentType(string contentType)
         => contentType.Trim().ToLowerInvariant();
@@ -264,12 +319,14 @@ public class CreateStorageUploadSessionCommandHandler
         }
 
         var fileName = NormalizeOptional(dto.OriginalFileName);
-        var dotIndex = fileName?.LastIndexOf('.') ?? -1;
-        if (dotIndex < 0 || dotIndex == fileName!.Length - 1)
+        if (string.IsNullOrWhiteSpace(fileName))
         {
             return null;
         }
 
-        return fileName[(dotIndex + 1)..].ToLowerInvariant();
+        var dotIndex = fileName.LastIndexOf('.');
+        return dotIndex >= 0 && dotIndex < fileName.Length - 1
+            ? fileName[(dotIndex + 1)..].ToLowerInvariant()
+            : null;
     }
 }

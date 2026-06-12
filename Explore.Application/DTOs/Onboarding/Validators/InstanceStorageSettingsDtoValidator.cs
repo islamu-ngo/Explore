@@ -1,6 +1,7 @@
 // ABOUTME: FluentValidation rules for provider-neutral instance storage admin settings.
 // ABOUTME: Enforces byte ceilings, provider allow-listing, and optional S3 URL shape before persistence.
 
+using Explore.Application.DTOs.Storage;
 using Explore.Domain;
 using FluentValidation;
 
@@ -30,6 +31,27 @@ public sealed class InstanceStorageSettingsDtoValidator : AbstractValidator<Inst
             .LessThanOrEqualTo(settings => settings.InstanceMaxUploadBytes)
             .WithMessage("Default max upload bytes cannot exceed the instance max upload ceiling.");
 
+
+
+        RuleFor(settings => settings.Routes)
+            .Must(HaveUniqueKnownRoutes)
+            .WithMessage("Storage route matrix can only contain unique images, documents, and general route keys.")
+            .Must((settings, routes) => RoutesFitInstanceCeiling(routes, settings.InstanceMaxUploadBytes))
+            .WithMessage("Storage route max upload bytes cannot exceed the instance max upload ceiling.");
+
+        RuleForEach(settings => settings.Routes).ChildRules(route =>
+        {
+            route.RuleFor(item => item.RouteKey)
+                .Must(routeKey => StorageRouteKeys.All.Contains(NormalizeRouteKey(routeKey)))
+                .WithMessage("Storage route key must be images, documents, or general.");
+            route.RuleFor(item => item.Provider)
+                .Must(provider => StorageProviders.All.Contains(NormalizeProvider(provider)))
+                .WithMessage("Storage route provider must be local or s3_compatible.");
+            route.RuleFor(item => item.MaxUploadBytes)
+                .GreaterThan(0)
+                .WithMessage("Storage route max upload bytes must be greater than zero.");
+        });
+
         RuleFor(settings => settings.S3Endpoint)
             .Must(BeEmptyOrAbsoluteHttpUri)
             .WithMessage("S3 endpoint must be an absolute HTTP or HTTPS URI.");
@@ -45,6 +67,24 @@ public sealed class InstanceStorageSettingsDtoValidator : AbstractValidator<Inst
 
     private static string NormalizeProvider(string? provider)
         => provider?.Trim().ToLowerInvariant() ?? string.Empty;
+
+    private static string NormalizeRouteKey(string? routeKey)
+        => routeKey?.Trim().ToLowerInvariant() ?? string.Empty;
+
+    private static bool HaveUniqueKnownRoutes(IReadOnlyCollection<StorageRouteSettingsDto>? routes)
+    {
+        if (routes is null)
+        {
+            return true;
+        }
+
+        var normalized = routes.Select(route => NormalizeRouteKey(route.RouteKey)).ToArray();
+        return normalized.All(StorageRouteKeys.All.Contains) &&
+               normalized.Distinct(StringComparer.Ordinal).Count() == normalized.Length;
+    }
+
+    private static bool RoutesFitInstanceCeiling(IReadOnlyCollection<StorageRouteSettingsDto>? routes, long instanceMaxUploadBytes)
+        => routes is null || routes.All(route => route.MaxUploadBytes <= instanceMaxUploadBytes);
 
     private static bool BeEmptyOrAbsoluteHttpUri(string? value)
     {

@@ -12,6 +12,15 @@ public static class StorageProviders
     public static readonly string[] All = [Local, S3Compatible, LegacyExternal];
 }
 
+public static class StorageRouteKeys
+{
+    public const string Images = "images";
+    public const string Documents = "documents";
+    public const string General = "general";
+
+    public static readonly string[] All = [Images, Documents, General];
+}
+
 public static class StorageObjectVisibilities
 {
     public const string PublicImage = "public_image";

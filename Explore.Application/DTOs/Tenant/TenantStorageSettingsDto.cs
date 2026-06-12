@@ -1,6 +1,7 @@
 // ABOUTME: Provider-neutral DTOs for tenant-level storage administration.
 // ABOUTME: Exposes effective policy, read-only lock state, usage, and redacted optional S3 overrides.
 
+using Explore.Application.DTOs.Storage;
 using Explore.Domain;
 
 namespace Explore.Application.DTOs.Tenant;
@@ -14,6 +15,7 @@ public class TenantStorageSettingsDto
     public bool IsReadOnly { get; set; }
     public bool TenantOverridesAllowed { get; set; }
     public bool TenantStorageLocked { get; set; } = true;
+    public List<StorageRouteSettingsDto> Routes { get; set; } = [];
 
     public string S3Endpoint { get; set; } = string.Empty;
     public string S3PublicEndpoint { get; set; } = string.Empty;
@@ -41,6 +43,7 @@ public class TenantStorageEffectivePolicyDto
     public string ProviderSource { get; set; } = "SystemDefault";
     public string MaxUploadSource { get; set; } = "SystemDefault";
     public string QuotaSource { get; set; } = "SystemDefault";
+    public List<StorageRouteSettingsDto> Routes { get; set; } = [];
 }
 
 public class TenantStorageUsageDto

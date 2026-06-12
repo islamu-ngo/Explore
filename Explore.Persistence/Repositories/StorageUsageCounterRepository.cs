@@ -30,6 +30,17 @@ public class StorageUsageCounterRepository : GenericRepository<StorageUsageCount
                 cancellationToken);
     }
 
+
+    public async Task<IReadOnlyList<StorageUsageCounter>> GetByTenantAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.StorageUsageCounters
+            .AsNoTracking()
+            .Where(counter => counter.TenantId == tenantId)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<StorageUsageCounter> GetOrCreateAsync(
         Guid tenantId,
         string provider,
