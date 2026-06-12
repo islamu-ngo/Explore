@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -16,6 +16,34 @@ namespace Explore.Persistence.Migrations
                 .Annotation("Npgsql:PostgresExtension:btree_gist", ",,");
 
             migrationBuilder.CreateTable(
+                name: "actor_subscription_notification_levels",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_actor_subscription_notification_levels", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "actor_subscription_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_actor_subscription_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "actor_types",
                 columns: table => new
                 {
@@ -27,6 +55,104 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_actor_types", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_conversation_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_conversation_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_message_roles",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_message_roles", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_proposed_action_kinds",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_proposed_action_kinds", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_proposed_action_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_proposed_action_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_provider_kinds",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_provider_kinds", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_reference_kinds",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_reference_kinds", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_run_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_run_statuses", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -1494,6 +1620,40 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "storage_usage_counters",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    used_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    reserved_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    quarantined_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    object_count = table.Column<long>(type: "bigint", nullable: false),
+                    last_recalculated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_storage_usage_counters", x => x.id);
+                    table.CheckConstraint("ck_storage_usage_counters_object_count_nonnegative", "object_count >= 0");
+                    table.CheckConstraint("ck_storage_usage_counters_provider", "provider IN ('local', 's3_compatible', 'legacy_external')");
+                    table.CheckConstraint("ck_storage_usage_counters_quarantined_bytes_nonnegative", "quarantined_bytes >= 0");
+                    table.CheckConstraint("ck_storage_usage_counters_reserved_bytes_nonnegative", "reserved_bytes >= 0");
+                    table.CheckConstraint("ck_storage_usage_counters_used_bytes_nonnegative", "used_bytes >= 0");
+                    table.ForeignKey(
+                        name: "fk_storage_usage_counters_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "tags",
                 columns: table => new
                 {
@@ -2223,6 +2383,62 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "actor_subscriptions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subscriber_tenant_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    subscriber_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    target_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    target_actor_type_id = table.Column<int>(type: "integer", nullable: false),
+                    status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    notification_level_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 2),
+                    subscribed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    unsubscribed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_actor_subscriptions", x => x.id);
+                    table.CheckConstraint("ck_actor_subscriptions_notification_level", "notification_level_id IN (1, 2, 3)");
+                    table.CheckConstraint("ck_actor_subscriptions_status", "status_id IN (1, 2, 3)");
+                    table.CheckConstraint("ck_actor_subscriptions_target_actor_type", "target_actor_type_id IN (2, 4)");
+                    table.CheckConstraint("ck_actor_subscriptions_unsubscribed_at", "(status_id = 2 AND unsubscribed_at IS NOT NULL) OR (status_id <> 2)");
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_actor_subscription_notification_levels_",
+                        column: x => x.notification_level_id,
+                        principalTable: "actor_subscription_notification_levels",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_actor_subscription_statuses_status_id",
+                        column: x => x.status_id,
+                        principalTable: "actor_subscription_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_actor_types_target_actor_type_id",
+                        column: x => x.target_actor_type_id,
+                        principalTable: "actor_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_actor_subscriptions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "actors",
                 columns: table => new
                 {
@@ -2270,6 +2486,56 @@ namespace Explore.Persistence.Migrations
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_actors_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "notification_fanout_runs",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    fanout_kind = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    notification_entity_type_id = table.Column<int>(type: "integer", nullable: false),
+                    entity_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "pending"),
+                    cursor_subscriber_tenant_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    processed_count = table.Column<int>(type: "integer", nullable: false),
+                    created_notification_count = table.Column<int>(type: "integer", nullable: false),
+                    started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    failed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    last_error = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_notification_fanout_runs", x => x.id);
+                    table.CheckConstraint("ck_notification_fanout_runs_created_count_nonnegative", "created_notification_count >= 0");
+                    table.CheckConstraint("ck_notification_fanout_runs_processed_count_nonnegative", "processed_count >= 0");
+                    table.CheckConstraint("ck_notification_fanout_runs_status", "status IN ('pending', 'processing', 'completed', 'failed')");
+                    table.ForeignKey(
+                        name: "fk_notification_fanout_runs_actors_tenant_id_source_actor_id",
+                        columns: x => new { x.tenant_id, x.source_actor_id },
+                        principalTable: "actors",
+                        principalColumns: new[] { "tenant_id", "id" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_fanout_runs_notification_entity_types_notifica",
+                        column: x => x.notification_entity_type_id,
+                        principalTable: "notification_entity_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notification_fanout_runs_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -2328,19 +2594,41 @@ namespace Explore.Persistence.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
                     file_type_id = table.Column<int>(type: "integer", nullable: false),
                     uri = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    object_key = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
+                    provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     full_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    safe_display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     extension = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    content_type = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    sha256_checksum = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     size = table.Column<long>(type: "bigint", nullable: false),
+                    visibility = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    purpose = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    lifecycle_state = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    owning_resource_kind = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    owning_resource_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    quarantined_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    quarantined_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    quarantine_reason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     actor_id = table.Column<Guid>(type: "uuid", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_storage_objects", x => x.id);
+                    table.CheckConstraint("ck_storage_objects_lifecycle_state", "lifecycle_state IN ('pending', 'active', 'quarantined', 'delete_requested', 'deleted')");
+                    table.CheckConstraint("ck_storage_objects_provider", "provider IN ('local', 's3_compatible', 'legacy_external')");
+                    table.CheckConstraint("ck_storage_objects_purpose", "purpose IN ('legacy_image', 'profile_image', 'event_image', 'attachment', 'document', 'system_asset')");
+                    table.CheckConstraint("ck_storage_objects_size_nonnegative", "size >= 0");
+                    table.CheckConstraint("ck_storage_objects_visibility", "visibility IN ('public_image', 'authenticated_tenant', 'private_owner')");
                     table.ForeignKey(
                         name: "fk_storage_objects_actors_actor_id",
                         column: x => x.actor_id,
@@ -2564,6 +2852,59 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ai_conversations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    actor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    provider = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    model_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    blocked_reason = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    last_message_sequence = table.Column<long>(type: "bigint", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_conversations", x => x.id);
+                    table.CheckConstraint("ck_ai_conversations_last_message_sequence_nonnegative", "last_message_sequence >= 0");
+                    table.ForeignKey(
+                        name: "fk_ai_conversations_actors_actor_id",
+                        column: x => x.actor_id,
+                        principalTable: "actors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_ai_conversations_ai_conversation_statuses_status_id",
+                        column: x => x.status_id,
+                        principalTable: "ai_conversation_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ai_conversations_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ai_conversations_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "notifications",
                 columns: table => new
                 {
@@ -2572,6 +2913,7 @@ namespace Explore.Persistence.Migrations
                     notification_type_id = table.Column<int>(type: "integer", nullable: false),
                     title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     body = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    deduplication_key = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     is_read = table.Column<bool>(type: "boolean", nullable: false),
                     read_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     notification_entity_type_id = table.Column<int>(type: "integer", nullable: true),
@@ -2724,6 +3066,74 @@ namespace Explore.Persistence.Migrations
                         principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "storage_upload_sessions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    route_key = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    policy_max_upload_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    policy_version = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    expected_size_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    reserved_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    content_type = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    original_file_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    safe_display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    extension = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    purpose = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    visibility = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    object_key = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
+                    sha256_checksum = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    storage_object_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    idempotency_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    failure_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    failure_message = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    upload_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    finalized_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    canceled_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    failed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_storage_upload_sessions", x => x.id);
+                    table.CheckConstraint("ck_storage_upload_sessions_expected_size_nonnegative", "expected_size_bytes >= 0");
+                    table.CheckConstraint("ck_storage_upload_sessions_policy_max_upload_bytes_nonnegative", "policy_max_upload_bytes >= 0");
+                    table.CheckConstraint("ck_storage_upload_sessions_provider", "provider IN ('local', 's3_compatible', 'legacy_external')");
+                    table.CheckConstraint("ck_storage_upload_sessions_purpose", "purpose IN ('legacy_image', 'profile_image', 'event_image', 'attachment', 'document', 'system_asset')");
+                    table.CheckConstraint("ck_storage_upload_sessions_reserved_bytes_nonnegative", "reserved_bytes >= 0");
+                    table.CheckConstraint("ck_storage_upload_sessions_route_key", "route_key IN ('images', 'documents', 'general')");
+                    table.CheckConstraint("ck_storage_upload_sessions_status", "status IN ('reserved', 'uploading', 'finalized', 'canceled', 'failed', 'expired')");
+                    table.CheckConstraint("ck_storage_upload_sessions_visibility", "visibility IN ('public_image', 'authenticated_tenant', 'private_owner')");
+                    table.ForeignKey(
+                        name: "fk_storage_upload_sessions_storage_objects_storage_object_id",
+                        column: x => x.storage_object_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_storage_upload_sessions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_storage_upload_sessions_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -3124,6 +3534,101 @@ namespace Explore.Persistence.Migrations
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_conversation_references",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    conversation_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    kind_id = table.Column<int>(type: "integer", nullable: false),
+                    reference_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    display_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    summary = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_conversation_references", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ai_conversation_references_ai_conversations_conversation_id",
+                        column: x => x.conversation_id,
+                        principalTable: "ai_conversations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_ai_conversation_references_ai_reference_kinds_kind_id",
+                        column: x => x.kind_id,
+                        principalTable: "ai_reference_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_messages",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    conversation_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    sequence = table.Column<long>(type: "bigint", nullable: false),
+                    role_id = table.Column<int>(type: "integer", nullable: false),
+                    content = table.Column<string>(type: "character varying(16000)", maxLength: 16000, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_messages", x => x.id);
+                    table.CheckConstraint("ck_ai_messages_sequence_positive", "sequence > 0");
+                    table.ForeignKey(
+                        name: "fk_ai_messages_ai_conversations_conversation_id",
+                        column: x => x.conversation_id,
+                        principalTable: "ai_conversations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_ai_messages_ai_message_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "ai_message_roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_runs",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    conversation_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    provider = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    model_id = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    queued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    failure_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    failure_message = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_runs", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ai_runs_ai_conversations_conversation_id",
+                        column: x => x.conversation_id,
+                        principalTable: "ai_conversations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_ai_runs_ai_run_statuses_status_id",
+                        column: x => x.status_id,
+                        principalTable: "ai_run_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -3585,6 +4090,57 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ai_proposed_actions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    conversation_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    message_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    kind_id = table.Column<int>(type: "integer", nullable: false),
+                    status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    payload_json = table.Column<string>(type: "jsonb", nullable: false),
+                    confirmed_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    confirmed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    rejected_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    rejected_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    result_resource_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    failure_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    failure_message = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_proposed_actions", x => x.id);
+                    table.CheckConstraint("ck_ai_proposed_actions_payload_object", "jsonb_typeof(payload_json) = 'object'");
+                    table.ForeignKey(
+                        name: "fk_ai_proposed_actions_ai_conversations_conversation_id",
+                        column: x => x.conversation_id,
+                        principalTable: "ai_conversations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_ai_proposed_actions_ai_messages_message_id",
+                        column: x => x.message_id,
+                        principalTable: "ai_messages",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_ai_proposed_actions_ai_proposed_action_kinds_kind_id",
+                        column: x => x.kind_id,
+                        principalTable: "ai_proposed_action_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_ai_proposed_actions_ai_proposed_action_statuses_status_id",
+                        column: x => x.status_id,
+                        principalTable: "ai_proposed_action_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "event_agenda_items",
                 columns: table => new
                 {
@@ -3833,6 +4389,31 @@ namespace Explore.Persistence.Migrations
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_tool_executions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    proposed_action_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tool_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    succeeded = table.Column<bool>(type: "boolean", nullable: false),
+                    failure_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    failure_message = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ai_tool_executions", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ai_tool_executions_ai_proposed_actions_proposed_action_id",
+                        column: x => x.proposed_action_id,
+                        principalTable: "ai_proposed_actions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -5212,6 +5793,55 @@ namespace Explore.Persistence.Migrations
                 column: "handle");
 
             migrationBuilder.CreateIndex(
+                name: "ux_actor_subscription_notification_levels_master_code",
+                table: "actor_subscription_notification_levels",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ux_actor_subscription_statuses_master_code",
+                table: "actor_subscription_statuses",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_actor_subscriptions_fanout_scan",
+                table: "actor_subscriptions",
+                columns: new[] { "tenant_id", "target_actor_id", "status_id", "notification_level_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_actor_subscriptions_notification_level_id",
+                table: "actor_subscriptions",
+                column: "notification_level_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_actor_subscriptions_status_id",
+                table: "actor_subscriptions",
+                column: "status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_actor_subscriptions_subscriber_user",
+                table: "actor_subscriptions",
+                columns: new[] { "tenant_id", "subscriber_user_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_actor_subscriptions_subscriber_user_id",
+                table: "actor_subscriptions",
+                column: "subscriber_user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_actor_subscriptions_target_actor_type_id",
+                table: "actor_subscriptions",
+                column: "target_actor_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ux_actor_subscriptions_active_row",
+                table: "actor_subscriptions",
+                columns: new[] { "tenant_id", "subscriber_tenant_user_id", "target_actor_id" },
+                unique: true,
+                filter: "is_deleted = false");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_actors_actor_type_id",
                 table: "actors",
                 column: "actor_type_id");
@@ -5256,6 +5886,178 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "user_id", "tenant_id" },
                 unique: true,
                 filter: "user_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_conversation_references_conversation_id",
+                table: "ai_conversation_references",
+                column: "conversation_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_conversation_references_kind_id",
+                table: "ai_conversation_references",
+                column: "kind_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ux_ai_conversation_references_identity",
+                table: "ai_conversation_references",
+                columns: new[] { "tenant_id", "conversation_id", "kind_id", "reference_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ux_ai_conversation_statuses_master_code",
+                table: "ai_conversation_statuses",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_conversations_actor_id",
+                table: "ai_conversations",
+                column: "actor_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_conversations_status_id",
+                table: "ai_conversations",
+                column: "status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_conversations_tenant_actor_updated_at",
+                table: "ai_conversations",
+                columns: new[] { "tenant_id", "actor_id", "updated_at" },
+                descending: new[] { false, false, true },
+                filter: "actor_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_conversations_tenant_user_status_updated_at",
+                table: "ai_conversations",
+                columns: new[] { "tenant_id", "user_id", "status_id", "updated_at" },
+                descending: new[] { false, false, false, true });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_conversations_user_id",
+                table: "ai_conversations",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ux_ai_message_roles_master_code",
+                table: "ai_message_roles",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_messages_conversation_id",
+                table: "ai_messages",
+                column: "conversation_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_messages_role_id",
+                table: "ai_messages",
+                column: "role_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_messages_tenant_conversation_created_at",
+                table: "ai_messages",
+                columns: new[] { "tenant_id", "conversation_id", "created_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_ai_messages_tenant_conversation_sequence",
+                table: "ai_messages",
+                columns: new[] { "tenant_id", "conversation_id", "sequence" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ux_ai_proposed_action_kinds_master_code",
+                table: "ai_proposed_action_kinds",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ux_ai_proposed_action_statuses_master_code",
+                table: "ai_proposed_action_statuses",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_proposed_actions_conversation_id",
+                table: "ai_proposed_actions",
+                column: "conversation_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_proposed_actions_kind_id",
+                table: "ai_proposed_actions",
+                column: "kind_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_proposed_actions_message_id",
+                table: "ai_proposed_actions",
+                column: "message_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_proposed_actions_status_id",
+                table: "ai_proposed_actions",
+                column: "status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_proposed_actions_tenant_conversation_status_created_at",
+                table: "ai_proposed_actions",
+                columns: new[] { "tenant_id", "conversation_id", "status_id", "created_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_proposed_actions_tenant_status_kind_created_at",
+                table: "ai_proposed_actions",
+                columns: new[] { "tenant_id", "status_id", "kind_id", "created_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_ai_provider_kinds_master_code",
+                table: "ai_provider_kinds",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ux_ai_reference_kinds_master_code",
+                table: "ai_reference_kinds",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ux_ai_run_statuses_master_code",
+                table: "ai_run_statuses",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_runs_conversation_id",
+                table: "ai_runs",
+                column: "conversation_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_runs_status_id",
+                table: "ai_runs",
+                column: "status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_runs_tenant_conversation_queued_at",
+                table: "ai_runs",
+                columns: new[] { "tenant_id", "conversation_id", "queued_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_runs_tenant_status_queued_at",
+                table: "ai_runs",
+                columns: new[] { "tenant_id", "status_id", "queued_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_tool_executions_proposed_action_id",
+                table: "ai_tool_executions",
+                column: "proposed_action_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_tool_executions_tenant_action_started_at",
+                table: "ai_tool_executions",
+                columns: new[] { "tenant_id", "proposed_action_id", "started_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ai_tool_executions_tenant_tool_started_at",
+                table: "ai_tool_executions",
+                columns: new[] { "tenant_id", "tool_name", "started_at" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_app_settings_category",
@@ -6475,6 +7277,27 @@ namespace Explore.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_notification_fanout_runs_notification_entity_type_id",
+                table: "notification_fanout_runs",
+                column: "notification_entity_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_notification_fanout_runs_tenant_id_source_actor_id",
+                table: "notification_fanout_runs",
+                columns: new[] { "tenant_id", "source_actor_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_notification_fanout_runs_worker_poll",
+                table: "notification_fanout_runs",
+                columns: new[] { "status", "created_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_notification_fanout_runs_source",
+                table: "notification_fanout_runs",
+                columns: new[] { "tenant_id", "fanout_kind", "notification_entity_type_id", "entity_id", "source_actor_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_notification_scope_types_master_code",
                 table: "notification_scope_types",
                 column: "master_code",
@@ -6538,6 +7361,12 @@ namespace Explore.Persistence.Migrations
                 name: "ix_notifications_user_scope",
                 table: "notifications",
                 columns: new[] { "user_id", "notification_scope_id", "is_read" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_notifications_tenant_user_deduplication_key",
+                table: "notifications",
+                columns: new[] { "tenant_id", "user_id", "deduplication_key" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_organization_members_organization_position_id",
@@ -6803,9 +7632,61 @@ namespace Explore.Persistence.Migrations
                 column: "file_type_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_storage_objects_tenant_id",
+                name: "ix_storage_objects_tenant_owner",
                 table: "storage_objects",
-                column: "tenant_id");
+                columns: new[] { "tenant_id", "owning_resource_kind", "owning_resource_id" },
+                filter: "owning_resource_kind IS NOT NULL AND owning_resource_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_storage_objects_tenant_provider_lifecycle_state",
+                table: "storage_objects",
+                columns: new[] { "tenant_id", "provider", "lifecycle_state" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_storage_objects_tenant_visibility_purpose",
+                table: "storage_objects",
+                columns: new[] { "tenant_id", "visibility", "purpose" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_storage_objects_provider_object_key",
+                table: "storage_objects",
+                columns: new[] { "provider", "object_key" },
+                unique: true,
+                filter: "object_key IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_storage_upload_sessions_provider_object_key",
+                table: "storage_upload_sessions",
+                columns: new[] { "provider", "object_key" },
+                filter: "object_key IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_storage_upload_sessions_storage_object_id",
+                table: "storage_upload_sessions",
+                column: "storage_object_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_storage_upload_sessions_tenant_status_expires_at",
+                table: "storage_upload_sessions",
+                columns: new[] { "tenant_id", "status", "expires_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_storage_upload_sessions_user_id",
+                table: "storage_upload_sessions",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ux_storage_upload_sessions_tenant_idempotency_key",
+                table: "storage_upload_sessions",
+                columns: new[] { "tenant_id", "idempotency_key" },
+                unique: true,
+                filter: "idempotency_key IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ux_storage_usage_counters_tenant_provider",
+                table: "storage_usage_counters",
+                columns: new[] { "tenant_id", "provider" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_sync_states_service",
@@ -7154,6 +8035,30 @@ namespace Explore.Persistence.Migrations
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
+                name: "fk_actor_subscriptions_actors_tenant_id_target_actor_id",
+                table: "actor_subscriptions",
+                columns: new[] { "tenant_id", "target_actor_id" },
+                principalTable: "actors",
+                principalColumns: new[] { "tenant_id", "id" },
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_actor_subscriptions_tenant_users_tenant_id_subscriber_tenan",
+                table: "actor_subscriptions",
+                columns: new[] { "tenant_id", "subscriber_tenant_user_id" },
+                principalTable: "tenant_users",
+                principalColumns: new[] { "tenant_id", "id" },
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_actor_subscriptions_users_subscriber_user_id",
+                table: "actor_subscriptions",
+                column: "subscriber_user_id",
+                principalTable: "users",
+                principalColumn: "id",
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
                 name: "fk_actors_groups_group_id",
                 table: "actors",
                 column: "group_id",
@@ -7416,6 +8321,21 @@ namespace Explore.Persistence.Migrations
                 name: "actor_pii");
 
             migrationBuilder.DropTable(
+                name: "actor_subscriptions");
+
+            migrationBuilder.DropTable(
+                name: "ai_conversation_references");
+
+            migrationBuilder.DropTable(
+                name: "ai_provider_kinds");
+
+            migrationBuilder.DropTable(
+                name: "ai_runs");
+
+            migrationBuilder.DropTable(
+                name: "ai_tool_executions");
+
+            migrationBuilder.DropTable(
                 name: "analytics_providers");
 
             migrationBuilder.DropTable(
@@ -7527,6 +8447,9 @@ namespace Explore.Persistence.Migrations
                 name: "location_pii");
 
             migrationBuilder.DropTable(
+                name: "notification_fanout_runs");
+
+            migrationBuilder.DropTable(
                 name: "notifications");
 
             migrationBuilder.DropTable(
@@ -7564,6 +8487,12 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "secret_bindings");
+
+            migrationBuilder.DropTable(
+                name: "storage_upload_sessions");
+
+            migrationBuilder.DropTable(
+                name: "storage_usage_counters");
 
             migrationBuilder.DropTable(
                 name: "sync_states");
@@ -7630,6 +8559,21 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "user_preferences");
+
+            migrationBuilder.DropTable(
+                name: "actor_subscription_notification_levels");
+
+            migrationBuilder.DropTable(
+                name: "actor_subscription_statuses");
+
+            migrationBuilder.DropTable(
+                name: "ai_reference_kinds");
+
+            migrationBuilder.DropTable(
+                name: "ai_run_statuses");
+
+            migrationBuilder.DropTable(
+                name: "ai_proposed_actions");
 
             migrationBuilder.DropTable(
                 name: "category_types");
@@ -7719,6 +8663,15 @@ namespace Explore.Persistence.Migrations
                 name: "user_appearance_profiles");
 
             migrationBuilder.DropTable(
+                name: "ai_messages");
+
+            migrationBuilder.DropTable(
+                name: "ai_proposed_action_kinds");
+
+            migrationBuilder.DropTable(
+                name: "ai_proposed_action_statuses");
+
+            migrationBuilder.DropTable(
                 name: "event_registration_intents");
 
             migrationBuilder.DropTable(
@@ -7734,7 +8687,16 @@ namespace Explore.Persistence.Migrations
                 name: "role_scopes");
 
             migrationBuilder.DropTable(
+                name: "ai_conversations");
+
+            migrationBuilder.DropTable(
+                name: "ai_message_roles");
+
+            migrationBuilder.DropTable(
                 name: "registration_scopes");
+
+            migrationBuilder.DropTable(
+                name: "ai_conversation_statuses");
 
             migrationBuilder.DropTable(
                 name: "actors");

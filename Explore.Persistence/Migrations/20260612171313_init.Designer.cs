@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260529052056_AddLocalFirstStorageFoundation")]
-    partial class AddLocalFirstStorageFoundation
+    [Migration("20260612171313_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -265,6 +265,195 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("actor_pii", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.ActorSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("NotificationLevelId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(2)
+                        .HasColumnName("notification_level_id");
+
+                    b.Property<int>("StatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status_id");
+
+                    b.Property<DateTime>("SubscribedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("subscribed_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("SubscriberTenantUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscriber_tenant_user_id");
+
+                    b.Property<Guid>("SubscriberUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscriber_user_id");
+
+                    b.Property<Guid>("TargetActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_actor_id");
+
+                    b.Property<int>("TargetActorTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("target_actor_type_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UnsubscribedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("unsubscribed_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_actor_subscriptions");
+
+                    b.HasIndex("NotificationLevelId")
+                        .HasDatabaseName("ix_actor_subscriptions_notification_level_id");
+
+                    b.HasIndex("StatusId")
+                        .HasDatabaseName("ix_actor_subscriptions_status_id");
+
+                    b.HasIndex("SubscriberUserId")
+                        .HasDatabaseName("ix_actor_subscriptions_subscriber_user_id");
+
+                    b.HasIndex("TargetActorTypeId")
+                        .HasDatabaseName("ix_actor_subscriptions_target_actor_type_id");
+
+                    b.HasIndex("TenantId", "SubscriberUserId")
+                        .HasDatabaseName("ix_actor_subscriptions_subscriber_user");
+
+                    b.HasIndex("TenantId", "SubscriberTenantUserId", "TargetActorId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_actor_subscriptions_active_row")
+                        .HasFilter("is_deleted = false");
+
+                    b.HasIndex("TenantId", "TargetActorId", "StatusId", "NotificationLevelId")
+                        .HasDatabaseName("ix_actor_subscriptions_fanout_scan");
+
+                    b.ToTable("actor_subscriptions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_actor_subscriptions_notification_level", "notification_level_id IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("ck_actor_subscriptions_status", "status_id IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("ck_actor_subscriptions_target_actor_type", "target_actor_type_id IN (2, 4)");
+
+                            t.HasCheckConstraint("ck_actor_subscriptions_unsubscribed_at", "(status_id = 2 AND unsubscribed_at IS NOT NULL) OR (status_id <> 2)");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.ActorSubscriptionNotificationLevel", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_actor_subscription_notification_levels");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_actor_subscription_notification_levels_master_code");
+
+                    b.ToTable("actor_subscription_notification_levels", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ActorSubscriptionStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_actor_subscription_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_actor_subscription_statuses_master_code");
+
+                    b.ToTable("actor_subscription_statuses", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.ActorType", b =>
                 {
                     b.Property<int>("Id")
@@ -292,6 +481,699 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_actor_types");
 
                     b.ToTable("actor_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiConversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("BlockedReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("blocked_reason");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<long>("LastMessageSequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_message_sequence");
+
+                    b.Property<string>("ModelId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("model_id");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider");
+
+                    b.Property<int>("StatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_conversations");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_ai_conversations_actor_id");
+
+                    b.HasIndex("StatusId")
+                        .HasDatabaseName("ix_ai_conversations_status_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_ai_conversations_user_id");
+
+                    b.HasIndex("TenantId", "ActorId", "UpdatedAt")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("ix_ai_conversations_tenant_actor_updated_at")
+                        .HasFilter("actor_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "UserId", "StatusId", "UpdatedAt")
+                        .IsDescending(false, false, false, true)
+                        .HasDatabaseName("ix_ai_conversations_tenant_user_status_updated_at");
+
+                    b.ToTable("ai_conversations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ai_conversations_last_message_sequence_nonnegative", "last_message_sequence >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiConversationReference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("display_name");
+
+                    b.Property<int>("KindId")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind_id");
+
+                    b.Property<Guid>("ReferenceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reference_id");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_conversation_references");
+
+                    b.HasIndex("ConversationId")
+                        .HasDatabaseName("ix_ai_conversation_references_conversation_id");
+
+                    b.HasIndex("KindId")
+                        .HasDatabaseName("ix_ai_conversation_references_kind_id");
+
+                    b.HasIndex("TenantId", "ConversationId", "KindId", "ReferenceId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_conversation_references_identity");
+
+                    b.ToTable("ai_conversation_references", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiConversationStatusLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_conversation_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_conversation_statuses_master_code");
+
+                    b.ToTable("ai_conversation_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(16000)
+                        .HasColumnType("character varying(16000)")
+                        .HasColumnName("content");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_messages");
+
+                    b.HasIndex("ConversationId")
+                        .HasDatabaseName("ix_ai_messages_conversation_id");
+
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_ai_messages_role_id");
+
+                    b.HasIndex("TenantId", "ConversationId", "CreatedAt")
+                        .HasDatabaseName("ix_ai_messages_tenant_conversation_created_at");
+
+                    b.HasIndex("TenantId", "ConversationId", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_messages_tenant_conversation_sequence");
+
+                    b.ToTable("ai_messages", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ai_messages_sequence_positive", "sequence > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiMessageRoleLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_message_roles");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_message_roles_master_code");
+
+                    b.ToTable("ai_message_roles", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiProposedAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<Guid?>("ConfirmedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("confirmed_by");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("failure_message");
+
+                    b.Property<int>("KindId")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind_id");
+
+                    b.Property<Guid?>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<DateTime?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rejected_at");
+
+                    b.Property<Guid?>("RejectedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rejected_by");
+
+                    b.Property<Guid?>("ResultResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("result_resource_id");
+
+                    b.Property<int>("StatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_proposed_actions");
+
+                    b.HasIndex("ConversationId")
+                        .HasDatabaseName("ix_ai_proposed_actions_conversation_id");
+
+                    b.HasIndex("KindId")
+                        .HasDatabaseName("ix_ai_proposed_actions_kind_id");
+
+                    b.HasIndex("MessageId")
+                        .HasDatabaseName("ix_ai_proposed_actions_message_id");
+
+                    b.HasIndex("StatusId")
+                        .HasDatabaseName("ix_ai_proposed_actions_status_id");
+
+                    b.HasIndex("TenantId", "ConversationId", "StatusId", "CreatedAt")
+                        .HasDatabaseName("ix_ai_proposed_actions_tenant_conversation_status_created_at");
+
+                    b.HasIndex("TenantId", "StatusId", "KindId", "CreatedAt")
+                        .HasDatabaseName("ix_ai_proposed_actions_tenant_status_kind_created_at");
+
+                    b.ToTable("ai_proposed_actions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ai_proposed_actions_payload_object", "jsonb_typeof(payload_json) = 'object'");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiProposedActionKindLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_proposed_action_kinds");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_proposed_action_kinds_master_code");
+
+                    b.ToTable("ai_proposed_action_kinds", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiProposedActionStatusLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_proposed_action_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_proposed_action_statuses_master_code");
+
+                    b.ToTable("ai_proposed_action_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiProviderKindLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_provider_kinds");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_provider_kinds_master_code");
+
+                    b.ToTable("ai_provider_kinds", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiReferenceKindLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_reference_kinds");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_reference_kinds_master_code");
+
+                    b.ToTable("ai_reference_kinds", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("failure_message");
+
+                    b.Property<string>("ModelId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("model_id");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider");
+
+                    b.Property<DateTime>("QueuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("queued_at");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<int>("StatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_runs");
+
+                    b.HasIndex("ConversationId")
+                        .HasDatabaseName("ix_ai_runs_conversation_id");
+
+                    b.HasIndex("StatusId")
+                        .HasDatabaseName("ix_ai_runs_status_id");
+
+                    b.HasIndex("TenantId", "ConversationId", "QueuedAt")
+                        .HasDatabaseName("ix_ai_runs_tenant_conversation_queued_at");
+
+                    b.HasIndex("TenantId", "StatusId", "QueuedAt")
+                        .HasDatabaseName("ix_ai_runs_tenant_status_queued_at");
+
+                    b.ToTable("ai_runs", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiRunStatusLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_run_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_run_statuses_master_code");
+
+                    b.ToTable("ai_run_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiToolExecution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("failure_message");
+
+                    b.Property<Guid>("ProposedActionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("proposed_action_id");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("boolean")
+                        .HasColumnName("succeeded");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("ToolName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("tool_name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_tool_executions");
+
+                    b.HasIndex("ProposedActionId")
+                        .HasDatabaseName("ix_ai_tool_executions_proposed_action_id");
+
+                    b.HasIndex("TenantId", "ProposedActionId", "StartedAt")
+                        .HasDatabaseName("ix_ai_tool_executions_tenant_action_started_at");
+
+                    b.HasIndex("TenantId", "ToolName", "StartedAt")
+                        .HasDatabaseName("ix_ai_tool_executions_tenant_tool_started_at");
+
+                    b.ToTable("ai_tool_executions", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.AnalyticsProvider", b =>
@@ -7264,6 +8146,12 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("DeduplicationKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("deduplication_key");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
@@ -7372,6 +8260,10 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_notifications_unread_by_user")
                         .HasFilter("is_read = false AND is_deleted = false");
 
+                    b.HasIndex("TenantId", "UserId", "DeduplicationKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_notifications_tenant_user_deduplication_key");
+
                     b.HasIndex("UserId", "IsArchived", "CreatedAt")
                         .IsDescending(false, false, true)
                         .HasDatabaseName("ix_notifications_user_archived");
@@ -7416,6 +8308,122 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_notification_entity_types");
 
                     b.ToTable("notification_entity_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.NotificationFanoutRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CreatedNotificationCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("created_notification_count");
+
+                    b.Property<Guid?>("CursorSubscriberTenantUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cursor_subscriber_tenant_user_id");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<string>("FanoutKind")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("fanout_kind");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<int>("NotificationEntityTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("notification_entity_type_id");
+
+                    b.Property<int>("ProcessedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("processed_count");
+
+                    b.Property<Guid>("SourceActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_actor_id");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("pending")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_fanout_runs");
+
+                    b.HasIndex("NotificationEntityTypeId")
+                        .HasDatabaseName("ix_notification_fanout_runs_notification_entity_type_id");
+
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_notification_fanout_runs_worker_poll");
+
+                    b.HasIndex("TenantId", "SourceActorId")
+                        .HasDatabaseName("ix_notification_fanout_runs_tenant_id_source_actor_id");
+
+                    b.HasIndex("TenantId", "FanoutKind", "NotificationEntityTypeId", "EntityId", "SourceActorId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_notification_fanout_runs_source");
+
+                    b.ToTable("notification_fanout_runs", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_notification_fanout_runs_created_count_nonnegative", "created_notification_count >= 0");
+
+                            t.HasCheckConstraint("ck_notification_fanout_runs_processed_count_nonnegative", "processed_count >= 0");
+
+                            t.HasCheckConstraint("ck_notification_fanout_runs_status", "status IN ('pending', 'processing', 'completed', 'failed')");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.NotificationReason", b =>
@@ -9133,6 +10141,15 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("original_file_name");
 
+                    b.Property<long>("PolicyMaxUploadBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("policy_max_upload_bytes");
+
+                    b.Property<string>("PolicyVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("policy_version");
+
                     b.Property<string>("Provider")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -9148,6 +10165,12 @@ namespace Explore.Persistence.Migrations
                     b.Property<long>("ReservedBytes")
                         .HasColumnType("bigint")
                         .HasColumnName("reserved_bytes");
+
+                    b.Property<string>("RouteKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("route_key");
 
                     b.Property<string>("SafeDisplayName")
                         .IsRequired()
@@ -9221,11 +10244,15 @@ namespace Explore.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_storage_upload_sessions_expected_size_nonnegative", "expected_size_bytes >= 0");
 
+                            t.HasCheckConstraint("ck_storage_upload_sessions_policy_max_upload_bytes_nonnegative", "policy_max_upload_bytes >= 0");
+
                             t.HasCheckConstraint("ck_storage_upload_sessions_provider", "provider IN ('local', 's3_compatible', 'legacy_external')");
 
                             t.HasCheckConstraint("ck_storage_upload_sessions_purpose", "purpose IN ('legacy_image', 'profile_image', 'event_image', 'attachment', 'document', 'system_asset')");
 
                             t.HasCheckConstraint("ck_storage_upload_sessions_reserved_bytes_nonnegative", "reserved_bytes >= 0");
+
+                            t.HasCheckConstraint("ck_storage_upload_sessions_route_key", "route_key IN ('images', 'documents', 'general')");
 
                             t.HasCheckConstraint("ck_storage_upload_sessions_status", "status IN ('reserved', 'uploading', 'finalized', 'canceled', 'failed', 'expired')");
 
@@ -11352,6 +12379,225 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Actor");
                 });
 
+            modelBuilder.Entity("Explore.Domain.ActorSubscription", b =>
+                {
+                    b.HasOne("Explore.Domain.ActorSubscriptionNotificationLevel", "NotificationLevel")
+                        .WithMany()
+                        .HasForeignKey("NotificationLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_actor_subscriptions_actor_subscription_notification_levels_");
+
+                    b.HasOne("Explore.Domain.ActorSubscriptionStatus", "Status")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_actor_subscriptions_actor_subscription_statuses_status_id");
+
+                    b.HasOne("Explore.Domain.User", "SubscriberUser")
+                        .WithMany()
+                        .HasForeignKey("SubscriberUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_actor_subscriptions_users_subscriber_user_id");
+
+                    b.HasOne("Explore.Domain.ActorType", "TargetActorType")
+                        .WithMany()
+                        .HasForeignKey("TargetActorTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_actor_subscriptions_actor_types_target_actor_type_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_actor_subscriptions_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.TenantUser", "SubscriberTenantUser")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SubscriberTenantUserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_actor_subscriptions_tenant_users_tenant_id_subscriber_tenan");
+
+                    b.HasOne("Explore.Domain.Actor", "TargetActor")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TargetActorId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_actor_subscriptions_actors_tenant_id_target_actor_id");
+
+                    b.Navigation("NotificationLevel");
+
+                    b.Navigation("Status");
+
+                    b.Navigation("SubscriberTenantUser");
+
+                    b.Navigation("SubscriberUser");
+
+                    b.Navigation("TargetActor");
+
+                    b.Navigation("TargetActorType");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiConversation", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_ai_conversations_actors_actor_id");
+
+                    b.HasOne("Explore.Domain.Ai.AiConversationStatusLookup", "StatusLookup")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_conversations_ai_conversation_statuses_status_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_conversations_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_conversations_users_user_id");
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("StatusLookup");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiConversationReference", b =>
+                {
+                    b.HasOne("Explore.Domain.Ai.AiConversation", "Conversation")
+                        .WithMany("References")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_conversation_references_ai_conversations_conversation_id");
+
+                    b.HasOne("Explore.Domain.Ai.AiReferenceKindLookup", "KindLookup")
+                        .WithMany()
+                        .HasForeignKey("KindId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_conversation_references_ai_reference_kinds_kind_id");
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("KindLookup");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiMessage", b =>
+                {
+                    b.HasOne("Explore.Domain.Ai.AiConversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_messages_ai_conversations_conversation_id");
+
+                    b.HasOne("Explore.Domain.Ai.AiMessageRoleLookup", "RoleLookup")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_messages_ai_message_roles_role_id");
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("RoleLookup");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiProposedAction", b =>
+                {
+                    b.HasOne("Explore.Domain.Ai.AiConversation", "Conversation")
+                        .WithMany("ProposedActions")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_proposed_actions_ai_conversations_conversation_id");
+
+                    b.HasOne("Explore.Domain.Ai.AiProposedActionKindLookup", "KindLookup")
+                        .WithMany()
+                        .HasForeignKey("KindId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_proposed_actions_ai_proposed_action_kinds_kind_id");
+
+                    b.HasOne("Explore.Domain.Ai.AiMessage", "Message")
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_ai_proposed_actions_ai_messages_message_id");
+
+                    b.HasOne("Explore.Domain.Ai.AiProposedActionStatusLookup", "StatusLookup")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_proposed_actions_ai_proposed_action_statuses_status_id");
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("KindLookup");
+
+                    b.Navigation("Message");
+
+                    b.Navigation("StatusLookup");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiRun", b =>
+                {
+                    b.HasOne("Explore.Domain.Ai.AiConversation", "Conversation")
+                        .WithMany("Runs")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_runs_ai_conversations_conversation_id");
+
+                    b.HasOne("Explore.Domain.Ai.AiRunStatusLookup", "StatusLookup")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_runs_ai_run_statuses_status_id");
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("StatusLookup");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiToolExecution", b =>
+                {
+                    b.HasOne("Explore.Domain.Ai.AiProposedAction", "ProposedAction")
+                        .WithMany()
+                        .HasForeignKey("ProposedActionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_tool_executions_ai_proposed_actions_proposed_action_id");
+
+                    b.Navigation("ProposedAction");
+                });
+
             modelBuilder.Entity("Explore.Domain.AuditLog", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
@@ -13316,6 +14562,37 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.NotificationFanoutRun", b =>
+                {
+                    b.HasOne("Explore.Domain.NotificationEntityType", "NotificationEntityType")
+                        .WithMany()
+                        .HasForeignKey("NotificationEntityTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_fanout_runs_notification_entity_types_notifica");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_fanout_runs_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.Actor", "SourceActor")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SourceActorId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_fanout_runs_actors_tenant_id_source_actor_id");
+
+                    b.Navigation("NotificationEntityType");
+
+                    b.Navigation("SourceActor");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.Organization", b =>
@@ -17088,6 +18365,17 @@ namespace Explore.Persistence.Migrations
                 {
                     b.Navigation("Pii")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiConversation", b =>
+                {
+                    b.Navigation("Messages");
+
+                    b.Navigation("ProposedActions");
+
+                    b.Navigation("References");
+
+                    b.Navigation("Runs");
                 });
 
             modelBuilder.Entity("Explore.Domain.CustomPropertyDefinition", b =>

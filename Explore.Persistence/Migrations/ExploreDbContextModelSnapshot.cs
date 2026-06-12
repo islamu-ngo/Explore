@@ -536,9 +536,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("provider");
 
-                    b.Property<int>("Status")
+                    b.Property<int>("StatusId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasColumnName("status");
+                        .HasDefaultValue(1)
+                        .HasColumnName("status_id");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -567,6 +569,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ActorId")
                         .HasDatabaseName("ix_ai_conversations_actor_id");
 
+                    b.HasIndex("StatusId")
+                        .HasDatabaseName("ix_ai_conversations_status_id");
+
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_ai_conversations_user_id");
 
@@ -575,15 +580,13 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_ai_conversations_tenant_actor_updated_at")
                         .HasFilter("actor_id IS NOT NULL");
 
-                    b.HasIndex("TenantId", "UserId", "Status", "UpdatedAt")
+                    b.HasIndex("TenantId", "UserId", "StatusId", "UpdatedAt")
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_ai_conversations_tenant_user_status_updated_at");
 
                     b.ToTable("ai_conversations", null, t =>
                         {
                             t.HasCheckConstraint("ck_ai_conversations_last_message_sequence_nonnegative", "last_message_sequence >= 0");
-
-                            t.HasCheckConstraint("ck_ai_conversations_status", "status IN (1, 2, 3, 4)");
                         });
                 });
 
@@ -613,9 +616,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("display_name");
 
-                    b.Property<int>("Kind")
+                    b.Property<int>("KindId")
                         .HasColumnType("integer")
-                        .HasColumnName("kind");
+                        .HasColumnName("kind_id");
 
                     b.Property<Guid>("ReferenceId")
                         .HasColumnType("uuid")
@@ -636,14 +639,47 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ConversationId")
                         .HasDatabaseName("ix_ai_conversation_references_conversation_id");
 
-                    b.HasIndex("TenantId", "ConversationId", "Kind", "ReferenceId")
+                    b.HasIndex("KindId")
+                        .HasDatabaseName("ix_ai_conversation_references_kind_id");
+
+                    b.HasIndex("TenantId", "ConversationId", "KindId", "ReferenceId")
                         .IsUnique()
                         .HasDatabaseName("ux_ai_conversation_references_identity");
 
-                    b.ToTable("ai_conversation_references", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_ai_conversation_references_kind", "kind IN (1, 2, 3, 4)");
-                        });
+                    b.ToTable("ai_conversation_references", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiConversationStatusLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_conversation_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_conversation_statuses_master_code");
+
+                    b.ToTable("ai_conversation_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiMessage", b =>
@@ -672,9 +708,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
-                    b.Property<int>("Role")
+                    b.Property<int>("RoleId")
                         .HasColumnType("integer")
-                        .HasColumnName("role");
+                        .HasColumnName("role_id");
 
                     b.Property<long>("Sequence")
                         .HasColumnType("bigint")
@@ -690,6 +726,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ConversationId")
                         .HasDatabaseName("ix_ai_messages_conversation_id");
 
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_ai_messages_role_id");
+
                     b.HasIndex("TenantId", "ConversationId", "CreatedAt")
                         .HasDatabaseName("ix_ai_messages_tenant_conversation_created_at");
 
@@ -699,10 +738,41 @@ namespace Explore.Persistence.Migrations
 
                     b.ToTable("ai_messages", null, t =>
                         {
-                            t.HasCheckConstraint("ck_ai_messages_role", "role IN (1, 2, 3, 4)");
-
                             t.HasCheckConstraint("ck_ai_messages_sequence_positive", "sequence > 0");
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiMessageRoleLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_message_roles");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_message_roles_master_code");
+
+                    b.ToTable("ai_message_roles", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProposedAction", b =>
@@ -743,9 +813,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("failure_message");
 
-                    b.Property<int>("Kind")
+                    b.Property<int>("KindId")
                         .HasColumnType("integer")
-                        .HasColumnName("kind");
+                        .HasColumnName("kind_id");
 
                     b.Property<Guid?>("MessageId")
                         .HasColumnType("uuid")
@@ -768,9 +838,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("result_resource_id");
 
-                    b.Property<int>("Status")
+                    b.Property<int>("StatusId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasColumnName("status");
+                        .HasDefaultValue(1)
+                        .HasColumnName("status_id");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -782,23 +854,157 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ConversationId")
                         .HasDatabaseName("ix_ai_proposed_actions_conversation_id");
 
+                    b.HasIndex("KindId")
+                        .HasDatabaseName("ix_ai_proposed_actions_kind_id");
+
                     b.HasIndex("MessageId")
                         .HasDatabaseName("ix_ai_proposed_actions_message_id");
 
-                    b.HasIndex("TenantId", "ConversationId", "Status", "CreatedAt")
+                    b.HasIndex("StatusId")
+                        .HasDatabaseName("ix_ai_proposed_actions_status_id");
+
+                    b.HasIndex("TenantId", "ConversationId", "StatusId", "CreatedAt")
                         .HasDatabaseName("ix_ai_proposed_actions_tenant_conversation_status_created_at");
 
-                    b.HasIndex("TenantId", "Status", "Kind", "CreatedAt")
+                    b.HasIndex("TenantId", "StatusId", "KindId", "CreatedAt")
                         .HasDatabaseName("ix_ai_proposed_actions_tenant_status_kind_created_at");
 
                     b.ToTable("ai_proposed_actions", null, t =>
                         {
-                            t.HasCheckConstraint("ck_ai_proposed_actions_kind", "kind IN (1)");
-
                             t.HasCheckConstraint("ck_ai_proposed_actions_payload_object", "jsonb_typeof(payload_json) = 'object'");
-
-                            t.HasCheckConstraint("ck_ai_proposed_actions_status", "status IN (1, 2, 3, 4, 5)");
                         });
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiProposedActionKindLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_proposed_action_kinds");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_proposed_action_kinds_master_code");
+
+                    b.ToTable("ai_proposed_action_kinds", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiProposedActionStatusLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_proposed_action_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_proposed_action_statuses_master_code");
+
+                    b.ToTable("ai_proposed_action_statuses", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiProviderKindLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_provider_kinds");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_provider_kinds_master_code");
+
+                    b.ToTable("ai_provider_kinds", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiReferenceKindLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_reference_kinds");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_reference_kinds_master_code");
+
+                    b.ToTable("ai_reference_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiRun", b =>
@@ -847,9 +1053,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_at");
 
-                    b.Property<int>("Status")
+                    b.Property<int>("StatusId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasColumnName("status");
+                        .HasDefaultValue(1)
+                        .HasColumnName("status_id");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -861,16 +1069,49 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("ConversationId")
                         .HasDatabaseName("ix_ai_runs_conversation_id");
 
+                    b.HasIndex("StatusId")
+                        .HasDatabaseName("ix_ai_runs_status_id");
+
                     b.HasIndex("TenantId", "ConversationId", "QueuedAt")
                         .HasDatabaseName("ix_ai_runs_tenant_conversation_queued_at");
 
-                    b.HasIndex("TenantId", "Status", "QueuedAt")
+                    b.HasIndex("TenantId", "StatusId", "QueuedAt")
                         .HasDatabaseName("ix_ai_runs_tenant_status_queued_at");
 
-                    b.ToTable("ai_runs", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_ai_runs_status", "status IN (1, 2, 3, 4, 5)");
-                        });
+                    b.ToTable("ai_runs", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Ai.AiRunStatusLookup", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_run_statuses");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ai_run_statuses_master_code");
+
+                    b.ToTable("ai_run_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiToolExecution", b =>
@@ -9897,6 +10138,15 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("original_file_name");
 
+                    b.Property<long>("PolicyMaxUploadBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("policy_max_upload_bytes");
+
+                    b.Property<string>("PolicyVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("policy_version");
+
                     b.Property<string>("Provider")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -9912,6 +10162,12 @@ namespace Explore.Persistence.Migrations
                     b.Property<long>("ReservedBytes")
                         .HasColumnType("bigint")
                         .HasColumnName("reserved_bytes");
+
+                    b.Property<string>("RouteKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("route_key");
 
                     b.Property<string>("SafeDisplayName")
                         .IsRequired()
@@ -9985,11 +10241,15 @@ namespace Explore.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_storage_upload_sessions_expected_size_nonnegative", "expected_size_bytes >= 0");
 
+                            t.HasCheckConstraint("ck_storage_upload_sessions_policy_max_upload_bytes_nonnegative", "policy_max_upload_bytes >= 0");
+
                             t.HasCheckConstraint("ck_storage_upload_sessions_provider", "provider IN ('local', 's3_compatible', 'legacy_external')");
 
                             t.HasCheckConstraint("ck_storage_upload_sessions_purpose", "purpose IN ('legacy_image', 'profile_image', 'event_image', 'attachment', 'document', 'system_asset')");
 
                             t.HasCheckConstraint("ck_storage_upload_sessions_reserved_bytes_nonnegative", "reserved_bytes >= 0");
+
+                            t.HasCheckConstraint("ck_storage_upload_sessions_route_key", "route_key IN ('images', 'documents', 'general')");
 
                             t.HasCheckConstraint("ck_storage_upload_sessions_status", "status IN ('reserved', 'uploading', 'finalized', 'canceled', 'failed', 'expired')");
 
@@ -12192,6 +12452,13 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_ai_conversations_actors_actor_id");
 
+                    b.HasOne("Explore.Domain.Ai.AiConversationStatusLookup", "StatusLookup")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_conversations_ai_conversation_statuses_status_id");
+
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -12208,6 +12475,8 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("Actor");
 
+                    b.Navigation("StatusLookup");
+
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
@@ -12222,7 +12491,16 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_ai_conversation_references_ai_conversations_conversation_id");
 
+                    b.HasOne("Explore.Domain.Ai.AiReferenceKindLookup", "KindLookup")
+                        .WithMany()
+                        .HasForeignKey("KindId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_conversation_references_ai_reference_kinds_kind_id");
+
                     b.Navigation("Conversation");
+
+                    b.Navigation("KindLookup");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiMessage", b =>
@@ -12234,7 +12512,16 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_ai_messages_ai_conversations_conversation_id");
 
+                    b.HasOne("Explore.Domain.Ai.AiMessageRoleLookup", "RoleLookup")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_messages_ai_message_roles_role_id");
+
                     b.Navigation("Conversation");
+
+                    b.Navigation("RoleLookup");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiProposedAction", b =>
@@ -12246,15 +12533,33 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_ai_proposed_actions_ai_conversations_conversation_id");
 
+                    b.HasOne("Explore.Domain.Ai.AiProposedActionKindLookup", "KindLookup")
+                        .WithMany()
+                        .HasForeignKey("KindId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_proposed_actions_ai_proposed_action_kinds_kind_id");
+
                     b.HasOne("Explore.Domain.Ai.AiMessage", "Message")
                         .WithMany()
                         .HasForeignKey("MessageId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_ai_proposed_actions_ai_messages_message_id");
 
+                    b.HasOne("Explore.Domain.Ai.AiProposedActionStatusLookup", "StatusLookup")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_proposed_actions_ai_proposed_action_statuses_status_id");
+
                     b.Navigation("Conversation");
 
+                    b.Navigation("KindLookup");
+
                     b.Navigation("Message");
+
+                    b.Navigation("StatusLookup");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiRun", b =>
@@ -12266,7 +12571,16 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_ai_runs_ai_conversations_conversation_id");
 
+                    b.HasOne("Explore.Domain.Ai.AiRunStatusLookup", "StatusLookup")
+                        .WithMany()
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_runs_ai_run_statuses_status_id");
+
                     b.Navigation("Conversation");
+
+                    b.Navigation("StatusLookup");
                 });
 
             modelBuilder.Entity("Explore.Domain.Ai.AiToolExecution", b =>

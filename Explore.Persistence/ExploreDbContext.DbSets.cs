@@ -223,9 +223,16 @@ public partial class ExploreDbContext
 
     // ===== AI Assistant =====
     public DbSet<AiConversation> AiConversations { get; set; }
+    public DbSet<AiConversationStatusLookup> AiConversationStatuses { get; set; }
     public DbSet<AiMessage> AiMessages { get; set; }
+    public DbSet<AiMessageRoleLookup> AiMessageRoles { get; set; }
     public DbSet<AiRun> AiRuns { get; set; }
+    public DbSet<AiRunStatusLookup> AiRunStatuses { get; set; }
     public DbSet<AiConversationReference> AiConversationReferences { get; set; }
+    public DbSet<AiReferenceKindLookup> AiReferenceKinds { get; set; }
     public DbSet<AiProposedAction> AiProposedActions { get; set; }
+    public DbSet<AiProposedActionKindLookup> AiProposedActionKinds { get; set; }
+    public DbSet<AiProposedActionStatusLookup> AiProposedActionStatuses { get; set; }
+    public DbSet<AiProviderKindLookup> AiProviderKinds { get; set; }
     public DbSet<AiToolExecution> AiToolExecutions { get; set; }
 }
