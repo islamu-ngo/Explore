@@ -111,6 +111,37 @@ public sealed class CreateEventDraftAiToolDefinitionTests
         }
     }
 
+    [Test]
+    public async Task Registry_WhenProviderNormalizationDisabled_RejectsInventedReferenceIds()
+    {
+        var registry = AiToolContractRegistry.CreateDefault();
+
+        var result = registry.ValidatePayload(
+            AiProposedActionKind.CreateEventDraft,
+            "{\"title\":\"Community Dinner\",\"organizationId\":\"example-org\"}");
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("invalid_tool_argument_format");
+        await Assert.That(result.NormalizedPayloadJson).IsNull();
+    }
+
+    [Test]
+    public async Task Registry_WhenProviderNormalizationEnabled_DropsInventedReferenceIds()
+    {
+        var registry = AiToolContractRegistry.CreateDefault();
+
+        var result = registry.ValidatePayload(
+            AiProposedActionKind.CreateEventDraft,
+            "{\"title\":\"Community Dinner\",\"organizationId\":\"example-org\",\"categoryIds\":[\"community\"]}",
+            allowProviderNormalization: true);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.NormalizedPayloadJson).IsNotNull();
+        await Assert.That(result.NormalizedPayloadJson!).Contains("Community Dinner");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("organizationId");
+        await Assert.That(result.NormalizedPayloadJson!).DoesNotContain("categoryIds");
+    }
+
     private static HashSet<string> GetSchemaPropertyNames()
     {
         using var document = JsonDocument.Parse(CreateEventDraftAiToolDefinition.JsonSchema);

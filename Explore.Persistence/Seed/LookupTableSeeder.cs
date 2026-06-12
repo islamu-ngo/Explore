@@ -2,6 +2,7 @@
 // ABOUTME: Replaces HasData() in entity configurations to avoid EF Core circular FK migration bug (#36682).
 
 using Explore.Domain;
+using Explore.Domain.Ai;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Modules;
@@ -67,11 +68,103 @@ public static class LookupTableSeeder
         await SeedExternalApiKeyStatusesAsync(context, cancellationToken);
         await SeedExternalApiKeyCreditPeriodsAsync(context, cancellationToken);
         await SeedNotificationReasonsAsync(context, cancellationToken);
+        await SeedAiConversationStatusesAsync(context, cancellationToken);
+        await SeedAiMessageRolesAsync(context, cancellationToken);
+        await SeedAiRunStatusesAsync(context, cancellationToken);
+        await SeedAiReferenceKindsAsync(context, cancellationToken);
+        await SeedAiProposedActionKindsAsync(context, cancellationToken);
+        await SeedAiProposedActionStatusesAsync(context, cancellationToken);
+        await SeedAiProviderKindsAsync(context, cancellationToken);
         await SeedEventSessionKindsAsync(context, cancellationToken);
         await SeedScheduleItemKindsAsync(context, cancellationToken);
         await SeedEventRegistrationPoliciesAsync(context, cancellationToken);
         await SeedRegistrationScopesAsync(context, cancellationToken);
         await SeedUiThemePresetsAsync(context, cancellationToken);
+    }
+
+    private static async Task SeedAiConversationStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<AiConversationStatusLookup>().AnyAsync(ct)) return;
+
+        context.Set<AiConversationStatusLookup>().AddRange(
+            new AiConversationStatusLookup { Id = (int)AiConversationStatus.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Conversation is available for user interaction" },
+            new AiConversationStatusLookup { Id = (int)AiConversationStatus.Running, MasterCode = "RUNNING", FullName = "Running", Description = "Conversation has an in-flight AI provider run" },
+            new AiConversationStatusLookup { Id = (int)AiConversationStatus.Blocked, MasterCode = "BLOCKED", FullName = "Blocked", Description = "Conversation cannot accept more messages" },
+            new AiConversationStatusLookup { Id = (int)AiConversationStatus.Archived, MasterCode = "ARCHIVED", FullName = "Archived", Description = "Conversation is retained but no longer active" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedAiMessageRolesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<AiMessageRoleLookup>().AnyAsync(ct)) return;
+
+        context.Set<AiMessageRoleLookup>().AddRange(
+            new AiMessageRoleLookup { Id = (int)AiMessageRole.System, MasterCode = "SYSTEM", FullName = "System", Description = "System prompt or platform-authored instruction" },
+            new AiMessageRoleLookup { Id = (int)AiMessageRole.User, MasterCode = "USER", FullName = "User", Description = "User-authored assistant message" },
+            new AiMessageRoleLookup { Id = (int)AiMessageRole.Assistant, MasterCode = "ASSISTANT", FullName = "Assistant", Description = "AI assistant provider response" },
+            new AiMessageRoleLookup { Id = (int)AiMessageRole.Tool, MasterCode = "TOOL", FullName = "Tool", Description = "Tool execution result supplied to the assistant" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedAiRunStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<AiRunStatusLookup>().AnyAsync(ct)) return;
+
+        context.Set<AiRunStatusLookup>().AddRange(
+            new AiRunStatusLookup { Id = (int)AiRunStatus.Queued, MasterCode = "QUEUED", FullName = "Queued", Description = "Provider run has been queued" },
+            new AiRunStatusLookup { Id = (int)AiRunStatus.InProgress, MasterCode = "IN_PROGRESS", FullName = "In progress", Description = "Provider run is executing" },
+            new AiRunStatusLookup { Id = (int)AiRunStatus.Succeeded, MasterCode = "SUCCEEDED", FullName = "Succeeded", Description = "Provider run completed successfully" },
+            new AiRunStatusLookup { Id = (int)AiRunStatus.Failed, MasterCode = "FAILED", FullName = "Failed", Description = "Provider run failed" },
+            new AiRunStatusLookup { Id = (int)AiRunStatus.Cancelled, MasterCode = "CANCELLED", FullName = "Cancelled", Description = "Provider run was cancelled" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedAiReferenceKindsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<AiReferenceKindLookup>().AnyAsync(ct)) return;
+
+        context.Set<AiReferenceKindLookup>().AddRange(
+            new AiReferenceKindLookup { Id = (int)AiReferenceKind.Event, MasterCode = "EVENT", FullName = "Event", Description = "Conversation references an event" },
+            new AiReferenceKindLookup { Id = (int)AiReferenceKind.EventSession, MasterCode = "EVENT_SESSION", FullName = "Event session", Description = "Conversation references an event session" },
+            new AiReferenceKindLookup { Id = (int)AiReferenceKind.Actor, MasterCode = "ACTOR", FullName = "Actor", Description = "Conversation references an actor" },
+            new AiReferenceKindLookup { Id = (int)AiReferenceKind.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "Conversation references an organization" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedAiProposedActionKindsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<AiProposedActionKindLookup>().AnyAsync(ct)) return;
+
+        context.Set<AiProposedActionKindLookup>().AddRange(
+            new AiProposedActionKindLookup { Id = (int)AiProposedActionKind.CreateEventDraft, MasterCode = "CREATE_EVENT_DRAFT", FullName = "Create event draft", Description = "Create a draft event after human confirmation" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedAiProposedActionStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<AiProposedActionStatusLookup>().AnyAsync(ct)) return;
+
+        context.Set<AiProposedActionStatusLookup>().AddRange(
+            new AiProposedActionStatusLookup { Id = (int)AiProposedActionStatus.Proposed, MasterCode = "PROPOSED", FullName = "Proposed", Description = "Action is awaiting human review" },
+            new AiProposedActionStatusLookup { Id = (int)AiProposedActionStatus.Confirmed, MasterCode = "CONFIRMED", FullName = "Confirmed", Description = "Action was confirmed by a user" },
+            new AiProposedActionStatusLookup { Id = (int)AiProposedActionStatus.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Action was rejected by a user" },
+            new AiProposedActionStatusLookup { Id = (int)AiProposedActionStatus.Executed, MasterCode = "EXECUTED", FullName = "Executed", Description = "Action side effect completed" },
+            new AiProposedActionStatusLookup { Id = (int)AiProposedActionStatus.Failed, MasterCode = "FAILED", FullName = "Failed", Description = "Action side effect failed" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedAiProviderKindsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<AiProviderKindLookup>().AnyAsync(ct)) return;
+
+        context.Set<AiProviderKindLookup>().AddRange(
+            new AiProviderKindLookup { Id = (int)AiProviderKind.None, MasterCode = "NONE", FullName = "None", Description = "AI provider is disabled" },
+            new AiProviderKindLookup { Id = (int)AiProviderKind.Fake, MasterCode = "FAKE", FullName = "Fake", Description = "Deterministic fake provider for testing" },
+            new AiProviderKindLookup { Id = (int)AiProviderKind.OpenAiCompatible, MasterCode = "OPENAI_COMPATIBLE", FullName = "OpenAI Compatible", Description = "Any OpenAI-compatible API endpoint" },
+            new AiProviderKindLookup { Id = (int)AiProviderKind.AnthropicCompatible, MasterCode = "ANTHROPIC_COMPATIBLE", FullName = "Anthropic Compatible", Description = "Anthropic Messages API endpoint" },
+            new AiProviderKindLookup { Id = (int)AiProviderKind.OpenAiSdk, MasterCode = "OPENAI_SDK", FullName = "OpenAI SDK", Description = "Microsoft.Extensions.AI with OpenAI SDK" },
+            new AiProviderKindLookup { Id = (int)AiProviderKind.AzureOpenAi, MasterCode = "AZURE_OPENAI", FullName = "Azure OpenAI", Description = "Microsoft.Extensions.AI with Azure OpenAI" });
+        await context.SaveChangesAsync(ct);
     }
 
     private static async Task SeedRegistrationScopesAsync(ExploreDbContext context, CancellationToken ct)

@@ -102,26 +102,33 @@ public sealed class CreateEventDraftAiActionMapper
                 "AI event draft price cannot be negative.");
         }
 
-        if (payload.OrganizationId.HasValue && payload.GroupId.HasValue)
+        var hasForcedOwnerScope = context.HasForcedOwnerScope;
+        if (!hasForcedOwnerScope && payload.OrganizationId.HasValue && payload.GroupId.HasValue)
         {
             return CreateEventDraftAiActionMappingResult.Failure(
                 "conflicting_owner_scope",
                 "AI event draft payload cannot target both an organization and a group.");
         }
 
-        if (payload.OrganizationId.HasValue && !context.AllowedOrganizationIds.Contains(payload.OrganizationId.Value))
+        if (!hasForcedOwnerScope
+            && payload.OrganizationId.HasValue
+            && !context.AllowedOrganizationIds.Contains(payload.OrganizationId.Value))
         {
             return CreateEventDraftAiActionMappingResult.Failure(
                 "invalid_organization_scope",
                 "AI event draft organization is not allowed for this mapping context.");
         }
 
-        if (payload.GroupId.HasValue && !context.AllowedGroupIds.Contains(payload.GroupId.Value))
+        if (!hasForcedOwnerScope
+            && payload.GroupId.HasValue
+            && !context.AllowedGroupIds.Contains(payload.GroupId.Value))
         {
             return CreateEventDraftAiActionMappingResult.Failure(
                 "invalid_group_scope",
                 "AI event draft group is not allowed for this mapping context.");
         }
+
+        var (organizationId, groupId) = ResolveOwnerScope(payload, context);
 
         var draft = new CreateEventDraftRequestDto
         {
@@ -133,8 +140,8 @@ public sealed class CreateEventDraftAiActionMapper
             EventTypeId = payload.EventTypeId,
             AudienceGenderId = payload.AudienceGenderId,
             AudienceAgeId = payload.AudienceAgeId,
-            OrganizationId = payload.OrganizationId,
-            GroupId = payload.GroupId,
+            OrganizationId = organizationId,
+            GroupId = groupId,
             Price = payload.Price,
             CurrencyCode = Normalize(payload.CurrencyCode),
             IsRegistrationRequired = payload.IsRegistrationRequired,
@@ -154,6 +161,28 @@ public sealed class CreateEventDraftAiActionMapper
 
     private static string? Normalize(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static (Guid? OrganizationId, Guid? GroupId) ResolveOwnerScope(
+        CreateEventDraftAiActionPayload payload,
+        CreateEventDraftAiActionMappingContext context)
+    {
+        if (context.ForcePersonalOwnerScope)
+        {
+            return (null, null);
+        }
+
+        if (context.ForcedOrganizationId.HasValue)
+        {
+            return (context.ForcedOrganizationId, null);
+        }
+
+        if (context.ForcedGroupId.HasValue)
+        {
+            return (null, context.ForcedGroupId);
+        }
+
+        return (payload.OrganizationId, payload.GroupId);
+    }
 
     private static bool ValidateLength(
         string? value,
@@ -179,6 +208,11 @@ public sealed record CreateEventDraftAiActionMappingContext(
     IReadOnlySet<Guid> AllowedOrganizationIds,
     IReadOnlySet<Guid> AllowedGroupIds)
 {
+    public Guid? ForcedOrganizationId { get; init; }
+    public Guid? ForcedGroupId { get; init; }
+    public bool ForcePersonalOwnerScope { get; init; }
+    public bool HasForcedOwnerScope => ForcePersonalOwnerScope || ForcedOrganizationId.HasValue || ForcedGroupId.HasValue;
+
     public static CreateEventDraftAiActionMappingContext Empty { get; } = new(new HashSet<Guid>(), new HashSet<Guid>());
 }
 

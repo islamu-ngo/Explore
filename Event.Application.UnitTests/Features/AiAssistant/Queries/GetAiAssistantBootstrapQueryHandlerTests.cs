@@ -3,11 +3,14 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.AiAssistant.Handlers.Queries;
 using Explore.Application.Features.AiAssistant.Requests.Queries;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
+using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.AiAssistant.Queries;
@@ -16,6 +19,11 @@ public sealed class GetAiAssistantBootstrapQueryHandlerTests
 {
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly IHierarchicalSettingsResolver _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+    private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
+    private readonly IActorRepository _actorRepository = Substitute.For<IActorRepository>();
+    private readonly ITenantUserRepository _tenantUserRepository = Substitute.For<ITenantUserRepository>();
+    private readonly IOrganizationMemberRepository _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+    private readonly IGroupMemberRepository _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
 
     [Test]
     public async Task Handle_WhenDisabled_ReturnsDisabledBootstrapWithoutModels()
@@ -96,11 +104,72 @@ public sealed class GetAiAssistantBootstrapQueryHandlerTests
         await Assert.That(result.Limits.MaxInputTokens).IsEqualTo(16000);
         await Assert.That(result.Limits.MaxOutputTokens).IsEqualTo(2048);
         await Assert.That(result.Limits.Temperature).IsEqualTo(0.4m);
-        await Assert.That(result.Limits.TimeoutSeconds).IsEqualTo(45);
+        await Assert.That(result.Limits.TimeoutSeconds).IsEqualTo(AiProviderDefaults.DefaultTimeoutSeconds);
         await Assert.That(result.Limits.DailyMessageLimit).IsEqualTo(25);
         await Assert.That(result.RetentionDays).IsEqualTo(14);
         await Assert.That(result.Features.ToolProposalsEnabled).IsTrue();
         await Assert.That(result.Features.StreamingEnabled).IsFalse();
+    }
+
+    [Test]
+    public async Task Handle_WhenOpenAiCompatibleUsesLocalEndpoint_ReturnsLocalTimeoutFloor()
+    {
+        var handler = CreateHandler(Guid.NewGuid(), CreateSettings(
+            enabled: true,
+            provider: AiProviderDefaults.ProviderOpenAiCompatible,
+            endpointUrl: "http://127.0.0.1:1337/v1",
+            modelId: "Gemma-4-E2B-Uncensored-HauhauCS-Aggressive-Q8_K_P",
+            timeoutSeconds: 30));
+
+        var result = await handler.Handle(new GetAiAssistantBootstrapQuery(), CancellationToken.None);
+
+        await Assert.That(result.Available).IsTrue();
+        await Assert.That(result.Limits.TimeoutSeconds).IsEqualTo(AiProviderDefaults.LocalProviderTimeoutSeconds);
+    }
+
+    [Test]
+    public async Task Handle_WhenUserHasMembershipWithoutEventCreatePermission_ExcludesActorContext()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var userActorId = Guid.NewGuid();
+        var allowedOrganizationId = Guid.NewGuid();
+        var allowedOrganizationActorId = Guid.NewGuid();
+        var blockedOrganizationId = Guid.NewGuid();
+        var blockedOrganizationActorId = Guid.NewGuid();
+        var allowedGroupId = Guid.NewGuid();
+        var allowedGroupActorId = Guid.NewGuid();
+        var blockedGroupId = Guid.NewGuid();
+        var blockedGroupActorId = Guid.NewGuid();
+        var handler = CreateHandler(tenantId, CreateSettings(enabled: true, provider: AiProviderDefaults.ProviderFake));
+        _currentUserService.IsAuthenticated.Returns(true);
+        _currentUserService.UserId.Returns(userId);
+        _actorRepository.GetActorByUserIdAndTenantId(userId, tenantId).Returns(CreateUserActor(userActorId, tenantId, userId));
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(userId, PermissionCodes.EventCreate)
+            .Returns([allowedOrganizationId]);
+        _organizationMemberRepository.GetMembershipsByUser(userId).Returns(
+        [
+            CreateOrganizationMembership(tenantId, allowedOrganizationId, allowedOrganizationActorId, "Allowed Org"),
+            CreateOrganizationMembership(tenantId, blockedOrganizationId, blockedOrganizationActorId, "Blocked Org")
+        ]);
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(userId, PermissionCodes.EventCreate)
+            .Returns([allowedGroupId]);
+        _groupMemberRepository.GetMembershipsByUser(userId).Returns(
+        [
+            CreateGroupMembership(tenantId, allowedGroupId, allowedGroupActorId, "Allowed Group"),
+            CreateGroupMembership(tenantId, blockedGroupId, blockedGroupActorId, "Blocked Group")
+        ]);
+
+        var result = await handler.Handle(new GetAiAssistantBootstrapQuery(), CancellationToken.None);
+
+        await Assert.That(result.ActorContexts.Select(actor => actor.ActorId)).IsEquivalentTo(
+        [
+            userActorId,
+            allowedGroupActorId,
+            allowedOrganizationActorId
+        ]);
+        await Assert.That(result.ActorContexts.Select(actor => actor.ActorId)).DoesNotContain(blockedOrganizationActorId);
+        await Assert.That(result.ActorContexts.Select(actor => actor.ActorId)).DoesNotContain(blockedGroupActorId);
     }
 
     private GetAiAssistantBootstrapQueryHandler CreateHandler(Guid tenantId, AiAssistantSettingGroup settings)
@@ -108,8 +177,19 @@ public sealed class GetAiAssistantBootstrapQueryHandlerTests
         _tenantContext.TenantId.Returns(tenantId);
         _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(settings);
+        _currentUserService.IsAuthenticated.Returns(false);
+        _currentUserService.UserId.Returns((Guid?)null);
+        _organizationMemberRepository.GetMembershipsByUser(Arg.Any<Guid>()).Returns(Task.FromResult(new List<OrganizationMember>()));
+        _groupMemberRepository.GetMembershipsByUser(Arg.Any<Guid>()).Returns(Task.FromResult(new List<GroupMember>()));
 
-        return new GetAiAssistantBootstrapQueryHandler(_tenantContext, _settingsResolver);
+        return new GetAiAssistantBootstrapQueryHandler(
+            _tenantContext,
+            _settingsResolver,
+            _currentUserService,
+            _actorRepository,
+            _tenantUserRepository,
+            _organizationMemberRepository,
+            _groupMemberRepository);
     }
 
     private static AiAssistantSettingGroup CreateSettings(
@@ -156,4 +236,66 @@ public sealed class GetAiAssistantBootstrapQueryHandlerTests
         Source = SettingSource.SystemDefault,
         IsLocked = false
     };
+
+    private static Actor CreateUserActor(Guid actorId, Guid tenantId, Guid userId)
+    {
+        return new Actor
+        {
+            Id = actorId,
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            UserId = userId,
+            TenantId = tenantId,
+            Tenant = null!,
+            Pii = new ActorPii { ActorId = actorId, DisplayName = "Amina Yusuf" }
+        };
+    }
+
+    private static OrganizationMember CreateOrganizationMembership(
+        Guid tenantId,
+        Guid organizationId,
+        Guid actorId,
+        string name)
+    {
+        return new OrganizationMember
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Tenant = null!,
+            OrganizationId = organizationId,
+            Organization = new Organization
+            {
+                Id = organizationId,
+                Tenant = null!,
+                ActorId = actorId,
+                ApprovalStatus = null!,
+                Pii = new OrganizationPii { FullName = name }
+            },
+            UserId = Guid.NewGuid(),
+            User = null!,
+            Role = null!
+        };
+    }
+
+    private static GroupMember CreateGroupMembership(Guid tenantId, Guid groupId, Guid actorId, string name)
+    {
+        return new GroupMember
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Tenant = null!,
+            GroupId = groupId,
+            Group = new Group
+            {
+                Id = groupId,
+                Tenant = null!,
+                ActorId = actorId,
+                ApprovalStatus = null!,
+                FullName = name
+            },
+            UserId = Guid.NewGuid(),
+            User = null!,
+            Role = null!
+        };
+    }
 }

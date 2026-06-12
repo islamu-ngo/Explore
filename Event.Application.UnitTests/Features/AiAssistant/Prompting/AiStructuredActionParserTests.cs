@@ -23,6 +23,42 @@ public sealed class AiStructuredActionParserTests
     }
 
     [Test]
+    public async Task Parse_WhenCreateEventDraftContainsInventedOptionalReferenceIds_DropsThoseIds()
+    {
+        var result = new AiStructuredActionParser().Parse(
+        [
+            new AiProposedActionCandidate(
+                AiProposedActionKind.CreateEventDraft,
+                "{\"title\":\"Community Dinner\",\"organizationId\":\"example-org\",\"categoryIds\":[\"community\"],\"tagIds\":[\"family\"]}",
+                "Create draft")
+        ]);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Actions.Count).IsEqualTo(1);
+        await Assert.That(result.Actions[0].PayloadJson).Contains("Community Dinner");
+        await Assert.That(result.Actions[0].PayloadJson).DoesNotContain("organizationId");
+        await Assert.That(result.Actions[0].PayloadJson).DoesNotContain("categoryIds");
+        await Assert.That(result.Actions[0].PayloadJson).DoesNotContain("tagIds");
+    }
+
+    [Test]
+    public async Task Parse_WhenCreateEventDraftContainsMixedCategoryIds_DropsOnlyInvalidIds()
+    {
+        var validCategoryId = Guid.CreateVersion7();
+        var result = new AiStructuredActionParser().Parse(
+        [
+            new AiProposedActionCandidate(
+                AiProposedActionKind.CreateEventDraft,
+                $"{{\"title\":\"Community Dinner\",\"categoryIds\":[\"{validCategoryId}\",\"community\"]}}",
+                "Create draft")
+        ]);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.Actions[0].PayloadJson).Contains(validCategoryId.ToString());
+        await Assert.That(result.Actions[0].PayloadJson).DoesNotContain("community");
+    }
+
+    [Test]
     public async Task Parse_WhenPayloadIsInvalidJson_ReturnsInvalidToolArgumentsFailure()
     {
         var result = new AiStructuredActionParser().Parse(

@@ -7,10 +7,9 @@ using System.Text;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.Ai.Validators;
-using Explore.Application.Features.AiAssistant.Prompting;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
-using Explore.Application.Features.AiAssistant.Tools;
 using Explore.Application.Responses;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
@@ -29,14 +28,14 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
     private const string UserDailyQuotaScope = "user_daily";
     private const string TenantDailyQuotaScope = "tenant_daily";
     private const string UserConcurrentQuotaScope = "user_concurrent";
+    private const string StaleRunFailureCode = "stale_ai_run_released";
+    private const string StaleRunFailureMessage = "AI run was released after it stopped reporting progress.";
     private readonly IAiConversationRepository _conversationRepository;
     private readonly IIdempotencyRepository _idempotencyRepository;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAiModelCatalog _modelCatalog;
-    private readonly AiPromptContextBuilder _promptContextBuilder;
-    private readonly AiProviderResponseResolver _providerResponseResolver;
 
     public SendAiMessageCommandHandler(
         IAiConversationRepository conversationRepository,
@@ -44,8 +43,7 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         IHierarchicalSettingsResolver settingsResolver,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
-        IAiModelCatalog modelCatalog,
-        IAiChatProvider chatProvider)
+        IAiModelCatalog modelCatalog)
     {
         _conversationRepository = conversationRepository;
         _idempotencyRepository = idempotencyRepository;
@@ -53,11 +51,6 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _modelCatalog = modelCatalog;
-        var toolRegistry = AiToolContractRegistry.CreateDefault();
-        _promptContextBuilder = new AiPromptContextBuilder(new AiSystemPromptFactory(toolRegistry));
-        _providerResponseResolver = new AiProviderResponseResolver(
-            chatProvider,
-            new AiStructuredActionParser(toolRegistry));
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(
@@ -83,6 +76,7 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         var tenantId = _tenantContext.TenantId;
         var content = request.Message.Content.Trim();
         var idempotencyKey = request.Message.IdempotencyKey.Trim();
+        var interactionMode = AiAssistantInteractionModes.Normalize(request.Message.Mode);
         var requestTarget = $"ai/conversations/{request.ConversationId:N}/messages";
         var principalFingerprint = ComputePrincipalFingerprint(userId);
 
@@ -111,7 +105,7 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         var modelId = string.IsNullOrWhiteSpace(requestedModelId)
             ? AiAssistantAvailability.ResolveModelId(settings)
             : requestedModelId;
-        var requestBodyHash = ComputeBodyHash(request.ConversationId, content, modelId);
+        var requestBodyHash = ComputeBodyHash(request.ConversationId, content, modelId, interactionMode, request.Message.ActorId);
         var replay = await TryReplayIdempotencyAsync(
             idempotencyKey,
             tenantId,
@@ -127,21 +121,38 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         }
 
         var provider = AiAssistantAvailability.NormalizeProvider(settings.Provider);
-        var availableModels = await _modelCatalog.ListAvailableModelsAsync(cancellationToken);
-
-        if (!availableModels.Any(model => string.Equals(model.Id, modelId, StringComparison.Ordinal)))
+        if (!UsesEffectiveOpenAiCompatibleProvider(settings))
         {
-            return Failure(
-                "AI provider is not ready for this tenant model.",
-                ["Configured AI model is not available from the runtime provider."],
-                "provider_not_ready");
+            var availableModels = await _modelCatalog.ListAvailableModelsAsync(cancellationToken);
+
+            if (!availableModels.Any(model => string.Equals(model.Id, modelId, StringComparison.Ordinal)))
+            {
+                return Failure(
+                    "AI provider is not ready for this tenant model.",
+                    ["Configured AI model is not available from the runtime provider."],
+                    "provider_not_ready");
+            }
         }
+
+        var utcNow = DateTime.UtcNow;
+        await _conversationRepository.ReleaseStaleRunningConversationsForUserAsync(
+            userId,
+            ResolveStaleRunCutoffUtc(utcNow, settings),
+            StaleRunFailureCode,
+            StaleRunFailureMessage,
+            utcNow,
+            cancellationToken);
 
         var conversation = await _conversationRepository.GetByIdForUpdateAsync(request.ConversationId, cancellationToken);
 
         if (conversation is null || conversation.UserId != userId)
         {
             return Failure("AI conversation was not found.", ["Conversation was not found."], "conversation_not_found");
+        }
+
+        if (conversation.Status == AiConversationStatus.Blocked && IsRetryableProviderBlock(conversation.BlockedReason))
+        {
+            conversation.Activate(utcNow);
         }
 
         if (conversation.Status != AiConversationStatus.Active)
@@ -152,7 +163,7 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
                 "conversation_not_active");
         }
 
-        var todayUtc = DateTime.UtcNow.Date;
+        var todayUtc = utcNow.Date;
         var messageCount = await _conversationRepository.CountUserMessagesSinceAsync(userId, todayUtc, cancellationToken);
 
         if (messageCount >= settings.DailyMessageLimit)
@@ -207,39 +218,9 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
             return response;
         }
 
-        var utcNow = DateTime.UtcNow;
-        var userMessage = conversation.AddMessage(AiMessageRole.User, content, userId, utcNow);
+        conversation.ActorId = request.Message.ActorId ?? conversation.ActorId;
+        conversation.AddMessage(AiMessageRole.User, content, userId, utcNow);
         var run = conversation.QueueRun(provider, modelId, utcNow);
-        run.Start(utcNow);
-        await _conversationRepository.Update(conversation);
-
-        var providerResolution = await _providerResponseResolver.ResolveAsync(
-            _promptContextBuilder.Build(conversation, settings, modelId),
-            cancellationToken);
-
-        if (!providerResolution.Succeeded || providerResolution.Response is null || providerResolution.ParseResult is null)
-        {
-            var errorCode = providerResolution.FailureCode ?? "provider_failure";
-            var errorMessage = providerResolution.FailureMessage ?? "AI provider failed.";
-            conversation.FailRun(run, errorCode, errorMessage, DateTime.UtcNow);
-            await _conversationRepository.Update(conversation);
-            return Failure("AI provider failed to complete the run.", [errorMessage], errorCode, run.Id);
-        }
-
-        var assistantText = BuildAssistantMessage(providerResolution.Response);
-        var assistantMessage = conversation.AddMessage(AiMessageRole.Assistant, assistantText, null, DateTime.UtcNow);
-
-        foreach (var proposedAction in providerResolution.ParseResult.Actions)
-        {
-            conversation.ProposeAction(
-                proposedAction.Kind,
-                proposedAction.PayloadJson,
-                assistantMessage.Id,
-                userId,
-                DateTime.UtcNow);
-        }
-
-        conversation.CompleteRun(run, DateTime.UtcNow);
         await _conversationRepository.Update(conversation);
         await SaveIdempotencyAsync(
             idempotencyKey,
@@ -249,13 +230,13 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
             requestBodyHash,
             principalFingerprint,
             run.Id,
-            cancellationToken);
+            CancellationToken.None);
 
         return new BaseCommandResponse<Guid>
         {
             Success = true,
             Id = run.Id,
-            Message = "AI message sent."
+            Message = "AI message queued."
         };
     }
 
@@ -333,27 +314,45 @@ public sealed class SendAiMessageCommandHandler : IRequestHandler<SendAiMessageC
         }, cancellationToken);
     }
 
-    private static string BuildAssistantMessage(AiChatResponse response)
+    private static string ComputeBodyHash(Guid conversationId, string content, string modelId, string mode, Guid? actorId)
     {
-        if (!string.IsNullOrWhiteSpace(response.AssistantMessage))
-        {
-            return response.AssistantMessage;
-        }
-
-        return response.ProposedActions.Count > 0
-            ? "I prepared a proposed action for your review."
-            : "The AI provider returned an empty response.";
-    }
-
-    private static string ComputeBodyHash(Guid conversationId, string content, string modelId)
-    {
-        var value = $"{conversationId:N}:{modelId}:{content}";
+        var value = $"{conversationId:N}:{modelId}:{mode}:{actorId:N}:{content}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     }
 
     private static string ComputePrincipalFingerprint(Guid userId)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(userId.ToString("N", CultureInfo.InvariantCulture))))
             .ToLowerInvariant();
+
+    private static bool UsesEffectiveOpenAiCompatibleProvider(AiAssistantSettingGroup settings)
+    {
+        var provider = AiAssistantAvailability.NormalizeProvider(settings.Provider);
+        return (provider == AiProviderDefaults.ProviderOpenAiCompatible
+            || provider == AiProviderDefaults.ProviderAnthropicCompatible)
+            && !string.IsNullOrWhiteSpace(settings.EndpointUrl);
+    }
+
+    private static DateTime ResolveStaleRunCutoffUtc(DateTime utcNow, AiAssistantSettingGroup settings)
+    {
+        var timeoutSeconds = AiAssistantAvailability.ResolveTimeoutSeconds(settings);
+        return utcNow.AddSeconds(-(timeoutSeconds + 5));
+    }
+
+    private static bool IsRetryableProviderBlock(string? blockedReason)
+    {
+        if (string.IsNullOrWhiteSpace(blockedReason))
+        {
+            return false;
+        }
+
+        var reason = blockedReason.Trim();
+        return reason.StartsWith("provider_", StringComparison.OrdinalIgnoreCase)
+            || reason.StartsWith("http_", StringComparison.OrdinalIgnoreCase)
+            || reason.Equals("invalid_response", StringComparison.OrdinalIgnoreCase)
+            || reason.Equals("invalid_tool_arguments", StringComparison.OrdinalIgnoreCase)
+            || reason.Equals("missing_tool_argument", StringComparison.OrdinalIgnoreCase)
+            || reason.Equals("content_filtered", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static BaseCommandResponse<Guid> Failure(
         string message,

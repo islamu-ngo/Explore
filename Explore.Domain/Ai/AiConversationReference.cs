@@ -1,6 +1,7 @@
 // ABOUTME: Persists a domain reference attached to an AI conversation for prompt context and audit.
 // ABOUTME: Keeps reference identity tenant-scoped and typed before the Application layer builds prompts.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain.Ai;
@@ -11,7 +12,14 @@ public class AiConversationReference : ITenantEntity
     public Guid TenantId { get; set; }
     public Guid ConversationId { get; set; }
     public AiConversation? Conversation { get; set; }
-    public AiReferenceKind Kind { get; set; }
+    public int KindId { get; set; }
+    public AiReferenceKindLookup? KindLookup { get; set; }
+    [NotMapped]
+    public AiReferenceKind Kind
+    {
+        get => (AiReferenceKind)KindId;
+        set => KindId = (int)value;
+    }
     public Guid ReferenceId { get; set; }
     public required string DisplayName { get; set; }
     public string? Summary { get; set; }

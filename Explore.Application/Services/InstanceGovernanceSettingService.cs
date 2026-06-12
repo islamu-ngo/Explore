@@ -2,6 +2,7 @@
 // ABOUTME: Reads via IHierarchicalSettingsResolver batch resolution, writes via SettingUpsertService.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.Settings;
@@ -46,6 +47,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         var branding = PopulateGroup<BrandingSettingGroup>(resolved);
         var domains = PopulateGroup<DomainSettingGroup>(resolved);
         var delegation = PopulateGroup<TenantDelegationSettingGroup>(resolved);
+        var aiAssistant = PopulateGroup<AiAssistantSettingGroup>(resolved);
         var mcp = PopulateGroup<McpSettingGroup>(resolved);
         var renderPolicy = PopulateGroup<RenderPolicySettingGroup>(resolved);
         var routing = PopulateGroup<RoutingSettingGroup>(resolved);
@@ -101,6 +103,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
                 LockTenantCustomDomain = IsLocked(resolved, GovernanceSettingKeys.Domains.TenantCustomDomain)
             },
             TenantDelegation = MapTenantDelegationDto(delegation, routing, resolved, isMultiTenant),
+            AiAssistant = MapAiAssistantDto(aiAssistant, delegation),
             Mcp = MapMcpDto(mcp, delegation),
             RenderPolicy = rpDto
         };
@@ -159,7 +162,10 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             SettingValueSerializer.Serialize(settings.DeploymentMode.Mode.ToString()),
             isLocked: true, actorUserId);
 
+        settings.TenantDelegation.LockTenantAiAssistant = settings.AiAssistant.LockTenantAiAssistant;
+
         await ApplyTenantDelegationSettingsInternalAsync(settings.TenantDelegation, isMultiTenant, actorUserId);
+        await ApplyAiAssistantGovernanceSettingsAsync(settings.AiAssistant, actorUserId);
         await ApplyMcpGovernanceSettingsAsync(settings.Mcp, actorUserId);
         await ApplyRenderPolicySettingsInternalAsync(settings.RenderPolicy, actorUserId);
         await ApplyModuleSettingsAsync(defaultTenantId, settings.Modules, actorUserId);
@@ -277,6 +283,63 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     public async Task ApplyTenantDelegationSettingsAsync(TenantDelegationSettingsDto delegation, Guid? actorUserId)
         => await ApplyTenantDelegationSettingsInternalAsync(delegation, false, actorUserId);
 
+    public async Task ApplyAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto aiAssistant, Guid? actorUserId)
+    {
+        var provider = NormalizeAiAssistantProvider(aiAssistant.Provider, aiAssistant.Enabled);
+        var usesExternalProvider = provider == AiProviderDefaults.ProviderOpenAiCompatible
+            || provider == AiProviderDefaults.ProviderAnthropicCompatible;
+        var endpointUrl = usesExternalProvider ? NormalizeOptionalUrl(aiAssistant.EndpointUrl) : string.Empty;
+        var apiKey = usesExternalProvider ? aiAssistant.ApiKey?.Trim() ?? string.Empty : string.Empty;
+        var modelId = usesExternalProvider ? aiAssistant.ModelId?.Trim() ?? string.Empty : string.Empty;
+        var allowedModelIds = usesExternalProvider
+            ? NormalizeAiModelIds([modelId], aiAssistant.AllowedModelIds)
+            : [];
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AiAssistant.Enabled,
+            SettingValueSerializer.Serialize(aiAssistant.Enabled),
+            isLocked: aiAssistant.LockTenantAiAssistant, actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AiAssistant.Provider,
+            SettingValueSerializer.Serialize(provider),
+            isLocked: aiAssistant.LockTenantAiAssistant, actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AiAssistant.EndpointUrl,
+            SettingValueSerializer.Serialize(endpointUrl),
+            isLocked: aiAssistant.LockTenantAiAssistant, actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AiAssistant.ApiKey,
+            SettingValueSerializer.Serialize(apiKey),
+            isLocked: aiAssistant.LockTenantAiAssistant, actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AiAssistant.ModelId,
+            SettingValueSerializer.Serialize(modelId),
+            isLocked: aiAssistant.LockTenantAiAssistant, actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AiAssistant.AllowedModelIds,
+            SettingValueSerializer.Serialize(allowedModelIds),
+            isLocked: aiAssistant.LockTenantAiAssistant, actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess,
+            SettingValueSerializer.Serialize(aiAssistant.AllowAnonymousAccess),
+            isLocked: aiAssistant.LockTenantAiAssistant, actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
+            SettingValueSerializer.Serialize(aiAssistant.ToolProposalsEnabled),
+            isLocked: aiAssistant.LockTenantAiAssistant, actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.TenantDelegation.LockAiAssistant,
+            SettingValueSerializer.Serialize(aiAssistant.LockTenantAiAssistant), actorUserId);
+    }
+
     public async Task ApplyMcpGovernanceSettingsAsync(McpGovernanceSettingsDto mcp, Guid? actorUserId)
     {
         await _upsertService.UpsertValueAsync(
@@ -320,6 +383,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             .Concat(BrandingSettingGroup.SettingKeys)
             .Concat(DomainSettingGroup.SettingKeys)
             .Concat(TenantDelegationSettingGroup.SettingKeys)
+            .Concat(AiAssistantSettingGroup.SettingKeys)
             .Concat(McpSettingGroup.SettingKeys)
             .Concat(RenderPolicySettingGroup.SettingKeys)
             .Concat(RoutingSettingGroup.SettingKeys)
@@ -389,6 +453,24 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             EnableLegacySse = mcp.EnableLegacySse,
             LockTenantMcp = delegation.LockMcp,
             LockTenantMcpLegacySse = delegation.LockMcpLegacySse
+        };
+    }
+
+    private static AiAssistantGovernanceSettingsDto MapAiAssistantDto(
+        AiAssistantSettingGroup aiAssistant,
+        TenantDelegationSettingGroup delegation)
+    {
+        return new AiAssistantGovernanceSettingsDto
+        {
+            Enabled = aiAssistant.Enabled,
+            Provider = NormalizeAiAssistantProvider(aiAssistant.Provider, aiAssistant.Enabled),
+            EndpointUrl = aiAssistant.EndpointUrl ?? string.Empty,
+            ApiKey = aiAssistant.ApiKey ?? string.Empty,
+            ModelId = aiAssistant.ModelId ?? string.Empty,
+            AllowedModelIds = NormalizeAiModelIds([aiAssistant.ModelId], aiAssistant.AllowedModelIds),
+            AllowAnonymousAccess = aiAssistant.AllowAnonymousAccess,
+            ToolProposalsEnabled = aiAssistant.ToolProposalsEnabled,
+            LockTenantAiAssistant = delegation.LockAiAssistant
         };
     }
 
@@ -655,5 +737,39 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     {
         if (string.IsNullOrWhiteSpace(raw)) return "local";
         return raw.Trim().ToLowerInvariant() switch { "cerbos" => "cerbos", _ => "local" };
+    }
+
+    private static string NormalizeAiAssistantProvider(string? provider, bool enabled)
+    {
+        if (!enabled)
+            return AiProviderDefaults.ProviderNone;
+
+        var normalized = provider?.Trim().ToLowerInvariant();
+        return normalized is AiProviderDefaults.ProviderFake
+            or AiProviderDefaults.ProviderOpenAiCompatible
+            or AiProviderDefaults.ProviderAnthropicCompatible
+            ? normalized
+            : AiProviderDefaults.ProviderOpenAiCompatible;
+    }
+
+    private static IReadOnlyList<string> NormalizeAiModelIds(params IEnumerable<string?>[] modelIdGroups)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var values = new List<string>();
+
+        foreach (var group in modelIdGroups)
+        {
+            foreach (var modelId in group)
+            {
+                if (string.IsNullOrWhiteSpace(modelId))
+                    continue;
+
+                var normalized = modelId.Trim();
+                if (seen.Add(normalized))
+                    values.Add(normalized);
+            }
+        }
+
+        return values;
     }
 }

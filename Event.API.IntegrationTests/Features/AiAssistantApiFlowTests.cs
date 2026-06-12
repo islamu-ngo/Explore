@@ -175,13 +175,14 @@ public sealed class AiAssistantApiFlowTests
 
         var response = await client.SendAsync(request);
 
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.ServiceUnavailable);
-        var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
-        var root = json.RootElement;
-        await Assert.That(root.GetProperty("code").GetString()).IsEqualTo("provider_unreachable");
-        await Assert.That(root.GetProperty("title").GetString()).IsEqualTo("AI provider unavailable");
-        await Assert.That(root.GetProperty("detail").GetString()).DoesNotContain("Plan the event");
-        await Assert.That(root.GetProperty("detail").GetString()).DoesNotContain("api_key");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
+        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(body).IsNotNull();
+
+        var run = await WaitForRunStatusAsync(client, userId, conversationId, body!.Id, "Failed");
+        await Assert.That(run.GetProperty("failureCode").GetString()).IsEqualTo("provider_unreachable");
+        await Assert.That(run.GetProperty("failureMessage").GetString()).DoesNotContain("Plan the event");
+        await Assert.That(run.GetProperty("failureMessage").GetString()).DoesNotContain("api_key");
     }
 
     private static async Task<Guid> CreateConversationAsync(
@@ -212,7 +213,8 @@ public sealed class AiAssistantApiFlowTests
         Guid conversationId,
         string idempotencyKey,
         string content,
-        Guid? tenantId = null)
+        Guid? tenantId = null,
+        string? expectedRunStatus = "Succeeded")
     {
         using var request = CreateAuthenticatedRequest(
             HttpMethod.Post,
@@ -228,7 +230,44 @@ public sealed class AiAssistantApiFlowTests
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
         await Assert.That(body!.Success).IsTrue();
+        if (!string.IsNullOrWhiteSpace(expectedRunStatus))
+        {
+            await WaitForRunStatusAsync(client, userId, conversationId, body.Id, expectedRunStatus, tenantId);
+        }
+
         return body.Id;
+    }
+
+    private static async Task<JsonElement> WaitForRunStatusAsync(
+        HttpClient client,
+        Guid userId,
+        Guid conversationId,
+        Guid runId,
+        string expectedStatus,
+        Guid? tenantId = null)
+    {
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            using var request = CreateAuthenticatedRequest(
+                HttpMethod.Get,
+                $"/api/ai/assistant/conversations/{conversationId}/runs/{runId}",
+                userId,
+                tenantId);
+            var response = await client.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+                var root = json.RootElement.Clone();
+                if (string.Equals(root.GetProperty("status").GetString(), expectedStatus, StringComparison.Ordinal))
+                {
+                    return root;
+                }
+            }
+
+            await Task.Delay(50);
+        }
+
+        throw new TimeoutException($"AI run {runId} did not reach status {expectedStatus}.");
     }
 
     private static HttpRequestMessage CreateAuthenticatedRequest(
@@ -427,6 +466,40 @@ public sealed class AiAssistantApiFlowTests
                 .Count(message => message.Role == AiMessageRole.User && message.CreatedAt >= sinceUtc);
 
             return Task.FromResult(count);
+        }
+
+        public Task<int> ReleaseStaleRunningConversationsForUserAsync(
+            Guid userId,
+            DateTime staleBeforeUtc,
+            string failureCode,
+            string failureMessage,
+            DateTime utcNow,
+            CancellationToken cancellationToken)
+        {
+            var staleConversations = TenantConversations
+                .Where(conversation => conversation.UserId == userId)
+                .Where(conversation => conversation.Status == AiConversationStatus.Running)
+                .Where(conversation => conversation.Runs.Any(run =>
+                    run.Status is AiRunStatus.Queued or AiRunStatus.InProgress
+                    && (run.StartedAt ?? run.QueuedAt) <= staleBeforeUtc))
+                .Where(conversation => !conversation.Runs.Any(run =>
+                    run.Status is AiRunStatus.Queued or AiRunStatus.InProgress
+                    && (run.StartedAt ?? run.QueuedAt) > staleBeforeUtc))
+                .ToList();
+
+            foreach (var conversation in staleConversations)
+            {
+                foreach (var run in conversation.Runs.Where(run =>
+                    run.Status is AiRunStatus.Queued or AiRunStatus.InProgress
+                    && (run.StartedAt ?? run.QueuedAt) <= staleBeforeUtc))
+                {
+                    run.Fail(failureCode, failureMessage, utcNow);
+                }
+
+                conversation.Activate(utcNow);
+            }
+
+            return Task.FromResult(staleConversations.Count);
         }
 
         public Task<int> CountRunningConversationsForUserAsync(Guid userId, CancellationToken cancellationToken)

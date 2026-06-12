@@ -307,8 +307,29 @@ public sealed class OpenAiCompatibleChatProviderTests
         await Assert.That(result.Error.IsTransient).IsTrue();
     }
 
+    [Test]
+    public async Task SendAsync_WhenRuntimeProviderConfigurationIsUsed_UsesRequestTimeoutInsteadOfStaticDefault()
+    {
+        var handler = new DelayedSuccessMessageHandler(TimeSpan.FromMilliseconds(1100));
+        var settings = CreateSettings();
+        settings.TimeoutSeconds = 1;
+        var provider = CreateProvider(handler, settings);
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Hello",
+            timeoutSeconds: 2,
+            providerConfiguration: new AiChatProviderConfiguration(
+                AiProviderSettings.ProviderOpenAiCompatible,
+                "https://tenant-ai.example.test/v1",
+                string.Empty,
+                "tenant-model")));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(handler.Calls).IsEqualTo(1);
+    }
+
     private static OpenAiCompatibleChatProvider CreateProvider(
-        RecordingMessageHandler handler,
+        HttpMessageHandler handler,
         AiProviderSettings settings)
     {
         var client = new HttpClient(handler);
@@ -340,7 +361,9 @@ public sealed class OpenAiCompatibleChatProviderTests
         bool toolProposalsEnabled = false,
         string? actionSchema = null,
         bool structuredOutputEnabled = false,
-        AiStructuredOutputSchema? structuredOutputSchema = null) => new(
+        AiStructuredOutputSchema? structuredOutputSchema = null,
+        int timeoutSeconds = 30,
+        AiChatProviderConfiguration? providerConfiguration = null) => new(
             "gpt-test",
             [new AiChatMessage(AiMessageRole.User, userMessage)],
             "You are a safe assistant.",
@@ -348,14 +371,15 @@ public sealed class OpenAiCompatibleChatProviderTests
                 8000,
                 1024,
                 0.2m,
-                30,
+                timeoutSeconds,
                 toolProposalsEnabled,
                 StreamingEnabled: false,
                 StructuredOutputEnabled: structuredOutputEnabled),
             actionSchema is null
                 ? null
                 : new AiStructuredActionSchema([AiProposedActionKind.CreateEventDraft], actionSchema),
-            structuredOutputSchema);
+            structuredOutputSchema,
+            ProviderConfiguration: providerConfiguration);
 
     private static HttpResponseMessage JsonResponse(
         string json,
@@ -403,6 +427,29 @@ public sealed class OpenAiCompatibleChatProviderTests
             Authorization = request.Headers.Authorization;
             RequestBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             return _responseFactory(request);
+        }
+    }
+
+    private sealed class DelayedSuccessMessageHandler(TimeSpan delay) : HttpMessageHandler
+    {
+        public int Calls { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Calls++;
+            await Task.Delay(delay, cancellationToken);
+            return JsonResponse("""
+                {
+                  "choices": [
+                    {
+                      "message": { "content": "Delayed assistant response" },
+                      "finish_reason": "stop"
+                    }
+                  ]
+                }
+                """);
         }
     }
 }

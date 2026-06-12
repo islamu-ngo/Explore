@@ -9,6 +9,7 @@ using Explore.Application.Telemetry;
 using Explore.Domain.Ai;
 using Explore.Infrastructure.Ai;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -176,18 +177,27 @@ public sealed class RuntimeAiChatProviderTests
         var validator = new AiProviderSettingsValidator();
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
-        var openAiProvider = new OpenAiCompatibleChatProvider(
-            factory,
-            options,
-            validator,
-            new BusinessMetrics(meterFactory));
 
-        return new RuntimeAiChatProvider(
-            options,
-            validator,
-            new FakeAiChatProvider(),
-            openAiProvider,
-            microsoftExtensionsProvider);
+        var fakeProvider = new FakeAiChatProvider();
+        var openAiProvider = new OpenAiCompatibleChatProvider(
+            factory, options, validator, new BusinessMetrics(meterFactory));
+        var anthropicProvider = new AnthropicCompatibleChatProvider(
+            factory, options, validator, new BusinessMetrics(meterFactory));
+
+        var strategies = new List<IAiProviderStrategy>
+        {
+            new FakeAiProviderStrategy(fakeProvider),
+            new OpenAiCompatibleProviderStrategy(openAiProvider),
+            new AnthropicCompatibleProviderStrategy(anthropicProvider),
+        };
+
+        if (microsoftExtensionsProvider is not null)
+            strategies.Add(new MicrosoftExtensionsProviderStrategy(microsoftExtensionsProvider));
+
+        var resolver = new AiProviderStrategyResolver(
+            strategies, Substitute.For<ILogger<AiProviderStrategyResolver>>());
+
+        return new RuntimeAiChatProvider(options, validator, resolver);
     }
 
     private static MicrosoftExtensionsAiChatProvider CreateMicrosoftExtensionsProvider(

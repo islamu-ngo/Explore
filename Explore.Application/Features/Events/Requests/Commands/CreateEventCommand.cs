@@ -11,11 +11,29 @@ namespace Explore.Application.Features.Events.Requests.Commands;
 [AuthorizeResource(ResourceKinds.Event, AuthorizationActions.Create)]
 public class CreateEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
+    public const string PreCreateResourceId = "create";
+    public const string PreCreateAuthorizationPhase = "pre_create";
+
     public required CreateEventRequest Request { get; set; }
 
-    string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        Request.OrganizationId.HasValue
-            ? new Dictionary<string, object> { ["organizationId"] = Request.OrganizationId.Value.ToString() }
-            : null;
+    string? ISecureRequest.ResourceId => PreCreateResourceId;
+
+    IDictionary<string, object>? ISecureRequest.ResourceAttributes
+    {
+        get
+        {
+            var attributes = new Dictionary<string, object>
+            {
+                ["authorizationPhase"] = PreCreateAuthorizationPhase
+            };
+
+            if (Request.OrganizationId.HasValue)
+                attributes["organizationId"] = Request.OrganizationId.Value.ToString();
+
+            if (Request.GroupId.HasValue)
+                attributes["groupId"] = Request.GroupId.Value.ToString();
+
+            return attributes;
+        }
+    }
 }

@@ -16,7 +16,9 @@ public sealed class SendAiMessageRequestDto
 {
     public string Content { get; set; } = string.Empty;
     public string IdempotencyKey { get; set; } = string.Empty;
+    public Guid? ActorId { get; set; }
     public string? ModelId { get; set; }
+    public string Mode { get; set; } = AiAssistantInteractionModes.Build;
 }
 
 public class AiConversationSummaryDto

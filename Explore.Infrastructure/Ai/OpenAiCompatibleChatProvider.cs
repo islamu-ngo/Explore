@@ -116,8 +116,8 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
     public async Task<AiChatProviderResult> SendAsync(AiChatPayload request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var settings = _options.Value;
-        var providerName = AiProviderSettings.ProviderOpenAiCompatible;
+        var settings = ResolveSettings(request);
+        var providerName = AiProviderDefaults.ProviderOpenAiCompatible;
         var startedAt = Stopwatch.GetTimestamp();
         using var telemetryActivity = AiProviderTelemetry.StartRequest(providerName, request);
 
@@ -243,15 +243,47 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
 
     private static bool IsRunnableOpenAiCompatible(AiProviderSettings settings) =>
         settings.Enabled
-        && settings.Provider.Equals(AiProviderSettings.ProviderOpenAiCompatible, StringComparison.OrdinalIgnoreCase);
+        && settings.Provider == AiProviderSettings.ProviderOpenAiCompatible;
+
+    private AiProviderSettings ResolveSettings(AiChatPayload request)
+    {
+        var defaults = _options.Value;
+        var providerConfiguration = request.ProviderConfiguration;
+
+        if (providerConfiguration is null
+            || providerConfiguration.Provider != AiProviderSettings.ProviderOpenAiCompatible)
+        {
+            return defaults;
+        }
+
+        return new AiProviderSettings
+        {
+            Enabled = true,
+            Provider = AiProviderSettings.ProviderOpenAiCompatible,
+            EndpointUrl = providerConfiguration.EndpointUrl.Trim(),
+            ApiKey = providerConfiguration.ApiKey.Trim(),
+            ModelId = providerConfiguration.ModelId.Trim(),
+            AzureCredentialMode = defaults.AzureCredentialMode,
+            AzureTenantId = defaults.AzureTenantId,
+            MaxInputTokens = request.Options.MaxInputTokens,
+            MaxOutputTokens = request.Options.MaxOutputTokens,
+            Temperature = request.Options.Temperature,
+            TimeoutSeconds = request.Options.TimeoutSeconds,
+            RetentionDays = defaults.RetentionDays,
+            DailyMessageLimit = defaults.DailyMessageLimit,
+            ToolProposalsEnabled = defaults.ToolProposalsEnabled,
+            StreamingEnabled = defaults.StreamingEnabled,
+            AllowLocalProviderEndpoints = defaults.AllowLocalProviderEndpoints
+        };
+    }
 
     private Microsoft.Extensions.Options.ValidateOptionsResult ValidateSettings(AiProviderSettings settings) =>
         _validator.Validate(null, settings);
 
     private static TimeSpan GetTimeout(AiProviderSettings settings, AiChatOptions options)
     {
-        var boundedSettingsTimeout = Math.Clamp(settings.TimeoutSeconds, 1, 300);
-        var boundedRequestTimeout = Math.Clamp(options.TimeoutSeconds, 1, 300);
+        var boundedSettingsTimeout = Math.Clamp(settings.TimeoutSeconds, 1, AiProviderDefaults.MaxTimeoutSeconds);
+        var boundedRequestTimeout = Math.Clamp(options.TimeoutSeconds, 1, AiProviderDefaults.MaxTimeoutSeconds);
         return TimeSpan.FromSeconds(Math.Min(boundedSettingsTimeout, boundedRequestTimeout));
     }
 
@@ -468,7 +500,8 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
             return false;
         }
 
-        if (!TryMapProposedActions(choice.Message.ToolCalls, out var proposedActions, out failure))
+        var toolCalls = request.Options.ToolProposalsEnabled ? choice.Message.ToolCalls : null;
+        if (!TryMapProposedActions(toolCalls, out var proposedActions, out failure))
         {
             return false;
         }
@@ -604,7 +637,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
 
     private AiChatProviderResult RecordFailure(string code, string message, bool isTransient = false)
     {
-        _metrics.RecordAiProviderRequest(AiProviderSettings.ProviderOpenAiCompatible, "failed", code);
+        _metrics.RecordAiProviderRequest(AiProviderDefaults.ProviderOpenAiCompatible, "failed", code);
         return AiChatProviderResult.Failure(code, message, isTransient);
     }
 
@@ -613,18 +646,18 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         long startedAt,
         Activity? telemetryActivity)
     {
-        _metrics.RecordAiProviderRequest(AiProviderSettings.ProviderOpenAiCompatible, "succeeded");
+        _metrics.RecordAiProviderRequest(AiProviderDefaults.ProviderOpenAiCompatible, "succeeded");
         _metrics.RecordAiProviderRequestDuration(
             Stopwatch.GetElapsedTime(startedAt),
-            AiProviderSettings.ProviderOpenAiCompatible,
+            AiProviderDefaults.ProviderOpenAiCompatible,
             "succeeded");
         _metrics.RecordAiProviderTokenUsage(
-            AiProviderSettings.ProviderOpenAiCompatible,
+            AiProviderDefaults.ProviderOpenAiCompatible,
             response.Usage.InputTokens,
             response.Usage.OutputTokens,
             response.Usage.TotalTokens);
         _metrics.RecordAiProviderProposedActions(
-            AiProviderSettings.ProviderOpenAiCompatible,
+            AiProviderDefaults.ProviderOpenAiCompatible,
             response.ProposedActions.Count,
             "create_event_draft");
         AiProviderTelemetry.MarkSuccess(telemetryActivity, response);
@@ -638,7 +671,7 @@ public sealed class OpenAiCompatibleChatProvider : IAiChatProvider, IAiModelCata
         var error = result.Error!;
         _metrics.RecordAiProviderRequestDuration(
             Stopwatch.GetElapsedTime(startedAt),
-            AiProviderSettings.ProviderOpenAiCompatible,
+            AiProviderDefaults.ProviderOpenAiCompatible,
             "failed",
             error.Code);
         AiProviderTelemetry.MarkFailure(telemetryActivity, error.Code, error.IsTransient);

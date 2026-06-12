@@ -192,18 +192,23 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IAnalyticsProvider>(sp => sp.GetRequiredService<RuntimeAnalyticsProvider>());
         services.AddScoped<IAnalyticsFeatureFlagProvider>(sp => sp.GetRequiredService<RuntimeAnalyticsProvider>());
 
-        // AI provider foundation. Concrete adapters stay internal; RuntimeAiChatProvider is the Application-facing selector.
+        // AI provider foundation. Strategy pattern dispatches to concrete adapters without if/else bloat.
         services.AddOptions<AiProviderSettings>()
             .Bind(configuration.GetSection(AiProviderSettings.SectionName));
         services.AddSingleton<AiProviderSettingsValidator>();
         services.AddSingleton<IValidateOptions<AiProviderSettings>>(sp => sp.GetRequiredService<AiProviderSettingsValidator>());
-        services.AddSingleton<AiProviderHealthReporter>();
+        services.AddScoped<AiProviderHealthReporter>();
         services.AddScoped<FakeAiChatProvider>();
         services.AddHttpClient(OpenAiCompatibleChatProvider.HttpClientName, client =>
         {
             client.Timeout = Timeout.InfiniteTimeSpan;
         });
         services.AddScoped<OpenAiCompatibleChatProvider>();
+        services.AddHttpClient(AnthropicCompatibleChatProvider.HttpClientName, client =>
+        {
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
+        services.AddScoped<AnthropicCompatibleChatProvider>();
         if (IsSdkBackedAiProvider(configuration))
         {
             services.AddScoped<IChatClient>(sp => CreateSdkBackedChatClient(
@@ -211,12 +216,16 @@ public static class InfrastructureServicesRegistration
             services.AddScoped<MicrosoftExtensionsAiChatProvider>();
         }
 
-        services.AddScoped(sp => new RuntimeAiChatProvider(
-            sp.GetRequiredService<IOptions<AiProviderSettings>>(),
-            sp.GetRequiredService<AiProviderSettingsValidator>(),
-            sp.GetRequiredService<FakeAiChatProvider>(),
-            sp.GetRequiredService<OpenAiCompatibleChatProvider>(),
-            sp.GetService<MicrosoftExtensionsAiChatProvider>()));
+        services.AddScoped<IAiProviderStrategy, FakeAiProviderStrategy>();
+        services.AddScoped<IAiProviderStrategy, OpenAiCompatibleProviderStrategy>();
+        services.AddScoped<IAiProviderStrategy, AnthropicCompatibleProviderStrategy>();
+        if (IsSdkBackedAiProvider(configuration))
+        {
+            services.AddScoped<IAiProviderStrategy, MicrosoftExtensionsProviderStrategy>();
+        }
+        services.AddScoped<IAiProviderStrategyResolver, AiProviderStrategyResolver>();
+
+        services.AddScoped<RuntimeAiChatProvider>();
         services.AddScoped<IAiChatProvider>(sp => sp.GetRequiredService<RuntimeAiChatProvider>());
         services.AddScoped<IAiModelCatalog>(sp => sp.GetRequiredService<RuntimeAiChatProvider>());
         services.AddOptions<AiRetentionCleanupSettings>()
@@ -324,9 +333,11 @@ public static class InfrastructureServicesRegistration
 
     private static bool IsSdkBackedAiProvider(IConfiguration configuration)
     {
-        var provider = configuration[$"{AiProviderSettings.SectionName}:Provider"];
-        return string.Equals(provider, AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(provider, AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase);
+        var providerValue = configuration[$"{AiProviderSettings.SectionName}:Provider"];
+        if (!int.TryParse(providerValue, out var providerId))
+            return false;
+        return providerId == AiProviderSettings.ProviderOpenAiSdk
+            || providerId == AiProviderSettings.ProviderAzureOpenAi;
     }
 
     private static SocketsHttpHandler CreateKeycloakBootstrapHttpHandler()
@@ -361,14 +372,14 @@ public static class InfrastructureServicesRegistration
 
     private static IChatClient CreateSdkBackedChatClient(AiProviderSettings settings)
     {
-        if (settings.Provider.Equals(AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase))
+        if (settings.Provider == AiProviderSettings.ProviderOpenAiSdk)
         {
             return new OpenAI.OpenAIClient(settings.ApiKey.Trim())
                 .GetChatClient(settings.ModelId.Trim())
                 .AsIChatClient();
         }
 
-        if (settings.Provider.Equals(AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase))
+        if (settings.Provider == AiProviderSettings.ProviderAzureOpenAi)
         {
             var endpoint = new Uri(settings.EndpointUrl.Trim(), UriKind.Absolute);
             var client = settings.AzureCredentialMode.Equals(

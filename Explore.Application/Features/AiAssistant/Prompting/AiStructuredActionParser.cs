@@ -27,7 +27,10 @@ public sealed class AiStructuredActionParser
 
         foreach (var candidate in candidates)
         {
-            var validationResult = _toolRegistry.ValidatePayload(candidate.Kind, candidate.PayloadJson);
+            var validationResult = _toolRegistry.ValidatePayload(
+                candidate.Kind,
+                candidate.PayloadJson,
+                allowProviderNormalization: true);
             if (!validationResult.Succeeded)
             {
                 return AiStructuredActionParseResult.Failure(
@@ -36,7 +39,10 @@ public sealed class AiStructuredActionParser
                     validationResult.CorrectionMessage);
             }
 
-            actions.Add(new AiParsedProposedAction(candidate.Kind, candidate.PayloadJson, candidate.Summary));
+            actions.Add(new AiParsedProposedAction(
+                candidate.Kind,
+                validationResult.NormalizedPayloadJson ?? candidate.PayloadJson,
+                candidate.Summary));
         }
 
         return AiStructuredActionParseResult.Success(actions);

@@ -45,6 +45,7 @@ public partial class TenantPolicySettingService
         var systemAiAssistantEndpointUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.EndpointUrl);
         var systemAiAssistantApiKey = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.ApiKey);
         var systemAiAssistantModelId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.ModelId);
+        var systemAiAssistantAllowedModelIds = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.AllowedModelIds);
         var systemAiAssistantAllowAnonymousAccess = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
         var systemMcpEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Mcp.Enabled);
         var systemMcpEnableLegacySse = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Mcp.EnableLegacySse);
@@ -85,6 +86,7 @@ public partial class TenantPolicySettingService
         var tenantAiAssistantEndpointUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.EndpointUrl);
         var tenantAiAssistantApiKey = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.ApiKey);
         var tenantAiAssistantModelId = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.ModelId);
+        var tenantAiAssistantAllowedModelIds = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.AllowedModelIds);
         var tenantAiAssistantAllowAnonymousAccess = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess);
         var tenantMcpEnabled = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Mcp.Enabled);
         var tenantMcpEnableLegacySse = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Mcp.EnableLegacySse);
@@ -113,6 +115,20 @@ public partial class TenantPolicySettingService
             systemRequireVerification?.Value,
             true,
             canOmitVerification);
+
+        var canOverrideAiAssistant = !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true);
+        var resolvedAiAssistantModelId = ResolveString(
+            tenantAiAssistantModelId?.Value,
+            systemAiAssistantModelId?.Value,
+            string.Empty,
+            canOverrideAiAssistant);
+        var resolvedAiAssistantAllowedModelIds = NormalizeAiModelIds(
+            [resolvedAiAssistantModelId],
+            ResolveStringList(
+                tenantAiAssistantAllowedModelIds?.Value,
+                systemAiAssistantAllowedModelIds?.Value,
+                [],
+                canOverrideAiAssistant));
 
         return new TenantPolicySettingsDto
         {
@@ -270,39 +286,36 @@ public partial class TenantPolicySettingService
             CanOverrideSmtp = !isMultiTenant || !DeserializeBoolean(systemLockSmtp?.Value, true),
             CanOverrideStorage = !isMultiTenant || !DeserializeBoolean(systemLockStorage?.Value, true),
             CanOverrideAnalytics = !isMultiTenant || !DeserializeBoolean(systemLockAnalytics?.Value, true),
-            CanOverrideAiAssistant = !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true),
+            CanOverrideAiAssistant = canOverrideAiAssistant,
             CanOverrideMcp = !isMultiTenant || !DeserializeBoolean(systemLockMcp?.Value, true),
             CanOverrideMcpLegacySse = !isMultiTenant || !DeserializeBoolean(systemLockMcpLegacySse?.Value, true),
             AiAssistantEnabled = ResolveBoolean(
                 tenantAiAssistantEnabled?.Value,
                 systemAiAssistantEnabled?.Value,
                 false,
-                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+                canOverrideAiAssistant),
             AiAssistantProvider = ResolveString(
                 tenantAiAssistantProvider?.Value,
                 systemAiAssistantProvider?.Value,
                 "none",
-                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+                canOverrideAiAssistant),
             AiAssistantEndpointUrl = ResolveString(
                 tenantAiAssistantEndpointUrl?.Value,
                 systemAiAssistantEndpointUrl?.Value,
                 string.Empty,
-                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+                canOverrideAiAssistant),
             AiAssistantApiKey = ResolveString(
                 tenantAiAssistantApiKey?.Value,
                 systemAiAssistantApiKey?.Value,
                 string.Empty,
-                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
-            AiAssistantModelId = ResolveString(
-                tenantAiAssistantModelId?.Value,
-                systemAiAssistantModelId?.Value,
-                string.Empty,
-                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+                canOverrideAiAssistant),
+            AiAssistantModelId = resolvedAiAssistantModelId,
+            AiAssistantAllowedModelIds = resolvedAiAssistantAllowedModelIds,
             AiAssistantAllowAnonymousAccess = ResolveBoolean(
                 tenantAiAssistantAllowAnonymousAccess?.Value,
                 systemAiAssistantAllowAnonymousAccess?.Value,
                 false,
-                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+                canOverrideAiAssistant),
             McpEnabled = ResolveBoolean(
                 tenantMcpEnabled?.Value,
                 systemMcpEnabled?.Value,

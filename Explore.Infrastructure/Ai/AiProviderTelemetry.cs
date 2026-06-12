@@ -84,16 +84,7 @@ public static class AiProviderTelemetry
         ? "unknown"
         : value.Trim().ToLowerInvariant();
 
-    private static string NormalizeProvider(string? provider) => NormalizeTag(provider) switch
-    {
-        AiProviderSettings.ProviderNone => AiProviderSettings.ProviderNone,
-        AiProviderSettings.ProviderFake => AiProviderSettings.ProviderFake,
-        AiProviderSettings.ProviderOpenAiCompatible => AiProviderSettings.ProviderOpenAiCompatible,
-        AiProviderSettings.ProviderOpenAiSdk => AiProviderSettings.ProviderOpenAiSdk,
-        AiProviderSettings.ProviderAzureOpenAi => AiProviderSettings.ProviderAzureOpenAi,
-        MicrosoftExtensionsAiChatProvider.ProviderName => MicrosoftExtensionsAiChatProvider.ProviderName,
-        _ => "unknown"
-    };
+    private static string NormalizeProvider(string? provider) => NormalizeTag(provider);
 
     private static string NormalizeFinishReason(string? finishReason) => NormalizeTag(finishReason) switch
     {

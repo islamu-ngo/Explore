@@ -1,20 +1,22 @@
 // ABOUTME: Validates resolved AI provider settings before Infrastructure adapters run.
-// ABOUTME: Rejects unsupported providers, missing model credentials, and unsafe provider endpoints.
+// ABOUTME: Rejects unknown provider IDs, missing model credentials, and unsafe provider endpoints.
 
+using Explore.Application.Contracts.Infrastructure.Ai;
 using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Ai;
 
 public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSettings>
 {
-    private static readonly HashSet<string> SupportedProviders = new(StringComparer.OrdinalIgnoreCase)
-    {
+    private static readonly HashSet<int> SupportedProviders =
+    [
         AiProviderSettings.ProviderNone,
         AiProviderSettings.ProviderFake,
         AiProviderSettings.ProviderOpenAiCompatible,
+        AiProviderSettings.ProviderAnthropicCompatible,
         AiProviderSettings.ProviderOpenAiSdk,
         AiProviderSettings.ProviderAzureOpenAi
-    };
+    ];
 
     private static readonly HashSet<string> SupportedAzureCredentialModes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -28,7 +30,7 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
 
         if (!SupportedProviders.Contains(options.Provider))
         {
-            failures.Add("AiProvider:Provider must be none, fake, openai-compatible, openai-sdk, or azure-openai.");
+            failures.Add("AiProvider:Provider must be a valid provider ID (1-6).");
         }
 
         if (!string.IsNullOrWhiteSpace(options.EndpointUrl))
@@ -36,20 +38,22 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
             ValidateEndpointSafety(options, failures);
         }
 
-        if (options.Enabled
-            && options.Provider.Equals(AiProviderSettings.ProviderOpenAiCompatible, StringComparison.OrdinalIgnoreCase))
+        if (options.Enabled && options.Provider == AiProviderSettings.ProviderOpenAiCompatible)
         {
             ValidateOpenAiCompatibleSettings(options, failures);
         }
 
-        if (options.Enabled
-            && options.Provider.Equals(AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase))
+        if (options.Enabled && options.Provider == AiProviderSettings.ProviderAnthropicCompatible)
+        {
+            ValidateAnthropicCompatibleSettings(options, failures);
+        }
+
+        if (options.Enabled && options.Provider == AiProviderSettings.ProviderOpenAiSdk)
         {
             ValidateOpenAiSdkSettings(options, failures);
         }
 
-        if (options.Enabled
-            && options.Provider.Equals(AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase))
+        if (options.Enabled && options.Provider == AiProviderSettings.ProviderAzureOpenAi)
         {
             ValidateAzureOpenAiSettings(options, failures);
         }
@@ -116,6 +120,19 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
         }
     }
 
+    private static void ValidateAnthropicCompatibleSettings(AiProviderSettings options, List<string> failures)
+    {
+        if (string.IsNullOrWhiteSpace(options.ModelId))
+        {
+            failures.Add("AiProvider:ModelId is required for anthropic-compatible providers.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.EndpointUrl))
+        {
+            failures.Add("AiProvider:EndpointUrl is required for anthropic-compatible providers.");
+        }
+    }
+
     private static void ValidateEndpointSafety(AiProviderSettings options, List<string> failures)
     {
         if (!Uri.TryCreate(options.EndpointUrl, UriKind.Absolute, out var endpoint)
@@ -158,9 +175,9 @@ public sealed class AiProviderSettingsValidator : IValidateOptions<AiProviderSet
             failures.Add("AiProvider:Temperature must be between 0 and 2.");
         }
 
-        if (options.TimeoutSeconds <= 0 || options.TimeoutSeconds > 300)
+        if (options.TimeoutSeconds <= 0 || options.TimeoutSeconds > AiProviderDefaults.MaxTimeoutSeconds)
         {
-            failures.Add("AiProvider:TimeoutSeconds must be between 1 and 300.");
+            failures.Add($"AiProvider:TimeoutSeconds must be between 1 and {AiProviderDefaults.MaxTimeoutSeconds}.");
         }
 
         if (options.RetentionDays < 0)

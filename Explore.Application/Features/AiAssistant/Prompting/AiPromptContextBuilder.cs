@@ -2,6 +2,7 @@
 // ABOUTME: Keeps provider prompt packing separate from send orchestration and persistence updates.
 
 using Explore.Application.Contracts.Infrastructure.Ai;
+using Explore.Application.Features.AiAssistant;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Ai;
 
@@ -30,14 +31,17 @@ public sealed class AiPromptContextBuilder
     public AiChatPayload Build(
         AiConversation conversation,
         AiAssistantSettingGroup settings,
-        string modelId)
+        string modelId,
+        bool allowToolProposals = true)
     {
         var budget = AiPromptTokenBudget.Create(settings.MaxInputTokens);
-        string systemPrompt = _systemPromptFactory.CreateSystemPrompt();
+        var toolProposalsEnabled = settings.ToolProposalsEnabled && allowToolProposals;
+        string systemPrompt = _systemPromptFactory.CreateSystemPrompt(allowToolProposals);
         budget.ConsumeBestEffort(systemPrompt, _tokenEstimator);
 
         var actionSchema = _systemPromptFactory.CreateActionSchema(
             settings,
+            toolProposalsEnabled,
             budget.RemainingTokens,
             _tokenEstimator);
         if (actionSchema is not null)
@@ -60,10 +64,23 @@ public sealed class AiPromptContextBuilder
                 settings.MaxInputTokens,
                 settings.MaxOutputTokens,
                 settings.Temperature,
-                settings.TimeoutSeconds,
-                settings.ToolProposalsEnabled,
+                AiAssistantAvailability.ResolveTimeoutSeconds(settings),
+                toolProposalsEnabled,
                 StreamingEnabled: false),
-            actionSchema);
+            actionSchema,
+            ProviderConfiguration: BuildProviderConfiguration(settings, modelId));
+    }
+
+    private static AiChatProviderConfiguration BuildProviderConfiguration(
+        AiAssistantSettingGroup settings,
+        string modelId)
+    {
+        var provider = AiAssistantAvailability.NormalizeProvider(settings.Provider);
+        return new AiChatProviderConfiguration(
+            AiProviderDefaults.ProviderNameToId(provider),
+            settings.EndpointUrl?.Trim() ?? string.Empty,
+            settings.ApiKey?.Trim() ?? string.Empty,
+            modelId.Trim());
     }
 
     private IReadOnlyList<AiChatMessage> PackMessages(

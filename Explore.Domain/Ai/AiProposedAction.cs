@@ -1,6 +1,7 @@
 // ABOUTME: Persists an AI-proposed action that must be confirmed before side effects occur.
 // ABOUTME: Encapsulates confirmation, rejection, execution, and failure transitions for auditability.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain.Ai;
@@ -13,8 +14,22 @@ public class AiProposedAction : ITenantEntity
     public AiConversation? Conversation { get; set; }
     public Guid? MessageId { get; set; }
     public AiMessage? Message { get; set; }
-    public AiProposedActionKind Kind { get; set; }
-    public AiProposedActionStatus Status { get; set; } = AiProposedActionStatus.Proposed;
+    public int KindId { get; set; }
+    public AiProposedActionKindLookup? KindLookup { get; set; }
+    [NotMapped]
+    public AiProposedActionKind Kind
+    {
+        get => (AiProposedActionKind)KindId;
+        set => KindId = (int)value;
+    }
+    public int StatusId { get; set; } = (int)AiProposedActionStatus.Proposed;
+    public AiProposedActionStatusLookup? StatusLookup { get; set; }
+    [NotMapped]
+    public AiProposedActionStatus Status
+    {
+        get => (AiProposedActionStatus)StatusId;
+        set => StatusId = (int)value;
+    }
     public required string PayloadJson { get; set; }
     public Guid? ConfirmedBy { get; set; }
     public DateTime? ConfirmedAt { get; set; }

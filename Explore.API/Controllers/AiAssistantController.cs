@@ -4,9 +4,11 @@
 using System.Text.Json;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.BackgroundServices;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Queries;
@@ -16,6 +18,7 @@ using Explore.Application.Responses;
 using Explore.Infrastructure.Ai;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
@@ -37,15 +40,21 @@ public sealed class AiAssistantController : ControllerBase
     private readonly IMediator _mediator;
     private readonly IHateoasLinkGenerator _linkGenerator;
     private readonly IResourceAssembler<AiConversationDto, AiConversationSummaryDto> _conversationAssembler;
+    private readonly IAiAssistantRunQueue _runQueue;
+    private readonly ITenantContext _tenantContext;
 
     public AiAssistantController(
         IMediator mediator,
         IHateoasLinkGenerator linkGenerator,
-        IResourceAssembler<AiConversationDto, AiConversationSummaryDto> conversationAssembler)
+        IResourceAssembler<AiConversationDto, AiConversationSummaryDto> conversationAssembler,
+        IAiAssistantRunQueue runQueue,
+        ITenantContext tenantContext)
     {
         _mediator = mediator;
         _linkGenerator = linkGenerator;
         _conversationAssembler = conversationAssembler;
+        _runQueue = runQueue;
+        _tenantContext = tenantContext;
     }
 
     [HttpGet("bootstrap", Name = RouteNames.GetAiAssistantBootstrap)]
@@ -272,6 +281,7 @@ public sealed class AiAssistantController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     [EnableRateLimiting(RateLimitingExtensions.AiAssistantPolicy)]
+    [DisableRequestTimeout]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SendMessage(
         Guid conversationId,
         [FromBody] SendAiMessageRequestDto dto,
@@ -293,6 +303,16 @@ public sealed class AiAssistantController : ControllerBase
         {
             return this.ToAiAssistantProblem(response);
         }
+
+        var interactionMode = AiAssistantInteractionModes.Normalize(dto.Mode);
+
+        await _runQueue.EnqueueAsync(
+            new AiAssistantRunQueueItem(
+                _tenantContext.TenantId,
+                conversationId,
+                response.Id,
+                interactionMode),
+            CancellationToken.None);
 
         return AcceptedAtRoute(RouteNames.GetAiRunStatus, new { conversationId, runId = response.Id }, response);
     }

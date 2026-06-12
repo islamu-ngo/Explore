@@ -73,7 +73,7 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
 
     private async Task PersistAggregateGraphAsync(AiConversation entity)
     {
-        var status = entity.Status;
+        var statusId = entity.StatusId;
         var title = entity.Title;
         var provider = entity.Provider;
         var modelId = entity.ModelId;
@@ -87,7 +87,7 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
         var affectedRows = await _dbContext.AiConversations
             .Where(conversation => conversation.Id == entity.Id)
             .ExecuteUpdateAsync(setters => setters
-                .SetProperty(conversation => conversation.Status, status)
+                .SetProperty(conversation => conversation.StatusId, statusId)
                 .SetProperty(conversation => conversation.Title, title)
                 .SetProperty(conversation => conversation.Provider, provider)
                 .SetProperty(conversation => conversation.ModelId, modelId)
@@ -156,7 +156,7 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
             await _dbContext.AiRuns
                 .Where(existingRun => existingRun.Id == run.Id)
                 .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(existingRun => existingRun.Status, run.Status)
+                    .SetProperty(existingRun => existingRun.StatusId, run.StatusId)
                     .SetProperty(existingRun => existingRun.StartedAt, run.StartedAt)
                     .SetProperty(existingRun => existingRun.CompletedAt, run.CompletedAt)
                     .SetProperty(existingRun => existingRun.FailureCode, run.FailureCode)
@@ -174,7 +174,7 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
             await _dbContext.AiProposedActions
                 .Where(existingAction => existingAction.Id == action.Id)
                 .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(existingAction => existingAction.Status, action.Status)
+                    .SetProperty(existingAction => existingAction.StatusId, action.StatusId)
                     .SetProperty(existingAction => existingAction.ConfirmedBy, action.ConfirmedBy)
                     .SetProperty(existingAction => existingAction.ConfirmedAt, action.ConfirmedAt)
                     .SetProperty(existingAction => existingAction.RejectedBy, action.RejectedBy)
@@ -186,7 +186,7 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
 
         await _dbContext.SaveChangesAsync();
 
-        entity.Status = status;
+        entity.StatusId = statusId;
         entity.Title = title;
         entity.Provider = provider;
         entity.ModelId = modelId;
@@ -204,7 +204,7 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
     {
         return await _dbContext.AiMessages
             .AsNoTracking()
-            .Where(message => message.Role == AiMessageRole.User)
+            .Where(message => message.RoleId == (int)AiMessageRole.User)
             .Where(message => message.CreatedBy == userId)
             .Where(message => message.CreatedAt >= sinceUtc)
             .CountAsync(cancellationToken);
@@ -216,9 +216,69 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
     {
         return await _dbContext.AiMessages
             .AsNoTracking()
-            .Where(message => message.Role == AiMessageRole.User)
+            .Where(message => message.RoleId == (int)AiMessageRole.User)
             .Where(message => message.CreatedAt >= sinceUtc)
             .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> ReleaseStaleRunningConversationsForUserAsync(
+        Guid userId,
+        DateTime staleBeforeUtc,
+        string failureCode,
+        string failureMessage,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        var activeRunStatuses = new[]
+        {
+            (int)AiRunStatus.Queued,
+            (int)AiRunStatus.InProgress
+        };
+
+        var staleConversationIds = await _dbContext.AiConversations
+            .AsNoTracking()
+            .Where(conversation => conversation.UserId == userId)
+            .Where(conversation => conversation.StatusId == (int)AiConversationStatus.Running)
+            .Where(conversation => conversation.Runs.Any(run =>
+                activeRunStatuses.Contains(run.StatusId)
+                && (run.StartedAt ?? run.QueuedAt) <= staleBeforeUtc))
+            .Where(conversation => !conversation.Runs.Any(run =>
+                activeRunStatuses.Contains(run.StatusId)
+                && (run.StartedAt ?? run.QueuedAt) > staleBeforeUtc))
+            .Select(conversation => conversation.Id)
+            .ToListAsync(cancellationToken);
+
+        if (staleConversationIds.Count == 0)
+        {
+            return 0;
+        }
+
+        var normalizedFailureCode = string.IsNullOrWhiteSpace(failureCode)
+            ? "stale_ai_run_released"
+            : failureCode.Trim();
+        var normalizedFailureMessage = string.IsNullOrWhiteSpace(failureMessage)
+            ? "AI run was released after it stopped reporting progress."
+            : failureMessage.Trim();
+
+        await _dbContext.AiRuns
+            .Where(run => staleConversationIds.Contains(run.ConversationId))
+            .Where(run => activeRunStatuses.Contains(run.StatusId))
+            .Where(run => (run.StartedAt ?? run.QueuedAt) <= staleBeforeUtc)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(run => run.StatusId, (int)AiRunStatus.Failed)
+                .SetProperty(run => run.CompletedAt, utcNow)
+                .SetProperty(run => run.FailureCode, normalizedFailureCode)
+                .SetProperty(run => run.FailureMessage, normalizedFailureMessage),
+                cancellationToken);
+
+        return await _dbContext.AiConversations
+            .Where(conversation => staleConversationIds.Contains(conversation.Id))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(conversation => conversation.StatusId, (int)AiConversationStatus.Active)
+                .SetProperty(conversation => conversation.BlockedReason, (string?)null)
+                .SetProperty(conversation => conversation.UpdatedAt, utcNow)
+                .SetProperty(conversation => conversation.UpdatedBy, userId),
+                cancellationToken);
     }
 
     public async Task<int> CountRunningConversationsForUserAsync(
@@ -228,7 +288,7 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
         return await _dbContext.AiConversations
             .AsNoTracking()
             .Where(conversation => conversation.UserId == userId)
-            .Where(conversation => conversation.Status == AiConversationStatus.Running)
+            .Where(conversation => conversation.StatusId == (int)AiConversationStatus.Running)
             .CountAsync(cancellationToken);
     }
 
@@ -246,7 +306,7 @@ public class AiConversationRepository : GenericRepository<AiConversation, Guid>,
         await _dbContext.AiProposedActions
             .Where(existingAction => existingAction.Id == proposedAction.Id)
             .ExecuteUpdateAsync(setters => setters
-                .SetProperty(existingAction => existingAction.Status, proposedAction.Status)
+                .SetProperty(existingAction => existingAction.StatusId, proposedAction.StatusId)
                 .SetProperty(existingAction => existingAction.ConfirmedBy, proposedAction.ConfirmedBy)
                 .SetProperty(existingAction => existingAction.ConfirmedAt, proposedAction.ConfirmedAt)
                 .SetProperty(existingAction => existingAction.RejectedBy, proposedAction.RejectedBy)

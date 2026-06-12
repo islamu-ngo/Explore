@@ -71,6 +71,7 @@ public class TenantPolicySettingsDto
     public string AiAssistantEndpointUrl { get; set; } = string.Empty;
     public string AiAssistantApiKey { get; set; } = string.Empty;
     public string AiAssistantModelId { get; set; } = string.Empty;
+    public IReadOnlyList<string> AiAssistantAllowedModelIds { get; set; } = [];
     public bool AiAssistantAllowAnonymousAccess { get; set; }
 
     // API-hosted MCP adapter runtime governance

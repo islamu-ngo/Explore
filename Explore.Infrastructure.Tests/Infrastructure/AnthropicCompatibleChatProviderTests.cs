@@ -1,0 +1,162 @@
+// ABOUTME: Unit tests for the Refit-backed Anthropic-compatible AI chat provider adapter.
+// ABOUTME: Verifies native Anthropic tool, tool result, header, and endpoint mapping semantics.
+
+using System.Diagnostics.Metrics;
+using System.Net;
+using System.Text;
+using System.Text.Json;
+using Explore.Application.Contracts.Infrastructure.Ai;
+using Explore.Application.Telemetry;
+using Explore.Domain.Ai;
+using Explore.Infrastructure.Ai;
+using Microsoft.Extensions.Options;
+using NSubstitute;
+
+namespace Explore.Infrastructure.Tests.Infrastructure;
+
+public sealed class AnthropicCompatibleChatProviderTests
+{
+    [Test]
+    public async Task SendAsync_PostsMessagesRequestWithNativeToolsAndToolResults()
+    {
+        var handler = new RecordingMessageHandler(_ => JsonResponse("""
+            {
+              "id": "msg_test",
+              "type": "message",
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "tool_use",
+                  "id": "call_2",
+                  "name": "create_event_draft",
+                  "input": { "title": "Community Dinner" }
+                }
+              ],
+              "model": "claude-test",
+              "stop_reason": "tool_use",
+              "usage": { "input_tokens": 12, "output_tokens": 4 }
+            }
+            """, response => response.Headers.Add("x-request-id", "req_test")));
+        var provider = CreateProvider(handler, CreateSettings(apiKey: "secret-key"));
+
+        var result = await provider.SendAsync(CreateRequest(
+            toolProposalsEnabled: true,
+            actionSchema: """
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["title"],
+                  "properties": { "title": { "type": "string" } }
+                }
+                """,
+            messages:
+            [
+                new AiChatMessage(AiMessageRole.User, "Create an event draft"),
+                new AiChatMessage(AiMessageRole.Tool, "{\"draftId\":\"draft_1\"}", "call_1")
+            ]));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(handler.RequestUri).IsEqualTo(new Uri("https://ai.example.test/v1/messages"));
+        await Assert.That(handler.RequestHeaders!.GetValues("x-api-key").Single()).IsEqualTo("secret-key");
+        await Assert.That(handler.RequestHeaders.GetValues("anthropic-version").Single()).IsEqualTo("2023-06-01");
+        await Assert.That(handler.RequestBody).DoesNotContain("secret-key");
+        await Assert.That(result.Response!.ProviderRequestId).IsEqualTo("req_test");
+        await Assert.That(result.Response.ProposedActions.Count).IsEqualTo(1);
+        await Assert.That(result.Response.ProposedActions[0].PayloadJson).Contains("Community Dinner");
+        await Assert.That(result.Response.AssistantMessage).IsEqualTo("Event draft proposed.");
+
+        using var document = JsonDocument.Parse(handler.RequestBody!);
+        var root = document.RootElement;
+        await Assert.That(root.GetProperty("model").GetString()).IsEqualTo("claude-test");
+        await Assert.That(root.GetProperty("system").GetString()).IsEqualTo("You are a safe assistant.");
+        await Assert.That(root.GetProperty("tools")[0].GetProperty("name").GetString()).IsEqualTo("create_event_draft");
+        await Assert.That(root.GetProperty("tools")[0].GetProperty("input_schema").GetProperty("additionalProperties").GetBoolean()).IsFalse();
+
+        var toolMessage = root.GetProperty("messages")[1];
+        var toolResult = toolMessage.GetProperty("content")[0];
+        await Assert.That(toolMessage.GetProperty("role").GetString()).IsEqualTo("user");
+        await Assert.That(toolResult.GetProperty("type").GetString()).IsEqualTo("tool_result");
+        await Assert.That(toolResult.GetProperty("tool_use_id").GetString()).IsEqualTo("call_1");
+        await Assert.That(toolResult.GetProperty("content").GetString()).IsEqualTo("{\"draftId\":\"draft_1\"}");
+    }
+
+    private static AnthropicCompatibleChatProvider CreateProvider(
+        HttpMessageHandler handler,
+        AiProviderSettings settings)
+    {
+        var client = new HttpClient(handler);
+        var factory = new StaticHttpClientFactory(client);
+        var meterFactory = Substitute.For<IMeterFactory>();
+        meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
+
+        return new AnthropicCompatibleChatProvider(
+            factory,
+            Options.Create(settings),
+            new AiProviderSettingsValidator(),
+            new BusinessMetrics(meterFactory));
+    }
+
+    private static AiProviderSettings CreateSettings(string apiKey = "test-key") => new()
+    {
+        Enabled = true,
+        Provider = AiProviderSettings.ProviderAnthropicCompatible,
+        EndpointUrl = "https://ai.example.test/v1/messages",
+        ApiKey = apiKey,
+        ModelId = "claude-test",
+        MaxInputTokens = 8000,
+        MaxOutputTokens = 1024,
+        TimeoutSeconds = 30
+    };
+
+    private static AiChatPayload CreateRequest(
+        bool toolProposalsEnabled = false,
+        string? actionSchema = null,
+        IReadOnlyList<AiChatMessage>? messages = null) => new(
+            "claude-test",
+            messages ?? [new AiChatMessage(AiMessageRole.User, "Plan a community dinner")],
+            "You are a safe assistant.",
+            new AiChatOptions(
+                8000,
+                1024,
+                0.2m,
+                30,
+                toolProposalsEnabled,
+                StreamingEnabled: false,
+                StructuredOutputEnabled: false),
+            actionSchema is null
+                ? null
+                : new AiStructuredActionSchema([AiProposedActionKind.CreateEventDraft], actionSchema));
+
+    private static HttpResponseMessage JsonResponse(
+        string json,
+        Action<HttpResponseMessage>? configure = null,
+        HttpStatusCode statusCode = HttpStatusCode.OK)
+    {
+        var response = new HttpResponseMessage(statusCode)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+        configure?.Invoke(response);
+        return response;
+    }
+
+    private sealed class StaticHttpClientFactory(HttpClient client) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => client;
+    }
+
+    private sealed class RecordingMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler
+    {
+        public Uri? RequestUri { get; private set; }
+        public System.Net.Http.Headers.HttpRequestHeaders? RequestHeaders { get; private set; }
+        public string? RequestBody { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            RequestUri = request.RequestUri;
+            RequestHeaders = request.Headers;
+            RequestBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+            return responseFactory(request);
+        }
+    }
+}

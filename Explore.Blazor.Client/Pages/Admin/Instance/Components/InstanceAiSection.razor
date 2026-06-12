@@ -1,0 +1,336 @@
+@* ABOUTME: Dedicated AI Assistant settings section with model discovery and dual-provider support. *@
+@* ABOUTME: Combines instance governance AI model with tenant-level model discovery UX. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+@inject ITenantOnboardingService TenantOnboardingService
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudText Typo="Typo.h5" Style="font-weight: 700;">AI Assistant</MudText>
+            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small">Beta</MudChip>
+        </MudStack>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Configure the AI provider for the assistant rail. API keys are optional for local providers such as llama.cpp.
+        </MudText>
+    </div>
+    <MudStack Spacing="3">
+        <MudSwitch T="bool" @bind-Value="AiAssistant.Enabled" Color="Color.Primary">
+            Enable AI Assistant
+        </MudSwitch>
+
+        @if (AiAssistant.Enabled)
+        {
+            <MudSelect T="string" Label="Provider" @bind-Value="AiAssistant.Provider" Variant="Variant.Outlined">
+                <MudSelectItem Value="@("openai-compatible")">OpenAI-compatible</MudSelectItem>
+                <MudSelectItem Value="@("anthropic-compatible")">Anthropic-compatible</MudSelectItem>
+            </MudSelect>
+
+            <MudSwitch T="bool" @bind-Value="AiAssistant.AllowAnonymousAccess" Color="Color.Warning">
+                Allow anonymous users to open the AI Assistant
+            </MudSwitch>
+
+            <MudSwitch T="bool" @bind-Value="AiAssistant.ToolProposalsEnabled" Color="Color.Primary">
+                Enable tool proposals (Build mode)
+            </MudSwitch>
+
+            <MudAlert Severity="Severity.Info" Dense="true">
+                The navbar AI button appears only after an endpoint URL and model ID are saved.
+            </MudAlert>
+
+            <MudTextField T="string"
+                          Value="AiAssistant.EndpointUrl"
+                          ValueChanged="OnEndpointUrlChanged"
+                          Label="Endpoint URL"
+                          InputType="InputType.Url"
+                          Variant="Variant.Outlined"
+                          Placeholder="http://127.0.0.1:1337/v1"
+                          HelperText="Provider base URL. Model discovery calls the provider's models endpoint automatically." />
+
+            <MudTextField T="string"
+                          Label="API key (optional)"
+                          @bind-Value="AiAssistant.ApiKey"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          HelperText="Leave blank when the local provider does not require authentication." />
+
+            <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2" Class="flex-wrap">
+                @if (HasDiscoveredModels)
+                {
+                    <MudSelect T="string"
+                               Value="AiAssistant.ModelId"
+                               ValueChanged="OnModelIdChanged"
+                               Label="Default model ID"
+                               Variant="Variant.Outlined"
+                               HelperText="Select a model returned by the provider."
+                               Class="flex-grow-1">
+                        @foreach (var model in ModelOptions)
+                        {
+                            <MudSelectItem T="string" Value="@model.Id">@FormatModelOption(model)</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else
+                {
+                    <MudTextField T="string"
+                                  Value="AiAssistant.ModelId"
+                                  ValueChanged="OnModelIdChanged"
+                                  Label="Default model ID"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="gpt-4o-mini, llama3.1, claude-sonnet-4-20250514"
+                                  HelperText="Example: gpt-4o-mini, llama3.1, or the model name exposed by your provider."
+                                  Class="flex-grow-1" />
+                }
+
+                <MudButton Elevation="0"
+                           Color="Color.Primary"
+                           Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="LoadModelsAsync"
+                           Disabled="@(!CanLoadModels)">
+                    @(_isLoadingModels ? "Loading..." : "Load models")
+                </MudButton>
+            </MudStack>
+
+            @if (HasDiscoveredModels)
+            {
+                <MudSelect T="string"
+                           MultiSelection="true"
+                           SelectedValues="SelectedAllowedModelIds"
+                           SelectedValuesChanged="OnSelectedAllowedModelIdsChanged"
+                           Label="Allowed models"
+                           Variant="Variant.Outlined"
+                           HelperText="Choose every model the assistant may use.">
+                    @foreach (var model in ModelOptions)
+                    {
+                        <MudSelectItem T="string" Value="@model.Id">@FormatModelOption(model)</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            else
+            {
+                <MudTextField T="string"
+                              Value="@AllowedModelsText"
+                              ValueChanged="OnAllowedModelsTextChanged"
+                              Label="Allowed model IDs"
+                              Variant="Variant.Outlined"
+                              Lines="3"
+                              HelperText="Optional. Use commas or one model per line. The default model ID is always included." />
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_modelLoadMessage))
+            {
+                <MudText Typo="Typo.caption" Color="@_modelLoadMessageColor">
+                    @_modelLoadMessage
+                </MudText>
+            }
+
+            @if (HasIncompleteConfiguration)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Enter an endpoint URL and model ID before saving, otherwise the AI Assistant cannot be enabled.
+                </MudAlert>
+            }
+        }
+
+        @if (!IsSingleTenant)
+        {
+            <MudDivider Class="my-2" />
+            <MudSwitch T="bool" @bind-Value="AiAssistant.LockTenantAiAssistant" Color="Color.Primary">
+                Lock tenant AI Assistant configuration
+            </MudSwitch>
+        }
+    </MudStack>
+</div>
+
+@code {
+    private IReadOnlyList<AiAssistantModelOptionModel> _discoveredModels = [];
+    private bool _isLoadingModels;
+    private string? _modelLoadMessage;
+    private Color _modelLoadMessageColor = Color.Secondary;
+
+    [Parameter, EditorRequired]
+    public AiAssistantGovernanceModel AiAssistant { get; set; } = new();
+
+    [Parameter]
+    public string DeploymentMode { get; set; } = "SingleTenant";
+
+    private bool IsSingleTenant => string.Equals(DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
+                                   || string.IsNullOrWhiteSpace(DeploymentMode);
+
+    private bool HasDiscoveredModels => _discoveredModels.Count > 0;
+
+    private bool HasIncompleteConfiguration =>
+        string.IsNullOrWhiteSpace(AiAssistant.EndpointUrl)
+        || string.IsNullOrWhiteSpace(AiAssistant.ModelId);
+
+    private bool CanLoadModels =>
+        !_isLoadingModels
+        && !string.IsNullOrWhiteSpace(AiAssistant.EndpointUrl);
+
+    private IReadOnlyCollection<string> SelectedAllowedModelIds => AiAssistant.AllowedModelIds;
+
+    private string AllowedModelsText => string.Join(Environment.NewLine, AiAssistant.AllowedModelIds);
+
+    private IEnumerable<AiAssistantModelOptionModel> ModelOptions
+    {
+        get
+        {
+            foreach (var model in _discoveredModels)
+            {
+                yield return model;
+            }
+
+            if (!string.IsNullOrWhiteSpace(AiAssistant.ModelId)
+                && !_discoveredModels.Any(m => string.Equals(m.Id, AiAssistant.ModelId, StringComparison.OrdinalIgnoreCase)))
+            {
+                yield return new AiAssistantModelOptionModel
+                {
+                    Id = AiAssistant.ModelId,
+                    DisplayName = $"{AiAssistant.ModelId} (current)"
+                };
+            }
+
+            foreach (var allowedModelId in AiAssistant.AllowedModelIds)
+            {
+                if (string.IsNullOrWhiteSpace(allowedModelId)
+                    || _discoveredModels.Any(m => string.Equals(m.Id, allowedModelId, StringComparison.OrdinalIgnoreCase))
+                    || string.Equals(AiAssistant.ModelId, allowedModelId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                yield return new AiAssistantModelOptionModel
+                {
+                    Id = allowedModelId,
+                    DisplayName = $"{allowedModelId} (allowed)"
+                };
+            }
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        EnsureDefaultModelAllowed();
+    }
+
+    private void OnEndpointUrlChanged(string endpointUrl)
+    {
+        AiAssistant.EndpointUrl = endpointUrl;
+        ClearDiscoveredModels();
+    }
+
+    private void OnModelIdChanged(string modelId)
+    {
+        AiAssistant.ModelId = modelId;
+        EnsureDefaultModelAllowed();
+    }
+
+    private Task OnSelectedAllowedModelIdsChanged(IEnumerable<string> selectedModelIds)
+    {
+        AiAssistant.AllowedModelIds = NormalizeModelIds(AiAssistant.ModelId, selectedModelIds).ToList();
+        return Task.CompletedTask;
+    }
+
+    private void OnAllowedModelsTextChanged(string value)
+    {
+        AiAssistant.AllowedModelIds = NormalizeModelIds(AiAssistant.ModelId, SplitModelIds(value)).ToList();
+    }
+
+    private async Task LoadModelsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AiAssistant.EndpointUrl))
+        {
+            SetModelLoadMessage("Enter an endpoint URL before loading models.", Color.Warning);
+            return;
+        }
+
+        _isLoadingModels = true;
+        SetModelLoadMessage(null, Color.Secondary);
+
+        try
+        {
+            var models = await TenantOnboardingService.GetAiModelsAsync(AiAssistant.EndpointUrl, AiAssistant.ApiKey);
+            _discoveredModels = models
+                .Where(m => !string.IsNullOrWhiteSpace(m.Id))
+                .GroupBy(m => m.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .OrderBy(m => m.Id, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            if (_discoveredModels.Count == 0)
+            {
+                SetModelLoadMessage("No models were returned. Enter the model ID manually.", Color.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(AiAssistant.ModelId))
+            {
+                AiAssistant.ModelId = _discoveredModels[0].Id;
+            }
+
+            if (AiAssistant.AllowedModelIds.Count == 0)
+            {
+                AiAssistant.AllowedModelIds = _discoveredModels.Select(m => m.Id).ToList();
+            }
+
+            EnsureDefaultModelAllowed();
+
+            SetModelLoadMessage($"Loaded {_discoveredModels.Count} model{(_discoveredModels.Count == 1 ? string.Empty : "s")} from the provider.", Color.Secondary);
+        }
+        finally
+        {
+            _isLoadingModels = false;
+        }
+    }
+
+    private void ClearDiscoveredModels()
+    {
+        _discoveredModels = [];
+        SetModelLoadMessage(null, Color.Secondary);
+    }
+
+    private void SetModelLoadMessage(string? message, Color color)
+    {
+        _modelLoadMessage = message;
+        _modelLoadMessageColor = color;
+    }
+
+    private static string FormatModelOption(AiAssistantModelOptionModel model)
+    {
+        return string.IsNullOrWhiteSpace(model.DisplayName) || string.Equals(model.DisplayName, model.Id, StringComparison.OrdinalIgnoreCase)
+            ? model.Id
+            : model.DisplayName;
+    }
+
+    private void EnsureDefaultModelAllowed()
+    {
+        AiAssistant.AllowedModelIds = NormalizeModelIds(AiAssistant.ModelId, AiAssistant.AllowedModelIds).ToList();
+    }
+
+    private static IEnumerable<string> SplitModelIds(string value)
+    {
+        return value.Split([',', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private static IReadOnlyList<string> NormalizeModelIds(string? defaultModelId, IEnumerable<string?> modelIds)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var normalized = new List<string>();
+
+        foreach (var modelId in new[] { defaultModelId }.Concat(modelIds))
+        {
+            var trimmed = modelId?.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed) || !seen.Add(trimmed))
+            {
+                continue;
+            }
+
+            normalized.Add(trimmed);
+        }
+
+        return normalized;
+    }
+}

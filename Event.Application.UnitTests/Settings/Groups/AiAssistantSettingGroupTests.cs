@@ -24,14 +24,13 @@ public class AiAssistantSettingGroupTests
     }
 
     [Test]
-    public async Task Populate_OpenAiCompatibleRequiresEndpointApiKeyAndModel()
+    public async Task Populate_OpenAiCompatibleRequiresEndpointAndModel()
     {
         var group = new AiAssistantSettingGroup();
         group.Populate(CreateSettings(
             (GovernanceSettingKeys.AiAssistant.Enabled, "true"),
             (GovernanceSettingKeys.AiAssistant.Provider, "\"openai-compatible\""),
             (GovernanceSettingKeys.AiAssistant.EndpointUrl, "\"https://ai.example.test\""),
-            (GovernanceSettingKeys.AiAssistant.ApiKey, "\"test-key\""),
             (GovernanceSettingKeys.AiAssistant.ModelId, "\"gpt-test\"")));
 
         await Assert.That(group.IsConfigured).IsTrue();
@@ -50,6 +49,20 @@ public class AiAssistantSettingGroupTests
 
         await Assert.That(group.IsConfigured).IsFalse();
         await Assert.That(group.IsAvailable).IsFalse();
+    }
+
+    [Test]
+    public async Task Populate_OpenAiCompatibleWithoutApiKeyIsAvailable()
+    {
+        var group = new AiAssistantSettingGroup();
+        group.Populate(CreateSettings(
+            (GovernanceSettingKeys.AiAssistant.Enabled, "true"),
+            (GovernanceSettingKeys.AiAssistant.Provider, "\"openai-compatible\""),
+            (GovernanceSettingKeys.AiAssistant.EndpointUrl, "\"https://ai.example.test\""),
+            (GovernanceSettingKeys.AiAssistant.ModelId, "\"gpt-test\"")));
+
+        await Assert.That(group.IsConfigured).IsTrue();
+        await Assert.That(group.IsAvailable).IsTrue();
     }
 
     [Test]
@@ -79,6 +92,7 @@ public class AiAssistantSettingGroupTests
             (GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit, "500"),
             (GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit, "2"),
             (GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit, "6"),
+            (GovernanceSettingKeys.AiAssistant.AllowedModelIds, "[\"gpt-one\",\"gpt-two\"]"),
             (GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled, "true"),
             (GovernanceSettingKeys.AiAssistant.StreamingEnabled, "true")));
 
@@ -91,6 +105,7 @@ public class AiAssistantSettingGroupTests
         await Assert.That(group.DailyTenantMessageLimit).IsEqualTo(500);
         await Assert.That(group.ConcurrentRunLimit).IsEqualTo(2);
         await Assert.That(group.SelectedReferenceLimit).IsEqualTo(6);
+        await Assert.That(group.AllowedModelIds).IsEquivalentTo(["gpt-one", "gpt-two"]);
         await Assert.That(group.ToolProposalsEnabled).IsTrue();
         await Assert.That(group.StreamingEnabled).IsTrue();
     }
@@ -100,9 +115,10 @@ public class AiAssistantSettingGroupTests
     {
         var keys = AiAssistantSettingGroup.SettingKeys.ToList();
 
-        await Assert.That(keys.Count).IsEqualTo(17);
+        await Assert.That(keys.Count).IsEqualTo(18);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.Provider);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.ModelId);
+        await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.AllowedModelIds);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit);
         await Assert.That(keys).Contains(GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit);

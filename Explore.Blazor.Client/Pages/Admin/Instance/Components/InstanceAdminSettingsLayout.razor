@@ -151,6 +151,10 @@
                         {
                             <TenantMembersSection />
                         }
+                        else if (_currentSection == "ai")
+                        {
+                            <InstanceAiSection AiAssistant="_aiAssistant" DeploymentMode="_deploymentMode" />
+                        }
                         else if (_currentSection == "policies" && IsSingleTenantMode)
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPoliciesSection Model="_tenantModel" IsSingleTenant="true" />
@@ -270,6 +274,7 @@
     private DomainSettingsModel _domain = new();
     private TenantDelegationModel _delegation = new();
     private RenderPolicyModel _renderPolicy = new();
+    private AiAssistantGovernanceModel _aiAssistant = new();
     private McpGovernanceModel _mcp = new();
 
     // Infrastructure models
@@ -298,7 +303,7 @@
     private bool CanSaveCurrentSection => _currentSection != "storage" || _storageModel.CanUpdate;
 
     private static bool IsSettingsSection(string section) =>
-        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "announcement-bar" or "public-experience" or "advanced" or "analytics-privacy" or "footer-governance"
+        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "announcement-bar" or "public-experience" or "advanced" or "analytics-privacy" or "footer-governance" or "ai"
             // Localization and Footer manage their own Save button
             ;
 
@@ -324,6 +329,7 @@
         var domainTask = InstanceOnboardingService.GetDomainSettingsAsync();
         var delegationTask = InstanceOnboardingService.GetTenantDelegationAsync();
         var renderTask = InstanceOnboardingService.GetRenderPolicyAsync();
+        var aiAssistantTask = InstanceOnboardingService.GetAiAssistantGovernanceSettingsAsync();
         var mcpTask = InstanceOnboardingService.GetMcpGovernanceSettingsAsync();
         var storageTask = InstanceOnboardingService.GetStorageSettingsAsync();
         var smtpTask = InstanceOnboardingService.GetSmtpSettingsAsync();
@@ -334,7 +340,7 @@
         var tenantCountTask = InstanceOnboardingService.GetActiveTenantCountAsync();
 
         await Task.WhenAll(deploymentTask, modulesTask, eventTask, orgTask, brandingTask,
-            domainTask, delegationTask, renderTask, mcpTask, storageTask, smtpTask, authTask,
+            domainTask, delegationTask, renderTask, aiAssistantTask, mcpTask, storageTask, smtpTask, authTask,
             authorizationTask, analyticsTask, footerGovTask, tenantCountTask);
 
         _deploymentMode = deploymentTask.Result.Mode;
@@ -345,6 +351,7 @@
         _domain = domainTask.Result;
         _delegation = delegationTask.Result;
         _renderPolicy = renderTask.Result;
+        _aiAssistant = aiAssistantTask.Result;
         _mcp = mcpTask.Result;
         _storageModel = storageTask.Result;
         _smtpModel = smtpTask.Result;
@@ -472,6 +479,11 @@
                 _hasAnnouncementBar = HasUsableAnnouncementBar(_tenantModel);
                 _lastAnnouncementSaveStartedWithExistingBar = hadAnnouncementBarBeforeSave;
                 break;
+            case "ai":
+                _delegation.LockTenantAiAssistant = _aiAssistant.LockTenantAiAssistant;
+                tasks.Add(InstanceOnboardingService.UpdateTenantDelegationAsync(_delegation));
+                tasks.Add(InstanceOnboardingService.UpdateAiAssistantGovernanceSettingsAsync(_aiAssistant));
+                break;
             case "advanced":
                 tasks.Add(InstanceOnboardingService.UpdateRenderPolicyAsync(_renderPolicy));
                 tasks.Add(InstanceOnboardingService.UpdateMcpGovernanceSettingsAsync(_mcp));
@@ -597,6 +609,7 @@
                 new("organizations",    Icons.Material.Filled.Business,        "Organizations"),
                 new("lookups",          Icons.Material.Filled.TableChart,      "Lookup Tables"),
                 new("policies",         Icons.Material.Filled.Policy,          "Policies"),
+                new("ai",               Icons.Material.Filled.SmartToy,        "AI"),
                 new("announcement-bar", Icons.Material.Filled.Announcement,    "Announcement Bar"),
                 new("public-experience",Icons.Material.Filled.HomeWork,        "Public Experience"),
                 new("themes",           Icons.Material.Filled.ColorLens,       "Themes"),
@@ -627,6 +640,7 @@
             new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
             new("footer-governance",Icons.Material.Filled.ViewAgenda,      "Footer"),
             new("localization",     Icons.Material.Filled.Translate,       "Localization"),
+            new("ai",               Icons.Material.Filled.SmartToy,        "AI"),
             new("advanced",         Icons.Material.Filled.DisplaySettings, "Advanced"),
             new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
         ];
@@ -655,9 +669,8 @@
     }
 
     private bool ShouldOpenAiAssistantAfterSave() =>
-        _currentSection == "policies"
-        && IsSingleTenantMode
-        && _tenantModel.AiAssistantEnabled;
+        _currentSection == "ai"
+        && _aiAssistant.Enabled;
 
     private async Task RefreshShellExperienceAsync(bool openAiAssistantIfAvailable = false)
     {

@@ -1,8 +1,8 @@
 // ABOUTME: Validates AI tool payload objects against the safe JSON Schema subset used by registry definitions.
 // ABOUTME: Enforces required fields, primitive types, UUID formats, numeric bounds, string lengths, and array items.
 
-using System.Text.Json;
 using System.Globalization;
+using System.Text.Json;
 
 namespace Explore.Application.Features.AiAssistant.Tools;
 

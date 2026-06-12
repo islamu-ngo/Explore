@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for guarded AI assistant send-message orchestration.
-// ABOUTME: Verifies governance, idempotency, quotas, provider failures, and proposed-action persistence.
+// ABOUTME: Unit tests for guarded AI assistant send-message queuing.
+// ABOUTME: Verifies governance, idempotency, quotas, stale-run release, and queued run persistence.
 
 using System.Globalization;
 using System.Security.Cryptography;
@@ -30,7 +30,6 @@ public sealed class SendAiMessageCommandHandlerTests
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IAiModelCatalog _modelCatalog = Substitute.For<IAiModelCatalog>();
-    private readonly IAiChatProvider _chatProvider = Substitute.For<IAiChatProvider>();
 
     public SendAiMessageCommandHandlerTests()
     {
@@ -47,21 +46,22 @@ public sealed class SendAiMessageCommandHandlerTests
             .Returns(0);
         _conversationRepository.CountTenantMessagesSinceAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(0);
+        _conversationRepository.ReleaseStaleRunningConversationsForUserAsync(
+                _userId,
+                Arg.Any<DateTime>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Returns(0);
         _conversationRepository.CountRunningConversationsForUserAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(0);
         _modelCatalog.ListAvailableModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new AiModelDescriptor(AiProviderDefaults.FakeModelId, AiProviderDefaults.FakeModelDisplayName, SupportsToolProposals: true)]);
-        _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
-            .Returns(AiChatProviderResult.Success(new AiChatResponse(
-                "Assistant response",
-                [],
-                new AiTokenUsage(1, 2, 3),
-                "fake-request",
-                "stop")));
     }
 
     [Test]
-    public async Task Handle_WhenUserIsUnauthenticated_FailsBeforeProviderAndPersistence()
+    public async Task Handle_WhenUserIsUnauthenticated_FailsBeforePersistence()
     {
         _currentUserService.IsAuthenticated.Returns(false);
         _currentUserService.UserId.Returns((Guid?)null);
@@ -70,12 +70,11 @@ public sealed class SendAiMessageCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("unauthenticated");
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
     [Test]
-    public async Task Handle_WhenTenantAiDisabled_FailsBeforeProviderAndPersistence()
+    public async Task Handle_WhenTenantAiDisabled_FailsBeforePersistence()
     {
         _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(CreateSettings(enabled: false));
@@ -84,12 +83,11 @@ public sealed class SendAiMessageCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("disabled");
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
     [Test]
-    public async Task Handle_WhenIdempotencyKeyReplays_ReturnsExistingRunWithoutProviderCall()
+    public async Task Handle_WhenIdempotencyKeyReplays_ReturnsExistingRunWithoutLoadingConversation()
     {
         var command = CreateCommand(content: "Replay this", idempotencyKey: "idem-replay");
         var priorRunId = Guid.CreateVersion7();
@@ -100,12 +98,11 @@ public sealed class SendAiMessageCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(priorRunId);
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task Handle_WhenDailyQuotaExceeded_ReturnsQuotaFailureBeforeProviderCall()
+    public async Task Handle_WhenDailyQuotaExceeded_ReturnsQuotaFailureBeforePersistence()
     {
         _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(CreateSettings(enabled: true, provider: AiProviderDefaults.ProviderFake, dailyLimit: 1));
@@ -117,12 +114,11 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
         await Assert.That(result.QuotaExceeded).IsNotNull();
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
     [Test]
-    public async Task Handle_WhenTenantDailyQuotaExceeded_ReturnsQuotaFailureBeforeProviderCall()
+    public async Task Handle_WhenTenantDailyQuotaExceeded_ReturnsQuotaFailureBeforePersistence()
     {
         _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(CreateSettings(enabled: true, provider: AiProviderDefaults.ProviderFake, dailyTenantLimit: 10));
@@ -135,12 +131,11 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit);
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
     [Test]
-    public async Task Handle_WhenConcurrentRunLimitExceeded_ReturnsQuotaFailureBeforeProviderCall()
+    public async Task Handle_WhenConcurrentRunLimitExceeded_ReturnsQuotaFailureBeforePersistence()
     {
         _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(CreateSettings(enabled: true, provider: AiProviderDefaults.ProviderFake, concurrentRunLimit: 1));
@@ -153,30 +148,83 @@ public sealed class SendAiMessageCommandHandlerTests
         await Assert.That(result.FailureCode).IsEqualTo("quota_exceeded");
         await Assert.That(result.QuotaExceeded).IsNotNull();
         await Assert.That(result.QuotaExceeded!.QuotaKey).IsEqualTo(GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit);
-        await _chatProvider.DidNotReceive().SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
         await _conversationRepository.DidNotReceive().Update(Arg.Any<AiConversation>());
     }
 
     [Test]
-    public async Task Handle_WhenProviderFails_PersistsFailedRunAndBlocksConversation()
+    public async Task Handle_ReleasesStaleRunningConversationsBeforeConcurrentQuotaCheck()
     {
-        var conversation = CreateConversation();
-        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
-            .Returns(conversation);
-        _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
-            .Returns(AiChatProviderResult.Failure("provider_timeout", "Provider timed out.", isTransient: true));
+        _settingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(CreateSettings(enabled: true, provider: AiProviderDefaults.ProviderFake, concurrentRunLimit: 1));
+        _conversationRepository.ReleaseStaleRunningConversationsForUserAsync(
+                _userId,
+                Arg.Any<DateTime>(),
+                "stale_ai_run_released",
+                Arg.Any<string>(),
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+        _conversationRepository.CountRunningConversationsForUserAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(0);
 
         var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("provider_timeout");
-        await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Blocked);
-        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Failed);
-        await _conversationRepository.Received(2).Update(conversation);
+        await Assert.That(result.Success).IsTrue();
+        await _conversationRepository.Received(1).ReleaseStaleRunningConversationsForUserAsync(
+            _userId,
+            Arg.Is<DateTime>(cutoff => cutoff < DateTime.UtcNow),
+            "stale_ai_run_released",
+            Arg.Any<string>(),
+            Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task Handle_WhenProviderSucceeds_PersistsMessagesRunAndIdempotencyRecord()
+    public async Task Handle_WhenProviderBlockWasRetryable_ReactivatesAndQueuesRun()
+    {
+        var conversation = CreateConversation();
+        conversation.Block("provider_timeout", DateTime.UtcNow.AddMinutes(-1));
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+
+        var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(conversation.BlockedReason).IsNull();
+        await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Running);
+        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Queued);
+    }
+
+    [Test]
+    public async Task Handle_WhenRequestIsValid_QueuesUserMessageRunAndIdempotencyRecord()
+    {
+        var actorId = Guid.CreateVersion7();
+        var conversation = CreateConversation();
+        IdempotencyRecord? savedIdempotency = null;
+        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _idempotencyRepository.SaveAsync(Arg.Do<IdempotencyRecord>(record => savedIdempotency = record), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        var result = await CreateHandler().Handle(CreateCommand(content: "Plan the event", actorId: actorId), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("AI message queued.");
+        await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
+        await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Running);
+        await Assert.That(conversation.ActorId).IsEqualTo(actorId);
+        await Assert.That(conversation.Messages.Count).IsEqualTo(1);
+        await Assert.That(conversation.Messages.Single().Role).IsEqualTo(AiMessageRole.User);
+        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Queued);
+        await Assert.That(savedIdempotency).IsNotNull();
+        await Assert.That(savedIdempotency!.ResponseBody).IsEqualTo(result.Id.ToString("D", CultureInfo.InvariantCulture));
+        await Assert.That(savedIdempotency.RequestBodyHash).IsEqualTo(
+            ComputeBodyHash(_conversationId, "Plan the event", AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Build, actorId));
+        await _conversationRepository.Received(1).Update(conversation);
+    }
+
+    [Test]
+    public async Task Handle_WhenModeIsAsk_IncludesModeInIdempotencyHash()
     {
         var conversation = CreateConversation();
         IdempotencyRecord? savedIdempotency = null;
@@ -185,111 +233,14 @@ public sealed class SendAiMessageCommandHandlerTests
         _idempotencyRepository.SaveAsync(Arg.Do<IdempotencyRecord>(record => savedIdempotency = record), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        var result = await CreateHandler().Handle(CreateCommand(content: "Plan the event"), CancellationToken.None);
+        var result = await CreateHandler().Handle(
+            CreateCommand(content: "Just answer", mode: AiAssistantInteractionModes.Ask),
+            CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Id).IsNotEqualTo(Guid.Empty);
-        await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Active);
-        await Assert.That(conversation.Messages.Count).IsEqualTo(2);
-        await Assert.That(conversation.Messages.Select(message => message.Role).ToArray())
-            .IsEquivalentTo([AiMessageRole.User, AiMessageRole.Assistant]);
-        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Succeeded);
         await Assert.That(savedIdempotency).IsNotNull();
-        await Assert.That(savedIdempotency!.ResponseBody).IsEqualTo(result.Id.ToString("D", CultureInfo.InvariantCulture));
-        await _chatProvider.Received(1).SendAsync(Arg.Is<AiChatPayload>(request =>
-            request.Messages.Any(message => message.Role == AiMessageRole.User && message.Content.Contains("Plan the event")) &&
-            request.Options.StreamingEnabled == false), Arg.Any<CancellationToken>());
-        await _conversationRepository.Received(2).Update(conversation);
-    }
-
-    [Test]
-    public async Task Handle_WhenProviderReturnsToolCall_PersistsProposedActionOnly()
-    {
-        var conversation = CreateConversation();
-        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
-            .Returns(conversation);
-        _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
-            .Returns(AiChatProviderResult.Success(new AiChatResponse(
-                string.Empty,
-                [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Draft\"}")],
-                new AiTokenUsage(1, 2, 3))));
-
-        var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
-        var action = conversation.ProposedActions.Single();
-        await Assert.That(action.Kind).IsEqualTo(AiProposedActionKind.CreateEventDraft);
-        await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Proposed);
-        await Assert.That(action.ResultResourceId).IsNull();
-        await _chatProvider.Received(1).SendAsync(Arg.Is<AiChatPayload>(request =>
-            request.ActionSchema != null &&
-            request.ActionSchema.AllowedKinds.Contains(AiProposedActionKind.CreateEventDraft)), Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task Handle_WhenProviderFirstReturnsInvalidToolPayload_RetriesWithSafeCorrectionAndPersistsCorrectedProposal()
-    {
-        var conversation = CreateConversation();
-        var capturedPayloads = new List<AiChatPayload>();
-        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
-            .Returns(conversation);
-        _chatProvider.SendAsync(Arg.Do<AiChatPayload>(payload => capturedPayloads.Add(payload)), Arg.Any<CancellationToken>())
-            .Returns(
-                AiChatProviderResult.Success(new AiChatResponse(
-                    string.Empty,
-                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"description\":\"raw-invalid-secret\"}")],
-                    new AiTokenUsage(1, 2, 3))),
-                AiChatProviderResult.Success(new AiChatResponse(
-                    string.Empty,
-                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"title\":\"Corrected Draft\"}")],
-                    new AiTokenUsage(1, 2, 3))));
-
-        var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(capturedPayloads.Count).IsEqualTo(2);
-        await Assert.That(capturedPayloads[1].Messages.Count).IsEqualTo(capturedPayloads[0].Messages.Count + 1);
-        var correctionMessage = capturedPayloads[1].Messages.Last().Content;
-        await Assert.That(correctionMessage).Contains("Failure code: missing_tool_argument");
-        await Assert.That(correctionMessage).Contains("matches the registered schema exactly");
-        await Assert.That(correctionMessage).DoesNotContain("raw-invalid-secret");
-        await Assert.That(correctionMessage).DoesNotContain("description");
-        await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Active);
-        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Succeeded);
-        await Assert.That(conversation.ProposedActions.Count).IsEqualTo(1);
-        await Assert.That(conversation.ProposedActions.Single().PayloadJson).Contains("Corrected Draft");
-        await _chatProvider.Received(2).SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task Handle_WhenProviderRetryStillReturnsInvalidToolPayload_FailsClosedWithSafeReason()
-    {
-        var conversation = CreateConversation();
-        _conversationRepository.GetByIdForUpdateAsync(_conversationId, Arg.Any<CancellationToken>())
-            .Returns(conversation);
-        _chatProvider.SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>())
-            .Returns(
-                AiChatProviderResult.Success(new AiChatResponse(
-                    string.Empty,
-                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"description\":\"first-secret\"}")],
-                    new AiTokenUsage(1, 2, 3))),
-                AiChatProviderResult.Success(new AiChatResponse(
-                    string.Empty,
-                    [new AiProposedActionCandidate(AiProposedActionKind.CreateEventDraft, "{\"description\":\"second-secret\"}")],
-                    new AiTokenUsage(1, 2, 3))));
-
-        var result = await CreateHandler().Handle(CreateCommand(), CancellationToken.None);
-
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.FailureCode).IsEqualTo("missing_tool_argument");
-        await Assert.That(result.Errors.Single()).DoesNotContain("first-secret");
-        await Assert.That(result.Errors.Single()).DoesNotContain("second-secret");
-        await Assert.That(result.Errors.Single()).DoesNotContain("description");
-        await Assert.That(conversation.Status).IsEqualTo(AiConversationStatus.Blocked);
-        await Assert.That(conversation.Runs.Single().Status).IsEqualTo(AiRunStatus.Failed);
-        await Assert.That(conversation.ProposedActions.Count).IsEqualTo(0);
-        await _chatProvider.Received(2).SendAsync(Arg.Any<AiChatPayload>(), Arg.Any<CancellationToken>());
+        await Assert.That(savedIdempotency!.RequestBodyHash).IsEqualTo(
+            ComputeBodyHash(_conversationId, "Just answer", AiProviderDefaults.FakeModelId, AiAssistantInteractionModes.Ask));
     }
 
     private SendAiMessageCommandHandler CreateHandler()
@@ -299,19 +250,22 @@ public sealed class SendAiMessageCommandHandlerTests
             _settingsResolver,
             _tenantContext,
             _currentUserService,
-            _modelCatalog,
-            _chatProvider);
+            _modelCatalog);
 
     private SendAiMessageCommand CreateCommand(
         string content = "Please help plan this event.",
-        string idempotencyKey = "idem-ai-send")
+        string idempotencyKey = "idem-ai-send",
+        string mode = AiAssistantInteractionModes.Build,
+        Guid? actorId = null)
         => new()
         {
             ConversationId = _conversationId,
             Message = new SendAiMessageRequestDto
             {
                 Content = content,
-                IdempotencyKey = idempotencyKey
+                IdempotencyKey = idempotencyKey,
+                Mode = mode,
+                ActorId = actorId
             }
         };
 
@@ -332,6 +286,7 @@ public sealed class SendAiMessageCommandHandlerTests
     private IdempotencyRecord CreateIdempotencyRecord(SendAiMessageCommand command, Guid runId)
     {
         var content = command.Message.Content.Trim();
+        var mode = AiAssistantInteractionModes.Normalize(command.Message.Mode);
         return new IdempotencyRecord
         {
             Id = Guid.CreateVersion7(),
@@ -341,7 +296,7 @@ public sealed class SendAiMessageCommandHandlerTests
             RequestMethod = "AI_SEND",
             RequestTarget = $"ai/conversations/{command.ConversationId:N}/messages",
             RequestContentType = "application/json",
-            RequestBodyHash = ComputeBodyHash(command.ConversationId, content),
+            RequestBodyHash = ComputeBodyHash(command.ConversationId, content, AiProviderDefaults.FakeModelId, mode, command.Message.ActorId),
             PrincipalFingerprint = ComputePrincipalFingerprint(_userId),
             StatusCode = 202,
             ResponseBody = runId.ToString("D", CultureInfo.InvariantCulture),
@@ -361,7 +316,8 @@ public sealed class SendAiMessageCommandHandlerTests
         int dailyTenantLimit = 1000,
         int concurrentRunLimit = 1,
         int selectedReferenceLimit = 8,
-        bool toolProposalsEnabled = false)
+        bool toolProposalsEnabled = false,
+        int timeoutSeconds = AiProviderDefaults.DefaultTimeoutSeconds)
     {
         var settings = new Dictionary<string, ResolvedSetting>
         {
@@ -374,7 +330,8 @@ public sealed class SendAiMessageCommandHandlerTests
             [GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit] = Setting(GovernanceSettingKeys.AiAssistant.DailyTenantMessageLimit, dailyTenantLimit),
             [GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit] = Setting(GovernanceSettingKeys.AiAssistant.ConcurrentRunLimit, concurrentRunLimit),
             [GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit] = Setting(GovernanceSettingKeys.AiAssistant.SelectedReferenceLimit, selectedReferenceLimit),
-            [GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled] = Setting(GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled, toolProposalsEnabled)
+            [GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled] = Setting(GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled, toolProposalsEnabled),
+            [GovernanceSettingKeys.AiAssistant.TimeoutSeconds] = Setting(GovernanceSettingKeys.AiAssistant.TimeoutSeconds, timeoutSeconds)
         };
 
         var group = new AiAssistantSettingGroup();
@@ -390,9 +347,9 @@ public sealed class SendAiMessageCommandHandlerTests
         IsLocked = false
     };
 
-    private static string ComputeBodyHash(Guid conversationId, string content)
+    private static string ComputeBodyHash(Guid conversationId, string content, string modelId, string mode, Guid? actorId = null)
     {
-        var value = $"{conversationId:N}:{content}";
+        var value = $"{conversationId:N}:{modelId}:{mode}:{actorId:N}:{content}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     }
 

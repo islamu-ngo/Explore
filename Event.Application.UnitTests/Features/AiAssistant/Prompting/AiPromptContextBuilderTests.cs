@@ -65,6 +65,43 @@ public sealed class AiPromptContextBuilderTests
     }
 
     [Test]
+    public async Task Build_WhenBuildModeButToolSettingDisabled_KeepsBuildPromptWithoutExposingTools()
+    {
+        var conversation = CreateConversation();
+        conversation.AddMessage(AiMessageRole.User, "Create an event draft", conversation.UserId, DateTime.UtcNow);
+
+        var request = new AiPromptContextBuilder().Build(
+            conversation,
+            CreateSettings(toolProposalsEnabled: false),
+            AiProviderDefaults.FakeModelId,
+            allowToolProposals: true);
+
+        await Assert.That(request.SystemPrompt).Contains("You may propose actions only through explicit tool calls");
+        await Assert.That(request.SystemPrompt).DoesNotContain("The assistant is in Ask mode");
+        await Assert.That(request.SystemPrompt).DoesNotContain("switch to Build mode");
+        await Assert.That(request.Options.ToolProposalsEnabled).IsFalse();
+        await Assert.That(request.ActionSchema).IsNull();
+    }
+
+    [Test]
+    public async Task Build_WhenAskMode_UsesAskPromptAndSuppressesTools()
+    {
+        var conversation = CreateConversation();
+        conversation.AddMessage(AiMessageRole.User, "Create an event draft", conversation.UserId, DateTime.UtcNow);
+
+        var request = new AiPromptContextBuilder().Build(
+            conversation,
+            CreateSettings(toolProposalsEnabled: true),
+            AiProviderDefaults.FakeModelId,
+            allowToolProposals: false);
+
+        await Assert.That(request.SystemPrompt).Contains("The assistant is in Ask mode");
+        await Assert.That(request.SystemPrompt).Contains("switch to Build mode");
+        await Assert.That(request.Options.ToolProposalsEnabled).IsFalse();
+        await Assert.That(request.ActionSchema).IsNull();
+    }
+
+    [Test]
     public async Task Build_WhenConversationIsLong_KeepsMostRecentProviderMessagesOnly()
     {
         var conversation = CreateConversation();

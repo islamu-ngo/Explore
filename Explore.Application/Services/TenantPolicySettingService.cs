@@ -87,6 +87,20 @@ public partial class TenantPolicySettingService : ITenantPolicySettingService
         return DeserializeString(systemValue, fallback);
     }
 
+    private static IReadOnlyList<string> ResolveStringList(
+        string? tenantOverrideValue,
+        string? systemValue,
+        IReadOnlyList<string> fallback,
+        bool allowTenantOverride)
+    {
+        if (allowTenantOverride && !string.IsNullOrWhiteSpace(tenantOverrideValue))
+        {
+            return DeserializeStringList(tenantOverrideValue, fallback);
+        }
+
+        return DeserializeStringList(systemValue, fallback);
+    }
+
     private static bool DeserializeBoolean(string? rawValue, bool fallback)
     {
         if (string.IsNullOrWhiteSpace(rawValue))
@@ -120,6 +134,46 @@ public partial class TenantPolicySettingService : ITenantPolicySettingService
         {
             return rawValue.Trim('"');
         }
+    }
+
+    private static IReadOnlyList<string> DeserializeStringList(string? rawValue, IReadOnlyList<string> fallback)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            var deserialized = JsonSerializer.Deserialize<IReadOnlyList<string>>(rawValue);
+            return NormalizeAiModelIds(deserialized ?? fallback);
+        }
+        catch
+        {
+            return NormalizeAiModelIds(rawValue.Split([',', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries));
+        }
+    }
+
+    private static IReadOnlyList<string> NormalizeAiModelIds(params IEnumerable<string?>[] modelIdGroups)
+    {
+        var normalized = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in modelIdGroups)
+        {
+            foreach (var modelId in group)
+            {
+                var trimmed = modelId?.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed) || !seen.Add(trimmed))
+                {
+                    continue;
+                }
+
+                normalized.Add(trimmed);
+            }
+        }
+
+        return normalized;
     }
 
     private static int DeserializeInteger(string? rawValue, int fallback)

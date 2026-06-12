@@ -11,5 +11,8 @@ public interface IAiToolContractRegistry
 
     AiToolDefinition? FindDefinition(AiProposedActionKind kind);
 
-    AiToolValidationResult ValidatePayload(AiProposedActionKind kind, string payloadJson);
+    AiToolValidationResult ValidatePayload(
+        AiProposedActionKind kind,
+        string payloadJson,
+        bool allowProviderNormalization = false);
 }

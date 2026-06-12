@@ -1,6 +1,7 @@
 // ABOUTME: Tracks an AI provider run for a conversation message exchange.
 // ABOUTME: Encapsulates run state transitions so provider failures and cancellations are auditable.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain.Ai;
@@ -11,7 +12,14 @@ public class AiRun : ITenantEntity
     public Guid TenantId { get; set; }
     public Guid ConversationId { get; set; }
     public AiConversation? Conversation { get; set; }
-    public AiRunStatus Status { get; set; } = AiRunStatus.Queued;
+    public int StatusId { get; set; } = (int)AiRunStatus.Queued;
+    public AiRunStatusLookup? StatusLookup { get; set; }
+    [NotMapped]
+    public AiRunStatus Status
+    {
+        get => (AiRunStatus)StatusId;
+        set => StatusId = (int)value;
+    }
     public required string Provider { get; set; }
     public required string ModelId { get; set; }
     public DateTime QueuedAt { get; set; }

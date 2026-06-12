@@ -101,17 +101,80 @@ public sealed class AiAssistantClientServiceTests
 
         var service = CreateService();
 
-        var result = await service.SendMessageAsync(conversationId, "Plan an iftar", "send-key");
+        var result = await service.SendMessageAsync(conversationId, "Plan an iftar", idempotencyKey: "send-key");
 
         await Assert.That(result.Success).IsTrue();
         await _apiClient.Received(1).SendAiMessageAsync(
             conversationId,
             Arg.Is<SendAiMessageRequestDto>(request =>
-                request.Content == "Plan an iftar" && request.IdempotencyKey == "send-key"),
+                request.Content == "Plan an iftar"
+                && request.ModelId == null
+                && request.IdempotencyKey == "send-key"),
             "send-key",
             null,
             null,
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SendMessageAsync_WhenApiReturnsProblemDetails_UsesProblemDetailsMessage()
+    {
+        var conversationId = Guid.CreateVersion7();
+        _apiClient.SendAiMessageAsync(
+                conversationId,
+                Arg.Any<SendAiMessageRequestDto>(),
+                Arg.Any<string?>(),
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException<ProblemDetails>(
+                "Conflict",
+                409,
+                "{}",
+                new Dictionary<string, IEnumerable<string>>(),
+                new ProblemDetails
+                {
+                    Title = "AI conversation conflict",
+                    Detail = "AI conversation is not ready for a new message.",
+                    AdditionalProperties = { ["code"] = "conversation_not_active" }
+                },
+                null));
+
+        var service = CreateService();
+
+        var result = await service.SendMessageAsync(conversationId, "hello", idempotencyKey: "send-key");
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("conversation_not_active");
+        await Assert.That(result.Message).IsEqualTo("AI conversation is not ready for a new message.");
+    }
+
+    [Test]
+    public async Task SendMessageAsync_WhenApiReturnsLegacyOkCommandBody_TreatsAsSuccess()
+    {
+        var conversationId = Guid.CreateVersion7();
+        var runId = Guid.CreateVersion7();
+        _apiClient.SendAiMessageAsync(
+                conversationId,
+                Arg.Any<SendAiMessageRequestDto>(),
+                Arg.Any<string?>(),
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ApiException(
+                "The HTTP status code of the response was not expected (200).",
+                200,
+                $$"""{"id":"{{runId}}","success":true,"message":"AI message sent.","errors":[]}""",
+                new Dictionary<string, IEnumerable<string>>(),
+                null));
+
+        var service = CreateService();
+
+        var result = await service.SendMessageAsync(conversationId, "hello", idempotencyKey: "send-key");
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Id).IsEqualTo(runId);
+        await Assert.That(result.Message).IsEqualTo("AI message sent.");
     }
 
     [Test]

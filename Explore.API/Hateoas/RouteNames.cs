@@ -700,6 +700,8 @@ public static class RouteNames
     public const string UpdateInstanceDomainSettings = "UpdateInstanceDomainSettings";
     public const string GetInstanceTenantDelegationSettings = "GetInstanceTenantDelegationSettings";
     public const string UpdateInstanceTenantDelegationSettings = "UpdateInstanceTenantDelegationSettings";
+    public const string GetInstanceAiAssistantGovernanceSettings = "GetInstanceAiAssistantGovernanceSettings";
+    public const string UpdateInstanceAiAssistantGovernanceSettings = "UpdateInstanceAiAssistantGovernanceSettings";
     public const string GetInstanceMcpGovernanceSettings = "GetInstanceMcpGovernanceSettings";
     public const string UpdateInstanceMcpGovernanceSettings = "UpdateInstanceMcpGovernanceSettings";
     public const string GetInstanceRenderPolicySettings = "GetInstanceRenderPolicySettings";

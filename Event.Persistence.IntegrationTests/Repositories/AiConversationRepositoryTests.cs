@@ -136,6 +136,76 @@ public sealed class AiConversationRepositoryTests(PostgreSqlContainerFixture fix
     }
 
     [Test]
+    public async Task ReleaseStaleRunningConversationsForUserAsync_ReleasesOnlyStaleCurrentTenantRuns()
+    {
+        await fixture.ResetAsync();
+        var tenantA = await SeedTenantAndUserAsync("ai-stale-run-a");
+        var tenantB = await SeedTenantAndUserAsync("ai-stale-run-b", tenantA.UserId);
+        var now = new DateTime(2026, 06, 08, 14, 0, 0, DateTimeKind.Utc);
+        var staleBefore = now.AddSeconds(-35);
+
+        var staleTenantAConversation = NewRunningConversation(
+            tenantA,
+            "Stale Tenant A",
+            queuedAt: now.AddMinutes(-2),
+            startedAt: now.AddMinutes(-2).AddSeconds(1));
+        var freshTenantAConversation = NewRunningConversation(
+            tenantA with { ConversationId = Guid.CreateVersion7() },
+            "Fresh Tenant A",
+            queuedAt: now.AddSeconds(-10),
+            startedAt: now.AddSeconds(-9));
+        var staleTenantBConversation = NewRunningConversation(
+            tenantB,
+            "Stale Tenant B",
+            queuedAt: now.AddMinutes(-2),
+            startedAt: now.AddMinutes(-2).AddSeconds(1));
+
+        await using (var seedContext = fixture.CreateDbContext())
+        {
+            seedContext.AiConversations.AddRange(staleTenantAConversation, freshTenantAConversation, staleTenantBConversation);
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using (var releaseContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantA.TenantId)))
+        {
+            var repository = new AiConversationRepository(releaseContext);
+
+            var released = await repository.ReleaseStaleRunningConversationsForUserAsync(
+                tenantA.UserId,
+                staleBefore,
+                "stale_ai_run_released",
+                "Stale run released.",
+                now,
+                CancellationToken.None);
+
+            await Assert.That(released).IsEqualTo(1);
+        }
+
+        await using var verifyContext = fixture.CreateDbContext();
+        var staleTenantA = await verifyContext.AiConversations
+            .IgnoreQueryFilters()
+            .Include(conversation => conversation.Runs)
+            .SingleAsync(conversation => conversation.Id == staleTenantAConversation.Id);
+        var freshTenantA = await verifyContext.AiConversations
+            .IgnoreQueryFilters()
+            .Include(conversation => conversation.Runs)
+            .SingleAsync(conversation => conversation.Id == freshTenantAConversation.Id);
+        var staleTenantB = await verifyContext.AiConversations
+            .IgnoreQueryFilters()
+            .Include(conversation => conversation.Runs)
+            .SingleAsync(conversation => conversation.Id == staleTenantBConversation.Id);
+
+        await Assert.That(staleTenantA.Status).IsEqualTo(AiConversationStatus.Active);
+        await Assert.That(staleTenantA.Runs.Single().Status).IsEqualTo(AiRunStatus.Failed);
+        await Assert.That(staleTenantA.Runs.Single().FailureCode).IsEqualTo("stale_ai_run_released");
+        await Assert.That(staleTenantA.Runs.Single().FailureMessage).IsEqualTo("Stale run released.");
+        await Assert.That(freshTenantA.Status).IsEqualTo(AiConversationStatus.Running);
+        await Assert.That(freshTenantA.Runs.Single().Status).IsEqualTo(AiRunStatus.InProgress);
+        await Assert.That(staleTenantB.Status).IsEqualTo(AiConversationStatus.Running);
+        await Assert.That(staleTenantB.Runs.Single().Status).IsEqualTo(AiRunStatus.InProgress);
+    }
+
+    [Test]
     public async Task GetProposedActionForUpdateAsync_RespectsTenantFilter()
     {
         await fixture.ResetAsync();
@@ -449,6 +519,18 @@ public sealed class AiConversationRepositoryTests(PostgreSqlContainerFixture fix
             CreatedBy = scope.UserId,
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
+
+    private static AiConversation NewRunningConversation(
+        AiTestScope scope,
+        string title,
+        DateTime queuedAt,
+        DateTime startedAt)
+    {
+        var conversation = NewConversation(scope, title);
+        var run = conversation.QueueRun("fake", "fake-ai-assistant-v1", queuedAt);
+        run.Start(startedAt);
+        return conversation;
+    }
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
 

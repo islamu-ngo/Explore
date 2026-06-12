@@ -12,8 +12,10 @@ public class AiProposedActionConfiguration : IEntityTypeConfiguration<AiProposed
     public void Configure(EntityTypeBuilder<AiProposedAction> builder)
     {
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-        builder.Property(e => e.Kind).HasConversion<int>().IsRequired();
-        builder.Property(e => e.Status).HasConversion<int>().IsRequired();
+        builder.Property(e => e.KindId).IsRequired();
+        builder.Property(e => e.StatusId)
+            .HasDefaultValue((int)AiProposedActionStatus.Proposed)
+            .IsRequired();
         builder.Property(e => e.PayloadJson).HasColumnType("jsonb").IsRequired();
         builder.Property(e => e.FailureCode).HasMaxLength(100);
         builder.Property(e => e.FailureMessage).HasMaxLength(1000);
@@ -23,16 +25,24 @@ public class AiProposedActionConfiguration : IEntityTypeConfiguration<AiProposed
             .HasForeignKey(e => e.MessageId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasIndex(e => new { e.TenantId, e.ConversationId, e.Status, e.CreatedAt })
+        builder.HasOne(e => e.KindLookup)
+            .WithMany()
+            .HasForeignKey(e => e.KindId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.StatusLookup)
+            .WithMany()
+            .HasForeignKey(e => e.StatusId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(e => new { e.TenantId, e.ConversationId, e.StatusId, e.CreatedAt })
             .HasDatabaseName("ix_ai_proposed_actions_tenant_conversation_status_created_at");
 
-        builder.HasIndex(e => new { e.TenantId, e.Status, e.Kind, e.CreatedAt })
+        builder.HasIndex(e => new { e.TenantId, e.StatusId, e.KindId, e.CreatedAt })
             .HasDatabaseName("ix_ai_proposed_actions_tenant_status_kind_created_at");
 
         builder.ToTable(t =>
         {
-            t.HasCheckConstraint("ck_ai_proposed_actions_kind", "kind IN (1)");
-            t.HasCheckConstraint("ck_ai_proposed_actions_status", "status IN (1, 2, 3, 4, 5)");
             t.HasCheckConstraint("ck_ai_proposed_actions_payload_object", "jsonb_typeof(payload_json) = 'object'");
         });
     }

@@ -269,6 +269,40 @@ public class UpdateMcpGovernanceSettingsCommandHandler : IRequestHandler<UpdateM
     }
 }
 
+public class UpdateAiAssistantGovernanceSettingsCommandHandler : IRequestHandler<UpdateAiAssistantGovernanceSettingsCommand, BaseCommandResponse<Guid>>
+{
+    private readonly IAdminContext _adminContext;
+    private readonly IInstanceGovernanceSettingService _service;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public UpdateAiAssistantGovernanceSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
+    {
+        _adminContext = adminContext;
+        _service = service;
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<BaseCommandResponse<Guid>> Handle(UpdateAiAssistantGovernanceSettingsCommand request, CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+        if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
+            return Unauthorized(response);
+
+        await _unitOfWork.ExecuteInTransactionAsync(ct =>
+            _service.ApplyAiAssistantGovernanceSettingsAsync(request.Settings, request.UserId), cancellationToken);
+        response.Success = true;
+        response.Message = "AI Assistant governance settings updated successfully.";
+        return response;
+    }
+
+    private static BaseCommandResponse<Guid> Unauthorized(BaseCommandResponse<Guid> r)
+    {
+        r.Success = false;
+        r.Message = "Only instance administrators can update instance governance settings.";
+        return r;
+    }
+}
+
 public class UpdateRenderPolicySettingsCommandHandler : IRequestHandler<UpdateRenderPolicySettingsCommand, BaseCommandResponse<Guid>>
 {
     private readonly IAdminContext _adminContext;

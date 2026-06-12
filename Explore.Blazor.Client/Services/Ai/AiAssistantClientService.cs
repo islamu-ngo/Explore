@@ -1,6 +1,7 @@
 // ABOUTME: Blazor service wrapper around generated AI assistant API client methods.
 // ABOUTME: Provides safe defaults and preserves HAL resources for UI affordance gating.
 
+using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Ai;
 
@@ -10,6 +11,8 @@ public sealed class AiAssistantClientService(
     IEventApiClient apiClient,
     ILogger<AiAssistantClientService> logger) : IAiAssistantClientService
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     public async Task<HalResourceOfAiAssistantBootstrapDto?> GetBootstrapAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -91,6 +94,8 @@ public sealed class AiAssistantClientService(
         string content,
         string? modelId = null,
         string? idempotencyKey = null,
+        string? mode = null,
+        Guid? actorId = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -99,7 +104,9 @@ public sealed class AiAssistantClientService(
             {
                 Content = content,
                 IdempotencyKey = idempotencyKey,
-                ModelId = modelId
+                ActorId = actorId,
+                ModelId = modelId,
+                Mode = mode
             };
 
             var response = await apiClient.SendAiMessageAsync(
@@ -110,10 +117,68 @@ public sealed class AiAssistantClientService(
 
             return AiAssistantCommandResult.FromResponse(response);
         }
-        catch (ApiException ex)
+        catch (ApiException<ProblemDetails> ex)
         {
             logger.LogWarning(ex, "Failed to send AI assistant message for conversation {ConversationId}.", conversationId);
+            return FailureFromProblem(ex, "The AI assistant message could not be sent.");
+        }
+        catch (ApiException ex)
+        {
+            if (TryMapLegacySuccess(ex, out var legacyResult))
+            {
+                return legacyResult;
+            }
+
+            logger.LogWarning(ex, "Failed to send AI assistant message for conversation {ConversationId}.", conversationId);
             return AiAssistantCommandResult.Failure("api_error", "The AI assistant message could not be sent.");
+        }
+    }
+
+    public async Task<AiRunStatusResult> GetRunStatusAsync(
+        Guid conversationId,
+        Guid runId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await apiClient.GetAiRunStatusAsync(conversationId, runId, cancellationToken: cancellationToken);
+            return AiRunStatusResult.Ok(result);
+        }
+        catch (ApiException ex) when (ex.StatusCode == 401)
+        {
+            logger.LogWarning(ex, "Unauthorized while loading AI run {RunId} for conversation {ConversationId}.", runId, conversationId);
+            return AiRunStatusResult.Unauthorized();
+        }
+        catch (ApiException ex)
+        {
+            logger.LogWarning(ex, "Failed to load AI run {RunId} for conversation {ConversationId}.", runId, conversationId);
+            return AiRunStatusResult.NotFound();
+        }
+    }
+
+    public async Task<AiAssistantCommandResult> CancelRunAsync(
+        Guid conversationId,
+        Guid runId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await apiClient.CancelAiRunAsync(
+                conversationId,
+                runId,
+                cancellationToken: cancellationToken);
+
+            return AiAssistantCommandResult.FromResponse(response);
+        }
+        catch (ApiException<ProblemDetails> ex)
+        {
+            logger.LogWarning(ex, "Failed to cancel AI run {RunId} for conversation {ConversationId}.", runId, conversationId);
+            return FailureFromProblem(ex, "The AI assistant run could not be cancelled.");
+        }
+        catch (ApiException ex)
+        {
+            logger.LogWarning(ex, "Failed to cancel AI run {RunId} for conversation {ConversationId}.", runId, conversationId);
+            return AiAssistantCommandResult.Failure("api_error", "The AI assistant run could not be cancelled.");
         }
     }
 
@@ -188,5 +253,63 @@ public sealed class AiAssistantClientService(
         }
     }
 
-    private static string FailureCodeFor(ApiException ex) => ex.StatusCode == 403 ? "forbidden" : "api_error";
+    private static AiAssistantCommandResult FailureFromProblem(
+        ApiException<ProblemDetails> ex,
+        string fallbackMessage)
+    {
+        var message = FirstNonEmpty(ex.Result?.Detail, ex.Result?.Title, fallbackMessage);
+        var failureCode = FirstNonEmpty(TryGetProblemCode(ex.Result), FailureCodeFor(ex));
+        return AiAssistantCommandResult.Failure(failureCode, message);
+    }
+
+    private static bool TryMapLegacySuccess(ApiException ex, out AiAssistantCommandResult result)
+    {
+        result = AiAssistantCommandResult.Failure("api_error", "The AI assistant message could not be sent.");
+
+        if (ex.StatusCode != 200 || string.IsNullOrWhiteSpace(ex.Response))
+        {
+            return false;
+        }
+
+        try
+        {
+            var response = JsonSerializer.Deserialize<BaseCommandResponseOfGuid>(ex.Response, JsonOptions);
+            if (response?.Success != true)
+            {
+                return false;
+            }
+
+            result = AiAssistantCommandResult.FromResponse(response);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static string? TryGetProblemCode(ProblemDetails? problemDetails)
+    {
+        if (problemDetails?.AdditionalProperties.TryGetValue("code", out var value) != true)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            string code when !string.IsNullOrWhiteSpace(code) => code.Trim(),
+            JsonElement { ValueKind: JsonValueKind.String } json => json.GetString()?.Trim(),
+            _ => null
+        };
+    }
+
+    private static string FirstNonEmpty(params string?[] values)
+        => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? string.Empty;
+
+    private static string FailureCodeFor(ApiException ex) => ex.StatusCode switch
+    {
+        403 => "forbidden",
+        409 => "conflict",
+        _ => "api_error"
+    };
 }

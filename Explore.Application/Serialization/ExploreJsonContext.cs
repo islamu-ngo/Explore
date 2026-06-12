@@ -42,6 +42,7 @@ using Explore.Application.DTOs.RegistrationMode;
 using Explore.Application.DTOs.Role;
 using Explore.Application.DTOs.StatusType;
 using Explore.Application.DTOs.StorageObject;
+using Explore.Application.DTOs.Storage;
 using Explore.Application.DTOs.SyncState;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.TagType;
@@ -56,6 +57,7 @@ using Explore.Application.DTOs.VisibilityType;
 using Explore.Application.Hateoas;
 using Explore.Application.Models;
 using Explore.Application.Models.PublicExperience;
+using Explore.Application.Models.Storage;
 using Explore.Application.Responses;
 
 namespace Explore.Application.Serialization;
@@ -188,6 +190,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(OnboardingPreflightDto))]
 [JsonSerializable(typeof(OnboardingPreflightCheckDto))]
 [JsonSerializable(typeof(Explore.Application.DTOs.Instance.DeploymentModeDto))]
+[JsonSerializable(typeof(Explore.Application.DTOs.Instance.AiAssistantGovernanceSettingsDto))]
 [JsonSerializable(typeof(Explore.Application.DTOs.Instance.McpGovernanceSettingsDto))]
 [JsonSerializable(typeof(InstanceOnboardingStatusDto))]
 [JsonSerializable(typeof(InstanceStorageSettingsDto))]
@@ -247,6 +250,10 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(StatusTypeListDto))]
 [JsonSerializable(typeof(StorageObjectDto))]
 [JsonSerializable(typeof(StorageObjectListDto))]
+[JsonSerializable(typeof(StorageRouteSettingsDto))]
+[JsonSerializable(typeof(List<StorageRouteSettingsDto>))]
+[JsonSerializable(typeof(StorageRouteSetting))]
+[JsonSerializable(typeof(StorageRouteMatrixDocument))]
 [JsonSerializable(typeof(StorageUploadSessionDto))]
 [JsonSerializable(typeof(BaseCommandResponse<StorageUploadSessionDto>))]
 [JsonSerializable(typeof(SyncStateDto))]

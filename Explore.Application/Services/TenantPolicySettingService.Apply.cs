@@ -251,7 +251,10 @@ public partial class TenantPolicySettingService
 
         var canOverrideAiAssistant = !isMultiTenant || !DeserializeBoolean(lockAiAssistantSetting?.Value, true);
         var aiAssistantProvider = NormalizeAiAssistantProvider(settings.AiAssistantProvider, settings.AiAssistantEnabled);
-        var usesOpenAiCompatibleProvider = aiAssistantProvider == "openai-compatible";
+        var usesExternalProvider = aiAssistantProvider is "openai-compatible" or "anthropic-compatible";
+        var aiAssistantAllowedModelIds = usesExternalProvider
+            ? NormalizeAiModelIds([settings.AiAssistantModelId], settings.AiAssistantAllowedModelIds)
+            : [];
 
         if (canOverrideAiAssistant)
         {
@@ -275,22 +278,29 @@ public partial class TenantPolicySettingService
         await SetStringTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.AiAssistant.EndpointUrl,
-            usesOpenAiCompatibleProvider ? settings.AiAssistantEndpointUrl : string.Empty,
+            usesExternalProvider ? settings.AiAssistantEndpointUrl : string.Empty,
             canOverrideAiAssistant,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.AiAssistant.ApiKey,
-            usesOpenAiCompatibleProvider ? settings.AiAssistantApiKey : string.Empty,
+            usesExternalProvider ? settings.AiAssistantApiKey : string.Empty,
             canOverrideAiAssistant,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
             GovernanceSettingKeys.AiAssistant.ModelId,
-            usesOpenAiCompatibleProvider ? settings.AiAssistantModelId : string.Empty,
+            usesExternalProvider ? settings.AiAssistantModelId : string.Empty,
             canOverrideAiAssistant,
+            actorUserId);
+
+        await SetStringListTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.AiAssistant.AllowedModelIds,
+            aiAssistantAllowedModelIds,
+            canOverrideAiAssistant && usesExternalProvider,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
@@ -358,6 +368,28 @@ public partial class TenantPolicySettingService
             actorUserId);
     }
 
+    private async Task SetStringListTenantOverrideAsync(
+        Guid tenantId,
+        string settingKey,
+        IReadOnlyList<string> values,
+        bool allowTenantOverride,
+        Guid? actorUserId)
+    {
+        var normalizedValues = NormalizeAiModelIds(values);
+
+        if (!allowTenantOverride || normalizedValues.Count == 0)
+        {
+            await _tenantSettingRepository.RemoveOverride(tenantId, settingKey);
+            return;
+        }
+
+        await UpsertTenantOverrideAsync(
+            tenantId,
+            settingKey,
+            JsonSerializer.Serialize(normalizedValues),
+            actorUserId);
+    }
+
     private static void ValidateAiAssistantSettings(UpdateTenantPolicyRequest settings, string provider)
     {
         if (!settings.AiAssistantEnabled)
@@ -366,14 +398,14 @@ public partial class TenantPolicySettingService
         }
 
         var failures = new List<ValidationFailure>();
-        if (provider is not "fake" and not "openai-compatible")
+        if (provider is not "fake" and not "openai-compatible" and not "anthropic-compatible")
         {
             failures.Add(new ValidationFailure(
                 nameof(settings.AiAssistantProvider),
-                "AI Assistant provider must be OpenAI-compatible or Fake."));
+                "AI Assistant provider must be OpenAI-compatible, Anthropic-compatible, or Fake."));
         }
 
-        if (provider == "openai-compatible")
+        if (provider is "openai-compatible" or "anthropic-compatible")
         {
             if (!HasAbsoluteHttpUrl(settings.AiAssistantEndpointUrl))
             {
@@ -405,7 +437,7 @@ public partial class TenantPolicySettingService
             return enabled ? "openai-compatible" : "none";
         }
 
-        if (!enabled && normalized is not "none" and not "fake" and not "openai-compatible")
+        if (!enabled && normalized is not "none" and not "fake" and not "openai-compatible" and not "anthropic-compatible")
         {
             return "none";
         }

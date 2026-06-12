@@ -4,6 +4,7 @@
 namespace Explore.Application.Settings.Groups;
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Domain.Constants;
 
 public class AiAssistantSettingGroup : ISettingGroup
@@ -13,10 +14,11 @@ public class AiAssistantSettingGroup : ISettingGroup
     public string? EndpointUrl { get; private set; }
     public string? ApiKey { get; private set; }
     public string? ModelId { get; private set; }
+    public IReadOnlyList<string> AllowedModelIds { get; private set; } = [];
     public int MaxInputTokens { get; private set; } = 8000;
     public int MaxOutputTokens { get; private set; } = 1024;
     public decimal Temperature { get; private set; } = 0.2m;
-    public int TimeoutSeconds { get; private set; } = 30;
+    public int TimeoutSeconds { get; private set; } = AiProviderDefaults.DefaultTimeoutSeconds;
     public int RetentionDays { get; private set; } = 30;
     public int DailyMessageLimit { get; private set; } = 50;
     public int DailyTenantMessageLimit { get; private set; } = 1000;
@@ -31,7 +33,8 @@ public class AiAssistantSettingGroup : ISettingGroup
     public bool HasModel => !string.IsNullOrWhiteSpace(ModelId);
     public bool IsFakeProvider => Provider.Equals("fake", StringComparison.OrdinalIgnoreCase);
     public bool IsOpenAiCompatibleProvider => Provider.Equals("openai-compatible", StringComparison.OrdinalIgnoreCase);
-    public bool IsConfigured => IsOpenAiCompatibleProvider && HasEndpointUrl && HasApiKey && HasModel;
+    public bool IsAnthropicCompatibleProvider => Provider.Equals("anthropic-compatible", StringComparison.OrdinalIgnoreCase);
+    public bool IsConfigured => (IsOpenAiCompatibleProvider || IsAnthropicCompatibleProvider) && HasEndpointUrl && HasModel;
     public bool IsAvailable => Enabled && IsConfigured;
 
     public static IEnumerable<string> SettingKeys =>
@@ -41,6 +44,7 @@ public class AiAssistantSettingGroup : ISettingGroup
         GovernanceSettingKeys.AiAssistant.EndpointUrl,
         GovernanceSettingKeys.AiAssistant.ApiKey,
         GovernanceSettingKeys.AiAssistant.ModelId,
+        GovernanceSettingKeys.AiAssistant.AllowedModelIds,
         GovernanceSettingKeys.AiAssistant.MaxInputTokens,
         GovernanceSettingKeys.AiAssistant.MaxOutputTokens,
         GovernanceSettingKeys.AiAssistant.Temperature,
@@ -67,6 +71,8 @@ public class AiAssistantSettingGroup : ISettingGroup
             ApiKey = SettingValueSerializer.DeserializeString(apiKey.Value);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.ModelId, out var modelId))
             ModelId = SettingValueSerializer.DeserializeString(modelId.Value);
+        if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.AllowedModelIds, out var allowedModelIds))
+            AllowedModelIds = NormalizeModelIds(SettingValueSerializer.Deserialize<List<string>>(allowedModelIds.Value, []));
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.MaxInputTokens, out var maxInputTokens))
             MaxInputTokens = SettingValueSerializer.DeserializeInt(maxInputTokens.Value, 8000);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.MaxOutputTokens, out var maxOutputTokens))
@@ -74,7 +80,7 @@ public class AiAssistantSettingGroup : ISettingGroup
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.Temperature, out var temperature))
             Temperature = SettingValueSerializer.DeserializeDecimal(temperature.Value, 0.2m);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.TimeoutSeconds, out var timeoutSeconds))
-            TimeoutSeconds = SettingValueSerializer.DeserializeInt(timeoutSeconds.Value, 30);
+            TimeoutSeconds = SettingValueSerializer.DeserializeInt(timeoutSeconds.Value, AiProviderDefaults.DefaultTimeoutSeconds);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.RetentionDays, out var retentionDays))
             RetentionDays = SettingValueSerializer.DeserializeInt(retentionDays.Value, 30);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.DailyMessageLimit, out var dailyMessageLimit))
@@ -91,5 +97,24 @@ public class AiAssistantSettingGroup : ISettingGroup
             StreamingEnabled = SettingValueSerializer.Deserialize(streamingEnabled.Value, false);
         if (settings.TryGetValue(GovernanceSettingKeys.AiAssistant.AllowAnonymousAccess, out var allowAnonymousAccess))
             AllowAnonymousAccess = SettingValueSerializer.Deserialize(allowAnonymousAccess.Value, false);
+    }
+
+    private static IReadOnlyList<string> NormalizeModelIds(IEnumerable<string?> modelIds)
+    {
+        var normalized = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var modelId in modelIds)
+        {
+            var trimmed = modelId?.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed) || !seen.Add(trimmed))
+            {
+                continue;
+            }
+
+            normalized.Add(trimmed);
+        }
+
+        return normalized;
     }
 }

@@ -11,7 +11,14 @@ public sealed record AiChatPayload(
     string? SystemPrompt,
     AiChatOptions Options,
     AiStructuredActionSchema? ActionSchema = null,
-    AiStructuredOutputSchema? StructuredOutputSchema = null);
+    AiStructuredOutputSchema? StructuredOutputSchema = null,
+    AiChatProviderConfiguration? ProviderConfiguration = null);
+
+public sealed record AiChatProviderConfiguration(
+    int Provider,
+    string EndpointUrl,
+    string ApiKey,
+    string ModelId);
 
 public sealed record AiChatMessage(
     AiMessageRole Role,

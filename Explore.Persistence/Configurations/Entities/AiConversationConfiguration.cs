@@ -12,7 +12,9 @@ public class AiConversationConfiguration : IEntityTypeConfiguration<AiConversati
     public void Configure(EntityTypeBuilder<AiConversation> builder)
     {
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-        builder.Property(e => e.Status).HasConversion<int>().IsRequired();
+        builder.Property(e => e.StatusId)
+            .HasDefaultValue((int)AiConversationStatus.Active)
+            .IsRequired();
         builder.Property(e => e.Title).HasMaxLength(200);
         builder.Property(e => e.Provider).HasMaxLength(100);
         builder.Property(e => e.ModelId).HasMaxLength(200);
@@ -34,6 +36,11 @@ public class AiConversationConfiguration : IEntityTypeConfiguration<AiConversati
             .HasForeignKey(e => e.ActorId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(e => e.StatusLookup)
+            .WithMany()
+            .HasForeignKey(e => e.StatusId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasMany(e => e.Messages)
             .WithOne(e => e.Conversation)
             .HasForeignKey(e => e.ConversationId)
@@ -54,7 +61,7 @@ public class AiConversationConfiguration : IEntityTypeConfiguration<AiConversati
             .HasForeignKey(e => e.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(e => new { e.TenantId, e.UserId, e.Status, e.UpdatedAt })
+        builder.HasIndex(e => new { e.TenantId, e.UserId, e.StatusId, e.UpdatedAt })
             .HasDatabaseName("ix_ai_conversations_tenant_user_status_updated_at")
             .IsDescending(false, false, false, true);
 
@@ -66,7 +73,6 @@ public class AiConversationConfiguration : IEntityTypeConfiguration<AiConversati
         builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_ai_conversations_last_message_sequence_nonnegative", "last_message_sequence >= 0");
-            t.HasCheckConstraint("ck_ai_conversations_status", "status IN (1, 2, 3, 4)");
         });
     }
 }

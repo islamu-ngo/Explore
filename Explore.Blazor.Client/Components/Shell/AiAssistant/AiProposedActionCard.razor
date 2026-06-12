@@ -19,7 +19,7 @@
             {
                 <MudButton Variant="Variant.Text"
                            Size="Size.Small"
-                           Disabled="@IsBusy"
+                           Disabled="@(!ActionsEnabled || IsBusy)"
                            OnClick="() => OnReject.InvokeAsync(Action)"
                            data-testid="ai-rail-reject-action">
                     Reject
@@ -30,7 +30,7 @@
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            Size="Size.Small"
-                           Disabled="@IsBusy"
+                           Disabled="@(!ActionsEnabled || IsBusy)"
                            OnClick="() => OnConfirm.InvokeAsync(Action)"
                            data-testid="ai-rail-confirm-action">
                     Confirm
@@ -46,6 +46,9 @@
 
     [Parameter]
     public bool IsBusy { get; set; }
+
+    [Parameter]
+    public bool ActionsEnabled { get; set; } = true;
 
     [Parameter]
     public EventCallback<ProposedActions2> OnConfirm { get; set; }

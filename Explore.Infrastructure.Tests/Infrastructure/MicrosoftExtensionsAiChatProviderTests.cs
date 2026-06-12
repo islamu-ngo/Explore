@@ -201,6 +201,47 @@ public sealed class MicrosoftExtensionsAiChatProviderTests
         await Assert.That(result.Error!.Code).IsEqualTo("invalid_tool_arguments");
     }
 
+    [Test]
+    public async Task SendAsync_WhenToolResultMessageProvided_MapsToFunctionResultContent()
+    {
+        var chatClient = new RecordingChatClient(new ChatResponse(new ChatMessage(ChatRole.Assistant, "Tool result accepted")));
+        var provider = CreateProvider(chatClient);
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Continue after the tool call",
+            messages:
+            [
+                new AiChatMessage(AiMessageRole.User, "Create an event draft"),
+                new AiChatMessage(AiMessageRole.Tool, "{\"draftId\":\"draft_1\"}", "call_1")
+            ]));
+
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(chatClient.Messages![2].Role).IsEqualTo(ChatRole.Tool);
+        await Assert.That(chatClient.Messages[2].AuthorName).IsNull();
+
+        var functionResult = (FunctionResultContent)chatClient.Messages[2].Contents[0];
+        await Assert.That(functionResult.Result).IsEqualTo("{\"draftId\":\"draft_1\"}");
+    }
+
+    [Test]
+    public async Task SendAsync_WhenToolResultMessageMissingCallId_ReturnsSafeFailureBeforeProviderCall()
+    {
+        var chatClient = new RecordingChatClient(new ChatResponse(new ChatMessage(ChatRole.Assistant, "unused")));
+        var provider = CreateProvider(chatClient);
+
+        var result = await provider.SendAsync(CreateRequest(
+            "Continue after the tool call",
+            messages:
+            [
+                new AiChatMessage(AiMessageRole.User, "Create an event draft"),
+                new AiChatMessage(AiMessageRole.Tool, "{\"draftId\":\"draft_1\"}")
+            ]));
+
+        await Assert.That(result.Succeeded).IsFalse();
+        await Assert.That(result.Error!.Code).IsEqualTo("invalid_tool_result");
+        await Assert.That(chatClient.Calls).IsEqualTo(0);
+    }
+
     private static MicrosoftExtensionsAiChatProvider CreateProvider(RecordingChatClient chatClient)
     {
         var meterFactory = Substitute.For<IMeterFactory>();
@@ -227,9 +268,10 @@ public sealed class MicrosoftExtensionsAiChatProviderTests
         bool toolProposalsEnabled = false,
         string? actionSchema = null,
         bool structuredOutputEnabled = false,
-        AiStructuredOutputSchema? structuredOutputSchema = null) => new(
+        AiStructuredOutputSchema? structuredOutputSchema = null,
+        IReadOnlyList<AiChatMessage>? messages = null) => new(
             "gpt-test",
-            [new AiChatMessage(AiMessageRole.User, userMessage)],
+            messages ?? [new AiChatMessage(AiMessageRole.User, userMessage)],
             "You are a safe assistant.",
             new AiChatOptions(
                 8000,

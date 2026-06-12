@@ -167,7 +167,37 @@ public sealed class AiAssistantDbBackedApiFlowTests(AiAssistantDbBackedApiFixtur
         var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(body).IsNotNull();
         await Assert.That(body!.Success).IsTrue();
+        await WaitForRunStatusAsync(userId, conversationId, body.Id, "Succeeded");
         return body.Id;
+    }
+
+    private async Task<JsonElement> WaitForRunStatusAsync(
+        Guid userId,
+        Guid conversationId,
+        Guid runId,
+        string expectedStatus)
+    {
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            using var request = _fixture.CreateAuthenticatedRequest(
+                HttpMethod.Get,
+                $"/api/ai/assistant/conversations/{conversationId}/runs/{runId}",
+                userId);
+            var response = await _fixture.Client.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+                var root = json.RootElement.Clone();
+                if (string.Equals(root.GetProperty("status").GetString(), expectedStatus, StringComparison.Ordinal))
+                {
+                    return root;
+                }
+            }
+
+            await Task.Delay(50);
+        }
+
+        throw new TimeoutException($"AI run {runId} did not reach status {expectedStatus}.");
     }
 
     private async Task<Guid> ConfirmProposedActionAsync(

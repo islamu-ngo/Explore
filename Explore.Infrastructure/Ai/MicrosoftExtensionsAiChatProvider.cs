@@ -93,15 +93,6 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
                 telemetryActivity);
         }
 
-        if (request.Messages.Any(message => message.Role == AiMessageRole.Tool))
-        {
-            return CompleteFailure(
-                RecordFailure(providerName, "unsupported_message_role", "Tool result messages are not supported by this adapter yet."),
-                providerName,
-                startedAt,
-                telemetryActivity);
-        }
-
         var structuredOutputFailure = AiStructuredOutputResponseMapper.ValidateRequest(request);
         if (structuredOutputFailure is not null)
         {
@@ -117,13 +108,18 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
             return CompleteFailure(optionsFailure!, providerName, startedAt, telemetryActivity);
         }
 
+        if (!TryCreateMessages(request, providerName, out var messages, out var messagesFailure))
+        {
+            return CompleteFailure(messagesFailure!, providerName, startedAt, telemetryActivity);
+        }
+
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(GetTimeout(settings, request.Options));
 
         try
         {
             var response = await _chatClient.GetResponseAsync(
-                CreateMessages(request),
+                messages!,
                 chatOptions,
                 timeoutCts.Token);
 
@@ -179,22 +175,27 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
     }
 
     private static string ResolveTelemetryProvider(AiProviderSettings settings) =>
-        settings.Provider.Equals(AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase)
-            ? AiProviderSettings.ProviderOpenAiSdk
-            : settings.Provider.Equals(AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase)
-                ? AiProviderSettings.ProviderAzureOpenAi
+        settings.Provider == AiProviderSettings.ProviderOpenAiSdk
+            ? "openai-sdk"
+            : settings.Provider == AiProviderSettings.ProviderAzureOpenAi
+                ? "azure-openai"
                 : ProviderName;
 
     private static TimeSpan GetTimeout(AiProviderSettings settings, AiChatOptions options)
     {
-        var boundedSettingsTimeout = Math.Clamp(settings.TimeoutSeconds, 1, 300);
-        var boundedRequestTimeout = Math.Clamp(options.TimeoutSeconds, 1, 300);
+        var boundedSettingsTimeout = Math.Clamp(settings.TimeoutSeconds, 1, AiProviderDefaults.MaxTimeoutSeconds);
+        var boundedRequestTimeout = Math.Clamp(options.TimeoutSeconds, 1, AiProviderDefaults.MaxTimeoutSeconds);
         return TimeSpan.FromSeconds(Math.Min(boundedSettingsTimeout, boundedRequestTimeout));
     }
 
-    private static List<ChatMessage> CreateMessages(AiChatPayload request)
+    private bool TryCreateMessages(
+        AiChatPayload request,
+        string providerName,
+        out List<ChatMessage>? messages,
+        out AiChatProviderResult? failure)
     {
-        var messages = new List<ChatMessage>();
+        failure = null;
+        messages = new List<ChatMessage>();
         if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
         {
             messages.Add(new ChatMessage(ChatRole.System, request.SystemPrompt.Trim()));
@@ -202,13 +203,31 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
 
         foreach (var message in request.Messages)
         {
+            if (message.Role == AiMessageRole.Tool)
+            {
+                if (string.IsNullOrWhiteSpace(message.Name))
+                {
+                    messages = null;
+                    failure = RecordFailure(
+                        providerName,
+                        "invalid_tool_result",
+                        "Tool result messages require the provider tool call id in AiChatMessage.Name.");
+                    return false;
+                }
+
+                messages.Add(new ChatMessage(
+                    ChatRole.Tool,
+                    [new FunctionResultContent(message.Name.Trim(), message.Content)]));
+                continue;
+            }
+
             messages.Add(new ChatMessage(ToChatRole(message.Role), message.Content)
             {
                 AuthorName = string.IsNullOrWhiteSpace(message.Name) ? null : message.Name.Trim()
             });
         }
 
-        return messages;
+        return true;
     }
 
     private bool TryCreateChatOptions(
@@ -332,7 +351,10 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
             return false;
         }
 
-        if (!TryMapProposedActions(providerResponse.Messages, providerName, out var proposedActions, out failure))
+        IEnumerable<ChatMessage> toolMessages = request.Options.ToolProposalsEnabled
+            ? providerResponse.Messages
+            : Array.Empty<ChatMessage>();
+        if (!TryMapProposedActions(toolMessages, providerName, out var proposedActions, out failure))
         {
             return false;
         }
@@ -423,6 +445,7 @@ public sealed class MicrosoftExtensionsAiChatProvider : IAiChatProvider, IAiMode
         AiMessageRole.System => ChatRole.System,
         AiMessageRole.User => ChatRole.User,
         AiMessageRole.Assistant => ChatRole.Assistant,
+        AiMessageRole.Tool => ChatRole.Tool,
         _ => ChatRole.User
     };
 

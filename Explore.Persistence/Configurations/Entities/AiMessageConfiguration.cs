@@ -12,8 +12,13 @@ public class AiMessageConfiguration : IEntityTypeConfiguration<AiMessage>
     public void Configure(EntityTypeBuilder<AiMessage> builder)
     {
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-        builder.Property(e => e.Role).HasConversion<int>().IsRequired();
+        builder.Property(e => e.RoleId).IsRequired();
         builder.Property(e => e.Content).HasMaxLength(16000).IsRequired();
+
+        builder.HasOne(e => e.RoleLookup)
+            .WithMany()
+            .HasForeignKey(e => e.RoleId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => new { e.TenantId, e.ConversationId, e.Sequence })
             .IsUnique()
@@ -25,7 +30,6 @@ public class AiMessageConfiguration : IEntityTypeConfiguration<AiMessage>
         builder.ToTable(t =>
         {
             t.HasCheckConstraint("ck_ai_messages_sequence_positive", "sequence > 0");
-            t.HasCheckConstraint("ck_ai_messages_role", "role IN (1, 2, 3, 4)");
         });
     }
 }

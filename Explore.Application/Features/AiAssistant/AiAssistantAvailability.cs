@@ -1,6 +1,8 @@
 // ABOUTME: Resolves tenant-governed AI assistant availability for Application handlers.
 // ABOUTME: Keeps send/history handlers fail-closed before provider calls or persistence mutations.
 
+using System.Net;
+using System.Net.Sockets;
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Explore.Application.Settings.Groups;
 
@@ -23,10 +25,10 @@ internal static class AiAssistantAvailability
         if (provider == AiProviderDefaults.ProviderNone)
             return "provider_not_configured";
 
-        if (provider != AiProviderDefaults.ProviderFake && provider != AiProviderDefaults.ProviderOpenAiCompatible)
+        if (provider != AiProviderDefaults.ProviderFake && provider != AiProviderDefaults.ProviderOpenAiCompatible && provider != AiProviderDefaults.ProviderAnthropicCompatible)
             return "provider_unsupported";
 
-        if (provider == AiProviderDefaults.ProviderOpenAiCompatible)
+        if (provider == AiProviderDefaults.ProviderOpenAiCompatible || provider == AiProviderDefaults.ProviderAnthropicCompatible)
         {
             if (string.IsNullOrWhiteSpace(settings.EndpointUrl))
                 return "endpoint_not_configured";
@@ -78,4 +80,54 @@ internal static class AiAssistantAvailability
             allowedModelId,
             modelId,
             StringComparison.OrdinalIgnoreCase));
+
+    public static int ResolveTimeoutSeconds(AiAssistantSettingGroup settings)
+    {
+        var configuredTimeout = settings.TimeoutSeconds <= 0
+            ? AiProviderDefaults.DefaultTimeoutSeconds
+            : settings.TimeoutSeconds;
+
+        if (NormalizeProvider(settings.Provider) == AiProviderDefaults.ProviderOpenAiCompatible
+            || NormalizeProvider(settings.Provider) == AiProviderDefaults.ProviderAnthropicCompatible)
+        {
+            configuredTimeout = Math.Max(configuredTimeout, AiProviderDefaults.DefaultTimeoutSeconds);
+            if (IsLocalOrPrivateEndpoint(settings.EndpointUrl))
+            {
+                configuredTimeout = Math.Max(configuredTimeout, AiProviderDefaults.LocalProviderTimeoutSeconds);
+            }
+        }
+
+        return Math.Clamp(configuredTimeout, 1, AiProviderDefaults.MaxTimeoutSeconds);
+    }
+
+    private static bool IsLocalOrPrivateEndpoint(string? endpointUrl)
+    {
+        if (string.IsNullOrWhiteSpace(endpointUrl)
+            || !Uri.TryCreate(endpointUrl, UriKind.Absolute, out var endpoint))
+        {
+            return false;
+        }
+
+        if (endpoint.IsLoopback)
+        {
+            return true;
+        }
+
+        if (!IPAddress.TryParse(endpoint.Host, out var address))
+        {
+            return endpoint.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var bytes = address.GetAddressBytes();
+        return address.AddressFamily switch
+        {
+            AddressFamily.InterNetwork =>
+                bytes[0] == 10
+                || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)
+                || (bytes[0] == 192 && bytes[1] == 168)
+                || (bytes[0] == 169 && bytes[1] == 254),
+            AddressFamily.InterNetworkV6 => address.IsIPv6LinkLocal || address.IsIPv6SiteLocal,
+            _ => false
+        };
+    }
 }

@@ -22,22 +22,23 @@
         <div class="ai-rail__header">
             <div class="ai-rail__header-brand">
                 <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Class="ai-rail__header-icon" />
-                <MudMenu AnchorOrigin="Origin.BottomLeft"
+                <MudMenu @bind-Open="_modelMenuOpen"
+                         AnchorOrigin="Origin.BottomLeft"
                          TransformOrigin="Origin.TopLeft"
                          Dense="true"
                          Class="ai-rail__model-menu">
                     <ActivatorContent>
-                        <button type="button" class="ai-rail__model-picker-btn">
-                            <span class="ai-rail__header-title">ISLAMU AI (@_selectedModel)</span>
+                        <button type="button" class="ai-rail__model-picker-btn" @onclick="ToggleModelMenu">
+                            <span class="ai-rail__header-title">ISLAMU AI (@SelectedModelLabel)</span>
                             <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Class="ai-rail__model-arrow" />
                         </button>
                     </ActivatorContent>
                     <ChildContent>
-                        @foreach (var model in _models)
+                        @foreach (var model in _modelOptions)
                         {
-                            <MudMenuItem OnClick="() => SelectModel(model)"
-                                         Class="@GetModelItemClass(model)">
-                                @model
+                            <MudMenuItem OnClick="() => SelectModel(model.Id)"
+                                         Class="@GetModelItemClass(model.Id)">
+                                @model.DisplayName
                             </MudMenuItem>
                         }
                     </ChildContent>
@@ -120,6 +121,7 @@
                         {
                             <AiProposedActionCard Action="action"
                                                   IsBusy="@IsActionBusy(action.Id)"
+                                                  ActionsEnabled="@IsBuildCapabilitySelected"
                                                   OnConfirm="ConfirmActionAsync"
                                                   OnReject="RejectActionAsync" />
                         }
@@ -133,6 +135,24 @@
         {
             <MudAlert Severity="Severity.Error" Dense="true" Class="ai-rail__alert" data-testid="ai-rail-error">
                 @ConversationState.ErrorMessage
+            </MudAlert>
+        }
+
+        @if (GetActiveRunId() is not null)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="ai-rail__alert" data-testid="ai-rail-running">
+                <div class="d-flex align-center gap-2">
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
+                    <span>AI is thinking. You can wait here or cancel this run.</span>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               Disabled="@_isCancelRunRunning"
+                               OnClick="CancelActiveRunAsync"
+                               data-testid="ai-rail-cancel-run">
+                        Cancel
+                    </MudButton>
+                </div>
             </MudAlert>
         }
 
@@ -155,9 +175,30 @@
 
                 <div class="ai-rail__composer-card">
                     <div class="ai-rail__composer-context">
-                        <span class="ai-rail__context-badge">
-                            🕌 ISLAMU Event
-                        </span>
+                        <label class="ai-rail__actor-label" for="ai-rail-actor-selector">Acting as</label>
+                        <select id="ai-rail-actor-selector"
+                                class="ai-rail__actor-selector"
+                                value="@(_selectedActorId?.ToString() ?? string.Empty)"
+                                @onchange="OnActorSelectionChanged"
+                                data-testid="ai-rail-actor-selector"
+                                aria-label="AI assistant actor context"
+                                disabled="@(_actorOptions.Count == 0)">
+                            @if (_actorOptions.Count == 0)
+                            {
+                                <option value="">No actor contexts available</option>
+                            }
+                            else
+                            {
+                                @foreach (var actor in _actorOptions)
+                                {
+                                    <option value="@actor.ActorId"
+                                            data-actor-type="@actor.ActorType"
+                                            data-actor-display-name="@actor.ActorDisplayName">
+                                        @actor.ActorType · @actor.ActorDisplayName
+                                    </option>
+                                }
+                            }
+                        </select>
                     </div>
                     <InputFile id="ai-file-picker" OnChange="OnFilesSelected" Multiple="true" style="display: none;" />
                     <textarea id="ai-rail-prompt"
@@ -169,23 +210,28 @@
                               placeholder="How can I help you today?"
                               data-testid="ai-rail-prompt"></textarea>
                     <div class="ai-rail__composer-toolbar">
-                        <MudMenu Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                        <MudMenu @bind-Open="_referencesMenuOpen" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                             <ActivatorContent>
                                 <button type="button"
                                         class="ai-rail__toolbar-btn @(_showReferences ? "ai-rail__toolbar-btn--active" : "")"
                                         title="Add references"
-                                        aria-label="Add references">
+                                        aria-label="Add references"
+                                        @onclick="ToggleReferencesMenu">
                                     <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
                                 </button>
                             </ActivatorContent>
                             <ChildContent>
-                                <MudMenuItem OnClick="ToggleReferences">Search event references</MudMenuItem>
-                                <MudMenuItem OnClick="OpenFilePickerAsync">Add files of photos</MudMenuItem>
+                                <MudMenuItem OnClick="SelectReferencesAndCloseMenu">Search event references</MudMenuItem>
+                                <MudMenuItem OnClick="OpenFilePickerAndCloseMenu">Add files of photos</MudMenuItem>
                             </ChildContent>
                         </MudMenu>
-                        <MudMenu Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                        <MudMenu @bind-Open="_capabilitiesMenuOpen" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                             <ActivatorContent>
-                                <button type="button" class="ai-rail__capability-picker-btn" title="AI capabilities" aria-label="AI capabilities">
+                                <button type="button"
+                                        class="ai-rail__capability-picker-btn"
+                                        title="AI capabilities"
+                                        aria-label="AI capabilities"
+                                        @onclick="ToggleCapabilitiesMenu">
                                     <MudIcon Icon="@GetCapabilityIcon(_selectedCapability)" Size="Size.Small" />
                                     <span>@_selectedCapability</span>
                                     <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Class="ai-rail__capability-arrow" />
@@ -283,6 +329,15 @@
     [Inject]
     protected ISnackbar Snackbar { get; set; } = null!;
 
+    [Inject]
+    protected IBffAuthApi BffAuthApi { get; set; } = null!;
+
+    [Inject]
+    protected ILogger<AiAssistantRail> Logger { get; set; } = null!;
+
+    [Inject]
+    protected NavigationManager Navigation { get; set; } = null!;
+
     [Parameter]
     public bool HostedInDock { get; set; }
 
@@ -290,15 +345,32 @@
     private bool _hasLoaded;
     private bool _hasSearchedReferences;
     private bool _isCommandRunning;
+    private bool _isCancelRunRunning;
     private bool _isReferenceSearchRunning;
     private bool _showConversations;
     private bool _showReferences;
     private string _promptText = string.Empty;
     private string _referenceSearchTerm = string.Empty;
 
-    private readonly List<string> _models = ["GPT-5.4", "GPT-5.2", "Claude Sonnet 4.5", "Claude Sonnet 4.6"];
-    private string _selectedModel = "GPT-5.4";
+    private bool _modelMenuOpen;
+    private bool _referencesMenuOpen;
+    private bool _capabilitiesMenuOpen;
+
+    private IReadOnlyList<AiRailModelOption> _modelOptions = [];
+    private IReadOnlyList<AiRailActorOption> _actorOptions = [];
+    private string _selectedModelId = string.Empty;
+    private Guid? _selectedActorId;
     private string _selectedCapability = "Build";
+    private Guid? _activeRunId;
+
+    private bool IsBuildCapabilitySelected =>
+        string.Equals(_selectedCapability, "Build", StringComparison.OrdinalIgnoreCase);
+
+    private string SelectedInteractionMode => IsBuildCapabilitySelected ? "build" : "ask";
+
+    private string SelectedModelLabel => _modelOptions
+        .FirstOrDefault(model => string.Equals(model.Id, _selectedModelId, StringComparison.OrdinalIgnoreCase))
+        ?.DisplayName ?? (_selectedModelId.Length > 0 ? _selectedModelId : "Default");
 
     private string RootClass => string.Join(' ', new[]
     {
@@ -349,17 +421,42 @@
         ConversationState.SetLoading(true);
         ConversationState.SetError(null);
 
+        await LoadBootstrapAsync();
+
         var collection = await ClientService.GetConversationCollectionAsync();
         ConversationState.SetConversationCollection(collection);
         if (collection is null)
         {
             ConversationState.SetError("AI assistant conversations are not available for your account.");
+            return;
         }
 
-        if (ConversationState.SelectedConversation is null
-            && ConversationState.Conversations.FirstOrDefault()?.Id is Guid firstConversationId)
+        if (ConversationState.SelectedConversation is null)
         {
-            await SelectConversationAsync(firstConversationId);
+            if (ConversationState.Conversations.FirstOrDefault()?.Id is Guid firstConversationId)
+            {
+                await SelectConversationAsync(firstConversationId);
+            }
+            else if (ConversationState.CanCreateConversation)
+            {
+                // Create a new conversation inline to avoid blank page
+                var result = await ClientService.CreateConversationAsync(new CreateAiConversationRequestDto
+                {
+                    Title = "AI Assistant",
+                    ActorId = _selectedActorId
+                });
+
+                if (result.Success && result.Id is Guid newConversationId)
+                {
+                    var newCollection = await ClientService.GetConversationCollectionAsync();
+                    ConversationState.SetConversationCollection(newCollection);
+                    await SelectConversationAsync(newConversationId);
+                }
+                else
+                {
+                    ConversationState.SetError(result.Message ?? "The AI assistant conversation could not be created.");
+                }
+            }
         }
 
         ConversationState.SetLoading(false);
@@ -377,7 +474,8 @@
         {
             var result = await ClientService.CreateConversationAsync(new CreateAiConversationRequestDto
             {
-                Title = "AI Assistant"
+                Title = "AI Assistant",
+                ActorId = _selectedActorId
             });
 
             if (!result.Success || result.Id is not Guid conversationId)
@@ -409,6 +507,7 @@
         }
 
         ConversationState.SelectConversation(conversation);
+        _activeRunId = FindActiveRunId(conversation);
         ConversationState.SetLoading(false);
     }
 
@@ -430,16 +529,184 @@
 
         await RunCommandAsync(async () =>
         {
-            var result = await ClientService.SendMessageAsync(conversationId, content, idempotencyKey);
+            _promptText = string.Empty;
+            ConversationState.SetError(null);
+
+            var result = await ClientService.SendMessageAsync(
+                conversationId,
+                content,
+                _selectedModelId,
+                idempotencyKey,
+                mode: SelectedInteractionMode,
+                actorId: _selectedActorId);
             if (!result.Success)
             {
+                _promptText = content;
+                await RefreshSelectedConversationAsync(conversationId);
                 ConversationState.SetError(result.Message ?? "The AI assistant message could not be sent.");
                 return;
             }
 
-            _promptText = string.Empty;
-            await SelectConversationAsync(conversationId);
+            await RefreshSelectedConversationAsync(conversationId);
+            if (result.Id is Guid runId)
+            {
+                _activeRunId = runId;
+                await PollRunUntilCompleteAsync(conversationId, runId);
+            }
         });
+    }
+
+    private async Task RefreshSelectedConversationAsync(Guid conversationId)
+    {
+        var conversation = await ClientService.GetConversationAsync(conversationId);
+        if (conversation is not null)
+        {
+            ConversationState.SelectConversation(conversation);
+            _activeRunId = FindActiveRunId(conversation);
+        }
+    }
+
+    private async Task PollRunUntilCompleteAsync(Guid conversationId, Guid runId)
+    {
+        const int maxAttempts = 150;
+        const int maxConsecutiveStatusLoadFailures = 3;
+        var delay = TimeSpan.FromSeconds(2);
+        var consecutiveStatusLoadFailures = 0;
+
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            if (attempt == 0 || attempt % 25 == 0)
+            {
+                var authOk = await TryRefreshAuthSessionAsync();
+                if (!authOk && attempt == 0)
+                {
+                    Logger.LogWarning("AI polling: initial auth refresh failed; redirecting to login.");
+                    RedirectToLogin();
+                    return;
+                }
+            }
+
+            var statusResult = await ClientService.GetRunStatusAsync(conversationId, runId);
+            if (statusResult.IsUnauthorized)
+            {
+                Logger.LogWarning("AI polling: received 401 during run status polling; redirecting to login.");
+                RedirectToLogin();
+                return;
+            }
+
+            if (!statusResult.Success)
+            {
+                consecutiveStatusLoadFailures++;
+                if (consecutiveStatusLoadFailures <= maxConsecutiveStatusLoadFailures)
+                {
+                    var authOk = await TryRefreshAuthSessionAsync();
+                    if (!authOk)
+                    {
+                        Logger.LogWarning("AI polling: auth refresh failed after status load failure; redirecting to login.");
+                        RedirectToLogin();
+                        return;
+                    }
+                    await Task.Delay(delay);
+                    continue;
+                }
+
+                ConversationState.SetError("The AI run status could not be loaded.");
+                return;
+            }
+
+            consecutiveStatusLoadFailures = 0;
+            var run = statusResult.Run!;
+
+            if (IsTerminalRunStatus(run.Status))
+            {
+                _activeRunId = null;
+                await RefreshSelectedConversationAsync(conversationId);
+                if (IsFailedRunStatus(run.Status))
+                {
+                    ConversationState.SetError(run.FailureMessage ?? "AI provider failed to complete the run.");
+                }
+
+                return;
+            }
+
+            await RefreshSelectedConversationAsync(conversationId);
+            await Task.Delay(delay);
+        }
+
+        await RefreshSelectedConversationAsync(conversationId);
+        ConversationState.SetError("AI is still working on this response. You can keep waiting or cancel the run.");
+    }
+
+    private async Task<bool> TryRefreshAuthSessionAsync()
+    {
+        try
+        {
+            var response = await BffAuthApi.RefreshSessionInternalAsync(CancellationToken.None);
+            if (!response.IsSuccessStatusCode)
+            {
+                Logger.LogDebug(
+                    "AI polling auth refresh returned status {StatusCode}.",
+                    (int)response.StatusCode);
+                return false;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "AI polling auth refresh could not be completed.");
+            return false;
+        }
+    }
+
+    private void RedirectToLogin()
+    {
+        var returnUrl = Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri));
+        Navigation.NavigateTo($"/login?returnUrl={returnUrl}", forceLoad: true);
+    }
+
+    private Guid? GetActiveRunId()
+    {
+        if (_activeRunId is Guid activeRunId)
+        {
+            return activeRunId;
+        }
+
+        return FindActiveRunId(ConversationState.SelectedConversation);
+    }
+
+    private static Guid? FindActiveRunId(HalResourceOfAiConversationDto? conversation)
+    {
+        return conversation?.Runs?
+            .OrderByDescending(run => run.StartedAt ?? run.QueuedAt)
+            .FirstOrDefault(run => IsActiveRunStatus(run.Status))
+            ?.Id;
+    }
+
+    private async Task CancelActiveRunAsync()
+    {
+        if (_isCancelRunRunning ||
+            ConversationState.SelectedConversation?.Id is not Guid conversationId ||
+            GetActiveRunId() is not Guid runId)
+        {
+            return;
+        }
+
+        _isCancelRunRunning = true;
+        try
+        {
+            var result = await ClientService.CancelRunAsync(conversationId, runId);
+            _activeRunId = null;
+            await RefreshSelectedConversationAsync(conversationId);
+
+            if (!result.Success)
+            {
+                ConversationState.SetError(result.Message ?? "The AI assistant run could not be cancelled.");
+            }
+        }
+        finally
+        {
+            _isCancelRunRunning = false;
+        }
     }
 
     private async Task SearchReferencesAsync(string? searchTerm)
@@ -480,6 +747,12 @@
 
     private async Task ConfirmActionAsync(ProposedActions2 action)
     {
+        if (!IsBuildCapabilitySelected)
+        {
+            ConversationState.SetError("Switch to Build mode to confirm proposed AI actions.");
+            return;
+        }
+
         if (ConversationState.SelectedConversation?.Id is not Guid conversationId || action.Id is not Guid actionId)
         {
             return;
@@ -504,6 +777,12 @@
 
     private async Task RejectActionAsync(ProposedActions2 action)
     {
+        if (!IsBuildCapabilitySelected)
+        {
+            ConversationState.SetError("Switch to Build mode to reject proposed AI actions.");
+            return;
+        }
+
         if (ConversationState.SelectedConversation?.Id is not Guid conversationId || action.Id is not Guid actionId)
         {
             return;
@@ -565,6 +844,18 @@
 
     private bool IsActionBusy(Guid? actionId) => actionId is Guid id && _busyActionIds.Contains(id);
 
+    private static bool IsActiveRunStatus(string? status) =>
+        string.Equals(status, "Queued", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(status, "InProgress", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsTerminalRunStatus(string? status) =>
+        string.Equals(status, "Succeeded", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(status, "Failed", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(status, "Cancelled", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsFailedRunStatus(string? status) =>
+        string.Equals(status, "Failed", StringComparison.OrdinalIgnoreCase);
+
     private string GetConversationButtonClass(Guid? conversationId) => string.Join(' ', new[]
     {
         "ai-rail__conversation-button",
@@ -581,19 +872,86 @@
         string.Equals(role, "Assistant", StringComparison.OrdinalIgnoreCase) ? "ai-rail__message--assistant" : null
     }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
-    private void SelectModel(string model)
+    private async Task LoadBootstrapAsync()
     {
-        _selectedModel = model;
+        var bootstrap = await ClientService.GetBootstrapAsync();
+        var actors = bootstrap?.ActorContexts?
+            .Where(actor => actor.ActorId is Guid actorId && actorId != Guid.Empty)
+            .GroupBy(actor => actor.ActorId!.Value)
+            .Select(group => group.First())
+            .Select(actor => new AiRailActorOption(
+                actor.ActorId!.Value,
+                actor.ActorType?.Trim() ?? string.Empty,
+                actor.ActorDisplayName?.Trim() ?? string.Empty))
+            .Where(actor => !string.IsNullOrWhiteSpace(actor.ActorType) && !string.IsNullOrWhiteSpace(actor.ActorDisplayName))
+            .ToArray() ?? [];
+
+        _actorOptions = actors;
+
+        if (_actorOptions.Count == 0)
+        {
+            _selectedActorId = null;
+        }
+        else if (_selectedActorId is not Guid selectedActorId
+                 || !_actorOptions.Any(actor => actor.ActorId == selectedActorId))
+        {
+            _selectedActorId = _actorOptions[0].ActorId;
+        }
+
+        var models = bootstrap?.Models?
+            .Where(model => !string.IsNullOrWhiteSpace(model.Id))
+            .GroupBy(model => model.Id!, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .Select(model => new AiRailModelOption(model.Id!.Trim(), FormatModelDisplayName(model)))
+            .ToArray() ?? [];
+
+        _modelOptions = models;
+
+        if (_modelOptions.Count == 0)
+        {
+            _selectedModelId = string.Empty;
+            return;
+        }
+
+        var defaultModelId = bootstrap?.DefaultModelId?.Trim();
+        if (!string.IsNullOrWhiteSpace(defaultModelId)
+            && _modelOptions.Any(model => string.Equals(model.Id, defaultModelId, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selectedModelId = defaultModelId;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_selectedModelId)
+            || !_modelOptions.Any(model => string.Equals(model.Id, _selectedModelId, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selectedModelId = _modelOptions[0].Id;
+        }
     }
 
-    private string GetModelItemClass(string model) =>
-        string.Equals(_selectedModel, model, StringComparison.OrdinalIgnoreCase)
+    private void SelectModel(string modelId)
+    {
+        _selectedModelId = modelId;
+        _modelMenuOpen = false;
+    }
+
+    private string GetModelItemClass(string modelId) =>
+        string.Equals(_selectedModelId, modelId, StringComparison.OrdinalIgnoreCase)
             ? "ai-rail__model-item--selected"
             : "";
+
+    private static string FormatModelDisplayName(Models2 model)
+    {
+        var id = model.Id?.Trim() ?? string.Empty;
+        var displayName = model.DisplayName?.Trim();
+        return string.IsNullOrWhiteSpace(displayName) || string.Equals(displayName, id, StringComparison.OrdinalIgnoreCase)
+            ? id
+            : displayName;
+    }
 
     private void SelectCapability(string capability)
     {
         _selectedCapability = capability;
+        _capabilitiesMenuOpen = false;
     }
 
     private string GetCapabilityIcon(string capability) =>
@@ -624,6 +982,27 @@
             else
             {
                 ConversationState.SelectConversation(null);
+                if (ConversationState.CanCreateConversation)
+                {
+                    ConversationState.SetLoading(true);
+                    var result = await ClientService.CreateConversationAsync(new CreateAiConversationRequestDto
+                    {
+                        Title = "AI Assistant",
+                        ActorId = _selectedActorId
+                    });
+
+                    if (result.Success && result.Id is Guid newConversationId)
+                    {
+                        var newCollection = await ClientService.GetConversationCollectionAsync();
+                        ConversationState.SetConversationCollection(newCollection);
+                        await SelectConversationAsync(newConversationId);
+                    }
+                    else
+                    {
+                        ConversationState.SetError(result.Message ?? "The AI assistant conversation could not be created.");
+                    }
+                    ConversationState.SetLoading(false);
+                }
             }
             Snackbar.Add("Conversation deleted.", Severity.Success);
         }
@@ -633,6 +1012,22 @@
     {
         await SelectConversationAsync(conversationId);
         _showConversations = false;
+    }
+
+    private void ToggleModelMenu() => _modelMenuOpen = !_modelMenuOpen;
+    private void ToggleReferencesMenu() => _referencesMenuOpen = !_referencesMenuOpen;
+    private void ToggleCapabilitiesMenu() => _capabilitiesMenuOpen = !_capabilitiesMenuOpen;
+
+    private void SelectReferencesAndCloseMenu()
+    {
+        _referencesMenuOpen = false;
+        ToggleReferences();
+    }
+
+    private async Task OpenFilePickerAndCloseMenu()
+    {
+        _referencesMenuOpen = false;
+        await OpenFilePickerAsync();
     }
 
     private void OnPromptInput(ChangeEventArgs e)
@@ -645,9 +1040,19 @@
         _promptText = e.Value?.ToString() ?? string.Empty;
     }
 
+    private void OnActorSelectionChanged(ChangeEventArgs e)
+    {
+        _selectedActorId = Guid.TryParse(e.Value?.ToString(), out var actorId) && _actorOptions.Any(actor => actor.ActorId == actorId)
+            ? actorId
+            : null;
+    }
+
     public void Dispose()
     {
         AiAssistantState.OnChange -= StateHasChanged;
         ConversationState.OnChange -= StateHasChanged;
     }
+
+    private sealed record AiRailModelOption(string Id, string DisplayName);
+    private sealed record AiRailActorOption(Guid ActorId, string ActorType, string ActorDisplayName);
 }

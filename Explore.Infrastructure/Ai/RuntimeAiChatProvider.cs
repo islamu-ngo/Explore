@@ -1,5 +1,5 @@
-// ABOUTME: Runtime AI provider selector that delegates to the configured Infrastructure adapter.
-// ABOUTME: Fails closed when static provider settings are disabled, invalid, or unsupported.
+// ABOUTME: Runtime AI provider selector that delegates to strategy-resolved providers.
+// ABOUTME: Eliminates if/else dispatch by using IAiProviderStrategyResolver for provider selection.
 
 using Explore.Application.Contracts.Infrastructure.Ai;
 using Microsoft.Extensions.Options;
@@ -10,52 +10,49 @@ public sealed class RuntimeAiChatProvider : IAiChatProvider, IAiModelCatalog
 {
     private readonly IOptions<AiProviderSettings> _options;
     private readonly AiProviderSettingsValidator _validator;
-    private readonly FakeAiChatProvider _fakeProvider;
-    private readonly OpenAiCompatibleChatProvider _openAiCompatibleProvider;
-    private readonly MicrosoftExtensionsAiChatProvider? _microsoftExtensionsProvider;
+    private readonly IAiProviderStrategyResolver _resolver;
 
     public RuntimeAiChatProvider(
         IOptions<AiProviderSettings> options,
         AiProviderSettingsValidator validator,
-        FakeAiChatProvider fakeProvider,
-        OpenAiCompatibleChatProvider openAiCompatibleProvider,
-        MicrosoftExtensionsAiChatProvider? microsoftExtensionsProvider = null)
+        IAiProviderStrategyResolver resolver)
     {
         _options = options;
         _validator = validator;
-        _fakeProvider = fakeProvider;
-        _openAiCompatibleProvider = openAiCompatibleProvider;
-        _microsoftExtensionsProvider = microsoftExtensionsProvider;
+        _resolver = resolver;
     }
 
     public Task<IReadOnlyList<AiModelDescriptor>> ListAvailableModelsAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!TryResolveProvider(out var provider, out _)
-            || provider is not IAiModelCatalog modelCatalog)
-        {
+        var resolved = TryResolveStrategy(out var strategy, out _);
+        if (!resolved || strategy is null)
             return Task.FromResult<IReadOnlyList<AiModelDescriptor>>([]);
-        }
 
-        return modelCatalog.ListAvailableModelsAsync(cancellationToken);
+        return strategy.ListAvailableModelsAsync(cancellationToken);
     }
 
     public Task<AiChatProviderResult> SendAsync(AiChatPayload request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!TryResolveProvider(out var provider, out var failure))
+        if (request.ProviderConfiguration is { Provider: > 0 })
         {
-            return Task.FromResult(failure!);
+            var overrideStrategy = _resolver.Resolve(request.ProviderConfiguration.Provider);
+            if (overrideStrategy is not null)
+                return overrideStrategy.SendAsync(request, cancellationToken);
         }
 
-        return provider.SendAsync(request, cancellationToken);
+        if (!TryResolveStrategy(out var strategy, out var failure))
+            return Task.FromResult(failure!);
+
+        return strategy.SendAsync(request, cancellationToken);
     }
 
-    private bool TryResolveProvider(out IAiChatProvider provider, out AiChatProviderResult? failure)
+    private bool TryResolveStrategy(out IAiProviderStrategy? strategy, out AiChatProviderResult? failure)
     {
-        provider = _fakeProvider;
+        strategy = null;
         failure = null;
 
         var settings = _options.Value;
@@ -76,36 +73,15 @@ public sealed class RuntimeAiChatProvider : IAiChatProvider, IAiModelCatalog
             return false;
         }
 
-        if (settings.Provider.Equals(AiProviderSettings.ProviderFake, StringComparison.OrdinalIgnoreCase))
+        strategy = _resolver.Resolve(settings.Provider);
+        if (strategy is null)
         {
-            provider = _fakeProvider;
-            return true;
+            failure = AiChatProviderResult.Failure(
+                "provider_not_configured",
+                "No runnable AI provider is configured.");
+            return false;
         }
 
-        if (settings.Provider.Equals(AiProviderSettings.ProviderOpenAiCompatible, StringComparison.OrdinalIgnoreCase))
-        {
-            provider = _openAiCompatibleProvider;
-            return true;
-        }
-
-        if (settings.Provider.Equals(AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase)
-            || settings.Provider.Equals(AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase))
-        {
-            if (_microsoftExtensionsProvider is null)
-            {
-                failure = AiChatProviderResult.Failure(
-                    "provider_not_configured",
-                    "SDK-backed AI provider is not registered.");
-                return false;
-            }
-
-            provider = _microsoftExtensionsProvider;
-            return true;
-        }
-
-        failure = AiChatProviderResult.Failure(
-            "provider_not_configured",
-            "No runnable AI provider is configured.");
-        return false;
+        return true;
     }
 }

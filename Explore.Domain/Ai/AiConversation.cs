@@ -1,6 +1,7 @@
 // ABOUTME: Tenant-scoped aggregate root for AI assistant conversations, messages, runs, references, and actions.
 // ABOUTME: Enforces message ordering and lifecycle transitions without provider or persistence dependencies.
 
+using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain.Ai;
@@ -14,7 +15,14 @@ public class AiConversation : ITenantEntity, IAuditableEntity, ISoftDeletable, I
     public User? User { get; set; }
     public Guid? ActorId { get; set; }
     public Actor? Actor { get; set; }
-    public AiConversationStatus Status { get; set; } = AiConversationStatus.Active;
+    public int StatusId { get; set; } = (int)AiConversationStatus.Active;
+    public AiConversationStatusLookup? StatusLookup { get; set; }
+    [NotMapped]
+    public AiConversationStatus Status
+    {
+        get => (AiConversationStatus)StatusId;
+        set => StatusId = (int)value;
+    }
     public string? Title { get; set; }
     public string? Provider { get; set; }
     public string? ModelId { get; set; }

@@ -8,11 +8,13 @@ public sealed record AiToolValidationResult(
     string? FailureCode,
     string? FailureMessage,
     string? CorrectionMessage = null,
-    AiToolRecoveryResult? Recovery = null)
+    AiToolRecoveryResult? Recovery = null,
+    string? NormalizedPayloadJson = null)
 {
     public AiToolRecoveryResult EffectiveRecovery => Recovery ?? AiToolRecoveryResult.None;
 
-    public static AiToolValidationResult Success() => new(true, null, null, null, AiToolRecoveryResult.None);
+    public static AiToolValidationResult Success(string? normalizedPayloadJson = null)
+        => new(true, null, null, null, AiToolRecoveryResult.None, normalizedPayloadJson);
 
     public static AiToolValidationResult Failure(string failureCode, string failureMessage, string? correctionMessage = null)
         => new(

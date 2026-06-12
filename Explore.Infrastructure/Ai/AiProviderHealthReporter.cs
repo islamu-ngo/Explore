@@ -5,14 +5,16 @@ using Explore.Application.Contracts.Infrastructure.Ai;
 
 namespace Explore.Infrastructure.Ai;
 
-public sealed class AiProviderHealthReporter(AiProviderSettingsValidator validator)
+public sealed class AiProviderHealthReporter(
+    AiProviderSettingsValidator validator,
+    IAiProviderStrategyResolver resolver)
 {
     public AiProviderHealth Check(AiProviderSettings settings)
     {
         Dictionary<string, object> data = new(StringComparer.Ordinal)
         {
             ["enabled"] = settings.Enabled,
-            ["provider"] = NormalizeProvider(settings.Provider),
+            ["provider"] = settings.Provider,
             ["endpointConfigured"] = !string.IsNullOrWhiteSpace(settings.EndpointUrl),
             ["apiKeyConfigured"] = !string.IsNullOrWhiteSpace(settings.ApiKey),
             ["modelConfigured"] = !string.IsNullOrWhiteSpace(settings.ModelId),
@@ -45,36 +47,9 @@ public sealed class AiProviderHealthReporter(AiProviderSettingsValidator validat
                 Data: data);
         }
 
-        if (settings.Provider.Equals(AiProviderSettings.ProviderFake, StringComparison.OrdinalIgnoreCase))
-        {
-            return new AiProviderHealth(
-                Enabled: true,
-                Healthy: true,
-                Status: "healthy_fake",
-                Description: "Deterministic fake AI provider is enabled for tests or local workflows.",
-                Data: data);
-        }
-
-        if (settings.Provider.Equals(AiProviderSettings.ProviderOpenAiCompatible, StringComparison.OrdinalIgnoreCase))
-        {
-            return new AiProviderHealth(
-                Enabled: true,
-                Healthy: true,
-                Status: "configured_no_probe",
-                Description: "OpenAI-compatible AI provider settings are valid; network probing is deferred to the adapter.",
-                Data: data);
-        }
-
-        if (settings.Provider.Equals(AiProviderSettings.ProviderOpenAiSdk, StringComparison.OrdinalIgnoreCase)
-            || settings.Provider.Equals(AiProviderSettings.ProviderAzureOpenAi, StringComparison.OrdinalIgnoreCase))
-        {
-            return new AiProviderHealth(
-                Enabled: true,
-                Healthy: true,
-                Status: "configured_no_probe",
-                Description: "SDK-backed AI provider settings are valid; network probing is deferred to the adapter.",
-                Data: data);
-        }
+        var strategy = resolver.Resolve(settings.Provider);
+        if (strategy is not null)
+            return strategy.CheckHealth(data);
 
         data["reason"] = "provider_not_configured";
         return new AiProviderHealth(
@@ -85,6 +60,4 @@ public sealed class AiProviderHealthReporter(AiProviderSettingsValidator validat
             Data: data);
     }
 
-    private static string NormalizeProvider(string? provider) =>
-        string.IsNullOrWhiteSpace(provider) ? AiProviderSettings.ProviderNone : provider.Trim().ToLowerInvariant();
 }

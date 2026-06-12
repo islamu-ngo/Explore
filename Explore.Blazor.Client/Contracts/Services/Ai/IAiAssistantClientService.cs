@@ -2,6 +2,7 @@
 // ABOUTME: Keeps Razor components behind a generated-client wrapper and HAL-preserving DTO surface.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Services.Ai;
 
 namespace Explore.Blazor.Client.Contracts.Services.Ai;
 
@@ -30,6 +31,18 @@ public interface IAiAssistantClientService
         string content,
         string? modelId = null,
         string? idempotencyKey = null,
+        string? mode = null,
+        Guid? actorId = null,
+        CancellationToken cancellationToken = default);
+
+    Task<AiRunStatusResult> GetRunStatusAsync(
+        Guid conversationId,
+        Guid runId,
+        CancellationToken cancellationToken = default);
+
+    Task<AiAssistantCommandResult> CancelRunAsync(
+        Guid conversationId,
+        Guid runId,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<HalResourceOfAiReferenceSearchResultDto>> SearchReferencesAsync(

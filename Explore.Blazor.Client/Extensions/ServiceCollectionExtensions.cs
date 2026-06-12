@@ -7,6 +7,7 @@ using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Ai;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
@@ -14,6 +15,8 @@ using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Accessibility;
 using Explore.Blazor.Client.Services.Ai;
 using Explore.Blazor.Client.Services.Docking;
+using Explore.Blazor.Client.Services.EventSessionTemplateSync;
+using Explore.Blazor.Client.Services.EventTemplateSync;
 using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Client.Services.Lookup;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,10 +50,22 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICustomPropertyValueService, CustomPropertyValueService>();
         services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventTemplates.IEventTemplateService, EventTemplateService>();
         services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventSessionTemplates.IEventSessionTemplateService, EventSessionTemplateService>();
+        services.AddBffRefitClient<IEventTemplateSyncApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
+        services.AddScoped<Explore.Blazor.Client.Services.EventTemplateSync.IEventTemplateSyncService, EventTemplateSyncService>();
+        services.AddBffRefitClient<IEventSessionTemplateSyncApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
+        services.AddScoped<Explore.Blazor.Client.Services.EventSessionTemplateSync.IEventSessionTemplateSyncService, EventSessionTemplateSyncService>();
         services.AddScoped<ILandingPageService, LandingPageService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAiAssistantClientService, AiAssistantClientService>();
         services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
+        services.AddBffRefitClient<ITenantNavigationApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
+        services.AddScoped<ITenantNavigationService, TenantNavigationService>();
+        services.AddBffRefitClient<IFooterAdminApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
+        services.AddScoped<IFooterAdminService, FooterAdminService>();
         services.AddBffRefitClient<IMapsApi>(configureBffRefitClient)
             .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IMapsService, MapsService>();
@@ -89,6 +104,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILocationRoomService, LocationRoomService>();
         services.AddScoped<IActorService, ActorService>();
         services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
+        services.AddBffRefitClient<IEventTeamBffApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IEventTeamService, EventTeamService>();
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
 
@@ -98,6 +115,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INotificationRefreshStreamClient, NotificationRefreshStreamClient>();
 
         // BFF / onboarding services (use named HttpClient "BffClient")
+        services.AddBffRefitClient<IBffAuthApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddBffRefitClient<IInstanceOnboardingApi>(configureBffRefitClient)
             .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddBffRefitClient<ITenantOnboardingApi>(configureBffRefitClient)
@@ -114,6 +133,8 @@ public static class ServiceCollectionExtensions
         services.AddBffRefitClient<ITenantStorageSettingsApi>(configureBffRefitClient)
             .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<ITenantStorageSettingsAdminService, TenantStorageSettingsAdminService>();
+        services.AddBffRefitClient<IAppearanceApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IAppearanceThemeService, AppearanceThemeService>();
         services.AddScoped<IUserAppearancePreferencesService, UserAppearancePreferencesService>();
 
@@ -123,6 +144,8 @@ public static class ServiceCollectionExtensions
 
         // Auth state
         services.AddScoped<IAuthStateService, AuthStateService>();
+        services.AddBffRefitClient<IUserExternalLoginApi>(configureBffRefitClient)
+            .ConfigureBffRefitClient(configureBffRefitClientBuilder);
 
         // Localization
         services.AddScoped<ITranslationService, TranslationService>();

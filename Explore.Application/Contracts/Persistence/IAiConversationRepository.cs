@@ -13,6 +13,13 @@ public interface IAiConversationRepository : IGenericRepository<AiConversation, 
     Task<IReadOnlyList<AiConversation>> ListRecentForUserAsync(Guid userId, int limit, CancellationToken cancellationToken);
     Task<int> CountUserMessagesSinceAsync(Guid userId, DateTime sinceUtc, CancellationToken cancellationToken);
     Task<int> CountTenantMessagesSinceAsync(DateTime sinceUtc, CancellationToken cancellationToken);
+    Task<int> ReleaseStaleRunningConversationsForUserAsync(
+        Guid userId,
+        DateTime staleBeforeUtc,
+        string failureCode,
+        string failureMessage,
+        DateTime utcNow,
+        CancellationToken cancellationToken);
     Task<int> CountRunningConversationsForUserAsync(Guid userId, CancellationToken cancellationToken);
     Task<AiProposedAction?> GetProposedActionForUpdateAsync(Guid proposedActionId, CancellationToken cancellationToken);
     Task UpdateProposedActionAsync(AiProposedAction proposedAction, CancellationToken cancellationToken);

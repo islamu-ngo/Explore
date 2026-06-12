@@ -12,15 +12,17 @@ public class AiConversationReferenceConfiguration : IEntityTypeConfiguration<AiC
     public void Configure(EntityTypeBuilder<AiConversationReference> builder)
     {
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-        builder.Property(e => e.Kind).HasConversion<int>().IsRequired();
+        builder.Property(e => e.KindId).IsRequired();
         builder.Property(e => e.DisplayName).HasMaxLength(500).IsRequired();
         builder.Property(e => e.Summary).HasMaxLength(2000);
 
-        builder.HasIndex(e => new { e.TenantId, e.ConversationId, e.Kind, e.ReferenceId })
+        builder.HasOne(e => e.KindLookup)
+            .WithMany()
+            .HasForeignKey(e => e.KindId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(e => new { e.TenantId, e.ConversationId, e.KindId, e.ReferenceId })
             .IsUnique()
             .HasDatabaseName("ux_ai_conversation_references_identity");
-
-        builder.ToTable(t =>
-            t.HasCheckConstraint("ck_ai_conversation_references_kind", "kind IN (1, 2, 3, 4)"));
     }
 }

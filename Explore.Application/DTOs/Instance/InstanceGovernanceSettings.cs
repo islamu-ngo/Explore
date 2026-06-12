@@ -12,6 +12,7 @@ public sealed class InstanceGovernanceSettings
     public required BrandingSettingsDto Branding { get; init; }
     public required DomainSettingsDto Domains { get; init; }
     public required TenantDelegationSettingsDto TenantDelegation { get; init; }
+    public required AiAssistantGovernanceSettingsDto AiAssistant { get; init; }
     public required McpGovernanceSettingsDto Mcp { get; init; }
     public required RenderPolicySettingsDto RenderPolicy { get; init; }
 }

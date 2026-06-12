@@ -231,6 +231,34 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
+    [HttpGet("ai-assistant", Name = RouteNames.GetInstanceAiAssistantGovernanceSettings)]
+    [EndpointSummary("Get AI Assistant Governance Settings")]
+    [EndpointDescription("Returns instance AI assistant defaults and tenant override lock settings.")]
+    [ProducesResponseType(typeof(AiAssistantGovernanceSettingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<AiAssistantGovernanceSettingsDto>> GetAiAssistantGovernanceSettings(CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
+        var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
+        return Ok(settings.AiAssistant);
+    }
+
+    [HttpPut("ai-assistant", Name = RouteNames.UpdateInstanceAiAssistantGovernanceSettings)]
+    [EndpointSummary("Update AI Assistant Governance Settings")]
+    [EndpointDescription("Updates instance AI assistant defaults and tenant override lock settings. Requires instance administrator.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAiAssistantGovernanceSettings(
+        [FromBody] AiAssistantGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
+    {
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+        if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
+
+        var response = await _mediator.Send(new UpdateAiAssistantGovernanceSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        return HandleCommandResponse(response);
+    }
+
     [HttpGet("mcp", Name = RouteNames.GetInstanceMcpGovernanceSettings)]
     [EndpointSummary("Get MCP Governance Settings")]
     [EndpointDescription("Returns instance MCP runtime enablement and tenant override lock settings. Startup endpoint path and stateless mode are not runtime-editable.")]

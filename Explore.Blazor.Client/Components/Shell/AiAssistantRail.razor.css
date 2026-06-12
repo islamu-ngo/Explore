@@ -315,24 +315,37 @@
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--mud-palette-primary) 12%, transparent);
 }
 
-/* ── Context badge ("ISLAMU Event") ── */
+/* ── Actor context selector ── */
 
 .ai-rail__composer-context {
     display: flex;
     align-items: center;
+    gap: 8px;
 }
 
-.ai-rail__context-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 10px;
+.ai-rail__actor-label {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.ai-rail__actor-selector {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    padding: 4px 28px 4px 10px;
     border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 45%, transparent);
     background: color-mix(in srgb, var(--mud-palette-lines-default) 25%, transparent);
+    color: var(--mud-palette-text-primary);
     font-size: 0.72rem;
     font-weight: 600;
-    color: var(--mud-palette-text-primary);
     letter-spacing: -0.01em;
+}
+
+.ai-rail__actor-selector:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--mud-palette-primary) 65%, transparent);
+    outline-offset: 2px;
 }
 
 /* ── Textarea ── */

@@ -3,20 +3,28 @@
 
 namespace Event.Api.IntegrationTests.Features;
 
+using System.Net;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.BackgroundServices;
 using Explore.API.Controllers;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Ai;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Queries;
+using Explore.Application.Features.TenantOnboarding.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using Explore.Application.Serialization;
+using Explore.Infrastructure.Ai;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -24,6 +32,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 public sealed class AiAssistantControllerTests
@@ -32,6 +41,8 @@ public sealed class AiAssistantControllerTests
     private readonly IHateoasLinkGenerator _linkGenerator = Substitute.For<IHateoasLinkGenerator>();
     private readonly IResourceAssembler<AiConversationDto, AiConversationSummaryDto> _conversationAssembler =
         Substitute.For<IResourceAssembler<AiConversationDto, AiConversationSummaryDto>>();
+    private readonly IAiAssistantRunQueue _runQueue = Substitute.For<IAiAssistantRunQueue>();
+    private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
 
     [Test]
     public async Task AiRoutes_AreAuthenticatedAndUseStableRouteNames()
@@ -137,6 +148,54 @@ public sealed class AiAssistantControllerTests
 
         await Assert.That(attribute).IsNotNull();
         await Assert.That(attribute!.PolicyName).IsEqualTo(RateLimitingExtensions.AiAssistantPolicy);
+    }
+
+    [Test]
+    public async Task GetModels_WhenLocalEndpointIsAllowed_AppendsModelsPathAndOmitsBearerWithoutApiKey()
+    {
+        var handler = new RecordingModelDiscoveryHandler(_ => JsonResponse("""
+            {
+              "data": [
+                { "id": "Gemma-4-E2B-Uncensored-HauhauCS-Aggressive-Q8_K_P" }
+              ]
+            }
+            """));
+        var httpClientFactory = new StaticHttpClientFactory(new HttpClient(handler));
+        _mediator.Send(Arg.Any<GetTenantOnboardingStatusQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new TenantOnboardingStatusDto
+            {
+                IsAuthenticated = true,
+                IsCurrentUserTenantAdministrator = true
+            });
+        var controller = CreateController();
+
+        var actionResult = await controller.GetModels(
+            new AiAssistantModelDiscoveryRequestDto
+            {
+                EndpointUrl = "http://127.0.0.1:1337/v1",
+                ApiKey = string.Empty
+            },
+            httpClientFactory,
+            new AiProviderSettingsValidator(),
+            Options.Create(new AiProviderSettings
+            {
+                AllowLocalProviderEndpoints = true,
+                MaxInputTokens = 8000,
+                MaxOutputTokens = 1024,
+                Temperature = 0.2m,
+                TimeoutSeconds = 30,
+                RetentionDays = 30,
+                DailyMessageLimit = 50
+            }),
+            CancellationToken.None);
+
+        var ok = actionResult.Result as OkObjectResult;
+        await Assert.That(ok).IsNotNull();
+        var models = ok!.Value as IReadOnlyList<AiAssistantModelDto>;
+        await Assert.That(models).IsNotNull();
+        await Assert.That(models!.Single().Id).IsEqualTo("Gemma-4-E2B-Uncensored-HauhauCS-Aggressive-Q8_K_P");
+        await Assert.That(handler.RequestUri).IsEqualTo(new Uri("http://127.0.0.1:1337/v1/models"));
+        await Assert.That(handler.Authorization).IsNull();
     }
 
     [Test]
@@ -472,7 +531,9 @@ public sealed class AiAssistantControllerTests
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", Guid.CreateVersion7().ToString())], "test"));
         httpContext.Items["CorrelationId"] = "correlation-ai-test";
 
-        return new AiAssistantController(_mediator, _linkGenerator, _conversationAssembler)
+        _tenantContext.TenantId.Returns(Guid.CreateVersion7());
+
+        return new AiAssistantController(_mediator, _linkGenerator, _conversationAssembler, _runQueue, _tenantContext)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };
@@ -516,6 +577,11 @@ public sealed class AiAssistantControllerTests
             Errors = [message]
         };
 
+    private static HttpResponseMessage JsonResponse(string json) => new(HttpStatusCode.OK)
+    {
+        Content = new StringContent(json, Encoding.UTF8, "application/json")
+    };
+
     private static T RouteValue<T>(object? routeValues, string key)
     {
         if (routeValues is RouteValueDictionary dictionary && dictionary.TryGetValue(key, out var dictionaryValue))
@@ -535,5 +601,23 @@ public sealed class AiAssistantControllerTests
 
         Assert.That(attribute.Template).IsEqualTo(template);
         Assert.That(attribute.Name).IsEqualTo(routeName);
+    }
+
+    private sealed class StaticHttpClientFactory(HttpClient client) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => client;
+    }
+
+    private sealed class RecordingModelDiscoveryHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler
+    {
+        public Uri? RequestUri { get; private set; }
+        public AuthenticationHeaderValue? Authorization { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            RequestUri = request.RequestUri;
+            Authorization = request.Headers.Authorization;
+            return Task.FromResult(responseFactory(request));
+        }
     }
 }

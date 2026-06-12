@@ -7,7 +7,9 @@ using Explore.Application.Features.AiAssistant.Handlers.Commands;
 using Explore.Application.Features.AiAssistant.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Domain;
 using Explore.Domain.Ai;
+using Explore.Domain.Enums;
 using MediatR;
 using NSubstitute;
 
@@ -23,6 +25,7 @@ public sealed class AiProposedActionCommandHandlerTests
     private readonly IAiConversationRepository _conversationRepository = Substitute.For<IAiConversationRepository>();
     private readonly IOrganizationMemberRepository _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
     private readonly IGroupMemberRepository _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+    private readonly IActorRepository _actorRepository = Substitute.For<IActorRepository>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IMediator _mediator = Substitute.For<IMediator>();
@@ -128,6 +131,91 @@ public sealed class AiProposedActionCommandHandlerTests
     }
 
     [Test]
+    public async Task Confirm_WhenConversationHasSelectedOrganizationActor_OverwritesAiOwnerScope()
+    {
+        var selectedActorId = Guid.CreateVersion7();
+        var selectedOrganizationId = Guid.CreateVersion7();
+        var aiOrganizationId = Guid.CreateVersion7();
+        var aiGroupId = Guid.CreateVersion7();
+        AiProposedAction action = CreateProposedAction(
+            actorId: selectedActorId,
+            payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + aiOrganizationId + "\",\"groupId\":\"" + aiGroupId + "\"}");
+        CreateEventCommand? sentCommand = null;
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(_userId, Arg.Any<string>())
+            .Returns([selectedOrganizationId]);
+        _actorRepository.GetActorWithDetails(selectedActorId).Returns(CreateActor(
+            selectedActorId,
+            ActorTypeEnum.Organization,
+            organizationId: selectedOrganizationId));
+        _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
+        _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+
+        BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(sentCommand).IsNotNull();
+        await Assert.That(sentCommand!.Request.OrganizationId).IsEqualTo(selectedOrganizationId);
+        await Assert.That(sentCommand.Request.GroupId).IsNull();
+    }
+
+    [Test]
+    public async Task Confirm_WhenConversationHasSelectedUserActor_ClearsAiOwnerScope()
+    {
+        var selectedActorId = Guid.CreateVersion7();
+        var aiOrganizationId = Guid.CreateVersion7();
+        AiProposedAction action = CreateProposedAction(
+            actorId: selectedActorId,
+            payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + aiOrganizationId + "\"}");
+        CreateEventCommand? sentCommand = null;
+        _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(_userId, Arg.Any<string>())
+            .Returns([aiOrganizationId]);
+        _actorRepository.GetActorWithDetails(selectedActorId).Returns(CreateActor(
+            selectedActorId,
+            ActorTypeEnum.User,
+            userId: _userId));
+        _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
+        _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+
+        BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(sentCommand).IsNotNull();
+        await Assert.That(sentCommand!.Request.OrganizationId).IsNull();
+        await Assert.That(sentCommand.Request.GroupId).IsNull();
+    }
+
+
+    [Test]
+    public async Task Confirm_WhenConversationHasSelectedGroupActor_OverwritesAiOwnerScope()
+    {
+        var selectedActorId = Guid.CreateVersion7();
+        var selectedGroupId = Guid.CreateVersion7();
+        var aiOrganizationId = Guid.CreateVersion7();
+        AiProposedAction action = CreateProposedAction(
+            actorId: selectedActorId,
+            payloadJson: "{\"title\":\"Community Dinner\",\"organizationId\":\"" + aiOrganizationId + "\"}");
+        CreateEventCommand? sentCommand = null;
+        _groupMemberRepository.GetGroupIdsWhereUserHasPermission(_userId, Arg.Any<string>())
+            .Returns([selectedGroupId]);
+        _actorRepository.GetActorWithDetails(selectedActorId).Returns(CreateActor(
+            selectedActorId,
+            ActorTypeEnum.Group,
+            groupId: selectedGroupId));
+        _conversationRepository.GetProposedActionForUpdateAsync(_actionId, Arg.Any<CancellationToken>()).Returns(action);
+        _mediator.Send(Arg.Do<CreateEventCommand>(command => sentCommand = command), Arg.Any<CancellationToken>())
+            .Returns(new BaseCommandResponse<Guid> { Success = true, Id = _eventId });
+
+        BaseCommandResponse<Guid> result = await CreateConfirmHandler().Handle(CreateConfirmCommand(), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(sentCommand).IsNotNull();
+        await Assert.That(sentCommand!.Request.OrganizationId).IsNull();
+        await Assert.That(sentCommand.Request.GroupId).IsEqualTo(selectedGroupId);
+    }
+
+    [Test]
     public async Task Confirm_WhenActionAlreadyExecuted_ReturnsExistingResultWithoutReexecution()
     {
         AiProposedAction action = CreateProposedAction();
@@ -224,6 +312,7 @@ public sealed class AiProposedActionCommandHandlerTests
             _conversationRepository,
             _organizationMemberRepository,
             _groupMemberRepository,
+            _actorRepository,
             _tenantContext,
             _currentUserService,
             _mediator);
@@ -237,7 +326,11 @@ public sealed class AiProposedActionCommandHandlerTests
     private RejectAiProposedActionCommand CreateRejectCommand()
         => new() { ProposedActionId = _actionId };
 
-    private AiProposedAction CreateProposedAction(Guid? tenantId = null, Guid? userId = null, string payloadJson = "{\"title\":\"Draft\"}")
+    private AiProposedAction CreateProposedAction(
+        Guid? tenantId = null,
+        Guid? userId = null,
+        Guid? actorId = null,
+        string payloadJson = "{\"title\":\"Draft\"}")
     {
         Guid actionTenantId = tenantId ?? _tenantId;
         var conversation = new AiConversation
@@ -245,6 +338,7 @@ public sealed class AiProposedActionCommandHandlerTests
             Id = _conversationId,
             TenantId = actionTenantId,
             UserId = userId ?? _userId,
+            ActorId = actorId,
             Status = AiConversationStatus.Active
         };
 
@@ -261,4 +355,29 @@ public sealed class AiProposedActionCommandHandlerTests
             CreatedBy = _userId
         };
     }
+
+    private Actor CreateActor(
+        Guid actorId,
+        ActorTypeEnum actorType,
+        Guid? userId = null,
+        Guid? organizationId = null,
+        Guid? groupId = null)
+        => new()
+        {
+            Id = actorId,
+            TenantId = _tenantId,
+            ActorTypeId = (int)actorType,
+            ActorType = new ActorType { Id = (int)actorType, FullName = actorType.ToString(), MasterCode = actorType.ToString() },
+            UserId = userId,
+            OrganizationId = organizationId,
+            GroupId = groupId,
+            Tenant = new Tenant
+            {
+                Id = _tenantId,
+                FullName = "Test Tenant",
+                Slug = "test-tenant",
+                TenantStatus = new TenantStatus { Id = 1, FullName = "Active", MasterCode = "Active", IsActiveState = true }
+            },
+            Pii = new ActorPii { ActorId = actorId, DisplayName = actorType.ToString() }
+        };
 }

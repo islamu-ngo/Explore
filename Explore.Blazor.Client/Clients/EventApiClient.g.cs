@@ -2447,6 +2447,28 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get AI Assistant Governance Settings
+        /// </summary>
+        /// <remarks>
+        /// Returns instance AI assistant defaults and tenant override lock settings.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<AiAssistantGovernanceSettingsDto> GetInstanceAiAssistantGovernanceSettingsAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update AI Assistant Governance Settings
+        /// </summary>
+        /// <remarks>
+        /// Updates instance AI assistant defaults and tenant override lock settings. Requires instance administrator.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateInstanceAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get MCP Governance Settings
         /// </summary>
         /// <remarks>
@@ -31698,6 +31720,215 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get AI Assistant Governance Settings
+        /// </summary>
+        /// <remarks>
+        /// Returns instance AI assistant defaults and tenant override lock settings.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<AiAssistantGovernanceSettingsDto> GetInstanceAiAssistantGovernanceSettingsAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/instance/settings/ai-assistant"
+                    urlBuilder_.Append("api/instance/settings/ai-assistant");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<AiAssistantGovernanceSettingsDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update AI Assistant Governance Settings
+        /// </summary>
+        /// <remarks>
+        /// Updates instance AI assistant defaults and tenant override lock settings. Requires instance administrator.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateInstanceAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/instance/settings/ai-assistant"
+                    urlBuilder_.Append("api/instance/settings/ai-assistant");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<BaseCommandResponseOfGuid>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get MCP Governance Settings
         /// </summary>
         /// <remarks>
@@ -52378,6 +52609,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("defaultModelId")]
         public string? DefaultModelId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("actorContexts")]
+        public System.Collections.Generic.ICollection<ActorContexts>? ActorContexts { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("models")]
         public System.Collections.Generic.ICollection<Models>? Models { get; set; } = default!;
 
@@ -52390,6 +52624,48 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("retentionDays")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? RetentionDays { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AiAssistantGovernanceSettingsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("enabled")]
+        public bool? Enabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endpointUrl")]
+        public string? EndpointUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("apiKey")]
+        public string? ApiKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modelId")]
+        public string? ModelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowedModelIds")]
+        public System.Collections.Generic.ICollection<string>? AllowedModelIds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowAnonymousAccess")]
+        public bool? AllowAnonymousAccess { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("toolProposalsEnabled")]
+        public bool? ToolProposalsEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockTenantAiAssistant")]
+        public bool? LockTenantAiAssistant { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -63090,6 +63366,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("defaultModelId")]
         public string? DefaultModelId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("actorContexts")]
+        public System.Collections.Generic.ICollection<ActorContexts2>? ActorContexts { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("models")]
         public System.Collections.Generic.ICollection<Models2>? Models { get; set; } = default!;
 
@@ -65946,6 +66225,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("lockTenantStorage")]
         public bool? LockTenantStorage { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("routes")]
+        public System.Collections.Generic.ICollection<Routes>? Routes { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("s3Endpoint")]
         public string? S3Endpoint { get; set; } = default!;
 
@@ -67110,6 +67392,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("tenantStorageLocked")]
         public bool? TenantStorageLocked { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("routes")]
+        public System.Collections.Generic.ICollection<Routes2>? Routes { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("s3Endpoint")]
         public string? S3Endpoint { get; set; } = default!;
 
@@ -67508,6 +67793,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("quotaSource")]
         public string? QuotaSource { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("routes")]
+        public System.Collections.Generic.ICollection<StorageRouteSettingsDto>? Routes { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -67610,6 +67898,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("lockTenantStorage")]
         public bool? LockTenantStorage { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("routes")]
+        public System.Collections.Generic.ICollection<StorageRouteSettingsDto>? Routes { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("s3Endpoint")]
         public string? S3Endpoint { get; set; } = default!;
@@ -71358,6 +71649,15 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("idempotencyKey")]
         public string? IdempotencyKey { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("actorId")]
+        public System.Guid? ActorId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modelId")]
+        public string? ModelId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mode")]
+        public string? Mode { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -71829,6 +72129,40 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class StorageRouteSettingsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("routeKey")]
+        public string? RouteKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? MaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSource")]
+        public string? ProviderSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadSource")]
+        public string? MaxUploadSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isReadOnly")]
+        public bool? IsReadOnly { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class StorageUploadSessionDto
     {
 
@@ -71844,6 +72178,16 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("provider")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("routeKey")]
+        public string? RouteKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("policyMaxUploadBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? PolicyMaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("policyVersion")]
+        public string? PolicyVersion { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("expectedSizeBytes")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -72803,6 +73147,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("aiAssistantModelId")]
         public string? AiAssistantModelId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("aiAssistantAllowedModelIds")]
+        public System.Collections.Generic.ICollection<string>? AiAssistantAllowedModelIds { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("aiAssistantAllowAnonymousAccess")]
         public bool? AiAssistantAllowAnonymousAccess { get; set; } = default!;
 
@@ -72857,6 +73204,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("quotaSource")]
         public string? QuotaSource { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("routes")]
+        public System.Collections.Generic.ICollection<StorageRouteSettingsDto>? Routes { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -72894,6 +73244,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("tenantStorageLocked")]
         public bool? TenantStorageLocked { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("routes")]
+        public System.Collections.Generic.ICollection<StorageRouteSettingsDto>? Routes { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("s3Endpoint")]
         public string? S3Endpoint { get; set; } = default!;
@@ -75340,6 +75693,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("aiAssistantModelId")]
         public string? AiAssistantModelId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("aiAssistantAllowedModelIds")]
+        public System.Collections.Generic.ICollection<string>? AiAssistantAllowedModelIds { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("aiAssistantAllowAnonymousAccess")]
         public bool? AiAssistantAllowAnonymousAccess { get; set; } = default!;
 
@@ -76096,6 +76452,30 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("targetPath")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string TargetPath { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ActorContexts
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("actorId")]
+        public System.Guid? ActorId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("actorType")]
+        public string? ActorType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("actorDisplayName")]
+        public string? ActorDisplayName { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -77037,6 +77417,30 @@ namespace Explore.Blazor.Client.Clients
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("title")]
         public string? Title { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ActorContexts2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("actorId")]
+        public System.Guid? ActorId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("actorType")]
+        public string? ActorType { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("actorDisplayName")]
+        public string? ActorDisplayName { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -78948,6 +79352,40 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Routes
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("routeKey")]
+        public string? RouteKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? MaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSource")]
+        public string? ProviderSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadSource")]
+        public string? MaxUploadSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isReadOnly")]
+        public bool? IsReadOnly { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class EffectivePolicy
     {
 
@@ -78980,6 +79418,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaSource")]
         public string? QuotaSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("routes")]
+        public System.Collections.Generic.ICollection<Routes3>? Routes { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -79651,6 +80092,40 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Routes2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("routeKey")]
+        public string? RouteKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? MaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSource")]
+        public string? ProviderSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadSource")]
+        public string? MaxUploadSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isReadOnly")]
+        public bool? IsReadOnly { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class EffectivePolicy2
     {
 
@@ -79683,6 +80158,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaSource")]
         public string? QuotaSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("routes")]
+        public System.Collections.Generic.ICollection<Routes4>? Routes { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -80109,6 +80587,40 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Routes3
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("routeKey")]
+        public string? RouteKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? MaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSource")]
+        public string? ProviderSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadSource")]
+        public string? MaxUploadSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isReadOnly")]
+        public bool? IsReadOnly { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class Providers
     {
 
@@ -80133,6 +80645,40 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("lastRecalculatedAt")]
         public System.DateTimeOffset? LastRecalculatedAt { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Routes4
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("routeKey")]
+        public string? RouteKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadBytes")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? MaxUploadBytes { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("providerSource")]
+        public string? ProviderSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxUploadSource")]
+        public string? MaxUploadSource { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isReadOnly")]
+        public bool? IsReadOnly { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

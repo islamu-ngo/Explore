@@ -49,6 +49,12 @@ public class UpdateMcpGovernanceSettingsCommand : IRequest<BaseCommandResponse<G
     public required McpGovernanceSettingsDto Settings { get; set; }
 }
 
+public class UpdateAiAssistantGovernanceSettingsCommand : IRequest<BaseCommandResponse<Guid>>
+{
+    public Guid UserId { get; set; }
+    public required AiAssistantGovernanceSettingsDto Settings { get; set; }
+}
+
 public class UpdateRenderPolicySettingsCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public Guid UserId { get; set; }

@@ -27,7 +27,7 @@ internal static class AiAssistantProblemDetails
         problemDetails.Type = response.FailureCode == FailureCodes.QuotaExceeded
             ? "/problems/quota_exceeded"
             : $"https://tools.ietf.org/html/rfc9110#section-{ResolveRfcSection(statusCode)}";
-        problemDetails.Detail = response.Message ?? "AI assistant request failed.";
+        problemDetails.Detail = ResolveDetail(response, statusCode);
         problemDetails.Instance = controller.HttpContext.Request.Path;
 
         if (!string.IsNullOrWhiteSpace(response.FailureCode))
@@ -78,6 +78,18 @@ internal static class AiAssistantProblemDetails
             "model_not_configured" => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status400BadRequest
         };
+
+    private static string ResolveDetail(BaseCommandResponse<Guid> response, int statusCode)
+    {
+        if (statusCode == StatusCodes.Status503ServiceUnavailable
+            && response.Errors is { Count: > 0 }
+            && !string.IsNullOrWhiteSpace(response.Errors[0]))
+        {
+            return response.Errors[0].Trim();
+        }
+
+        return response.Message ?? "AI assistant request failed.";
+    }
 
     private static string ResolveTitle(int statusCode, string? failureCode)
         => statusCode switch

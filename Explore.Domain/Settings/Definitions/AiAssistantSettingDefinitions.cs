@@ -7,7 +7,8 @@ using Explore.Domain.Constants;
 
 public static class AiAssistantSettingDefinitions
 {
-    private static readonly string[] AllowedProviders = ["none", "fake", "openai-compatible"];
+    private static readonly string[] AllowedProviders = ["none", "fake", "openai-compatible", "anthropic-compatible"];
+    private const string DefaultTimeoutSeconds = "120";
 
     public static readonly SettingDefinition Enabled = new(
         Key: GovernanceSettingKeys.AiAssistant.Enabled,
@@ -22,7 +23,7 @@ public static class AiAssistantSettingDefinitions
         ValueType: SettingValueType.String,
         DefaultValue: "\"none\"",
         Category: "AiAssistant",
-        Description: "Selected AI provider. Use fake for deterministic tests and openai-compatible for configured provider endpoints.",
+        Description: "Selected AI provider. Use fake for deterministic tests and compatible providers for configured endpoints.",
         MaxScope: SettingScope.Tenant,
         AllowedValues: AllowedProviders);
 
@@ -86,7 +87,7 @@ public static class AiAssistantSettingDefinitions
     public static readonly SettingDefinition TimeoutSeconds = new(
         Key: GovernanceSettingKeys.AiAssistant.TimeoutSeconds,
         ValueType: SettingValueType.Integer,
-        DefaultValue: "30",
+        DefaultValue: DefaultTimeoutSeconds,
         Category: "AiAssistant",
         Description: "Maximum provider call duration in seconds",
         MaxScope: SettingScope.Tenant);
@@ -134,7 +135,7 @@ public static class AiAssistantSettingDefinitions
     public static readonly SettingDefinition ToolProposalsEnabled = new(
         Key: GovernanceSettingKeys.AiAssistant.ToolProposalsEnabled,
         ValueType: SettingValueType.Boolean,
-        DefaultValue: "false",
+        DefaultValue: "true",
         Category: "AiAssistant",
         Description: "Allow model output to create persisted proposed actions that still require user confirmation",
         MaxScope: SettingScope.Tenant);

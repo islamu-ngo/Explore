@@ -124,7 +124,7 @@ builder.Services.PostConfigure<McpAdapterSettings>(settings =>
     }
 
     var endpointPath = settings.EndpointPath.Trim();
-    settings.EndpointPath = endpointPath.StartsWith("/", StringComparison.Ordinal)
+    settings.EndpointPath = endpointPath.StartsWith('/')
         ? endpointPath
         : $"/{endpointPath}";
 });
@@ -250,8 +250,10 @@ if (!isOpenApiGeneration)
 }
 
 // Register generic outbox processor for reliable side-effect delivery
+builder.Services.AddSingleton<IAiAssistantRunQueue, AiAssistantRunQueue>();
 if (!isOpenApiGeneration)
 {
+    builder.Services.AddHostedService<AiAssistantRunWorker>();
     builder.Services.AddHostedService<OutboxProcessor>();
     if (!builder.Environment.IsEnvironment("Testing"))
     {
@@ -280,6 +282,7 @@ if (!isOpenApiGeneration)
 // Testing hosts manage policy publishing explicitly to keep integration startup deterministic.
 if (!isOpenApiGeneration && !builder.Environment.IsEnvironment("Testing"))
 {
+    builder.Services.AddHostedService<AiProviderSettingsBootstrapWorker>();
     builder.Services.AddSingleton<CerbosPolicyBootSyncRunner>();
     builder.Services.AddHostedService<CerbosPolicyBootSyncWorker>();
 }
