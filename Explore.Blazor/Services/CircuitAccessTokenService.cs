@@ -171,13 +171,18 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
             if (!string.IsNullOrEmpty(userId))
             {
                 var resolution = _tokenStore.Resolve(userId, sessionId);
+                if (!resolution.Found && string.IsNullOrWhiteSpace(sessionId))
+                {
+                    resolution = _tokenStore.ResolveByUserId(userId);
+                }
+
                 if (resolution.Found)
                 {
                     if (!string.IsNullOrEmpty(_localToken) && !string.Equals(_localToken, resolution.Token, StringComparison.Ordinal))
                     {
                         _logger.LogInformation(
-                            "[CircuitAccessTokenService] Store token is overriding stale circuit-local token for {UserId}/{SessionId}",
-                            userId, sessionId ?? "(none)");
+                            "[CircuitAccessTokenService] Store token is overriding stale circuit-local token for {UserId}",
+                            userId);
                     }
 
                     return resolution.Token;
@@ -359,6 +364,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
         _logger.LogDebug("[AccessTokenForwardingHandler] Processing request to {Path}", request.RequestUri?.PathAndQuery);
 
         string? token = null;
+        string? nearExpiryHttpContextToken = null;
         string source = "none";
 
         // Strategy 1: Try to get token from HttpContext (works during initial HTTP request)
@@ -377,10 +383,18 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                         source = "HttpContext";
                         _logger.LogDebug("[AccessTokenForwardingHandler] Got token from HttpContext");
                     }
+                    else if (CircuitTokenStore.IsTokenForwardable(token))
+                    {
+                        nearExpiryHttpContextToken = token;
+                        _logger.LogInformation(
+                            "[AccessTokenForwardingHandler] HttpContext token is near expiry at {Path}; will use it only if no fresher circuit token is available",
+                            request.RequestUri?.PathAndQuery);
+                        token = null;
+                    }
                     else
                     {
                         _logger.LogWarning(
-                            "[AccessTokenForwardingHandler] Ignoring expired or near-expiry HttpContext token at {Path}",
+                            "[AccessTokenForwardingHandler] Ignoring expired HttpContext token at {Path}",
                             request.RequestUri?.PathAndQuery);
                         token = null;
                     }
@@ -405,6 +419,18 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                 {
                     token = resolution.Token;
                     source = "TokenStore(userId)";
+                }
+                else if (string.IsNullOrWhiteSpace(sessionId))
+                {
+                    resolution = _tokenStore.ResolveByUserId(userId);
+                    if (resolution.Found)
+                    {
+                        token = resolution.Token;
+                        source = "TokenStore(userId-only)";
+                        _logger.LogInformation(
+                            "[AccessTokenForwardingHandler] Session-keyed lookup failed for {UserId}; resolved token via user-only fallback",
+                            userId);
+                    }
                 }
             }
             else if (isAuthenticated)
@@ -445,7 +471,30 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                     source = "CircuitUserContext";
                     _logger.LogDebug("[AccessTokenForwardingHandler] Got token from store via CircuitUserContext");
                 }
+                else if (string.IsNullOrWhiteSpace(_circuitUserContext.SessionId))
+                {
+                    resolution = _tokenStore.ResolveByUserId(userId);
+                    if (resolution.Found)
+                    {
+                        token = resolution.Token;
+                        source = "CircuitUserContext(userId-only)";
+                        _logger.LogInformation(
+                            "[AccessTokenForwardingHandler] CircuitUserContext session-keyed lookup failed for {UserId}; resolved via user-only fallback",
+                            userId);
+                    }
+                }
             }
+        }
+
+        // Strategy 5: If the only token available is still valid but inside the persistence
+        // safety buffer, forward it for this short request instead of dropping auth entirely.
+        if (string.IsNullOrEmpty(token) && !string.IsNullOrEmpty(nearExpiryHttpContextToken))
+        {
+            token = nearExpiryHttpContextToken;
+            source = "HttpContextNearExpiry";
+            _logger.LogInformation(
+                "[AccessTokenForwardingHandler] Forwarding near-expiry HttpContext token to {Path}",
+                request.RequestUri?.PathAndQuery);
         }
 
         // Add Authorization header if we have a token

@@ -16,7 +16,7 @@
 @inject ISnackbar Snackbar
 @inject ILogger<InstanceOnboarding> Logger
 @inject IJSRuntime JSRuntime
-@inject IHttpClientFactory HttpClientFactory
+@inject IBffAuthApi BffAuthApi
 
 <PageTitle>Instance Onboarding</PageTitle>
 
@@ -532,8 +532,7 @@
 
             if (syncResult?.Status is 400 or 410)
             {
-                var bffClient = CreateBffSelfClient();
-                await bffClient.DeleteAsync("/bff/setup-secret");
+                await BffAuthApi.DeleteSetupSecretAsync(CancellationToken.None);
                 _errorMessage = "Setup secret expired or is invalid. Please enter the current setup secret again.";
                 StateHasChanged();
                 return;
@@ -700,13 +699,6 @@
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private HttpClient CreateBffSelfClient()
-    {
-        var client = HttpClientFactory.CreateClient("BffSelfClient");
-        client.BaseAddress = new Uri(Navigation.BaseUri);
-        return client;
-    }
 
     private IJSObjectReference? _bffModule;
 

@@ -298,6 +298,20 @@ public class CircuitTokenStoreTests
         await Assert.That(CircuitTokenStore.IsTokenUsable("opaque-token-value")).IsTrue();
     }
 
+    [Test]
+    public async Task IsTokenForwardable_WithNearExpiryJwt_ReturnsTrue()
+    {
+        var token = CreateJwt("user-1", DateTime.UtcNow.AddSeconds(10));
+        await Assert.That(CircuitTokenStore.IsTokenForwardable(token)).IsTrue();
+    }
+
+    [Test]
+    public async Task IsTokenForwardable_WithExpiredJwt_ReturnsFalse()
+    {
+        var token = CreateJwt("user-1", DateTime.UtcNow.AddMinutes(-5));
+        await Assert.That(CircuitTokenStore.IsTokenForwardable(token)).IsFalse();
+    }
+
     // ──────────────────────────────────────────────
     // Edge cases
     // ──────────────────────────────────────────────

@@ -372,6 +372,46 @@ public class TenantPublicExperienceAdminServiceTests
     }
 
     [Test]
+    public async Task SaveSingleTenantPolicySettingsAsync_AllowsOpenAiCompatibleProviderWithoutApiKey()
+    {
+        // Arrange
+        var model = new TenantPolicySettingsModel
+        {
+            AllowUserSubmittedEvents = true,
+            AllowOrganizationSubmittedEvents = true,
+            AllowGroupSubmittedEvents = true,
+            RequireOrganizationVerification = true,
+            AiAssistantEnabled = true,
+            AiAssistantProvider = "openai-compatible",
+            AiAssistantEndpointUrl = "http://127.0.0.1:1337/v1",
+            AiAssistantApiKey = string.Empty,
+            AiAssistantModelId = "Gemma-4-E2B-Uncensored-HauhauCS-Aggressive-Q8_K_P"
+        };
+
+        var batches = new List<UpdateSettingBatchDto>();
+        _apiClient.UpdateTenantSettingsBatchAsync(
+                Arg.Any<string>(),
+                Arg.Do<UpdateSettingBatchDto>(body => batches.Add(body)),
+                null,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns(new BatchUpdateResponseDto { Success = true });
+
+        // Act
+        PublicExperienceAdminSaveResult result = await _service.SaveSingleTenantPolicySettingsAsync(model);
+
+        // Assert
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(batches.Count).IsEqualTo(4);
+        var aiBatch = batches[3];
+        await Assert.That(aiBatch.Values["ai_assistant.enabled"]).IsEqualTo("true");
+        await Assert.That(aiBatch.Values["ai_assistant.provider"]).IsEqualTo("openai-compatible");
+        await Assert.That(aiBatch.Values["ai_assistant.endpoint_url"]).IsEqualTo("http://127.0.0.1:1337/v1");
+        await Assert.That(aiBatch.Values["ai_assistant.api_key"]).IsEqualTo(string.Empty);
+        await Assert.That(aiBatch.Values["ai_assistant.model_id"]).IsEqualTo("Gemma-4-E2B-Uncensored-HauhauCS-Aggressive-Q8_K_P");
+    }
+
+    [Test]
     public async Task SaveSingleTenantPolicySettingsAsync_ReturnsFailure_WhenOpenAiCompatibleConfigIsIncomplete()
     {
         // Arrange

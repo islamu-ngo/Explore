@@ -3,7 +3,6 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Events;
-using Explore.Blazor.Client.Services.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -11,16 +10,16 @@ namespace Explore.Blazor.Client.Services;
 public class EventTeamService : IEventTeamService
 {
     private readonly IEventApiClient _client;
-    private readonly IBffClient _bffClient;
+    private readonly IEventTeamBffApi _eventTeamBffApi;
     private readonly ILogger<EventTeamService> _logger;
 
     public EventTeamService(
         IEventApiClient client,
-        IBffClient bffClient,
+        IEventTeamBffApi eventTeamBffApi,
         ILogger<EventTeamService> logger)
     {
         _client = client;
-        _bffClient = bffClient;
+        _eventTeamBffApi = eventTeamBffApi;
         _logger = logger;
     }
 
@@ -56,10 +55,10 @@ public class EventTeamService : IEventTeamService
         try
         {
             var payload = new AssignEventTeamRoleRequest(userEmail, roleId);
-            return await _bffClient.SendAsync<AssignEventTeamRoleRequest, BaseCommandResponseOfGuid>(
-                HttpMethod.Post,
-                $"/api/eventteam/by-event/{eventId}/assignments",
-                payload);
+            var response = await _eventTeamBffApi.AssignRoleAsync(eventId, payload, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : new BaseCommandResponseOfGuid { Success = false, Message = $"Failed with status {(int)response.StatusCode}." };
         }
         catch (Exception ex)
         {
@@ -72,9 +71,10 @@ public class EventTeamService : IEventTeamService
     {
         try
         {
-            return await _bffClient.SendAsync<BaseCommandResponseOfGuid>(
-                HttpMethod.Delete,
-                $"/api/eventteam/by-event/{eventId}/assignments/{assignmentId}");
+            var response = await _eventTeamBffApi.RevokeAssignmentAsync(eventId, assignmentId, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : new BaseCommandResponseOfGuid { Success = false, Message = $"Failed with status {(int)response.StatusCode}." };
         }
         catch (Exception ex)
         {
@@ -96,6 +96,4 @@ public class EventTeamService : IEventTeamService
             return new List<EventRolePresetDto>();
         }
     }
-
-    private sealed record AssignEventTeamRoleRequest(string UserEmail, int RoleId);
 }

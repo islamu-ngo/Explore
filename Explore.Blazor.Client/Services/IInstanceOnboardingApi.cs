@@ -54,6 +54,9 @@ public interface IInstanceOnboardingApi
     [Get("/api/instance/settings/mcp")]
     Task<IApiResponse<McpGovernanceModel>> GetMcpGovernanceSettingsAsync(CancellationToken cancellationToken);
 
+    [Get("/api/instance/settings/ai-assistant")]
+    Task<IApiResponse<AiAssistantGovernanceModel>> GetAiAssistantGovernanceSettingsAsync(CancellationToken cancellationToken);
+
     // ── Governance Sub-Resource Writes ────────────────────────────────────
 
     [Post("/api/instance/settings/deployment-mode")]
@@ -82,6 +85,9 @@ public interface IInstanceOnboardingApi
 
     [Put("/api/instance/settings/mcp")]
     Task<IApiResponse<InstanceCommandResponseModel>> UpdateMcpGovernanceSettingsAsync([Body] McpGovernanceModel settings, CancellationToken cancellationToken);
+
+    [Put("/api/instance/settings/ai-assistant")]
+    Task<IApiResponse<InstanceCommandResponseModel>> UpdateAiAssistantGovernanceSettingsAsync([Body] AiAssistantGovernanceModel settings, CancellationToken cancellationToken);
 
     // ── Infrastructure Settings ──────────────────────────────────────────
 
@@ -160,6 +166,12 @@ public interface IInstanceOnboardingApi
 
     [Post("/api/instance/settings/authz-provider/sync")]
     Task<IApiResponse<InstanceCommandResponseModel>> SyncAuthorizationPolicyPackageAsAdminAsync(CancellationToken cancellationToken);
+
+    [Get("/api/InstanceOnboarding/authz-provider-configuration/package")]
+    Task<HttpResponseMessage> DownloadAuthorizationPolicyPackageAsync(CancellationToken cancellationToken);
+
+    [Get("/api/instance/settings/authz-provider/package")]
+    Task<HttpResponseMessage> DownloadAuthorizationPolicyPackageAsAdminAsync(CancellationToken cancellationToken);
 
     [Post("/api/InstanceOnboarding/authz-provider-configuration/verify")]
     Task<IApiResponse<InstanceCommandResponseModel>> VerifyCerbosEndpointAsync([Body] VerifyCerbosEndpointRequest request, CancellationToken cancellationToken);

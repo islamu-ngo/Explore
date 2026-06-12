@@ -163,12 +163,52 @@ public static class YarpProxyExtensions
             return;
         }
 
-        var token = await context.HttpContext.GetTokenAsync("access_token");
-        if (!string.IsNullOrEmpty(token) && CircuitTokenStore.IsTokenUsable(token))
+        var cookieToken = await context.HttpContext.GetTokenAsync("access_token");
+        if (!string.IsNullOrEmpty(cookieToken) && CircuitTokenStore.IsTokenForwardable(cookieToken))
         {
             context.ProxyRequest.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
+                new AuthenticationHeaderValue("Bearer", cookieToken);
+            return;
         }
+
+        var resolvedToken = TryResolveFromCircuitStore(context.HttpContext);
+        if (resolvedToken is not null)
+        {
+            context.ProxyRequest.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", resolvedToken);
+        }
+    }
+
+    private static string? TryResolveFromCircuitStore(HttpContext httpContext)
+    {
+        var user = httpContext.User;
+        var userId = user?.FindFirst("sub")?.Value
+            ?? user?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            return null;
+        }
+
+        var sessionId = user?.FindFirst("sid")?.Value;
+        var tokenStore = httpContext.RequestServices.GetService<ICircuitTokenStore>();
+        if (tokenStore is null)
+        {
+            return null;
+        }
+
+        var resolution = tokenStore.Resolve(userId, sessionId);
+        if (!resolution.Found || string.IsNullOrEmpty(resolution.Token))
+        {
+            return null;
+        }
+
+        if (!CircuitTokenStore.IsTokenForwardable(resolution.Token))
+        {
+            return null;
+        }
+
+        return resolution.Token;
     }
 
     private static bool IsAnonymousOnboardingPath(PathString path)

@@ -4,9 +4,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Text.Json;
-using Explore.Blazor.Client.Services.Http;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using Refit;
 
 namespace Explore.Blazor.Client.Services;
@@ -28,6 +26,7 @@ public interface IInstanceOnboardingService
     Task<TenantDelegationModel> GetTenantDelegationAsync();
     Task<RenderPolicyModel> GetRenderPolicyAsync();
     Task<McpGovernanceModel> GetMcpGovernanceSettingsAsync();
+    Task<AiAssistantGovernanceModel> GetAiAssistantGovernanceSettingsAsync();
 
     Task<InstanceCommandResponseModel> UpdateDeploymentModeAsync(string deploymentMode);
     Task<InstanceCommandResponseModel> UpdateModuleSettingsAsync(ModuleSettingsModel settings);
@@ -38,6 +37,7 @@ public interface IInstanceOnboardingService
     Task<InstanceCommandResponseModel> UpdateTenantDelegationAsync(TenantDelegationModel settings);
     Task<InstanceCommandResponseModel> UpdateRenderPolicyAsync(RenderPolicyModel settings);
     Task<InstanceCommandResponseModel> UpdateMcpGovernanceSettingsAsync(McpGovernanceModel settings);
+    Task<InstanceCommandResponseModel> UpdateAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceModel settings);
 
     Task<InstanceStorageSettingsModel> GetStorageSettingsAsync();
     Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings);
@@ -82,21 +82,18 @@ public interface IInstanceOnboardingService
 public class InstanceOnboardingService : IInstanceOnboardingService
 {
     private readonly IInstanceOnboardingApi _api;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IJSRuntime _jsRuntime;
+    private readonly IBffAuthApi _bffAuthApi;
     private readonly ILogger<InstanceOnboardingService> _logger;
     private readonly NavigationManager _navigation;
 
     public InstanceOnboardingService(
         IInstanceOnboardingApi api,
-        IHttpClientFactory httpClientFactory,
-        IJSRuntime jsRuntime,
+        IBffAuthApi bffAuthApi,
         ILogger<InstanceOnboardingService> logger,
         NavigationManager navigation)
     {
         _api = api;
-        _httpClientFactory = httpClientFactory;
-        _jsRuntime = jsRuntime;
+        _bffAuthApi = bffAuthApi;
         _logger = logger;
         _navigation = navigation;
     }
@@ -230,6 +227,9 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     public async Task<McpGovernanceModel> GetMcpGovernanceSettingsAsync() =>
         await GetSettingsAsync(_api.GetMcpGovernanceSettingsAsync, () => new McpGovernanceModel());
 
+    public async Task<AiAssistantGovernanceModel> GetAiAssistantGovernanceSettingsAsync() =>
+        await GetSettingsAsync(_api.GetAiAssistantGovernanceSettingsAsync, () => new AiAssistantGovernanceModel());
+
     // ── Governance Sub-Resource Writes ────────────────────────────────────
 
     public Task<InstanceCommandResponseModel> UpdateDeploymentModeAsync(string deploymentMode) =>
@@ -259,6 +259,9 @@ public class InstanceOnboardingService : IInstanceOnboardingService
 
     public Task<InstanceCommandResponseModel> UpdateMcpGovernanceSettingsAsync(McpGovernanceModel settings) =>
         SendCommandAsync(ct => _api.UpdateMcpGovernanceSettingsAsync(settings, ct));
+
+    public Task<InstanceCommandResponseModel> UpdateAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceModel settings) =>
+        SendCommandAsync(ct => _api.UpdateAiAssistantGovernanceSettingsAsync(settings, ct));
 
     // ── Infrastructure Settings ──────────────────────────────────────────
 
@@ -523,10 +526,18 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         SendCommandAsync(ct => _api.SyncAuthorizationPolicyPackageAsAdminAsync(ct));
 
     public Task<PolicyPackageDownloadModel?> DownloadAuthorizationPolicyPackageAsync() =>
-        DownloadFileAsync("api/InstanceOnboarding/authz-provider-configuration/package", "authorization-policy-package.zip", "application/zip");
+        DownloadFileAsync(
+            ct => _api.DownloadAuthorizationPolicyPackageAsync(ct),
+            "authorization policy package",
+            "authorization-policy-package.zip",
+            "application/zip");
 
     public Task<PolicyPackageDownloadModel?> DownloadAuthorizationPolicyPackageAsAdminAsync() =>
-        DownloadFileAsync("api/instance/settings/authz-provider/package", "authorization-policy-package.zip", "application/zip");
+        DownloadFileAsync(
+            ct => _api.DownloadAuthorizationPolicyPackageAsAdminAsync(ct),
+            "authorization policy package",
+            "authorization-policy-package.zip",
+            "application/zip");
 
     public Task<InstanceCommandResponseModel> VerifyCerbosEndpointAsync(string grpcEndpoint) =>
         SendCommandAsync(ct => _api.VerifyCerbosEndpointAsync(new VerifyCerbosEndpointRequest { GrpcEndpoint = grpcEndpoint }, ct));
@@ -549,7 +560,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     {
         try
         {
-            using var response = await CreateBffSelfClient().PostAsync("/bff/auth/refresh-schemes", null);
+            var response = await _bffAuthApi.RefreshSchemesAsync(CancellationToken.None);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Failed to refresh auth schemes. Status: {StatusCode}", (int)response.StatusCode);
@@ -565,13 +576,13 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     {
         try
         {
-            using var response = await CreateBffSelfClient().PostAsync("/bff/auth/refresh-session/internal", null);
+            var response = await _bffAuthApi.RefreshSessionInternalAsync(CancellationToken.None);
             if (response.IsSuccessStatusCode)
             {
                 return true;
             }
 
-            var responseBody = await response.Content.ReadAsStringAsync();
+            var responseBody = response.Error?.Content;
             _logger.LogWarning(
                 "Failed to refresh auth session. Status: {StatusCode} Body: {ResponseBody}",
                 (int)response.StatusCode,
@@ -602,13 +613,6 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         SendCommandAsync(ct => _api.UpdateFooterGovernanceSettingsAsync(settings, ct));
 
     // ── Shared Helpers ───────────────────────────────────────────────────
-
-    private HttpClient CreateBffSelfClient()
-    {
-        var client = _httpClientFactory.CreateClient("BffSelfClient");
-        client.BaseAddress = new Uri(_navigation.BaseUri);
-        return client;
-    }
 
     private async Task<T> GetSettingsAsync<T>(
         Func<CancellationToken, Task<IApiResponse<T>>> apiCall,
@@ -714,14 +718,14 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     }
 
     private async Task<PolicyPackageDownloadModel?> DownloadFileAsync(
-        string path,
+        Func<CancellationToken, Task<HttpResponseMessage>> download,
+        string description,
         string fallbackFileName,
         string fallbackContentType)
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            var response = await client.GetAsync(path);
+            using var response = await download(CancellationToken.None);
             response.EnsureSuccessStatusCode();
 
             var fileBytes = await response.Content.ReadAsByteArrayAsync();
@@ -739,7 +743,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to download {Path}.", path);
+            _logger.LogError(ex, "Failed to download {Description}.", description);
             return null;
         }
     }
@@ -983,6 +987,19 @@ public class McpGovernanceModel
     public bool EnableLegacySse { get; set; }
     public bool LockTenantMcp { get; set; } = true;
     public bool LockTenantMcpLegacySse { get; set; } = true;
+}
+
+public class AiAssistantGovernanceModel
+{
+    public bool Enabled { get; set; }
+    public string Provider { get; set; } = "openai-compatible";
+    public string EndpointUrl { get; set; } = string.Empty;
+    public string ApiKey { get; set; } = string.Empty;
+    public string ModelId { get; set; } = string.Empty;
+    public List<string> AllowedModelIds { get; set; } = [];
+    public bool AllowAnonymousAccess { get; set; }
+    public bool ToolProposalsEnabled { get; set; } = true;
+    public bool LockTenantAiAssistant { get; set; } = true;
 }
 
 public class RenderPolicyModel

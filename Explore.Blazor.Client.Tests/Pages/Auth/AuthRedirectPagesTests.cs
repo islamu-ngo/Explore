@@ -8,7 +8,7 @@ using Explore.Blazor.Client.Tests.Common;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
-using NSubstitute;
+using Refit;
 
 namespace Explore.Blazor.Client.Tests.Pages.Auth;
 
@@ -291,10 +291,11 @@ public class AuthRedirectPagesTests : IDisposable
             return response;
         });
 
-        var client = new HttpClient(handler);
-        var factory = Substitute.For<IHttpClientFactory>();
-        factory.CreateClient("BffSelfClient").Returns(client);
-        _ctx.Services.AddSingleton(factory);
+        var client = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://localhost/")
+        };
+        _ctx.Services.AddSingleton(RestService.For<IBffAuthApi>(client));
     }
 
     private static async Task WaitForNavigationAsync(BunitNavigationManager navigationManager, Func<string, bool> predicate, int timeoutMs = 5000)

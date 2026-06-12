@@ -6,32 +6,34 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using Refit;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
 public class InstanceOnboardingServiceTests
 {
-    private readonly System.Net.Http.IHttpClientFactory _httpClientFactory;
     private Func<HttpRequestMessage, Task<HttpResponseMessage>> _bffHandler = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
-    private readonly IJSRuntime _jsRuntime;
+    private Func<HttpRequestMessage, Task<HttpResponseMessage>> _authHandler = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+    private readonly IBffAuthApi _bffAuthApi;
     private readonly ILogger<InstanceOnboardingService> _logger;
     private readonly NavigationManager _navigation;
     private readonly InstanceOnboardingService _service;
 
     public InstanceOnboardingServiceTests()
     {
-        _httpClientFactory = Substitute.For<System.Net.Http.IHttpClientFactory>();
-        _jsRuntime = new NullJsRuntime();
         _logger = Substitute.For<ILogger<InstanceOnboardingService>>();
         _navigation = new TestNavigationManager("https://localhost/");
         var client = new HttpClient(new MockHttpMessageHandler(request => _bffHandler(request)))
         {
             BaseAddress = new Uri("https://test.local")
         };
+        var authClient = new HttpClient(new MockHttpMessageHandler(request => _authHandler(request)))
+        {
+            BaseAddress = new Uri("https://test.local")
+        };
         var api = RestService.For<IInstanceOnboardingApi>(client);
-        _service = new InstanceOnboardingService(api, _httpClientFactory, _jsRuntime, _logger, _navigation);
+        _bffAuthApi = RestService.For<IBffAuthApi>(authClient);
+        _service = new InstanceOnboardingService(api, _bffAuthApi, _logger, _navigation);
     }
 
     private sealed class TestNavigationManager : NavigationManager
@@ -802,23 +804,16 @@ public class InstanceOnboardingServiceTests
     private void SetupBffClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
     {
         _bffHandler = handler;
-        var httpHandler = new MockHttpMessageHandler(handler);
-        var client = new HttpClient(httpHandler) { BaseAddress = new Uri("https://test.local") };
-        _httpClientFactory.CreateClient("BffClient").Returns(client);
     }
 
     private void SetupBffSelfClient(HttpResponseMessage response)
     {
-        var handler = new MockHttpMessageHandler(response);
-        var client = new HttpClient(handler) { BaseAddress = new Uri("https://test.local") };
-        _httpClientFactory.CreateClient("BffSelfClient").Returns(client);
+        SetupBffSelfClient(_ => Task.FromResult(response));
     }
 
     private void SetupBffSelfClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
     {
-        var httpHandler = new MockHttpMessageHandler(handler);
-        var client = new HttpClient(httpHandler) { BaseAddress = new Uri("https://test.local") };
-        _httpClientFactory.CreateClient("BffSelfClient").Returns(client);
+        _authHandler = handler;
     }
 
     private class MockHttpMessageHandler : HttpMessageHandler
@@ -839,16 +834,4 @@ public class InstanceOnboardingServiceTests
             => _handler(request);
     }
 
-    private sealed class NullJsRuntime : IJSRuntime
-    {
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
-        {
-            return new ValueTask<TValue>(default(TValue)!);
-        }
-
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
-        {
-            return new ValueTask<TValue>(default(TValue)!);
-        }
-    }
 }

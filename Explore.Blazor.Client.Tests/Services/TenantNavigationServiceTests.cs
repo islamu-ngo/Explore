@@ -4,6 +4,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Refit;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -70,7 +71,7 @@ public class TenantNavigationServiceTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();
-        await Assert.That(result.Message).Contains("API error");
+        await Assert.That(result.Message).Contains("Error:");
         await Assert.That(handler.LastRequest).IsNotNull();
         await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Post);
         await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/tenant/navigation");
@@ -156,7 +157,7 @@ public class TenantNavigationServiceTests
             BaseAddress = new Uri("https://test.local")
         };
 
-        return new TenantNavigationService(client, _logger);
+        return new TenantNavigationService(RestService.For<ITenantNavigationApi>(client), _logger);
     }
 
     private static HttpResponseMessage CreateJsonResponse<T>(T model, HttpStatusCode statusCode = HttpStatusCode.OK)

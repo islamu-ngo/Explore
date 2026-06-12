@@ -31,8 +31,7 @@ public static class ServiceRegistrationExtensions
     /// <summary>
     /// Registers all application-level services by calling the shared registrations
     /// from the Client project, then adding server-specific overrides.
-    /// On the server, ITenantNavigationService remains a typed HttpClient registered in
-    /// HttpClientExtensions; IGroupService uses shared Refit BFF endpoints.
+    /// Shared UI HTTP services use same-origin BFF Refit endpoints in both server and WASM hosts.
     /// </summary>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {

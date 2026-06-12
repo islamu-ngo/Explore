@@ -52,6 +52,13 @@ public interface ICircuitTokenStore
     CircuitTokenResolution Resolve(string userId, string? sessionId);
 
     /// <summary>
+    /// Resolves the most recently stored usable token for a user across all their sessions.
+    /// Used as a fallback when session-keyed resolution fails due to session ID mismatches
+    /// between the store path (BFF refresh) and the resolve path (AccessTokenForwardingHandler).
+    /// </summary>
+    CircuitTokenResolution ResolveByUserId(string userId);
+
+    /// <summary>
     /// Clears the token entry for the specified user and authentication session.
     /// </summary>
     void ClearSession(string userId, string? sessionId);
@@ -178,6 +185,38 @@ public sealed class CircuitTokenStore : ICircuitTokenStore
         }
 
         return CircuitTokenResolution.Success(entry.Token, CircuitTokenResolutionSource.SessionStore);
+    }
+
+    public CircuitTokenResolution ResolveByUserId(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return CircuitTokenResolution.NotFound("missing_user_id");
+        }
+
+        var candidates = _entries
+            .Where(kvp => string.Equals(kvp.Value.UserId, userId, StringComparison.Ordinal))
+            .OrderByDescending(kvp => kvp.Value.StoredAtUtc)
+            .ToList();
+
+        foreach (var kvp in candidates)
+        {
+            if (IsUsableToken(kvp.Value.Token, kvp.Value.ExpiresAtUtc))
+            {
+                return CircuitTokenResolution.Success(kvp.Value.Token, CircuitTokenResolutionSource.SessionStore);
+            }
+
+            _entries.TryRemove(kvp.Key, out _);
+            _logger.LogDebug(
+                "[CircuitTokenStore] Evicted expired token for {UserId}/{SessionId} during ResolveByUserId",
+                userId, kvp.Value.SessionId ?? "(none)");
+        }
+
+        _logger.LogDebug(
+            "[CircuitTokenStore] ResolveByUserId found no usable token for {UserId} across {Count} entries",
+            userId, candidates.Count);
+
+        return CircuitTokenResolution.NotFound("no_usable_token_for_user");
     }
 
     public void ClearSession(string userId, string? sessionId)
@@ -320,6 +359,35 @@ public sealed class CircuitTokenStore : ICircuitTokenStore
             }
 
             return jwt.ValidTo > DateTime.UtcNow.Add(UsabilityBuffer);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static bool IsTokenForwardable(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (!handler.CanReadToken(token))
+            {
+                return true; // Opaque tokens are accepted as-is
+            }
+
+            var jwt = handler.ReadJwtToken(token);
+            if (jwt.ValidTo == DateTime.MinValue)
+            {
+                return true;
+            }
+
+            return jwt.ValidTo > DateTime.UtcNow;
         }
         catch
         {

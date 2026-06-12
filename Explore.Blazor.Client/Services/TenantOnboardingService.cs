@@ -187,6 +187,7 @@ public class TenantPolicySettingsModel
     public string AiAssistantEndpointUrl { get; set; } = string.Empty;
     public string AiAssistantApiKey { get; set; } = string.Empty;
     public string AiAssistantModelId { get; set; } = string.Empty;
+    public List<string> AiAssistantAllowedModelIds { get; set; } = [];
     public bool AiAssistantAllowAnonymousAccess { get; set; }
     public bool CanOverrideAiAssistant { get; set; }
     public bool CanOverrideMcp { get; set; }

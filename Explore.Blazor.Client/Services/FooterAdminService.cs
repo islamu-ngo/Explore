@@ -1,35 +1,83 @@
-// ABOUTME: HTTP service for managing footer link groups, links, and tenant settings.
-// ABOUTME: Follows TenantNavigationService pattern — typed HttpClient with resilience.
+// ABOUTME: Refit-backed service for managing footer link groups, links, and tenant settings.
+// ABOUTME: Keeps footer governance calls on the shared BFF transport without raw HttpClient calls.
 
-using System.Net.Http.Json;
 using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Blazor.Client.Services.Http;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace Explore.Blazor.Client.Services;
+
+public sealed class FooterConfigEnvelope
+{
+    public FooterSettingsResponseModel? Settings { get; set; }
+}
+
+public interface IFooterAdminApi
+{
+    [Get("/api/footer/link-groups")]
+    Task<IApiResponse<List<FooterLinkGroupListModel>>> GetLinkGroupsAsync(CancellationToken cancellationToken);
+
+    [Get("/api/footer/link-groups/{id}")]
+    Task<IApiResponse<FooterLinkGroupDetailsModel>> GetLinkGroupAsync(Guid id, CancellationToken cancellationToken);
+
+    [Post("/api/footer/link-groups")]
+    Task<IApiResponse<BaseCommandResponse<Guid>>> CreateLinkGroupAsync(
+        [Body] CreateFooterLinkGroupModel model,
+        CancellationToken cancellationToken);
+
+    [Put("/api/footer/link-groups/{id}")]
+    Task<IApiResponse<BaseCommandResponse<Guid>>> UpdateLinkGroupAsync(
+        Guid id,
+        [Body] UpdateFooterLinkGroupModel model,
+        CancellationToken cancellationToken);
+
+    [Delete("/api/footer/link-groups/{id}")]
+    Task<IApiResponse<BaseCommandResponse<bool>>> DeleteLinkGroupAsync(Guid id, CancellationToken cancellationToken);
+
+    [Post("/api/footer/link-groups/reorder")]
+    Task<IApiResponse<BaseCommandResponse<Guid>>> ReorderLinkGroupsAsync(
+        [Body] List<Guid> orderedIds,
+        CancellationToken cancellationToken);
+
+    [Post("/api/footer/link-groups/{groupId}/links")]
+    Task<IApiResponse<BaseCommandResponse<Guid>>> CreateLinkAsync(
+        Guid groupId,
+        [Body] CreateFooterLinkModel model,
+        CancellationToken cancellationToken);
+
+    [Put("/api/footer/links/{id}")]
+    Task<IApiResponse<BaseCommandResponse<Guid>>> UpdateLinkAsync(
+        Guid id,
+        [Body] UpdateFooterLinkModel model,
+        CancellationToken cancellationToken);
+
+    [Delete("/api/footer/links/{id}")]
+    Task<IApiResponse<BaseCommandResponse<bool>>> DeleteLinkAsync(Guid id, CancellationToken cancellationToken);
+
+    [Get("/api/footer/config")]
+    Task<IApiResponse<FooterConfigEnvelope>> GetFooterConfigAsync(CancellationToken cancellationToken);
+
+    [Put("/api/footer/settings")]
+    Task<IApiResponse<BaseCommandResponse<Guid>>> UpdateTenantSettingsAsync(
+        [Body] UpdateTenantFooterSettingsModel model,
+        CancellationToken cancellationToken);
+}
 
 /// <summary>
 /// Communicates with FooterController endpoints to manage link groups, links, and tenant footer settings.
 /// </summary>
 public class FooterAdminService : IFooterAdminService
 {
-    private readonly HttpClient _httpClient;
-    private readonly IApiClientExecutor _apiClientExecutor;
+    private readonly IFooterAdminApi _api;
     private readonly ILogger<FooterAdminService> _logger;
-    private const string LinkGroupsEndpoint = "/api/footer/link-groups";
-    private const string LinksEndpoint = "/api/footer/links";
-    private const string SettingsEndpoint = "/api/footer/settings";
-    private const string ConfigEndpoint = "/api/footer/config";
 
     public FooterAdminService(
-        HttpClient httpClient,
-        ILogger<FooterAdminService> logger,
-        IApiClientExecutor? apiClientExecutor = null)
+        IFooterAdminApi api,
+        ILogger<FooterAdminService> logger)
     {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _api = api ?? throw new ArgumentNullException(nameof(api));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _apiClientExecutor = apiClientExecutor ?? new ApiClientExecutor();
     }
 
     // ── Link Groups ──────────────────────────────────────────────────────
@@ -38,17 +86,14 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<List<FooterLinkGroupListModel>>(
-                ct => _httpClient.GetAsync(LinkGroupsEndpoint, ct),
-                "footer link groups");
-
-            if (!result.IsSuccess)
+            var response = await _api.GetLinkGroupsAsync(CancellationToken.None);
+            if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("[FOOTER ADMIN] Failed to fetch link groups: {StatusCode}", result.StatusCode);
+                _logger.LogWarning("[FOOTER ADMIN] Failed to fetch link groups: {StatusCode}", (int)response.StatusCode);
                 return new List<FooterLinkGroupListModel>();
             }
 
-            return result.Value ?? new List<FooterLinkGroupListModel>();
+            return response.Content ?? new List<FooterLinkGroupListModel>();
         }
         catch (Exception ex)
         {
@@ -61,17 +106,14 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<FooterLinkGroupDetailsModel>(
-                ct => _httpClient.GetAsync($"{LinkGroupsEndpoint}/{id}", ct),
-                "footer link group");
-
-            if (!result.IsSuccess)
+            var response = await _api.GetLinkGroupAsync(id, CancellationToken.None);
+            if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("[FOOTER ADMIN] Failed to fetch link group {Id}: {StatusCode}", id, result.StatusCode);
+                _logger.LogWarning("[FOOTER ADMIN] Failed to fetch link group {Id}: {StatusCode}", id, (int)response.StatusCode);
                 return null;
             }
 
-            return result.Value;
+            return response.Content;
         }
         catch (Exception ex)
         {
@@ -84,13 +126,10 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<Guid>>(
-                ct => _httpClient.PostAsJsonAsync(LinkGroupsEndpoint, model, ct),
-                "footer link group create");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<Guid>(result, "[FOOTER ADMIN] Failed to create link group: {StatusCode}");
+            var response = await _api.CreateLinkGroupAsync(model, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<Guid>(response, "[FOOTER ADMIN] Failed to create link group: {StatusCode}");
         }
         catch (Exception ex)
         {
@@ -108,13 +147,10 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<Guid>>(
-                ct => _httpClient.PutAsJsonAsync($"{LinkGroupsEndpoint}/{id}", model, ct),
-                "footer link group update");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<Guid>(result, "[FOOTER ADMIN] Failed to update link group {Id}: {StatusCode}", id);
+            var response = await _api.UpdateLinkGroupAsync(id, model, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<Guid>(response, "[FOOTER ADMIN] Failed to update link group {Id}: {StatusCode}", id);
         }
         catch (Exception ex)
         {
@@ -132,13 +168,10 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<bool>>(
-                ct => _httpClient.DeleteAsync($"{LinkGroupsEndpoint}/{id}", ct),
-                "footer link group delete");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<bool>(result, "[FOOTER ADMIN] Failed to delete link group {Id}: {StatusCode}", id);
+            var response = await _api.DeleteLinkGroupAsync(id, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<bool>(response, "[FOOTER ADMIN] Failed to delete link group {Id}: {StatusCode}", id);
         }
         catch (Exception ex)
         {
@@ -156,13 +189,10 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<Guid>>(
-                ct => _httpClient.PostAsJsonAsync($"{LinkGroupsEndpoint}/reorder", orderedIds, ct),
-                "footer link group reorder");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<Guid>(result, "[FOOTER ADMIN] Failed to reorder link groups: {StatusCode}");
+            var response = await _api.ReorderLinkGroupsAsync(orderedIds, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<Guid>(response, "[FOOTER ADMIN] Failed to reorder link groups: {StatusCode}");
         }
         catch (Exception ex)
         {
@@ -182,13 +212,10 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<Guid>>(
-                ct => _httpClient.PostAsJsonAsync($"{LinkGroupsEndpoint}/{groupId}/links", model, ct),
-                "footer link create");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<Guid>(result, "[FOOTER ADMIN] Failed to create link in group {GroupId}: {StatusCode}", groupId);
+            var response = await _api.CreateLinkAsync(groupId, model, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<Guid>(response, "[FOOTER ADMIN] Failed to create link in group {GroupId}: {StatusCode}", groupId);
         }
         catch (Exception ex)
         {
@@ -206,13 +233,10 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<Guid>>(
-                ct => _httpClient.PutAsJsonAsync($"{LinksEndpoint}/{id}", model, ct),
-                "footer link update");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<Guid>(result, "[FOOTER ADMIN] Failed to update link {Id}: {StatusCode}", id);
+            var response = await _api.UpdateLinkAsync(id, model, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<Guid>(response, "[FOOTER ADMIN] Failed to update link {Id}: {StatusCode}", id);
         }
         catch (Exception ex)
         {
@@ -230,13 +254,10 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<bool>>(
-                ct => _httpClient.DeleteAsync($"{LinksEndpoint}/{id}", ct),
-                "footer link delete");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<bool>(result, "[FOOTER ADMIN] Failed to delete link {Id}: {StatusCode}", id);
+            var response = await _api.DeleteLinkAsync(id, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<bool>(response, "[FOOTER ADMIN] Failed to delete link {Id}: {StatusCode}", id);
         }
         catch (Exception ex)
         {
@@ -256,17 +277,14 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<FooterConfigEnvelope>(
-                ct => _httpClient.GetAsync(ConfigEndpoint, ct),
-                "footer settings");
-
-            if (!result.IsSuccess)
+            var response = await _api.GetFooterConfigAsync(CancellationToken.None);
+            if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("[FOOTER ADMIN] Failed to fetch footer config: {StatusCode}", result.StatusCode);
+                _logger.LogWarning("[FOOTER ADMIN] Failed to fetch footer config: {StatusCode}", (int)response.StatusCode);
                 return null;
             }
 
-            return result.Value?.Settings;
+            return response.Content?.Settings;
         }
         catch (Exception ex)
         {
@@ -281,13 +299,10 @@ public class FooterAdminService : IFooterAdminService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<Guid>>(
-                ct => _httpClient.PutAsJsonAsync(SettingsEndpoint, model, ct),
-                "footer settings update");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<Guid>(result, "[FOOTER ADMIN] Failed to update tenant footer settings: {StatusCode}");
+            var response = await _api.UpdateTenantSettingsAsync(model, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<Guid>(response, "[FOOTER ADMIN] Failed to update tenant footer settings: {StatusCode}");
         }
         catch (Exception ex)
         {
@@ -301,21 +316,10 @@ public class FooterAdminService : IFooterAdminService
         }
     }
 
-    private BaseCommandResponse<T> CreateFailureResponse<T>(ApiResult<BaseCommandResponse<T>> result, string logMessage, params object[] logArgs)
+    private BaseCommandResponse<T> CreateFailureResponse<T>(IApiResponse response, string logMessage, params object[] logArgs)
     {
-        _logger.LogWarning(logMessage, [.. logArgs, result.StatusCode]);
-
-        if (result.Problem is not null)
-        {
-            return new BaseCommandResponse<T>
-            {
-                Success = false,
-                Message = $"API error: {result.StatusCode}",
-                Errors = new List<string> { result.Problem.Title }
-            };
-        }
-
-        var message = result.Exception?.Message ?? "Unknown error";
+        _logger.LogWarning(logMessage, [.. logArgs, (int)response.StatusCode]);
+        var message = response.Error?.Content ?? response.Error?.Message ?? "Unknown error";
         return new BaseCommandResponse<T>
         {
             Success = false,
@@ -324,11 +328,4 @@ public class FooterAdminService : IFooterAdminService
         };
     }
 
-    /// <summary>
-    /// Wrapper to deserialize the config endpoint response and extract the settings portion.
-    /// </summary>
-    private class FooterConfigEnvelope
-    {
-        public FooterSettingsResponseModel? Settings { get; set; }
-    }
 }

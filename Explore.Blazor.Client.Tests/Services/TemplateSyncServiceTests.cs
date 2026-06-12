@@ -8,6 +8,7 @@ using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Services.EventSessionTemplateSync;
 using Explore.Blazor.Client.Services.EventTemplateSync;
+using Refit;
 using EventApplyRequest = Explore.Blazor.Client.Models.EventTemplateSync.EventTemplateSyncApplyRequest;
 using EventHistoryItem = Explore.Blazor.Client.Models.EventTemplateSync.EventTemplateSyncHistoryItemDto;
 using EventPlan = Explore.Blazor.Client.Models.EventTemplateSync.TemplateSyncPlanDto;
@@ -28,8 +29,7 @@ public sealed class TemplateSyncServiceTests
     public async Task EventTemplateSyncService_GetDiffAsync_ReadsExpectedRoute()
     {
         using var handler = new RecordingHandler(_ => CreateJsonResponse(CreateEventDiff()));
-        using var client = CreateClient(handler);
-        var service = new EventTemplateSyncService(client);
+        var service = new EventTemplateSyncService(CreateEventApi(handler));
         var eventId = Guid.NewGuid();
 
         EventTemplateDiff? result = await service.GetDiffAsync(eventId, 7);
@@ -51,8 +51,7 @@ public sealed class TemplateSyncServiceTests
             Id = outcome
         };
         using var handler = new RecordingHandler(_ => CreateJsonResponse(response));
-        using var client = CreateClient(handler);
-        var service = new EventTemplateSyncService(client);
+        var service = new EventTemplateSyncService(CreateEventApi(handler));
         var eventId = Guid.NewGuid();
 
         BaseCommandResponse<EventTemplateOutcome> result = await service.ApplySyncAsync(
@@ -69,8 +68,7 @@ public sealed class TemplateSyncServiceTests
     public async Task EventTemplateSyncService_GetHistoryAsync_ThrowsWhenApiFails()
     {
         using var handler = new RecordingHandler(_ => CreateProblemResponse(HttpStatusCode.Conflict));
-        using var client = CreateClient(handler);
-        var service = new EventTemplateSyncService(client);
+        var service = new EventTemplateSyncService(CreateEventApi(handler));
 
         await Assert.That(async () => await service.GetHistoryAsync(Guid.NewGuid()))
             .Throws<InvalidOperationException>();
@@ -80,8 +78,7 @@ public sealed class TemplateSyncServiceTests
     public async Task EventTemplateSyncService_ApplySyncAsync_WithJsonNullBody_ThrowsPreviousApplyMessage()
     {
         using var handler = new RecordingHandler(_ => CreateJsonNullResponse());
-        using var client = CreateClient(handler);
-        var service = new EventTemplateSyncService(client);
+        var service = new EventTemplateSyncService(CreateEventApi(handler));
 
         InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(
             async () => await service.ApplySyncAsync(
@@ -96,8 +93,7 @@ public sealed class TemplateSyncServiceTests
     public async Task EventTemplateSyncService_GetHistoryAsync_WithJsonNullBody_ThrowsPreviousHistoryMessage()
     {
         using var handler = new RecordingHandler(_ => CreateJsonNullResponse());
-        using var client = CreateClient(handler);
-        var service = new EventTemplateSyncService(client);
+        var service = new EventTemplateSyncService(CreateEventApi(handler));
 
         InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(
             async () => await service.GetHistoryAsync(Guid.NewGuid()));
@@ -117,8 +113,7 @@ public sealed class TemplateSyncServiceTests
             TotalCount = 0
         };
         using var handler = new RecordingHandler(_ => CreateJsonResponse(response));
-        using var client = CreateClient(handler);
-        var service = new EventSessionTemplateSyncService(client);
+        var service = new EventSessionTemplateSyncService(CreateSessionApi(handler));
         var sessionId = Guid.NewGuid();
 
         PaginatedResult<SessionHistoryItem> result = await service.GetHistoryAsync(sessionId, page: 2, pageSize: 5);
@@ -140,8 +135,7 @@ public sealed class TemplateSyncServiceTests
             Id = outcome
         };
         using var handler = new RecordingHandler(_ => CreateJsonResponse(response));
-        using var client = CreateClient(handler);
-        var service = new EventSessionTemplateSyncService(client);
+        var service = new EventSessionTemplateSyncService(CreateSessionApi(handler));
         var sessionId = Guid.NewGuid();
 
         BaseCommandResponse<SessionTemplateOutcome> result = await service.ApplySyncAsync(
@@ -158,8 +152,7 @@ public sealed class TemplateSyncServiceTests
     public async Task EventSessionTemplateSyncService_ApplySyncAsync_WithJsonNullBody_ThrowsPreviousApplyMessage()
     {
         using var handler = new RecordingHandler(_ => CreateJsonNullResponse());
-        using var client = CreateClient(handler);
-        var service = new EventSessionTemplateSyncService(client);
+        var service = new EventSessionTemplateSyncService(CreateSessionApi(handler));
 
         InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(
             async () => await service.ApplySyncAsync(
@@ -174,8 +167,7 @@ public sealed class TemplateSyncServiceTests
     public async Task EventSessionTemplateSyncService_GetHistoryAsync_WithJsonNullBody_ThrowsPreviousHistoryMessage()
     {
         using var handler = new RecordingHandler(_ => CreateJsonNullResponse());
-        using var client = CreateClient(handler);
-        var service = new EventSessionTemplateSyncService(client);
+        var service = new EventSessionTemplateSyncService(CreateSessionApi(handler));
 
         InvalidOperationException? exception = await Assert.ThrowsAsync<InvalidOperationException>(
             async () => await service.GetHistoryAsync(Guid.NewGuid()));
@@ -183,6 +175,12 @@ public sealed class TemplateSyncServiceTests
         await Assert.That(exception).IsNotNull();
         await Assert.That(exception!.Message).IsEqualTo("Failed to read history response.");
     }
+
+    private static IEventTemplateSyncApi CreateEventApi(HttpMessageHandler handler) =>
+        RestService.For<IEventTemplateSyncApi>(CreateClient(handler));
+
+    private static IEventSessionTemplateSyncApi CreateSessionApi(HttpMessageHandler handler) =>
+        RestService.For<IEventSessionTemplateSyncApi>(CreateClient(handler));
 
     private static HttpClient CreateClient(HttpMessageHandler handler)
     {

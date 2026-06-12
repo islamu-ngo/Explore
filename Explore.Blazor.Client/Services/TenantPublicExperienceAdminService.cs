@@ -55,6 +55,7 @@ public sealed class TenantPublicExperienceAdminService(
     private const string AiAssistantAllowAnonymousAccessKey = "ai_assistant.allow_anonymous_access";
     private const string AiProviderNone = "none";
     private const string AiProviderOpenAiCompatible = "openai-compatible";
+    private const string AiProviderAnthropicCompatible = "anthropic-compatible";
 
     private const string DefaultMode = "DiscoveryCentric";
     private const string DefaultEventCatalogLabel = "Events";
@@ -454,9 +455,9 @@ public sealed class TenantPublicExperienceAdminService(
             return PublicExperienceAdminSaveResult.Failed("AI Assistant endpoint URL must be an absolute HTTP or HTTPS URL.");
         }
 
-        if (string.IsNullOrWhiteSpace(model.AiAssistantApiKey) || string.IsNullOrWhiteSpace(model.AiAssistantModelId))
+        if (string.IsNullOrWhiteSpace(model.AiAssistantModelId))
         {
-            return PublicExperienceAdminSaveResult.Failed("AI Assistant requires an endpoint URL, API key, and model ID before it can be enabled.");
+            return PublicExperienceAdminSaveResult.Failed("AI Assistant requires an endpoint URL and model ID before it can be enabled.");
         }
 
         return null;
@@ -465,7 +466,7 @@ public sealed class TenantPublicExperienceAdminService(
     private static Dictionary<string, string> BuildAiAssistantValues(TenantPolicySettingsModel model)
     {
         var provider = NormalizeAiProvider(model.AiAssistantProvider, model.AiAssistantEnabled);
-        var usesOpenAiCompatible = provider == AiProviderOpenAiCompatible;
+        var usesOpenAiCompatible = provider == AiProviderOpenAiCompatible || provider == AiProviderAnthropicCompatible;
 
         return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -496,7 +497,7 @@ public sealed class TenantPublicExperienceAdminService(
     }
 
     private static bool IsSupportedAiProvider(string provider) =>
-        provider is AiProviderNone or AiProviderOpenAiCompatible;
+        provider is AiProviderNone or AiProviderOpenAiCompatible or AiProviderAnthropicCompatible;
 
     private static bool HasAbsoluteHttpUrl(string? value)
     {

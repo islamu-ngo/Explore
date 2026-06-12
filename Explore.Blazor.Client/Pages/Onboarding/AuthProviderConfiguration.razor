@@ -8,7 +8,7 @@
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
-@inject IHttpClientFactory HttpClientFactory
+@inject IBffAuthApi BffAuthApi
 @inject ILogger<AuthProviderConfiguration> Logger
 
 <PageTitle>Authentication Providers</PageTitle>
@@ -422,8 +422,13 @@
             // Trigger dynamic auth scheme registration in the BFF. Bootstrap calls do this in the service.
             try
             {
-                var bffClient = CreateBffSelfClient();
-                await bffClient.PostAsync("/bff/auth/refresh-schemes", null);
+                var refreshResponse = await BffAuthApi.RefreshSchemesAsync(CancellationToken.None);
+                if (!refreshResponse.IsSuccessStatusCode)
+                {
+                    Logger.LogWarning(
+                        "Failed to refresh auth schemes after saving config. Status: {StatusCode}. Login may require app restart.",
+                        (int)refreshResponse.StatusCode);
+                }
             }
             catch (Exception ex)
             {
@@ -500,13 +505,6 @@
             || host.StartsWith("172.31.")
             || host.EndsWith(".local")
             || host.EndsWith(".internal");
-    }
-
-    private HttpClient CreateBffSelfClient()
-    {
-        var client = HttpClientFactory.CreateClient("BffSelfClient");
-        client.BaseAddress = new Uri(Navigation.BaseUri);
-        return client;
     }
 
     private enum KeycloakConfigurationMode

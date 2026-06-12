@@ -18,6 +18,9 @@ namespace Explore.Blazor.Extensions;
 
 public static class HttpClientExtensions
 {
+    private static readonly TimeSpan InteractiveTotalTimeout = TimeSpan.FromSeconds(330);
+    private static readonly TimeSpan InteractiveAttemptTimeout = TimeSpan.FromSeconds(310);
+
     /// <summary>
     /// Registers all API-facing HttpClient instances used by the Blazor BFF server.
     /// Each client calls the Event API directly with access token forwarding.
@@ -56,17 +59,6 @@ public static class HttpClientExtensions
         services.AddTypedApiClient<IEventApiClient, EventApiClient>(apiBaseUrl, environment)
             .AddInteractiveResilience();
 
-        services.AddTypedApiClient<Explore.Blazor.Client.Services.EventTemplateSync.IEventTemplateSyncService, Explore.Blazor.Client.Services.EventTemplateSync.EventTemplateSyncService>(apiBaseUrl, environment)
-            .AddInteractiveResilience();
-
-        services.AddTypedApiClient<Explore.Blazor.Client.Services.EventSessionTemplateSync.IEventSessionTemplateSyncService, Explore.Blazor.Client.Services.EventSessionTemplateSync.EventSessionTemplateSyncService>(apiBaseUrl, environment)
-            .AddInteractiveResilience();
-
-        // Typed services that need direct API access during InteractiveServer rendering
-        services.AddTypedApiClient<ITenantNavigationService, TenantNavigationService>(apiBaseUrl, environment)
-            .AddInteractiveResilience();
-        services.AddTypedApiClient<IFooterAdminService, FooterAdminService>(apiBaseUrl, environment)
-            .AddInteractiveResilience();
         services.AddRefitClient<ILocalizationAdminApi>(RefitClientRegistrationExtensions.CreateDefaultRefitSettings())
             .ConfigureHttpClient(client => client.BaseAddress = new Uri(apiBaseUrl))
             .AddHttpMessageHandler<AccessTokenForwardingHandler>()
@@ -129,8 +121,9 @@ public static class HttpClientExtensions
 
     // Interactive BFF->API calls use a lean custom pipeline: no circuit breaker (same-machine
     // traffic; a shared breaker trips unrelated UI requests after a single slow endpoint), one
-    // retry on safe methods only, short attempt timeout. RemoveAllResilienceHandlers() guards
-    // against accidental global ConfigureHttpClientDefaults stacking (dotnet/extensions #5695).
+    // retry on safe response status codes only, and an attempt timeout long enough for local AI
+    // providers. RemoveAllResilienceHandlers() guards against accidental global
+    // ConfigureHttpClientDefaults stacking (dotnet/extensions #5695).
     private static IHttpClientBuilder AddInteractiveResilience(this IHttpClientBuilder builder)
     {
 #pragma warning disable EXTEXP0001
@@ -139,7 +132,7 @@ public static class HttpClientExtensions
 
         builder.AddResilienceHandler("bff-interactive", pipeline =>
         {
-            pipeline.AddTimeout(TimeSpan.FromSeconds(12));
+            pipeline.AddTimeout(InteractiveTotalTimeout);
 
             pipeline.AddRetry(new HttpRetryStrategyOptions
             {
@@ -155,7 +148,10 @@ public static class HttpClientExtensions
 
                     if (args.Outcome.Exception is HttpRequestException or TimeoutRejectedException)
                     {
-                        return ValueTask.FromResult(true);
+                        // A transport timeout/exception may happen after an unsafe request reached
+                        // the API. Retrying that POST can collide with the in-flight command and
+                        // surface as "conversation not active" while the original run continues.
+                        return ValueTask.FromResult(false);
                     }
 
                     if (args.Outcome.Result is { } result)
@@ -171,7 +167,7 @@ public static class HttpClientExtensions
                 },
             });
 
-            pipeline.AddTimeout(TimeSpan.FromSeconds(4));
+            pipeline.AddTimeout(InteractiveAttemptTimeout);
         });
 
         return builder;

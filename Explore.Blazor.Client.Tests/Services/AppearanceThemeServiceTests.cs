@@ -6,6 +6,7 @@ using System.Net.Http.Json;
 using Explore.Blazor.Client.Services.Appearance;
 using MudBlazor;
 using MudBlazor.Utilities;
+using Refit;
 using ClientAvailablePresetDto = Explore.Blazor.Client.Services.Appearance.AvailablePresetDto;
 using ClientCreateCustomProfileRequestDto = Explore.Blazor.Client.Services.Appearance.CreateCustomProfileRequestDto;
 using ClientResolvedAppearanceDto = Explore.Blazor.Client.Services.Appearance.ResolvedAppearanceDto;
@@ -235,7 +236,7 @@ public class AppearanceThemeServiceTests
             BaseAddress = new Uri("https://example.test/")
         };
 
-        return new AppearanceThemeService(client, logger);
+        return new AppearanceThemeService(RestService.For<IAppearanceApi>(client), logger);
     }
 
     private static HttpResponseMessage CreateJsonResponse<T>(T value) => new(HttpStatusCode.OK)

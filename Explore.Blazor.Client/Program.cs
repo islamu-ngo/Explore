@@ -78,20 +78,6 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
 .AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
 .AddHttpMessageHandler<BffUnauthorizedHandler>();
 
-builder.Services.AddHttpClient<Explore.Blazor.Client.Services.EventTemplateSync.IEventTemplateSyncService, Explore.Blazor.Client.Services.EventTemplateSync.EventTemplateSyncService>(client =>
-{
-    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
-})
-.AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
-.AddHttpMessageHandler<BffUnauthorizedHandler>();
-
-builder.Services.AddHttpClient<Explore.Blazor.Client.Services.EventSessionTemplateSync.IEventSessionTemplateSyncService, Explore.Blazor.Client.Services.EventSessionTemplateSync.EventSessionTemplateSyncService>(client =>
-{
-    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
-})
-.AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
-.AddHttpMessageHandler<BffUnauthorizedHandler>();
-
 // Register TenantConfiguration for single-tenant mode (default)
 // In WASM, configuration section may not be available, so defaults from TenantConfiguration class are used
 builder.Services.Configure<TenantConfiguration>(
@@ -109,7 +95,6 @@ builder.Services.AddSharedApplicationServices((_, client) =>
 });
 
 // WASM-specific services (different from server-side registrations)
-builder.Services.AddScoped<ITenantNavigationService, TenantNavigationService>();
 builder.Services.AddScoped<IAnalyticsInterop, AnalyticsInterop>();
 builder.Services.AddScoped<ICookieConsentInterop, CookieConsentInterop>();
 builder.Services.AddScoped<CookieConsentStateService>();

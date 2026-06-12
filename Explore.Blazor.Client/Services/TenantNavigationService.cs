@@ -1,34 +1,57 @@
-// ABOUTME: Service for managing tenant navigation links via HTTP calls.
+// ABOUTME: Refit-backed service for managing tenant navigation links through BFF endpoints.
+// ABOUTME: Provides safe fallback results while keeping navigation CRUD off raw HttpClient calls.
 
-using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Blazor.Client.Services.Http;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace Explore.Blazor.Client.Services;
 
+public interface ITenantNavigationApi
+{
+    [Get("/api/tenant/navigation")]
+    Task<IApiResponse<List<TenantNavigationLinkDto>>> GetNavigationLinksAsync(CancellationToken cancellationToken);
+
+    [Post("/api/tenant/navigation")]
+    Task<IApiResponse<BaseCommandResponse<Guid>>> CreateNavigationLinkAsync(
+        [Body] CreateTenantNavigationLinkDto dto,
+        CancellationToken cancellationToken);
+
+    [Put("/api/tenant/navigation/{id}")]
+    Task<IApiResponse<BaseCommandResponse<bool>>> UpdateNavigationLinkAsync(
+        Guid id,
+        [Body] UpdateTenantNavigationLinkDto dto,
+        CancellationToken cancellationToken);
+
+    [Delete("/api/tenant/navigation/{id}")]
+    Task<IApiResponse<BaseCommandResponse<bool>>> DeleteNavigationLinkAsync(
+        Guid id,
+        CancellationToken cancellationToken);
+
+    [Put("/api/tenant/navigation/reorder")]
+    Task<IApiResponse<BaseCommandResponse<bool>>> ReorderNavigationLinksAsync(
+        [Body] List<UpdateTenantNavigationLinkOrderDto> orders,
+        CancellationToken cancellationToken);
+}
+
 /// <summary>
 /// Service for managing tenant navigation links.
-/// Communicates with the API via HTTP to retrieve, create, update, delete, and reorder navigation links.
+/// Communicates with the API through BFF Refit endpoints to retrieve, create, update, delete, and reorder navigation links.
 /// </summary>
 public class TenantNavigationService : ITenantNavigationService
 {
-    private readonly HttpClient _httpClient;
-    private readonly IApiClientExecutor _apiClientExecutor;
+    private readonly ITenantNavigationApi _api;
     private readonly ILogger<TenantNavigationService> _logger;
-    private const string ApiEndpoint = "/api/tenant/navigation";
 
     public TenantNavigationService(
-        HttpClient httpClient,
-        ILogger<TenantNavigationService> logger,
-        IApiClientExecutor? apiClientExecutor = null)
+        ITenantNavigationApi api,
+        ILogger<TenantNavigationService> logger)
     {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _api = api ?? throw new ArgumentNullException(nameof(api));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _apiClientExecutor = apiClientExecutor ?? new ApiClientExecutor();
     }
 
     /// <summary>
@@ -38,17 +61,14 @@ public class TenantNavigationService : ITenantNavigationService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<List<TenantNavigationLinkDto>>(
-                ct => _httpClient.GetAsync(ApiEndpoint, ct),
-                "tenant navigation links");
-
-            if (!result.IsSuccess)
+            var response = await _api.GetNavigationLinksAsync(CancellationToken.None);
+            if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("[TENANT NAVIGATION SERVICE] Failed to fetch navigation links: {StatusCode}", result.StatusCode);
+                _logger.LogWarning("[TENANT NAVIGATION SERVICE] Failed to fetch navigation links: {StatusCode}", (int)response.StatusCode);
                 return new List<TenantNavigationLinkDto>();
             }
 
-            return result.Value ?? new List<TenantNavigationLinkDto>();
+            return response.Content ?? new List<TenantNavigationLinkDto>();
         }
         catch (Exception ex)
         {
@@ -64,13 +84,10 @@ public class TenantNavigationService : ITenantNavigationService
     {
         try
         {
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<Guid>>(
-                ct => _httpClient.PostAsJsonAsync(ApiEndpoint, dto, ct),
-                "tenant navigation create");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<Guid>(result, "[TENANT NAVIGATION SERVICE] Failed to create navigation link: {StatusCode}");
+            var response = await _api.CreateNavigationLinkAsync(dto, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<Guid>(response, "[TENANT NAVIGATION SERVICE] Failed to create navigation link: {StatusCode}");
         }
         catch (Exception ex)
         {
@@ -91,14 +108,10 @@ public class TenantNavigationService : ITenantNavigationService
     {
         try
         {
-            var url = $"{ApiEndpoint}/{id}";
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<bool>>(
-                ct => _httpClient.PutAsJsonAsync(url, dto, ct),
-                "tenant navigation update");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<bool>(result, "[TENANT NAVIGATION SERVICE] Failed to update navigation link {Id}: {StatusCode}", id);
+            var response = await _api.UpdateNavigationLinkAsync(id, dto, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<bool>(response, "[TENANT NAVIGATION SERVICE] Failed to update navigation link {Id}: {StatusCode}", id);
         }
         catch (Exception ex)
         {
@@ -119,14 +132,10 @@ public class TenantNavigationService : ITenantNavigationService
     {
         try
         {
-            var url = $"{ApiEndpoint}/{id}";
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<bool>>(
-                ct => _httpClient.DeleteAsync(url, ct),
-                "tenant navigation delete");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<bool>(result, "[TENANT NAVIGATION SERVICE] Failed to delete navigation link {Id}: {StatusCode}", id);
+            var response = await _api.DeleteNavigationLinkAsync(id, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<bool>(response, "[TENANT NAVIGATION SERVICE] Failed to delete navigation link {Id}: {StatusCode}", id);
         }
         catch (Exception ex)
         {
@@ -147,14 +156,10 @@ public class TenantNavigationService : ITenantNavigationService
     {
         try
         {
-            var url = $"{ApiEndpoint}/reorder";
-            var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<bool>>(
-                ct => _httpClient.PutAsJsonAsync(url, orders, ct),
-                "tenant navigation reorder");
-
-            return result.IsSuccess
-                ? result.Value
-                : CreateFailureResponse<bool>(result, "[TENANT NAVIGATION SERVICE] Failed to reorder navigation links: {StatusCode}");
+            var response = await _api.ReorderNavigationLinksAsync(orders, CancellationToken.None);
+            return response.IsSuccessStatusCode
+                ? response.Content
+                : CreateFailureResponse<bool>(response, "[TENANT NAVIGATION SERVICE] Failed to reorder navigation links: {StatusCode}");
         }
         catch (Exception ex)
         {
@@ -168,21 +173,10 @@ public class TenantNavigationService : ITenantNavigationService
         }
     }
 
-    private BaseCommandResponse<T> CreateFailureResponse<T>(ApiResult<BaseCommandResponse<T>> result, string logMessage, params object[] logArgs)
+    private BaseCommandResponse<T> CreateFailureResponse<T>(IApiResponse response, string logMessage, params object[] logArgs)
     {
-        _logger.LogWarning(logMessage, [.. logArgs, result.StatusCode]);
-
-        if (result.Problem is not null)
-        {
-            return new BaseCommandResponse<T>
-            {
-                Success = false,
-                Message = $"API error: {result.StatusCode}",
-                Errors = new List<string> { result.Problem.Title }
-            };
-        }
-
-        var message = result.Exception?.Message ?? "Unknown error";
+        _logger.LogWarning(logMessage, [.. logArgs, (int)response.StatusCode]);
+        var message = response.Error?.Content ?? response.Error?.Message ?? "Unknown error";
         return new BaseCommandResponse<T>
         {
             Success = false,

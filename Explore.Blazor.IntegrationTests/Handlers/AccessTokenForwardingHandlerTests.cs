@@ -130,6 +130,33 @@ public class AccessTokenForwardingHandlerTests
     }
 
     [Test]
+    public async Task SendAsync_WithNearExpiryHttpContextToken_ForwardsTokenAsLastResort()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var nearExpiryContextToken = CreateUnsignedJwt(userId, DateTime.UtcNow.AddSeconds(10));
+        var httpContext = CreateHttpContext(userId, nearExpiryContextToken);
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+
+        var innerHandler = new CapturingHandler();
+        var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
+        var circuitUserContext = Substitute.For<ICircuitUserContext>();
+        var handler = new AccessTokenForwardingHandler(
+            httpContextAccessor, circuitTokenService, circuitUserContext,
+            _tokenStore, NullLogger<AccessTokenForwardingHandler>.Instance)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/protected");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Authorization).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization!.Parameter).IsEqualTo(nearExpiryContextToken);
+    }
+
+    [Test]
     public async Task SendAsync_WithinCircuitActivityScope_UsesCircuitUserContextTokenStore()
     {
         var userId = Guid.NewGuid().ToString();

@@ -1,0 +1,114 @@
+// ABOUTME: Integration tests for BFF-to-API HttpClient resilience behavior.
+// ABOUTME: Verifies interactive server-side API calls tolerate local AI provider latency without unsafe retries.
+
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Extensions;
+using Explore.Blazor.Services;
+using FluentAssertions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+
+namespace Explore.Blazor.IntegrationTests.Extensions;
+
+public sealed class HttpClientResilienceTests
+{
+    [Test]
+    public async Task BffClient_PostAiMessage_WhenApiTakesMoreThanFourSeconds_DoesNotTimeoutOrRetryUnsafeRequest()
+    {
+        await using var api = await DelayedApiApp.StartAsync(TimeSpan.FromSeconds(5));
+        var services = CreateServices(api.BaseAddress);
+        await using var provider = services.BuildServiceProvider();
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("BffClient");
+
+        using var response = await client.PostAsJsonAsync(
+            $"/api/ai/assistant/conversations/{Guid.CreateVersion7()}/messages",
+            new { content = "hi", idempotencyKey = $"test-{Guid.CreateVersion7()}" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        api.CallCount.Should().Be(1);
+    }
+
+    private static ServiceCollection CreateServices(string apiBaseAddress)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ExploreApi:BaseUrl"] = apiBaseAddress
+            })
+            .Build();
+
+        var environment = Substitute.For<IWebHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Development);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddHttpContextAccessor();
+        services.AddSingleton(Substitute.For<ICircuitAccessTokenService>());
+        services.AddSingleton(Substitute.For<ICircuitUserContext>());
+        services.AddSingleton(Substitute.For<ICircuitTokenStore>());
+        services.AddSingleton(Substitute.For<ITenantRouteContextAccessor>());
+        services.AddSingleton(Substitute.For<ISetupSecretResolver>());
+        services.AddApiHttpClients(configuration, environment);
+        return services;
+    }
+
+    private sealed class DelayedApiApp(WebApplication app) : IAsyncDisposable
+    {
+        private readonly WebApplication _app = app;
+        private int _callCount;
+
+        public string BaseAddress { get; private set; } = string.Empty;
+
+        public int CallCount => _callCount;
+
+        public static async Task<DelayedApiApp> StartAsync(TimeSpan delay)
+        {
+            var wrapper = new DelayedApiApp(CreateApp());
+            wrapper._app.MapPost(
+                "/api/ai/assistant/conversations/{conversationId:guid}/messages",
+                async (Guid conversationId) =>
+                {
+                    Interlocked.Increment(ref wrapper._callCount);
+                    await Task.Delay(delay);
+                    return Results.Accepted(
+                        $"/api/ai/assistant/conversations/{conversationId}/runs/{Guid.CreateVersion7()}",
+                        new BaseCommandResponseOfGuid
+                        {
+                            Success = true,
+                            Id = Guid.CreateVersion7(),
+                            Message = "AI message sent."
+                        });
+                });
+
+            await wrapper._app.StartAsync();
+            var addresses = wrapper._app.Services
+                .GetRequiredService<IServer>()
+                .Features
+                .Get<IServerAddressesFeature>();
+            wrapper.BaseAddress = addresses!.Addresses.Single();
+            return wrapper;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await _app.StopAsync();
+            await _app.DisposeAsync();
+        }
+
+        private static WebApplication CreateApp()
+        {
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            {
+                EnvironmentName = Environments.Development
+            });
+            builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
+            return builder.Build();
+        }
+    }
+}

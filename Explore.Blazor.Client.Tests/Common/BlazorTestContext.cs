@@ -72,6 +72,9 @@ public class BlazorTestContext : BunitContext
         Services.AddLogging();
         AddLocalizationMocks();
         Services.AddSingleton(Substitute.For<IHttpClientFactory>());
+        Services.AddSingleton(Substitute.For<IBffAuthApi>());
+        Services.AddSingleton(Substitute.For<IUserExternalLoginApi>());
+        Services.AddSingleton(Substitute.For<IEventTeamBffApi>());
         AddAccessibilityMocks();
         AddAuthorizationSubstrateMocks();
         AddAppearanceThemeMock();

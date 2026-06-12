@@ -1,80 +1,114 @@
-// ABOUTME: HTTP service for fetching diffs and applying template sync operations for an Event Session.
-// ABOUTME: Manual implementation to be replaced by NSwag generated client if possible.
+// ABOUTME: Refit-backed service for fetching diffs and applying template sync operations for an Event Session.
+// ABOUTME: Keeps session template-sync calls on the shared BFF HTTP pipeline without hand-written HttpClient calls.
 
-using System.Net.Http.Json;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.EventSessionTemplateSync;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Blazor.Client.Services.Http;
+using Refit;
 
 namespace Explore.Blazor.Client.Services.EventSessionTemplateSync;
 
+public interface IEventSessionTemplateSyncApi
+{
+    [Get("/api/event-sessions/{sessionId}/template-sync/diff")]
+    Task<IApiResponse<TemplateDiffDto>> GetDiffAsync(
+        Guid sessionId,
+        int templateVersion,
+        CancellationToken cancellationToken);
+
+    [Post("/api/event-sessions/{sessionId}/template-sync/apply")]
+    Task<IApiResponse<BaseCommandResponse<TemplateSyncOutcomeDto>>> ApplySyncAsync(
+        Guid sessionId,
+        [Body] EventSessionTemplateSyncApplyRequest request,
+        CancellationToken cancellationToken);
+
+    [Get("/api/event-sessions/{sessionId}/template-sync/history")]
+    Task<IApiResponse<PaginatedResult<EventSessionTemplateSyncHistoryItemDto>>> GetHistoryAsync(
+        Guid sessionId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+}
+
 public sealed class EventSessionTemplateSyncService : IEventSessionTemplateSyncService
 {
-    private readonly HttpClient _httpClient;
-    private readonly IApiClientExecutor _apiClientExecutor;
+    private readonly IEventSessionTemplateSyncApi _api;
 
-    public EventSessionTemplateSyncService(HttpClient httpClient, IApiClientExecutor? apiClientExecutor = null)
+    public EventSessionTemplateSyncService(IEventSessionTemplateSyncApi api)
     {
-        _httpClient = httpClient;
-        _apiClientExecutor = apiClientExecutor ?? new ApiClientExecutor();
+        _api = api;
     }
 
     public async Task<TemplateDiffDto?> GetDiffAsync(Guid sessionId, int templateVersion, CancellationToken cancellationToken = default)
     {
-        var result = await _apiClientExecutor.ReadJsonAsync<TemplateDiffDto>(
-            token => _httpClient.GetAsync($"api/event-sessions/{sessionId}/template-sync/diff?templateVersion={templateVersion}", token),
-            "event session template sync diff",
-            cancellationToken);
+        try
+        {
+            var response = await _api.GetDiffAsync(sessionId, templateVersion, cancellationToken);
 
-        return result.IsSuccess
-            ? result.Value
-            : throw CreateExecutorException(result, "Failed to read diff response.");
+            return response.IsSuccessStatusCode
+                ? response.Content ?? throw new InvalidOperationException("Failed to read diff response.")
+                : throw CreateResponseException(response, "Failed to read diff response.");
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Failed to read diff response.", ex);
+        }
     }
 
     public async Task<BaseCommandResponse<TemplateSyncOutcomeDto>> ApplySyncAsync(Guid sessionId, EventSessionTemplateSyncApplyRequest request, CancellationToken cancellationToken = default)
     {
-        var result = await _apiClientExecutor.ReadJsonAsync<BaseCommandResponse<TemplateSyncOutcomeDto>>(
-            token => _httpClient.PostAsJsonAsync($"api/event-sessions/{sessionId}/template-sync/apply", request, token),
-            "event session template sync apply",
-            cancellationToken);
-
-        if (!result.IsSuccess)
+        try
         {
-            throw CreateExecutorException(result, "Failed to read apply response.");
-        }
+            var response = await _api.ApplySyncAsync(sessionId, request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw CreateResponseException(response, "Failed to read apply response.");
+            }
 
-        return result.Value ?? throw new InvalidOperationException("Failed to read apply response.");
+            return response.Content ?? throw new InvalidOperationException("Failed to read apply response.");
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Failed to read apply response.", ex);
+        }
     }
 
     public async Task<PaginatedResult<EventSessionTemplateSyncHistoryItemDto>> GetHistoryAsync(Guid sessionId, int page = 1, int pageSize = 20, CancellationToken cancellationToken = default)
     {
-        var result = await _apiClientExecutor.ReadJsonAsync<PaginatedResult<EventSessionTemplateSyncHistoryItemDto>>(
-            token => _httpClient.GetAsync($"api/event-sessions/{sessionId}/template-sync/history?page={page}&pageSize={pageSize}", token),
-            "event session template sync history",
-            cancellationToken);
-
-        if (!result.IsSuccess)
+        try
         {
-            throw CreateExecutorException(result, "Failed to read history response.");
-        }
+            var response = await _api.GetHistoryAsync(sessionId, page, pageSize, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw CreateResponseException(response, "Failed to read history response.");
+            }
 
-        return result.Value ?? throw new InvalidOperationException("Failed to read history response.");
+            return response.Content ?? throw new InvalidOperationException("Failed to read history response.");
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Failed to read history response.", ex);
+        }
     }
 
-    private static InvalidOperationException CreateExecutorException<T>(ApiResult<T> result, string fallbackMessage)
+    private static InvalidOperationException CreateResponseException(IApiResponse response, string fallbackMessage)
     {
-        if (IsNullSuccessBodyFailure(result))
-        {
-            return new InvalidOperationException(fallbackMessage, result.Exception ?? result.Problem);
-        }
+        var message = response.Error?.Content;
+        message = string.IsNullOrWhiteSpace(message) ? response.Error?.Message : message;
+        message = string.IsNullOrWhiteSpace(message) ? fallbackMessage : message;
 
-        return new InvalidOperationException(result.ErrorMessage ?? fallbackMessage, result.Exception ?? result.Problem);
-    }
-
-    private static bool IsNullSuccessBodyFailure<T>(ApiResult<T> result)
-    {
-        return result.Exception is InvalidOperationException
-            && result.ErrorMessage?.Contains("response body deserialized to null", StringComparison.OrdinalIgnoreCase) == true;
+        return new InvalidOperationException(message, response.Error);
     }
 }

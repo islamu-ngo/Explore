@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Models.Responses;
+using Refit;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -69,8 +70,8 @@ public sealed class FooterAdminServiceTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsFalse();
-        await Assert.That(result.Message).Contains("API error");
-        await Assert.That(result.Errors).Contains("Bad Request");
+        await Assert.That(result.Message).Contains("Error:");
+        await Assert.That(result.Errors).IsNotEmpty();
         await Assert.That(handler.LastRequest).IsNotNull();
         await Assert.That(handler.LastRequest!.Method).IsEqualTo(HttpMethod.Post);
         await Assert.That(handler.LastRequest.RequestUri!.PathAndQuery).IsEqualTo("/api/footer/link-groups");
@@ -141,7 +142,7 @@ public sealed class FooterAdminServiceTests
             BaseAddress = new Uri("https://test.local")
         };
 
-        return new FooterAdminService(client, _logger);
+        return new FooterAdminService(RestService.For<IFooterAdminApi>(client), _logger);
     }
 
     private static HttpResponseMessage CreateJsonResponse<T>(T model, HttpStatusCode statusCode = HttpStatusCode.OK)

@@ -2,12 +2,11 @@
 @* ABOUTME: Supports Keycloak/Google button flows and AT Protocol handle-input flow before challenge. *@
 
 @page "/login"
-@using Explore.Blazor.Client.Extensions
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
 @inject NavigationManager Navigation
-@inject IHttpClientFactory HttpClientFactory
+@inject IBffAuthApi BffAuthApi
 @inject ILogger<LoginRedirect> Logger
 @rendermode InteractiveServer
 
@@ -99,19 +98,6 @@
 </MudContainer>
 
 @code {
-    private sealed class AuthProviderItem
-    {
-        public string Name { get; set; } = string.Empty;
-        public string DisplayName { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public bool Recommended { get; set; }
-    }
-
-    private sealed class AuthProvidersResponse
-    {
-        public List<AuthProviderItem> Providers { get; set; } = [];
-    }
-
     private bool _isLoading = true;
     private bool _isAutoRedirecting;
     private bool _hasTriggeredRedirect;
@@ -121,7 +107,7 @@
     private string _forcedProviderQuery = string.Empty;
     private string _atprotoHandle = string.Empty;
     private string? _expandedProviderName;
-    private List<AuthProviderItem> _providers = [];
+    private List<BffAuthProviderItem> _providers = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -136,10 +122,13 @@
 
         try
         {
-            var client = CreateBffSelfClient();
-            using var response = await client.GetAsync("/auth/providers");
-            var result = await response.ReadJsonOrThrowAsync<AuthProvidersResponse>("Authentication providers");
-            var providers = result?.Providers ?? [];
+            var response = await BffAuthApi.GetProvidersAsync(CancellationToken.None);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Authentication providers returned HTTP {(int)response.StatusCode}.");
+            }
+
+            var providers = response.Content?.Providers ?? [];
 
             if (providers.Count == 0)
             {
@@ -171,7 +160,7 @@
         }
     }
 
-    private async Task TryAutoRedirectAsync(List<AuthProviderItem> providers)
+    private async Task TryAutoRedirectAsync(List<BffAuthProviderItem> providers)
     {
         if (_hasTriggeredRedirect)
         {
@@ -237,14 +226,14 @@
         }
     }
 
-    private void StartButtonProviderChallenge(AuthProviderItem provider)
+    private void StartButtonProviderChallenge(BffAuthProviderItem provider)
     {
         var providerKey = MapProviderNameToQueryValue(provider.Name);
         var challengeUrl = $"/auth/challenge?provider={Uri.EscapeDataString(providerKey)}&returnUrl={Uri.EscapeDataString(_returnUrl)}";
         Navigation.NavigateTo(challengeUrl, forceLoad: true);
     }
 
-    private void StartProvider(AuthProviderItem provider)
+    private void StartProvider(BffAuthProviderItem provider)
     {
         if (IsAtproto(provider))
         {
@@ -270,18 +259,18 @@
 
     // HandleAtprotoKeyUp removed in favor of EditForm submission
 
-    private static bool IsButtonProvider(AuthProviderItem provider)
+    private static bool IsButtonProvider(BffAuthProviderItem provider)
     {
         return string.Equals(provider.Type, "button", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsAtproto(AuthProviderItem provider)
+    private static bool IsAtproto(BffAuthProviderItem provider)
     {
         return string.Equals(provider.Type, "handle_input", StringComparison.OrdinalIgnoreCase)
             || string.Equals(MapProviderNameToQueryValue(provider.Name), "atproto", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static int GetProviderSortOrder(AuthProviderItem provider)
+    private static int GetProviderSortOrder(BffAuthProviderItem provider)
     {
         return MapProviderNameToQueryValue(provider.Name) switch
         {
@@ -292,12 +281,12 @@
         };
     }
 
-    private static string GetProviderDisplayName(AuthProviderItem provider)
+    private static string GetProviderDisplayName(BffAuthProviderItem provider)
     {
         return IsAtproto(provider) ? "ATProto" : provider.DisplayName;
     }
 
-    private static string GetProviderIcon(AuthProviderItem provider)
+    private static string GetProviderIcon(BffAuthProviderItem provider)
     {
         return MapProviderNameToQueryValue(provider.Name) switch
         {
@@ -391,10 +380,4 @@
         };
     }
 
-    private HttpClient CreateBffSelfClient()
-    {
-        var client = HttpClientFactory.CreateClient("BffSelfClient");
-        client.BaseAddress = new Uri(Navigation.BaseUri);
-        return client;
-    }
 }
